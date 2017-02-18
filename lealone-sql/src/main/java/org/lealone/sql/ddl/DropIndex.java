@@ -60,7 +60,7 @@ public class DropIndex extends SchemaStatement {
                 }
             } else {
                 Table table = index.getTable();
-                session.getUser().checkRight(index.getTable(), Right.ALL);
+                session.getUser().checkRight(table, Right.ALL);
                 Constraint pkConstraint = null;
                 ArrayList<Constraint> constraints = table.getConstraints();
                 for (int i = 0; constraints != null && i < constraints.size(); i++) {
@@ -74,7 +74,7 @@ public class DropIndex extends SchemaStatement {
                         }
                     }
                 }
-                index.getTable().setModified();
+                table.setModified();
                 Database db = session.getDatabase();
                 if (pkConstraint != null) {
                     db.removeSchemaObject(session, pkConstraint);

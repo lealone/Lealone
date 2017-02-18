@@ -20,6 +20,9 @@ import org.lealone.sql.expression.Expression;
 /**
  * This class represents the statement
  * ALTER SEQUENCE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterSequence extends SchemaStatement {
 

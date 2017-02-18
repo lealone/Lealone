@@ -33,7 +33,6 @@ public class ShutdownServer extends AdminStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        session.commit(true);
         for (ProtocolServerEngine e : ProtocolServerEngineManager.getInstance().getEngines())
             e.stopProtocolServer(port);
         return 0;

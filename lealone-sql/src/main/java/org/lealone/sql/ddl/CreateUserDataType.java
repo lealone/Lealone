@@ -20,6 +20,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * CREATE DOMAIN
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CreateUserDataType extends DefineStatement {
 
@@ -66,8 +69,8 @@ public class CreateUserDataType extends DefineStatement {
                 }
                 Table table = session.getDatabase().getFirstUserTable();
                 if (table != null) {
-                    throw DbException.get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1, typeName + " (" + table.getSQL()
-                            + ")");
+                    throw DbException.get(ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1,
+                            typeName + " (" + table.getSQL() + ")");
                 }
             }
             int id = getObjectId();

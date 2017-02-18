@@ -15,6 +15,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * ALTER TABLE SET
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterTableSet extends SchemaStatement {
 

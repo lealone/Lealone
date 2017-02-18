@@ -19,6 +19,9 @@ import org.lealone.sql.expression.Expression;
 /**
  * This class represents the statement
  * CREATE SEQUENCE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CreateSequence extends SchemaStatement {
 

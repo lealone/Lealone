@@ -21,6 +21,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP VIEW
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropView extends SchemaStatement {
 

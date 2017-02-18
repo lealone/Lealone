@@ -40,6 +40,9 @@ import org.lealone.sql.expression.Expression;
  * ALTER TABLE ALTER COLUMN SET NOT NULL,
  * ALTER TABLE ALTER COLUMN SET NULL,
  * ALTER TABLE DROP COLUMN
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterTableAlterColumn extends SchemaStatement {
 

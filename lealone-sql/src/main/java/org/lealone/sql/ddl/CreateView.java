@@ -12,6 +12,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
@@ -23,6 +24,9 @@ import org.lealone.sql.expression.Parameter;
 /**
  * This class represents the statement
  * CREATE VIEW
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CreateView extends SchemaStatement {
 
@@ -78,49 +82,50 @@ public class CreateView extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
-        Database db = session.getDatabase();
-        TableView view = null;
-        Table old = getSchema().findTableOrView(session, viewName);
-        if (old != null) {
-            if (ifNotExists) {
-                return 0;
+        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
+            Database db = session.getDatabase();
+            TableView view = null;
+            Table old = getSchema().findTableOrView(session, viewName);
+            if (old != null) {
+                if (ifNotExists) {
+                    return 0;
+                }
+                if (!orReplace || !Table.VIEW.equals(old.getTableType())) {
+                    throw DbException.get(ErrorCode.VIEW_ALREADY_EXISTS_1, viewName);
+                }
+                view = (TableView) old;
             }
-            if (!orReplace || !Table.VIEW.equals(old.getTableType())) {
-                throw DbException.get(ErrorCode.VIEW_ALREADY_EXISTS_1, viewName);
-            }
-            view = (TableView) old;
-        }
-        int id = getObjectId();
-        String querySQL;
-        if (select == null) {
-            querySQL = selectSQL;
-        } else {
-            ArrayList<Parameter> params = select.getParameters();
-            if (params != null && params.size() > 0) {
-                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, "parameters in views");
-            }
-            querySQL = select.getPlanSQL();
-        }
-        ServerSession sysSession = db.getSystemSession();
-        try {
-            if (view == null) {
-                Schema schema = session.getDatabase().getSchema(session.getCurrentSchemaName());
-                sysSession.setCurrentSchema(schema);
-                view = new TableView(getSchema(), id, viewName, querySQL, null, columnNames, sysSession, false);
+            int id = getObjectId();
+            String querySQL;
+            if (select == null) {
+                querySQL = selectSQL;
             } else {
-                view.replace(querySQL, columnNames, sysSession, false, force);
+                ArrayList<Parameter> params = select.getParameters();
+                if (params != null && params.size() > 0) {
+                    throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, "parameters in views");
+                }
+                querySQL = select.getPlanSQL();
             }
-        } finally {
-            sysSession.setCurrentSchema(db.getSchema(Constants.SCHEMA_MAIN));
-        }
-        if (comment != null) {
-            view.setComment(comment);
-        }
-        if (old == null) {
-            db.addSchemaObject(session, view);
-        } else {
-            db.updateMeta(session, view);
+            ServerSession sysSession = db.getSystemSession();
+            try {
+                if (view == null) {
+                    Schema schema = session.getDatabase().getSchema(session.getCurrentSchemaName());
+                    sysSession.setCurrentSchema(schema);
+                    view = new TableView(getSchema(), id, viewName, querySQL, null, columnNames, sysSession, false);
+                } else {
+                    view.replace(querySQL, columnNames, sysSession, false, force);
+                }
+            } finally {
+                sysSession.setCurrentSchema(db.getSchema(Constants.SCHEMA_MAIN));
+            }
+            if (comment != null) {
+                view.setComment(comment);
+            }
+            if (old == null) {
+                db.addSchemaObject(session, view);
+            } else {
+                db.updateMeta(session, view);
+            }
         }
         return 0;
     }

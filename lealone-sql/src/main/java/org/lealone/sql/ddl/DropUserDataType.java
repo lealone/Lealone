@@ -17,6 +17,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP DOMAIN
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropUserDataType extends DefineStatement {
 

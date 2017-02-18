@@ -8,7 +8,6 @@ package org.lealone.sql.ddl;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Constant;
@@ -20,6 +19,9 @@ import org.lealone.sql.expression.Expression;
 /**
  * This class represents the statement
  * CREATE CONSTANT
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CreateConstant extends SchemaStatement {
 
@@ -36,6 +38,14 @@ public class CreateConstant extends SchemaStatement {
         return SQLStatement.CREATE_CONSTANT;
     }
 
+    public void setConstantName(String constantName) {
+        this.constantName = constantName;
+    }
+
+    public void setExpression(Expression expr) {
+        this.expression = expr;
+    }
+
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
     }
@@ -43,7 +53,6 @@ public class CreateConstant extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        Database db = session.getDatabase();
         synchronized (getSchema().getLock(DbObjectType.CONSTANT)) {
             if (getSchema().findConstant(constantName) != null) {
                 if (ifNotExists) {
@@ -55,17 +64,9 @@ public class CreateConstant extends SchemaStatement {
             expression = expression.optimize(session);
             Value value = expression.getValue(session);
             Constant constant = new Constant(getSchema(), id, constantName, value);
-            db.addSchemaObject(session, constant);
+            session.getDatabase().addSchemaObject(session, constant);
         }
         return 0;
-    }
-
-    public void setConstantName(String constantName) {
-        this.constantName = constantName;
-    }
-
-    public void setExpression(Expression expr) {
-        this.expression = expr;
     }
 
 }

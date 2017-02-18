@@ -18,6 +18,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP ALIAS
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropFunctionAlias extends SchemaStatement {
 

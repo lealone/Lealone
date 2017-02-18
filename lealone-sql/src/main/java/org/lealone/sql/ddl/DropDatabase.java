@@ -24,6 +24,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP ALL OBJECTS
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropDatabase extends DefineStatement implements DatabaseStatement {
 

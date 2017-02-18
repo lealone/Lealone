@@ -17,6 +17,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * ALTER TABLE DROP CONSTRAINT
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterTableDropConstraint extends SchemaStatement {
 

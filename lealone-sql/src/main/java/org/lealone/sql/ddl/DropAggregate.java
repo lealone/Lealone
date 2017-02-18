@@ -17,6 +17,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP AGGREGATE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropAggregate extends DefineStatement {
 

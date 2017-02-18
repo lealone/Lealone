@@ -16,6 +16,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * TRUNCATE TABLE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class TruncateTable extends DefineStatement {
 

@@ -17,6 +17,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP SCHEMA
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropSchema extends DefineStatement {
 
@@ -34,6 +37,10 @@ public class DropSchema extends DefineStatement {
 
     public void setSchemaName(String name) {
         this.schemaName = name;
+    }
+
+    public void setIfExists(boolean ifExists) {
+        this.ifExists = ifExists;
     }
 
     @Override
@@ -54,10 +61,6 @@ public class DropSchema extends DefineStatement {
             }
         }
         return 0;
-    }
-
-    public void setIfExists(boolean ifExists) {
-        this.ifExists = ifExists;
     }
 
 }

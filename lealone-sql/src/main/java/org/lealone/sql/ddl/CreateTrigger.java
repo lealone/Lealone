@@ -20,6 +20,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * CREATE TRIGGER
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CreateTrigger extends SchemaStatement {
 

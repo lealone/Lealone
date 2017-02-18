@@ -33,6 +33,9 @@ import org.lealone.sql.expression.Expression;
 /**
  * This class represents the statement
  * ALTER TABLE ADD CONSTRAINT
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterTableAddConstraint extends SchemaStatement {
 

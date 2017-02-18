@@ -18,6 +18,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * CREATE SCHEMA
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class CreateSchema extends DefineStatement {
 
@@ -32,6 +35,14 @@ public class CreateSchema extends DefineStatement {
     @Override
     public int getType() {
         return SQLStatement.CREATE_SCHEMA;
+    }
+
+    public void setSchemaName(String name) {
+        this.schemaName = name;
+    }
+
+    public void setAuthorization(String userName) {
+        this.authorization = userName;
     }
 
     public void setIfNotExists(boolean ifNotExists) {
@@ -59,14 +70,6 @@ public class CreateSchema extends DefineStatement {
             db.addDatabaseObject(session, schema);
         }
         return 0;
-    }
-
-    public void setSchemaName(String name) {
-        this.schemaName = name;
-    }
-
-    public void setAuthorization(String userName) {
-        this.authorization = userName;
     }
 
 }

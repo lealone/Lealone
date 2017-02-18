@@ -18,6 +18,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP SEQUENCE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropSequence extends SchemaStatement {
 

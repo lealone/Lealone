@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
@@ -19,6 +20,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * ALTER SCHEMA RENAME
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterSchemaRename extends DefineStatement {
 
@@ -44,19 +48,20 @@ public class AlterSchemaRename extends DefineStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         Database db = session.getDatabase();
-        if (!oldSchema.canDrop()) {
-            throw DbException.get(ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1, oldSchema.getName());
-        }
-        if (db.findSchema(newSchemaName) != null || newSchemaName.equals(oldSchema.getName())) {
-            throw DbException.get(ErrorCode.SCHEMA_ALREADY_EXISTS_1, newSchemaName);
-        }
-        session.getUser().checkSchemaAdmin();
-        db.renameDatabaseObject(session, oldSchema, newSchemaName);
-        ArrayList<SchemaObject> all = db.getAllSchemaObjects();
-        for (SchemaObject schemaObject : all) {
-            db.updateMeta(session, schemaObject);
+        synchronized (db.getLock(DbObjectType.SCHEMA)) {
+            if (!oldSchema.canDrop()) {
+                throw DbException.get(ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1, oldSchema.getName());
+            }
+            if (db.findSchema(newSchemaName) != null || newSchemaName.equals(oldSchema.getName())) {
+                throw DbException.get(ErrorCode.SCHEMA_ALREADY_EXISTS_1, newSchemaName);
+            }
+            session.getUser().checkSchemaAdmin();
+            db.renameDatabaseObject(session, oldSchema, newSchemaName);
+            ArrayList<SchemaObject> all = db.getAllSchemaObjects();
+            for (SchemaObject schemaObject : all) {
+                db.updateMeta(session, schemaObject);
+            }
         }
         return 0;
     }

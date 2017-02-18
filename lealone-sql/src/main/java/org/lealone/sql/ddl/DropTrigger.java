@@ -20,6 +20,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP TRIGGER
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropTrigger extends SchemaStatement {
 

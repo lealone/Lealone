@@ -18,6 +18,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * ALTER TABLE RENAME
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterTableRename extends SchemaStatement {
 
@@ -42,6 +45,10 @@ public class AlterTableRename extends SchemaStatement {
         newTableName = name;
     }
 
+    public void setHidden(boolean hidden) {
+        this.hidden = hidden;
+    }
+
     @Override
     public int update() {
         session.commit(true);
@@ -64,10 +71,6 @@ public class AlterTableRename extends SchemaStatement {
         }
         db.renameSchemaObject(session, oldTable, newTableName);
         return 0;
-    }
-
-    public void setHidden(boolean hidden) {
-        this.hidden = hidden;
     }
 
 }

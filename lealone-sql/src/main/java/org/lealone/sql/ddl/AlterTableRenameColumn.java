@@ -18,6 +18,9 @@ import org.lealone.sql.expression.Expression;
 /**
  * This class represents the statement
  * ALTER TABLE ALTER COLUMN RENAME
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class AlterTableRenameColumn extends DefineStatement {
 

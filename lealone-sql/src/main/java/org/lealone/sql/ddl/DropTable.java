@@ -23,6 +23,9 @@ import org.lealone.sql.SQLStatement;
 /**
  * This class represents the statement
  * DROP TABLE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class DropTable extends SchemaStatement {
 
