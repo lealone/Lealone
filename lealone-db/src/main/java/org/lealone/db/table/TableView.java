@@ -23,11 +23,9 @@ import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.expression.Query;
 import org.lealone.db.index.Index;
-import org.lealone.db.index.IndexType;
 import org.lealone.db.index.ViewIndex;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
-import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.util.IntArray;
@@ -74,7 +72,8 @@ public class TableView extends Table {
      * @param recursive whether this is a recursive view
      * @param force if errors should be ignored
      */
-    public void replace(String querySQL, String[] columnNames, ServerSession session, boolean recursive, boolean force) {
+    public void replace(String querySQL, String[] columnNames, ServerSession session, boolean recursive,
+            boolean force) {
         String oldQuerySQL = this.querySQL;
         String[] oldColumnNames = this.columnNames;
         boolean oldRecursive = this.recursive;
@@ -276,93 +275,8 @@ public class TableView extends Table {
     }
 
     @Override
-    public boolean lock(ServerSession session, boolean exclusive, boolean force) {
-        // exclusive lock means: the view will be dropped
-        return false;
-    }
-
-    @Override
-    public void close(ServerSession session) {
-        // nothing to do
-    }
-
-    @Override
-    public void unlock(ServerSession s) {
-        // nothing to do
-    }
-
-    @Override
-    public boolean isLockedExclusively() {
-        return false;
-    }
-
-    @Override
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
-            IndexType indexType, boolean create, String indexComment) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public void removeRow(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public void addRow(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public void checkSupportAlter() {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public void truncate(ServerSession session) {
-        throw DbException.getUnsupportedException("VIEW");
-    }
-
-    @Override
-    public long getRowCount(ServerSession session) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public boolean canGetRowCount() {
-        // TODO view: could get the row count, but not that easy
-        return false;
-    }
-
-    @Override
-    public boolean canDrop() {
-        return true;
-    }
-
-    @Override
-    public String getTableType() {
-        return Table.VIEW;
-    }
-
-    @Override
-    public void removeChildrenAndResources(ServerSession session) {
-        removeViewFromTables();
-        super.removeChildrenAndResources(session);
-        database.removeMeta(session, getId());
-        querySQL = null;
-        index = null;
-        invalidate();
-    }
-
-    @Override
-    public String getSQL() {
-        if (isTemporary()) {
-            return "(\n" + StringUtils.indent(querySQL) + ")";
-        }
-        return super.getSQL();
-    }
-
-    public String getQuery() {
-        return querySQL;
+    public TableType getTableType() {
+        return TableType.VIEW;
     }
 
     @Override
@@ -400,8 +314,54 @@ public class TableView extends Table {
     }
 
     @Override
-    public Index getUniqueIndex() {
-        return null;
+    public boolean isDeterministic() {
+        if (recursive || viewQuery == null) {
+            return false;
+        }
+        return viewQuery.isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR);
+    }
+
+    @Override
+    public boolean canDrop() {
+        return true;
+    }
+
+    @Override
+    public boolean canGetRowCount() {
+        // TODO view: could get the row count, but not that easy
+        return false;
+    }
+
+    @Override
+    public long getRowCount(ServerSession session) {
+        throw DbException.throwInternalError();
+    }
+
+    @Override
+    public long getRowCountApproximation() {
+        return ROW_COUNT_APPROXIMATION;
+    }
+
+    @Override
+    public void removeChildrenAndResources(ServerSession session) {
+        removeViewFromTables();
+        super.removeChildrenAndResources(session);
+        database.removeMeta(session, getId());
+        querySQL = null;
+        index = null;
+        invalidate();
+    }
+
+    @Override
+    public String getSQL() {
+        if (isTemporary()) {
+            return "(\n" + StringUtils.indent(querySQL) + ")";
+        }
+        return super.getSQL();
+    }
+
+    public String getQuery() {
+        return querySQL;
     }
 
     private void removeViewFromTables() {
@@ -437,7 +397,8 @@ public class TableView extends Table {
      * @param topQuery the top level query
      * @return the view table
      */
-    public static TableView createTempView(ServerSession session, User owner, String name, Query query, Query topQuery) {
+    public static TableView createTempView(ServerSession session, User owner, String name, Query query,
+            Query topQuery) {
         Schema mainSchema = session.getDatabase().getSchema(Constants.SCHEMA_MAIN);
         String querySQL = query.getPlanSQL();
         int size = query.getParameters().size();
@@ -458,26 +419,8 @@ public class TableView extends Table {
         this.topQuery = topQuery;
     }
 
-    @Override
-    public long getRowCountApproximation() {
-        return ROW_COUNT_APPROXIMATION;
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
-    }
-
     public int getParameterOffset() {
         return topQuery == null ? 0 : topQuery.getParameters().size();
-    }
-
-    @Override
-    public boolean isDeterministic() {
-        if (recursive || viewQuery == null) {
-            return false;
-        }
-        return viewQuery.isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR);
     }
 
     public void setRecursiveResult(LocalResult value) {

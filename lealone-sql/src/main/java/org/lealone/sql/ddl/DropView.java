@@ -15,6 +15,7 @@ import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableType;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
 
@@ -63,7 +64,7 @@ public class DropView extends SchemaStatement {
                     throw DbException.get(ErrorCode.VIEW_NOT_FOUND_1, viewName);
                 }
             } else {
-                if (!Table.VIEW.equals(view.getTableType())) {
+                if (view.getTableType() != TableType.VIEW) {
                     throw DbException.get(ErrorCode.VIEW_NOT_FOUND_1, viewName);
                 }
                 session.getUser().checkRight(view, Right.ALL);

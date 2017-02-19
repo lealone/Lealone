@@ -19,6 +19,7 @@ import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableType;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -75,22 +76,12 @@ public class DropDatabase extends DefineStatement implements DatabaseStatement {
         }
         ArrayList<Table> tables = db.getAllTablesAndViews(false);
         for (Table t : tables) {
-            if (t.getName() != null && Table.VIEW.equals(t.getTableType())) {
+            if (t.getName() != null && TableType.VIEW == t.getTableType()) {
                 db.removeSchemaObject(session, t);
             }
         }
         for (Table t : tables) {
-            if (t.getName() != null && Table.TABLE_LINK.equals(t.getTableType())) {
-                db.removeSchemaObject(session, t);
-            }
-        }
-        for (Table t : tables) {
-            if (t.getName() != null && Table.TABLE.equals(t.getTableType()) && !t.isHidden()) {
-                db.removeSchemaObject(session, t);
-            }
-        }
-        for (Table t : tables) {
-            if (t.getName() != null && Table.EXTERNAL_STORAGE_ENGINE.equals(t.getTableType()) && !t.isHidden()) {
+            if (t.getName() != null && TableType.STANDARD_TABLE == t.getTableType() && !t.isHidden()) {
                 db.removeSchemaObject(session, t);
             }
         }

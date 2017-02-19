@@ -16,6 +16,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableType;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.dml.Query;
@@ -90,7 +91,7 @@ public class CreateView extends SchemaStatement {
                 if (ifNotExists) {
                     return 0;
                 }
-                if (!orReplace || !Table.VIEW.equals(old.getTableType())) {
+                if (!orReplace || old.getTableType() != TableType.VIEW) {
                     throw DbException.get(ErrorCode.VIEW_ALREADY_EXISTS_1, viewName);
                 }
                 view = (TableView) old;

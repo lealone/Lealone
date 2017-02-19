@@ -14,6 +14,7 @@ import org.lealone.db.auth.Right;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
@@ -57,7 +58,7 @@ public class Analyze extends DefineStatement {
      * @param manual whether the command was called by the user
      */
     public static void analyzeTable(ServerSession session, Table table, int sample, boolean manual) {
-        if (!(table.getTableType().equals(Table.TABLE)) || table.isHidden() || session == null) {
+        if (table.getTableType() != TableType.STANDARD_TABLE || table.isHidden() || session == null) {
             return;
         }
         if (!manual) {

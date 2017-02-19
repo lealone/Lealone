@@ -50,6 +50,7 @@ public class StandardTable extends Table {
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = New.arrayList();
     private final StorageEngine storageEngine;
+    private final String storageEngineName;
     private final Map<String, String> storageEngineParams;
     private final String mapType;
     private final boolean globalTemporary;
@@ -189,16 +190,6 @@ public class StandardTable extends Table {
                         + " got " + rc + " " + getName() + "." + index.getName());
             }
         }
-    }
-
-    @Override
-    public Index getUniqueIndex() {
-        for (Index idx : indexes) {
-            if (idx.getIndexType().isUnique()) {
-                return idx;
-            }
-        }
-        return null;
     }
 
     /**
@@ -591,8 +582,13 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public String getTableType() {
-        return Table.TABLE;
+    public void checkRename() {
+        // ok
+    }
+
+    @Override
+    public TableType getTableType() {
+        return TableType.STANDARD_TABLE;
     }
 
     @Override
@@ -622,6 +618,16 @@ public class StandardTable extends Table {
     @Override
     public boolean canGetRowCount() {
         return true;
+    }
+
+    @Override
+    public long getRowCount(ServerSession session) {
+        return primaryIndex.getRowCount(session);
+    }
+
+    @Override
+    public long getRowCountApproximation() {
+        return primaryIndex.getRowCountApproximation();
     }
 
     @Override
@@ -660,16 +666,6 @@ public class StandardTable extends Table {
         database.removeMeta(session, getId());
         close(session);
         invalidate();
-    }
-
-    @Override
-    public long getRowCount(ServerSession session) {
-        return primaryIndex.getRowCount(session);
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return primaryIndex.getRowCountApproximation();
     }
 
     @Override

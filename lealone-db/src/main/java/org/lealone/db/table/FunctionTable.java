@@ -18,10 +18,8 @@ import org.lealone.db.expression.FunctionCall;
 import org.lealone.db.expression.TableFunction;
 import org.lealone.db.index.FunctionIndex;
 import org.lealone.db.index.Index;
-import org.lealone.db.index.IndexType;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
-import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -29,8 +27,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
 
 /**
- * A table backed by a system or user-defined function that returns a result
- * set.
+ * A table backed by a system or user-defined function that returns a result set.
  */
 public class FunctionTable extends Table {
 
@@ -81,60 +78,8 @@ public class FunctionTable extends Table {
     }
 
     @Override
-    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
-        // nothing to do
-        return false;
-    }
-
-    @Override
-    public void close(ServerSession session) {
-        // nothing to do
-    }
-
-    @Override
-    public void unlock(ServerSession s) {
-        // nothing to do
-    }
-
-    @Override
-    public boolean isLockedExclusively() {
-        return false;
-    }
-
-    @Override
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public void removeRow(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public void truncate(ServerSession session) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public boolean canDrop() {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public void addRow(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public void checkSupportAlter() {
-        throw DbException.getUnsupportedException("ALIAS");
-    }
-
-    @Override
-    public String getTableType() {
-        return null;
+    public TableType getTableType() {
+        return TableType.FUNCTION_TABLE;
     }
 
     @Override
@@ -148,12 +93,39 @@ public class FunctionTable extends Table {
     }
 
     @Override
+    public long getMaxDataModificationId() {
+        // TODO optimization: table-as-a-function currently doesn't know the
+        // last modified date
+        return Long.MAX_VALUE;
+    }
+
+    @Override
+    public boolean isDeterministic() {
+        return function.isDeterministic();
+    }
+
+    @Override
+    public boolean canReference() {
+        return false;
+    }
+
+    @Override
+    public boolean canDrop() {
+        throw DbException.throwInternalError();
+    }
+
+    @Override
     public boolean canGetRowCount() {
         return rowCount != Long.MAX_VALUE;
     }
 
     @Override
     public long getRowCount(ServerSession session) {
+        return rowCount;
+    }
+
+    @Override
+    public long getRowCountApproximation() {
         return rowCount;
     }
 
@@ -168,8 +140,8 @@ public class FunctionTable extends Table {
     }
 
     @Override
-    public void checkRename() {
-        throw DbException.getUnsupportedException("ALIAS");
+    public String getSQL() {
+        return function.getSQL();
     }
 
     /**
@@ -218,43 +190,6 @@ public class FunctionTable extends Table {
 
     public boolean isBufferResultSetToLocalTemp() {
         return function.isBufferResultSetToLocalTemp();
-    }
-
-    @Override
-    public long getMaxDataModificationId() {
-        // TODO optimization: table-as-a-function currently doesn't know the
-        // last modified date
-        return Long.MAX_VALUE;
-    }
-
-    @Override
-    public Index getUniqueIndex() {
-        return null;
-    }
-
-    @Override
-    public String getSQL() {
-        return function.getSQL();
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return rowCount;
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
-    }
-
-    @Override
-    public boolean isDeterministic() {
-        return function.isDeterministic();
-    }
-
-    @Override
-    public boolean canReference() {
-        return false;
     }
 
 }

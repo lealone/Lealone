@@ -59,39 +59,9 @@ public abstract class Table extends SchemaObjectBase {
     public static final int TYPE_MEMORY = 1;
 
     /**
-     * The table type name for linked tables.
-     */
-    public static final String TABLE_LINK = "TABLE LINK";
-
-    /**
-     * The table type name for system tables.
-     */
-    public static final String SYSTEM_TABLE = "SYSTEM TABLE";
-
-    /**
-     * The table type name for regular data tables.
-     */
-    public static final String TABLE = "TABLE";
-
-    /**
-     * The table type name for views.
-     */
-    public static final String VIEW = "VIEW";
-
-    /**
-     * The table type name for external table engines.
-     */
-    public static final String EXTERNAL_STORAGE_ENGINE = "EXTERNAL";
-
-    /**
      * The columns of this table.
      */
     protected Column[] columns;
-
-    /**
-     * The compare mode used for this table.
-     */
-    protected CompareMode compareMode;
 
     /**
      * Protected tables are not listed in the meta data and are excluded when
@@ -99,27 +69,32 @@ public abstract class Table extends SchemaObjectBase {
      */
     protected boolean isHidden;
 
-    protected String storageEngineName;
-
+    /**
+     * The compare mode used for this table.
+     */
+    private final CompareMode compareMode;
     private final HashMap<String, Column> columnMap;
     private final boolean persistIndexes;
     private final boolean persistData;
+
     private ArrayList<TriggerObject> triggers;
     private ArrayList<Constraint> constraints;
     private ArrayList<Sequence> sequences;
     private ArrayList<TableView> views;
+
     private boolean checkForeignKeyConstraints = true;
-    private boolean onCommitDrop, onCommitTruncate;
+    private boolean onCommitDrop;
+    private boolean onCommitTruncate;
     private Row nullRow;
 
     private int version = -1;
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         super(schema, id, name, Trace.TABLE);
+        compareMode = database.getCompareMode();
         columnMap = database.newStringMap();
         this.persistIndexes = persistIndexes;
         this.persistData = persistData;
-        compareMode = database.getCompareMode();
     }
 
     @Override
@@ -169,24 +144,50 @@ public abstract class Table extends SchemaObjectBase {
      *
      * @param session the session
      * @param exclusive true for write locks, false for read locks
-     * @param force lock even in the MVCC mode
+     * @param forceLockEvenInMvcc lock even in the MVCC mode
      * @throws DbException if a lock timeout occurred
      */
-    public abstract boolean lock(ServerSession session, boolean exclusive, boolean force);
+    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
+        // nothing to do
+        return false;
+    }
 
     /**
      * Close the table object and flush changes.
      *
      * @param session the session
      */
-    public abstract void close(ServerSession session);
+    public void close(ServerSession session) {
+        // nothing to do
+    }
 
     /**
      * Release the lock for this session.
      *
      * @param s the session
      */
-    public abstract void unlock(ServerSession s);
+    public void unlock(ServerSession s) {
+        // nothing to do
+    }
+
+    /**
+     * Check if this table is locked exclusively.
+     *
+     * @return true if it is.
+     */
+    public boolean isLockedExclusively() {
+        return false;
+    }
+
+    /**
+     * Check if the table is exclusively locked by this session.
+     *
+     * @param session the session
+     * @return true if it is
+     */
+    public boolean isLockedExclusivelyBy(ServerSession session) {
+        return false;
+    }
 
     /**
      * Create an index for this table
@@ -200,23 +201,14 @@ public abstract class Table extends SchemaObjectBase {
      * @param indexComment the comment
      * @return the index
      */
-    public abstract Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
-            IndexType indexType, boolean create, String indexComment);
+    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
+            boolean create, String indexComment) {
+        throw newUnsupportedException();
+    }
 
-    /**
-     * Remove a row from the table and all indexes.
-     *
-     * @param session the session
-     * @param row the row
-     */
-    public abstract void removeRow(ServerSession session, Row row);
-
-    /**
-     * Remove all rows from the table and indexes.
-     *
-     * @param session the session
-     */
-    public abstract void truncate(ServerSession session);
+    private DbException newUnsupportedException() {
+        return DbException.getUnsupportedException(getTableType().toString());
+    }
 
     /**
      * Add a row to the table and all indexes.
@@ -225,21 +217,49 @@ public abstract class Table extends SchemaObjectBase {
      * @param row the row
      * @throws DbException if a constraint was violated
      */
-    public abstract void addRow(ServerSession session, Row row);
+    public void addRow(ServerSession session, Row row) {
+        throw newUnsupportedException();
+    }
+
+    /**
+     * Remove a row from the table and all indexes.
+     *
+     * @param session the session
+     * @param row the row
+     */
+    public void removeRow(ServerSession session, Row row) {
+        throw newUnsupportedException();
+    }
+
+    /**
+     * Remove all rows from the table and indexes.
+     *
+     * @param session the session
+     */
+    public void truncate(ServerSession session) {
+        throw newUnsupportedException();
+    }
 
     /**
      * Check if this table supports ALTER TABLE.
      *
      * @throws DbException if it is not supported
      */
-    public abstract void checkSupportAlter();
+    public void checkSupportAlter() {
+        throw newUnsupportedException();
+    }
+
+    @Override
+    public void checkRename() {
+        throw newUnsupportedException();
+    }
 
     /**
-     * Get the table type name
+     * Get the table type
      *
-     * @return the table type name
+     * @return the table type
      */
-    public abstract String getTableType();
+    public abstract TableType getTableType();
 
     /**
      * Get the scan index to iterate through all rows.
@@ -250,25 +270,11 @@ public abstract class Table extends SchemaObjectBase {
     public abstract Index getScanIndex(ServerSession session);
 
     /**
-     * Get any unique index for this table if one exists.
-     *
-     * @return a unique index
-     */
-    public abstract Index getUniqueIndex();
-
-    /**
      * Get all indexes for this table.
      *
      * @return the list of indexes
      */
     public abstract ArrayList<Index> getIndexes();
-
-    /**
-     * Check if this table is locked exclusively.
-     *
-     * @return true if it is.
-     */
-    public abstract boolean isLockedExclusively();
 
     /**
      * Get the last data modification id.
@@ -283,13 +289,6 @@ public abstract class Table extends SchemaObjectBase {
      * @return true if it is
      */
     public abstract boolean isDeterministic();
-
-    /**
-     * Check if the row count can be retrieved quickly.
-     *
-     * @return true if it can
-     */
-    public abstract boolean canGetRowCount();
 
     /**
      * Check if this table can be referenced.
@@ -308,6 +307,13 @@ public abstract class Table extends SchemaObjectBase {
     public abstract boolean canDrop();
 
     /**
+     * Check if the row count can be retrieved quickly.
+     *
+     * @return true if it can
+     */
+    public abstract boolean canGetRowCount();
+
+    /**
      * Get the row count for this table.
      *
      * @param session the session
@@ -322,7 +328,9 @@ public abstract class Table extends SchemaObjectBase {
      */
     public abstract long getRowCountApproximation();
 
-    public abstract long getDiskSpaceUsed();
+    public long getDiskSpaceUsed() {
+        return 0;
+    }
 
     /**
      * Get the row id column if this table has one.
@@ -433,16 +441,6 @@ public abstract class Table extends SchemaObjectBase {
         columnMap.remove(column.getName());
         column.rename(newName);
         columnMap.put(newName, column);
-    }
-
-    /**
-     * Check if the table is exclusively locked by this session.
-     *
-     * @param session the session
-     * @return true if it is
-     */
-    public boolean isLockedExclusivelyBy(ServerSession session) {
-        return false;
     }
 
     /**
@@ -1045,7 +1043,8 @@ public abstract class Table extends SchemaObjectBase {
      *            verification
      * @return an object array with the sessions involved in the deadlock, or null
      */
-    public ArrayList<ServerSession> checkDeadlock(ServerSession session, ServerSession clash, Set<ServerSession> visited) {
+    public ArrayList<ServerSession> checkDeadlock(ServerSession session, ServerSession clash,
+            Set<ServerSession> visited) {
         return null;
     }
 
@@ -1114,10 +1113,6 @@ public abstract class Table extends SchemaObjectBase {
 
     public void setHidden(boolean hidden) {
         this.isHidden = hidden;
-    }
-
-    public String getStorageEngineName() {
-        return storageEngineName;
     }
 
     public boolean containsGlobalUniqueIndex() {

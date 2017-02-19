@@ -43,7 +43,6 @@ import org.lealone.db.constraint.ConstraintCheck;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.constraint.ConstraintUnique;
 import org.lealone.db.index.Index;
-import org.lealone.db.index.IndexType;
 import org.lealone.db.index.MetaIndex;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -128,7 +127,7 @@ public class MetaTable extends Table {
         case TABLES:
             setObjectName("TABLES");
             cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
-            // extensions
+                    // extensions
                     "STORAGE_TYPE", "SQL", "REMARKS", "LAST_MODIFICATION BIGINT", "ID INT", "TYPE_NAME", "TABLE_CLASS");
             indexColumnName = "TABLE_NAME";
             break;
@@ -146,9 +145,9 @@ public class MetaTable extends Table {
         case INDEXES:
             setObjectName("INDEXES");
             cols = createColumns("TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "NON_UNIQUE BIT", "INDEX_NAME",
-                    "ORDINAL_POSITION SMALLINT", "COLUMN_NAME", "CARDINALITY INT", "PRIMARY_KEY BIT",
-                    "INDEX_TYPE_NAME", "IS_GENERATED BIT", "INDEX_TYPE SMALLINT", "ASC_OR_DESC", "PAGES INT",
-                    "FILTER_CONDITION", "REMARKS", "SQL", "ID INT", "SORT_TYPE INT", "CONSTRAINT_NAME", "INDEX_CLASS");
+                    "ORDINAL_POSITION SMALLINT", "COLUMN_NAME", "CARDINALITY INT", "PRIMARY_KEY BIT", "INDEX_TYPE_NAME",
+                    "IS_GENERATED BIT", "INDEX_TYPE SMALLINT", "ASC_OR_DESC", "PAGES INT", "FILTER_CONDITION",
+                    "REMARKS", "SQL", "ID INT", "SORT_TYPE INT", "CONSTRAINT_NAME", "INDEX_CLASS");
             indexColumnName = "TABLE_NAME";
             break;
         case TABLE_TYPES:
@@ -321,22 +320,6 @@ public class MetaTable extends Table {
         return null;
     }
 
-    @Override
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
-            IndexType indexType, boolean create, String indexComment) {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
-        return false;
-    }
-
-    @Override
-    public boolean isLockedExclusively() {
-        return false;
-    }
-
     private String identifier(String s) {
         if (database.getMode().lowerCaseIdentifiers) {
             s = s == null ? null : StringUtils.toLowerEnglish(s);
@@ -426,14 +409,14 @@ public class MetaTable extends Table {
                     storageType = table.isPersistIndexes() ? "CACHED" : "MEMORY";
                 }
                 add(rows,
-                // TABLE_CATALOG
+                        // TABLE_CATALOG
                         catalog,
                         // TABLE_SCHEMA
                         identifier(table.getSchema().getName()),
                         // TABLE_NAME
                         tableName,
                         // TABLE_TYPE
-                        table.getTableType(),
+                        table.getTableType().toString(),
                         // STORAGE_TYPE
                         storageType,
                         // SQL
@@ -466,7 +449,7 @@ public class MetaTable extends Table {
                     Column c = cols[j];
                     Sequence sequence = c.getSequence();
                     add(rows,
-                    // TABLE_CATALOG
+                            // TABLE_CATALOG
                             catalog,
                             // TABLE_SCHEMA
                             identifier(table.getSchema().getName()),
@@ -551,7 +534,7 @@ public class MetaTable extends Table {
                         IndexColumn idxCol = cols[k];
                         Column column = idxCol.column;
                         add(rows,
-                        // TABLE_CATALOG
+                                // TABLE_CATALOG
                                 catalog,
                                 // TABLE_SCHEMA
                                 identifier(table.getSchema().getName()),
@@ -599,10 +582,9 @@ public class MetaTable extends Table {
             break;
         }
         case TABLE_TYPES: {
-            add(rows, Table.TABLE);
-            add(rows, Table.TABLE_LINK);
-            add(rows, Table.SYSTEM_TABLE);
-            add(rows, Table.VIEW);
+            add(rows, TableType.STANDARD_TABLE.toString());
+            add(rows, TableType.META_TABLE.toString());
+            add(rows, TableType.VIEW.toString());
             break;
         }
         case CATALOGS: {
@@ -656,7 +638,7 @@ public class MetaTable extends Table {
                     continue;
                 }
                 add(rows,
-                // TYPE_NAME
+                        // TYPE_NAME
                         t.name,
                         // DATA_TYPE
                         String.valueOf(t.sqlType),
@@ -697,7 +679,7 @@ public class MetaTable extends Table {
                 ResultSet rs = csv.read(reader, null);
                 for (int i = 0; rs.next(); i++) {
                     add(rows,
-                    // ID
+                            // ID
                             String.valueOf(i),
                             // SECTION
                             rs.getString(1).trim(),
@@ -717,7 +699,7 @@ public class MetaTable extends Table {
             for (SchemaObject obj : database.getAllSchemaObjects(DbObjectType.SEQUENCE)) {
                 Sequence s = (Sequence) obj;
                 add(rows,
-                // SEQUENCE_CATALOG
+                        // SEQUENCE_CATALOG
                         catalog,
                         // SEQUENCE_SCHEMA
                         identifier(s.getSchema().getName()),
@@ -742,7 +724,7 @@ public class MetaTable extends Table {
             for (User u : database.getAllUsers()) {
                 if (admin || session.getUser() == u) {
                     add(rows,
-                    // NAME
+                            // NAME
                             identifier(u.getName()),
                             // ADMIN
                             String.valueOf(u.isAdmin()),
@@ -758,7 +740,7 @@ public class MetaTable extends Table {
             for (Role r : database.getAllRoles()) {
                 if (admin || session.getUser().isRoleGranted(r)) {
                     add(rows,
-                    // NAME
+                            // NAME
                             identifier(r.getName()),
                             // REMARKS
                             replaceNullWithEmpty(r.getComment()),
@@ -792,7 +774,7 @@ public class MetaTable extends Table {
                             continue;
                         }
                         add(rows,
-                        // GRANTEE
+                                // GRANTEE
                                 identifier(grantee.getName()),
                                 // GRANTEETYPE
                                 rightType,
@@ -808,7 +790,7 @@ public class MetaTable extends Table {
                                 "" + r.getId());
                     } else {
                         add(rows,
-                        // GRANTEE
+                                // GRANTEE
                                 identifier(grantee.getName()),
                                 // GRANTEETYPE
                                 rightType,
@@ -834,7 +816,7 @@ public class MetaTable extends Table {
                     int returnsResult = method.getDataType() == Value.NULL ? DatabaseMetaData.procedureNoResult
                             : DatabaseMetaData.procedureReturnsResult;
                     add(rows,
-                    // ALIAS_CATALOG
+                            // ALIAS_CATALOG
                             catalog,
                             // ALIAS_SCHEMA
                             alias.getSchema().getName(),
@@ -865,7 +847,7 @@ public class MetaTable extends Table {
             for (UserAggregate agg : database.getAllAggregates()) {
                 int returnsResult = DatabaseMetaData.procedureReturnsResult;
                 add(rows,
-                // ALIAS_CATALOG
+                        // ALIAS_CATALOG
                         catalog,
                         // ALIAS_SCHEMA
                         Constants.SCHEMA_MAIN,
@@ -909,7 +891,7 @@ public class MetaTable extends Table {
                         int nullable = clazz.isPrimitive() ? DatabaseMetaData.columnNoNulls
                                 : DatabaseMetaData.columnNullable;
                         add(rows,
-                        // ALIAS_CATALOG
+                                // ALIAS_CATALOG
                                 catalog,
                                 // ALIAS_SCHEMA
                                 alias.getSchema().getName(),
@@ -952,7 +934,7 @@ public class MetaTable extends Table {
             String collation = database.getCompareMode().getName();
             for (Schema schema : database.getAllSchemas()) {
                 add(rows,
-                // CATALOG_NAME
+                        // CATALOG_NAME
                         catalog,
                         // SCHEMA_NAME
                         identifier(schema.getName()),
@@ -1014,7 +996,7 @@ public class MetaTable extends Table {
         case COLLATIONS: {
             for (Locale l : Collator.getAvailableLocales()) {
                 add(rows,
-                // NAME
+                        // NAME
                         CompareMode.getName(l),
                         // KEY
                         l.toString());
@@ -1023,7 +1005,7 @@ public class MetaTable extends Table {
         }
         case VIEWS: {
             for (Table table : getAllTables(session)) {
-                if (!table.getTableType().equals(Table.VIEW)) {
+                if (table.getTableType() != TableType.VIEW) {
                     continue;
                 }
                 String tableName = identifier(table.getName());
@@ -1032,7 +1014,7 @@ public class MetaTable extends Table {
                 }
                 TableView view = (TableView) table;
                 add(rows,
-                // TABLE_CATALOG
+                        // TABLE_CATALOG
                         catalog,
                         // TABLE_SCHEMA
                         identifier(table.getSchema().getName()),
@@ -1058,7 +1040,7 @@ public class MetaTable extends Table {
             if (prepared != null && admin) {
                 for (InDoubtTransaction prep : prepared) {
                     add(rows,
-                    // TRANSACTION
+                            // TRANSACTION
                             prep.getTransactionName(),
                             // STATE
                             prep.getState());
@@ -1085,7 +1067,7 @@ public class MetaTable extends Table {
                 int delete = getRefAction(ref.getDeleteAction());
                 for (int j = 0; j < cols.length; j++) {
                     add(rows,
-                    // PKTABLE_CATALOG
+                            // PKTABLE_CATALOG
                             catalog,
                             // PKTABLE_SCHEMA
                             identifier(refTab.getSchema().getName()),
@@ -1153,7 +1135,7 @@ public class MetaTable extends Table {
                     columnList = buff.toString();
                 }
                 add(rows,
-                // CONSTRAINT_CATALOG
+                        // CONSTRAINT_CATALOG
                         catalog,
                         // CONSTRAINT_SCHEMA
                         identifier(constraint.getSchema().getName()),
@@ -1187,7 +1169,7 @@ public class MetaTable extends Table {
                 Constant constant = (Constant) obj;
                 Value value = constant.getValue();
                 add(rows,
-                // CONSTANT_CATALOG
+                        // CONSTANT_CATALOG
                         catalog,
                         // CONSTANT_SCHEMA
                         identifier(constant.getSchema().getName()),
@@ -1208,7 +1190,7 @@ public class MetaTable extends Table {
             for (UserDataType dt : database.getAllUserDataTypes()) {
                 Column col = dt.getColumn();
                 add(rows,
-                // DOMAIN_CATALOG
+                        // DOMAIN_CATALOG
                         catalog,
                         // DOMAIN_SCHEMA
                         Constants.SCHEMA_MAIN,
@@ -1244,7 +1226,7 @@ public class MetaTable extends Table {
                 TriggerObject trigger = (TriggerObject) obj;
                 Table table = trigger.getTable();
                 add(rows,
-                // TRIGGER_CATALOG
+                        // TRIGGER_CATALOG
                         catalog,
                         // TRIGGER_SCHEMA
                         identifier(trigger.getSchema().getName()),
@@ -1285,7 +1267,7 @@ public class MetaTable extends Table {
                         start = now;
                     }
                     add(rows,
-                    // ID
+                            // ID
                             "" + s.getId(),
                             // USER_NAME
                             s.getUser().getName(),
@@ -1304,7 +1286,7 @@ public class MetaTable extends Table {
                 if (admin || s == session) {
                     for (Table table : s.getLocks()) {
                         add(rows,
-                        // TABLE_SCHEMA
+                                // TABLE_SCHEMA
                                 table.getSchema().getName(),
                                 // TABLE_NAME
                                 table.getName(),
@@ -1321,14 +1303,14 @@ public class MetaTable extends Table {
             for (String name : session.getVariableNames()) {
                 Value v = session.getVariable(name);
                 add(rows,
-                // KEY
+                        // KEY
                         "@" + name,
                         // SQL
                         "SET @" + name + " " + v.getSQL());
             }
             for (Table table : session.getLocalTempTables()) {
                 add(rows,
-                // KEY
+                        // KEY
                         "TABLE " + table.getName(),
                         // SQL
                         table.getCreateSQL());
@@ -1341,7 +1323,7 @@ public class MetaTable extends Table {
                     buff.append(StringUtils.quoteIdentifier(p));
                 }
                 add(rows,
-                // KEY
+                        // KEY
                         "SCHEMA_SEARCH_PATH",
                         // SQL
                         buff.toString());
@@ -1349,7 +1331,7 @@ public class MetaTable extends Table {
             String schema = session.getCurrentSchemaName();
             if (schema != null) {
                 add(rows,
-                // KEY
+                        // KEY
                         "SCHEMA",
                         // SQL
                         "SET SCHEMA " + StringUtils.quoteIdentifier(schema));
@@ -1378,28 +1360,8 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public void removeRow(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public void addRow(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
     public void removeChildrenAndResources(ServerSession session) {
         throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public void close(ServerSession session) {
-        // nothing to do
-    }
-
-    @Override
-    public void unlock(ServerSession s) {
-        // nothing to do
     }
 
     private void addPrivileges(ArrayList<Row> rows, DbObject grantee, String catalog, Table table, String column,
@@ -1430,7 +1392,7 @@ public class MetaTable extends Table {
         }
         if (column == null) {
             add(rows,
-            // GRANTOR
+                    // GRANTOR
                     null,
                     // GRANTEE
                     identifier(grantee.getName()),
@@ -1446,7 +1408,7 @@ public class MetaTable extends Table {
                     isGrantable);
         } else {
             add(rows,
-            // GRANTOR
+                    // GRANTOR
                     null,
                     // GRANTEE
                     identifier(grantee.getName()),
@@ -1480,38 +1442,8 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public void checkRename() {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public void checkSupportAlter() {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public void truncate(ServerSession session) {
-        throw DbException.getUnsupportedException("META");
-    }
-
-    @Override
-    public long getRowCount(ServerSession session) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public boolean canGetRowCount() {
-        return false;
-    }
-
-    @Override
-    public boolean canDrop() {
-        return false;
-    }
-
-    @Override
-    public String getTableType() {
-        return Table.SYSTEM_TABLE;
+    public TableType getTableType() {
+        return TableType.META_TABLE;
     }
 
     @Override
@@ -1545,8 +1477,33 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public Index getUniqueIndex() {
-        return null;
+    public boolean isDeterministic() {
+        return true;
+    }
+
+    @Override
+    public boolean canReference() {
+        return false;
+    }
+
+    @Override
+    public boolean canDrop() {
+        return false;
+    }
+
+    @Override
+    public boolean canGetRowCount() {
+        return false;
+    }
+
+    @Override
+    public long getRowCount(ServerSession session) {
+        throw DbException.throwInternalError();
+    }
+
+    @Override
+    public long getRowCountApproximation() {
+        return ROW_COUNT_APPROXIMATION;
     }
 
     /**
@@ -1557,26 +1514,6 @@ public class MetaTable extends Table {
      */
     public static int getMetaTableTypeCount() {
         return META_TABLE_TYPE_COUNT;
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return ROW_COUNT_APPROXIMATION;
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
-    }
-
-    @Override
-    public boolean isDeterministic() {
-        return true;
-    }
-
-    @Override
-    public boolean canReference() {
-        return false;
     }
 
 }

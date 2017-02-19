@@ -25,6 +25,7 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.RangeTable;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableType;
 import org.lealone.db.table.TableView;
 
 /**
@@ -123,16 +124,15 @@ public class User extends RightOwner {
             if (hasRight(null, Right.ALTER_ANY_SCHEMA)) {
                 return true;
             }
-            String tableType = table.getTableType();
-            if (Table.VIEW.equals(tableType)) {
+            TableType tableType = table.getTableType();
+            if (tableType == TableType.VIEW) {
                 TableView v = (TableView) table;
                 if (v.getOwner() == this) {
                     // the owner of a view has access:
                     // SELECT * FROM (SELECT * FROM ...)
                     return true;
                 }
-            } else if (tableType == null) {
-                // function table
+            } else if (tableType == TableType.FUNCTION_TABLE) {
                 return true;
             }
             if (table.isTemporary() && !table.isGlobalTemporary()) {

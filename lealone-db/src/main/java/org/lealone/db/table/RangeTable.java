@@ -13,9 +13,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Index;
-import org.lealone.db.index.IndexType;
 import org.lealone.db.index.RangeIndex;
-import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.value.Value;
 
@@ -74,70 +72,8 @@ public class RangeTable extends Table {
     }
 
     @Override
-    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
-        // nothing to do
-        return false;
-    }
-
-    @Override
-    public void close(ServerSession session) {
-        // nothing to do
-    }
-
-    @Override
-    public void unlock(ServerSession s) {
-        // nothing to do
-    }
-
-    @Override
-    public boolean isLockedExclusively() {
-        return false;
-    }
-
-    @Override
-    public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols,
-            IndexType indexType, boolean create, String indexComment) {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public void removeRow(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public void addRow(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public void checkSupportAlter() {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public void checkRename() {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public boolean canGetRowCount() {
-        return true;
-    }
-
-    @Override
-    public boolean canDrop() {
-        return false;
-    }
-
-    @Override
-    public long getRowCount(ServerSession session) {
-        return Math.max(0, getMax(session) - getMin(session) + 1);
-    }
-
-    @Override
-    public String getTableType() {
-        throw DbException.throwInternalError();
+    public TableType getTableType() {
+        return TableType.RANGE_TABLE;
     }
 
     @Override
@@ -146,6 +82,46 @@ public class RangeTable extends Table {
             throw DbException.get(ErrorCode.STEP_SIZE_MUST_NOT_BE_ZERO);
         }
         return new RangeIndex(this, IndexColumn.wrap(columns));
+    }
+
+    @Override
+    public ArrayList<Index> getIndexes() {
+        return null;
+    }
+
+    @Override
+    public long getMaxDataModificationId() {
+        return 0;
+    }
+
+    @Override
+    public boolean isDeterministic() {
+        return true;
+    }
+
+    @Override
+    public boolean canReference() {
+        return false;
+    }
+
+    @Override
+    public boolean canDrop() {
+        return false;
+    }
+
+    @Override
+    public boolean canGetRowCount() {
+        return true;
+    }
+
+    @Override
+    public long getRowCount(ServerSession session) {
+        return Math.max(0, getMax(session) - getMin(session) + 1);
+    }
+
+    @Override
+    public long getRowCountApproximation() {
+        return 100;
     }
 
     /**
@@ -193,46 +169,6 @@ public class RangeTable extends Table {
             }
             optimized = true;
         }
-    }
-
-    @Override
-    public ArrayList<Index> getIndexes() {
-        return null;
-    }
-
-    @Override
-    public void truncate(ServerSession session) {
-        throw DbException.getUnsupportedException("SYSTEM_RANGE");
-    }
-
-    @Override
-    public long getMaxDataModificationId() {
-        return 0;
-    }
-
-    @Override
-    public Index getUniqueIndex() {
-        return null;
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        return 100;
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
-    }
-
-    @Override
-    public boolean isDeterministic() {
-        return true;
-    }
-
-    @Override
-    public boolean canReference() {
-        return false;
     }
 
 }

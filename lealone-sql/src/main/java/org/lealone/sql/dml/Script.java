@@ -57,6 +57,7 @@ import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.PlanItem;
 import org.lealone.db.table.Table;
+import org.lealone.db.table.TableType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.Parser;
@@ -286,7 +287,7 @@ public class Script extends ScriptBase {
                     // null for metadata tables
                     continue;
                 }
-                final String tableType = table.getTableType();
+                final TableType tableType = table.getTableType();
                 add(createTableSql, false);
                 final ArrayList<Constraint> constraints = table.getConstraints();
                 if (constraints != null) {
@@ -296,7 +297,7 @@ public class Script extends ScriptBase {
                         }
                     }
                 }
-                if (Table.TABLE.equals(tableType)) {
+                if (tableType == TableType.STANDARD_TABLE) {
                     if (table.canGetRowCount()) {
                         String rowcount = "-- " + table.getRowCountApproximation() + " +/- SELECT COUNT(*) FROM "
                                 + table.getSQL();
@@ -652,8 +653,8 @@ public class Script extends ScriptBase {
     }
 
     private static ResultSet getLobStream(Connection conn, String column, int id) throws SQLException {
-        PreparedStatement prep = conn.prepareStatement("SELECT " + column
-                + " FROM SYSTEM_LOB_STREAM WHERE ID=? ORDER BY PART");
+        PreparedStatement prep = conn
+                .prepareStatement("SELECT " + column + " FROM SYSTEM_LOB_STREAM WHERE ID=? ORDER BY PART");
         prep.setInt(1, id);
         return prep.executeQuery();
     }

@@ -22,7 +22,7 @@ import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.expression.Query;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.Table;
+import org.lealone.db.table.TableType;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 
@@ -232,7 +232,7 @@ public class IndexCondition {
         case Comparison.IN_LIST:
         case Comparison.IN_QUERY:
             if (indexConditions.size() > 1) {
-                if (!Table.TABLE.equals(column.getTable().getTableType())) {
+                if (column.getTable().getTableType() != TableType.STANDARD_TABLE) {
                     // if combined with other conditions,
                     // IN(..) can only be used for regular tables
                     // test case:
