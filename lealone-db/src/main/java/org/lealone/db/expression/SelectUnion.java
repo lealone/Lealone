@@ -45,7 +45,8 @@ public interface SelectUnion {
 
     Query getLeft();
 
+    Query getRight();
+
     LocalResult getEmptyResult();
 
-    Query getRight();
 }

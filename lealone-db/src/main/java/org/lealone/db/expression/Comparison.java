@@ -17,7 +17,7 @@
  */
 package org.lealone.db.expression;
 
-public class Comparison {
+public interface Comparison {
 
     /**
      * This is a flag meaning the comparison is null safe (meaning never returns

@@ -23,6 +23,7 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 
 public interface Expression extends org.lealone.sql.Expression {
+
     Value getValue(ServerSession session);
 
     String getAlias();
@@ -68,4 +69,5 @@ public interface Expression extends org.lealone.sql.Expression {
     void createIndexConditions(ServerSession session, TableFilter filter);
 
     Boolean getBooleanValue(ServerSession session);
+
 }

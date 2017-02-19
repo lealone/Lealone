@@ -21,7 +21,9 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.TableFilter;
 
 public interface ExpressionColumn extends Expression {
+
     TableFilter getTableFilter();
 
     Column getColumn();
+
 }

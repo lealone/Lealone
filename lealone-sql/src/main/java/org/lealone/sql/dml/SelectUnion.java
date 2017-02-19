@@ -40,7 +40,7 @@ import org.lealone.sql.expression.ValueExpression;
 /**
  * Represents a union SELECT statement.
  */
-public class SelectUnion extends Query {
+public class SelectUnion extends Query implements org.lealone.db.expression.SelectUnion {
 
     /**
      * The type of a UNION statement.
@@ -81,6 +81,7 @@ public class SelectUnion extends Query {
         this.unionType = type;
     }
 
+    @Override
     public int getUnionType() {
         return unionType;
     }
@@ -89,10 +90,12 @@ public class SelectUnion extends Query {
         right = select;
     }
 
+    @Override
     public Query getLeft() {
         return left;
     }
 
+    @Override
     public Query getRight() {
         return right;
     }
@@ -132,6 +135,7 @@ public class SelectUnion extends Query {
         return result;
     }
 
+    @Override
     public LocalResult getEmptyResult() {
         int columnCount = left.getColumnCount();
         return new LocalResult(session, expressionArray, columnCount);
