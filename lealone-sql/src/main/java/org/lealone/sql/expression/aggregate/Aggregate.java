@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.aggregate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +36,9 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.dml.Select;
+import org.lealone.sql.expression.Calculator;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
 
 /**
  * Implements the integrated aggregate functions, such as COUNT, MAX, SUM.

@@ -3,36 +3,47 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.aggregate;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 
 /**
- * Data stored while calculating a COUNT(*) aggregate.
+ * Data stored while calculating an aggregate.
  */
-class AggregateDataCountAll extends AggregateData {
+class AggregateDataCount extends AggregateData {
     private long count;
+    private ValueHashMap<AggregateDataCount> distinctValues;
 
     @Override
     void add(Database database, int dataType, boolean distinct, Value v) {
-        // 在Parser.readAggregate那里确保使用COUNT_ALL时distinct是false
-        if (distinct) {
-            throw DbException.throwInternalError();
+        if (v == ValueNull.INSTANCE) {
+            return;
         }
         count++;
+        if (distinct) {
+            if (distinctValues == null) {
+                distinctValues = ValueHashMap.newInstance();
+            }
+            distinctValues.put(v, this);
+            return;
+        }
     }
 
     @Override
     Value getValue(Database database, int dataType, boolean distinct) {
         if (distinct) {
-            throw DbException.throwInternalError();
+            if (distinctValues != null) {
+                count = distinctValues.size();
+            } else {
+                count = 0;
+            }
         }
         Value v = ValueLong.get(count);
-        return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);
+        return v.convertTo(dataType);
     }
 
     @Override

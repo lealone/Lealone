@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.function;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Constants;
@@ -19,6 +19,8 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
 import org.lealone.sql.Parser;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ValueExpression;
 
 /**
  * This class wraps a user-defined function.

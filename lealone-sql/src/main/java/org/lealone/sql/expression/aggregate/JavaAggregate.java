@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.aggregate;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -23,6 +23,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.Parser;
 import org.lealone.sql.dml.Select;
+import org.lealone.sql.expression.Expression;
 
 /**
  * This class wraps a user-defined aggregate.

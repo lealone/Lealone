@@ -44,7 +44,6 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
-import org.lealone.db.table.FunctionTable;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.RangeTable;
 import org.lealone.db.table.Table;
@@ -126,7 +125,6 @@ import org.lealone.sql.dml.SelectUnion;
 import org.lealone.sql.dml.Set;
 import org.lealone.sql.dml.TransactionStatement;
 import org.lealone.sql.dml.Update;
-import org.lealone.sql.expression.Aggregate;
 import org.lealone.sql.expression.Alias;
 import org.lealone.sql.expression.CompareLike;
 import org.lealone.sql.expression.Comparison;
@@ -138,19 +136,21 @@ import org.lealone.sql.expression.ConditionNot;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionList;
-import org.lealone.sql.expression.Function;
-import org.lealone.sql.expression.FunctionCall;
-import org.lealone.sql.expression.JavaAggregate;
-import org.lealone.sql.expression.JavaFunction;
 import org.lealone.sql.expression.Operation;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.Rownum;
 import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.Subquery;
-import org.lealone.sql.expression.TableFunction;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
 import org.lealone.sql.expression.Wildcard;
+import org.lealone.sql.expression.aggregate.Aggregate;
+import org.lealone.sql.expression.aggregate.JavaAggregate;
+import org.lealone.sql.expression.function.Function;
+import org.lealone.sql.expression.function.FunctionCall;
+import org.lealone.sql.expression.function.FunctionTable;
+import org.lealone.sql.expression.function.JavaFunction;
+import org.lealone.sql.expression.function.TableFunction;
 
 /**
  * The parser is used to convert a SQL statement string to an command object.
@@ -1702,7 +1702,7 @@ public class Parser implements SQLParser {
                     if (!call.isDeterministic()) {
                         recompileAlways = true;
                     }
-                    table = new FunctionTable(mainSchema, session, expr, (org.lealone.db.expression.FunctionCall) call);
+                    table = new FunctionTable(mainSchema, session, expr, call);
                 }
             } else if (equalsToken("DUAL", tableName)) {
                 table = getDualTable(false);
@@ -4186,7 +4186,7 @@ public class Parser implements SQLParser {
         }
         tf.setColumns(columns);
         tf.doneWithParameters();
-        Table table = new FunctionTable(mainSchema, session, tf, (org.lealone.db.expression.FunctionCall) tf);
+        Table table = new FunctionTable(mainSchema, session, tf, tf);
         TableFilter filter = new TableFilter(session, table, null, rightsChecked, currentSelect);
         return filter;
     }

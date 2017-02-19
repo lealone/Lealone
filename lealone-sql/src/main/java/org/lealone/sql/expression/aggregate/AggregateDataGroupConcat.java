@@ -3,27 +3,28 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.aggregate;
 
+import java.util.ArrayList;
+
+import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 
 /**
- * Data stored while calculating an aggregate.
+ * Data stored while calculating a GROUP_CONCAT aggregate.
  */
-class AggregateDataCount extends AggregateData {
-    private long count;
-    private ValueHashMap<AggregateDataCount> distinctValues;
+class AggregateDataGroupConcat extends AggregateData {
+    private ArrayList<Value> list;
+    private ValueHashMap<AggregateDataGroupConcat> distinctValues;
 
     @Override
     void add(Database database, int dataType, boolean distinct, Value v) {
         if (v == ValueNull.INSTANCE) {
             return;
         }
-        count++;
         if (distinct) {
             if (distinctValues == null) {
                 distinctValues = ValueHashMap.newInstance();
@@ -31,28 +32,43 @@ class AggregateDataCount extends AggregateData {
             distinctValues.put(v, this);
             return;
         }
+        if (list == null) {
+            list = New.arrayList();
+        }
+        list.add(v);
     }
 
     @Override
     Value getValue(Database database, int dataType, boolean distinct) {
         if (distinct) {
-            if (distinctValues != null) {
-                count = distinctValues.size();
-            } else {
-                count = 0;
-            }
+            groupDistinct(database, dataType);
         }
-        Value v = ValueLong.get(count);
-        return v.convertTo(dataType);
+        return null;
+    }
+
+    ArrayList<Value> getList() {
+        return list;
+    }
+
+    private void groupDistinct(Database database, int dataType) {
+        if (distinctValues == null) {
+            return;
+        }
+        for (Value v : distinctValues.keys()) {
+            add(database, dataType, false, v);
+        }
     }
 
     @Override
     void merge(Database database, int dataType, boolean distinct, Value v) {
-        count += v.getLong();
+        if (list == null) {
+            list = New.arrayList();
+        }
+        list.add(v);
     }
 
     @Override
     Value getMergedValue(Database database, int dataType, boolean distinct) {
-        return ValueLong.get(count);
+        return null;
     }
 }

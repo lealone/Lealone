@@ -18,6 +18,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
+import org.lealone.sql.expression.function.Function;
 
 /**
  * A mathematical expression, or string concatenation.

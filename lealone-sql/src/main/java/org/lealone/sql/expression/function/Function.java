@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.function;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,6 +68,11 @@ import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
 import org.lealone.sql.Parser;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.expression.SequenceValue;
+import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.expression.Variable;
 import org.lealone.storage.fs.FileUtils;
 
 /**

@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.function;
 
 import java.util.ArrayList;
 
@@ -23,6 +23,8 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
 
 /**
  * Implementation of the functions TABLE(..) and TABLE_DISTINCT(..).

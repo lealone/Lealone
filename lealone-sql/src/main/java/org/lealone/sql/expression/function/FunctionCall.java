@@ -3,10 +3,11 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.expression;
+package org.lealone.sql.expression.function;
 
 import org.lealone.db.ServerSession;
 import org.lealone.db.value.ValueResultSet;
+import org.lealone.sql.expression.Expression;
 
 /**
  * This interface is used by the built-in functions,

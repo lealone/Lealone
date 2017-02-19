@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.table;
+package org.lealone.sql.expression.function;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -13,18 +13,19 @@ import java.util.ArrayList;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.FunctionCall;
-import org.lealone.db.expression.TableFunction;
-import org.lealone.db.index.FunctionIndex;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.table.Column;
+import org.lealone.db.table.IndexColumn;
+import org.lealone.db.table.Table;
+import org.lealone.db.table.TableType;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueResultSet;
+import org.lealone.sql.expression.Expression;
 
 /**
  * A table backed by a system or user-defined function that returns a result set.
