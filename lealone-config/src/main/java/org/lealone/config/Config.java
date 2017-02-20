@@ -15,13 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.main.config;
+package org.lealone.config;
 
 import java.util.List;
 
+import org.lealone.config.EncryptionOptions.ClientEncryptionOptions;
+import org.lealone.config.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
-import org.lealone.main.config.EncryptionOptions.ClientEncryptionOptions;
-import org.lealone.main.config.EncryptionOptions.ServerEncryptionOptions;
 
 public class Config {
 

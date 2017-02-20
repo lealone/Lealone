@@ -25,9 +25,9 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.lealone.common.trace.TraceSystem;
+import org.lealone.config.Config;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
-import org.lealone.main.config.Config;
 import org.lealone.mvcc.log.LogStorage;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;

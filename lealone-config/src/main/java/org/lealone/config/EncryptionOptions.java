@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.main.config;
+package org.lealone.config;
 
 public abstract class EncryptionOptions {
     public String keystore = "conf/.keystore";

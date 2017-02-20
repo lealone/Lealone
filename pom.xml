@@ -27,6 +27,7 @@
 
     <modules>
         <module>lealone-common</module>
+        <module>lealone-config</module>
         <module>lealone-net</module>
         <module>lealone-client</module>
         <module>lealone-server</module>

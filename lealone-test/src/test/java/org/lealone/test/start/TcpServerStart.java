@@ -20,11 +20,11 @@ package org.lealone.test.start;
 import io.vertx.core.impl.FileResolver;
 
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.config.Config;
 import org.lealone.main.Lealone;
-import org.lealone.main.config.Config;
 
 //-javaagent:E:\continuations\target\continuations-1.0-SNAPSHOT.jar
-public class TcpServerStart extends org.lealone.main.config.YamlConfigurationLoader {
+public class TcpServerStart extends org.lealone.config.YamlConfigurationLoader {
 
     // YamlConfigurationLoader的子类必须有一个无参数的构造函数
     public TcpServerStart() {
