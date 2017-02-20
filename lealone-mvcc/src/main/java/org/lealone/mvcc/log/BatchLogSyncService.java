@@ -20,8 +20,6 @@ package org.lealone.mvcc.log;
 import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
-import org.lealone.mvcc.log.LogSyncService;
-import org.lealone.mvcc.log.RedoLog;
 
 class BatchLogSyncService extends LogSyncService {
     private static final long DEFAULT_LOG_SYNC_BATCH_WINDOW = 5;

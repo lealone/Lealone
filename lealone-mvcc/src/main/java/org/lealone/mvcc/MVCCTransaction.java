@@ -34,25 +34,29 @@ import org.lealone.transaction.Transaction;
 public class MVCCTransaction implements Transaction {
 
     final MVCCTransactionEngine transactionEngine;
-    final long transactionId;
-    final String transactionName;
+    public final long transactionId;
+    public final String transactionName;
 
+    String globalTransactionName;
     int logId;
-
-    private int status;
-    private boolean autoCommit;
-
-    private long commitTimestamp;
+    int status;
+    boolean autoCommit;
+    protected long commitTimestamp;
+    protected Session session;
 
     private HashMap<String, Integer> savepoints;
 
     LinkedList<LogRecord> logRecords = new LinkedList<>();
 
-    MVCCTransaction(MVCCTransactionEngine engine, long tid) {
+    public MVCCTransaction(MVCCTransactionEngine engine, long tid) {
+        this(engine, tid, null);
+    }
+
+    public MVCCTransaction(MVCCTransactionEngine engine, long tid, String hostAndPort) {
         transactionEngine = engine;
         transactionId = tid;
         transactionName = getTransactionName(null, tid);
-        status = MVCCTransaction.STATUS_OPEN;
+        status = Transaction.STATUS_OPEN;
     }
 
     static class LogRecord {
@@ -69,12 +73,12 @@ public class MVCCTransaction implements Transaction {
         }
     }
 
-    void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
+    public void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
         logRecords.add(new LogRecord(mapName, key, oldValue, newValue));
         logId++;
     }
 
-    void logUndo() {
+    public void logUndo() {
         logRecords.removeLast();
         --logId;
     }
@@ -106,6 +110,10 @@ public class MVCCTransaction implements Transaction {
 
     @Override
     public void setLocal(boolean local) {
+    }
+
+    public boolean isLocal() {
+        return true;
     }
 
     @Override
@@ -198,7 +206,7 @@ public class MVCCTransaction implements Transaction {
         transactionEngine.currentTransactions.remove(transactionId);
     }
 
-    private void commitLocal() {
+    protected void commitLocal() {
         checkNotClosed();
         if (prepared) {
             transactionEngine.commit(this);
@@ -241,7 +249,6 @@ public class MVCCTransaction implements Transaction {
                 }
             }
         }
-
     }
 
     @Override
@@ -251,11 +258,11 @@ public class MVCCTransaction implements Transaction {
         logId = savepointId;
     }
 
-    long getCommitTimestamp() {
+    public long getCommitTimestamp() {
         return commitTimestamp;
     }
 
-    void setCommitTimestamp(long commitTimestamp) {
+    protected void setCommitTimestamp(long commitTimestamp) {
         this.commitTimestamp = commitTimestamp;
     }
 
@@ -278,7 +285,7 @@ public class MVCCTransaction implements Transaction {
         }
     }
 
-    void checkNotClosed() {
+    protected void checkNotClosed() {
         if (status == STATUS_CLOSED) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "Transaction is closed");
         }
@@ -289,7 +296,7 @@ public class MVCCTransaction implements Transaction {
         return "" + transactionId;
     }
 
-    static String getTransactionName(String hostAndPort, long tid) {
+    public static String getTransactionName(String hostAndPort, long tid) {
         if (hostAndPort == null)
             hostAndPort = "0:0";
         StringBuilder buff = new StringBuilder(hostAndPort);
@@ -300,14 +307,13 @@ public class MVCCTransaction implements Transaction {
 
     @Override
     public String getGlobalTransactionName() {
-        return null;
+        return globalTransactionName;
     }
 
     @Override
     public void setGlobalTransactionName(String globalTransactionName) {
+        this.globalTransactionName = globalTransactionName;
     }
-
-    private Session session;
 
     @Override
     public void setSession(Session session) {

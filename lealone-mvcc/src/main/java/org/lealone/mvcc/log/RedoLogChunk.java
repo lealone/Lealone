@@ -26,11 +26,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import org.lealone.mvcc.log.LogStorage;
-import org.lealone.mvcc.log.RedoLogChunk;
-import org.lealone.mvcc.log.RedoLogKeyType;
-import org.lealone.mvcc.log.RedoLogValue;
-import org.lealone.mvcc.log.RedoLogValueType;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
@@ -119,8 +114,8 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
 
     synchronized void save() {
         Long lastKey = this.lastSyncKey;
-        Set<Entry<Long, RedoLogValue>> entrySet = lastKey == null ? skipListMap.entrySet() : skipListMap.tailMap(
-                lastKey, false).entrySet();
+        Set<Entry<Long, RedoLogValue>> entrySet = lastKey == null ? skipListMap.entrySet()
+                : skipListMap.tailMap(lastKey, false).entrySet();
         if (!entrySet.isEmpty()) {
             WriteBuffer buff = WriteBufferPool.poll();
             try {

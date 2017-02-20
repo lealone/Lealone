@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
 import org.lealone.mvcc.MVCCTransaction;
-import org.lealone.mvcc.log.RedoLog;
 
 public abstract class LogSyncService extends Thread {
 

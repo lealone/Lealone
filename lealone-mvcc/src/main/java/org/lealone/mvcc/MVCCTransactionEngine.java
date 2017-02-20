@@ -32,7 +32,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.db.Constants;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
 import org.lealone.mvcc.log.LogStorage;
 import org.lealone.mvcc.log.LogSyncService;
@@ -48,6 +47,7 @@ import org.lealone.transaction.TransactionMap;
 
 public class MVCCTransactionEngine extends TransactionEngineBase {
 
+    private static final String NAME = "MVCC";
     private static final int DEFAULT_MAP_CACHE_SIZE = 32 * 1024 * 1024; // 32M
     private static final int DEFAULT_MAP_SAVE_PERIOD = 1 * 60 * 60 * 1000; // 1小时
 
@@ -63,6 +63,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     private final AtomicLong lastTransactionId = new AtomicLong();
     // key: mapName, value: map key/value ByteBuffer list
     private final HashMap<String, ArrayList<ByteBuffer>> pendingRedoLog = new HashMap<>();
+    // key: mapName
+    private final ConcurrentHashMap<String, TransactionMap<?, ?>> tmaps = new ConcurrentHashMap<>();
 
     private LogStorage logStorage;
     private RedoLog redoLog;
@@ -71,17 +73,21 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     private boolean init;
 
     // key: transactionId
-    final ConcurrentSkipListMap<Long, MVCCTransaction> currentTransactions = new ConcurrentSkipListMap<>();
+    public final ConcurrentSkipListMap<Long, MVCCTransaction> currentTransactions = new ConcurrentSkipListMap<>();
 
     public MVCCTransactionEngine() {
-        super(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+        super(NAME);
+    }
+
+    public MVCCTransactionEngine(String name) {
+        super(name);
     }
 
     StorageMap<Object, TransactionalValue> getMap(String mapName) {
         return maps.get(mapName);
     }
 
-    void addMap(StorageMap<Object, TransactionalValue> map) {
+    public void addMap(StorageMap<Object, TransactionalValue> map) {
         estimatedMemory.put(map.getName(), 0);
         maps.put(map.getName(), map);
     }
@@ -236,7 +242,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     @SuppressWarnings("unchecked")
-    <K> void redo(StorageMap<K, TransactionalValue> map) {
+    public <K> void redo(StorageMap<K, TransactionalValue> map) {
         ArrayList<ByteBuffer> logs = pendingRedoLog.remove(map.getName());
         if (logs != null && !logs.isEmpty()) {
             K key;
@@ -260,11 +266,15 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (!init) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
-        long tid = getTransactionId(autoCommit);
-        MVCCTransaction t = new MVCCTransaction(this, tid);
+        long tid = getTransactionId(autoCommit, isShardingMode);
+        MVCCTransaction t = createTransaction(tid);
         t.setAutoCommit(autoCommit);
         currentTransactions.put(tid, t);
         return t;
+    }
+
+    protected MVCCTransaction createTransaction(long tid) {
+        return new MVCCTransaction(this, tid);
     }
 
     @Override
@@ -279,11 +289,15 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         }
     }
 
-    private long getTransactionId(boolean autoCommit) {
+    private long getTransactionId(boolean autoCommit, boolean isShardingMode) {
+        // 分布式事务使用奇数的事务ID
+        if (!autoCommit && isShardingMode) {
+            return nextOddTransactionId();
+        }
         return nextEvenTransactionId();
     }
 
-    long nextOddTransactionId() {
+    public long nextOddTransactionId() {
         return nextTransactionId(false);
     }
 
@@ -331,17 +345,19 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         }
     }
 
-    void commit(MVCCTransaction t, RedoLogValue v) {
+    public void commit(MVCCTransaction t, RedoLogValue v) {
         if (v != null) { // 事务没有进行任何操作时不用同步日志
             // 先写redoLog
             redoLog.put(t.transactionId, v);
             logSyncService.maybeWaitForSync(redoLog, t.transactionId);
         }
-
-        commitFinal(t.transactionId);
+        // 分布式事务推迟提交
+        if (t.isLocal()) {
+            commitFinal(t.transactionId);
+        }
     }
 
-    private void commitFinal(long tid) {
+    protected void commitFinal(long tid) {
         // 避免并发提交(TransactionValidator线程和其他读写线程都有可能在检查到分布式事务有效后帮助提交最终事务)
         MVCCTransaction t = currentTransactions.remove(tid);
         if (t == null)
@@ -368,7 +384,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         t.endTransaction();
     }
 
-    RedoLogValue getRedoLog(MVCCTransaction t) {
+    public RedoLogValue getRedoLog(MVCCTransaction t) {
         if (t.logRecords.isEmpty())
             return null;
         WriteBuffer writeBuffer = WriteBufferPool.poll();
@@ -418,16 +434,17 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     @Override
+    public boolean validateTransaction(String localTransactionName) {
+        return false;
+    }
+
+    @Override
     public void addTransactionMap(TransactionMap<?, ?> map) {
+        tmaps.put(map.getName(), map);
     }
 
     @Override
     public TransactionMap<?, ?> getTransactionMap(String name) {
-        return null;
-    }
-
-    @Override
-    public boolean validateTransaction(String localTransactionName) {
-        return false;
+        return tmaps.get(name);
     }
 }

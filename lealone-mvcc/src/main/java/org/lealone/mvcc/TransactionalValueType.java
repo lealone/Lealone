@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StringDataType;
 import org.lealone.storage.type.WriteBuffer;
 
 /**
@@ -17,9 +18,9 @@ import org.lealone.storage.type.WriteBuffer;
  * @author H2 Group
  * @author zhh
  */
-class TransactionalValueType implements DataType {
+public class TransactionalValueType implements DataType {
 
-    final DataType valueType;
+    public final DataType valueType;
 
     public TransactionalValueType(DataType valueType) {
         this.valueType = valueType;
@@ -28,7 +29,8 @@ class TransactionalValueType implements DataType {
     @Override
     public int getMemory(Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
-        return valueType.getMemory(v.value) + 12;
+        return valueType.getMemory(v.value) + 12 + (v.globalReplicationName == null ? 1
+                : 9 + StringDataType.INSTANCE.getMemory(v.globalReplicationName));
     }
 
     @Override
@@ -70,6 +72,11 @@ class TransactionalValueType implements DataType {
         if (buff.get() == 1) {
             value = valueType.read(buff);
         }
+        if (buff.get() == 1) {
+            long version = DataUtils.readVarLong(buff);
+            String globalTransactionName = StringDataType.INSTANCE.read(buff);
+            new TransactionalValue(tid, logId, value, version, globalTransactionName);
+        }
         return new TransactionalValue(tid, logId, value);
     }
 
@@ -78,7 +85,7 @@ class TransactionalValueType implements DataType {
         boolean fastPath = true;
         for (int i = 0; i < len; i++) {
             TransactionalValue v = (TransactionalValue) obj[i];
-            if (v.tid != 0 || v.value == null) {
+            if (v.tid != 0 || v.value == null || v.globalReplicationName != null) {
                 fastPath = false;
             }
         }
@@ -108,6 +115,13 @@ class TransactionalValueType implements DataType {
         } else {
             buff.put((byte) 1);
             valueType.write(buff, v.value);
+        }
+        if (v.globalReplicationName == null) {
+            buff.put((byte) 0);
+        } else {
+            buff.put((byte) 1);
+            buff.putVarLong(v.version);
+            StringDataType.INSTANCE.write(buff, v.globalReplicationName);
         }
     }
 }

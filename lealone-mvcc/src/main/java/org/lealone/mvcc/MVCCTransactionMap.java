@@ -41,9 +41,9 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * Key: the key of the data.
      * Value: { transactionId, logId, value }
      */
-    private final StorageMap<K, TransactionalValue> map;
+    protected final StorageMap<K, TransactionalValue> map;
 
-    MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
+    public MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
         this.transaction = transaction;
         this.map = map;
     }
@@ -84,7 +84,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * @param data the value stored in the main map
      * @return the value
      */
-    private TransactionalValue getValue(K key, TransactionalValue data) {
+    protected TransactionalValue getValue(K key, TransactionalValue data) {
         while (true) {
             if (data == null) {
                 // doesn't exist or deleted by a committed transaction
@@ -99,12 +99,15 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                 return data;
             }
 
+            TransactionalValue v = getValue(key, data, tid);
+            if (v != null)
+                return v;
+
             if (!transaction.transactionEngine.currentTransactions.containsKey(tid)) // TODO
                 return null;
 
             // get the value before the uncommitted transaction
             LinkedList<LogRecord> d = transaction.transactionEngine.currentTransactions.get(tid).logRecords;
-
             if (d == null) {
                 // this entry should be committed or rolled back
                 // in the meantime (the transaction might still be open)
@@ -121,6 +124,10 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                 data = r.oldValue;
             }
         }
+    }
+
+    protected TransactionalValue getValue(K key, TransactionalValue data, long tid) {
+        return null;
     }
 
     /**
@@ -185,12 +192,11 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      *
      * @param key the key
      * @param value the new value (null to remove the value)
-     * @return true if the value was set, false if there was a concurrent
-     *         update
+     * @return true if the value was set, false if there was a concurrent update
      */
     public boolean trySet(K key, V value) {
         TransactionalValue current = map.get(key);
-        TransactionalValue newValue = new TransactionalValue(transaction.transactionId, transaction.logId, value);
+        TransactionalValue newValue = new TransactionalValue(transaction, value);
 
         String mapName = getName();
         if (current == null) {
@@ -403,8 +409,8 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         String mapName = getName();
         Storage storage = map.getStorage();
         String tmpMapName = storage.nextTemporaryMapName();
-        StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, null, new ObjectDataType(),
-                new ObjectDataType(), null);
+        StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, null, new ObjectDataType(), new ObjectDataType(),
+                null);
         try {
             for (MVCCTransaction t : transaction.transactionEngine.currentTransactions.values()) {
                 LinkedList<LogRecord> records = t.logRecords;

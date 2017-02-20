@@ -22,9 +22,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import org.lealone.mvcc.log.RedoLogChunk;
-import org.lealone.mvcc.log.RedoLogValue;
-
 /**
  * A redo log
  *
