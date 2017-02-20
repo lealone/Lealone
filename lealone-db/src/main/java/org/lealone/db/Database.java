@@ -168,7 +168,6 @@ public class Database implements DataHandler, DbObject {
     private boolean multiVersion;
     private DatabaseCloser closeOnExit;
     private Mode mode = Mode.getDefaultMode();
-    private boolean multiThreaded = true; // 如果是false，整个数据库是串行的
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
     private SmallLRUCache<String, String[]> lobFileListCache;
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
@@ -2109,11 +2108,6 @@ public class Database implements DataHandler, DbObject {
     public void setLockMode(int lockMode) {
         switch (lockMode) {
         case Constants.LOCK_MODE_OFF:
-            if (multiThreaded) {
-                // currently the combination of LOCK_MODE=0 and MULTI_THREADED is not supported
-                throw DbException.get(ErrorCode.CANNOT_CHANGE_SETTING_WHEN_OPEN_1, "LOCK_MODE=0 & MULTI_THREADED");
-            }
-            break;
         case Constants.LOCK_MODE_READ_COMMITTED:
         case Constants.LOCK_MODE_TABLE:
         case Constants.LOCK_MODE_TABLE_GC:
@@ -2275,24 +2269,6 @@ public class Database implements DataHandler, DbObject {
 
     public Mode getMode() {
         return mode;
-    }
-
-    public boolean isMultiThreaded() {
-        return multiThreaded;
-    }
-
-    public void setMultiThreaded(boolean multiThreaded) {
-        if (multiThreaded && this.multiThreaded != multiThreaded) {
-            if (multiVersion) {
-                // currently the combination of MVCC and MULTI_THREADED is not supported
-                throw DbException.get(ErrorCode.CANNOT_CHANGE_SETTING_WHEN_OPEN_1, "MVCC & MULTI_THREADED");
-            }
-            if (lockMode == 0) {
-                // currently the combination of LOCK_MODE=0 and MULTI_THREADED is not supported
-                throw DbException.get(ErrorCode.CANNOT_CHANGE_SETTING_WHEN_OPEN_1, "LOCK_MODE=0 & MULTI_THREADED");
-            }
-        }
-        this.multiThreaded = multiThreaded;
     }
 
     public void setMaxOperationMemory(int maxOperationMemory) {

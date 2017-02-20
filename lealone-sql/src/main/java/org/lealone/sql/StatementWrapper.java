@@ -397,15 +397,10 @@ class StatementWrapper extends StatementBase {
             SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
             sqlStatementExecutor.executeNextStatement();
         } else {
-            Database database = session.getDatabase();
             int sleep = 1 + MathUtils.randomInt(10);
             while (true) {
                 try {
-                    if (database.isMultiThreaded()) {
-                        Thread.sleep(sleep);
-                    } else {
-                        database.wait(sleep);
-                    }
+                    Thread.sleep(sleep);
                 } catch (InterruptedException e1) {
                     // ignore
                 }

@@ -613,7 +613,7 @@ public class MetaTable extends Table {
             }
             add(rows, "EXCLUSIVE", database.getExclusiveSession() == null ? "FALSE" : "TRUE");
             add(rows, "MODE", database.getMode().getName());
-            add(rows, "MULTI_THREADED", database.isMultiThreaded() ? "1" : "0");
+            add(rows, "MULTI_THREADED", "1");
             add(rows, "MVCC", database.isMultiVersion() ? "TRUE" : "FALSE");
             add(rows, "QUERY_TIMEOUT", "" + session.getQueryTimeout());
             add(rows, "LOG", "" + database.getLogMode());

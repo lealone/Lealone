@@ -273,9 +273,7 @@ public class Set extends ManipulateStatement {
                 database.setMode(mode);
             }
             break;
-        case SetTypes.MULTI_THREADED: {
-            session.getUser().checkAdmin();
-            database.setMultiThreaded(getIntValue() == 1);
+        case SetTypes.MULTI_THREADED: { // 这个参数已不再使用
             break;
         }
         case SetTypes.MVCC: {
