@@ -165,7 +165,7 @@ public class Database implements DataHandler, DbObject {
     private String lobCompressionAlgorithm;
     private boolean optimizeReuseResults = true;
     private boolean referentialIntegrity = true;
-    private boolean multiVersion;
+    private final boolean multiVersion;
     private DatabaseCloser closeOnExit;
     private Mode mode = Mode.getDefaultMode();
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
@@ -240,6 +240,7 @@ public class Database implements DataHandler, DbObject {
             }
         }
         this.transactionEngine = transactionEngine;
+        multiVersion = transactionEngine.supportsMVCC();
     }
 
     @Override
@@ -369,7 +370,6 @@ public class Database implements DataHandler, DbObject {
         if (modeName != null) {
             mode = Mode.getInstance(modeName);
         }
-        multiVersion = ci.getProperty("MVCC", transactionEngine.supportsMVCC());
         logMode = ci.getProperty("LOG", LOG_MODE_SYNC);
 
         initTraceSystem(ci);
@@ -2428,10 +2428,6 @@ public class Database implements DataHandler, DbObject {
 
     public void setDefaultTableType(int defaultTableType) {
         this.defaultTableType = defaultTableType;
-    }
-
-    public void setMultiVersion(boolean multiVersion) {
-        this.multiVersion = multiVersion;
     }
 
     /**

@@ -276,10 +276,10 @@ public class Set extends ManipulateStatement {
         case SetTypes.MULTI_THREADED: { // 这个参数已不再使用
             break;
         }
-        case SetTypes.MVCC: {
-            if (database.isMultiVersion() != (getIntValue() == 1)) {
-                throw DbException.get(ErrorCode.CANNOT_CHANGE_SETTING_WHEN_OPEN_1, "MVCC");
-            }
+        case SetTypes.MVCC: { // 这个参数已不再使用
+            // if (database.isMultiVersion() != (getIntValue() == 1)) {
+            // throw DbException.get(ErrorCode.CANNOT_CHANGE_SETTING_WHEN_OPEN_1, "MVCC");
+            // }
             break;
         }
         case SetTypes.OPTIMIZE_REUSE_RESULTS: {
