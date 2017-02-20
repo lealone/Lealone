@@ -39,6 +39,7 @@ import org.yaml.snakeyaml.introspector.Property;
 import org.yaml.snakeyaml.introspector.PropertyUtils;
 
 public class YamlConfigurationLoader implements ConfigurationLoader {
+
     private static final Logger logger = LoggerFactory.getLogger(YamlConfigurationLoader.class);
 
     private final static String DEFAULT_CONFIGURATION = "lealone.yaml";
@@ -65,12 +66,11 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
                             "Expecting URI in variable: [lealone.config].  Please prefix the file with " + required
                                     + File.separator + " for local files or " + required + "<server>" + File.separator
                                     + " for remote files.  Aborting.");
-                throw new ConfigurationException("Cannot locate " + configUrl
-                        + ".  If this is a local file, please confirm you've provided " + required + File.separator
-                        + " as a URI prefix.");
+                throw new ConfigurationException(
+                        "Cannot locate " + configUrl + ".  If this is a local file, please confirm you've provided "
+                                + required + File.separator + " as a URI prefix.");
             }
         }
-
         return url;
     }
 
@@ -90,21 +90,28 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
                 throw new AssertionError(e);
             }
 
-            Constructor configConstructor = new Constructor(Config.class);
-
-            TypeDescription engineDesc = new TypeDescription(PluggableEngineDef.class);
-            engineDesc.putMapPropertyType("parameters", String.class, String.class);
-            configConstructor.addTypeDescription(engineDesc);
+            Constructor configConstructor = new Constructor(getConfigClass());
+            addTypeDescription(configConstructor);
 
             MissingPropertiesChecker propertiesChecker = new MissingPropertiesChecker();
             configConstructor.setPropertyUtils(propertiesChecker);
             Yaml yaml = new Yaml(configConstructor);
-            Config result = yaml.loadAs(new ByteArrayInputStream(configBytes), Config.class);
+            Config result = (Config) yaml.loadAs(new ByteArrayInputStream(configBytes), getConfigClass());
             propertiesChecker.check();
             return result;
         } catch (YAMLException e) {
             throw new ConfigurationException("Invalid yaml", e);
         }
+    }
+
+    protected Class<?> getConfigClass() {
+        return Config.class;
+    }
+
+    protected void addTypeDescription(Constructor configConstructor) {
+        TypeDescription engineDesc = new TypeDescription(PluggableEngineDef.class);
+        engineDesc.putMapPropertyType("parameters", String.class, String.class);
+        configConstructor.addTypeDescription(engineDesc);
     }
 
     private static class MissingPropertiesChecker extends PropertyUtils {
@@ -125,8 +132,8 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
 
         public void check() throws ConfigurationException {
             if (!missingProperties.isEmpty()) {
-                throw new ConfigurationException("Invalid yaml. Please remove properties " + missingProperties
-                        + " from your lealone.yaml");
+                throw new ConfigurationException(
+                        "Invalid yaml. Please remove properties " + missingProperties + " from your lealone.yaml");
             }
         }
     }
