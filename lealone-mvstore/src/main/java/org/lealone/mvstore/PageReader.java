@@ -26,6 +26,7 @@ public class PageReader extends Thread {
 
     public PageReader() {
         super("PageReader");
+        setDaemon(true);
     }
 
     @Override

@@ -210,6 +210,8 @@ public class Lealone {
     }
 
     private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters) throws Exception {
+        if (!parameters.containsKey("host") && Config.getProperty("tcp.listen.address") != null)
+            parameters.put("host", Config.getProperty("tcp.listen.address"));
         final String name = server.getName();
         server.init(parameters);
         server.start();
