@@ -34,7 +34,7 @@ public class StringFunctionTest extends SqlTestBase {
     void init() throws Exception {
         createTable("StringFunctionTest");
 
-        //在分区1中保存1到11中的奇数
+        // 在分区1中保存1到11中的奇数
         executeUpdate("INSERT INTO StringFunctionTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', -1)");
         executeUpdate("INSERT INTO StringFunctionTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 3)");
         executeUpdate("INSERT INTO StringFunctionTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 5)");

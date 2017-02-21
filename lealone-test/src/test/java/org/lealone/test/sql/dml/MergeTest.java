@@ -27,7 +27,8 @@ public class MergeTest extends SqlTestBase {
     public void run() throws Exception {
         // stmt.executeUpdate("DROP TABLE IF EXISTS MergeTest");
         // 如果id是primary key，那么在MERGE语句中KEY子句可省，默认用primary key
-        // stmt.executeUpdate("CREATE TABLE IF NOT EXISTS MergeTest(id int not null primary key, name varchar(500) not null)");
+        // stmt.executeUpdate("CREATE TABLE IF NOT EXISTS MergeTest(id int not null primary key, name varchar(500) not
+        // null)");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS MergeTest(id int, name varchar(500) as '123')");
 
         // stmt.executeUpdate("DROP TABLE IF EXISTS tmpSelectTest");
@@ -49,7 +50,7 @@ public class MergeTest extends SqlTestBase {
             stmt.executeUpdate(sql);
             fail(sql);
         } catch (Exception e) {
-            // Syntax error in SQL statement "UPDATE PUBLIC.MERGETEST SET  WHERE[*] ID=?"; expected "identifier";
+            // Syntax error in SQL statement "UPDATE PUBLIC.MERGETEST SET WHERE[*] ID=?"; expected "identifier";
             // SQL statement:UPDATE PUBLIC.MERGETEST SET WHERE ID=? [42001-172]
             // System.out.println(e.getMessage());
             assertTrue(e.getMessage().contains("Syntax error"));

@@ -51,7 +51,7 @@ public class SelectTest extends SqlTestBase {
 
     void testSelect() throws Exception {
         sql = "SELECT count(*) FROM SelectTest";
-        //assertEquals(12, getIntValue(1, true));
+        // assertEquals(12, getIntValue(1, true));
 
         sql = "SELECT pk, f1, f2, f3 from SelectTest";
         printResultSet();

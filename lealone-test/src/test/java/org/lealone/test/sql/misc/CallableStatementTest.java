@@ -37,7 +37,7 @@ public class CallableStatementTest extends SqlTestBase {
     void test() throws Exception {
         sql = "?= CALL MY_SQRT(?)";
         CallableStatement cs = conn.prepareCall(sql);
-        cs.registerOutParameter(1, Types.DOUBLE); //sqlType其实被忽略了，所以设什么都没用
+        cs.registerOutParameter(1, Types.DOUBLE); // sqlType其实被忽略了，所以设什么都没用
         cs.setDouble(2, 4.0);
         cs.execute();
 

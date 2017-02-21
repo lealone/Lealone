@@ -37,16 +37,16 @@ public class UserDataTypeTest extends DbObjectTestBase {
         assertNotNull(db.findUserDataType(udtName));
 
         udt.removeChildrenAndResources(session);
-        assertNotNull(db.findUserDataType(udtName)); //并不会删除UserDataType
+        assertNotNull(db.findUserDataType(udtName)); // 并不会删除UserDataType
 
         db.removeDatabaseObject(session, udt);
         assertNull(db.findUserDataType(udtName));
 
-        //测试SQL
-        //CREATE DOMAIN/TYPE/DATATYPE都是一样的
-        //DROP DOMAIN/TYPE/DATATYPE也是一样的
-        //-----------------------------------------------
-        //VALUE是CREATE DOMAIN语句的默认临时列名
+        // 测试SQL
+        // CREATE DOMAIN/TYPE/DATATYPE都是一样的
+        // DROP DOMAIN/TYPE/DATATYPE也是一样的
+        // -----------------------------------------------
+        // VALUE是CREATE DOMAIN语句的默认临时列名
         String sql = "CREATE DOMAIN IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
         executeUpdate(sql);
         assertNotNull(db.findUserDataType(udtName));
@@ -68,12 +68,12 @@ public class UserDataTypeTest extends DbObjectTestBase {
         executeUpdate(sql);
         assertNull(db.findUserDataType(udtName));
 
-        //从第二个名称开始的都是隐藏类型的，如下面的int
-        //new String[]{"INTEGER", "INT", "MEDIUMINT", "INT4", "SIGNED"}
-        //隐藏类型当用户在数据库中没有建表时可以覆盖
-        //如CREATE DATATYPE IF NOT EXISTS int AS VARCHAR(255)
-        //但是非隐藏类型就不能覆盖
-        //如CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255)
+        // 从第二个名称开始的都是隐藏类型的，如下面的int
+        // new String[]{"INTEGER", "INT", "MEDIUMINT", "INT4", "SIGNED"}
+        // 隐藏类型当用户在数据库中没有建表时可以覆盖
+        // 如CREATE DATATYPE IF NOT EXISTS int AS VARCHAR(255)
+        // 但是非隐藏类型就不能覆盖
+        // 如CREATE DATATYPE IF NOT EXISTS integer AS VARCHAR(255)
         sql = "CREATE DATATYPE IF NOT EXISTS int AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
         executeUpdate(sql);
         udtName = "int";
@@ -86,7 +86,7 @@ public class UserDataTypeTest extends DbObjectTestBase {
 
         try {
             udtName = "integer";
-            //如果DATABASE_TO_UPPER是false就用大写INTEGER
+            // 如果DATABASE_TO_UPPER是false就用大写INTEGER
             if (!db.getSettings().databaseToUpper)
                 udtName = udtName.toUpperCase();
             sql = "CREATE DATATYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";

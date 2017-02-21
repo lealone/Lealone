@@ -60,8 +60,8 @@ public class AsyncBenchmark {
                 String sql = "INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")";
                 stmt.executeUpdateAsync(sql, res -> {
                     // System.out.println(latch.getCount());
-                        latch.countDown();
-                    });
+                    latch.countDown();
+                });
             }
             latch.await();
 
@@ -89,8 +89,7 @@ public class AsyncBenchmark {
                 if (!random)
                     stmt.executeQueryAsync("SELECT * FROM test where f1 = " + i, handler);
                 else
-                    stmt.executeQueryAsync("SELECT * FROM test where f1 = " + AsyncBenchmark.random.nextInt(end),
-                            handler);
+                    stmt.executeQueryAsync("SELECT * FROM test where f1 = " + AsyncBenchmark.random.nextInt(end), handler);
             }
             latch.await();
             long t2 = System.currentTimeMillis();
@@ -102,7 +101,7 @@ public class AsyncBenchmark {
             // if (random)
             // System.out.println(getName() + " random read end, time=" + random_read_time + " ms");
             // else
-            // System.out.println(getName() + "  read end, time=" + read_time + " ms");
+            // System.out.println(getName() + " read end, time=" + read_time + " ms");
         }
 
         @Override

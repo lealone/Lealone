@@ -86,8 +86,8 @@ public class JoinTest extends SqlTestBase {
 
         sql = "SELECT t1.id, t1.b FROM JoinTest1 t1 NATURAL JOIN JoinTest4 t2";
 
-        //org.lealone.table.TableFilter.next()
-        //打断点:table.getName().equalsIgnoreCase("JoinTest1") || table.getName().equalsIgnoreCase("JoinTest2")
+        // org.lealone.table.TableFilter.next()
+        // 打断点:table.getName().equalsIgnoreCase("JoinTest1") || table.getName().equalsIgnoreCase("JoinTest2")
         sql = "SELECT rownum, * FROM JoinTest1 LEFT OUTER JOIN JoinTest2 ON id>30";
         sql = "SELECT rownum, * FROM JoinTest1 RIGHT OUTER JOIN JoinTest2 ON id2>70";
         sql = "SELECT rownum, * FROM JoinTest1 JOIN JoinTest2 ON id>30";

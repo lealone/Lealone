@@ -37,7 +37,7 @@ public class UserAggregateTest extends DbObjectTestBase {
         db.addDatabaseObject(session, ua);
         assertNotNull(db.findAggregate(name));
 
-        //ua.removeChildrenAndResources(session); //会触发invalidate
+        // ua.removeChildrenAndResources(session); //会触发invalidate
 
         String sql = "SELECT " + name + "(X) FROM SYSTEM_RANGE(1, 5)";
         assertEquals(3, getInt(sql, 1));
@@ -45,8 +45,8 @@ public class UserAggregateTest extends DbObjectTestBase {
         db.removeDatabaseObject(session, ua);
         assertNull(db.findAggregate(name));
 
-        //测试SQL
-        //-----------------------------------------------
+        // 测试SQL
+        // -----------------------------------------------
         sql = "CREATE FORCE AGGREGATE IF NOT EXISTS " + name + " FOR \"" + className + "\"";
         executeUpdate(sql);
         assertNotNull(db.findAggregate(name));

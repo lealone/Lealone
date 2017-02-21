@@ -32,7 +32,7 @@ public class AggregateFunctionTest extends SqlTestBase {
     void init() throws Exception {
         createTable("AggregateFunctionTest");
 
-        //在分区1中保存1到11中的奇数
+        // 在分区1中保存1到11中的奇数
         executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 1)");
         executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 3)");
         executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 5)");
@@ -40,7 +40,7 @@ public class AggregateFunctionTest extends SqlTestBase {
         executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('05', 'a2', 'b', 9)");
         executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('06', 'a2', 'b', 11)");
 
-        //分区2到4中分别保存1到11中的奇数
+        // 分区2到4中分别保存1到11中的奇数
         executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('25', 'a1', 'b', 1)");
         executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('26', 'a1', 'b', 3)");
 
@@ -51,11 +51,11 @@ public class AggregateFunctionTest extends SqlTestBase {
         executeUpdate("INSERT INTO AggregateFunctionTest(pk, f1, f2, f3) VALUES('76', 'a2', 'b', 11)");
     }
 
-    //以1结尾的变量是用来统计分区1中的值;
-    //以2结尾的变量是用来统计分区2到4中的值
-    //单分区的统计跟H2数据库的算法一样，多分区统计需要另外的并行计算算法，
-    //比如avg在统计多分区时会先转成count和sum，然后把count和sum发个多个分区，然后合并多个分区返回的结果，最后再算avg。
-    //不过应用层不需要关心是否是单个还是多个分区，用什么算法来统计对应用是透明的。
+    // 以1结尾的变量是用来统计分区1中的值;
+    // 以2结尾的变量是用来统计分区2到4中的值
+    // 单分区的统计跟H2数据库的算法一样，多分区统计需要另外的并行计算算法，
+    // 比如avg在统计多分区时会先转成count和sum，然后把count和sum发个多个分区，然后合并多个分区返回的结果，最后再算avg。
+    // 不过应用层不需要关心是否是单个还是多个分区，用什么算法来统计对应用是透明的。
     int count1, count2, max1, max2, min1, min2, sum1, sum2;
     boolean bool_and1, bool_and2, bool_or1, bool_or2;
     double avg1, avg2, stddev_pop1, stddev_pop2, stddev_samp1, stddev_samp2, var_pop1, var_pop2, var_samp1, var_samp2;
@@ -86,9 +86,9 @@ public class AggregateFunctionTest extends SqlTestBase {
     }
 
     void testAggregateFunctionsWithGroupBy() throws Exception {
-        //会得到两个分组，一个是a1，另一个是a2
+        // 会得到两个分组，一个是a1，另一个是a2
 
-        //测试a1的分组
+        // 测试a1的分组
         sql = select + "pk >= '01' AND pk < '25' GROUP BY f1";
         getValues1();
 
@@ -97,7 +97,7 @@ public class AggregateFunctionTest extends SqlTestBase {
 
         assertValues();
 
-        //测试a2的分组
+        // 测试a2的分组
         sql = select + "pk >= '01' AND pk < '25' GROUP BY f1";
         next();
         getValues1();
@@ -154,11 +154,11 @@ public class AggregateFunctionTest extends SqlTestBase {
 
         assertEquals(avg1, avg2, 0.00000001);
 
-        //单分区求值使用的是H2数据库自身的算法，所以跟多分区时使用的算法不一样，H2数据库自身的算法会有更多误差
-        //H2数据库自身的算法见: http://www.johndcook.com/standard_deviation.html
+        // 单分区求值使用的是H2数据库自身的算法，所以跟多分区时使用的算法不一样，H2数据库自身的算法会有更多误差
+        // H2数据库自身的算法见: http://www.johndcook.com/standard_deviation.html
         assertEquals(stddev_pop1, stddev_pop2, 0.00000001);
         assertEquals(stddev_samp1, stddev_samp2, 0.00000001);
-        //assertEquals(var_pop1, var_pop2, 0.0000000000000000000001); //比如这个就会出错
+        // assertEquals(var_pop1, var_pop2, 0.0000000000000000000001); //比如这个就会出错
         assertEquals(var_pop1, var_pop2, 0.00000001);
         assertEquals(var_samp1, var_samp2, 0.00000001);
     }
