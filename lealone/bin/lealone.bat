@@ -59,6 +59,7 @@ goto :eof
 :okClasspath
 set LEALONE_CLASSPATH=%CLASSPATH%;
 set LEALONE_PARAMS=-Dlealone.logdir="%LEALONE_HOME%\logs"
+set LEALONE_PARAMS=%LEALONE_PARAMS% -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader
 REM set LEALONE_PARAMS=%LEALONE_PARAMS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
 goto runDaemon
 

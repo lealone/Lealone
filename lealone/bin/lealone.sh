@@ -49,6 +49,7 @@ done
 
 LEALONE_CLASSPATH="$CLASSPATH"
 LEALONE_PARAMS="-Dlealone.logdir=$LEALONE_HOME/logs"
+LEALONE_PARAMS="$LEALONE_PARAMS -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader"
 # LEALONE_PARAMS="$LEALONE_PARAMS -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y"
 
 
