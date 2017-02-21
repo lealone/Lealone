@@ -72,9 +72,13 @@ public class Lealone {
     }
 
     private static void loadConfig() {
+        ConfigurationLoader loader;
         String loaderClass = Config.getProperty("config.loader");
-        ConfigurationLoader loader = loaderClass == null ? new YamlConfigurationLoader() : Utils
-                .<ConfigurationLoader> construct(loaderClass, "configuration loading");
+        if (loaderClass != null && Lealone.class.getResource("/" + loaderClass.replace('.', '/') + ".class") != null) {
+            loader = Utils.<ConfigurationLoader> construct(loaderClass, "configuration loading");
+        } else {
+            loader = new YamlConfigurationLoader();
+        }
         config = loader.loadConfig();
     }
 
@@ -92,7 +96,7 @@ public class Lealone {
         logger.info("Base dir: {}", config.base_dir);
     }
 
-    // 初始化顺序storage -> transaction -> sql -> protocol_server
+    // 初始化顺序: storage -> transaction -> sql -> protocol_server
     private static void initPluggableEngines() {
         List<PluggableEngineDef> pluggable_engines = config.storage_engines;
         if (pluggable_engines != null) {
@@ -205,8 +209,7 @@ public class Lealone {
         }
     }
 
-    private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters)
-            throws Exception {
+    private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters) throws Exception {
         final String name = server.getName();
         server.init(parameters);
         server.start();
