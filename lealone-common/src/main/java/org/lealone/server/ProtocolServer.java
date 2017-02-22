@@ -17,7 +17,7 @@ import java.util.Map;
  * @author H2 Group
  * @author zhh
  */
-public interface ProtocolServer extends Runnable {
+public interface ProtocolServer {
 
     /**
      * Initialize the server

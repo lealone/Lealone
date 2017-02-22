@@ -6,11 +6,6 @@
  */
 package org.lealone.server;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import io.vertx.core.net.NetServer;
-import io.vertx.core.net.NetSocket;
-
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -23,6 +18,11 @@ import org.lealone.common.util.NetUtils;
 import org.lealone.db.Constants;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.CommandHandler;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.net.NetServer;
+import io.vertx.core.net.NetSocket;
 
 /**
  * The TCP server implements the native database server protocol.
@@ -68,12 +68,7 @@ public class TcpServer implements ProtocolServer {
     }
 
     @Override
-    public void start() {
-        run();
-    }
-
-    @Override
-    public synchronized void run() {
+    public synchronized void start() {
         synchronized (TcpServer.class) {
             if (vertx == null) {
                 VertxOptions opt = new VertxOptions();
