@@ -212,8 +212,8 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
 
     @Override
     public StorageMapCursor<K, V> cursor(K from) {
-        return new MemoryMapCursor<>(from == null ? skipListMap.entrySet().iterator() : skipListMap.tailMap(from)
-                .entrySet().iterator());
+        return new MemoryMapCursor<>(
+                from == null ? skipListMap.entrySet().iterator() : skipListMap.tailMap(from).entrySet().iterator());
     }
 
     @Override

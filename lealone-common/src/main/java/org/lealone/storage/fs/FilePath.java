@@ -67,7 +67,7 @@ public abstract class FilePath {
 
     private static void registerDefaultProviders() {
         if (providers == null || defaultProvider == null) {
-            //不使用硬编码包名字符串的方式，重命名包名时常常忘记
+            // 不使用硬编码包名字符串的方式，重命名包名时常常忘记
             String packageName = FilePath.class.getPackage().getName() + ".";
             Map<String, FilePath> map = Collections.synchronizedMap(New.<String, FilePath> hashMap());
             for (String c : new String[] { "FilePathDisk", "FilePathMem", "FilePathMemLZF", "FilePathNioMem",

@@ -243,8 +243,8 @@ public class SysProperties {
      * System property <code>prefix.temp.file</code> (default: lealone.temp).<br />
      * The prefix for temporary files in the temp directory.
      */
-    public static final String PREFIX_TEMP_FILE = getProperty("prefix.temp.file", Constants.PROJECT_NAME_PREFIX
-            + "temp");
+    public static final String PREFIX_TEMP_FILE = getProperty("prefix.temp.file",
+            Constants.PROJECT_NAME_PREFIX + "temp");
 
     /**
      * System property <code>server.cached.objects</code> (default: 64).<br />

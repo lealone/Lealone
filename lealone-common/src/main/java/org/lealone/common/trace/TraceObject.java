@@ -164,8 +164,8 @@ public class TraceObject {
      */
     protected void debugCodeAssign(String className, int newType, int newId, String value) {
         if (trace.isDebugEnabled()) {
-            trace.debugCode(className + " " + PREFIX[newType] + newId + " = " + getTraceObjectName() + "." + value
-                    + ";");
+            trace.debugCode(
+                    className + " " + PREFIX[newType] + newId + " = " + getTraceObjectName() + "." + value + ";");
         }
     }
 

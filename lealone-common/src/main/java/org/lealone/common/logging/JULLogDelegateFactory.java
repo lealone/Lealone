@@ -34,8 +34,8 @@ public class JULLogDelegateFactory implements LogDelegateFactory {
     static {
         // Try and load Lealone JUL default logging config from classpath
         if (System.getProperty("java.util.logging.config.file") == null) {
-            try (InputStream is = JULLogDelegateFactory.class.getClassLoader().getResourceAsStream(
-                    "lealone-default-jul-logging.properties")) {
+            try (InputStream is = JULLogDelegateFactory.class.getClassLoader()
+                    .getResourceAsStream("lealone-default-jul-logging.properties")) {
                 if (is != null) {
                     LogManager.getLogManager().readConfiguration(is);
                 }

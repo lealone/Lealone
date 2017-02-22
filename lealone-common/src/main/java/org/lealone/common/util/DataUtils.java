@@ -437,8 +437,9 @@ public class DataUtils {
             } catch (IOException e2) {
                 size = -1;
             }
-            throw newIllegalStateException(ERROR_READING_FAILED, "Reading from {0} failed; file length {1} "
-                    + "read length {2} at {3}", file, size, dst.remaining(), pos, e);
+            throw newIllegalStateException(ERROR_READING_FAILED,
+                    "Reading from {0} failed; file length {1} " + "read length {2} at {3}", file, size, dst.remaining(),
+                    pos, e);
         }
     }
 
@@ -650,8 +651,8 @@ public class DataUtils {
                         c = s.charAt(i++);
                         if (c == '\\') {
                             if (i == size) {
-                                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                                        "Not a map: {0}", s);
+                                throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Not a map: {0}",
+                                        s);
                             }
                             c = s.charAt(i++);
                         } else if (c == '\"') {
@@ -785,8 +786,8 @@ public class DataUtils {
                 arguments[i] = s;
             }
         }
-        return MessageFormat.format(message, arguments) + " [" + Constants.VERSION_MAJOR + "."
-                + Constants.VERSION_MINOR + "." + Constants.BUILD_ID + "/" + errorCode + "]";
+        return MessageFormat.format(message, arguments) + " [" + Constants.VERSION_MAJOR + "." + Constants.VERSION_MINOR
+                + "." + Constants.BUILD_ID + "/" + errorCode + "]";
     }
 
     /**

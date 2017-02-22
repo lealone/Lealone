@@ -162,23 +162,23 @@ public class DataType {
             TYPES_BY_VALUE_TYPE.add(null);
         }
         add(Value.NULL, Types.NULL, "Null", new DataType(), new String[] { "NULL" },
-        // the value is always in the cache
+                // the value is always in the cache
                 0);
-        add(Value.STRING, Types.VARCHAR, "String", createString(true), new String[] { "VARCHAR", "VARCHAR2",
-                "NVARCHAR", "NVARCHAR2", "VARCHAR_CASESENSITIVE", "CHARACTER VARYING", "TID" },
-        // 24 for ValueString, 24 for String
+        add(Value.STRING, Types.VARCHAR, "String", createString(true),
+                new String[] { "VARCHAR", "VARCHAR2", "NVARCHAR", "NVARCHAR2", "VARCHAR_CASESENSITIVE",
+                        "CHARACTER VARYING", "TID" },
+                // 24 for ValueString, 24 for String
                 48);
         add(Value.STRING, Types.LONGVARCHAR, "String", createString(true),
                 new String[] { "LONGVARCHAR", "LONGNVARCHAR" }, 48);
-        add(Value.STRING_FIXED, Types.CHAR, "String", createString(true),
-                new String[] { "CHAR", "CHARACTER", "NCHAR" }, 48);
+        add(Value.STRING_FIXED, Types.CHAR, "String", createString(true), new String[] { "CHAR", "CHARACTER", "NCHAR" },
+                48);
         add(Value.STRING_IGNORECASE, Types.VARCHAR, "String", createString(false),
                 new String[] { "VARCHAR_IGNORECASE" }, 48);
-        add(Value.BOOLEAN,
-                Types.BOOLEAN,
-                "Boolean",
+        add(Value.BOOLEAN, Types.BOOLEAN, "Boolean",
                 createDecimal(ValueBoolean.PRECISION, ValueBoolean.PRECISION, 0, ValueBoolean.DISPLAY_SIZE, false,
-                        false), new String[] { "BOOLEAN", "BIT", "BOOL" },
+                        false),
+                new String[] { "BOOLEAN", "BIT", "BOOL" },
                 // the value is always in the cache
                 0);
         add(Value.BYTE, Types.TINYINT, "Byte",
@@ -205,18 +205,16 @@ public class DataType {
         add(Value.LONG, Types.BIGINT, "Long",
                 createDecimal(ValueLong.PRECISION, ValueLong.PRECISION, 0, ValueLong.DISPLAY_SIZE, false, true),
                 new String[] { "IDENTITY", "BIGSERIAL" }, 24);
-        add(Value.DECIMAL,
-                Types.DECIMAL,
-                "BigDecimal",
+        add(Value.DECIMAL, Types.DECIMAL, "BigDecimal",
                 createDecimal(Integer.MAX_VALUE, ValueDecimal.DEFAULT_PRECISION, ValueDecimal.DEFAULT_SCALE,
-                        ValueDecimal.DEFAULT_DISPLAY_SIZE, true, false), new String[] { "DECIMAL", "DEC" },
+                        ValueDecimal.DEFAULT_DISPLAY_SIZE, true, false),
+                new String[] { "DECIMAL", "DEC" },
                 // 40 for ValueDecimal,
                 64);
-        add(Value.DECIMAL,
-                Types.NUMERIC,
-                "BigDecimal",
-                createDecimal(Integer.MAX_VALUE, ValueDecimal.DEFAULT_PRECISION, ValueDecimal.DEFAULT_SCALE,
-                        ValueDecimal.DEFAULT_DISPLAY_SIZE, true, false), new String[] { "NUMERIC", "NUMBER" }, 64);
+        add(Value.DECIMAL, Types.NUMERIC,
+                "BigDecimal", createDecimal(Integer.MAX_VALUE, ValueDecimal.DEFAULT_PRECISION,
+                        ValueDecimal.DEFAULT_SCALE, ValueDecimal.DEFAULT_DISPLAY_SIZE, true, false),
+                new String[] { "NUMERIC", "NUMBER" }, 64);
         add(Value.FLOAT, Types.REAL, "Float",
                 createDecimal(ValueFloat.PRECISION, ValueFloat.PRECISION, 0, ValueFloat.DISPLAY_SIZE, false, false),
                 new String[] { "REAL", "FLOAT4" }, 24);
@@ -234,27 +232,26 @@ public class DataType {
                 new String[] { "DATE" },
                 // 24 for ValueDate, 32 for java.sql.Data
                 56);
-        add(Value.TIMESTAMP,
-                Types.TIMESTAMP,
-                "Timestamp",
+        add(Value.TIMESTAMP, Types.TIMESTAMP, "Timestamp",
                 createDate(ValueTimestamp.PRECISION, "TIMESTAMP", ValueTimestamp.DEFAULT_SCALE,
-                        ValueTimestamp.DISPLAY_SIZE), new String[] { "TIMESTAMP", "DATETIME", "SMALLDATETIME" },
+                        ValueTimestamp.DISPLAY_SIZE),
+                new String[] { "TIMESTAMP", "DATETIME", "SMALLDATETIME" },
                 // 24 for ValueTimestamp, 32 for java.sql.Timestamp
                 56);
         add(Value.BYTES, Types.VARBINARY, "Bytes", createString(false), new String[] { "VARBINARY" }, 32);
-        add(Value.BYTES, Types.BINARY, "Bytes", createString(false), new String[] { "BINARY", "RAW", "BYTEA",
-                "LONG RAW" }, 32);
+        add(Value.BYTES, Types.BINARY, "Bytes", createString(false),
+                new String[] { "BINARY", "RAW", "BYTEA", "LONG RAW" }, 32);
         add(Value.BYTES, Types.LONGVARBINARY, "Bytes", createString(false), new String[] { "LONGVARBINARY" }, 32);
         add(Value.UUID, Types.BINARY, "Bytes", createString(false), new String[] { "UUID" }, 32);
-        add(Value.JAVA_OBJECT, Types.OTHER, "Object", createString(false), new String[] { "OTHER", "OBJECT",
-                "JAVA_OBJECT" }, 24);
-        add(Value.BLOB, Types.BLOB, "Blob", createLob(), new String[] { "BLOB", "TINYBLOB", "MEDIUMBLOB", "LONGBLOB",
-                "IMAGE", "OID" },
-        // 80 for ValueLob, 24 for String
+        add(Value.JAVA_OBJECT, Types.OTHER, "Object", createString(false),
+                new String[] { "OTHER", "OBJECT", "JAVA_OBJECT" }, 24);
+        add(Value.BLOB, Types.BLOB, "Blob", createLob(),
+                new String[] { "BLOB", "TINYBLOB", "MEDIUMBLOB", "LONGBLOB", "IMAGE", "OID" },
+                // 80 for ValueLob, 24 for String
                 104);
-        add(Value.CLOB, Types.CLOB, "Clob", createLob(), new String[] { "CLOB", "TINYTEXT", "TEXT", "MEDIUMTEXT",
-                "LONGTEXT", "NTEXT", "NCLOB" },
-        // 80 for ValueLob, 24 for String
+        add(Value.CLOB, Types.CLOB, "Clob", createLob(),
+                new String[] { "CLOB", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT", "NTEXT", "NCLOB" },
+                // 80 for ValueLob, 24 for String
                 104);
         DataType dataType = new DataType();
         dataType.prefix = "(";
@@ -480,8 +477,8 @@ public class DataType {
                     v = ValueLob.createSmallLob(Value.BLOB, rs.getBytes(columnIndex));
                 } else {
                     InputStream in = rs.getBinaryStream(columnIndex);
-                    v = (in == null) ? (Value) ValueNull.INSTANCE : session.getDataHandler().getLobStorage()
-                            .createBlob(in, -1);
+                    v = (in == null) ? (Value) ValueNull.INSTANCE
+                            : session.getDataHandler().getLobStorage().createBlob(in, -1);
                 }
                 break;
             }

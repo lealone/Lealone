@@ -31,9 +31,8 @@ class ThreadPool {
         int maxPoolSize = Integer.MAX_VALUE;
         int keepAliveTime = 3;
 
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(corePoolSize, maxPoolSize, keepAliveTime,
-                TimeUnit.SECONDS, new SynchronousQueue<Runnable>(), new NamedThreadFactory(
-                        ThreadPool.class.getSimpleName()));
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(corePoolSize, maxPoolSize, keepAliveTime, TimeUnit.SECONDS,
+                new SynchronousQueue<Runnable>(), new NamedThreadFactory(ThreadPool.class.getSimpleName()));
         executor.allowCoreThreadTimeOut(true);
 
         return executor;

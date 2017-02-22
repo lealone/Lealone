@@ -66,8 +66,8 @@ public class ConnectionInfo implements Cloneable {
     static {
         KNOWN_SETTINGS.addAll(SetTypes.getTypes());
 
-        String[] connectionSettings = { "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS",
-                "INIT", "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "PAGE_SIZE", "PASSWORD_HASH", "IS_LOCAL" };
+        String[] connectionSettings = { "CIPHER", "CREATE", "CACHE_TYPE", "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT",
+                "PASSWORD", "RECOVER", "RECOVER_TEST", "USER", "PAGE_SIZE", "PASSWORD_HASH", "IS_LOCAL" };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {

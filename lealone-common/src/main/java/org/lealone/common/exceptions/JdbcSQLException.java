@@ -41,7 +41,8 @@ public class JdbcSQLException extends SQLException {
      * @param cause the exception that was the reason for this exception
      * @param stackTrace the stack trace
      */
-    public JdbcSQLException(String message, String sql, String state, int errorCode, Throwable cause, String stackTrace) {
+    public JdbcSQLException(String message, String sql, String state, int errorCode, Throwable cause,
+            String stackTrace) {
         super(message, state, errorCode);
         this.originalMessage = message;
         setSQL(sql);

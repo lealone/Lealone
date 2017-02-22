@@ -88,7 +88,7 @@ public class FilePathDisk extends FilePath {
             throw DbException.get(ErrorCode.FILE_RENAME_FAILED_2, name + " (not found)", newName.name);
         }
         // Java 7: use java.nio.file.Files.move(Path source, Path target,
-        //     CopyOption... options)
+        // CopyOption... options)
         // with CopyOptions "REPLACE_EXISTING" and "ATOMIC_MOVE".
         if (atomicReplace) {
             boolean ok = oldFile.renameTo(newFile);
@@ -258,8 +258,8 @@ public class FilePathDisk extends FilePath {
                 if (dir.isDirectory()) {
                     return;
                 }
-                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name
-                        + " (a file with this name already exists)");
+                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1,
+                        name + " (a file with this name already exists)");
             } else if (dir.mkdir()) {
                 return;
             }

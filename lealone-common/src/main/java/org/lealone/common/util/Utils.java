@@ -906,8 +906,8 @@ public class Utils {
         try {
             return cls.newInstance();
         } catch (IllegalAccessException e) {
-            throw new ConfigurationException(String.format("Default constructor for %s class '%s' is inaccessible.",
-                    readable, classname));
+            throw new ConfigurationException(
+                    String.format("Default constructor for %s class '%s' is inaccessible.", readable, classname));
         } catch (InstantiationException e) {
             throw new ConfigurationException(
                     String.format("Cannot use abstract class '%s' as %s.", classname, readable));

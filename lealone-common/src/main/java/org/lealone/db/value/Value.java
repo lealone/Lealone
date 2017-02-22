@@ -734,8 +734,8 @@ public abstract class Value implements Comparable<Value> {
                 }
                 case INT: {
                     int x = getInt();
-                    return ValueBytes.getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8),
-                            (byte) x });
+                    return ValueBytes
+                            .getNoCopy(new byte[] { (byte) (x >> 24), (byte) (x >> 16), (byte) (x >> 8), (byte) x });
                 }
                 case LONG: {
                     long x = getLong();

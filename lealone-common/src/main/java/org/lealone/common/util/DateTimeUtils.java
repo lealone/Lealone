@@ -93,8 +93,8 @@ public class DateTimeUtils {
         cal.clear();
         cal.setLenient(true);
         long dateValue = d.getDateValue();
-        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue),
-                dayFromDateValue(dateValue), 0, 0, 0, 0);
+        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue), dayFromDateValue(dateValue),
+                0, 0, 0, 0);
         long ms = cal.getTimeInMillis();
         return new Date(ms);
     }
@@ -153,8 +153,8 @@ public class DateTimeUtils {
         s -= m * 60;
         long h = m / 60;
         m -= h * 60;
-        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue),
-                dayFromDateValue(dateValue), (int) h, (int) m, (int) s, (int) millis);
+        setCalendarFields(cal, yearFromDateValue(dateValue), monthFromDateValue(dateValue), dayFromDateValue(dateValue),
+                (int) h, (int) m, (int) s, (int) millis);
         long ms = cal.getTimeInMillis();
         Timestamp x = new Timestamp(ms);
         x.setNanos((int) (nanos + millis * 1000000));
@@ -337,7 +337,8 @@ public class DateTimeUtils {
      * @param millis the number of milliseconds
      * @return the number of milliseconds (UTC)
      */
-    public static long getMillis(TimeZone tz, int year, int month, int day, int hour, int minute, int second, int millis) {
+    public static long getMillis(TimeZone tz, int year, int month, int day, int hour, int minute, int second,
+            int millis) {
         try {
             return getTimeTry(false, tz, year, month, day, hour, minute, second, millis);
         } catch (IllegalArgumentException e) {

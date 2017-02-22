@@ -17,8 +17,7 @@ import java.util.List;
 import org.lealone.common.util.New;
 
 /**
- * This utility class contains utility functions that use the file system
- * abstraction.
+ * This utility class contains utility functions that use the file system abstraction.
  */
 public class FileUtils {
 

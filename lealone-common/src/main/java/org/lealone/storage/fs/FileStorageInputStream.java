@@ -28,7 +28,8 @@ public class FileStorageInputStream extends InputStream {
     private boolean endOfFile;
     private final boolean alwaysClose;
 
-    public FileStorageInputStream(FileStorage fileStorage, DataHandler handler, boolean compression, boolean alwaysClose) {
+    public FileStorageInputStream(FileStorage fileStorage, DataHandler handler, boolean compression,
+            boolean alwaysClose) {
         this.fileStorage = fileStorage;
         this.alwaysClose = alwaysClose;
         if (compression) {

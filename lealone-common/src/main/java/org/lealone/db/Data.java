@@ -651,8 +651,8 @@ public class Data {
         }
         if (SysProperties.CHECK2) {
             if (pos - start != getValueLen(v, handler)) {
-                throw DbException.throwInternalError("value size error: got " + (pos - start) + " expected "
-                        + getValueLen(v, handler));
+                throw DbException.throwInternalError(
+                        "value size error: got " + (pos - start) + " expected " + getValueLen(v, handler));
             }
         }
     }

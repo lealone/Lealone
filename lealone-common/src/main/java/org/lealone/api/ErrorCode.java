@@ -1969,19 +1969,19 @@ public class ErrorCode {
         case NO_DATA_AVAILABLE:
             return "02000";
 
-            // 07: dynamic SQL error
+        // 07: dynamic SQL error
         case INVALID_PARAMETER_COUNT_2:
             return "07001";
 
-            // 08: connection exception
+        // 08: connection exception
         case ERROR_OPENING_DATABASE_1:
             return "08000";
 
-            // 21: cardinality violation
+        // 21: cardinality violation
         case COLUMN_COUNT_DOES_NOT_MATCH:
             return "21S02";
 
-            // 42: syntax error or access rule violation
+        // 42: syntax error or access rule violation
         case TABLE_OR_VIEW_ALREADY_EXISTS_1:
             return "42S01";
         case TABLE_OR_VIEW_NOT_FOUND_1:
@@ -1995,11 +1995,11 @@ public class ErrorCode {
         case COLUMN_NOT_FOUND_1:
             return "42S22";
 
-            // 0A: feature not supported
+        // 0A: feature not supported
 
-            // HZ: remote database access
+        // HZ: remote database access
 
-            // HY
+        // HY
         case GENERAL_ERROR_1:
             return "HY000";
         case UNKNOWN_DATA_TYPE_1:

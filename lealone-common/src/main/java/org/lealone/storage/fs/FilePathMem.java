@@ -183,8 +183,8 @@ public class FilePathMem extends FilePath {
         synchronized (MEMORY_FILES) {
             FileMemData m = MEMORY_FILES.get(name);
             if (m == DIRECTORY) {
-                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1, name
-                        + " (a directory with this name already exists)");
+                throw DbException.get(ErrorCode.FILE_CREATION_FAILED_1,
+                        name + " (a directory with this name already exists)");
             }
             if (m == null) {
                 m = new FileMemData(name, compressed());

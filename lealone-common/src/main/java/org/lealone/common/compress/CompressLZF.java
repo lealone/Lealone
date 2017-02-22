@@ -171,11 +171,11 @@ public final class CompressLZF implements Compressor {
             int ref = hashTab[off];
             hashTab[off] = inPos;
             // if (ref < inPos
-            //       && ref > 0
-            //       && (off = inPos - ref - 1) < MAX_OFF
-            //       && in[ref + 2] == p2
-            //       && (((in[ref] & 255) << 8) | (in[ref + 1] & 255)) ==
-            //           ((future >> 8) & 0xffff)) {
+            // && ref > 0
+            // && (off = inPos - ref - 1) < MAX_OFF
+            // && in[ref + 2] == p2
+            // && (((in[ref] & 255) << 8) | (in[ref + 1] & 255)) ==
+            // ((future >> 8) & 0xffff)) {
             if (ref < inPos && ref > 0 && (off = inPos - ref - 1) < MAX_OFF && in[ref + 2] == p2
                     && in[ref + 1] == (byte) (future >> 8) && in[ref] == (byte) (future >> 16)) {
                 // match
@@ -275,11 +275,11 @@ public final class CompressLZF implements Compressor {
             int ref = hashTab[off];
             hashTab[off] = inPos;
             // if (ref < inPos
-            //       && ref > 0
-            //       && (off = inPos - ref - 1) < MAX_OFF
-            //       && in[ref + 2] == p2
-            //       && (((in[ref] & 255) << 8) | (in[ref + 1] & 255)) ==
-            //           ((future >> 8) & 0xffff)) {
+            // && ref > 0
+            // && (off = inPos - ref - 1) < MAX_OFF
+            // && in[ref + 2] == p2
+            // && (((in[ref] & 255) << 8) | (in[ref + 1] & 255)) ==
+            // ((future >> 8) & 0xffff)) {
             if (ref < inPos && ref > 0 && (off = inPos - ref - 1) < MAX_OFF && in.get(ref + 2) == p2
                     && in.get(ref + 1) == (byte) (future >> 8) && in.get(ref) == (byte) (future >> 16)) {
                 // match
@@ -365,7 +365,7 @@ public final class CompressLZF implements Compressor {
                 ctrl++;
                 // copy to output and move forward this many bytes
                 // while (ctrl-- > 0) {
-                //     out[outPos++] = in[inPos++];
+                // out[outPos++] = in[inPos++];
                 // }
                 System.arraycopy(in, inPos, out, outPos, ctrl);
                 outPos += ctrl;
