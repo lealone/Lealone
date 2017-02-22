@@ -33,6 +33,7 @@ import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
+import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
@@ -399,7 +400,7 @@ public class Database implements DataHandler, DbObject {
         if (dbSettings.dbCloseOnExit) {
             try {
                 closeOnExit = new DatabaseCloser(this, 0, true);
-                Runtime.getRuntime().addShutdownHook(closeOnExit);
+                ShutdownHookUtils.addShutdownHook(closeOnExit);
             } catch (IllegalStateException | SecurityException e) {
                 // shutdown in progress - just don't register the handler
                 // (maybe an application wants to write something into a
@@ -1423,7 +1424,7 @@ public class Database implements DataHandler, DbObject {
         if (closeOnExit != null) {
             closeOnExit.reset();
             try {
-                Runtime.getRuntime().removeShutdownHook(closeOnExit);
+                ShutdownHookUtils.removeShutdownHook(closeOnExit);
             } catch (IllegalStateException e) {
                 // ignore
             } catch (SecurityException e) {

@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
 import org.lealone.mvcc.log.LogStorage;
 import org.lealone.mvcc.log.LogSyncService;
@@ -109,18 +110,13 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         StorageMapSaveService(int sleep) {
             super("StorageMapSaveService");
             this.sleep = sleep;
-
-            Thread t = new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    StorageMapSaveService.this.close();
-                    try {
-                        StorageMapSaveService.this.join();
-                    } catch (InterruptedException e) {
-                    }
+            ShutdownHookUtils.addShutdownHook(this, () -> {
+                StorageMapSaveService.this.close();
+                try {
+                    StorageMapSaveService.this.join();
+                } catch (InterruptedException e) {
                 }
-            }, StorageMapSaveService.this.getName() + "ShutdownHook");
-            Runtime.getRuntime().addShutdownHook(t);
+            });
         }
 
         void close() {

@@ -23,6 +23,7 @@ import java.util.Map;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.config.Config;
 import org.lealone.config.ConfigurationLoader;
@@ -64,7 +65,8 @@ public class Lealone {
             start();
 
             long t3 = (System.currentTimeMillis() - t);
-            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", (t1 + t2 + t3), t1, t2, t3);
+            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", (t1 + t2 + t3), t1, t2,
+                    t3);
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
@@ -175,7 +177,8 @@ public class Lealone {
                             pse = (ProtocolServerEngine) clz.newInstance();
                             ProtocolServerEngineManager.getInstance().registerEngine(pse);
                         } catch (Exception e) {
-                            throw new ConfigurationException("ProtocolServerEngine '" + def.name + "' can not found", e);
+                            throw new ConfigurationException("ProtocolServerEngine '" + def.name + "' can not found",
+                                    e);
                         }
                     }
                     initPluggableEngine(pse, def);
@@ -209,22 +212,17 @@ public class Lealone {
         }
     }
 
-    private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters) throws Exception {
+    private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters)
+            throws Exception {
         if (!parameters.containsKey("host") && Config.getProperty("tcp.listen.address") != null)
             parameters.put("host", Config.getProperty("tcp.listen.address"));
-        final String name = server.getName();
         server.init(parameters);
         server.start();
-
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                server.stop();
-                logger.info(name + " stopped");
-            }
-        }, name + "ShutdownHook");
-        Runtime.getRuntime().addShutdownHook(t);
-
+        final String name = server.getName();
+        ShutdownHookUtils.addShutdownHook(server, () -> {
+            server.stop();
+            logger.info(name + " stopped");
+        });
         logger.info(name + " started, host: {}, port: {}", server.getHost(), server.getPort());
     }
 }

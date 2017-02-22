@@ -168,7 +168,7 @@ public class TcpServer implements ProtocolServer {
 
     @Override
     public String getName() {
-        return "TCP Server";
+        return getClass().getSimpleName();
     }
 
     @Override
