@@ -27,14 +27,13 @@
 
     <modules>
         <module>lealone-common</module>
-        <module>lealone-config</module>
         <module>lealone-net</module>
         <module>lealone-client</module>
         <module>lealone-server</module>
         <module>lealone-sql</module>
         <module>lealone-db</module>
         <module>lealone-mvcc</module>
-        <module>lealone-mvstore</module>
+        <module>lealone-aose</module>
         <module>lealone-main</module>
         <module>lealone-test</module>
     </modules>
