@@ -6,7 +6,7 @@
 
 ### Lealone有哪些特性
 
-##### 开源版本(不支持分布式)
+##### 开源版本(不支持分布式事务)
 
 * 完全异步化，使用少量线程就能处理大量并发
 
@@ -14,18 +14,18 @@
 
 * 创建JDBC连接非常快速，占用资源少，不再需要JDBC连接池
  
-* 插件化存储引擎架构，内置[MVStore](http://www.h2database.com/html/mvstore.html)存储引擎
+* 插件化存储引擎架构，内置AOSE自适应优化存储引擎
 
 * 插件化事务引擎架构，事务处理逻辑与存储分离
+
+* 支持自动化分片(Sharding)，用户不需要关心任何分片的规则，没有热点，能够进行范围查询
 
 * 支持索引、视图、Join、子查询、触发器、自定义函数、Order By、Group By、聚合
 
 * 从[H2数据库](http://www.h2database.com/html/main.html)借鉴了大量成熟的代码和思想
 
 
-##### 企业版本(支持分布式)
-
-* 内置AOSE自适应优化存储引擎(Adaptive Optimization Storage Engine)
+##### 企业版本(支持分布式事务)
 
 * 高性能分布式事务<br>
   使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/blob/master/docs/%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E6%A8%A1%E5%9E%8B.md)
@@ -34,7 +34,7 @@
 
 * 支持强一致性复制
 
-* 支持自动化分片(Sharding)，用户不需要关心任何分片的规则，没有热点，能够进行范围查询
+
 
 ### Lealone文档
 
