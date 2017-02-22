@@ -15,21 +15,23 @@
 # limitations under the License.
 
 base_dir: lealone-test-data
+cluster_name: Test Cluster
+
+listen_address: 127.0.0.1
 
 storage_engines:
-    - name: MVStore
+    - name: AOSE
       enabled: true
       parameters: {
           # key1: v1,
           # key2: v2,
       }
-      
+
 transaction_engines:
     - name: MVCC
       enabled: true
       parameters: {
           transaction_log_dir: transaction_log, # ${base_dir} + "/"+ ${transaction_log_dir}
-          # log_sync_type: batch
       }
 
 sql_engines:
@@ -44,12 +46,54 @@ protocol_server_engines:
     - name: TcpServer
       enabled: true
       parameters: {
-          host: localhost,
           port: 5210,
+          trace: false,
           allow_others: true,
           daemon: false,
           if_exists: false,
           blocked_thread_check_interval: -1,
           ssl: false
       }
+    - name: StorageServer
+      enabled: true
+      parameters: {
+          port: 5215,
+          trace: false,
+          allow_others: true,
+          daemon: false,
+          if_exists: false,
+          ssl: false
+      }
+
+seed_provider:
+    - class_name: SimpleSeedProvider
+      parameters:
+          - seeds: "127.0.0.1"
+          
+# replication_strategy:
+#     - class_name: SimpleStrategy
+#       parameters:
+#          - replication_factor: 3
+
+# replication_strategy:
+#     - class_name: NetworkTopologyStrategy
+#       parameters:
+#          - dc1: 1
+#          - dc2: 2
+
+endpoint_snitch: SimpleSnitch
+dynamic_snitch: true
+
+server_encryption_options:
+    internode_encryption: none
+    keystore: conf/.keystore
+    keystore_password: lealone
+    truststore: conf/.truststore
+    truststore_password: lealone
+
+#方便在eclipse中debug，不会产生超时
+request_timeout_in_ms: 100000000
+
+#auto_bootstrap: false
+
 

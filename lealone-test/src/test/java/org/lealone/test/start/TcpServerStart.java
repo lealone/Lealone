@@ -17,39 +17,28 @@
  */
 package org.lealone.test.start;
 
-import io.vertx.core.impl.FileResolver;
-
+import org.lealone.aose.config.Config;
+import org.lealone.aose.config.PluggableEngineDef;
+import org.lealone.aose.server.StorageServerEngine;
 import org.lealone.common.exceptions.ConfigurationException;
-import org.lealone.config.Config;
 import org.lealone.main.Lealone;
 
 //-javaagent:E:\continuations\target\continuations-1.0-SNAPSHOT.jar
-public class TcpServerStart extends org.lealone.config.YamlConfigurationLoader {
+public class TcpServerStart extends NodeBase {
 
     // YamlConfigurationLoader的子类必须有一个无参数的构造函数
     public TcpServerStart() {
+        nodeBaseDirPrefix = "client-server";
     }
 
     @Override
-    public Config loadConfig() throws ConfigurationException {
-        Config config = super.loadConfig();
-
-        System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
-        // System.setProperty("lealone.base.dir", "./" + config.base_dir);
-
-        System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
-        System.setProperty("vertx.cacheDirBase", "./" + config.base_dir + "/.vertx");
-
-        return config;
-    }
-
-    public static void init(Class<?> loader) {
-        System.setProperty("lealone.config.loader", loader.getName());
-        System.setProperty("lealone.config", "lealone-test.yaml");
-        // System.setProperty("DATABASE_TO_UPPER", "false");
-        System.setProperty("lealone.lobInDatabase", "false");
-        System.setProperty("lealone.lobClientMaxSizeMemory", "1024");
-        // System.setProperty("lealone.check2", "true");
+    public void applyConfig(Config config) throws ConfigurationException {
+        for (PluggableEngineDef e : config.protocol_server_engines) {
+            if (StorageServerEngine.NAME.equalsIgnoreCase(e.name)) {
+                e.enabled = false;
+            }
+        }
+        super.applyConfig(config);
     }
 
     public static void main(String[] args) {

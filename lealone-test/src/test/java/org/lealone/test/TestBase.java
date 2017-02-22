@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Assert;
+import org.lealone.aose.config.Config;
 import org.lealone.common.trace.TraceSystem;
-import org.lealone.config.Config;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.mvcc.log.LogStorage;
@@ -61,7 +61,7 @@ public class TestBase extends Assert {
     }
 
     public static String getDefaultStorageEngineName() {
-        return "MVStore";
+        return "AOSE";
     }
 
     public static synchronized void initTransactionEngine() {
