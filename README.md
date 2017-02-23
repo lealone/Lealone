@@ -1,7 +1,7 @@
 
 ### Lealone是什么
 
-* 是一个兼具RDBMS、NoSQL优点的面向[OLTP](http://en.wikipedia.org/wiki/Online_transaction_processing)场景的分布式关系数据库
+* 是一个兼具RDBMS、NoSQL优点的面向[OLTP](http://en.wikipedia.org/wiki/Online_transaction_processing)场景的异步化NewSQL单机与分布式关系数据库
 
 
 ### Lealone有哪些特性
@@ -14,9 +14,9 @@
 
 * 创建JDBC连接非常快速，占用资源少，不再需要JDBC连接池
  
-* 插件化存储引擎架构，内置AOSE自适应优化存储引擎
+* 插件化存储引擎架构，内置AOSE引擎，支持单机与分布式存储
 
-* 插件化事务引擎架构，事务处理逻辑与存储分离
+* 插件化事务引擎架构，事务处理逻辑与存储分离，内置MVCC引擎，支持单机事务
 
 * 支持自动化分片(Sharding)，用户不需要关心任何分片的规则，没有热点，能够进行范围查询
 

@@ -46,7 +46,7 @@
             <version>1.0.6</version>
         </dependency>
         <dependency>
-            <groupId>com.yammer.metrics</groupId>
+            <groupId>com.yammer.metrics</groupId><!-- 依赖了slf4j-api-1.7.2 -->
             <artifactId>metrics-core</artifactId>
             <version>2.2.0</version>
         </dependency>
