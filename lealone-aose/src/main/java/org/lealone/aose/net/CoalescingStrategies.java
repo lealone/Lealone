@@ -29,8 +29,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
+import org.lealone.common.logging.Logger;
 import org.lealone.db.Constants;
-import org.slf4j.Logger;
 
 import com.google.common.base.Preconditions;
 

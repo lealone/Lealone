@@ -19,8 +19,8 @@ package org.lealone.aose.gms;
 
 import org.lealone.aose.net.IVerbHandler;
 import org.lealone.aose.net.MessageIn;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 public class GossipShutdownVerbHandler implements IVerbHandler<Void> {
     private static final Logger logger = LoggerFactory.getLogger(GossipShutdownVerbHandler.class);

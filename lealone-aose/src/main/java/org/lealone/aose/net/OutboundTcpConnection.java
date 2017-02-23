@@ -35,11 +35,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.Checksum;
 
-import net.jpountz.lz4.LZ4BlockOutputStream;
-import net.jpountz.lz4.LZ4Compressor;
-import net.jpountz.lz4.LZ4Factory;
-import net.jpountz.xxhash.XXHashFactory;
-
 import org.lealone.aose.config.Config;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.io.DataOutputStreamPlus;
@@ -51,10 +46,15 @@ import org.lealone.aose.security.SSLFactory;
 import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.util.JVMStabilityInspector;
 import org.lealone.aose.util.Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 import com.google.common.util.concurrent.Uninterruptibles;
+
+import net.jpountz.lz4.LZ4BlockOutputStream;
+import net.jpountz.lz4.LZ4Compressor;
+import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.xxhash.XXHashFactory;
 
 public class OutboundTcpConnection extends Thread {
     private static final Logger logger = LoggerFactory.getLogger(OutboundTcpConnection.class);

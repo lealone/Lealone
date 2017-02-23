@@ -22,8 +22,8 @@ import java.net.URL;
 import java.util.Properties;
 
 import org.lealone.aose.util.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 public class SnitchProperties {
     private static final Logger logger = LoggerFactory.getLogger(SnitchProperties.class);

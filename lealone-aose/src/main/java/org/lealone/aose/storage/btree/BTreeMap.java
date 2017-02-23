@@ -119,8 +119,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
                 ArrayList<Integer> hostIds = StorageServer.instance.getTopologyMetaData().sortedHostIds();
                 if (!hostIds.isEmpty()) {
                     Integer hostId = hostIds.get(name.hashCode() % hostIds.size());
-                    List<InetAddress> replicationEndpoints = StorageServer.instance.getReplicationEndpoints(db,
-                            hostId);
+                    List<InetAddress> replicationEndpoints = StorageServer.instance.getReplicationEndpoints(db, hostId);
                     int size = replicationEndpoints.size();
                     root.replicationHostIds = new ArrayList<>(size);
                     for (int i = 0; i < size; i++) {

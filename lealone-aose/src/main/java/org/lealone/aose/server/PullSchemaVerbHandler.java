@@ -24,10 +24,10 @@ import org.lealone.aose.net.IVerbHandler;
 import org.lealone.aose.net.MessageIn;
 import org.lealone.aose.net.MessageOut;
 import org.lealone.aose.net.MessagingService;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PullSchemaVerbHandler implements IVerbHandler<PullSchema> {
     private static final Logger logger = LoggerFactory.getLogger(EchoVerbHandler.class);

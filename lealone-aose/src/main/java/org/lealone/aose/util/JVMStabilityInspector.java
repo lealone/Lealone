@@ -20,9 +20,9 @@ package org.lealone.aose.util;
 import java.io.FileNotFoundException;
 import java.net.SocketException;
 
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ShutdownHookUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 

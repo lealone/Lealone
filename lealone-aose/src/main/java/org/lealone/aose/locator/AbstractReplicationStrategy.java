@@ -28,8 +28,8 @@ import java.util.Map;
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 /**
  * A abstract parent for all replication strategies.

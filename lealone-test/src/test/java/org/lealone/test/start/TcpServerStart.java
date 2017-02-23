@@ -21,7 +21,6 @@ import org.lealone.aose.config.Config;
 import org.lealone.aose.config.PluggableEngineDef;
 import org.lealone.aose.server.StorageServerEngine;
 import org.lealone.common.exceptions.ConfigurationException;
-import org.lealone.main.Lealone;
 
 //-javaagent:E:\continuations\target\continuations-1.0-SNAPSHOT.jar
 public class TcpServerStart extends NodeBase {
@@ -42,8 +41,7 @@ public class TcpServerStart extends NodeBase {
     }
 
     public static void main(String[] args) {
-        init(TcpServerStart.class);
-        Lealone.main(args);
+        NodeBase.run(TcpServerStart.class, args);
     }
 
 }

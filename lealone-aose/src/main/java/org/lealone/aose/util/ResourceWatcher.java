@@ -21,8 +21,8 @@ import java.io.File;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.aose.concurrent.ScheduledExecutors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 public class ResourceWatcher {
     public static void watch(String resource, Runnable callback, int period) {
@@ -42,6 +42,7 @@ public class ResourceWatcher {
             lastLoaded = 0;
         }
 
+        @Override
         public void run() {
             try {
                 String filename = Utils.resourceToFile(resource);

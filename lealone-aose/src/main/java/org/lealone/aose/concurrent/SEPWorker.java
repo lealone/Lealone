@@ -22,8 +22,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
 import org.lealone.aose.util.JVMStabilityInspector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 final class SEPWorker extends AtomicReference<SEPWorker.Work> implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(SEPWorker.class);
@@ -48,6 +48,7 @@ final class SEPWorker extends AtomicReference<SEPWorker.Work> implements Runnabl
         thread.start();
     }
 
+    @Override
     public void run() {
         /**
          * we maintain two important invariants:

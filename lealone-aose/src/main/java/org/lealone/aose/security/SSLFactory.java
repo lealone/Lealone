@@ -37,8 +37,8 @@ import javax.net.ssl.TrustManagerFactory;
 import org.lealone.aose.config.EncryptionOptions;
 import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 import com.google.common.collect.Sets;
 

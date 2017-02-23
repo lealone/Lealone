@@ -29,17 +29,17 @@ import java.net.SocketException;
 import java.util.Set;
 import java.util.zip.Checksum;
 
-import net.jpountz.lz4.LZ4BlockInputStream;
-import net.jpountz.lz4.LZ4Factory;
-import net.jpountz.lz4.LZ4FastDecompressor;
-import net.jpountz.xxhash.XXHashFactory;
-
 import org.lealone.aose.concurrent.LealoneExecutorService;
 import org.lealone.aose.concurrent.StageManager;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.Gossiper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
+
+import net.jpountz.lz4.LZ4BlockInputStream;
+import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.lz4.LZ4FastDecompressor;
+import net.jpountz.xxhash.XXHashFactory;
 
 class IncomingTcpConnection extends Thread implements Closeable {
     private static final Logger logger = LoggerFactory.getLogger(IncomingTcpConnection.class);

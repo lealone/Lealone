@@ -49,10 +49,10 @@ import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Database;
 import org.lealone.server.ProtocolServer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This abstraction contains the token/identifier of this node

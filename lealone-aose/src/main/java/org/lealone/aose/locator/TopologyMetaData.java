@@ -31,8 +31,8 @@ import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.FailureDetector;
 import org.lealone.aose.server.StorageServer;
 import org.lealone.aose.util.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;

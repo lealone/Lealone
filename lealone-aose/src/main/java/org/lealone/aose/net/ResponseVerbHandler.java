@@ -19,8 +19,8 @@ package org.lealone.aose.net;
 
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public class ResponseVerbHandler implements IVerbHandler {

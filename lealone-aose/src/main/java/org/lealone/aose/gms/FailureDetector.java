@@ -42,8 +42,8 @@ import org.lealone.aose.io.FSWriteError;
 import org.lealone.aose.util.BoundedStatsDeque;
 import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 /**
  * This FailureDetector is an implementation of the paper titled

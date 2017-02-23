@@ -33,8 +33,8 @@ import java.util.Set;
 import org.lealone.aose.locator.TopologyMetaData.Topology;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 import com.google.common.collect.Multimap;
 
@@ -52,9 +52,10 @@ import com.google.common.collect.Multimap;
  * change in the number of tokens.
  */
 public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
+
+    private static final Logger logger = LoggerFactory.getLogger(NetworkTopologyStrategy.class);
     private final IEndpointSnitch snitch;
     private final Map<String, Integer> datacenters;
-    private static final Logger logger = LoggerFactory.getLogger(NetworkTopologyStrategy.class);
 
     public NetworkTopologyStrategy(String dbName, TopologyMetaData metaData, IEndpointSnitch snitch,
             Map<String, String> configOptions) throws ConfigurationException {

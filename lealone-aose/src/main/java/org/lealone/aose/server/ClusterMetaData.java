@@ -28,10 +28,10 @@ import java.util.Map;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ClusterMetaData {
 

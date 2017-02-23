@@ -40,8 +40,8 @@ import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.JVMStabilityInspector;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 /**
  * A snitch that assumes a Cloudstack Zone follows the typical convention

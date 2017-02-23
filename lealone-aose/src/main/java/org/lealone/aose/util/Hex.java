@@ -20,8 +20,8 @@ package org.lealone.aose.util;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 public class Hex {
     private static final Constructor<String> stringConstructor = getProtectedConstructor(String.class, int.class,

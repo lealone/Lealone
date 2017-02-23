@@ -29,8 +29,8 @@ import java.text.DecimalFormat;
 import java.util.Arrays;
 
 import org.lealone.aose.io.FSWriteError;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 import sun.nio.ch.DirectBuffer;
 

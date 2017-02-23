@@ -28,8 +28,8 @@ import java.util.concurrent.TimeoutException;
 
 import org.lealone.aose.util.JVMStabilityInspector;
 import org.lealone.common.concurrent.SimpleCondition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 public abstract class AbstractLealoneExecutorService implements LealoneExecutorService {
     private static final Logger logger = LoggerFactory.getLogger(AbstractLealoneExecutorService.class);

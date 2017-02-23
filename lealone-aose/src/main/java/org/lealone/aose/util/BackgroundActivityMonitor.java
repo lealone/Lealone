@@ -32,8 +32,8 @@ import org.lealone.aose.gms.EndpointState;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.gms.VersionedValue;
 import org.lealone.aose.server.StorageServer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 import com.google.common.util.concurrent.AtomicDouble;
 

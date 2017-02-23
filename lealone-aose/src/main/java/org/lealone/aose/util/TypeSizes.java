@@ -71,22 +71,27 @@ public abstract class TypeSizes {
     }
 
     public static class NativeDBTypeSizes extends TypeSizes {
+        @Override
         public int sizeof(boolean value) {
             return BOOL_SIZE;
         }
 
+        @Override
         public int sizeof(short value) {
             return SHORT_SIZE;
         }
 
+        @Override
         public int sizeof(int value) {
             return INT_SIZE;
         }
 
+        @Override
         public int sizeof(long value) {
             return LONG_SIZE;
         }
 
+        @Override
         public int sizeof(UUID value) {
             return UUID_SIZE;
         }
@@ -116,22 +121,27 @@ public abstract class TypeSizes {
             return size;
         }
 
+        @Override
         public int sizeof(long i) {
             return sizeofVInt(i);
         }
 
+        @Override
         public int sizeof(boolean i) {
             return BOOL_SIZE;
         }
 
+        @Override
         public int sizeof(short i) {
             return sizeofVInt(i);
         }
 
+        @Override
         public int sizeof(int i) {
             return sizeofVInt(i);
         }
 
+        @Override
         public int sizeof(UUID value) {
             return sizeofVInt(value.getMostSignificantBits()) + sizeofVInt(value.getLeastSignificantBits());
         }

@@ -33,6 +33,7 @@ public class BoundedStatsDeque implements Iterable<Long> {
         sum = new AtomicLong(0);
     }
 
+    @Override
     public Iterator<Long> iterator() {
         return deque.iterator();
     }

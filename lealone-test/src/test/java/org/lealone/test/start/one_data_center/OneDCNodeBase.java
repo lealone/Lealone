@@ -17,15 +17,9 @@
  */
 package org.lealone.test.start.one_data_center;
 
-import org.lealone.main.Lealone;
 import org.lealone.test.start.NodeBase;
 
 public class OneDCNodeBase extends NodeBase {
-    public static void run(Class<?> loader, String[] args) {
-        init(loader);
-        Lealone.main(args);
-    }
-
     public OneDCNodeBase() {
         nodeBaseDirPrefix = "cluster/onedc-";
     }

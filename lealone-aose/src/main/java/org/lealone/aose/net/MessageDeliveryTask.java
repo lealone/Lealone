@@ -20,8 +20,8 @@ package org.lealone.aose.net;
 import java.util.EnumSet;
 
 import org.lealone.aose.gms.Gossiper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
 class MessageDeliveryTask implements Runnable {

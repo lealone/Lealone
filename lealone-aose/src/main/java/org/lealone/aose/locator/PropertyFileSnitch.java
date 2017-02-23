@@ -31,8 +31,8 @@ import org.lealone.aose.util.ResourceWatcher;
 import org.lealone.aose.util.Utils;
 import org.lealone.aose.util.WrappedRunnable;
 import org.lealone.common.exceptions.ConfigurationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 /**
  * Used to determine if two IP's are in the same datacenter or on the same rack.

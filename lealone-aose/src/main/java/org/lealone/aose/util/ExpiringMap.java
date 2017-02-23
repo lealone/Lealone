@@ -24,12 +24,12 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.lealone.aose.concurrent.DebuggableScheduledThreadPoolExecutor;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
+
 import com.google.common.base.Function;
 import com.google.common.util.concurrent.Uninterruptibles;
-
-import org.lealone.aose.concurrent.DebuggableScheduledThreadPoolExecutor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ExpiringMap<K, V> {
     private static final Logger logger = LoggerFactory.getLogger(ExpiringMap.class);
@@ -75,6 +75,7 @@ public class ExpiringMap<K, V> {
         }
 
         Runnable runnable = new Runnable() {
+            @Override
             public void run() {
                 long start = System.nanoTime();
                 int n = 0;

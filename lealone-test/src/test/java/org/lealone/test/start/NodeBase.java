@@ -20,13 +20,18 @@ package org.lealone.test.start;
 import org.lealone.aose.config.Config;
 import org.lealone.aose.config.YamlConfigurationLoader;
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.main.Lealone;
 
 import io.vertx.core.impl.FileResolver;
 
 public class NodeBase extends YamlConfigurationLoader {
-    public static void init(Class<?> loader) {
-        // System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME,
-        // "org.lealone.common.logging.Log4jLogDelegateFactory");
+
+    public static void run(Class<?> loader, String[] args) {
+        init(loader);
+        Lealone.main(args);
+    }
+
+    private static void init(Class<?> loader) {
         System.setProperty("lealone.config.loader", loader.getName());
         System.setProperty("lealone.config", "lealone-test.yaml");
         System.setProperty("lealone-foreground", "true"); // 打印输出到控制台

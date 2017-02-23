@@ -25,8 +25,8 @@ import org.lealone.aose.gms.EndpointState;
 import org.lealone.aose.gms.IEndpointStateChangeSubscriber;
 import org.lealone.aose.gms.VersionedValue;
 import org.lealone.aose.net.MessagingService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 /**
  * Sidekick helper for snitches that want to reconnect from one IP addr for a node to another.

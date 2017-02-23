@@ -18,19 +18,16 @@
 package org.lealone.test.start.two_data_center;
 
 import org.lealone.aose.locator.SnitchProperties;
-import org.lealone.main.Lealone;
 import org.lealone.test.start.NodeBase;
 
 public class TwoDCNodeBase extends NodeBase {
     public static void run(String rackdcPropertyFileName, Class<?> loader, String[] args) {
         System.setProperty(SnitchProperties.RACKDC_PROPERTY_FILENAME, rackdcPropertyFileName);
-        init(loader);
-        Lealone.main(args);
+        NodeBase.run(loader, args);
     }
 
     public TwoDCNodeBase() {
         nodeBaseDirPrefix = "cluster/twodc-";
-
         endpoint_snitch = "GossipingPropertyFileSnitch";
     }
 }

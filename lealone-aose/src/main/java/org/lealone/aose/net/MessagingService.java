@@ -78,8 +78,8 @@ import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.concurrent.SimpleCondition;
 import org.lealone.common.exceptions.ConfigurationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;

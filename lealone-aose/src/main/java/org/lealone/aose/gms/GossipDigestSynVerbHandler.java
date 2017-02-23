@@ -29,8 +29,8 @@ import org.lealone.aose.net.IVerbHandler;
 import org.lealone.aose.net.MessageIn;
 import org.lealone.aose.net.MessageOut;
 import org.lealone.aose.net.MessagingService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestSynVerbHandler.class);

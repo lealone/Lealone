@@ -30,12 +30,10 @@ import org.lealone.aose.util.ResourceWatcher;
 import org.lealone.aose.util.Utils;
 import org.lealone.aose.util.WrappedRunnable;
 import org.lealone.common.exceptions.ConfigurationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
-public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch// implements
-// IEndpointStateChangeSubscriber
-{
+public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
     private static final Logger logger = LoggerFactory.getLogger(GossipingPropertyFileSnitch.class);
 
     private PropertyFileSnitch psnitch;
@@ -69,18 +67,21 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch//
                     PropertyFileSnitch.SNITCH_PROPERTIES_FILENAME);
         }
 
+        String fileName = null;
         try {
-            Utils.resourceToFile(SnitchProperties.RACKDC_PROPERTY_FILENAME);
+            fileName = System.getProperty(SnitchProperties.RACKDC_PROPERTY_FILENAME);
+            if (fileName == null)
+                fileName = SnitchProperties.RACKDC_PROPERTY_FILENAME;
+            Utils.resourceToFile(fileName);
             Runnable runnable = new WrappedRunnable() {
                 @Override
                 protected void runMayThrow() throws ConfigurationException {
                     reloadConfiguration();
                 }
             };
-            ResourceWatcher.watch(SnitchProperties.RACKDC_PROPERTY_FILENAME, runnable, refreshPeriodInSeconds * 1000);
+            ResourceWatcher.watch(fileName, runnable, refreshPeriodInSeconds * 1000);
         } catch (ConfigurationException ex) {
-            logger.error("{} found, but does not look like a plain file. Will not watch it for changes",
-                    SnitchProperties.RACKDC_PROPERTY_FILENAME);
+            logger.error("{} found, but does not look like a plain file. Will not watch it for changes", fileName);
         }
     }
 

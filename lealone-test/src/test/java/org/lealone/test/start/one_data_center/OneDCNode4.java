@@ -19,7 +19,7 @@ package org.lealone.test.start.one_data_center;
 
 public class OneDCNode4 extends OneDCNodeBase {
     public static void main(String[] args) {
-        OneDCNodeBase.run(OneDCNode4.class, args);
+        run(OneDCNode4.class, args);
     }
 
     public OneDCNode4() {
