@@ -76,7 +76,6 @@ import com.google.common.util.concurrent.Uninterruptibles;
  * Upon hearing a GossipShutdownMessage, this module will instantly mark the remote node as down in
  * the Failure Detector.
  */
-
 public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
 

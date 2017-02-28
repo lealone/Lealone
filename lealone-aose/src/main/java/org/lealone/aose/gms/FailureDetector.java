@@ -56,7 +56,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     protected static final long INITIAL_VALUE_NANOS = TimeUnit.NANOSECONDS.convert(getInitialValue(),
             TimeUnit.MILLISECONDS);
 
-    public static final IFailureDetector instance = new FailureDetector();
+    public static final FailureDetector instance = new FailureDetector();
 
     // this is useless except to provide backwards compatibility in phi_convict_threshold,
     // because everyone seems pretty accustomed to the default of 8, and users who have

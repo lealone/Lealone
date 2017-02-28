@@ -93,7 +93,7 @@ server_encryption_options:
 
 #方便在eclipse中debug，不会产生超时
 request_timeout_in_ms: 100000000
-
+#request_timeout_in_ms: 2000
 #auto_bootstrap: false
 
 

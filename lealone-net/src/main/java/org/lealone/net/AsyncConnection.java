@@ -6,10 +6,6 @@
  */
 package org.lealone.net;
 
-import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.net.NetSocket;
-
 import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -49,6 +45,10 @@ import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
 import org.lealone.storage.type.WriteBufferPool;
 
+import io.vertx.core.Handler;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.net.NetSocket;
+
 /**
  * An async tcp connection.
  * 
@@ -76,7 +76,7 @@ public class AsyncConnection implements Handler<Buffer> {
     private String baseDir;
     private boolean ifExists;
 
-    private final NetSocket socket;
+    protected final NetSocket socket;
     private final boolean isServer;
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
@@ -162,11 +162,11 @@ public class AsyncConnection implements Handler<Buffer> {
         try {
             int minClientVersion = transfer.readInt();
             if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_MIN) {
-                throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion, ""
-                        + Constants.TCP_PROTOCOL_VERSION_MIN);
+                throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion,
+                        "" + Constants.TCP_PROTOCOL_VERSION_MIN);
             } else if (minClientVersion > Constants.TCP_PROTOCOL_VERSION_MAX) {
-                throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion, ""
-                        + Constants.TCP_PROTOCOL_VERSION_MAX);
+                throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion,
+                        "" + Constants.TCP_PROTOCOL_VERSION_MAX);
             }
             int clientVersion;
             int maxClientVersion = transfer.readInt();
@@ -257,7 +257,7 @@ public class AsyncConnection implements Handler<Buffer> {
     /**
      * Close a connection.
      */
-    void close() {
+    protected void close() {
         try {
             for (Session s : sessions.values())
                 closeSession(s);
@@ -350,8 +350,8 @@ public class AsyncConnection implements Handler<Buffer> {
         transfer.flush();
     }
 
-    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id,
-            PreparedStatement command, int operation, int objectId, int maxRows, int fetchSize) throws IOException {
+    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
+            int operation, int objectId, int maxRows, int fetchSize) throws IOException {
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
             @Override
             public void run() {
@@ -427,7 +427,7 @@ public class AsyncConnection implements Handler<Buffer> {
         sessionInfo.commandHandler.wakeUp();
     }
 
-    void sendError(Transfer transfer, int id, Throwable t) {
+    protected void sendError(Transfer transfer, int id, Throwable t) {
         try {
             SQLException e = DbException.convert(t).getSQLException();
             StringWriter writer = new StringWriter();
@@ -507,8 +507,7 @@ public class AsyncConnection implements Handler<Buffer> {
         transfer.writeResponseHeader(id, getStatus(session));
     }
 
-    private void processRequest(Transfer transfer, int id) throws IOException {
-        int operation = transfer.readInt();
+    protected void processRequest(Transfer transfer, int id, int operation) throws IOException {
         switch (operation) {
         case Session.SESSION_INIT: {
             readInitPacket(transfer, id);
@@ -849,8 +848,8 @@ public class AsyncConnection implements Handler<Buffer> {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             if (lobs == null) {
-                lobs = SmallLRUCache.newInstance(Math.max(SysProperties.SERVER_CACHED_OBJECTS,
-                        SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+                lobs = SmallLRUCache.newInstance(
+                        Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
             }
             long lobId = transfer.readLong();
             byte[] hmac = transfer.readBytes();
@@ -993,7 +992,8 @@ public class AsyncConnection implements Handler<Buffer> {
         // id = id >>> 1;
         if (isRequest) {
             try {
-                processRequest(transfer, id);
+                int operation = transfer.readInt();
+                processRequest(transfer, id, operation);
             } catch (Throwable e) {
                 logger.error("process request", e);
                 sendError(transfer, id, e);

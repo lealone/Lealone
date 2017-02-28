@@ -40,7 +40,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -68,6 +70,7 @@ import org.lealone.aose.locator.ILatencySubscriber;
 import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.metrics.DroppedMessageMetrics;
 import org.lealone.aose.security.SSLFactory;
+import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.server.PullSchema;
 import org.lealone.aose.server.PullSchemaAck;
 import org.lealone.aose.server.PullSchemaAckVerbHandler;
@@ -76,14 +79,23 @@ import org.lealone.aose.util.ExpiringMap;
 import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
+import org.lealone.api.ErrorCode;
 import org.lealone.common.concurrent.SimpleCondition;
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.net.NetClient;
+import io.vertx.core.net.NetClientOptions;
+import io.vertx.core.net.NetServer;
+import io.vertx.core.net.NetSocket;
 
 @SuppressWarnings({ "rawtypes" })
 public final class MessagingService implements MessagingServiceMBean {
@@ -348,12 +360,21 @@ public final class MessagingService implements MessagingServiceMBean {
         return listenGate.isSignaled();
     }
 
+    private final List<SocketThread2> socketThreads2 = Lists.newArrayList();
+
     /**
      * Listen on the specified port.
      *
      * @param localEp InetAddress whose port to listen on.
      */
     public void listen(InetAddress localEp) throws ConfigurationException {
+        callbacks.reset(); // hack to allow tests to stop/restart MS
+        SocketThread2 th = new SocketThread2("ACCEPT-" + localEp, listenGate);
+        th.start();
+        socketThreads2.add(th);
+    }
+
+    public void listenOld(InetAddress localEp) throws ConfigurationException {
         callbacks.reset(); // hack to allow tests to stop/restart MS
         for (ServerSocket ss : getServerSockets(localEp)) {
             SocketThread th = new SocketThread(ss, "ACCEPT-" + localEp);
@@ -494,6 +515,103 @@ public final class MessagingService implements MessagingServiceMBean {
         }
     }
 
+    private static Vertx vertx;
+    private static NetClient client;
+
+    private final ConcurrentHashMap<String, TcpConnection> asyncConnections = new ConcurrentHashMap<>();
+
+    void addConnection(TcpConnection conn) {
+        TcpConnection oldConn = asyncConnections.put(conn.getHostId(), conn);
+        if (oldConn != null) {
+            oldConn.close();
+        }
+    }
+
+    private static class SocketThread2 extends Thread {
+        private NetServer server;
+        private Integer blockedThreadCheckInterval;
+        private final Set<Closeable> connections = Sets.newConcurrentHashSet();
+        SimpleCondition listenGate;
+
+        SocketThread2(String name, SimpleCondition listenGate) {
+            super(name);
+            this.listenGate = listenGate;
+        }
+
+        @Override
+        public void run() {
+            synchronized (SocketThread2.class) {
+                if (vertx == null) {
+                    VertxOptions opt = new VertxOptions();
+                    if (blockedThreadCheckInterval != null) {
+                        if (blockedThreadCheckInterval <= 0)
+                            blockedThreadCheckInterval = Integer.MAX_VALUE;
+
+                        opt.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
+                    }
+                    opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
+                    vertx = Vertx.vertx(opt);
+
+                    NetClientOptions options = new NetClientOptions().setConnectTimeout(10000);
+                    client = vertx.createNetClient(options);
+                }
+            }
+            server = vertx.createNetServer();
+            server.connectHandler(socket -> {
+                if (SocketThread2.this.authenticate(socket)) {
+                    TcpConnection c = new TcpConnection(socket, true);
+                    socket.handler(c);
+                } else {
+                    // TODO
+                    // should support a list of allowed databases
+                    // and a list of allowed clients
+                    socket.close();
+                    throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
+                }
+            });
+
+            CountDownLatch latch = new CountDownLatch(1);
+            server.listen(ConfigDescriptor.getStoragePort(), ConfigDescriptor.getListenAddress().getHostAddress(),
+                    res -> {
+                        latch.countDown();
+                        if (res.succeeded()) {
+                            logger.info("MessagingService listening on port " + ConfigDescriptor.getStoragePort());
+                        } else {
+                            throw DbException.convert(res.cause());
+                        }
+                    });
+            try {
+                latch.await();
+                listenGate.signalAll();
+            } catch (InterruptedException e) {
+                throw DbException.convert(e);
+            }
+        }
+
+        void close() throws IOException {
+            logger.trace("Closing accept() thread");
+
+            try {
+                server.close();
+            } catch (Exception e) {
+                // dirty hack for clean shutdown on OSX w/ Java >= 1.8.0_20
+                // see https://issues.apache.org/jira/browse/CASSANDRA-8220
+                // see https://bugs.openjdk.java.net/browse/JDK-8050499
+                if (!"Unknown error: 316".equals(e.getMessage()) || !"Mac OS X".equals(System.getProperty("os.name")))
+                    throw e;
+            }
+
+            for (Closeable connection : connections) {
+                connection.close();
+            }
+        }
+
+        private boolean authenticate(NetSocket socket) {
+            return true;
+            // return ConfigDescriptor.getInternodeAuthenticator().authenticate(socket.remoteAddress(), 990);
+        }
+    }
+
     public static int getBits(int packed, int start, int count) {
         return packed >>> (start + 1) - count & ~(-1 << count);
     }
@@ -578,14 +696,55 @@ public final class MessagingService implements MessagingServiceMBean {
                 logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
         }
 
-        // get pooled connection (really, connection queue)
-        OutboundTcpConnection connection = getConnection(to);
+        // // get pooled connection (really, connection queue)
+        // OutboundTcpConnection connection = getConnection(to);
+        // // write it
+        // connection.enqueue(message, id);
 
-        // write it
-        connection.enqueue(message, id);
+        TcpConnection conn = getConnection(to);
+        if (conn != null)
+            conn.enqueue(message, id);
     }
 
-    public OutboundTcpConnection getConnection(InetAddress to) {
+    public TcpConnection getConnection(InetAddress remoteEndpoint) {
+        InetAddress resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
+        // 不能用resetEndpoint.getHostName()，很慢
+        String hostAndPort = resetEndpoint.getHostAddress() + ":" + ConfigDescriptor.getStoragePort();
+
+        TcpConnection asyncConnection = asyncConnections.get(hostAndPort);
+        if (asyncConnection == null) {
+            synchronized (TcpConnection.class) {
+                asyncConnection = asyncConnections.get(hostAndPort);
+                if (asyncConnection == null) {
+                    CountDownLatch latch = new CountDownLatch(1);
+                    client.connect(ConfigDescriptor.getStoragePort(), resetEndpoint.getHostAddress(), res -> {
+                        try {
+                            if (res.succeeded()) {
+                                NetSocket socket = res.result();
+                                TcpConnection conn = new TcpConnection(socket, false);
+                                socket.handler(conn);
+                                asyncConnections.put(hostAndPort, conn);
+                            } else {
+                                throw DbException.convert(res.cause());
+                            }
+                        } finally {
+                            latch.countDown();
+                        }
+                    });
+                    try {
+                        latch.await();
+                        asyncConnection = asyncConnections.get(hostAndPort);
+                        asyncConnection.initTransfer(resetEndpoint, hostAndPort);
+                    } catch (Exception e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            }
+        }
+        return asyncConnection;
+    }
+
+    public OutboundTcpConnection getConnectionOld(InetAddress to) {
         OutboundTcpConnection conn = connectionManagers.get(to);
         if (conn == null) {
             conn = new OutboundTcpConnection(to);
@@ -639,6 +798,8 @@ public final class MessagingService implements MessagingServiceMBean {
         // attempt to humor tests that try to stop and restart MS
         try {
             for (SocketThread th : socketThreads)
+                th.close();
+            for (SocketThread2 th : socketThreads2)
                 th.close();
         } catch (IOException e) {
             throw new IOError(e);

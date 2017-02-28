@@ -6,9 +6,6 @@
  */
 package org.lealone.net;
 
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.net.NetSocket;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -56,6 +53,9 @@ import org.lealone.db.value.ValueStringIgnoreCase;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
+
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.net.NetSocket;
 
 /**
  * The transfer class is used to send and receive Value objects.
@@ -136,6 +136,10 @@ public class Transfer {
 
     public DataInputStream getDataInputStream() {
         return in;
+    }
+
+    public DataOutputStream getDataOutputStream() {
+        return out;
     }
 
     public int available() {

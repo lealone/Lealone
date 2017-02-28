@@ -461,8 +461,8 @@ public class StorageServer extends NotificationBroadcasterSupport
                 // Note that the endpoint is being removed
                 topologyMetaData.addLeavingEndpoint(endpoint);
             }
-        } else // now that the gossiper has told us about this nonexistent member, notify the gossiper to remove it
-        {
+        } else {
+            // now that the gossiper has told us about this nonexistent member, notify the gossiper to remove it
             if (VersionedValue.REMOVED_TOKEN.equals(pieces[0]))
                 addExpireTimeIfFound(endpoint, extractExpireTime(pieces));
             removeEndpoint(endpoint);
@@ -669,7 +669,7 @@ public class StorageServer extends NotificationBroadcasterSupport
 
     @Override
     public String getHost() {
-        return ConfigDescriptor.getListenAddress().getHostName();
+        return ConfigDescriptor.getListenAddress().getHostAddress();
     }
 
     @Override
