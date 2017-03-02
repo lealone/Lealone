@@ -51,6 +51,7 @@ import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Database;
 import org.lealone.server.ProtocolServer;
 
@@ -115,6 +116,7 @@ public class StorageServer extends NotificationBroadcasterSupport
     private Mode operationMode = Mode.STARTING;
 
     public volatile boolean pullSchemaFinished;
+    private ServerEncryptionOptions options;
 
     private StorageServer() {
     }
@@ -690,5 +692,14 @@ public class StorageServer extends NotificationBroadcasterSupport
     @Override
     public boolean isDaemon() {
         return true;
+    }
+
+    @Override
+    public void setServerEncryptionOptions(ServerEncryptionOptions options) {
+        this.options = options;
+    }
+
+    public ServerEncryptionOptions getServerEncryptionOptions() {
+        return options;
     }
 }

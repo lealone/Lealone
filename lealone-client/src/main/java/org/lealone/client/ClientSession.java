@@ -5,12 +5,6 @@
  */
 package org.lealone.client;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import io.vertx.core.net.NetClient;
-import io.vertx.core.net.NetClientOptions;
-import io.vertx.core.net.NetSocket;
-
 import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
@@ -39,6 +33,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
+import org.lealone.net.NetFactory;
 import org.lealone.net.Transfer;
 import org.lealone.replication.ReplicationSession;
 import org.lealone.sql.ParsedStatement;
@@ -48,6 +43,12 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
+
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.net.NetClient;
+import io.vertx.core.net.NetClientOptions;
+import io.vertx.core.net.NetSocket;
 
 /**
  * The client side part of a session when using the server mode. 
@@ -84,7 +85,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     VertxOptions opt = new VertxOptions();
                     opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
                     vertx = Vertx.vertx(opt);
-                    NetClientOptions options = new NetClientOptions().setConnectTimeout(10000);
+                    NetClientOptions options = NetFactory.getNetClientOptions(ci.getProperties());
+                    options.setConnectTimeout(10000);
                     client = vertx.createNetClient(options);
                 }
             }

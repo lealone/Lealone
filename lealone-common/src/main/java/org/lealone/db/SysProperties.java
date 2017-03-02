@@ -82,19 +82,6 @@ public class SysProperties {
     public static final String ALLOWED_CLASSES = getProperty("allowed.classes", "*");
 
     /**
-     * System property <code>enable.anonymous.ssl</code> (default: true).<br />
-     * When using SSL connection, the anonymous cipher suite
-     * SSL_DH_anon_WITH_RC4_128_MD5 should be enabled.
-     */
-    public static final boolean ENABLE_ANONYMOUS_SSL = getProperty("enable.anonymous.ssl", true);
-
-    /**
-     * System property <code>bind.address</code> (default: null).<br />
-     * The bind address to use.
-     */
-    public static final String BIND_ADDRESS = getProperty("bind.address", null);
-
-    /**
      * System property <code>check</code> (default: true).<br />
      * Assertions in the database engine.
      */
@@ -265,13 +252,13 @@ public class SysProperties {
      * to open a socket, see bug
      * http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6213296
      */
-    public static final int SOCKET_CONNECT_RETRY = getProperty("socket.connect.retry", 16);
+    // public static final int SOCKET_CONNECT_RETRY = getProperty("socket.connect.retry", 16);
 
     /**
      * System property <code>socket.connect.timeout</code> (default: 2000).<br />
      * The timeout in milliseconds to connect to a server.
      */
-    public static final int SOCKET_CONNECT_TIMEOUT = getProperty("socket.connect.timeout", 2000);
+    // public static final int SOCKET_CONNECT_TIMEOUT = getProperty("socket.connect.timeout", 2000);
 
     /**
      * System property <code>sort.nulls.high</code> (default: false).<br />

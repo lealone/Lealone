@@ -7,17 +7,17 @@
 package org.lealone.server;
 
 import java.net.InetAddress;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.NetUtils;
+import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.CommandHandler;
+import org.lealone.net.NetFactory;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
@@ -48,6 +48,7 @@ public class TcpServer implements ProtocolServer {
     private Integer blockedThreadCheckInterval;
     private NetServer server;
     private boolean stop;
+    private ServerEncryptionOptions options;
 
     @Override
     public void init(Map<String, String> config) { // TODO 对于不支持的参数直接报错
@@ -81,7 +82,7 @@ public class TcpServer implements ProtocolServer {
                 vertx = Vertx.vertx(opt);
             }
         }
-        server = vertx.createNetServer();
+        server = NetFactory.createNetServer(vertx, options);
         server.connectHandler(socket -> {
             if (TcpServer.this.allow(socket)) {
                 AsyncConnection ac = new AsyncConnection(socket, true);
@@ -142,13 +143,7 @@ public class TcpServer implements ProtocolServer {
         if (stop) {
             return false;
         }
-        try {
-            Socket s = NetUtils.createLoopbackSocket(port, ssl);
-            s.close();
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
+        return true;
     }
 
     @Override
@@ -228,6 +223,11 @@ public class TcpServer implements ProtocolServer {
 
     boolean getIfExists() {
         return ifExists;
+    }
+
+    @Override
+    public void setServerEncryptionOptions(ServerEncryptionOptions options) {
+        this.options = options;
     }
 
 }

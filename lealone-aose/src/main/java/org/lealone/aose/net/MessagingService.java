@@ -54,7 +54,6 @@ import org.lealone.aose.concurrent.ScheduledExecutors;
 import org.lealone.aose.concurrent.Stage;
 import org.lealone.aose.concurrent.StageManager;
 import org.lealone.aose.config.ConfigDescriptor;
-import org.lealone.aose.config.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.aose.gms.EchoMessage;
 import org.lealone.aose.gms.EchoVerbHandler;
 import org.lealone.aose.gms.GossipDigestAck;
@@ -75,6 +74,7 @@ import org.lealone.aose.server.PullSchema;
 import org.lealone.aose.server.PullSchemaAck;
 import org.lealone.aose.server.PullSchemaAckVerbHandler;
 import org.lealone.aose.server.PullSchemaVerbHandler;
+import org.lealone.aose.server.StorageServer;
 import org.lealone.aose.util.ExpiringMap;
 import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Pair;
@@ -85,6 +85,8 @@ import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.net.NetFactory;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
@@ -552,11 +554,13 @@ public final class MessagingService implements MessagingServiceMBean {
                     opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
                     vertx = Vertx.vertx(opt);
 
-                    NetClientOptions options = new NetClientOptions().setConnectTimeout(10000);
+                    NetClientOptions options = NetFactory
+                            .getNetClientOptions(ConfigDescriptor.getClientEncryptionOptions());
+                    options.setConnectTimeout(10000);
                     client = vertx.createNetClient(options);
                 }
             }
-            server = vertx.createNetServer();
+            server = NetFactory.createNetServer(vertx, StorageServer.instance.getServerEncryptionOptions());
             server.connectHandler(socket -> {
                 if (SocketThread2.this.authenticate(socket)) {
                     TcpConnection c = new TcpConnection(socket, true);

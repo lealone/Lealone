@@ -82,6 +82,7 @@ public class AES implements BlockCipher {
         return RT0[FS[(t >> 24) & 255]] ^ RT1[FS[(t >> 16) & 255]] ^ RT2[FS[(t >> 8) & 255]] ^ RT3[FS[t & 255]];
     }
 
+    @Override
     public void setKey(byte[] key) {
         for (int i = 0, j = 0; i < 4; i++) {
             encKey[i] = decKey[i] = ((key[j++] & 255) << 24) | ((key[j++] & 255) << 16) | ((key[j++] & 255) << 8)
@@ -115,12 +116,19 @@ public class AES implements BlockCipher {
         decKey[d] = encKey[e];
     }
 
+    @Override
+    public int getKeyLength() {
+        return 16;
+    }
+
+    @Override
     public void encrypt(byte[] bytes, int off, int len) {
         for (int i = off; i < off + len; i += 16) {
             encryptBlock(bytes, bytes, i);
         }
     }
 
+    @Override
     public void decrypt(byte[] bytes, int off, int len) {
         for (int i = off; i < off + len; i += 16) {
             decryptBlock(bytes, bytes, i);
@@ -269,10 +277,6 @@ public class AES implements BlockCipher {
         out[off + 13] = (byte) (x3 >> 16);
         out[off + 14] = (byte) (x3 >> 8);
         out[off + 15] = (byte) x3;
-    }
-
-    public int getKeyLength() {
-        return 16;
     }
 
 }

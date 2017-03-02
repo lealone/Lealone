@@ -31,8 +31,6 @@ import java.util.Set;
 
 import org.lealone.aose.auth.AllowAllInternodeAuthenticator;
 import org.lealone.aose.auth.IInternodeAuthenticator;
-import org.lealone.aose.config.EncryptionOptions.ClientEncryptionOptions;
-import org.lealone.aose.config.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.locator.DynamicEndpointSnitch;
 import org.lealone.aose.locator.EndpointSnitchInfo;
@@ -43,6 +41,8 @@ import org.lealone.aose.net.MessagingService;
 import org.lealone.aose.server.StorageServer;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
+import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;

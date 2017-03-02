@@ -85,6 +85,7 @@ endpoint_snitch: SimpleSnitch
 dynamic_snitch: true
 
 server_encryption_options:
+    enabled: false
     internode_encryption: none
     keystore: conf/.keystore
     keystore_password: lealone

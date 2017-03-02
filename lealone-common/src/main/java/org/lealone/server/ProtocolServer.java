@@ -8,6 +8,8 @@ package org.lealone.server;
 
 import java.util.Map;
 
+import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+
 /**
  * Classes implementing this interface usually provide a
  * TCP/IP listener such as an FTP server.
@@ -92,5 +94,7 @@ public interface ProtocolServer {
      * @return true if a daemon thread should be used
      */
     boolean isDaemon();
+
+    void setServerEncryptionOptions(ServerEncryptionOptions options);
 
 }

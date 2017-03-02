@@ -216,6 +216,8 @@ public class Lealone {
             throws Exception {
         if (!parameters.containsKey("host") && Config.getProperty("tcp.listen.address") != null)
             parameters.put("host", Config.getProperty("tcp.listen.address"));
+        if (config.server_encryption_options.enabled)
+            server.setServerEncryptionOptions(config.server_encryption_options);
         server.init(parameters);
         server.start();
         final String name = server.getName();

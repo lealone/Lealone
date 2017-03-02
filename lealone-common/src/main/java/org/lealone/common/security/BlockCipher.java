@@ -25,6 +25,13 @@ public interface BlockCipher {
     void setKey(byte[] key);
 
     /**
+     * Get the length of the key in bytes.
+     *
+     * @return the length of the key
+     */
+    int getKeyLength();
+
+    /**
      * Encrypt a number of bytes. This is done in-place, that
      * means the bytes are overwritten.
      *
@@ -43,12 +50,5 @@ public interface BlockCipher {
      * @param len the number of bytes to decrypt
      */
     void decrypt(byte[] bytes, int off, int len);
-
-    /**
-     * Get the length of the key in bytes.
-     *
-     * @return the length of the key
-     */
-    int getKeyLength();
 
 }

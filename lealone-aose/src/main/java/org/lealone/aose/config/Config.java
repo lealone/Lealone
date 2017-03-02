@@ -19,8 +19,8 @@ package org.lealone.aose.config;
 
 import java.util.List;
 
-import org.lealone.aose.config.EncryptionOptions.ClientEncryptionOptions;
-import org.lealone.aose.config.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
+import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
 
 public class Config {

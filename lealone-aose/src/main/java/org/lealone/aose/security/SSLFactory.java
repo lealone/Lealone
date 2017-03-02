@@ -34,11 +34,11 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
-import org.lealone.aose.config.EncryptionOptions;
 import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.security.EncryptionOptions;
 
 import com.google.common.collect.Sets;
 
