@@ -25,7 +25,6 @@ import java.util.Map;
 
 import org.lealone.aose.concurrent.Stage;
 import org.lealone.aose.config.ConfigDescriptor;
-import org.lealone.aose.io.IVersionedSerializer;
 import org.lealone.aose.util.FileUtils;
 
 import com.google.common.collect.ImmutableMap;

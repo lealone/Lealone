@@ -18,10 +18,10 @@
 package org.lealone.aose.server;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
+import org.lealone.aose.net.IVersionedSerializer;
 
 public class PullSchema {
 
@@ -29,7 +29,7 @@ public class PullSchema {
 
     private static class PullSchemaSerializer implements IVersionedSerializer<PullSchema> {
         @Override
-        public void serialize(PullSchema t, DataOutputPlus out, int version) throws IOException {
+        public void serialize(PullSchema t, DataOutput out, int version) throws IOException {
         }
 
         @Override

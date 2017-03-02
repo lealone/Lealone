@@ -56,16 +56,6 @@
             <version>2.2.0</version>
         </dependency>
         <dependency>
-            <groupId>net.jpountz.lz4</groupId>
-            <artifactId>lz4</artifactId>
-            <version>1.2.0</version>
-        </dependency>
-        <dependency>
-            <groupId>net.ju-n.compile-command-annotations</groupId>
-            <artifactId>compile-command-annotations</artifactId>
-            <version>1.2.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
             <version>1.11</version>

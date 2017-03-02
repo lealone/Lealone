@@ -17,6 +17,7 @@
  */
 package org.lealone.aose.net;
 
+import java.io.DataOutput;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Collections;
@@ -24,8 +25,6 @@ import java.util.Map;
 
 import org.lealone.aose.concurrent.Stage;
 import org.lealone.aose.config.ConfigDescriptor;
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
 import org.lealone.aose.util.TypeSizes;
 import org.lealone.aose.util.Utils;
 
@@ -84,7 +83,7 @@ public class MessageOut<T> {
         return sbuf.toString();
     }
 
-    public void serialize(DataOutputPlus out, int version) throws IOException {
+    public void serialize(DataOutput out, int version) throws IOException {
         CompactEndpointSerializationHelper.serialize(from, out);
 
         out.writeInt(verb.ordinal());

@@ -38,8 +38,8 @@ import javax.management.ObjectName;
 
 import org.lealone.aose.config.Config;
 import org.lealone.aose.config.ConfigDescriptor;
-import org.lealone.aose.io.FSWriteError;
 import org.lealone.aose.util.BoundedStatsDeque;
+import org.lealone.aose.util.FSWriteError;
 import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.logging.Logger;

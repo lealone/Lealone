@@ -18,18 +18,18 @@
 package org.lealone.aose.gms;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lealone.aose.io.DataOutputPlus;
 import org.lealone.aose.util.TypeSizes;
 
 class GossipDigestSerializationHelper {
     private GossipDigestSerializationHelper() {
     }
 
-    static void serialize(List<GossipDigest> gDigestList, DataOutputPlus out, int version) throws IOException {
+    static void serialize(List<GossipDigest> gDigestList, DataOutput out, int version) throws IOException {
         out.writeInt(gDigestList.size());
         for (GossipDigest gDigest : gDigestList)
             GossipDigest.serializer.serialize(gDigest, out, version);

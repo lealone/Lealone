@@ -18,11 +18,11 @@
 package org.lealone.aose.gms;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
+import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.util.TypeSizes;
 
 /**
@@ -46,7 +46,7 @@ public class GossipDigestSyn {
 
     private static class GossipDigestSynSerializer implements IVersionedSerializer<GossipDigestSyn> {
         @Override
-        public void serialize(GossipDigestSyn gDigestSynMessage, DataOutputPlus out, int version) throws IOException {
+        public void serialize(GossipDigestSyn gDigestSynMessage, DataOutput out, int version) throws IOException {
             out.writeUTF(gDigestSynMessage.clusterId);
             GossipDigestSerializationHelper.serialize(gDigestSynMessage.gDigests, out, version);
         }

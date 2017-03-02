@@ -19,20 +19,13 @@ package org.lealone.aose.net;
 
 import java.io.Closeable;
 import java.io.DataInput;
-import java.io.DataInputStream;
+import java.io.DataOutput;
 import java.io.IOError;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.BindException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.nio.channels.AsynchronousCloseException;
-import java.nio.channels.ClosedChannelException;
-import java.nio.channels.ServerSocketChannel;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -63,12 +56,9 @@ import org.lealone.aose.gms.GossipDigestAckVerbHandler;
 import org.lealone.aose.gms.GossipDigestSyn;
 import org.lealone.aose.gms.GossipDigestSynVerbHandler;
 import org.lealone.aose.gms.GossipShutdownVerbHandler;
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
 import org.lealone.aose.locator.ILatencySubscriber;
 import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.metrics.DroppedMessageMetrics;
-import org.lealone.aose.security.SSLFactory;
 import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.server.PullSchema;
 import org.lealone.aose.server.PullSchemaAck;
@@ -76,10 +66,8 @@ import org.lealone.aose.server.PullSchemaAckVerbHandler;
 import org.lealone.aose.server.PullSchemaVerbHandler;
 import org.lealone.aose.server.StorageServer;
 import org.lealone.aose.util.ExpiringMap;
-import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
-import org.lealone.api.ErrorCode;
 import org.lealone.common.concurrent.SimpleCondition;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.exceptions.DbException;
@@ -97,6 +85,7 @@ import io.vertx.core.VertxOptions;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetClientOptions;
 import io.vertx.core.net.NetServer;
+import io.vertx.core.net.NetServerOptions;
 import io.vertx.core.net.NetSocket;
 
 @SuppressWarnings({ "rawtypes" })
@@ -215,7 +204,7 @@ public final class MessagingService implements MessagingServiceMBean {
         }
 
         @Override
-        public void serialize(Object o, DataOutputPlus out, int version) throws IOException {
+        public void serialize(Object o, DataOutput out, int version) throws IOException {
             throw new UnsupportedOperationException();
         }
 
@@ -231,9 +220,8 @@ public final class MessagingService implements MessagingServiceMBean {
     /* Lookup table for registering message handlers based on the verb. */
     private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);;
 
-    private final ConcurrentMap<InetAddress, OutboundTcpConnection> connectionManagers = new NonBlockingHashMap<>();
+    private final ConcurrentMap<InetAddress, TcpConnection> connectionManagers = new NonBlockingHashMap<>();
 
-    private final List<SocketThread> socketThreads = Lists.newArrayList();
     private final SimpleCondition listenGate = new SimpleCondition();
 
     // total dropped message counts for server lifetime
@@ -362,7 +350,7 @@ public final class MessagingService implements MessagingServiceMBean {
         return listenGate.isSignaled();
     }
 
-    private final List<SocketThread2> socketThreads2 = Lists.newArrayList();
+    private final List<SocketThread> socketThreads = Lists.newArrayList();
 
     /**
      * Listen on the specified port.
@@ -371,150 +359,36 @@ public final class MessagingService implements MessagingServiceMBean {
      */
     public void listen(InetAddress localEp) throws ConfigurationException {
         callbacks.reset(); // hack to allow tests to stop/restart MS
-        SocketThread2 th = new SocketThread2("ACCEPT-" + localEp, listenGate);
-        th.start();
-        socketThreads2.add(th);
-    }
-
-    public void listenOld(InetAddress localEp) throws ConfigurationException {
-        callbacks.reset(); // hack to allow tests to stop/restart MS
-        for (ServerSocket ss : getServerSockets(localEp)) {
-            SocketThread th = new SocketThread(ss, "ACCEPT-" + localEp);
+        for (NetServer server : getNetServers(localEp)) {
+            SocketThread th = new SocketThread(server, "ACCEPT-" + localEp, listenGate);
             th.start();
             socketThreads.add(th);
         }
-        listenGate.signalAll();
     }
 
-    private List<ServerSocket> getServerSockets(InetAddress localEp) throws ConfigurationException {
-        final List<ServerSocket> ss = new ArrayList<>(2);
+    private List<NetServer> getNetServers(InetAddress localEp) throws ConfigurationException {
+        String host = localEp.getHostAddress();
+        final List<NetServer> servers = new ArrayList<>(2);
         ServerEncryptionOptions options = ConfigDescriptor.getServerEncryptionOptions();
         if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.none) {
-            try {
-                ss.add(SSLFactory.getServerSocket(options, localEp, ConfigDescriptor.getSSLStoragePort()));
-            } catch (IOException e) {
-                throw new ConfigurationException("Unable to create ssl socket", e);
-            }
-            // setReuseAddress happens in the factory.
+            NetServerOptions nso = NetFactory.getNetServerOptions(options);
+            nso.setHost(host);
+            nso.setPort(ConfigDescriptor.getSSLStoragePort());
+            NetServer server = vertx.createNetServer(nso);
+            servers.add(server);
             logger.info("Starting Encrypted Messaging Service on SSL port {}", ConfigDescriptor.getSSLStoragePort());
         }
 
         if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.all) {
-            ServerSocketChannel serverChannel = null;
-            try {
-                serverChannel = ServerSocketChannel.open();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            ServerSocket socket = serverChannel.socket();
-            try {
-                socket.setReuseAddress(true);
-            } catch (SocketException e) {
-                throw new ConfigurationException("Insufficient permissions to setReuseAddress", e);
-            }
-            InetSocketAddress address = new InetSocketAddress(localEp, ConfigDescriptor.getStoragePort());
-            try {
-                socket.bind(address, 500);
-            } catch (BindException e) {
-                if (e.getMessage().contains("in use"))
-                    throw new ConfigurationException(address + " is in use by another process.  "
-                            + "Change listen_address:storage_port in lealone.yaml "
-                            + "to values that do not conflict with other services");
-                else if (e.getMessage().contains("Cannot assign requested address"))
-                    throw new ConfigurationException("Unable to bind to address " + address
-                            + ". Set listen_address in lealone.yaml to an interface you can bind to, e.g.,"
-                            + " your private IP address on EC2");
-                else
-                    throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            NetServerOptions nso = NetFactory.getNetServerOptions(null);
+            nso.setHost(host);
+            nso.setPort(ConfigDescriptor.getStoragePort());
+            nso.setReuseAddress(true);
+            NetServer server = vertx.createNetServer(nso);
+            servers.add(server);
             logger.info("Starting Messaging Service on port {}", ConfigDescriptor.getStoragePort());
-            ss.add(socket);
         }
-        return ss;
-    }
-
-    private static class SocketThread extends Thread {
-        private final ServerSocket server;
-        private final Set<Closeable> connections = Sets.newConcurrentHashSet();
-
-        SocketThread(ServerSocket server, String name) {
-            super(name);
-            this.server = server;
-        }
-
-        @Override
-        public void run() {
-            while (!server.isClosed()) {
-                Socket socket = null;
-                try {
-                    socket = server.accept();
-                    if (!authenticate(socket)) {
-                        logger.trace("remote failed to authenticate");
-                        socket.close();
-                        continue;
-                    }
-                    // new IncomingTcpConnection(socket).start();
-
-                    socket.setKeepAlive(true);
-                    // socket.setSoTimeout(2 * OutboundTcpConnection.WAIT_FOR_VERSION_MAX_TIME);
-                    socket.setSoTimeout(2 * 1000000); // 我加上的，不让超时，方便调试
-                    // determine the connection type to decide whether to buffer
-                    DataInputStream in = new DataInputStream(socket.getInputStream());
-                    in.readInt(); // magic
-                    // MessagingService.validateMagic(in.readInt());
-                    // 写入的格式见:OutboundTcpConnection.connect()
-                    int header = in.readInt();
-                    // boolean isStream = MessagingService.getBits(header, 3, 1) == 1;
-                    int version = MessagingService.getBits(header, 15, 8);
-                    logger.trace("Connection version {} from {}", version, socket.getInetAddress());
-                    socket.setSoTimeout(0);
-
-                    Thread thread = new IncomingTcpConnection(version, MessagingService.getBits(header, 2, 1) == 1,
-                            socket, connections);
-                    thread.start();
-                    connections.add((Closeable) thread);
-
-                } catch (AsynchronousCloseException e) {
-                    if (logger.isDebugEnabled())
-                        // this happens when another thread calls close().
-                        logger.debug("Asynchronous close seen by server thread");
-                    break;
-                } catch (ClosedChannelException e) {
-                    if (logger.isDebugEnabled())
-                        logger.debug("MessagingService server thread already closed");
-                    break;
-                } catch (IOException e) {
-                    if (logger.isDebugEnabled())
-                        logger.debug("Error reading the socket " + socket, e);
-                    FileUtils.closeQuietly(socket);
-                }
-            }
-            logger.info("MessagingService has terminated the accept() thread");
-        }
-
-        void close() throws IOException {
-            logger.trace("Closing accept() thread");
-
-            try {
-                server.close();
-            } catch (IOException e) {
-                // dirty hack for clean shutdown on OSX w/ Java >= 1.8.0_20
-                // see https://issues.apache.org/jira/browse/CASSANDRA-8220
-                // see https://bugs.openjdk.java.net/browse/JDK-8050499
-                if (!"Unknown error: 316".equals(e.getMessage()) || !"Mac OS X".equals(System.getProperty("os.name")))
-                    throw e;
-            }
-
-            for (Closeable connection : connections) {
-                connection.close();
-            }
-        }
-
-        private boolean authenticate(Socket socket) {
-            return ConfigDescriptor.getInternodeAuthenticator().authenticate(socket.getInetAddress(), socket.getPort());
-        }
+        return servers;
     }
 
     private static Vertx vertx;
@@ -529,20 +403,21 @@ public final class MessagingService implements MessagingServiceMBean {
         }
     }
 
-    private static class SocketThread2 extends Thread {
+    private static class SocketThread extends Thread {
         private NetServer server;
         private Integer blockedThreadCheckInterval;
         private final Set<Closeable> connections = Sets.newConcurrentHashSet();
         SimpleCondition listenGate;
 
-        SocketThread2(String name, SimpleCondition listenGate) {
+        SocketThread(NetServer server, String name, SimpleCondition listenGate) {
             super(name);
+            this.server = server;
             this.listenGate = listenGate;
         }
 
         @Override
         public void run() {
-            synchronized (SocketThread2.class) {
+            synchronized (SocketThread.class) {
                 if (vertx == null) {
                     VertxOptions opt = new VertxOptions();
                     if (blockedThreadCheckInterval != null) {
@@ -562,28 +437,37 @@ public final class MessagingService implements MessagingServiceMBean {
             }
             server = NetFactory.createNetServer(vertx, StorageServer.instance.getServerEncryptionOptions());
             server.connectHandler(socket -> {
-                if (SocketThread2.this.authenticate(socket)) {
+                if (SocketThread.this.authenticate(socket)) {
                     TcpConnection c = new TcpConnection(socket, true);
                     socket.handler(c);
                 } else {
-                    // TODO
-                    // should support a list of allowed databases
-                    // and a list of allowed clients
+                    logger.trace("remote failed to authenticate");
                     socket.close();
-                    throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
+                    // throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
                 }
             });
 
             CountDownLatch latch = new CountDownLatch(1);
-            server.listen(ConfigDescriptor.getStoragePort(), ConfigDescriptor.getListenAddress().getHostAddress(),
-                    res -> {
-                        latch.countDown();
-                        if (res.succeeded()) {
-                            logger.info("MessagingService listening on port " + ConfigDescriptor.getStoragePort());
-                        } else {
-                            throw DbException.convert(res.cause());
-                        }
-                    });
+            server.listen(res -> {
+                latch.countDown();
+                if (res.succeeded()) {
+                    logger.info("MessagingService listening on port " + ConfigDescriptor.getStoragePort());
+                } else {
+                    Throwable e = res.cause();
+                    String address = ConfigDescriptor.getListenAddress().getHostAddress();
+                    if (e instanceof BindException) {
+                        if (e.getMessage().contains("in use"))
+                            throw new ConfigurationException(address + " is in use by another process.  "
+                                    + "Change listen_address:storage_port in lealone.yaml "
+                                    + "to values that do not conflict with other services");
+                        else if (e.getMessage().contains("Cannot assign requested address"))
+                            throw new ConfigurationException("Unable to bind to address " + address
+                                    + ". Set listen_address in lealone.yaml to an interface you can bind to, e.g.,"
+                                    + " your private IP address on EC2");
+                    }
+                    throw DbException.convert(e);
+                }
+            });
             try {
                 latch.await();
                 listenGate.signalAll();
@@ -700,11 +584,6 @@ public final class MessagingService implements MessagingServiceMBean {
                 logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
         }
 
-        // // get pooled connection (really, connection queue)
-        // OutboundTcpConnection connection = getConnection(to);
-        // // write it
-        // connection.enqueue(message, id);
-
         TcpConnection conn = getConnection(to);
         if (conn != null)
             conn.enqueue(message, id);
@@ -728,6 +607,7 @@ public final class MessagingService implements MessagingServiceMBean {
                                 TcpConnection conn = new TcpConnection(socket, false);
                                 socket.handler(conn);
                                 asyncConnections.put(hostAndPort, conn);
+                                connectionManagers.put(resetEndpoint, conn);
                             } else {
                                 throw DbException.convert(res.cause());
                             }
@@ -748,21 +628,8 @@ public final class MessagingService implements MessagingServiceMBean {
         return asyncConnection;
     }
 
-    public OutboundTcpConnection getConnectionOld(InetAddress to) {
-        OutboundTcpConnection conn = connectionManagers.get(to);
-        if (conn == null) {
-            conn = new OutboundTcpConnection(to);
-            OutboundTcpConnection existingConn = connectionManagers.putIfAbsent(to, conn);
-            if (existingConn != null)
-                conn = existingConn;
-            else
-                conn.start();
-        }
-        return conn;
-    }
-
     public void destroyConnection(InetAddress to) {
-        OutboundTcpConnection conn = connectionManagers.get(to);
+        TcpConnection conn = connectionManagers.get(to);
         if (conn == null)
             return;
         conn.close();
@@ -802,8 +669,6 @@ public final class MessagingService implements MessagingServiceMBean {
         // attempt to humor tests that try to stop and restart MS
         try {
             for (SocketThread th : socketThreads)
-                th.close();
-            for (SocketThread2 th : socketThreads2)
                 th.close();
         } catch (IOException e) {
             throw new IOError(e);
@@ -863,7 +728,7 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Integer> getResponsePendingTasks() {
         Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnection> entry : connectionManagers.entrySet())
+        for (Map.Entry<InetAddress, TcpConnection> entry : connectionManagers.entrySet())
             pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().getPendingMessages());
         return pendingTasks;
     }
@@ -871,7 +736,7 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Long> getResponseCompletedTasks() {
         Map<String, Long> completedTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnection> entry : connectionManagers.entrySet())
+        for (Map.Entry<InetAddress, TcpConnection> entry : connectionManagers.entrySet())
             completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().getCompletedMesssages());
         return completedTasks;
     }
@@ -892,7 +757,7 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Long> getTimeoutsPerHost() {
         Map<String, Long> result = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, OutboundTcpConnection> entry : connectionManagers.entrySet()) {
+        for (Map.Entry<InetAddress, TcpConnection> entry : connectionManagers.entrySet()) {
             String ip = entry.getKey().getHostAddress();
             long recent = entry.getValue().getTimeouts();
             result.put(ip, recent);

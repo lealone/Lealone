@@ -18,14 +18,14 @@
 package org.lealone.aose.gms;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
 import org.lealone.aose.net.CompactEndpointSerializationHelper;
+import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.util.TypeSizes;
 
 /**
@@ -47,7 +47,7 @@ public class GossipDigestAck2 {
 
     private static class GossipDigestAck2Serializer implements IVersionedSerializer<GossipDigestAck2> {
         @Override
-        public void serialize(GossipDigestAck2 ack2, DataOutputPlus out, int version) throws IOException {
+        public void serialize(GossipDigestAck2 ack2, DataOutput out, int version) throws IOException {
             out.writeInt(ack2.epStateMap.size());
             for (Map.Entry<InetAddress, EndpointState> entry : ack2.epStateMap.entrySet()) {
                 InetAddress ep = entry.getKey();

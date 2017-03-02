@@ -19,8 +19,6 @@ package org.lealone.aose.net;
 
 import java.net.InetAddress;
 
-import org.lealone.aose.io.IVersionedSerializer;
-
 /**
  * Encapsulates the callback information.
  * The ability to set the message is useful in cases for when a hint needs 

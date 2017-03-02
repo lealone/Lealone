@@ -15,9 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose.io;
+package org.lealone.aose.net;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
 public interface IVersionedSerializer<T> {
@@ -29,7 +30,7 @@ public interface IVersionedSerializer<T> {
      * @param version protocol version
      * @throws java.io.IOException if serialization fails
      */
-    public void serialize(T t, DataOutputPlus out, int version) throws IOException;
+    public void serialize(T t, DataOutput out, int version) throws IOException;
 
     /**
      * Deserialize into the specified DataInputStream instance.

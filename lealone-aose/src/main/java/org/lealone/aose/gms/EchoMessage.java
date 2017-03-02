@@ -18,17 +18,17 @@
 package org.lealone.aose.gms;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
+import org.lealone.aose.net.IVersionedSerializer;
 
 public class EchoMessage {
     public static final IVersionedSerializer<EchoMessage> serializer = new EchoMessageSerializer();
 
     private static class EchoMessageSerializer implements IVersionedSerializer<EchoMessage> {
         @Override
-        public void serialize(EchoMessage t, DataOutputPlus out, int version) throws IOException {
+        public void serialize(EchoMessage t, DataOutput out, int version) throws IOException {
         }
 
         @Override

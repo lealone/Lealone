@@ -17,8 +17,8 @@
  */
 package org.lealone.aose.net;
 
-import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 
@@ -26,9 +26,7 @@ import org.lealone.aose.concurrent.LealoneExecutorService;
 import org.lealone.aose.concurrent.StageManager;
 import org.lealone.aose.config.Config;
 import org.lealone.aose.config.ConfigDescriptor;
-import org.lealone.aose.io.DataOutputStreamPlus;
 import org.lealone.aose.metrics.ConnectionMetrics;
-import org.lealone.aose.net.CoalescingStrategies.Coalescable;
 import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.util.JVMStabilityInspector;
 import org.lealone.aose.util.Utils;
@@ -42,7 +40,7 @@ import io.vertx.core.net.NetSocket;
 public class TcpConnection extends AsyncConnection {
 
     private Transfer transfer;
-    private DataOutputStreamPlus out;
+    private DataOutputStream out;
     private InetAddress remoteEndpoint;
     private InetAddress resetEndpoint; // pointer to the reset Address.
     private String hostAndPort;
@@ -112,7 +110,7 @@ public class TcpConnection extends AsyncConnection {
             metrics = new ConnectionMetrics(remoteEndpoint);
             this.hostAndPort = hostAndPort;
             transfer = new Transfer(this, socket, (Session) null);
-            out = new DataOutputStreamPlus(new BufferedOutputStream(transfer.getDataOutputStream(), 4096));
+            out = transfer.getDataOutputStream();
             targetVersion = MessagingService.instance().getVersion(remoteEndpoint);
             writeInitPacket(transfer, 0, targetVersion, shouldCompressConnection(), hostAndPort);
         }
@@ -205,20 +203,11 @@ public class TcpConnection extends AsyncConnection {
         } catch (IOException e) {
             JVMStabilityInspector.inspectThrowable(e);
         }
-
-        // if (backlog.size() > 1024)
-        // expireMessages();
-        // try {
-        // backlog.put(new QueuedMessage(message, id));
-        // } catch (InterruptedException e) {
-        // throw new AssertionError(e);
-        // }
     }
 
     private void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
         transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MESSAGE);
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
-        // out.writeInt(id);
 
         // int cast cuts off the high-order half of the timestamp, which we can assume remains
         // the same between now and when the recipient reconstructs it.
@@ -229,7 +218,7 @@ public class TcpConnection extends AsyncConnection {
     }
 
     /** messages that have not been retried yet */
-    static class QueuedMessage implements Coalescable {
+    static class QueuedMessage {
         final MessageOut<?> message;
         final int id;
         final long timestamp;
@@ -251,20 +240,21 @@ public class TcpConnection extends AsyncConnection {
             return !droppable;
         }
 
-        @Override
-        public long timestampNanos() {
-            return timestamp * 1000;
-        }
     }
 
-    static class RetriedQueuedMessage extends QueuedMessage {
-        RetriedQueuedMessage(QueuedMessage msg) {
-            super(msg.message, msg.id);
-        }
-
-        @Override
-        boolean shouldRetry() {
-            return false;
-        }
+    // TODO
+    int getPendingMessages() {
+        return 0;
     }
+
+    // TODO
+    long getCompletedMesssages() {
+        return 0;
+    }
+
+    // TODO
+    long getDroppedMessages() {
+        return 0;
+    }
+
 }

@@ -18,12 +18,12 @@
 package org.lealone.aose.gms;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Map;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
+import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.util.TypeSizes;
 
 /**
@@ -104,7 +104,7 @@ public class EndpointState {
 
     private static class EndpointStateSerializer implements IVersionedSerializer<EndpointState> {
         @Override
-        public void serialize(EndpointState epState, DataOutputPlus out, int version) throws IOException {
+        public void serialize(EndpointState epState, DataOutput out, int version) throws IOException {
             /* serialize the HeartBeatState */
             HeartBeatState hbState = epState.getHeartBeatState();
             HeartBeatState.serializer.serialize(hbState, out, version);

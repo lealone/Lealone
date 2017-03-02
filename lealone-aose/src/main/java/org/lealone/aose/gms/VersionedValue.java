@@ -18,12 +18,12 @@
 package org.lealone.aose.gms;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.UUID;
 
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
+import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.net.MessagingService;
 import org.lealone.aose.util.TypeSizes;
 import org.lealone.aose.util.Utils;
@@ -173,7 +173,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
 
     private static class VersionedValueSerializer implements IVersionedSerializer<VersionedValue> {
         @Override
-        public void serialize(VersionedValue value, DataOutputPlus out, int version) throws IOException {
+        public void serialize(VersionedValue value, DataOutput out, int version) throws IOException {
             out.writeUTF(outValue(value, version));
             out.writeInt(value.version);
         }

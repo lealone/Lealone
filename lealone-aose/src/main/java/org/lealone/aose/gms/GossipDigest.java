@@ -18,12 +18,12 @@
 package org.lealone.aose.gms;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.net.InetAddress;
 
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
 import org.lealone.aose.net.CompactEndpointSerializationHelper;
+import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.util.TypeSizes;
 
 /**
@@ -75,7 +75,7 @@ public class GossipDigest implements Comparable<GossipDigest> {
 
     private static class GossipDigestSerializer implements IVersionedSerializer<GossipDigest> {
         @Override
-        public void serialize(GossipDigest gDigest, DataOutputPlus out, int version) throws IOException {
+        public void serialize(GossipDigest gDigest, DataOutput out, int version) throws IOException {
             CompactEndpointSerializationHelper.serialize(gDigest.endpoint, out);
             out.writeInt(gDigest.generation);
             out.writeInt(gDigest.maxVersion);

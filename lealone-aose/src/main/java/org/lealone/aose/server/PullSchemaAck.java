@@ -18,11 +18,11 @@
 package org.lealone.aose.server;
 
 import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import org.lealone.aose.io.DataOutputPlus;
-import org.lealone.aose.io.IVersionedSerializer;
+import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.util.TypeSizes;
 
 public class PullSchemaAck {
@@ -36,7 +36,7 @@ public class PullSchemaAck {
 
     private static class PullSchemaAckerializer implements IVersionedSerializer<PullSchemaAck> {
         @Override
-        public void serialize(PullSchemaAck t, DataOutputPlus out, int version) throws IOException {
+        public void serialize(PullSchemaAck t, DataOutput out, int version) throws IOException {
             out.writeInt(t.sqls.size());
             for (String sql : t.sqls)
                 out.writeUTF(sql);

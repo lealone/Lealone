@@ -28,7 +28,6 @@ import java.nio.MappedByteBuffer;
 import java.text.DecimalFormat;
 import java.util.Arrays;
 
-import org.lealone.aose.io.FSWriteError;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 

@@ -123,14 +123,6 @@ public class Utils extends org.lealone.common.util.Utils {
         return Pair.create(midpoint, remainder);
     }
 
-    public static int compareUnsigned(byte[] bytes1, byte[] bytes2, int offset1, int offset2, int len1, int len2) {
-        return FastByteOperations.compareUnsigned(bytes1, offset1, len1, bytes2, offset2, len2);
-    }
-
-    public static int compareUnsigned(byte[] bytes1, byte[] bytes2) {
-        return compareUnsigned(bytes1, bytes2, 0, 0, bytes1.length, bytes2.length);
-    }
-
     public static String resourceToFile(String filename) throws ConfigurationException {
         ClassLoader loader = Utils.class.getClassLoader();
         URL scpurl = loader.getResource(filename);
