@@ -38,7 +38,7 @@ public class NetFactory {
     }
 
     public static NetServerOptions getNetServerOptions(EncryptionOptions eo) {
-        if (eo == null) {
+        if (eo == null || !eo.enabled) {
             return new NetServerOptions();
         }
         NetServerOptions options = new NetServerOptions().setSsl(true);
@@ -59,7 +59,7 @@ public class NetFactory {
     }
 
     public static NetClientOptions getNetClientOptions(EncryptionOptions eo) {
-        if (eo == null) {
+        if (eo == null || !eo.enabled) {
             return new NetClientOptions();
         }
         NetClientOptions options = new NetClientOptions().setSsl(true);
@@ -84,6 +84,7 @@ public class NetFactory {
         }
 
         ClientEncryptionOptions eo = new ClientEncryptionOptions();
+        eo.enabled = true;
         eo.keystore = prop.getProperty(PREFIX + "keystore");
         eo.keystore_password = prop.getProperty(PREFIX + "keystore.password");
         eo.truststore = prop.getProperty(PREFIX + "truststore");

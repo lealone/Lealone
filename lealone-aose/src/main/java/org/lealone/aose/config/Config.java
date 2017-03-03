@@ -32,8 +32,8 @@ public class Config {
     public List<PluggableEngineDef> sql_engines;
     public List<PluggableEngineDef> protocol_server_engines;
 
-    public ServerEncryptionOptions server_encryption_options = new ServerEncryptionOptions();
-    public ClientEncryptionOptions client_encryption_options = new ClientEncryptionOptions();
+    public ServerEncryptionOptions server_encryption_options;
+    public ClientEncryptionOptions client_encryption_options;
 
     public String cluster_name = "Test Cluster";
 

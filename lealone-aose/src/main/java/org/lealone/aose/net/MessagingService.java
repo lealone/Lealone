@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.net;
 
-import java.io.Closeable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOError;
@@ -32,7 +31,6 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
@@ -64,11 +62,9 @@ import org.lealone.aose.server.PullSchema;
 import org.lealone.aose.server.PullSchemaAck;
 import org.lealone.aose.server.PullSchemaAckVerbHandler;
 import org.lealone.aose.server.PullSchemaVerbHandler;
-import org.lealone.aose.server.StorageServer;
 import org.lealone.aose.util.ExpiringMap;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
-import org.lealone.common.concurrent.SimpleCondition;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
@@ -78,7 +74,6 @@ import org.lealone.net.NetFactory;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
@@ -90,6 +85,8 @@ import io.vertx.core.net.NetSocket;
 
 @SuppressWarnings({ "rawtypes" })
 public final class MessagingService implements MessagingServiceMBean {
+
+    private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
 
     /* All verb handler identifiers */
     public static enum Verb {
@@ -107,8 +104,6 @@ public final class MessagingService implements MessagingServiceMBean {
         UNUSED_2,
         UNUSED_3;
     }
-
-    private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
 
     public static final int VERSION_10 = 1;
     public static final int CURRENT_VERSION = VERSION_10;
@@ -183,7 +178,7 @@ public final class MessagingService implements MessagingServiceMBean {
     /**
      * A Map of what kind of serializer to wire up to a REQUEST_RESPONSE callback, based on outbound Verb.
      */
-    public static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<>(Verb.class);
+    private static final EnumMap<Verb, IVersionedSerializer<?>> callbackDeserializers = new EnumMap<>(Verb.class);
 
     private static final AtomicInteger idGen = new AtomicInteger(0);
 
@@ -221,8 +216,6 @@ public final class MessagingService implements MessagingServiceMBean {
     private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);;
 
     private final ConcurrentMap<InetAddress, TcpConnection> connectionManagers = new NonBlockingHashMap<>();
-
-    private final SimpleCondition listenGate = new SimpleCondition();
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
@@ -337,32 +330,21 @@ public final class MessagingService implements MessagingServiceMBean {
             subscriber.receiveTiming(address, latency);
     }
 
-    public void waitUntilListening() {
-        try {
-            listenGate.await();
-        } catch (InterruptedException ie) {
-            if (logger.isDebugEnabled())
-                logger.debug("await interrupted");
-        }
-    }
-
-    public boolean isListening() {
-        return listenGate.isSignaled();
-    }
-
-    private final List<SocketThread> socketThreads = Lists.newArrayList();
+    private final List<Server> servers = Lists.newArrayList();
 
     /**
      * Listen on the specified port.
      *
      * @param localEp InetAddress whose port to listen on.
      */
-    public void listen(InetAddress localEp) throws ConfigurationException {
+    public void start(InetAddress localEp, Map<String, String> config) throws ConfigurationException {
+        initVertx(config);
+
         callbacks.reset(); // hack to allow tests to stop/restart MS
-        for (NetServer server : getNetServers(localEp)) {
-            SocketThread th = new SocketThread(server, "ACCEPT-" + localEp, listenGate);
-            th.start();
-            socketThreads.add(th);
+        for (NetServer netServer : getNetServers(localEp)) {
+            Server server = new Server(netServer);
+            server.start();
+            servers.add(server);
         }
     }
 
@@ -394,6 +376,24 @@ public final class MessagingService implements MessagingServiceMBean {
     private static Vertx vertx;
     private static NetClient client;
 
+    private synchronized static void initVertx(Map<String, String> config) {
+        Integer blockedThreadCheckInterval = Integer.MAX_VALUE;
+        if (config.containsKey("blocked_thread_check_interval")) {
+            blockedThreadCheckInterval = Integer.parseInt(config.get("blocked_thread_check_interval"));
+            if (blockedThreadCheckInterval <= 0)
+                blockedThreadCheckInterval = Integer.MAX_VALUE;
+        }
+        if (vertx == null) {
+            VertxOptions opt = new VertxOptions();
+            opt.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
+            vertx = Vertx.vertx(opt);
+
+            NetClientOptions options = NetFactory.getNetClientOptions(ConfigDescriptor.getClientEncryptionOptions());
+            options.setConnectTimeout(10000);
+            client = vertx.createNetClient(options);
+        }
+    }
+
     private final ConcurrentHashMap<String, TcpConnection> asyncConnections = new ConcurrentHashMap<>();
 
     void addConnection(TcpConnection conn) {
@@ -403,41 +403,17 @@ public final class MessagingService implements MessagingServiceMBean {
         }
     }
 
-    private static class SocketThread extends Thread {
-        private NetServer server;
-        private Integer blockedThreadCheckInterval;
-        private final Set<Closeable> connections = Sets.newConcurrentHashSet();
-        SimpleCondition listenGate;
+    private static class Server {
+        private final NetServer netServer;
+        // private final Set<Closeable> connections = Sets.newConcurrentHashSet();
 
-        SocketThread(NetServer server, String name, SimpleCondition listenGate) {
-            super(name);
-            this.server = server;
-            this.listenGate = listenGate;
+        Server(NetServer netServer) {
+            this.netServer = netServer;
         }
 
-        @Override
-        public void run() {
-            synchronized (SocketThread.class) {
-                if (vertx == null) {
-                    VertxOptions opt = new VertxOptions();
-                    if (blockedThreadCheckInterval != null) {
-                        if (blockedThreadCheckInterval <= 0)
-                            blockedThreadCheckInterval = Integer.MAX_VALUE;
-
-                        opt.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
-                    }
-                    opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
-                    vertx = Vertx.vertx(opt);
-
-                    NetClientOptions options = NetFactory
-                            .getNetClientOptions(ConfigDescriptor.getClientEncryptionOptions());
-                    options.setConnectTimeout(10000);
-                    client = vertx.createNetClient(options);
-                }
-            }
-            server = NetFactory.createNetServer(vertx, StorageServer.instance.getServerEncryptionOptions());
-            server.connectHandler(socket -> {
-                if (SocketThread.this.authenticate(socket)) {
+        public void start() {
+            netServer.connectHandler(socket -> {
+                if (Server.this.authenticate(socket)) {
                     TcpConnection c = new TcpConnection(socket, true);
                     socket.handler(c);
                 } else {
@@ -448,10 +424,10 @@ public final class MessagingService implements MessagingServiceMBean {
             });
 
             CountDownLatch latch = new CountDownLatch(1);
-            server.listen(res -> {
+            netServer.listen(res -> {
                 latch.countDown();
                 if (res.succeeded()) {
-                    logger.info("MessagingService listening on port " + ConfigDescriptor.getStoragePort());
+                    logger.info("MessagingService listening on port " + netServer.actualPort());
                 } else {
                     Throwable e = res.cause();
                     String address = ConfigDescriptor.getListenAddress().getHostAddress();
@@ -470,38 +446,23 @@ public final class MessagingService implements MessagingServiceMBean {
             });
             try {
                 latch.await();
-                listenGate.signalAll();
             } catch (InterruptedException e) {
                 throw DbException.convert(e);
             }
         }
 
         void close() throws IOException {
-            logger.trace("Closing accept() thread");
-
-            try {
-                server.close();
-            } catch (Exception e) {
-                // dirty hack for clean shutdown on OSX w/ Java >= 1.8.0_20
-                // see https://issues.apache.org/jira/browse/CASSANDRA-8220
-                // see https://bugs.openjdk.java.net/browse/JDK-8050499
-                if (!"Unknown error: 316".equals(e.getMessage()) || !"Mac OS X".equals(System.getProperty("os.name")))
-                    throw e;
-            }
-
-            for (Closeable connection : connections) {
-                connection.close();
-            }
+            logger.trace("Closing accept() server");
+            // for (Closeable connection : connections) {
+            // connection.close();
+            // }
+            netServer.close();
         }
 
         private boolean authenticate(NetSocket socket) {
             return true;
             // return ConfigDescriptor.getInternodeAuthenticator().authenticate(socket.remoteAddress(), 990);
         }
-    }
-
-    public static int getBits(int packed, int start, int count) {
-        return packed >>> (start + 1) - count & ~(-1 << count);
     }
 
     /**
@@ -668,8 +629,8 @@ public final class MessagingService implements MessagingServiceMBean {
 
         // attempt to humor tests that try to stop and restart MS
         try {
-            for (SocketThread th : socketThreads)
-                th.close();
+            for (Server server : servers)
+                server.close();
         } catch (IOException e) {
             throw new IOError(e);
         }

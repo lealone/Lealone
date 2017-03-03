@@ -165,12 +165,13 @@ public class StorageServer extends NotificationBroadcasterSupport
         appStates.put(ApplicationState.DC, getDatacenter());
         appStates.put(ApplicationState.RACK, getRack());
 
+        // 先启动Gossiper再启动Gossiper
+        MessagingService.instance().start(Utils.getLocalAddress(), config);
+
         logger.info("Starting up server gossip");
         Gossiper.instance.register(this);
         Gossiper.instance.start(ClusterMetaData.incrementAndGetGeneration(), appStates);
 
-        if (!MessagingService.instance().isListening())
-            MessagingService.instance().listen(Utils.getLocalAddress());
         // LoadBroadcaster.instance.startBroadcasting(); //TODO
     }
 
@@ -644,8 +645,11 @@ public class StorageServer extends NotificationBroadcasterSupport
         }
     }
 
+    private Map<String, String> config;
+
     @Override
     public void init(Map<String, String> config) {
+        this.config = config;
     }
 
     @Override
