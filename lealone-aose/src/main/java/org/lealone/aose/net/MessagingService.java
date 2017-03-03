@@ -54,6 +54,7 @@ import org.lealone.aose.gms.GossipDigestAckVerbHandler;
 import org.lealone.aose.gms.GossipDigestSyn;
 import org.lealone.aose.gms.GossipDigestSynVerbHandler;
 import org.lealone.aose.gms.GossipShutdownVerbHandler;
+import org.lealone.aose.locator.IEndpointSnitch;
 import org.lealone.aose.locator.ILatencySubscriber;
 import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.metrics.DroppedMessageMetrics;
@@ -314,8 +315,9 @@ public final class MessagingService implements MessagingServiceMBean {
 
     /**
      * Track latency information for the dynamic snitch
-     *
-     * @param cb      the callback associated with this message -- this lets us know if it's a message type we're interested in
+     * 
+     * @param cb      the callback associated with this message -- 
+     *                this lets us know if it's a message type we're interested in
      * @param address the host that replied to the message
      * @param latency
      */
@@ -449,6 +451,7 @@ public final class MessagingService implements MessagingServiceMBean {
             netServer.close();
         }
 
+        // TODO
         private boolean authenticate(NetSocket socket) {
             return true;
             // return ConfigDescriptor.getInternodeAuthenticator().authenticate(socket.remoteAddress(), 990);
@@ -542,8 +545,11 @@ public final class MessagingService implements MessagingServiceMBean {
 
     public TcpConnection getConnection(InetAddress remoteEndpoint) {
         InetAddress resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
+        final int port = isEncryptedChannel(resetEndpoint) ? ConfigDescriptor.getSSLStoragePort()
+                : ConfigDescriptor.getStoragePort();
         // 不能用resetEndpoint.getHostName()，很慢
-        String hostAndPort = resetEndpoint.getHostAddress() + ":" + ConfigDescriptor.getStoragePort();
+        final String host = resetEndpoint.getHostAddress();
+        final String hostAndPort = host + ":" + port;
 
         TcpConnection asyncConnection = asyncConnections.get(hostAndPort);
         if (asyncConnection == null) {
@@ -551,7 +557,7 @@ public final class MessagingService implements MessagingServiceMBean {
                 asyncConnection = asyncConnections.get(hostAndPort);
                 if (asyncConnection == null) {
                     CountDownLatch latch = new CountDownLatch(1);
-                    client.connect(ConfigDescriptor.getStoragePort(), resetEndpoint.getHostAddress(), res -> {
+                    client.connect(port, host, res -> {
                         try {
                             if (res.succeeded()) {
                                 NetSocket socket = res.result();
@@ -569,7 +575,9 @@ public final class MessagingService implements MessagingServiceMBean {
                     try {
                         latch.await();
                         asyncConnection = asyncConnections.get(hostAndPort);
-                        asyncConnection.initTransfer(resetEndpoint, hostAndPort);
+                        if (asyncConnection != null) {
+                            asyncConnection.initTransfer(resetEndpoint, hostAndPort);
+                        }
                     } catch (Exception e) {
                         throw DbException.convert(e);
                     }
@@ -577,6 +585,27 @@ public final class MessagingService implements MessagingServiceMBean {
             }
         }
         return asyncConnection;
+    }
+
+    private static boolean isEncryptedChannel(InetAddress address) {
+        IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
+        switch (ConfigDescriptor.getServerEncryptionOptions().internode_encryption) {
+        case none:
+            return false; // if nothing needs to be encrypted then return immediately.
+        case all:
+            break;
+        case dc:
+            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(Utils.getBroadcastAddress())))
+                return false;
+            break;
+        case rack:
+            // for rack then check if the DC's are the same.
+            if (snitch.getRack(address).equals(snitch.getRack(Utils.getBroadcastAddress()))
+                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(Utils.getBroadcastAddress())))
+                return false;
+            break;
+        }
+        return true;
     }
 
     public void destroyConnection(InetAddress to) {

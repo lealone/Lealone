@@ -213,7 +213,6 @@ public class TcpConnection extends AsyncConnection {
         // the same between now and when the recipient reconstructs it.
         out.writeInt((int) timestamp);
         message.serialize(out, targetVersion);
-        out.flush();
         transfer.flush();
     }
 
