@@ -45,7 +45,6 @@ import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetClientOptions;
 import io.vertx.core.net.NetSocket;
@@ -82,9 +81,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         if (vertx == null) {
             synchronized (ClientSession.class) {
                 if (vertx == null) {
-                    VertxOptions opt = new VertxOptions();
-                    opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
-                    vertx = Vertx.vertx(opt);
+                    vertx = NetFactory.getVertx(ci.getProperties());
                     NetClientOptions options = NetFactory.getNetClientOptions(ci.getProperties());
                     options.setConnectTimeout(10000);
                     client = vertx.createNetClient(options);

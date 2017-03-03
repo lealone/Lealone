@@ -76,7 +76,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import io.vertx.core.net.NetClient;
 import io.vertx.core.net.NetClientOptions;
 import io.vertx.core.net.NetServer;
@@ -377,17 +376,8 @@ public final class MessagingService implements MessagingServiceMBean {
     private static NetClient client;
 
     private synchronized static void initVertx(Map<String, String> config) {
-        Integer blockedThreadCheckInterval = Integer.MAX_VALUE;
-        if (config.containsKey("blocked_thread_check_interval")) {
-            blockedThreadCheckInterval = Integer.parseInt(config.get("blocked_thread_check_interval"));
-            if (blockedThreadCheckInterval <= 0)
-                blockedThreadCheckInterval = Integer.MAX_VALUE;
-        }
         if (vertx == null) {
-            VertxOptions opt = new VertxOptions();
-            opt.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
-            vertx = Vertx.vertx(opt);
-
+            vertx = NetFactory.getVertx(config);
             NetClientOptions options = NetFactory.getNetClientOptions(ConfigDescriptor.getClientEncryptionOptions());
             options.setConnectTimeout(10000);
             client = vertx.createNetClient(options);

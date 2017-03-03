@@ -20,7 +20,6 @@ import org.lealone.net.CommandHandler;
 import org.lealone.net.NetFactory;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetSocket;
 
@@ -45,7 +44,6 @@ public class TcpServer implements ProtocolServer {
     private boolean allowOthers;
     private boolean isDaemon;
     private boolean ifExists;
-    private Integer blockedThreadCheckInterval;
     private NetServer server;
     private boolean stop;
     private ServerEncryptionOptions options;
@@ -57,31 +55,22 @@ public class TcpServer implements ProtocolServer {
         if (config.containsKey("port"))
             port = Integer.parseInt(config.get("port"));
 
-        if (config.containsKey("blocked_thread_check_interval"))
-            blockedThreadCheckInterval = Integer.parseInt(config.get("blocked_thread_check_interval"));
-
         baseDir = config.get("base_dir");
 
         ssl = Boolean.parseBoolean(config.get("ssl"));
         allowOthers = Boolean.parseBoolean(config.get("allow_others"));
         isDaemon = Boolean.parseBoolean(config.get("daemon"));
         ifExists = Boolean.parseBoolean(config.get("if_exists"));
+
+        synchronized (TcpServer.class) {
+            if (vertx == null) {
+                vertx = NetFactory.getVertx(config);
+            }
+        }
     }
 
     @Override
     public synchronized void start() {
-        synchronized (TcpServer.class) {
-            if (vertx == null) {
-                VertxOptions opt = new VertxOptions();
-                if (blockedThreadCheckInterval != null) {
-                    if (blockedThreadCheckInterval <= 0)
-                        blockedThreadCheckInterval = Integer.MAX_VALUE;
-
-                    opt.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
-                }
-                vertx = Vertx.vertx(opt);
-            }
-        }
         server = NetFactory.createNetServer(vertx, options);
         server.connectHandler(socket -> {
             if (TcpServer.this.allow(socket)) {

@@ -17,12 +17,16 @@
  */
 package org.lealone.net;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 
 import org.lealone.common.security.EncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import io.vertx.core.http.ClientAuth;
 import io.vertx.core.net.JksOptions;
 import io.vertx.core.net.NetClientOptions;
@@ -30,6 +34,38 @@ import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
 
 public class NetFactory {
+
+    private static Vertx vertx;
+
+    public static Vertx getVertx(Properties prop) {
+        if (vertx != null) {
+            return vertx;
+        }
+        Map<String, String> config = new HashMap<>();
+        for (Entry<Object, Object> e : prop.entrySet()) {
+            config.put(e.getKey().toString(), e.getValue().toString());
+        }
+        return getVertx(config);
+    }
+
+    public static Vertx getVertx(Map<String, String> config) {
+        if (vertx == null) {
+            synchronized (NetFactory.class) {
+                if (vertx == null) {
+                    Integer blockedThreadCheckInterval = Integer.MAX_VALUE;
+                    if (config.containsKey("blocked_thread_check_interval")) {
+                        blockedThreadCheckInterval = Integer.parseInt(config.get("blocked_thread_check_interval"));
+                        if (blockedThreadCheckInterval <= 0)
+                            blockedThreadCheckInterval = Integer.MAX_VALUE;
+                    }
+                    VertxOptions opt = new VertxOptions();
+                    opt.setBlockedThreadCheckInterval(blockedThreadCheckInterval);
+                    vertx = Vertx.vertx(opt);
+                }
+            }
+        }
+        return vertx;
+    }
 
     public static NetServer createNetServer(Vertx vertx, EncryptionOptions eo) {
         NetServerOptions netServerOptions = NetFactory.getNetServerOptions(eo);
