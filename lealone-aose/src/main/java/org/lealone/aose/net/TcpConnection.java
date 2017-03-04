@@ -103,16 +103,16 @@ public class TcpConnection extends AsyncConnection {
         metrics = new ConnectionMetrics(resetEndpoint);
     }
 
-    void initTransfer(InetAddress remoteEndpoint, String hostAndPort) throws Exception {
+    void initTransfer(InetAddress remoteEndpoint, String remoteHostAndPort, String localHostAndPort) throws Exception {
         if (transfer == null) {
             this.remoteEndpoint = remoteEndpoint;
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
             metrics = new ConnectionMetrics(remoteEndpoint);
-            this.hostAndPort = hostAndPort;
+            this.hostAndPort = remoteHostAndPort;
             transfer = new Transfer(this, socket, (Session) null);
             out = transfer.getDataOutputStream();
             targetVersion = MessagingService.instance().getVersion(remoteEndpoint);
-            writeInitPacket(transfer, 0, targetVersion, shouldCompressConnection(), hostAndPort);
+            writeInitPacket(transfer, 0, targetVersion, shouldCompressConnection(), localHostAndPort);
         }
     }
 
@@ -135,13 +135,21 @@ public class TcpConnection extends AsyncConnection {
 
     private void readInitPacket(Transfer transfer, int sessionId) {
         try {
+            if (this.transfer == null) {
+                remoteEndpoint = InetAddress.getByName(socket.remoteAddress().host());
+                resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
+                metrics = new ConnectionMetrics(remoteEndpoint);
+                this.transfer = new Transfer(this, socket, (Session) null);
+                out = this.transfer.getDataOutputStream();
+            }
+
             MessagingService.validateMagic(transfer.readInt());
             version = transfer.readInt();
             transfer.readInt();
             hostAndPort = transfer.readString();
             transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
             transfer.flush();
-            // MessagingService.instance().addConnection(this);
+            MessagingService.instance().addConnection(this);
         } catch (Throwable e) {
             sendError(transfer, sessionId, e);
         }
@@ -205,7 +213,7 @@ public class TcpConnection extends AsyncConnection {
         }
     }
 
-    private void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
+    private synchronized void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
         transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MESSAGE);
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
 

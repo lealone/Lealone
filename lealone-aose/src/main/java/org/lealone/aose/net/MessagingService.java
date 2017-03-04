@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -54,6 +55,7 @@ import org.lealone.aose.gms.GossipDigestAckVerbHandler;
 import org.lealone.aose.gms.GossipDigestSyn;
 import org.lealone.aose.gms.GossipDigestSynVerbHandler;
 import org.lealone.aose.gms.GossipShutdownVerbHandler;
+import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.locator.IEndpointSnitch;
 import org.lealone.aose.locator.ILatencySubscriber;
 import org.lealone.aose.metrics.ConnectionMetrics;
@@ -382,6 +384,7 @@ public final class MessagingService implements MessagingServiceMBean {
             vertx = NetFactory.getVertx(config);
             NetClientOptions options = NetFactory.getNetClientOptions(ConfigDescriptor.getClientEncryptionOptions());
             options.setConnectTimeout(10000);
+            options.setReconnectAttempts(3);
             client = vertx.createNetClient(options);
         }
     }
@@ -549,13 +552,14 @@ public final class MessagingService implements MessagingServiceMBean {
                 : ConfigDescriptor.getStoragePort();
         // 不能用resetEndpoint.getHostName()，很慢
         final String host = resetEndpoint.getHostAddress();
-        final String hostAndPort = host + ":" + port;
+        final String remoteHostAndPort = host + ":" + port;
 
-        TcpConnection asyncConnection = asyncConnections.get(hostAndPort);
+        TcpConnection asyncConnection = asyncConnections.get(remoteHostAndPort);
         if (asyncConnection == null) {
             synchronized (TcpConnection.class) {
-                asyncConnection = asyncConnections.get(hostAndPort);
+                asyncConnection = asyncConnections.get(remoteHostAndPort);
                 if (asyncConnection == null) {
+                    final AtomicReference<TcpConnection> connRef = new AtomicReference<>();
                     CountDownLatch latch = new CountDownLatch(1);
                     client.connect(port, host, res -> {
                         try {
@@ -563,10 +567,12 @@ public final class MessagingService implements MessagingServiceMBean {
                                 NetSocket socket = res.result();
                                 TcpConnection conn = new TcpConnection(socket, false);
                                 socket.handler(conn);
-                                asyncConnections.put(hostAndPort, conn);
-                                connectionManagers.put(resetEndpoint, conn);
+                                connRef.set(conn);
                             } else {
-                                throw DbException.convert(res.cause());
+                                // TODO 是否不应该立刻移除节点
+                                Gossiper.instance.removeEndpoint(resetEndpoint);
+                                logger.warn("Failed to connect " + resetEndpoint, res.cause());
+                                // throw DbException.convert(res.cause());
                             }
                         } finally {
                             latch.countDown();
@@ -574,9 +580,13 @@ public final class MessagingService implements MessagingServiceMBean {
                     });
                     try {
                         latch.await();
-                        asyncConnection = asyncConnections.get(hostAndPort);
+                        asyncConnection = connRef.get();
                         if (asyncConnection != null) {
-                            asyncConnection.initTransfer(resetEndpoint, hostAndPort);
+                            String localHost = Utils.getLocalAddress().getHostAddress();
+                            String localHostAndPort = localHost + ":" + port;
+                            asyncConnection.initTransfer(resetEndpoint, remoteHostAndPort, localHostAndPort);
+                            asyncConnections.put(remoteHostAndPort, asyncConnection);
+                            connectionManagers.put(resetEndpoint, asyncConnection);
                         }
                     } catch (Exception e) {
                         throw DbException.convert(e);
