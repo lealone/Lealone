@@ -26,8 +26,8 @@
     <baseDirectory>/</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>lealone</directory>
-            <outputDirectory>/</outputDirectory>
+            <directory>lealone-dist</directory>
+            <outputDirectory>/lealone-${project.version}</outputDirectory>
         </fileSet>
     </fileSets>
 
@@ -38,7 +38,7 @@
             </includes>
             <binaries>
                 <unpack>false</unpack>
-                <outputDirectory>lib</outputDirectory>
+                <outputDirectory>/lealone-${project.version}/lib</outputDirectory>
                 <dependencySets>
                     <dependencySet>
                         <useTransitiveFiltering>true</useTransitiveFiltering>
