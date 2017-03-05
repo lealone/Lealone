@@ -303,14 +303,6 @@ public class ConfigDescriptor {
         return internodeAuthenticator;
     }
 
-    public static Integer getInternodeSendBufferSize() {
-        return conf.internode_send_buff_size_in_bytes;
-    }
-
-    public static Integer getInternodeRecvBufferSize() {
-        return conf.internode_recv_buff_size_in_bytes;
-    }
-
     public static boolean isAutoBootstrap() {
         return Boolean.parseBoolean(Config.getProperty("auto.bootstrap", conf.auto_bootstrap.toString()));
     }
@@ -359,10 +351,6 @@ public class ConfigDescriptor {
         return conf.internode_compression;
     }
 
-    public static boolean getInterDCTcpNoDelay() {
-        return conf.inter_dc_tcp_nodelay;
-    }
-
     public static boolean hasLargeAddressSpace() {
         // currently we just check if it's a 64bit arch,
         // but any we only really care if the address space is large
@@ -377,30 +365,6 @@ public class ConfigDescriptor {
         }
         String arch = System.getProperty("os.arch");
         return arch.contains("64") || arch.contains("sparcv9");
-    }
-
-    public static int getStreamThroughputOutboundMegabitsPerSec() {
-        return conf.stream_throughput_outbound_megabits_per_sec;
-    }
-
-    public static void setStreamThroughputOutboundMegabitsPerSec(int value) {
-        conf.stream_throughput_outbound_megabits_per_sec = value;
-    }
-
-    public static int getInterDCStreamThroughputOutboundMegabitsPerSec() {
-        return conf.inter_dc_stream_throughput_outbound_megabits_per_sec;
-    }
-
-    public static void setInterDCStreamThroughputOutboundMegabitsPerSec(int value) {
-        conf.inter_dc_stream_throughput_outbound_megabits_per_sec = value;
-    }
-
-    public static int getStreamingSocketTimeout() {
-        return conf.streaming_socket_timeout_in_ms;
-    }
-
-    public static int getMaxStreamingRetries() {
-        return conf.max_streaming_retries;
     }
 
     public static Integer getHostId() {

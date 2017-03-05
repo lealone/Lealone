@@ -45,10 +45,8 @@ public class Config {
     public ReplicationStrategyDef replication_strategy;
 
     public volatile Long request_timeout_in_ms = 10000L;
-
-    public boolean cross_node_timeout = false;
-
     public volatile Double phi_convict_threshold = 8.0;
+    public boolean cross_node_timeout = false;
 
     public Integer storage_port = 6210;
     public Integer ssl_storage_port = 6211;
@@ -60,35 +58,14 @@ public class Config {
     public String broadcast_address;
     public String broadcast_rpc_address;
 
-    public String internode_authenticator;
-
-    public Integer internode_send_buff_size_in_bytes;
-    public Integer internode_recv_buff_size_in_bytes;
-
     public String endpoint_snitch;
     public Boolean dynamic_snitch = true;
     public Integer dynamic_snitch_update_interval_in_ms = 100;
     public Integer dynamic_snitch_reset_interval_in_ms = 600000;
     public Double dynamic_snitch_badness_threshold = 0.1;
 
-    public volatile Integer stream_throughput_outbound_megabits_per_sec = 200;
-    public volatile Integer inter_dc_stream_throughput_outbound_megabits_per_sec = 0;
-    public Integer streaming_socket_timeout_in_ms = 0;
-    public Integer max_streaming_retries = 3;
-
+    public String internode_authenticator;
     public InternodeCompression internode_compression = InternodeCompression.none;
-
-    public boolean inter_dc_tcp_nodelay = true;
-
-    private static boolean outboundBindAny = false;
-
-    public static boolean getOutboundBindAny() {
-        return outboundBindAny;
-    }
-
-    public static void setOutboundBindAny(boolean value) {
-        outboundBindAny = value;
-    }
 
     public static enum InternodeCompression {
         all,
