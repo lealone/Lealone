@@ -30,7 +30,7 @@ if /i "%ARG%" == "-vu" goto vu
 goto usage
 
 :usage
-echo usage: lealone [options]
+echo usage: build [options]
 echo    options:
 echo    -e            mvn eclipse:eclipse
 echo    -es           mvn eclipse:eclipse -DdownloadSources=true
