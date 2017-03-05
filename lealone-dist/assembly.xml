@@ -23,11 +23,15 @@
         <format>tar.gz</format>
     </formats>
 
-    <baseDirectory>/</baseDirectory>
+    <baseDirectory>/lealone-${project.version}</baseDirectory>
     <fileSets>
         <fileSet>
-            <directory>lealone-dist</directory>
-            <outputDirectory>/lealone-${project.version}</outputDirectory>
+            <directory>lealone-dist/bin</directory>
+            <outputDirectory>bin</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>lealone-dist/conf</directory>
+            <outputDirectory>conf</outputDirectory>
         </fileSet>
     </fileSets>
 
@@ -38,7 +42,7 @@
             </includes>
             <binaries>
                 <unpack>false</unpack>
-                <outputDirectory>/lealone-${project.version}/lib</outputDirectory>
+                <outputDirectory>lib</outputDirectory>
                 <dependencySets>
                     <dependencySet>
                         <useTransitiveFiltering>true</useTransitiveFiltering>
