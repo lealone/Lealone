@@ -25,10 +25,9 @@
 * 从[H2数据库](http://www.h2database.com/html/main.html)借鉴了大量成熟的代码和思想
 
 
-##### 企业版本(支持分布式事务)
+##### 企业版本
 
-* 高性能分布式事务<br>
-  使用一种非常新颖的[基于局部时间戳的多版本冲突与有效性检测的分布式事务模型](https://github.com/codefollower/Lealone/blob/master/docs/%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E6%A8%A1%E5%9E%8B.md)
+* 支持[分布式事务](https://github.com/codefollower/Lealone/blob/master/docs/%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E6%A8%A1%E5%9E%8B.md)
 
 * 支持[全局快照隔离](https://github.com/codefollower/My-Blog/issues/8)
 
