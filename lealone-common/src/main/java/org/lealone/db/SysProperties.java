@@ -38,10 +38,6 @@ import org.lealone.common.util.Utils;
  *
  */
 public class SysProperties {
-    /**
-     * INTERNAL
-     */
-    private static final String SCRIPT_DIRECTORY = "script.directory";
 
     /**
      * System property <code>file.encoding</code> (default: Cp1252).<br />
@@ -70,8 +66,7 @@ public class SysProperties {
 
     /**
      * System property <code>user.home</code> (empty string if not set).<br />
-     * It is usually set by the system, and used as a replacement for ~ in file
-     * names.
+     * It is usually set by the system, and used as a replacement for ~ in file names.
      */
     public static final String USER_HOME = Utils.getProperty("user.home", "");
 
@@ -85,21 +80,13 @@ public class SysProperties {
      * System property <code>check</code> (default: true).<br />
      * Assertions in the database engine.
      */
-    // ## CHECK ##
     public static final boolean CHECK = getProperty("check", true);
-    /*/
-    public static final boolean CHECK = false;
-    //*/
 
     /**
      * System property <code>check2</code> (default: true).<br />
      * Additional assertions in the database engine.
      */
-    // ## CHECK ##
     public static final boolean CHECK2 = getProperty("check2", false);
-    /*/
-    public static final boolean CHECK2 = false;
-    //*/
 
     /**
      * System property <code>client.trace.directory</code> (default: trace.db/).<br />
@@ -116,8 +103,7 @@ public class SysProperties {
 
     /**
      * System property <code>datasource.trace.level</code> (default: 1).<br />
-     * The trace level of the data source implementation. Default is 1 for
-     * error.
+     * The trace level of the data source implementation. Default is 1 for error.
      */
     public static final int DATASOURCE_TRACE_LEVEL = getProperty("datasource.trace.level", TraceSystem.ERROR);
 
@@ -159,8 +145,7 @@ public class SysProperties {
     public static final boolean LOB_IN_DATABASE = getProperty("lob.in.database", true);
 
     /**
-     * System property <code>lob.client.max.size.memory</code> (default:
-     * 1048576).<br />
+     * System property <code>lob.client.max.size.memory</code> (default: 1048576).<br />
      * The maximum size of a LOB object to keep in memory on the client side
      * when using the server mode.
      */
@@ -206,8 +191,7 @@ public class SysProperties {
     public static final boolean OBJECT_CACHE = getProperty("object.cache", true);
 
     /**
-     * System property <code>object.cache.max.per.element.size</code> (default:
-     * 4096).<br />
+     * System property <code>object.cache.max.per.element.size</code> (default: 4096).<br />
      * The maximum size (precision) of an object in the cache.
      */
     public static final int OBJECT_CACHE_MAX_PER_ELEMENT_SIZE = getProperty("object.cache.max.per.element.size", 4096);
@@ -218,13 +202,6 @@ public class SysProperties {
      * This value must be a power of 2.
      */
     public static final int OBJECT_CACHE_SIZE = MathUtils.nextPowerOf2(getProperty("object.cache.size", 1024));
-
-    /**
-     * System property <code>pg.client.encoding</code> (default: UTF-8).<br />
-     * Default client encoding for PG server. It is used if the client does not
-     * sends his encoding.
-     */
-    public static final String PG_DEFAULT_CLIENT_ENCODING = getProperty("pg.client.encoding", "UTF-8");
 
     /**
      * System property <code>prefix.temp.file</code> (default: lealone.temp).<br />
@@ -341,8 +318,7 @@ public class SysProperties {
      * equal, but objects are not, the serialized forms (the byte arrays) are
      * compared.
      * <br />
-     * The string representation of the values use the toString method of
-     * object.
+     * The string representation of the values use the toString method of object.
      * <br />
      * In client-server mode, the server must have all required classes in the
      * class path. On the client side, this setting is required to be disabled
@@ -367,12 +343,28 @@ public class SysProperties {
      * (default: false).<br />
      * Limited support for the old-style Oracle outer join with "(+)".
      */
-    public static final boolean OLD_STYLE_OUTER_JOIN = Utils.getProperty("old.style.outer.join", false);
+    public static final boolean OLD_STYLE_OUTER_JOIN = getProperty("old.style.outer.join", false);
 
+    /**
+     * INTERNAL
+     */
+    private static final String SCRIPT_DIRECTORY = "script.directory";
     private static final String BASE_DIR = "base.dir";
 
     private SysProperties() {
         // utility class
+    }
+
+    /**
+     * System property <code>scriptDirectory</code> (default: empty
+     * string).<br />
+     * Relative or absolute directory where the script files are stored to or
+     * read from.
+     *
+     * @return the current value
+     */
+    public static String getScriptDirectory() {
+        return getProperty(SCRIPT_DIRECTORY, "");
     }
 
     /**
@@ -395,18 +387,6 @@ public class SysProperties {
      */
     public static String setBaseDir(String baseDir) {
         return System.setProperty(Constants.PROJECT_NAME_PREFIX + BASE_DIR, baseDir);
-    }
-
-    /**
-     * System property <code>scriptDirectory</code> (default: empty
-     * string).<br />
-     * Relative or absolute directory where the script files are stored to or
-     * read from.
-     *
-     * @return the current value
-     */
-    public static String getScriptDirectory() {
-        return getProperty(SCRIPT_DIRECTORY, "");
     }
 
     private static String getProperty(String key, String defaultValue) {

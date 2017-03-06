@@ -211,12 +211,12 @@ public class Set extends ManipulateStatement {
             }
             session.setLockTimeout(getIntValue());
             break;
-        case SetTypes.LOG: {
-            int value = getIntValue();
-            if (database.isPersistent() && value != database.getLogMode()) {
-                session.getUser().checkAdmin();
-                database.setLogMode(value);
-            }
+        case SetTypes.LOG: { // 这个参数已不再使用 //TODO 删除
+            // int value = getIntValue();
+            // if (database.isPersistent() && value != database.getLogMode()) {
+            // session.getUser().checkAdmin();
+            // database.setLogMode(value);
+            // }
             break;
         }
         case SetTypes.MAX_LENGTH_INPLACE_LOB: {
@@ -273,10 +273,10 @@ public class Set extends ManipulateStatement {
                 database.setMode(mode);
             }
             break;
-        case SetTypes.MULTI_THREADED: { // 这个参数已不再使用
+        case SetTypes.MULTI_THREADED: { // 这个参数已不再使用 //TODO 删除
             break;
         }
-        case SetTypes.MVCC: { // 这个参数已不再使用
+        case SetTypes.MVCC: { // 这个参数已不再使用 //TODO 删除
             // if (database.isMultiVersion() != (getIntValue() == 1)) {
             // throw DbException.get(ErrorCode.CANNOT_CHANGE_SETTING_WHEN_OPEN_1, "MVCC");
             // }
@@ -295,7 +295,7 @@ public class Set extends ManipulateStatement {
             session.setQueryTimeout(value);
             break;
         }
-        case SetTypes.REDO_LOG_BINARY: { // 这个参数已不再使用
+        case SetTypes.REDO_LOG_BINARY: { // 这个参数已不再使用 //TODO 删除
             // int value = getIntValue();
             // session.setRedoLogBinary(value == 1);
             break;
@@ -353,7 +353,7 @@ public class Set extends ManipulateStatement {
             session.setThrottle(getIntValue());
             break;
         }
-        case SetTypes.UNDO_LOG: { // 这个参数已不再使用
+        case SetTypes.UNDO_LOG: { // 这个参数已不再使用 //TODO 删除
             // int value = getIntValue();
             // if (value < 0 || value > 1) {
             // throw DbException.getInvalidValueException("UNDO_LOG", getIntValue());

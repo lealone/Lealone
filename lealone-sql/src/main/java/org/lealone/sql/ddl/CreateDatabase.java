@@ -17,16 +17,19 @@
  */
 package org.lealone.sql.ddl;
 
+import java.io.File;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
+import org.lealone.db.SysProperties;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.router.RouterHolder;
 
@@ -80,6 +83,20 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
                     newDb.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
             }
             db.addDatabaseObject(session, newDb);
+
+            String fullName;
+            String baseDir = SysProperties.getBaseDirSilently();
+            if (baseDir == null) {
+                fullName = dbName;
+            } else {
+                if (baseDir != null && !baseDir.endsWith(File.separator)) {
+                    baseDir = baseDir + File.separator;
+                }
+                fullName = baseDir + dbName;
+            }
+            String url = Constants.CONN_URL_INTERNAL + ":" + dbName;
+            newDb.init(fullName, url);
+            LealoneDatabase.createRootUser(newDb);
         }
         return 0;
     }

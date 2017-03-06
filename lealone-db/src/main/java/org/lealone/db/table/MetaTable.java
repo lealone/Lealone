@@ -616,7 +616,6 @@ public class MetaTable extends Table {
             add(rows, "MULTI_THREADED", "1");
             add(rows, "MVCC", database.isMultiVersion() ? "TRUE" : "FALSE");
             add(rows, "QUERY_TIMEOUT", "" + session.getQueryTimeout());
-            add(rows, "LOG", "" + database.getLogMode());
             // database settings
             ArrayList<String> settingNames = New.arrayList();
             Map<String, String> s = database.getSettings().getSettings();

@@ -80,37 +80,16 @@ import org.lealone.transaction.TransactionEngineManager;
 /**
  * There is one database object per open database.
  *
- * The format of the meta data table is:
- *  id int, 0, objectType int, sql varchar
- *
- * @since 2004-04-15 22:49
- * 
  * @author H2 Group
  * @author zhh
  */
 public class Database implements DataHandler, DbObject {
 
     /**
-     * This log mode means the transaction log is not used.
-     */
-    public static final int LOG_MODE_OFF = 0;
-
-    /**
-     * This log mode means the transaction log is used and FileDescriptor.sync()
-     * is called for each checkpoint. This is the default level.
-     */
-    public static final int LOG_MODE_SYNC = 2;
-
-    /**
      * The default name of the system user. This name is only used as long as
      * there is no administrator user registered.
      */
     private static final String SYSTEM_USER_NAME = "DBA";
-
-    private String databaseURL;
-    private String cipher;
-    private byte[] filePasswordHash;
-    private byte[] fileEncryptionKey;
 
     private final HashMap<String, User> users = New.hashMap();
     private final HashMap<String, Role> roles = New.hashMap();
@@ -177,9 +156,7 @@ public class Database implements DataHandler, DbObject {
     private SourceCompiler compiler;
     private volatile boolean metaTablesInitialized;
     private LobStorage lobStorage;
-    private int pageSize;
     private int defaultTableType = Table.TYPE_CACHED;
-    private int logMode;
     private volatile boolean initialized = false;
     private DbException backgroundException;
 
@@ -197,13 +174,13 @@ public class Database implements DataHandler, DbObject {
 
     private String fullName;
     private String storageName; // 不使用原始的名称，而是用id替换数据库名
+    private String databaseURL;
 
     private Map<String, String> replicationProperties;
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
 
     private RunMode runMode;
     private final Map<String, String> parameters;
-    private ConnectionInfo ci;
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -215,6 +192,13 @@ public class Database implements DataHandler, DbObject {
             dbSettings = DbSettings.getDefaultSettings();
 
         persistent = dbSettings.persistent;
+        compareMode = CompareMode.getInstance(null, 0, false);
+        if (dbSettings.mode != null) {
+            mode = Mode.getInstance(dbSettings.mode);
+        }
+        maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
+                : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
+        cacheSize = dbSettings.cacheSize;
 
         String engineName = dbSettings.defaultSQLEngine;
         SQLEngine sqlEngine = SQLEngineManager.getInstance().getEngine(engineName);
@@ -326,17 +310,13 @@ public class Database implements DataHandler, DbObject {
         return runMode == RunMode.SHARDING;
     }
 
-    public boolean isInitialized() {
-        return initialized;
-    }
-
     public synchronized Database copy() {
         Database db = new Database(id, name, parameters);
         // 因为每个存储只能打开一次，所以要复用原有存储
         db.storageName = storageName;
         db.storageBuilder = storageBuilder;
         db.storages.putAll(storages);
-        db.init(ci);
+        db.init(fullName, databaseURL);
         LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
         for (ServerSession s : userSessions) {
             db.userSessions.add(s);
@@ -345,49 +325,40 @@ public class Database implements DataHandler, DbObject {
         return db;
     }
 
-    public synchronized void init(ConnectionInfo ci) {
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    public void init(ConnectionInfo ci) {
+        init(ci.getDatabaseName(), ci.getURL());
+    }
+
+    public synchronized void init(String fullName, String databaseURL) {
         if (initialized)
             return;
-
         initialized = true;
-        this.ci = ci;
-        compareMode = CompareMode.getInstance(null, 0, false);
-        filePasswordHash = ci.getFilePasswordHash();
-        fileEncryptionKey = ci.getFileEncryptionKey();
-        fullName = ci.getDatabaseName();
+
+        this.fullName = fullName;
+        this.databaseURL = databaseURL;
         storageName = getStorageName();
-        maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
-                : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
-        cipher = ci.getProperty("CIPHER", null);
-        cacheSize = ci.getProperty("CACHE_SIZE", Constants.DEFAULT_CACHE_SIZE);
-        pageSize = ci.getProperty("PAGE_SIZE", Constants.DEFAULT_PAGE_SIZE);
-        databaseURL = ci.getURL();
-        String listener = ci.getProperty("DATABASE_EVENT_LISTENER", null);
+
+        String listener = dbSettings.eventListener;
         if (listener != null) {
             listener = StringUtils.trim(listener, true, true, "'");
             setEventListenerClass(listener);
         }
-        String modeName = ci.getProperty("MODE", null);
-        if (modeName != null) {
-            mode = Mode.getInstance(modeName);
-        }
-        logMode = ci.getProperty("LOG", LOG_MODE_SYNC);
 
-        initTraceSystem(ci);
+        initTraceSystem();
         openDatabase();
         addShutdownHook();
         initDbObjectVersionTable();
     }
 
-    private void initTraceSystem(ConnectionInfo ci) {
+    private void initTraceSystem() {
         if (persistent) {
-            int traceLevelFile = ci.getIntProperty(SetTypes.TRACE_LEVEL_FILE, TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
-            int traceLevelSystemOut = ci.getIntProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT,
-                    TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
-
             traceSystem = new TraceSystem(getStorageName() + Constants.SUFFIX_TRACE_FILE);
-            traceSystem.setLevelFile(traceLevelFile);
-            traceSystem.setLevelSystemOut(traceLevelSystemOut);
+            traceSystem.setLevelFile(dbSettings.traceLevelFile);
+            traceSystem.setLevelSystemOut(dbSettings.traceLevelSystemOut);
             trace = traceSystem.getTrace(Trace.DATABASE);
             trace.info("opening {0} (build {1})", name, Constants.BUILD_ID);
         } else {
@@ -662,7 +633,8 @@ public class Database implements DataHandler, DbObject {
         if (mustExist && !FileUtils.exists(name)) {
             throw DbException.get(ErrorCode.FILE_NOT_FOUND_1, name);
         }
-        FileStorage fileStorage = FileStorage.open(this, name, openMode, cipher, filePasswordHash);
+        FileStorage fileStorage = FileStorage.open(this, name, openMode, dbSettings.cipher,
+                dbSettings.filePasswordHash);
         try {
             fileStorage.init();
         } catch (DbException e) {
@@ -680,10 +652,10 @@ public class Database implements DataHandler, DbObject {
      * @return true if the cipher algorithm and the password match
      */
     boolean validateFilePasswordHash(String testCipher, byte[] testHash) {
-        if (!StringUtils.equals(testCipher, this.cipher)) {
+        if (!StringUtils.equals(testCipher, dbSettings.cipher)) {
             return false;
         }
-        return Utils.compareSecure(testHash, filePasswordHash);
+        return Utils.compareSecure(testHash, dbSettings.filePasswordHash);
     }
 
     public static String parseDatabaseShortName(DbSettings dbSettings, String databaseName) {
@@ -930,19 +902,6 @@ public class Database implements DataHandler, DbObject {
         lockMeta(session);
         obj.getSchema().add(obj);
         addMeta(session, obj);
-    }
-
-    public void addUser(ServerSession session, User user) {
-        String name = user.getName();
-        synchronized (getAuthLock()) {
-            checkAdd(users, user);
-            if (user.isAdmin() && systemUser.getName().equals(SYSTEM_USER_NAME)) {
-                systemUser.rename(name);
-            }
-            // lockMeta(session);
-            addMeta(session, user);
-            users.put(name, user);
-        }
     }
 
     public void addRole(ServerSession session, Role role) {
@@ -1900,11 +1859,11 @@ public class Database implements DataHandler, DbObject {
     }
 
     public int getPageSize() {
-        return pageSize;
+        return dbSettings.pageSize;
     }
 
     public byte[] getFileEncryptionKey() {
-        return fileEncryptionKey;
+        return dbSettings.fileEncryptionKey;
     }
 
     public Role getPublicRole() {
@@ -2030,8 +1989,8 @@ public class Database implements DataHandler, DbObject {
             try {
                 eventListener = (DatabaseEventListener) Utils.loadUserClass(className).newInstance();
                 String url = databaseURL;
-                if (cipher != null) {
-                    url += ";CIPHER=" + cipher;
+                if (dbSettings.cipher != null) {
+                    url += ";CIPHER=" + dbSettings.cipher;
                 }
                 eventListener.init(url);
             } catch (Throwable e) {
@@ -2411,18 +2370,6 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
-    public void setLogMode(int log) {
-        if (log < 0 || log > 2) {
-            throw DbException.getInvalidValueException("LOG", log);
-        }
-
-        this.logMode = log;
-    }
-
-    public int getLogMode() {
-        return logMode;
-    }
-
     public int getDefaultTableType() {
         return defaultTableType;
     }
@@ -2593,6 +2540,8 @@ public class Database implements DataHandler, DbObject {
         sql.resetCount();
         sql.append("(");
         for (Entry<String, String> e : map.entrySet()) {
+            if (e.getValue() == null)
+                continue;
             sql.appendExceptFirst(",");
             sql.append(e.getKey()).append('=').append("'").append(e.getValue()).append("'");
         }
@@ -2676,7 +2625,7 @@ public class Database implements DataHandler, DbObject {
 
     private void initDbObjectVersionTable() {
         try {
-            Connection conn = LealoneDatabase.getInstance().getInternalConnection();
+            Connection conn = getInternalConnection();
             Statement stmt = conn.createStatement();
             stmt.execute("CREATE TABLE IF NOT EXISTS db_object_version (id int PRIMARY KEY, version int)");
             stmt.execute("CREATE TABLE IF NOT EXISTS table_alter_history"

@@ -11,6 +11,8 @@ import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.TraceSystem;
+import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 
 /**
@@ -347,9 +349,19 @@ public class DbSettings extends SettingsBase {
 
     public final int net = get("NET", 0);
 
-    public final int block_io = get("BLOCK_IO", 0);
+    public final int blockIo = get("BLOCK_IO", 0);
 
-    public final int service_level = get("SERVICE_LEVEL", 0);
+    public final int serviceLevel = get("SERVICE_LEVEL", 0);
+
+    public final int cacheSize = get("CACHE_SIZE", Constants.DEFAULT_CACHE_SIZE);
+    public final int pageSize = get("PAGE_SIZE", Constants.DEFAULT_PAGE_SIZE);
+    public final String eventListener = get("DATABASE_EVENT_LISTENER", null);
+    public final String mode = get("MODE", null);
+    public final String cipher = get("CIPHER", null);
+    public final byte[] filePasswordHash = convertHexToBytes("FILE_PASSWORD_HASH", null);
+    public final byte[] fileEncryptionKey = convertHexToBytes("FILE_ENCRYPTION_KEY", null);
+    public final int traceLevelFile = get("TRACE_LEVEL_FILE", TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
+    public final int traceLevelSystemOut = get("TRACE_LEVEL_SYSTEM_OUT", TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
 
     /**
      * Get the setting for the given key.
@@ -407,6 +419,11 @@ public class DbSettings extends SettingsBase {
             settings.put(key, v);
         }
         return v;
+    }
+
+    private byte[] convertHexToBytes(String key, String defaultValue) {
+        String v = get(key, defaultValue);
+        return v == null ? null : StringUtils.convertHexToBytes(v);
     }
 
     /**

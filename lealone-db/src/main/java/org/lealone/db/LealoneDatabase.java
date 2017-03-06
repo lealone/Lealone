@@ -70,7 +70,7 @@ public class LealoneDatabase extends Database {
         return db;
     }
 
-    private static void createRootUser(Database db) {
+    public static void createRootUser(Database db) {
         db.getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
     }
 
