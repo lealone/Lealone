@@ -199,8 +199,8 @@ public class TestBase extends Assert {
                 url.append(TEST_DIR).append('/');
         } else {
             if (isReplicaSetMode)
-                url.append(Constants.URL_RS).append("//").append("127.0.0.1").append(',').append("127.0.0.2").append(',')
-                        .append("127.0.0.3").append('/');
+                url.append(Constants.URL_RS).append("//").append("127.0.0.1").append(',').append("127.0.0.2")
+                        .append(',').append("127.0.0.3").append('/');
             else {
                 if (ssl)
                     url.append(Constants.URL_SSL);

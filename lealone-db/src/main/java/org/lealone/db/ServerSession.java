@@ -588,6 +588,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             setAutoCommit(true);
 
         currentStatements.clear();
+        containsDDL = false;
+        containsDatabaseStatement = false;
     }
 
     private void checkCommitRollback() {

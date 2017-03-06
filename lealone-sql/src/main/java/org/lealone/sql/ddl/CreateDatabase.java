@@ -17,19 +17,16 @@
  */
 package org.lealone.sql.ddl;
 
-import java.io.File;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
-import org.lealone.db.SysProperties;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.router.RouterHolder;
 
@@ -65,40 +62,33 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LealoneDatabase db = LealoneDatabase.getInstance();
-        synchronized (db.getLock(DbObjectType.DATABASE)) {
-            if (db.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
+        LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
+        synchronized (lealoneDB.getLock(DbObjectType.DATABASE)) {
+            if (lealoneDB.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
                 if (ifNotExists) {
                     return 0;
                 }
                 throw DbException.get(ErrorCode.DATABASE_ALREADY_EXISTS_1, dbName);
             }
-            int id = getObjectId(db);
-            Database newDb = new Database(id, dbName, parameters);
-            newDb.setReplicationProperties(replicationProperties);
-            newDb.setRunMode(runMode);
+            int id = getObjectId(lealoneDB);
+            Database newDB = new Database(id, dbName, parameters);
+            newDB.setReplicationProperties(replicationProperties);
+            newDB.setRunMode(runMode);
             if (parameters != null && !parameters.containsKey("hostIds")) {
-                int[] hostIds = RouterHolder.getRouter().getHostIds(newDb);
+                int[] hostIds = RouterHolder.getRouter().getHostIds(newDB);
                 if (hostIds != null && hostIds.length > 0)
-                    newDb.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
+                    newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
             }
-            db.addDatabaseObject(session, newDb);
+            lealoneDB.addDatabaseObject(session, newDB);
 
-            String fullName;
-            String baseDir = SysProperties.getBaseDirSilently();
-            if (baseDir == null) {
-                fullName = dbName;
-            } else {
-                if (baseDir != null && !baseDir.endsWith(File.separator)) {
-                    baseDir = baseDir + File.separator;
-                }
-                fullName = baseDir + dbName;
+            // LealoneDatabase在启动过程中执行CREATE DATABASE时，不对数据库初始化
+            if (!lealoneDB.isStarting()) {
+                newDB.init();
+                newDB.createRootUserIfNotExists();
             }
-            String url = Constants.CONN_URL_INTERNAL + ":" + dbName;
-            newDb.init(fullName, url);
-            LealoneDatabase.createRootUser(newDb);
         }
         return 0;
+
     }
 
     @Override

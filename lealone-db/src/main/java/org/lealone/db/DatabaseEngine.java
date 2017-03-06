@@ -123,7 +123,7 @@ public class DatabaseEngine {
                 }
             } else {
                 if (!database.isInitialized())
-                    database.init(ci);
+                    database.init();
             }
 
             synchronized (database) {

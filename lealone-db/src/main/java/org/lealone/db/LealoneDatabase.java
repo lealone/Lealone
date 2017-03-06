@@ -20,7 +20,6 @@ package org.lealone.db;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.ErrorCode;
@@ -52,26 +51,23 @@ public class LealoneDatabase extends Database {
 
         INSTANCE = this; // init执行过程中会触发getInstance()，此时INSTANCE为null，会导致NPE
 
-        String url = Constants.URL_PREFIX + Constants.URL_EMBED + NAME;
-        ConnectionInfo ci = new ConnectionInfo(url, (Properties) null);
-        ci.setBaseDir(SysProperties.getBaseDir());
-        init(ci);
-        createRootUser(this);
+        init();
+        createRootUserIfNotExists();
     }
 
+    // 安全注释见: DatabaseEngine.ServerSessionFactory.createSession(String, ConnectionInfo, boolean)
     Database createDatabase(String dbName, ConnectionInfo ci) {
         String sql = getCreateSQL(quoteIdentifier(dbName), ci);
         getSystemSession().prepareStatementLocal(sql).executeUpdate();
         // 执行完CREATE DATABASE后会加到databases字段中
         // CreateDatabase.update -> Database.addDatabaseObject -> Database.getMap -> this.getDatabasesMap
         Database db = databases.get(dbName);
-        db.init(ci);
-        createRootUser(db);
+        if (SysProperties.CHECK) {
+            if (db == null) {
+                DbException.throwInternalError("not found: " + dbName);
+            }
+        }
         return db;
-    }
-
-    public static void createRootUser(Database db) {
-        db.getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
     }
 
     void closeDatabase(String dbName) {

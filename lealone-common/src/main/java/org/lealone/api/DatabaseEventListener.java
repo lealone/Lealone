@@ -65,9 +65,9 @@ public interface DatabaseEventListener extends EventListener {
      * in the database URL, but may be later if the listener is set at
      * runtime with the SET SQL statement.
      *
-     * @param url - the database URL
+     * @param dbName - the database name
      */
-    void init(String url);
+    void init(String dbName);
 
     /**
      * This method is called after the database has been opened.

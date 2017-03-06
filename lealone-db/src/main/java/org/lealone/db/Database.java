@@ -165,6 +165,7 @@ public class Database implements DataHandler, DbObject {
 
     private final int id;
     private final String name;
+    private final Map<String, String> parameters;
     private final DbSettings dbSettings;
     private final boolean persistent;
 
@@ -172,19 +173,17 @@ public class Database implements DataHandler, DbObject {
     private final SQLEngine sqlEngine;
     private final TransactionEngine transactionEngine;
 
-    private String fullName;
     private String storageName; // 不使用原始的名称，而是用id替换数据库名
-    private String databaseURL;
 
     private Map<String, String> replicationProperties;
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
 
     private RunMode runMode;
-    private final Map<String, String> parameters;
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
         this.name = name;
+        this.storageName = getStorageName();
         this.parameters = parameters;
         if (parameters != null)
             dbSettings = DbSettings.getInstance(parameters);
@@ -240,10 +239,6 @@ public class Database implements DataHandler, DbObject {
 
     public String getShortName() {
         return getName();
-    }
-
-    public String getFullName() {
-        return fullName;
     }
 
     public DbSettings getSettings() {
@@ -316,7 +311,7 @@ public class Database implements DataHandler, DbObject {
         db.storageName = storageName;
         db.storageBuilder = storageBuilder;
         db.storages.putAll(storages);
-        db.init(fullName, databaseURL);
+        db.init();
         LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
         for (ServerSession s : userSessions) {
             db.userSessions.add(s);
@@ -329,18 +324,10 @@ public class Database implements DataHandler, DbObject {
         return initialized;
     }
 
-    public void init(ConnectionInfo ci) {
-        init(ci.getDatabaseName(), ci.getURL());
-    }
-
-    public synchronized void init(String fullName, String databaseURL) {
+    public synchronized void init() {
         if (initialized)
             return;
         initialized = true;
-
-        this.fullName = fullName;
-        this.databaseURL = databaseURL;
-        storageName = getStorageName();
 
         String listener = dbSettings.eventListener;
         if (listener != null) {
@@ -1704,11 +1691,7 @@ public class Database implements DataHandler, DbObject {
         } else {
             try {
                 eventListener = (DatabaseEventListener) Utils.loadUserClass(className).newInstance();
-                String url = databaseURL;
-                if (dbSettings.cipher != null) {
-                    url += ";CIPHER=" + dbSettings.cipher;
-                }
-                eventListener.init(url);
+                eventListener.init(name);
             } catch (Throwable e) {
                 throw DbException.get(ErrorCode.ERROR_SETTING_DATABASE_EVENT_LISTENER_2, e, className, e.toString());
             }
@@ -2166,9 +2149,7 @@ public class Database implements DataHandler, DbObject {
     private String getStorageName() {
         if (storageName != null)
             return storageName;
-        String baseDir = SysProperties.getBaseDirSilently();
-        if (baseDir == null)
-            baseDir = FileUtils.getParent(FileUtils.toRealPath(fullName));
+        String baseDir = SysProperties.getBaseDir();
         if (baseDir != null && !baseDir.endsWith(File.separator))
             baseDir = baseDir + File.separator;
 
@@ -2433,6 +2414,10 @@ public class Database implements DataHandler, DbObject {
     }
 
     private static final String ROOT_USER = "ROOT";
+
+    public void createRootUserIfNotExists() {
+        getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
+    }
 
     boolean isRootUser(String userName) {
         return ROOT_USER.equalsIgnoreCase(userName);
