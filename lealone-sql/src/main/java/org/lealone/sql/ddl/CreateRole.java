@@ -58,7 +58,7 @@ public class CreateRole extends DefineStatement implements AuthStatement {
             }
             int id = getObjectId();
             Role role = new Role(db, id, roleName, false);
-            db.addRole(session, role);
+            db.addDatabaseObject(session, role);
         }
         return 0;
     }
