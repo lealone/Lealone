@@ -30,7 +30,6 @@ import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.InDoubtTransaction;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Setting;
 import org.lealone.db.UserAggregate;
@@ -1035,16 +1034,7 @@ public class MetaTable extends Table {
             break;
         }
         case IN_DOUBT: {
-            ArrayList<InDoubtTransaction> prepared = database.getInDoubtTransactions();
-            if (prepared != null && admin) {
-                for (InDoubtTransaction prep : prepared) {
-                    add(rows,
-                            // TRANSACTION
-                            prep.getTransactionName(),
-                            // STATE
-                            prep.getState());
-                }
-            }
+            // 2PC语句已经废弃
             break;
         }
         case CROSS_REFERENCES: {

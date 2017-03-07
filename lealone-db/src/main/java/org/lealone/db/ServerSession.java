@@ -80,7 +80,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private int systemIdentifier;
     private HashMap<String, Procedure> procedures;
     private boolean autoCommitAtTransactionEnd;
-    private String currentTransactionName;
     private volatile long cancelAt;
     private boolean closed;
     private final long sessionStart = System.currentTimeMillis();
@@ -498,18 +497,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
     }
 
-    /**
-     * Prepare the given transaction.
-     *
-     * @param transactionName the name of the transaction
-     */
-    public void prepareCommitFor2PC(String transactionName) {
-        if (transaction != null) {
-            database.prepareCommit(this, transactionName);
-        }
-        currentTransactionName = transactionName;
-    }
-
     public void commit() {
         commit(null);
     }
@@ -526,7 +513,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             allLocalTransactionNames = this.allLocalTransactionNames;
         }
         checkCommitRollback();
-        currentTransactionName = null;
         transactionStart = 0;
 
         if (transaction != null) {
@@ -594,15 +580,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     @Override
     public void rollback() {
         checkCommitRollback();
-        currentTransactionName = null;
         if (transaction != null) {
             Transaction transaction = this.transaction;
             this.transaction = null;
             transaction.rollback();
             endTransaction();
-        }
-        if (!locks.isEmpty()) {
-            database.commit(this);
         }
         cleanTempTables(false);
         unlockAll();
@@ -747,11 +729,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
                         table.setModified();
                         localTempTables.remove(table.getName());
                         table.removeChildrenAndResources(this);
-                        if (closeSession) {
-                            // need to commit, otherwise recovery might
-                            // ignore the table removal
-                            database.commit(this);
-                        }
                     } else if (table.getOnCommitTruncate()) {
                         table.truncate(this);
                     }
@@ -795,38 +772,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public Value getLastScopeIdentity() {
         return lastScopeIdentity;
-    }
-
-    /**
-     * Commit or roll back the given transaction.
-     *
-     * @param transactionName the name of the transaction
-     * @param commit true for commit, false for rollback
-     */
-    public void setPreparedTransactionFor2PC(String transactionName, boolean commit) {
-        if (currentTransactionName != null && currentTransactionName.equals(transactionName)) {
-            if (commit) {
-                commit();
-            } else {
-                rollback();
-            }
-        } else {
-            ArrayList<InDoubtTransaction> list = database.getInDoubtTransactions();
-            int state = commit ? InDoubtTransaction.COMMIT : InDoubtTransaction.ROLLBACK;
-            boolean found = false;
-            if (list != null) {
-                for (InDoubtTransaction p : list) {
-                    if (p.getTransactionName().equals(transactionName)) {
-                        p.setState(state);
-                        found = true;
-                        break;
-                    }
-                }
-            }
-            if (!found) {
-                throw DbException.get(ErrorCode.TRANSACTION_NOT_FOUND_1, transactionName);
-            }
-        }
     }
 
     @Override

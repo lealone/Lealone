@@ -1611,49 +1611,6 @@ public class Database implements DataHandler, DbObject {
         return writeDelay;
     }
 
-    /**
-     * Get the list of in-doubt transactions.
-     *
-     * @return the list
-     */
-    public ArrayList<InDoubtTransaction> getInDoubtTransactions() {
-        return null;
-    }
-
-    /**
-     * Prepare a transaction.
-     *
-     * @param session the session
-     * @param transaction the name of the transaction
-     */
-    synchronized void prepareCommit(ServerSession session, String transaction) {
-        if (readOnly) {
-            return;
-        }
-    }
-
-    /**
-     * Commit the current transaction of the given session.
-     *
-     * @param session the session
-     */
-    synchronized void commit(ServerSession session) {
-        throwLastBackgroundException();
-    }
-
-    private void throwLastBackgroundException() {
-        if (backgroundException != null) {
-            // we don't care too much about concurrency here,
-            // we just want to make sure the exception is _normally_
-            // not just logged to the .trace.db file
-            DbException b = backgroundException;
-            backgroundException = null;
-            if (b != null) {
-                throw b;
-            }
-        }
-    }
-
     public void setBackgroundException(DbException e) {
         if (backgroundException == null) {
             backgroundException = e;

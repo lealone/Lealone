@@ -19,7 +19,6 @@ public class TransactionStatement extends ManipulateStatement {
 
     private final int type;
     private String savepointName;
-    private String transactionName;
 
     public TransactionStatement(ServerSession session, int type) {
         super(session);
@@ -48,7 +47,7 @@ public class TransactionStatement extends ManipulateStatement {
     }
 
     public void setTransactionName(String string) {
-        this.transactionName = string;
+        // 2PC语句已经废弃
     }
 
     @Override
@@ -83,16 +82,11 @@ public class TransactionStatement extends ManipulateStatement {
             session.getUser().checkAdmin();
             session.getDatabase().sync();
             break;
-        case SQLStatement.PREPARE_COMMIT:
-            session.prepareCommitFor2PC(transactionName);
+        case SQLStatement.PREPARE_COMMIT: // 2PC语句已经废弃
             break;
-        case SQLStatement.COMMIT_TRANSACTION:
-            session.getUser().checkAdmin();
-            session.setPreparedTransactionFor2PC(transactionName, true);
+        case SQLStatement.COMMIT_TRANSACTION: // 2PC语句已经废弃
             break;
-        case SQLStatement.ROLLBACK_TRANSACTION:
-            session.getUser().checkAdmin();
-            session.setPreparedTransactionFor2PC(transactionName, false);
+        case SQLStatement.ROLLBACK_TRANSACTION: // 2PC语句已经废弃
             break;
         case SQLStatement.SHUTDOWN_IMMEDIATELY:
             session.getUser().checkAdmin();
