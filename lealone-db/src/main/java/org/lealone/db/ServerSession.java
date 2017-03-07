@@ -1239,11 +1239,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return transaction;
     }
 
-    /**
-     * 最初从Client端传递过来的配置参数
-     */
-    // private Properties originalProperties;
-
     // 参与本次事务的其他Session
     protected final Map<String, Session> sessionCache = New.hashMap();
 
@@ -1263,12 +1258,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public Properties getOriginalProperties() {
         return connectionInfo == null ? null : connectionInfo.getProperties();
-        // return originalProperties;
     }
-
-    // public void setOriginalProperties(Properties originalProperties) {
-    // this.originalProperties = originalProperties;
-    // }
 
     @Override
     public boolean validateTransaction(String localTransactionName) {

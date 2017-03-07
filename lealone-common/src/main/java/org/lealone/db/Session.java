@@ -7,7 +7,6 @@
 package org.lealone.db;
 
 import java.io.Closeable;
-import java.util.concurrent.Callable;
 
 import org.lealone.common.trace.Trace;
 import org.lealone.sql.ParsedStatement;
@@ -181,9 +180,9 @@ public interface Session extends Closeable, Transaction.Participant {
 
     int getNextId();
 
-    void setCallable(Callable<?> callable);
+    void setRunnable(Runnable runnable);
 
-    Callable<?> getCallable();
+    Runnable getRunnable();
 
     void prepareCommit();
 

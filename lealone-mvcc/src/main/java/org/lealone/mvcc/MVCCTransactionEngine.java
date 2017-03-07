@@ -332,9 +332,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     void commit(MVCCTransaction t) {
         commitFinal(t.transactionId);
-        if (t.getSession() != null && t.getSession().getCallable() != null) {
+        if (t.getSession() != null && t.getSession().getRunnable() != null) {
             try {
-                t.getSession().getCallable().call();
+                t.getSession().getRunnable().run();
             } catch (Exception e) {
                 throw DbException.convert(e);
             }

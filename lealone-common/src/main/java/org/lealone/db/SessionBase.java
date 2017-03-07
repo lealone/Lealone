@@ -17,7 +17,6 @@
  */
 package org.lealone.db;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
@@ -28,7 +27,7 @@ public abstract class SessionBase implements Session {
     protected String replicationName;
     protected boolean local;
     protected AtomicInteger nextId = new AtomicInteger(0);
-    protected Callable<?> callable;
+    protected Runnable runnable;
 
     @Override
     public String getReplicationName() {
@@ -75,13 +74,13 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void setCallable(Callable<?> callable) {
-        this.callable = callable;
+    public void setRunnable(Runnable runnable) {
+        this.runnable = runnable;
     }
 
     @Override
-    public Callable<?> getCallable() {
-        return callable;
+    public Runnable getRunnable() {
+        return runnable;
     }
 
     @Override

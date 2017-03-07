@@ -7,7 +7,6 @@ package org.lealone.sql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.concurrent.Callable;
 
 import org.lealone.api.DatabaseEventListener;
 import org.lealone.api.ErrorCode;
@@ -414,24 +413,13 @@ class StatementWrapper extends StatementBase {
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    private void setCallable(AsyncResult ar, AsyncHandler ah) {
-        Callable<Object> callable = new Callable<Object>() {
-            @Override
-            public Object call() throws Exception {
-                ah.handle(ar);
-                return null;
-            }
-        };
-        session.setCallable(callable);
-    }
-
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     private void stop(boolean async, AsyncResult ar, AsyncHandler ah) {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
         if (async) {
             if (session.isAutoCommit()) {
-                setCallable(ar, ah);
+                // 等到事务日志写成功后再返回语句的执行结果
+                session.setRunnable(() -> ah.handle(ar));
                 session.prepareCommit();
             } else {
                 // 当前语句是在一个手动提交的事务中进行，提前返回语句的执行结果
