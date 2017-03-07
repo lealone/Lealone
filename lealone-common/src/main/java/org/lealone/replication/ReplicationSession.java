@@ -208,9 +208,9 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public void commit(boolean ddl, String allLocalTransactionNames) {
+    public void commit(String allLocalTransactionNames) {
         for (int i = 0; i < n; i++)
-            sessions[i].commit(ddl, allLocalTransactionNames);
+            sessions[i].commit(allLocalTransactionNames);
     }
 
     @Override

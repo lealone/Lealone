@@ -228,7 +228,7 @@ public class ResultTempTable implements ResultExternal {
                 synchronized (session) {
                     synchronized (sysSession) {
                         synchronized (database) {
-                            sysSession.commit(false);
+                            sysSession.commit();
                         }
                     }
                 }

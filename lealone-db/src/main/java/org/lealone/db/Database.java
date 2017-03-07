@@ -398,7 +398,7 @@ public class Database implements DataHandler, DbObject {
                     addDatabaseObject(systemSession, setting);
                 }
             }
-            systemSession.commit(true);
+            systemSession.commit();
 
             trace.info("opened {0}", name);
         } catch (Throwable e) {
@@ -1147,7 +1147,7 @@ public class Database implements DataHandler, DbObject {
                 if (powerOffCount != -1) {
                     if (meta != null)
                         meta.close(systemSession);
-                    systemSession.commit(true);
+                    systemSession.commit();
                 }
             }
         } catch (DbException e) {
@@ -2433,7 +2433,7 @@ public class Database implements DataHandler, DbObject {
         if (!rootUser.validateUserPasswordHash(userPasswordHash)) {
             rootUser.setUserPasswordHash(userPasswordHash);
             updateMeta(systemSession, rootUser);
-            systemSession.commit(true);
+            systemSession.commit();
         }
         return rootUser;
     }
@@ -2444,7 +2444,7 @@ public class Database implements DataHandler, DbObject {
         user.setUserPasswordHash(userPasswordHash);
         lockMeta(systemSession);
         addDatabaseObject(systemSession, user);
-        systemSession.commit(true);
+        systemSession.commit();
         return user;
     }
 }

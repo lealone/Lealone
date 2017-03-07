@@ -31,8 +31,8 @@ public class TriggerObjectTest extends DbObjectTestBase {
     public static class MyTrigger implements Trigger {
 
         @Override
-        public void init(Connection conn, String schemaName, String triggerName, String tableName, boolean before, int type)
-                throws SQLException {
+        public void init(Connection conn, String schemaName, String triggerName, String tableName, boolean before,
+                int type) throws SQLException {
             System.out.println("schemaName=" + schemaName + " tableName=" + tableName);
 
         }
@@ -108,7 +108,7 @@ public class TriggerObjectTest extends DbObjectTestBase {
             System.out.println(getString(rs, 1) + " " + getString(rs, 2));
         }
 
-        session.commit(false);
+        session.commit();
     }
 
     void drop() {

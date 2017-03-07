@@ -85,7 +85,7 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void prepareCommit(boolean ddl) {
+    public void prepareCommit() {
     }
 
     @Override

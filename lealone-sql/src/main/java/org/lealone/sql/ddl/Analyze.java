@@ -40,7 +40,6 @@ public class Analyze extends DefineStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
         for (Table table : db.getAllTablesAndViews(false)) {
@@ -131,7 +130,7 @@ public class Analyze extends DefineStatement {
                 synchronized (sysSession) {
                     synchronized (db) {
                         db.updateMeta(sysSession, table);
-                        sysSession.commit(true);
+                        sysSession.commit();
                     }
                 }
             }

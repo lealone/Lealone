@@ -64,7 +64,7 @@ public class TransactionStatement extends ManipulateStatement {
             session.begin();
             break;
         case SQLStatement.COMMIT:
-            session.commit(false);
+            session.commit();
             break;
         case SQLStatement.ROLLBACK:
             session.rollback();
@@ -84,15 +84,15 @@ public class TransactionStatement extends ManipulateStatement {
             session.getDatabase().sync();
             break;
         case SQLStatement.PREPARE_COMMIT:
-            session.prepareCommit(transactionName);
+            session.prepareCommitFor2PC(transactionName);
             break;
         case SQLStatement.COMMIT_TRANSACTION:
             session.getUser().checkAdmin();
-            session.setPreparedTransaction(transactionName, true);
+            session.setPreparedTransactionFor2PC(transactionName, true);
             break;
         case SQLStatement.ROLLBACK_TRANSACTION:
             session.getUser().checkAdmin();
-            session.setPreparedTransaction(transactionName, false);
+            session.setPreparedTransactionFor2PC(transactionName, false);
             break;
         case SQLStatement.SHUTDOWN_IMMEDIATELY:
             session.getUser().checkAdmin();
@@ -102,7 +102,7 @@ public class TransactionStatement extends ManipulateStatement {
         case SQLStatement.SHUTDOWN_COMPACT:
         case SQLStatement.SHUTDOWN_DEFRAG: {
             session.getUser().checkAdmin();
-            session.commit(false);
+            session.commit();
             if (type == SQLStatement.SHUTDOWN_COMPACT || type == SQLStatement.SHUTDOWN_DEFRAG) {
                 session.getDatabase().setCompactMode(type);
             }

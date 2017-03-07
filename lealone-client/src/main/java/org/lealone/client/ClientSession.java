@@ -606,7 +606,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
-    public void commit(boolean ddl, String allLocalTransactionNames) {
+    public void commit(String allLocalTransactionNames) {
     }
 
     @Override

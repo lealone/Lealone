@@ -72,7 +72,7 @@ public class TransactionalRouter implements Router {
 
             int updateCount = nestedRouter.executeUpdate(statement);
             if (isTopTransaction)
-                session.prepareCommit(false);
+                session.prepareCommit();
             return updateCount;
         } catch (Exception e) {
             if (isTopTransaction)

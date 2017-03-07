@@ -709,7 +709,7 @@ public class AsyncConnection implements Handler<Buffer> {
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
-            session.commit(false, transfer.readString());
+            session.commit(transfer.readString());
             writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;

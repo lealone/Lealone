@@ -88,7 +88,7 @@ public class RunScript extends ScriptBase {
                 command.update();
             }
             if (session.isAutoCommit()) {
-                session.commit(false);
+                session.commit();
             }
         } catch (DbException e) {
             throw e.addSQL(sql);

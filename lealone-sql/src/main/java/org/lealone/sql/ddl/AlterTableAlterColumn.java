@@ -108,7 +108,6 @@ public class AlterTableAlterColumn extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         Database db = session.getDatabase();
         session.getUser().checkRight(table, Right.ALL);
         table.checkSupportAlter();

@@ -79,7 +79,7 @@ class PeriodicLogSyncService extends LogSyncService {
         // 如果在同步周期内，可以提前提交事务
         long started = System.currentTimeMillis();
         if (!waitForSyncToCatchUp(started) && (t.getSession() != null)) {
-            t.getSession().commit(false, null);
+            t.getSession().commit(null);
         } else {
             super.prepareCommit(t);
         }

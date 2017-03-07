@@ -119,7 +119,6 @@ public class DropTable extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         prepareDrop();
         executeDrop();
         return 0;

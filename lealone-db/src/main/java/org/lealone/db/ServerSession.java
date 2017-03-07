@@ -475,13 +475,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return database;
     }
 
-    private boolean ddl;
     private boolean prepared;
     private String allLocalTransactionNames;
 
     @Override
-    public void prepareCommit(boolean ddl) {
-        this.ddl = ddl;
+    public void prepareCommit() {
         prepared = true;
         if (transaction != null) {
             transaction.setStatus(Transaction.STATUS_COMMITTING);
@@ -490,8 +488,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
     }
 
-    public void prepareCommit(boolean ddl, String allLocalTransactionNames) {
-        this.ddl = ddl;
+    public void prepareCommit(String allLocalTransactionNames) {
         prepared = true;
         this.allLocalTransactionNames = allLocalTransactionNames;
         if (transaction != null) {
@@ -501,25 +498,31 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
     }
 
-    public void commit(boolean ddl) {
-        commit(ddl, null);
-        if (ddl && currentCommand != null) {
-            getTransaction(); // DDL语句重新启动一个新事务
+    /**
+     * Prepare the given transaction.
+     *
+     * @param transactionName the name of the transaction
+     */
+    public void prepareCommitFor2PC(String transactionName) {
+        if (transaction != null) {
+            database.prepareCommit(this, transactionName);
         }
+        currentTransactionName = transactionName;
+    }
+
+    public void commit() {
+        commit(null);
     }
 
     /**
      * Commit the current transaction. If the statement was not a data
      * definition statement, and if there are temporary tables that should be
      * dropped or truncated at commit, this is done as well.
-     *
-     * @param ddl if the statement was a data definition statement
      */
     @Override
-    public void commit(boolean ddl, String allLocalTransactionNames) {
+    public void commit(String allLocalTransactionNames) {
         if (prepared) {
             prepared = false;
-            ddl = this.ddl;
             allLocalTransactionNames = this.allLocalTransactionNames;
         }
         checkCommitRollback();
@@ -537,7 +540,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
             endTransaction();
         }
-        if (!ddl) {
+        if (!containsDDL) {
             // do not clean the temp tables if the last command was a
             // create/drop
             cleanTempTables(false);
@@ -559,19 +562,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         unlockAll();
 
         sessionStatus = SessionStatus.NO_TRANSACTION;
-
-        // SQLStatementExecutor[] sqlStatementExecutors = SQLEngineManager.getInstance().getSQLStatementExecutors();
-        // // if (sqlStatementExecutors != null) {
-        // // Thread t = Thread.currentThread();
-        // // if (t instanceof SQLStatementExecutor) {
-        // // ((SQLStatementExecutor) t).ready();
-        // // }
-        // // }
-        //
-        // if (sqlStatementExecutors != null) {
-        // for (SQLStatementExecutor e : sqlStatementExecutors)
-        // e.ready();
-        // }
     }
 
     private void endTransaction() {
@@ -611,7 +601,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             transaction.rollback();
             endTransaction();
         }
-        if (locks.size() > 0) {
+        if (!locks.isEmpty()) {
             database.commit(this);
         }
         cleanTempTables(false);
@@ -808,27 +798,15 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     /**
-     * Prepare the given transaction.
-     *
-     * @param transactionName the name of the transaction
-     */
-    public void prepareCommit(String transactionName) {
-        if (transaction != null) {
-            database.prepareCommit(this, transactionName);
-        }
-        currentTransactionName = transactionName;
-    }
-
-    /**
      * Commit or roll back the given transaction.
      *
      * @param transactionName the name of the transaction
      * @param commit true for commit, false for rollback
      */
-    public void setPreparedTransaction(String transactionName, boolean commit) {
+    public void setPreparedTransactionFor2PC(String transactionName, boolean commit) {
         if (currentTransactionName != null && currentTransactionName.equals(transactionName)) {
             if (commit) {
-                commit(false);
+                commit();
             } else {
                 rollback();
             }

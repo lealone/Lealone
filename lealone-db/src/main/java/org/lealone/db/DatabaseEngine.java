@@ -191,7 +191,7 @@ public class DatabaseEngine {
                 }
             }
             session.setAllowLiterals(false);
-            session.commit(true);
+            session.commit();
         }
 
         /**

@@ -51,7 +51,6 @@ public class AlterTableRename extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         Database db = session.getDatabase();
         session.getUser().checkRight(oldTable, Right.ALL);
         Table t = getSchema().findTableOrView(session, newTableName);

@@ -159,7 +159,7 @@ public interface Session extends Closeable, Transaction.Participant {
 
     boolean validateTransaction(String localTransactionName);
 
-    void commit(boolean ddl, String allLocalTransactionNames);
+    void commit(String allLocalTransactionNames);
 
     Session connectEmbeddedOrServer();
 
@@ -185,7 +185,7 @@ public interface Session extends Closeable, Transaction.Participant {
 
     Callable<?> getCallable();
 
-    void prepareCommit(boolean ddl);
+    void prepareCommit();
 
     SessionStatus getStatus();
 

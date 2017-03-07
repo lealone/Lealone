@@ -92,7 +92,7 @@ public abstract class LogSyncService extends Thread {
         transactions.drainTo(oldTransactions);
         for (MVCCTransaction t : oldTransactions) {
             if (t.getSession() != null)
-                t.getSession().commit(false, null);
+                t.getSession().commit(null);
         }
     }
 }

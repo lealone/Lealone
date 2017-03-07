@@ -40,7 +40,7 @@ class NoLogSyncService extends LogSyncService {
     @Override
     public void prepareCommit(MVCCTransaction t) {
         if (t.getSession() != null) {
-            t.getSession().commit(false, null);
+            t.getSession().commit(null);
         }
     }
 

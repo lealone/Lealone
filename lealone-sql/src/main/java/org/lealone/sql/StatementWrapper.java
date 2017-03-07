@@ -432,14 +432,14 @@ class StatementWrapper extends StatementBase {
         if (async) {
             if (session.isAutoCommit()) {
                 setCallable(ar, ah);
-                session.prepareCommit(false);
+                session.prepareCommit();
             } else {
                 // 当前语句是在一个手动提交的事务中进行，提前返回语句的执行结果
                 ah.handle(ar);
             }
         } else {
             if (session.isAutoCommit()) {
-                session.commit(false);
+                session.commit();
             }
         }
         if (startTime > 0 && trace.isInfoEnabled()) {

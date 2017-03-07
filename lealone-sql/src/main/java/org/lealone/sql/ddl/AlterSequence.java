@@ -107,7 +107,7 @@ public class AlterSequence extends SchemaStatement {
         synchronized (sysSession) {
             synchronized (db) {
                 db.updateMeta(sysSession, sequence);
-                sysSession.commit(true);
+                sysSession.commit();
             }
         }
         return 0;

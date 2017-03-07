@@ -44,7 +44,6 @@ public class SetComment extends DefineStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         Database db = session.getDatabase();
         session.getUser().checkAdmin();
         DbObject object = null;

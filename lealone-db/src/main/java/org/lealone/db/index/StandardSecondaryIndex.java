@@ -55,7 +55,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
         // TODO
         // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs
-        session.commit(false);
+        session.commit();
     }
 
     // TODO 不考虑事务

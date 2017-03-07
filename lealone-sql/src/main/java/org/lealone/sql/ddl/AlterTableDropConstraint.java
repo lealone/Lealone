@@ -42,7 +42,6 @@ public class AlterTableDropConstraint extends SchemaStatement {
 
     @Override
     public int update() {
-        session.commit(true);
         Constraint constraint = getSchema().findConstraint(session, constraintName);
         if (constraint == null) {
             if (!ifExists) {
