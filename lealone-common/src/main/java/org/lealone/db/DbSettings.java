@@ -35,7 +35,7 @@ class SettingsBase {
     protected final Map<String, String> settings;
 
     protected SettingsBase(Map<String, String> s) {
-        this.settings = s;
+        this.settings = new HashMap<>(s);
     }
 }
 

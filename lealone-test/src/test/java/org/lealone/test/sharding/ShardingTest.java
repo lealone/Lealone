@@ -18,11 +18,12 @@
 package org.lealone.test.sharding;
 
 import org.junit.Test;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.test.sql.SqlTestBase;
 
 public class ShardingTest extends SqlTestBase {
     public ShardingTest() {
-        // super("ShardingTestDB");
+        super(LealoneDatabase.NAME); // 连到LealoneDatabase才能执行CREATE DATABASE
     }
 
     @Test
@@ -33,7 +34,8 @@ public class ShardingTest extends SqlTestBase {
         // stmt.executeUpdate("CREATE TENANT IF NOT EXISTS ShardingTestDB RUN MODE client_server");
         // stmt.executeUpdate("ALTER TENANT ShardingTestDB RUN MODE sharding");
 
-        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB RUN MODE sharding");
+        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB1 RUN MODE sharding");
+        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding PARAMETERS(hostIds='1,2')");
 
         stmt.executeUpdate("drop table IF EXISTS ShardingTest");
         stmt.executeUpdate("create table IF NOT EXISTS ShardingTest(f1 int SELECTIVITY 10, f2 int, f3 int)");

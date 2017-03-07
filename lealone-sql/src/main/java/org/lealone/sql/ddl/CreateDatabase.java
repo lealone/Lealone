@@ -65,8 +65,11 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
 
     @Override
     public int update() {
-        session.getUser().checkAdmin();
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
+        // 只有用管理员连接到LealoneDatabase才能执行CREATE DATABASE语句
+        if (!(lealoneDB == session.getDatabase() && session.getUser().isAdmin())) {
+            throw DbException.get(ErrorCode.CREATE_DATABASE_RIGHTS_REQUIRED);
+        }
         synchronized (lealoneDB.getLock(DbObjectType.DATABASE)) {
             if (lealoneDB.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
                 if (ifNotExists) {

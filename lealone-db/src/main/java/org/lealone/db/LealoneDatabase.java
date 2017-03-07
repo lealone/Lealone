@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.value.CaseInsensitiveConcurrentHashMap;
 
 /**
  * 管理所有Database
@@ -46,7 +47,7 @@ public class LealoneDatabase extends Database {
 
     private LealoneDatabase() {
         super(ID, NAME, null);
-        databases = new ConcurrentHashMap<>();
+        databases = new CaseInsensitiveConcurrentHashMap<>();
         databases.put(NAME, this);
 
         INSTANCE = this; // init执行过程中会触发getInstance()，此时INSTANCE为null，会导致NPE
@@ -59,6 +60,7 @@ public class LealoneDatabase extends Database {
     Database createDatabase(String dbName, ConnectionInfo ci) {
         String sql = getCreateSQL(quoteIdentifier(dbName), ci);
         getSystemSession().prepareStatementLocal(sql).executeUpdate();
+        getSystemSession().commit(true);
         // 执行完CREATE DATABASE后会加到databases字段中
         // CreateDatabase.update -> Database.addDatabaseObject -> Database.getMap -> this.getDatabasesMap
         Database db = databases.get(dbName);

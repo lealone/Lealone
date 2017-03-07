@@ -1924,6 +1924,8 @@ public class ErrorCode {
      */
     public static final int STEP_SIZE_MUST_NOT_BE_ZERO = 90142;
 
+    public static final int CREATE_DATABASE_RIGHTS_REQUIRED = 90143;
+
     // next are 90056, 90110, 90122, 90143
 
     private ErrorCode() {
