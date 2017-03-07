@@ -2214,10 +2214,10 @@ public class Database implements DataHandler, DbObject {
     }
 
     public static String getCreateSQL(String quotedDbName, ConnectionInfo ci) {
-        return getCreateSQL(quotedDbName, ci.getDbSettings(), null, null);
+        return getCreateSQL(quotedDbName, ci.getDbSettings().getSettings(), null, null);
     }
 
-    private static String getCreateSQL(String quotedDbName, DbSettings dbSettings,
+    private static String getCreateSQL(String quotedDbName, Map<String, String> parameters,
             Map<String, String> replicationProperties, RunMode runMode) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
         sql.append(quotedDbName);
@@ -2228,8 +2228,10 @@ public class Database implements DataHandler, DbObject {
             sql.append(" WITH REPLICATION STRATEGY");
             appendMap(sql, replicationProperties);
         }
-        sql.append(" PARAMETERS");
-        appendMap(sql, dbSettings.getSettings());
+        if (parameters != null && !parameters.isEmpty()) {
+            sql.append(" PARAMETERS");
+            appendMap(sql, parameters);
+        }
         return sql.toString();
     }
 
@@ -2257,7 +2259,7 @@ public class Database implements DataHandler, DbObject {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), dbSettings, replicationProperties, runMode);
+        return getCreateSQL(quoteIdentifier(name), parameters, replicationProperties, runMode);
     }
 
     @Override

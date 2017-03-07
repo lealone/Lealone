@@ -27,6 +27,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
+import org.lealone.db.value.CaseInsensitiveMap;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.router.RouterHolder;
 
@@ -40,8 +41,8 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
     private final boolean ifNotExists;
     private final RunMode runMode;
     private final Map<String, String> replicationProperties;
-    // private final Map<String, String> resourceQuota;
     private final Map<String, String> parameters;
+    // private final Map<String, String> resourceQuota;
 
     public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, RunMode runMode,
             Map<String, String> replicationProperties, Map<String, String> parameters) {
@@ -50,8 +51,11 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
         this.ifNotExists = ifNotExists;
         this.runMode = runMode;
         this.replicationProperties = replicationProperties;
-        // this.resourceQuota = resourceQuota;
+        if (parameters == null) {
+            parameters = new CaseInsensitiveMap<>();
+        }
         this.parameters = parameters;
+        // this.resourceQuota = resourceQuota;
     }
 
     @Override
@@ -74,10 +78,12 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
             Database newDB = new Database(id, dbName, parameters);
             newDB.setReplicationProperties(replicationProperties);
             newDB.setRunMode(runMode);
-            if (parameters != null && !parameters.containsKey("hostIds")) {
+            if (!parameters.containsKey("hostIds")) {
                 int[] hostIds = RouterHolder.getRouter().getHostIds(newDB);
                 if (hostIds != null && hostIds.length > 0)
                     newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
+                else
+                    newDB.getParameters().put("hostIds", "");
             }
             lealoneDB.addDatabaseObject(session, newDB);
 
@@ -88,7 +94,6 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
             }
         }
         return 0;
-
     }
 
     @Override

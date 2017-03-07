@@ -50,6 +50,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.table.TableFilter.TableFilterVisitor;
 import org.lealone.db.table.TableView;
+import org.lealone.db.value.CaseInsensitiveMap;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -4271,7 +4272,7 @@ public class Parser implements SQLParser {
 
     private Map<String, String> parseParameters(boolean toLowerCase) {
         read("(");
-        HashMap<String, String> parameters = New.hashMap();
+        HashMap<String, String> parameters = toLowerCase ? New.hashMap() : new CaseInsensitiveMap<>();
         if (readIf(")"))
             return parameters;
         String k, v;
