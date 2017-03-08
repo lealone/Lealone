@@ -319,14 +319,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     }
 
     void prepareCommit(MVCCTransaction t, RedoLogValue v) {
-        if (v != null) { // 事务没有进行任何操作时不用同步日志
+        // 事务没有进行任何操作时不用同步日志
+        if (v != null) {
             // 先写redoLog
             redoLog.put(t.transactionId, v);
-        } else {
-            // t.getSession().commit(false, null);
-            // commit(t);
         }
-
         logSyncService.prepareCommit(t);
     }
 
