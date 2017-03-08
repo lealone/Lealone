@@ -362,7 +362,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         this.lockTimeout = lockTimeout;
     }
 
-    private boolean local;
+    private Boolean local;
 
     @Override
     public void setLocal(boolean local) {
@@ -371,7 +371,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     @Override
     public boolean isLocal() {
-        return local || connectionInfo == null || connectionInfo.isEmbedded();
+        return (local != null && local.booleanValue()) || !database.isShardingMode() || connectionInfo == null
+                || connectionInfo.isEmbedded();
     }
 
     @Override

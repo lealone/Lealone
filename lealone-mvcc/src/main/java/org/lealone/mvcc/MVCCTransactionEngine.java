@@ -220,6 +220,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 }
             } else {
                 ByteBuffer buff = v.values;
+                if (buff == null)
+                    continue; // TODO 消除为NULL的可能
                 while (buff.hasRemaining()) {
                     String mapName = StringDataType.INSTANCE.read(buff);
 

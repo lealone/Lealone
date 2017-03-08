@@ -227,8 +227,6 @@ public class AsyncConnection implements Handler<Buffer> {
             Session session = ci.getSessionFactory().createSession(ci);
             if (ci.getProperty("IS_LOCAL") != null)
                 session.setLocal(Boolean.parseBoolean(ci.getProperty("IS_LOCAL")));
-            else
-                session.setLocal(true);
             return session;
         } catch (SQLException e) {
             throw DbException.convert(e);
