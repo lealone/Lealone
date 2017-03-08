@@ -69,7 +69,5 @@ public class ExclusiveModeTest extends SqlTestBase {
 
         t1.join();
         t2.join();
-
-        tearDownAfterClass();
     }
 }

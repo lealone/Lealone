@@ -18,7 +18,6 @@
 package org.lealone.test.async;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Random;
@@ -29,10 +28,6 @@ public class AsyncTest extends SqlTestBase {
 
     public static void main(String[] args) throws Exception {
         new AsyncTest().run();
-    }
-
-    static Connection getConn(String url) throws Exception {
-        return DriverManager.getConnection(url);
     }
 
     class MyThread extends Thread {
@@ -87,7 +82,6 @@ public class AsyncTest extends SqlTestBase {
         sql = "select * from AsyncTest where pk = '01'";
         // oneThread();
         multiThreads();
-        tearDownAfterClass();
     }
 
     public void multiThreads() throws Exception {

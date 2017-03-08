@@ -22,6 +22,7 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.test.sql.SqlTestBase;
 
 public class ShardingTest extends SqlTestBase {
+
     public ShardingTest() {
         super(LealoneDatabase.NAME); // 连到LealoneDatabase才能执行CREATE DATABASE
     }
@@ -37,24 +38,36 @@ public class ShardingTest extends SqlTestBase {
         stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB1 RUN MODE sharding");
         stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding PARAMETERS(hostIds='1,2')");
 
-        stmt.executeUpdate("drop table IF EXISTS ShardingTest");
-        stmt.executeUpdate("create table IF NOT EXISTS ShardingTest(f1 int SELECTIVITY 10, f2 int, f3 int)");
+        new ShardingCrudTest("ShardingTestDB1").runTest();
+    }
 
-        stmt.executeUpdate("create index IF NOT EXISTS ShardingTest_i1 on ShardingTest(f1)");
+    private class ShardingCrudTest extends SqlTestBase {
 
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(1,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(5,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
-        stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+        public ShardingCrudTest(String dbName) {
+            super(dbName);
+        }
 
-        sql = "select distinct * from ShardingTest where f1 > 3";
-        sql = "select distinct f1 from ShardingTest";
-        printResultSet();
+        @Override
+        protected void test() throws Exception {
+            stmt.executeUpdate("drop table IF EXISTS ShardingTest");
+            stmt.executeUpdate("create table IF NOT EXISTS ShardingTest(f1 int SELECTIVITY 10, f2 int, f3 int)");
+
+            stmt.executeUpdate("create index IF NOT EXISTS ShardingTest_i1 on ShardingTest(f1)");
+
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(1,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(5,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
+            stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+
+            sql = "select distinct * from ShardingTest where f1 > 3";
+            sql = "select distinct f1 from ShardingTest";
+            printResultSet();
+        }
     }
 }

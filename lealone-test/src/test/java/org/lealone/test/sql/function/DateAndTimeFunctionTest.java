@@ -126,7 +126,8 @@ public class DateAndTimeFunctionTest extends SqlTestBase {
         printResultSet();
     }
 
-    void test() throws Exception {
+    @Override
+    protected void test() throws Exception {
         // 以下有21个日期与时间函数,
         // 在这个方法中org.lealone.expression.Function.getSimpleValue(Session, Value, Expression[], Value[])
         // ----------------------------------------------------------------------------------------

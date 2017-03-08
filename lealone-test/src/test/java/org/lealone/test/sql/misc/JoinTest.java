@@ -68,7 +68,8 @@ public class JoinTest extends SqlTestBase {
         executeUpdate("insert into JoinTest4(pk, id, name) values(4, 30, 'a1')");
     }
 
-    void test() throws Exception {
+    @Override
+    protected void test() throws Exception {
         sql = "select rownum, * from JoinTest1 LEFT OUTER JOIN JoinTest2";
         sql = "select rownum, * from JoinTest1 RIGHT OUTER JOIN JoinTest2";
         sql = "select rownum, * from JoinTest1 INNER JOIN JoinTest2";

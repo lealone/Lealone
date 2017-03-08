@@ -26,7 +26,8 @@ public class SystemFunctionTest extends SqlTestBase {
         test();
     }
 
-    void test() throws Exception {
+    @Override
+    protected void test() throws Exception {
         sql = "SELECT DECODE(RAND()>0.5, 0, 'Red', 1, 'Black')";
 
         sql = "SELECT DECODE(RAND()>0.5, 0, 'Red1', 0, 'Red2', 1, 'Black1', 1, 'Black2')";

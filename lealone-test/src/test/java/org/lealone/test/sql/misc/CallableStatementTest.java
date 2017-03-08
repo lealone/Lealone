@@ -34,7 +34,8 @@ public class CallableStatementTest extends SqlTestBase {
         stmt.executeUpdate("CREATE ALIAS IF NOT EXISTS MY_SQRT FOR \"java.lang.Math.sqrt\"");
     }
 
-    void test() throws Exception {
+    @Override
+    protected void test() throws Exception {
         sql = "?= CALL MY_SQRT(?)";
         CallableStatement cs = conn.prepareCall(sql);
         cs.registerOutParameter(1, Types.DOUBLE); // sqlType其实被忽略了，所以设什么都没用

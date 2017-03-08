@@ -83,7 +83,6 @@ public class StatementPriorityTest extends SqlTestBase {
         sql = "select * from StatementPriorityTest where pk = '01'";
         // oneThread();
         multiThreads();
-        tearDownAfterClass();
     }
 
     public void multiThreads() throws Exception {

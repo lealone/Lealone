@@ -63,7 +63,8 @@ public class PreparedStatementTest extends SqlTestBase {
         ps.close();
     }
 
-    void test() throws Exception {
+    @Override
+    protected void test() throws Exception {
         sql = "SELECT count(*) FROM PreparedStatementTest WHERE f2 >= ?";
         PreparedStatement ps = conn.prepareStatement(sql);
         ps.setInt(1, 30);

@@ -22,58 +22,72 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import org.junit.AfterClass;
+import org.junit.After;
+import org.junit.Before;
+import org.lealone.common.util.JdbcUtils;
 import org.lealone.test.TestBase;
 
 public class SqlTestBase extends TestBase {
-    protected static Connection conn;
-    protected static Statement stmt;
 
-    // protected String user, password;
+    protected String dbName;
+    protected String user;
+    protected String password;
 
+    protected Connection conn;
+    protected Statement stmt;
     protected ResultSet rs;
     protected String sql;
 
     protected SqlTestBase() {
-        try {
-            // addConnectionParameter("TRACE_LEVEL_FILE", TraceSystem.ADAPTER + "");
-            conn = getConnection();
-            stmt = conn.createStatement();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    protected SqlTestBase(String user, String password) {
-        try {
-            conn = getConnection(user, password);
-            stmt = conn.createStatement();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        // addConnectionParameter("TRACE_LEVEL_FILE", TraceSystem.ADAPTER + "");
     }
 
     protected SqlTestBase(String dbName) {
+        this.dbName = dbName;
+    }
+
+    protected SqlTestBase(String user, String password) {
+        this.user = user;
+        this.password = password;
+    }
+
+    @Before
+    public void setUpBefore() {
         try {
-            conn = getConnection(dbName);
+            if (dbName != null) {
+                conn = getConnection(dbName);
+            } else if (user != null) {
+                conn = getConnection(user, password);
+            } else {
+                conn = getConnection();
+            }
             stmt = conn.createStatement();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // @BeforeClass
-    // public static void setUpBeforeClass() throws Exception {
-    // conn = new TestBase().getConnection();
-    // stmt = conn.createStatement();
-    // }
-    //
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-        if (stmt != null)
-            stmt.close();
-        if (conn != null)
-            conn.close();
+    @After
+    public void tearDownAfter() {
+        JdbcUtils.closeSilently(rs);
+        JdbcUtils.closeSilently(stmt);
+        JdbcUtils.closeSilently(conn);
+    }
+
+    // 不用加@Test，子类可以手工运行，只要实现test方法即可
+    public void runTest() {
+        setUpBefore();
+        try {
+            test();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            tearDownAfter();
+        }
+    }
+
+    protected void test() throws Exception {
+        // do nothing
     }
 
     public int executeUpdate(String sql) {
