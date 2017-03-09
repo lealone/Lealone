@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.async.AsyncHandler;
@@ -447,12 +448,25 @@ public class ClientCommand implements StorageCommand {
             transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
             if (replicationName != null)
                 transfer.writeString(replicationName);
+
+            AtomicReference<byte[]> resultRef = new AtomicReference<>();
+            AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        if (isDistributedUpdate)
+                            session.getTransaction().addLocalTransactionNames(transfer.readString());
+                        byte[] bytes = transfer.readBytes();
+                        resultRef.set(bytes);
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
             transfer.flush();
-
-            if (isDistributedUpdate)
-                session.getTransaction().addLocalTransactionNames(transfer.readString());
-
-            bytes = transfer.readBytes();
+            ac.await();
+            bytes = resultRef.get();
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -473,12 +487,24 @@ public class ClientCommand implements StorageCommand {
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_GET);
             }
             transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key);
+            AtomicReference<byte[]> resultRef = new AtomicReference<>();
+            AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        if (isDistributedUpdate)
+                            session.getTransaction().addLocalTransactionNames(transfer.readString());
+                        byte[] bytes = transfer.readBytes();
+                        resultRef.set(bytes);
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
             transfer.flush();
-
-            if (isDistributedUpdate)
-                session.getTransaction().addLocalTransactionNames(transfer.readString());
-
-            bytes = transfer.readBytes();
+            ac.await();
+            bytes = resultRef.get();
         } catch (Exception e) {
             session.handleException(e);
         }

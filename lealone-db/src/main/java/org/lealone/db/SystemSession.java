@@ -15,25 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication;
+package org.lealone.db;
 
-import java.net.InetAddress;
-import java.nio.ByteBuffer;
-import java.util.List;
+import org.lealone.db.auth.User;
 
-import org.lealone.db.Session;
+public class SystemSession extends ServerSession {
 
-public interface Replication {
+    public SystemSession(Database database, User user, int id) {
+        super(database, user, id);
+    }
 
-    List<InetAddress> getReplicationEndpoints(Object key);
-
-    InetAddress getLocalEndpoint();
-
-    Object put(Object key, Object value, Session session);
-
-    Object get(Object key, Session session);
-
-    void addLeafPage(ByteBuffer splitKey, ByteBuffer page);
-
-    void removeLeafPage(ByteBuffer key);
+    @Override
+    public boolean isShardingMode() {
+        // 所有通过SystemSession创建的表都不用Sharding
+        return false;
+    }
 }

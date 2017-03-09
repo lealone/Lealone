@@ -117,7 +117,7 @@ public class Database implements DataHandler, DbObject {
     private int nextSessionId;
     private int nextTempTableId;
     private User systemUser;
-    private ServerSession systemSession;
+    private SystemSession systemSession;
     private Table meta;
     private Index metaIdIndex;
     private boolean starting;
@@ -381,7 +381,7 @@ public class Database implements DataHandler, DbObject {
             schemas.put(mainSchema.getName(), mainSchema);
             schemas.put(infoSchema.getName(), infoSchema);
 
-            systemSession = new ServerSession(this, systemUser, ++nextSessionId);
+            systemSession = new SystemSession(this, systemUser, ++nextSessionId);
 
             // long t1 = System.currentTimeMillis();
             openMetaTable();

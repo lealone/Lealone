@@ -169,7 +169,7 @@ public class ReplicationCommand implements StorageCommand {
         }
 
         try {
-            return writeResponseHandler.get(session.rpcTimeoutMillis);
+            return writeResponseHandler.getUpdateCount(session.rpcTimeoutMillis);
         } catch (WriteTimeoutException | WriteFailureException e) {
             if (tries < session.maxRries)
                 return executeUpdate(++tries);
@@ -216,7 +216,7 @@ public class ReplicationCommand implements StorageCommand {
                 @Override
                 public void run() {
                     try {
-                        writeResponseHandler.response(c.executePut(rn, mapName, key, value));
+                        writeResponseHandler.response(c.executePut(rn, mapName, key.slice(), value.slice()));
                     } catch (Exception e) {
                         if (writeResponseHandler != null)
                             writeResponseHandler.onFailure();
@@ -232,11 +232,13 @@ public class ReplicationCommand implements StorageCommand {
         }
 
         try {
-            return writeResponseHandler.get(session.rpcTimeoutMillis);
+            return writeResponseHandler.getResult(session.rpcTimeoutMillis);
         } catch (WriteTimeoutException | WriteFailureException e) {
-            if (tries < session.maxRries)
-                return executeUpdate(++tries);
-            else {
+            if (tries < session.maxRries) {
+                key.rewind();
+                value.rewind();
+                return executePut(mapName, key, value, ++tries);
+            } else {
                 if (!exceptions.isEmpty())
                     e.initCause(exceptions.get(0));
                 throw e;

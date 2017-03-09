@@ -70,10 +70,10 @@ seed_provider:
       parameters:
           - seeds: "127.0.0.1"
           
-# replication_strategy:
-#     - class_name: SimpleStrategy
-#       parameters:
-#          - replication_factor: 3
+replication_strategy:
+    - class_name: SimpleStrategy
+      parameters:
+          - replication_factor: 3
 
 # replication_strategy:
 #     - class_name: NetworkTopologyStrategy

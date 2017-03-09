@@ -36,7 +36,9 @@ public class ShardingTest extends SqlTestBase {
         // stmt.executeUpdate("ALTER TENANT ShardingTestDB RUN MODE sharding");
 
         stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB1 RUN MODE sharding");
-        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding PARAMETERS(hostIds='1,2')");
+        stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");
+        // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding
+        // PARAMETERS(hostIds='1,2')");
 
         new ShardingCrudTest("ShardingTestDB1").runTest();
     }
@@ -52,7 +54,7 @@ public class ShardingTest extends SqlTestBase {
             stmt.executeUpdate("drop table IF EXISTS ShardingTest");
             stmt.executeUpdate("create table IF NOT EXISTS ShardingTest(f1 int SELECTIVITY 10, f2 int, f3 int)");
 
-            stmt.executeUpdate("create index IF NOT EXISTS ShardingTest_i1 on ShardingTest(f1)");
+            // stmt.executeUpdate("create index IF NOT EXISTS ShardingTest_i1 on ShardingTest(f1)");
 
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(1,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(5,2,3)");

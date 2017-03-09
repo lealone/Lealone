@@ -62,6 +62,7 @@ public class AlterDatabase extends DefineStatement implements DatabaseStatement 
             if (replicationProperties != null)
                 db.setReplicationProperties(replicationProperties);
             LealoneDatabase.getInstance().updateMeta(session, db);
+            db.copy();
         }
         return 0;
     }

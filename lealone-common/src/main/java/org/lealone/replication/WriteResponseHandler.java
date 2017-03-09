@@ -74,7 +74,7 @@ class WriteResponseHandler {
             signal();
     }
 
-    int get(long rpcTimeoutMillis) {
+    void await(long rpcTimeoutMillis) {
         long requestTimeout = rpcTimeoutMillis;
 
         // 超时时间把调用构造函数开始直到调用get前的这段时间也算在内
@@ -101,8 +101,16 @@ class WriteResponseHandler {
         if (!successful && totalBlockFor() + failures >= totalEndpoints()) {
             throw new WriteFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor());
         }
+    }
 
+    int getUpdateCount(long rpcTimeoutMillis) {
+        await(rpcTimeoutMillis);
         return updateCountList.get(0);
+    }
+
+    Object getResult(long rpcTimeoutMillis) {
+        await(rpcTimeoutMillis);
+        return resultList.get(0);
     }
 
     private void signal() {

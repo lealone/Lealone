@@ -624,12 +624,16 @@ public class AsyncConnection implements Handler<Buffer> {
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
-            WriteBuffer writeBuffer = WriteBufferPool.poll();
-            valueType.write(writeBuffer, result);
-            ByteBuffer buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            WriteBufferPool.offer(writeBuffer);
-            transfer.writeByteBuffer(buffer);
+            if (result != null) {
+                WriteBuffer writeBuffer = WriteBufferPool.poll();
+                valueType.write(writeBuffer, result);
+                ByteBuffer buffer = writeBuffer.getBuffer();
+                buffer.flip();
+                WriteBufferPool.offer(writeBuffer);
+                transfer.writeByteBuffer(buffer);
+            } else {
+                transfer.writeByteBuffer(null);
+            }
             transfer.flush();
             break;
         }
@@ -652,12 +656,16 @@ public class AsyncConnection implements Handler<Buffer> {
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
-            WriteBuffer writeBuffer = WriteBufferPool.poll();
-            valueType.write(writeBuffer, result);
-            ByteBuffer buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            WriteBufferPool.offer(writeBuffer);
-            transfer.writeByteBuffer(buffer);
+            if (result != null) {
+                WriteBuffer writeBuffer = WriteBufferPool.poll();
+                valueType.write(writeBuffer, result);
+                ByteBuffer buffer = writeBuffer.getBuffer();
+                buffer.flip();
+                WriteBufferPool.offer(writeBuffer);
+                transfer.writeByteBuffer(buffer);
+            } else {
+                transfer.writeByteBuffer(null);
+            }
             transfer.flush();
             break;
         }

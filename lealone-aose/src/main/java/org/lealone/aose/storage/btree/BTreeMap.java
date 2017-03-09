@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.server.StorageServer;
 import org.lealone.aose.storage.AOStorage;
@@ -118,7 +119,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
                 // 例如节点A执行完DDL后，加入了新节点B，然后在老的节点C上执行DDL，此时节点C就可能看到节点B的host_id了
                 ArrayList<Integer> hostIds = StorageServer.instance.getTopologyMetaData().sortedHostIds();
                 if (!hostIds.isEmpty()) {
-                    Integer hostId = hostIds.get(name.hashCode() % hostIds.size());
+                    Integer hostId = hostIds.get(Math.abs(name.hashCode() % hostIds.size()));
                     List<InetAddress> replicationEndpoints = StorageServer.instance.getReplicationEndpoints(db, hostId);
                     int size = replicationEndpoints.size();
                     root.replicationHostIds = new ArrayList<>(size);
@@ -278,13 +279,13 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
         return result;
     }
 
-    private void moveLeafPage(Object splitKey, BTreePage rightChindPage) {
+    private void moveLeafPage(Object splitKey, BTreePage rightChildPage) {
         if (isShardingMode
-                && rightChindPage.replicationHostIds.get(0).equals(StorageServer.instance.getLocalHostId())) {
-            Integer hostId = rightChindPage.replicationHostIds.get(0);
+                && rightChildPage.replicationHostIds.get(0).equals(StorageServer.instance.getLocalHostId())) {
+            Integer hostId = rightChildPage.replicationHostIds.get(0);
             Integer nextHostId = StorageServer.instance.getTopologyMetaData().getNextHostId(hostId);
             List<InetAddress> newReplicationEndpoints = StorageServer.instance.getReplicationEndpoints(db, nextHostId);
-            List<InetAddress> oldReplicationEndpoints = getReplicationEndpoints(rightChindPage);
+            List<InetAddress> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
             newReplicationEndpoints.remove(getLocalEndpoint());
             oldReplicationEndpoints.remove(getLocalEndpoint());
             Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
@@ -296,7 +297,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
             for (int i = 0; i < size; i++) {
                 moveTo.add(StorageServer.instance.getTopologyMetaData().getHostId(newReplicationEndpoints.get(i)));
             }
-            rightChindPage.replicationHostIds = moveTo;
+            rightChildPage.replicationHostIds = moveTo;
 
             // move page
             Session session = ConnectionInfo.getAndRemoveInternalSession();
@@ -307,7 +308,8 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
                 sessions[i++] = SessionPool.getSession(s, s.getURL(ia));
 
             ReplicationSession rs = new ReplicationSession(sessions);
-            moveLeafPage(splitKey, rightChindPage, rs, false);
+            rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+            moveLeafPage(splitKey, rightChildPage, rs, false);
 
             // split root page
             i = 0;
@@ -317,11 +319,12 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
                 sessions[i++] = SessionPool.getSession(s, s.getURL(ia));
 
             rs = new ReplicationSession(sessions);
-            moveLeafPage(splitKey, rightChindPage, rs, true);
+            rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+            moveLeafPage(splitKey, rightChildPage, rs, true);
         }
     }
 
-    private void moveLeafPage(Object splitKey, BTreePage rightChindPage, ReplicationSession rs, boolean remote) {
+    private void moveLeafPage(Object splitKey, BTreePage rightChildPage, ReplicationSession rs, boolean remote) {
         StorageCommand c = null;
         try {
             c = rs.createStorageCommand();
@@ -336,7 +339,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
 
             writeBuffer.clear();
 
-            rightChindPage.writeLeaf(writeBuffer, remote);
+            rightChildPage.writeLeaf(writeBuffer, remote);
             buffer = writeBuffer.getBuffer();
             buffer.flip();
             ByteBuffer pageBuffer = ByteBuffer.allocateDirect(buffer.limit());
@@ -452,6 +455,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
                 sessions[i++] = SessionPool.getSession(s, s.getURL(ia));
 
             ReplicationSession rs = new ReplicationSession(sessions);
+            rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
             StorageCommand c = null;
             try {
                 c = rs.createStorageCommand();
@@ -770,17 +774,20 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
     }
 
     @Override
-    public Object put(Object key, Object value, DataType valueType, Session session) {
+    public Object put(Object key, Object value, Session session) {
         List<InetAddress> replicationEndpoints = getReplicationEndpoints(key);
         InetAddress localEndpoint = getLocalEndpoint();
 
         Session[] sessions = new Session[replicationEndpoints.size()];
         ServerSession s = (ServerSession) session;
         int i = 0;
-        for (InetAddress ia : replicationEndpoints)
-            sessions[i++] = SessionPool.getSession(s, s.getURL(ia), !localEndpoint.equals(ia));
+        for (InetAddress ia : replicationEndpoints) {
+            sessions[i++] = localEndpoint.equals(ia) ? s
+                    : SessionPool.getSession(s, s.getURL(ia), !localEndpoint.equals(ia));
+        }
 
         ReplicationSession rs = new ReplicationSession(sessions);
+        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         StorageCommand c = null;
         try {
             c = rs.createStorageCommand();
@@ -824,6 +831,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
             sessions[i++] = SessionPool.getSession(s, s.getURL(ia), !localEndpoint.equals(ia));
 
         ReplicationSession rs = new ReplicationSession(sessions);
+        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         StorageCommand c = null;
         try {
             c = rs.createStorageCommand();

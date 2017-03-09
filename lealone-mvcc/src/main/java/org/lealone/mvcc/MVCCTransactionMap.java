@@ -13,7 +13,9 @@ import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.ConnectionInfo;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
+import org.lealone.replication.Replication;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
@@ -34,6 +36,7 @@ import org.lealone.transaction.TransactionMap;
 public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
     private final MVCCTransaction transaction;
+    private final boolean isShardingMode;
 
     /**
      * The map used for writing (the latest version).
@@ -46,6 +49,9 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     public MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
         this.transaction = transaction;
         this.map = map;
+        isShardingMode = transaction.isShardingMode();
+        if (isShardingMode)
+            ConnectionInfo.setInternalSession(transaction.getSession());
     }
 
     @Override
@@ -72,6 +78,9 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @SuppressWarnings("unchecked")
     @Override
     public V get(K key) {
+        if (isShardingMode && (map instanceof Replication)) {
+            return (V) ((Replication) map).get(key, transaction.getSession());
+        }
         TransactionalValue data = map.get(key);
         data = getValue(key, data);
         return data == null ? null : (V) data.value;
@@ -141,8 +150,17 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * @return the old value
      * @throws IllegalStateException if a lock timeout occurs
      */
+    @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
+        if (isShardingMode && (map instanceof Replication)) {
+            TransactionalValue newValue = new TransactionalValue(transaction, value);
+            return (V) ((Replication) map).put(key, newValue, transaction.getSession());
+        }
+        // 通过反序列化触发put调用时，value可能已经是TransactionalValue类型了
+        if (value instanceof TransactionalValue) {
+            value = (V) ((TransactionalValue) value).value;
+        }
         DataUtils.checkArgument(value != null, "The value may not be null");
         return set(key, value);
     }

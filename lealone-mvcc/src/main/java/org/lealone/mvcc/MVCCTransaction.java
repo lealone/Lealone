@@ -19,6 +19,7 @@ package org.lealone.mvcc;
 
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -154,9 +155,18 @@ public class MVCCTransaction implements Transaction {
 
         checkNotClosed();
         valueType = new TransactionalValueType(valueType);
-        StorageMap<K, TransactionalValue> map = storage.openMap(name, mapType, keyType, valueType, null);
+        Map<String, String> parameters = new HashMap<>(1);
+        if (isShardingMode) {
+            mapType = "BTreeMap";
+            parameters.put("isShardingMode", "true");
+        }
+        StorageMap<K, TransactionalValue> map = storage.openMap(name, mapType, keyType, valueType, parameters);
         transactionEngine.redo(map);
         transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
+        return createTransactionMap(map);
+    }
+
+    protected <K, V> MVCCTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map) {
         return new MVCCTransactionMap<>(this, map);
     }
 
@@ -322,5 +332,9 @@ public class MVCCTransaction implements Transaction {
 
     public Session getSession() {
         return session;
+    }
+
+    public boolean isShardingMode() {
+        return session != null && !session.isLocal() && session.isShardingMode();
     }
 }

@@ -26,7 +26,6 @@ import org.lealone.db.result.Result;
 import org.lealone.replication.Replication;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.DataType;
 
 public class ServerCommand implements StorageCommand {
 
@@ -43,13 +42,11 @@ public class ServerCommand implements StorageCommand {
 
     @Override
     public boolean isQuery() {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public ArrayList<? extends CommandParameter> getParameters() {
-        // TODO Auto-generated method stub
         return null;
     }
 
@@ -60,69 +57,50 @@ public class ServerCommand implements StorageCommand {
 
     @Override
     public Result executeQuery(int maxRows, boolean scrollable) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public int executeUpdate() {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public int executeUpdate(String replicationName) {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public void close() {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public void cancel() {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public Result getMetaData() {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value) {
         session.setReplicationName(replicationName);
-
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
-
-        DataType valueType = map.getValueType();
-        // synchronized (session) {
-        Object result = map.put(map.getKeyType().read(key), valueType.read(value));
-        // }
-
+        Object result = map.put(map.getKeyType().read(key), map.getValueType().read(value));
         return result;
     }
 
     @Override
     public Object executeGet(String mapName, ByteBuffer key) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
-
-        // synchronized (session) {
         Object result = map.get(map.getKeyType().read(key));
-        // }
-
         return result;
     }
 
     @Override
     public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
-
         if (map instanceof Replication) {
             ((Replication) map).addLeafPage(splitKey, page);
         }
@@ -131,7 +109,6 @@ public class ServerCommand implements StorageCommand {
     @Override
     public void removeLeafPage(String mapName, ByteBuffer key) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
-
         if (map instanceof Replication) {
             ((Replication) map).removeLeafPage(key);
         }
@@ -144,14 +121,10 @@ public class ServerCommand implements StorageCommand {
 
     @Override
     public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        // TODO Auto-generated method stub
-
     }
 
 }

@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.server.ClusterMetaData;
@@ -86,6 +87,7 @@ public class P2PRouter implements Router {
             sessions[i++] = SessionPool.getSession(s, s.getURL(ia), !Utils.getBroadcastAddress().equals(ia));
 
         ReplicationSession rs = new ReplicationSession(sessions);
+        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         Command c = null;
         try {
             c = rs.createCommand(defineStatement.getSQL(), -1);
