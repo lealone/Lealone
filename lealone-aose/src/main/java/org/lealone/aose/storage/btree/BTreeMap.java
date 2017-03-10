@@ -774,7 +774,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
     }
 
     @Override
-    public Object put(Object key, Object value, Session session) {
+    public Object put(Object key, Object value, DataType valueType, Session session) {
         List<InetAddress> replicationEndpoints = getReplicationEndpoints(key);
         InetAddress localEndpoint = getLocalEndpoint();
 
@@ -782,8 +782,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
         ServerSession s = (ServerSession) session;
         int i = 0;
         for (InetAddress ia : replicationEndpoints) {
-            sessions[i++] = localEndpoint.equals(ia) ? s
-                    : SessionPool.getSession(s, s.getURL(ia), !localEndpoint.equals(ia));
+            sessions[i++] = SessionPool.getSession(s, s.getURL(ia), !localEndpoint.equals(ia));
         }
 
         ReplicationSession rs = new ReplicationSession(sessions);

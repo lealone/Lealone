@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lealone.db.Session;
+import org.lealone.storage.type.DataType;
 
 public interface Replication {
 
@@ -29,7 +30,7 @@ public interface Replication {
 
     InetAddress getLocalEndpoint();
 
-    Object put(Object key, Object value, Session session);
+    Object put(Object key, Object value, DataType valueType, Session session);
 
     Object get(Object key, Session session);
 

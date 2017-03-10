@@ -35,12 +35,13 @@ public class ShardingTest extends SqlTestBase {
         // stmt.executeUpdate("CREATE TENANT IF NOT EXISTS ShardingTestDB RUN MODE client_server");
         // stmt.executeUpdate("ALTER TENANT ShardingTestDB RUN MODE sharding");
 
-        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB1 RUN MODE sharding");
-        stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");
+        String dbName = "ShardingTestDB1";
+        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding");
+        // stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");
         // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding
         // PARAMETERS(hostIds='1,2')");
 
-        new ShardingCrudTest("ShardingTestDB1").runTest();
+        new ShardingCrudTest(dbName).runTest();
     }
 
     private class ShardingCrudTest extends SqlTestBase {
@@ -51,6 +52,11 @@ public class ShardingTest extends SqlTestBase {
 
         @Override
         protected void test() throws Exception {
+            insert();
+            select();
+        }
+
+        void insert() throws Exception {
             stmt.executeUpdate("drop table IF EXISTS ShardingTest");
             stmt.executeUpdate("create table IF NOT EXISTS ShardingTest(f1 int SELECTIVITY 10, f2 int, f3 int)");
 
@@ -66,7 +72,9 @@ public class ShardingTest extends SqlTestBase {
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+        }
 
+        void select() throws Exception {
             sql = "select distinct * from ShardingTest where f1 > 3";
             sql = "select distinct f1 from ShardingTest";
             printResultSet();

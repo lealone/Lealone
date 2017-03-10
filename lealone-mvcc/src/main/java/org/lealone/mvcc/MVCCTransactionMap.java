@@ -66,7 +66,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public DataType getValueType() {
-        return map.getValueType();
+        return ((TransactionalValueType) map.getValueType()).valueType;
     }
 
     /**
@@ -154,12 +154,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public V put(K key, V value) {
         if (isShardingMode && (map instanceof Replication)) {
-            TransactionalValue newValue = new TransactionalValue(transaction, value);
-            return (V) ((Replication) map).put(key, newValue, transaction.getSession());
-        }
-        // 通过反序列化触发put调用时，value可能已经是TransactionalValue类型了
-        if (value instanceof TransactionalValue) {
-            value = (V) ((TransactionalValue) value).value;
+            return (V) ((Replication) map).put(key, value, getValueType(), transaction.getSession());
         }
         DataUtils.checkArgument(value != null, "The value may not be null");
         return set(key, value);

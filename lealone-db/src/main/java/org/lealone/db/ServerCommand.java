@@ -26,6 +26,8 @@ import org.lealone.db.result.Result;
 import org.lealone.replication.Replication;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.type.WriteBuffer;
+import org.lealone.storage.type.WriteBufferPool;
 
 public class ServerCommand implements StorageCommand {
 
@@ -88,7 +90,18 @@ public class ServerCommand implements StorageCommand {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.put(map.getKeyType().read(key), map.getValueType().read(value));
-        return result;
+
+        if (result == null)
+            return null;
+        WriteBuffer writeBuffer = WriteBufferPool.poll();
+        map.getValueType().write(writeBuffer, result);
+        ByteBuffer buffer = writeBuffer.getBuffer();
+        buffer.flip();
+        ByteBuffer valueBuffer = ByteBuffer.allocate(buffer.limit());
+        valueBuffer.put(buffer);
+        valueBuffer.flip();
+        WriteBufferPool.offer(writeBuffer);
+        return valueBuffer.array();
     }
 
     @Override
