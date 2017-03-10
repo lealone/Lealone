@@ -168,4 +168,38 @@ public class P2PRouter implements Router {
         return hostIds;
     }
 
+    @Override
+    public int createDatabase(Database db, ServerSession currentSession) {
+        Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+        // liveMembers.remove(Utils.getBroadcastAddress()); // TODO 要不要删除当前节点
+        // int[] hostIds = db.getHostIds();
+        // if (hostIds.length == 0) {
+        // liveMembers = Gossiper.instance.getLiveMembers();
+        // } else {
+        // liveMembers = new HashSet<>(hostIds.length);
+        // for (int hostId : hostIds) {
+        // liveMembers.add(StorageServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
+        // }
+        // }
+        Session[] sessions = new Session[liveMembers.size()];
+        int i = 0;
+        for (InetAddress ia : liveMembers) {
+            sessions[i++] = SessionPool.getSession(currentSession, currentSession.getURL(ia),
+                    !Utils.getBroadcastAddress().equals(ia));
+        }
+
+        ReplicationSession rs = new ReplicationSession(sessions);
+        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+        Command c = null;
+        try {
+            c = rs.createCommand(db.getCreateSQL(), -1);
+            return c.executeUpdate();
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        } finally {
+            if (c != null)
+                c.close();
+        }
+    }
+
 }

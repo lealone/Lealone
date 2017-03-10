@@ -18,6 +18,7 @@
 package org.lealone.sql.router;
 
 import org.lealone.db.Database;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.sql.StatementBase;
 
@@ -28,4 +29,7 @@ public interface Router {
     Result executeQuery(StatementBase statement, int maxRows);
 
     public int[] getHostIds(Database db);
+
+    int createDatabase(Database db, ServerSession currentSession);
+
 }

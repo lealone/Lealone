@@ -572,8 +572,10 @@ public class AsyncConnection implements Handler<Buffer> {
             int sessionId = transfer.readInt();
             String sql = transfer.readString();
             Session session = getSession(sessionId);
-            if (operation == Session.COMMAND_REPLICATION_UPDATE)
+            if (operation == Session.COMMAND_REPLICATION_UPDATE) {
                 session.setReplicationName(transfer.readString());
+                session.setRoot(false);
+            }
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE) {
                 session.setAutoCommit(false);
                 session.setRoot(false);

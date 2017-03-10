@@ -70,6 +70,7 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
         if (!(lealoneDB == session.getDatabase() && session.getUser().isAdmin())) {
             throw DbException.get(ErrorCode.CREATE_DATABASE_RIGHTS_REQUIRED);
         }
+        Database newDB;
         synchronized (lealoneDB.getLock(DbObjectType.DATABASE)) {
             if (lealoneDB.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
                 if (ifNotExists) {
@@ -78,7 +79,7 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
                 throw DbException.get(ErrorCode.DATABASE_ALREADY_EXISTS_1, dbName);
             }
             int id = getObjectId(lealoneDB);
-            Database newDB = new Database(id, dbName, parameters);
+            newDB = new Database(id, dbName, parameters);
             newDB.setReplicationProperties(replicationProperties);
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
@@ -89,12 +90,15 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
                     newDB.getParameters().put("hostIds", "");
             }
             lealoneDB.addDatabaseObject(session, newDB);
+        }
 
-            // LealoneDatabase在启动过程中执行CREATE DATABASE时，不对数据库初始化
-            if (!lealoneDB.isStarting()) {
-                newDB.init();
-                newDB.createRootUserIfNotExists();
+        // LealoneDatabase在启动过程中执行CREATE DATABASE时，不对数据库初始化
+        if (!lealoneDB.isStarting()) {
+            if (session.isRoot()) {
+                RouterHolder.getRouter().createDatabase(newDB, session);
             }
+            newDB.init();
+            newDB.createRootUserIfNotExists();
         }
         return 0;
     }

@@ -18,6 +18,7 @@
 package org.lealone.sql.router;
 
 import org.lealone.db.Database;
+import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.sql.StatementBase;
 
@@ -45,6 +46,11 @@ public class LocalRouter implements Router {
     @Override
     public int[] getHostIds(Database db) {
         return new int[0];
+    }
+
+    @Override
+    public int createDatabase(Database db, ServerSession currentSession) {
+        return 0;
     }
 
 }
