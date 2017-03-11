@@ -19,6 +19,8 @@
  */
 package org.lealone.db;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 
 import org.lealone.api.ErrorCode;
@@ -86,6 +88,9 @@ public class DatabaseEngine {
                         // ignore
                     }
                 }
+                if (session.isInvalid()) {
+                    return session;
+                }
 
                 initSession(session, ci);
                 validateUserAndPassword(true);
@@ -121,10 +126,53 @@ public class DatabaseEngine {
                     // 把当前连接进来的用户当成Admin
                     user = database.createAdminUser(userName, userPasswordHash);
                 }
-            } else {
-                if (!database.isInitialized())
-                    database.init();
             }
+
+            String url = ci.getURL();
+            int pos1 = url.indexOf("//") + 2;
+            String host;
+            String port;
+            int pos2 = url.indexOf(':', pos1);
+            int pos3 = url.indexOf('/', pos1);
+            if (pos2 != -1) {
+                host = url.substring(pos1, pos2);
+                port = url.substring(pos2 + 1, pos3);
+            } else {
+                host = url.substring(pos1, pos3);
+                port = String.valueOf(Constants.DEFAULT_TCP_PORT);
+            }
+            String currentEndpoint;
+            try {
+                currentEndpoint = InetAddress.getByName(host).getHostAddress() + ":" + port;
+            } catch (UnknownHostException e) {
+                throw DbException.convert(e);
+            }
+            String targetEndpoints;
+            String[] endpoints = database.getEndpoints();
+            boolean isTargetEndpoint = false;
+            if (endpoints != null) {
+                for (String e : endpoints) {
+                    if (e.equalsIgnoreCase(currentEndpoint)) {
+                        isTargetEndpoint = true;
+                        break;
+                    }
+                }
+                targetEndpoints = database.getTargetEndpoints();
+            } else {
+                isTargetEndpoint = true;
+                targetEndpoints = currentEndpoint;
+            }
+            if (!isTargetEndpoint) {
+                ServerSession session = new ServerSession(database,
+                        LealoneDatabase.getInstance().getSystemSession().getUser(), 0);
+                session.setTargetEndpoints(targetEndpoints);
+                session.setRunMode(database.getRunMode());
+                session.setInvalid(true);
+                return session;
+            }
+
+            if (!database.isInitialized())
+                database.init();
 
             synchronized (database) {
                 if (opened) {
@@ -157,6 +205,8 @@ public class DatabaseEngine {
                 }
                 ServerSession session = database.createSession(user);
                 session.setConnectionInfo(ci);
+                session.setTargetEndpoints(targetEndpoints);
+                session.setRunMode(database.getRunMode());
                 return session;
             }
         }

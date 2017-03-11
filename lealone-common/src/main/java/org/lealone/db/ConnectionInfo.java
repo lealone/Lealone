@@ -732,7 +732,7 @@ public class ConnectionInfo implements Cloneable {
         return isReplicaSetMode;
     }
 
-    public ConnectionInfo copyForReplicaSet(String newServer) {
+    public ConnectionInfo copy(String newServer) {
         ConnectionInfo ci = new ConnectionInfo();
         ci.prop.putAll(prop);
         StringBuilder buff = new StringBuilder(Constants.URL_PREFIX);

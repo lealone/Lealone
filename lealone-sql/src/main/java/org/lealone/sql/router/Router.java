@@ -32,4 +32,6 @@ public interface Router {
 
     int createDatabase(Database db, ServerSession currentSession);
 
+    public String[] getEndpoints(Database db);
+
 }

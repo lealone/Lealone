@@ -104,4 +104,9 @@ public class TransactionalRouter implements Router {
     public int createDatabase(Database db, ServerSession currentSession) {
         return nestedRouter.createDatabase(db, currentSession);
     }
+
+    @Override
+    public String[] getEndpoints(Database db) {
+        return nestedRouter.getEndpoints(db);
+    }
 }

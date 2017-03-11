@@ -1328,6 +1328,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
+    public Session connectEmbeddedOrServer(boolean first) {
+        return this;
+    }
+
+    @Override
     public String getURL() {
         return connectionInfo == null ? null : connectionInfo.getURL();
     }

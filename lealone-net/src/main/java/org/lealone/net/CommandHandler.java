@@ -74,17 +74,17 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         c.close();
     }
 
-    private final ConcurrentHashMap<Integer, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<SessionInfo, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
     private final Semaphore haveWork = new Semaphore(1);
     private boolean stop;
     private int nested;
 
-    void addSession(Integer sessionId, SessionInfo sessionInfo) {
-        sessionInfoMap.put(sessionId, sessionInfo);
+    void addSession(SessionInfo sessionInfo) {
+        sessionInfoMap.put(sessionInfo, sessionInfo);
     }
 
-    void removeSession(Integer sessionId) {
-        sessionInfoMap.remove(sessionId);
+    void removeSession(SessionInfo sessionInfo) {
+        sessionInfoMap.remove(sessionInfo);
     }
 
     public CommandHandler(int id) {

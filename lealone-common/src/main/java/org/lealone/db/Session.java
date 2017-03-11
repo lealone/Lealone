@@ -162,6 +162,8 @@ public interface Session extends Closeable, Transaction.Participant {
 
     Session connectEmbeddedOrServer();
 
+    Session connectEmbeddedOrServer(boolean first);
+
     String getURL();
 
     String getReplicationName();
@@ -188,4 +190,15 @@ public interface Session extends Closeable, Transaction.Participant {
 
     SessionStatus getStatus();
 
+    void setInvalid(boolean v);
+
+    boolean isInvalid();
+
+    void setTargetEndpoints(String targetEndpoints);
+
+    String getTargetEndpoints();
+
+    void setRunMode(RunMode runMode);
+
+    RunMode getRunMode();
 }

@@ -29,6 +29,10 @@ public abstract class SessionBase implements Session {
     protected AtomicInteger nextId = new AtomicInteger(0);
     protected Runnable runnable;
 
+    protected String targetEndpoints;
+    protected RunMode runMode;
+    protected boolean invalid;
+
     @Override
     public String getReplicationName() {
         return replicationName;
@@ -90,5 +94,35 @@ public abstract class SessionBase implements Session {
     @Override
     public SessionStatus getStatus() {
         return SessionStatus.NO_TRANSACTION;
+    }
+
+    @Override
+    public void setInvalid(boolean v) {
+        invalid = v;
+    }
+
+    @Override
+    public boolean isInvalid() {
+        return invalid;
+    }
+
+    @Override
+    public void setTargetEndpoints(String targetEndpoints) {
+        this.targetEndpoints = targetEndpoints;
+    }
+
+    @Override
+    public String getTargetEndpoints() {
+        return targetEndpoints;
+    }
+
+    @Override
+    public void setRunMode(RunMode runMode) {
+        this.runMode = runMode;
+    }
+
+    @Override
+    public RunMode getRunMode() {
+        return runMode;
     }
 }

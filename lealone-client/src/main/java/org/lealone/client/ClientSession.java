@@ -26,6 +26,7 @@ import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
+import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
 import org.lealone.db.SetTypes;
@@ -101,8 +102,39 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
      */
     @Override
     public Session connectEmbeddedOrServer() {
+        return connectEmbeddedOrServer(true);
+    }
+
+    @Override
+    public Session connectEmbeddedOrServer(boolean first) {
         if (ci.isRemote()) {
             connectServer();
+            if (first) {
+                if (getRunMode() == RunMode.REPLICATION) {
+                    ConnectionInfo ci = this.ci;
+                    String[] servers = StringUtils.arraySplit(getTargetEndpoints(), ',', true);
+                    int size = servers.length;
+                    Session[] sessions = new ClientSession[size];
+                    for (int i = 0; i < size; i++) {
+                        ci = this.ci.copy(servers[i]);
+                        sessions[i] = new ClientSession(ci);
+                        sessions[i] = sessions[i].connectEmbeddedOrServer(false);
+                    }
+                    return new ReplicationSession(sessions);
+                }
+                if (isInvalid()) {
+                    switch (getRunMode()) {
+                    case CLIENT_SERVER:
+                    case SHARDING: {
+                        ConnectionInfo ci = this.ci.copy(getTargetEndpoints());
+                        ClientSession session = new ClientSession(ci);
+                        return session.connectEmbeddedOrServer(false);
+                    }
+                    default:
+                        return this;
+                    }
+                }
+            }
             return this;
         } else if (ci.isReplicaSetMode()) {
             ConnectionInfo ci = this.ci;
@@ -110,9 +142,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             int size = servers.length;
             Session[] sessions = new ClientSession[size];
             for (int i = 0; i < size; i++) {
-                ci = this.ci.copyForReplicaSet(servers[i]);
+                ci = this.ci.copy(servers[i]);
                 sessions[i] = new ClientSession(ci);
-                sessions[i] = sessions[i].connectEmbeddedOrServer();
+                sessions[i] = sessions[i].connectEmbeddedOrServer(false);
             }
             return new ReplicationSession(sessions);
         }
@@ -217,6 +249,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                         if (res.succeeded()) {
                             NetSocket socket = res.result();
                             asyncConnection = new AsyncConnection(socket, false);
+                            asyncConnection.setHostAndPort(hostAndPort);
                             asyncConnections.put(hostAndPort, asyncConnection);
                             socket.handler(asyncConnection);
                             latch.countDown();
@@ -349,11 +382,13 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
                 synchronized (ClientSession.class) {
                     if (asyncConnection.isEmpty()) {
+                        asyncConnections.remove(asyncConnection.getHostAndPort());
+                    }
+                    if (asyncConnections.isEmpty()) {
                         client.close();
                         vertx.close();
                         client = null;
                         vertx = null;
-                        asyncConnections.clear();
                     }
                 }
             } catch (RuntimeException e) {

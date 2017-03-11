@@ -33,6 +33,7 @@ import org.lealone.aose.util.Utils;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
+import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
@@ -200,6 +201,28 @@ public class P2PRouter implements Router {
             if (c != null)
                 c.close();
         }
+    }
+
+    @Override
+    public String[] getEndpoints(Database db) {
+        Set<InetAddress> liveMembers;
+        int[] hostIds = db.getHostIds();
+        if (hostIds.length == 0) {
+            liveMembers = Gossiper.instance.getLiveMembers();
+        } else {
+            liveMembers = new HashSet<>(hostIds.length);
+            for (int hostId : hostIds) {
+                liveMembers.add(StorageServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
+            }
+        }
+
+        String[] endpoints = new String[liveMembers.size()];
+        int i = 0;
+        for (InetAddress inetAddress : liveMembers) {
+            // TODO 如何不用默认端口？
+            endpoints[i++] = inetAddress.getHostAddress() + ":" + Constants.DEFAULT_TCP_PORT;
+        }
+        return endpoints;
     }
 
 }

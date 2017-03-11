@@ -88,6 +88,13 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
                     newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
                 else
                     newDB.getParameters().put("hostIds", "");
+
+                String[] endpoints = RouterHolder.getRouter().getEndpoints(newDB);
+
+                if (endpoints != null && endpoints.length > 0)
+                    newDB.getParameters().put("endpoints", StringUtils.arrayCombine(endpoints, ','));
+                else
+                    newDB.getParameters().put("endpoints", "");
             }
             lealoneDB.addDatabaseObject(session, newDB);
         }

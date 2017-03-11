@@ -219,6 +219,11 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
+    public Session connectEmbeddedOrServer(boolean first) {
+        return sessions[0].connectEmbeddedOrServer(first);
+    }
+
+    @Override
     public String getURL() {
         return sessions[0].getURL();
     }

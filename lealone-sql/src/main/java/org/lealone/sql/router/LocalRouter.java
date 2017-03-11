@@ -53,4 +53,9 @@ public class LocalRouter implements Router {
         return 0;
     }
 
+    @Override
+    public String[] getEndpoints(Database db) {
+        return null;
+    }
+
 }

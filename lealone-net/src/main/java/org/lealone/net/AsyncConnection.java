@@ -32,6 +32,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
+import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
@@ -58,14 +59,51 @@ import io.vertx.core.net.NetSocket;
 public class AsyncConnection implements Handler<Buffer> {
 
     static class SessionInfo {
-        Session session;
-        CommandHandler commandHandler;
-        ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue;
+        final String hostAndPort;
+        final int sessionId;
+        final Session session;
+        final CommandHandler commandHandler;
+        final ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue;
 
-        SessionInfo(Session session, CommandHandler commandHandler) {
+        SessionInfo(String hostAndPort, int sessionId, Session session, CommandHandler commandHandler) {
+            this.sessionId = sessionId;
+            this.hostAndPort = hostAndPort;
             this.session = session;
             this.commandHandler = commandHandler;
-            preparedCommandQueue = new ConcurrentLinkedQueue<>();
+            this.preparedCommandQueue = new ConcurrentLinkedQueue<>();
+        }
+
+        @Override
+        public String toString() {
+            return "SessionInfo [hostAndPort=" + hostAndPort + ", sessionId=" + sessionId + "]";
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((hostAndPort == null) ? 0 : hostAndPort.hashCode());
+            result = prime * result + sessionId;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            SessionInfo other = (SessionInfo) obj;
+            if (hostAndPort == null) {
+                if (other.hostAndPort != null)
+                    return false;
+            } else if (!hostAndPort.equals(other.hostAndPort))
+                return false;
+            if (sessionId != other.sessionId)
+                return false;
+            return true;
         }
     }
 
@@ -82,6 +120,8 @@ public class AsyncConnection implements Handler<Buffer> {
     private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
     final ConcurrentHashMap<Integer, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
+
+    private String hostAndPort;
 
     public int getNextId() {
         return nextId.incrementAndGet();
@@ -129,6 +169,7 @@ public class AsyncConnection implements Handler<Buffer> {
         transfer.writeRequestHeader(sessionId, Session.SESSION_INIT);
         transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
         transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
+        transfer.writeString(hostAndPort);
         transfer.writeString(ci.getDatabaseName());
         transfer.writeString(ci.getURL()); // 不带参数的URL
         transfer.writeString(ci.getUserName());
@@ -148,6 +189,9 @@ public class AsyncConnection implements Handler<Buffer> {
                     transfer.setVersion(clientVersion);
                     boolean autoCommit = transfer.readBoolean();
                     session.setAutoCommit(autoCommit);
+                    session.setTargetEndpoints(transfer.readString());
+                    session.setRunMode(RunMode.valueOf(transfer.readString()));
+                    session.setInvalid(transfer.readBoolean());
                 } catch (IOException e) {
                     throw DbException.convert(e);
                 }
@@ -176,20 +220,26 @@ public class AsyncConnection implements Handler<Buffer> {
                 clientVersion = minClientVersion;
             }
             transfer.setVersion(clientVersion);
+            hostAndPort = transfer.readString();
             String dbName = transfer.readString();
             String originalURL = transfer.readString();
             String userName = transfer.readString();
             userName = StringUtils.toUpperEnglish(userName);
             Session session = createSession(transfer, originalURL, dbName, userName);
-            CommandHandler commandHandler = CommandHandler.getNextCommandHandler();
-            sessions.put(sessionId, session);
-            SessionInfo sessionInfo = new SessionInfo(session, commandHandler);
-            sessionInfoMap.put(sessionId, sessionInfo);
-            commandHandler.addSession(sessionId, sessionInfo);
+            if (!session.isInvalid()) {
+                CommandHandler commandHandler = CommandHandler.getNextCommandHandler();
+                sessions.put(sessionId, session);
+                SessionInfo sessionInfo = new SessionInfo(hostAndPort, sessionId, session, commandHandler);
+                sessionInfoMap.put(sessionId, sessionInfo);
+                commandHandler.addSession(sessionInfo);
+            }
             transfer.setSession(session);
             transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
             transfer.writeInt(clientVersion);
             transfer.writeBoolean(session.isAutoCommit());
+            transfer.writeString(session.getTargetEndpoints());
+            transfer.writeString(session.getRunMode().toString());
+            transfer.writeBoolean(session.isInvalid());
             transfer.flush();
         } catch (Throwable e) {
             sendError(transfer, sessionId, e);
@@ -260,8 +310,8 @@ public class AsyncConnection implements Handler<Buffer> {
             for (Session s : sessions.values())
                 closeSession(s);
             sessions.clear();
-            for (Integer id : sessionInfoMap.keySet()) {
-                sessionInfoMap.get(id).commandHandler.removeSession(id);
+            for (SessionInfo sessionInfo : sessionInfoMap.values()) {
+                sessionInfo.commandHandler.removeSession(sessionInfo);
             }
             sessionInfoMap.clear();
         } catch (Exception e) {
@@ -838,7 +888,7 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.SESSION_CLOSE: {
             SessionInfo si = sessionInfoMap.remove(id);
-            si.commandHandler.removeSession(id);
+            si.commandHandler.removeSession(si);
             Session session = sessions.remove(id);
             closeSession(session);
             break;
@@ -1009,5 +1059,13 @@ public class AsyncConnection implements Handler<Buffer> {
         } else {
             processResponse(transfer, id);
         }
+    }
+
+    public String getHostAndPort() {
+        return hostAndPort;
+    }
+
+    public void setHostAndPort(String hostAndPort) {
+        this.hostAndPort = hostAndPort;
     }
 }

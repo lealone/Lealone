@@ -178,7 +178,7 @@ public class Database implements DataHandler, DbObject {
     private Map<String, String> replicationProperties;
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
 
-    private RunMode runMode;
+    private RunMode runMode = RunMode.CLIENT_SERVER;
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -2270,6 +2270,24 @@ public class Database implements DataHandler, DbObject {
         if (hostIds == null)
             hostIds = new int[0];
         return hostIds;
+    }
+
+    private String[] endpoints;
+
+    public String[] getEndpoints() {
+        if (endpoints == null) {
+            if (parameters != null && parameters.containsKey("endpoints")) {
+                endpoints = StringUtils.arraySplit(parameters.get("endpoints"), ',', true);
+            }
+        }
+        return endpoints;
+    }
+
+    public String getTargetEndpoints() {
+        if (parameters != null) {
+            return parameters.get("endpoints");
+        }
+        return null;
     }
 
     private java.sql.PreparedStatement psGetVersion;
