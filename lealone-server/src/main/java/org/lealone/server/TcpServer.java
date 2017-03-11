@@ -13,6 +13,8 @@ import java.util.concurrent.CountDownLatch;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
 import org.lealone.net.AsyncConnection;
@@ -33,6 +35,7 @@ import io.vertx.core.net.NetSocket;
  */
 public class TcpServer implements ProtocolServer {
 
+    private static final Logger logger = LoggerFactory.getLogger(TcpServer.class);
     private static Vertx vertx;
 
     private String host = Constants.DEFAULT_HOST;
@@ -79,7 +82,13 @@ public class TcpServer implements ProtocolServer {
                 ac.setIfExists(TcpServer.this.ifExists);
                 CommandHandler.addConnection(ac);
                 socket.handler(ac);
+                String msg = "RemoteAddress " + socket.remoteAddress() + " ";
                 socket.closeHandler(v -> {
+                    logger.info(msg + "closed");
+                    CommandHandler.removeConnection(ac);
+                });
+                socket.exceptionHandler(v -> {
+                    logger.warn(msg + "exception: " + v.getMessage());
                     CommandHandler.removeConnection(ac);
                 });
             } else {
