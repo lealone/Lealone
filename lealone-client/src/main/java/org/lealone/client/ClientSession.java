@@ -107,52 +107,42 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public Session connectEmbeddedOrServer(boolean first) {
-        if (ci.isRemote()) {
-            connectServer();
-            if (first) {
-                if (getRunMode() == RunMode.REPLICATION) {
-                    ConnectionInfo ci = this.ci;
-                    String[] servers = StringUtils.arraySplit(getTargetEndpoints(), ',', true);
-                    int size = servers.length;
-                    Session[] sessions = new ClientSession[size];
-                    for (int i = 0; i < size; i++) {
-                        ci = this.ci.copy(servers[i]);
-                        sessions[i] = new ClientSession(ci);
-                        sessions[i] = sessions[i].connectEmbeddedOrServer(false);
-                    }
-                    return new ReplicationSession(sessions);
+        if (!ci.isRemote()) {
+            try {
+                return ci.getSessionFactory().createSession(ci);
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+
+        connectServer();
+        if (first) {
+            if (getRunMode() == RunMode.REPLICATION) {
+                ConnectionInfo ci = this.ci;
+                String[] servers = StringUtils.arraySplit(getTargetEndpoints(), ',', true);
+                int size = servers.length;
+                Session[] sessions = new ClientSession[size];
+                for (int i = 0; i < size; i++) {
+                    ci = this.ci.copy(servers[i]);
+                    sessions[i] = new ClientSession(ci);
+                    sessions[i] = sessions[i].connectEmbeddedOrServer(false);
                 }
-                if (isInvalid()) {
-                    switch (getRunMode()) {
-                    case CLIENT_SERVER:
-                    case SHARDING: {
-                        ConnectionInfo ci = this.ci.copy(getTargetEndpoints());
-                        ClientSession session = new ClientSession(ci);
-                        return session.connectEmbeddedOrServer(false);
-                    }
-                    default:
-                        return this;
-                    }
+                return new ReplicationSession(sessions);
+            }
+            if (isInvalid()) {
+                switch (getRunMode()) {
+                case CLIENT_SERVER:
+                case SHARDING: {
+                    ConnectionInfo ci = this.ci.copy(getTargetEndpoints());
+                    ClientSession session = new ClientSession(ci);
+                    return session.connectEmbeddedOrServer(false);
+                }
+                default:
+                    return this;
                 }
             }
-            return this;
-        } else if (ci.isReplicaSetMode()) {
-            ConnectionInfo ci = this.ci;
-            String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
-            int size = servers.length;
-            Session[] sessions = new ClientSession[size];
-            for (int i = 0; i < size; i++) {
-                ci = this.ci.copy(servers[i]);
-                sessions[i] = new ClientSession(ci);
-                sessions[i] = sessions[i].connectEmbeddedOrServer(false);
-            }
-            return new ReplicationSession(sessions);
         }
-        try {
-            return ci.getSessionFactory().createSession(ci);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        }
+        return this;
     }
 
     private void connectServer() {

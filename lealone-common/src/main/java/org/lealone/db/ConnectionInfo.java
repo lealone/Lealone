@@ -105,8 +105,6 @@ public class ConnectionInfo implements Cloneable {
 
     private boolean isClient;
 
-    private boolean isReplicaSetMode;
-
     public ConnectionInfo() {
     }
 
@@ -263,9 +261,6 @@ public class ConnectionInfo implements Cloneable {
             dbName = dbName.substring(Constants.URL_EMBED.length());
             if (!mem)
                 persistent = true;
-        } else if (dbName.startsWith(Constants.URL_RS)) {
-            dbName = dbName.substring(Constants.URL_RS.length());
-            isReplicaSetMode = true;
         } else {
             throw getFormatException();
         }
@@ -728,10 +723,6 @@ public class ConnectionInfo implements Cloneable {
         isClient = b;
     }
 
-    public boolean isReplicaSetMode() {
-        return isReplicaSetMode;
-    }
-
     public ConnectionInfo copy(String newServer) {
         ConnectionInfo ci = new ConnectionInfo();
         ci.prop.putAll(prop);
@@ -752,7 +743,6 @@ public class ConnectionInfo implements Cloneable {
         ci.sessionFactory = sessionFactory;
         ci.dbSettings = dbSettings;
         ci.isClient = isClient;
-        ci.isReplicaSetMode = false;
         return ci;
     }
 }

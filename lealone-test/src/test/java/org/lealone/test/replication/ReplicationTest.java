@@ -27,7 +27,6 @@ import org.lealone.test.UnitTestBase;
 public class ReplicationTest extends UnitTestBase {
     @Test
     public void run() throws Exception {
-        setReplicaSetMode(true);
         Connection conn = getConnection();
         Statement stmt = conn.createStatement();
 

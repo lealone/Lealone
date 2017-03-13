@@ -304,7 +304,6 @@ public class Constants {
     public static final String URL_TCP = "tcp:";
     public static final String URL_SSL = "ssl:";
     public static final String URL_EMBED = "embed:";
-    public static final String URL_RS = "rs:";
 
     /**
      * The database URL used when calling a function if only the column list

@@ -81,7 +81,6 @@ public class TestBase extends Assert {
     private boolean embedded = false;
     private boolean inMemory = false;
     private boolean mysqlUrlStyle = false;
-    private boolean isReplicaSetMode = false;
     private boolean ssl = false;
 
     private String host = Constants.DEFAULT_HOST;
@@ -120,11 +119,6 @@ public class TestBase extends Assert {
 
     public TestBase setEmbedded(boolean embedded) {
         this.embedded = embedded;
-        return this;
-    }
-
-    public TestBase setReplicaSetMode(boolean isReplicaSetMode) {
-        this.isReplicaSetMode = isReplicaSetMode;
         return this;
     }
 
@@ -198,16 +192,11 @@ public class TestBase extends Assert {
             if (!inMemory)
                 url.append(TEST_DIR).append('/');
         } else {
-            if (isReplicaSetMode)
-                url.append(Constants.URL_RS).append("//").append("127.0.0.1").append(',').append("127.0.0.2")
-                        .append(',').append("127.0.0.3").append('/');
-            else {
-                if (ssl)
-                    url.append(Constants.URL_SSL);
-                else
-                    url.append(Constants.URL_TCP);
-                url.append("//").append(host).append(':').append(port).append('/');
-            }
+            if (ssl)
+                url.append(Constants.URL_SSL);
+            else
+                url.append(Constants.URL_TCP);
+            url.append("//").append(host).append(':').append(port).append('/');
         }
 
         char firstSeparatorChar = ';';
