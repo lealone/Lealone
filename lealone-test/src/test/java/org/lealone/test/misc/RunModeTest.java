@@ -49,6 +49,7 @@ public class RunModeTest extends SqlTestBase {
 
         public CrudTest(String dbName) {
             super(dbName);
+            // setHost("127.0.0.1"); //可以测试localhost和127.0.0.1是否复用了同一张TCP连接
         }
 
         @Override

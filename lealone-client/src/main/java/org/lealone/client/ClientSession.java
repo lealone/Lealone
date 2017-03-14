@@ -7,6 +7,7 @@ package org.lealone.client;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Random;
@@ -26,6 +27,7 @@ import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
+import org.lealone.db.HostAndPort;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
@@ -59,7 +61,9 @@ import io.vertx.core.net.NetSocket;
  */
 public class ClientSession extends SessionBase implements DataHandler, Transaction.Participant {
 
-    private static final ConcurrentHashMap<String, AsyncConnection> asyncConnections = new ConcurrentHashMap<>();
+    // 使用InetSocketAddress为key而不是字符串，是因为像localhost和127.0.0.1这两种不同格式实际都是同一个意思，
+    // 如果用字符串，就会产生两条AsyncConnection，这是没必要的。
+    private static final ConcurrentHashMap<InetSocketAddress, AsyncConnection> asyncConnections = new ConcurrentHashMap<>();
 
     private static Vertx vertx;
     private static NetClient client;
@@ -76,6 +80,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private LobStorage lobStorage;
     private Transaction transaction;
     private AsyncConnection asyncConnection;
+    private InetSocketAddress inetSocketAddress;
 
     public ClientSession(ConnectionInfo ci) {
         this.ci = ci;
@@ -114,7 +119,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 throw DbException.convert(e);
             }
         }
-
         connectServer();
         if (first) {
             if (getRunMode() == RunMode.REPLICATION) {
@@ -123,6 +127,14 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 int size = servers.length;
                 Session[] sessions = new ClientSession[size];
                 for (int i = 0; i < size; i++) {
+                    // 如果首次连接的节点就是复制节点之一，则复用它
+                    if (!isInvalid()) {
+                        HostAndPort hostAndPort = new HostAndPort(servers[i]);
+                        if (hostAndPort.inetSocketAddress.equals(this.inetSocketAddress)) {
+                            sessions[i] = this;
+                            continue;
+                        }
+                    }
                     ci = this.ci.copy(servers[i]);
                     sessions[i] = new ClientSession(ci);
                     sessions[i] = sessions[i].connectEmbeddedOrServer(false);
@@ -135,6 +147,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 case SHARDING: {
                     ConnectionInfo ci = this.ci.copy(getTargetEndpoints());
                     ClientSession session = new ClientSession(ci);
+                    this.close(); // 关闭当前session,因为连到的节点不是所要的
                     return session.connectEmbeddedOrServer(false);
                 }
                 default:
@@ -159,8 +172,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             for (int i = 0, len = servers.length; i < len; i++) {
                 String s = servers[random.nextInt(len)];
+                HostAndPort hostAndPort = new HostAndPort(s);
                 try {
-                    transfer = initTransfer(ci, s);
+                    transfer = initTransfer(ci, hostAndPort);
                     break;
                 } catch (Exception e) {
                     if (i == len - 1) {
@@ -214,37 +228,27 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         trace = traceSystem.getTrace(Trace.JDBC);
     }
 
-    private Transfer initTransfer(ConnectionInfo ci, String server) throws Exception {
-        int port = Constants.DEFAULT_TCP_PORT;
-        // IPv6: RFC 2732 format is '[a:b:c:d:e:f:g:h]' or
-        // '[a:b:c:d:e:f:g:h]:port'
-        // RFC 2396 format is 'a.b.c.d' or 'a.b.c.d:port' or 'hostname' or
-        // 'hostname:port'
-        int startIndex = server.startsWith("[") ? server.indexOf(']') : 0;
-        int idx = server.indexOf(':', startIndex);
-        if (idx >= 0) {
-            port = Integer.decode(server.substring(idx + 1));
-            server = server.substring(0, idx);
-        }
-
-        final String hostAndPort = server + ":" + port;
-
-        asyncConnection = asyncConnections.get(hostAndPort);
+    private Transfer initTransfer(ConnectionInfo ci, HostAndPort hostAndPort) throws Exception {
+        inetSocketAddress = hostAndPort.inetSocketAddress;
+        asyncConnection = asyncConnections.get(inetSocketAddress);
         if (asyncConnection == null) {
             synchronized (ClientSession.class) {
-                asyncConnection = asyncConnections.get(hostAndPort);
+                asyncConnection = asyncConnections.get(inetSocketAddress);
                 if (asyncConnection == null) {
                     CountDownLatch latch = new CountDownLatch(1);
-                    client.connect(port, server, res -> {
-                        if (res.succeeded()) {
-                            NetSocket socket = res.result();
-                            asyncConnection = new AsyncConnection(socket, false);
-                            asyncConnection.setHostAndPort(hostAndPort);
-                            asyncConnections.put(hostAndPort, asyncConnection);
-                            socket.handler(asyncConnection);
+                    client.connect(hostAndPort.port, hostAndPort.host, res -> {
+                        try {
+                            if (res.succeeded()) {
+                                NetSocket socket = res.result();
+                                asyncConnection = new AsyncConnection(socket, false);
+                                asyncConnection.setHostAndPort(hostAndPort.value);
+                                asyncConnections.put(inetSocketAddress, asyncConnection);
+                                socket.handler(asyncConnection);
+                            } else {
+                                throw DbException.convert(res.cause());
+                            }
+                        } finally {
                             latch.countDown();
-                        } else {
-                            throw DbException.convert(res.cause());
                         }
                     });
                     latch.await();
@@ -372,7 +376,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
                 synchronized (ClientSession.class) {
                     if (asyncConnection.isEmpty()) {
-                        asyncConnections.remove(asyncConnection.getHostAndPort());
+                        asyncConnections.remove(inetSocketAddress);
                     }
                     if (asyncConnections.isEmpty()) {
                         client.close();
