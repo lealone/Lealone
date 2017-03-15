@@ -24,7 +24,10 @@ import java.sql.Statement;
 
 import org.junit.After;
 import org.junit.Before;
+import org.lealone.api.ErrorCode;
 import org.lealone.common.util.JdbcUtils;
+import org.lealone.db.LealoneDatabase;
+import org.lealone.db.RunMode;
 import org.lealone.test.TestBase;
 
 public class SqlTestBase extends TestBase {
@@ -37,6 +40,7 @@ public class SqlTestBase extends TestBase {
     protected Statement stmt;
     protected ResultSet rs;
     protected String sql;
+    protected RunMode runMode;
 
     protected SqlTestBase() {
         // addConnectionParameter("TRACE_LEVEL_FILE", TraceSystem.ADAPTER + "");
@@ -44,6 +48,11 @@ public class SqlTestBase extends TestBase {
 
     protected SqlTestBase(String dbName) {
         this.dbName = dbName;
+    }
+
+    protected SqlTestBase(String dbName, RunMode runMode) {
+        this.dbName = dbName;
+        this.runMode = runMode;
     }
 
     protected SqlTestBase(String user, String password) {
@@ -63,6 +72,33 @@ public class SqlTestBase extends TestBase {
             }
             stmt = conn.createStatement();
         } catch (Exception e) {
+            Throwable cause = e;
+            while (true) {
+                if (cause.getCause() == null)
+                    break;
+                cause = cause.getCause();
+            }
+            if (cause instanceof SQLException) {
+                if (((SQLException) cause).getErrorCode() == ErrorCode.DATABASE_NOT_FOUND_1) {
+                    String sql = "CREATE DATABASE IF NOT EXISTS " + dbName;
+                    if (runMode != null)
+                        sql += " RUN MODE " + runMode;
+                    final String createDatabase = sql;
+                    class CDB extends SqlTestBase {
+                        public CDB() {
+                            super(LealoneDatabase.NAME);
+                        }
+
+                        @Override
+                        protected void test() throws Exception {
+                            stmt.executeUpdate(createDatabase);
+                        }
+                    }
+                    new CDB().runTest();
+                    setUpBefore();
+                    return;
+                }
+            }
             e.printStackTrace();
         }
     }

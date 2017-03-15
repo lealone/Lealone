@@ -380,7 +380,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     }
                     if (asyncConnections.isEmpty()) {
                         client.close();
-                        vertx.close();
+                        NetFactory.closeVertx(vertx); // 不要像这样单独调用: vertx.close();
                         client = null;
                         vertx = null;
                     }

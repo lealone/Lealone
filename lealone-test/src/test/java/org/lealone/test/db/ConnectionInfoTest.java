@@ -80,9 +80,9 @@ public class ConnectionInfoTest extends UnitTestBase {
 
         try {
             Properties prop = new Properties();
-            prop.setProperty("IFEXISTS", "true");
-            new ConnectionInfo(getURL() + ";IFEXISTS=true", prop); // url中设置的参数跟用Properties设置的参数虽然重复了，但值是一样的，所以合法
-            new ConnectionInfo(getURL() + ";IFEXISTS=false", prop); // 值不一样了，所以是非法的
+            prop.setProperty("IS_LOCAL", "true");
+            new ConnectionInfo(getURL() + ";IS_LOCAL=true", prop); // url中设置的参数跟用Properties设置的参数虽然重复了，但值是一样的，所以合法
+            new ConnectionInfo(getURL() + ";IS_LOCAL=false", prop); // 值不一样了，所以是非法的
             fail();
         } catch (Exception e) {
         }

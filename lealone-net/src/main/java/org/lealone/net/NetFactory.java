@@ -37,6 +37,15 @@ public class NetFactory {
 
     private static Vertx vertx;
 
+    public static void closeVertx(Vertx v) {
+        synchronized (NetFactory.class) {
+            v.close();
+            if (v == vertx) {
+                vertx = null;
+            }
+        }
+    }
+
     public static Vertx getVertx(Properties prop) {
         if (vertx != null) {
             return vertx;

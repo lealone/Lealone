@@ -8,9 +8,9 @@ package org.lealone.db;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Properties;
+import java.util.StringTokenizer;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -67,8 +67,8 @@ public class ConnectionInfo implements Cloneable {
         KNOWN_SETTINGS.addAll(DbSettings.getDefaultSettings().getSettings().keySet());
         KNOWN_SETTINGS.addAll(SetTypes.getTypes());
 
-        String[] connectionSettings = { "IGNORE_UNKNOWN_SETTINGS", "IFEXISTS", "INIT", "USER", "PASSWORD",
-                "PASSWORD_HASH", "IS_LOCAL" };
+        String[] connectionSettings = { "IGNORE_UNKNOWN_SETTINGS", "INIT", "USER", "PASSWORD", "PASSWORD_HASH",
+                "IS_LOCAL" };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
@@ -101,7 +101,6 @@ public class ConnectionInfo implements Cloneable {
     private String servers;
 
     private SessionFactory sessionFactory;
-    private DbSettings dbSettings;
 
     private boolean isClient;
 
@@ -314,7 +313,7 @@ public class ConnectionInfo implements Cloneable {
                 throw DbException.get(ErrorCode.IO_EXCEPTION_1, normalizedName + " outside " + absDir);
             }
             if (!absolute) {
-                dbName = prefix + absDir + SysProperties.FILE_SEPARATOR + FileUtils.unwrap(dbName);
+                nameNormalized = prefix + absDir + SysProperties.FILE_SEPARATOR + FileUtils.unwrap(dbName);
             }
         }
     }
@@ -469,6 +468,26 @@ public class ConnectionInfo implements Cloneable {
             return nameNormalized;
         }
         return dbName;
+    }
+
+    public String getDatabaseShortName() {
+        if (dbName != null)
+            return dbName;
+        String n = getDatabaseName();
+        if (n.endsWith(":")) {
+            n = null;
+        }
+        if (n != null) {
+            StringTokenizer tokenizer = new StringTokenizer(n, "/\\:,;");
+            while (tokenizer.hasMoreTokens()) {
+                n = tokenizer.nextToken();
+            }
+        }
+        if (n == null || n.length() == 0) {
+            n = "unnamed";
+        }
+        dbName = n;
+        return n;
     }
 
     /**
@@ -659,22 +678,6 @@ public class ConnectionInfo implements Cloneable {
         return DbException.get(ErrorCode.URL_FORMAT_ERROR_2, Constants.URL_FORMAT, url);
     }
 
-    public DbSettings getDbSettings() {
-        if (dbSettings == null) {
-            DbSettings defaultSettings = DbSettings.getDefaultSettings();
-            HashMap<String, String> s = New.hashMap();
-            s.put("PERSISTENT", persistent ? "true" : "false");
-            for (Object k : prop.keySet()) {
-                String key = k.toString();
-                if (!isKnownSetting(key) && defaultSettings.containsKey(key)) {
-                    s.put(key, prop.getProperty(key));
-                }
-            }
-            dbSettings = DbSettings.getInstance(s);
-        }
-        return dbSettings;
-    }
-
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
             try {
@@ -741,7 +744,6 @@ public class ConnectionInfo implements Cloneable {
         ci.embedded = embedded;
         ci.servers = newServer;
         ci.sessionFactory = sessionFactory;
-        ci.dbSettings = dbSettings;
         ci.isClient = isClient;
         return ci;
     }

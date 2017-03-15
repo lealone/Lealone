@@ -56,22 +56,6 @@ public class LealoneDatabase extends Database {
         createRootUserIfNotExists();
     }
 
-    // 安全注释见: DatabaseEngine.ServerSessionFactory.createSession(String, ConnectionInfo, boolean)
-    Database createDatabase(String dbName, ConnectionInfo ci) {
-        String sql = getCreateSQL(quoteIdentifier(dbName), ci);
-        getSystemSession().prepareStatementLocal(sql).executeUpdate();
-        getSystemSession().commit();
-        // 执行完CREATE DATABASE后会加到databases字段中
-        // CreateDatabase.update -> Database.addDatabaseObject -> Database.getMap -> this.getDatabasesMap
-        Database db = databases.get(dbName);
-        if (SysProperties.CHECK) {
-            if (db == null) {
-                DbException.throwInternalError("not found: " + dbName);
-            }
-        }
-        return db;
-    }
-
     void closeDatabase(String dbName) {
         databases.remove(dbName);
     }

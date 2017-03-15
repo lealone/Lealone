@@ -548,8 +548,8 @@ public class ErrorCode {
 
     /**
      * The error with code <code>90013</code> is thrown when
-     * trying to open a database that does not exist using the flag
-     * IFEXISTS=TRUE, or when trying to access a database object with a catalog
+     * trying to open a database that does not exist, 
+     * or when trying to access a database object with a catalog
      * name that does not match the database name. Example:
      * <pre>
      * CREATE TABLE TEST(ID INT);

@@ -112,7 +112,6 @@ public class AsyncConnection implements Handler<Buffer> {
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
     private String baseDir;
-    private boolean ifExists;
 
     protected final NetSocket socket;
     private final boolean isServer;
@@ -141,10 +140,6 @@ public class AsyncConnection implements Handler<Buffer> {
 
     public void setBaseDir(String baseDir) {
         this.baseDir = baseDir;
-    }
-
-    public void setIfExists(boolean ifExists) {
-        this.ifExists = ifExists;
     }
 
     public void addAsyncCallback(int id, AsyncCallback<?> ac) {
@@ -268,9 +263,6 @@ public class AsyncConnection implements Handler<Buffer> {
         // override client's requested properties with server settings
         if (baseDir != null) {
             ci.setBaseDir(baseDir);
-        }
-        if (ifExists) {
-            ci.setProperty("IFEXISTS", "TRUE");
         }
 
         try {

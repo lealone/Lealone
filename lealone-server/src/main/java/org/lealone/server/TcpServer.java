@@ -46,7 +46,6 @@ public class TcpServer implements ProtocolServer {
     private boolean ssl;
     private boolean allowOthers;
     private boolean isDaemon;
-    private boolean ifExists;
     private NetServer server;
     private boolean stop;
     private ServerEncryptionOptions options;
@@ -63,7 +62,6 @@ public class TcpServer implements ProtocolServer {
         ssl = Boolean.parseBoolean(config.get("ssl"));
         allowOthers = Boolean.parseBoolean(config.get("allow_others"));
         isDaemon = Boolean.parseBoolean(config.get("daemon"));
-        ifExists = Boolean.parseBoolean(config.get("if_exists"));
 
         synchronized (TcpServer.class) {
             if (vertx == null) {
@@ -79,7 +77,6 @@ public class TcpServer implements ProtocolServer {
             if (TcpServer.this.allow(socket)) {
                 AsyncConnection ac = new AsyncConnection(socket, true);
                 ac.setBaseDir(TcpServer.this.baseDir);
-                ac.setIfExists(TcpServer.this.ifExists);
                 CommandHandler.addConnection(ac);
                 socket.handler(ac);
                 String msg = "RemoteAddress " + socket.remoteAddress() + " ";
@@ -217,10 +214,6 @@ public class TcpServer implements ProtocolServer {
      */
     String getBaseDir() {
         return baseDir;
-    }
-
-    boolean getIfExists() {
-        return ifExists;
     }
 
     @Override

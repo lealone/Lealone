@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.DatabaseEventListener;
@@ -189,7 +188,6 @@ public class Database implements DataHandler, DbObject {
             dbSettings = DbSettings.getInstance(parameters);
         else
             dbSettings = DbSettings.getDefaultSettings();
-
         persistent = dbSettings.persistent;
         compareMode = CompareMode.getInstance(null, 0, false);
         if (dbSettings.mode != null) {
@@ -288,7 +286,7 @@ public class Database implements DataHandler, DbObject {
     }
 
     public void setRunMode(RunMode runMode) {
-        if (this.runMode != runMode) {
+        if (runMode != null && this.runMode != runMode) {
             this.runMode = runMode;
         }
     }
@@ -643,23 +641,6 @@ public class Database implements DataHandler, DbObject {
             return false;
         }
         return Utils.compareSecure(testHash, dbSettings.filePasswordHash);
-    }
-
-    public static String parseDatabaseShortName(DbSettings dbSettings, String databaseName) {
-        String n = databaseName;
-        if (n.endsWith(":")) {
-            n = null;
-        }
-        if (n != null) {
-            StringTokenizer tokenizer = new StringTokenizer(n, "/\\:,;");
-            while (tokenizer.hasMoreTokens()) {
-                n = tokenizer.nextToken();
-            }
-        }
-        if (n == null || n.length() == 0) {
-            n = "unnamed";
-        }
-        return dbSettings.databaseToUpper ? StringUtils.toUpperEnglish(n) : n;
     }
 
     private void initMetaTables() {
@@ -1742,7 +1723,7 @@ public class Database implements DataHandler, DbObject {
         this.closeDelay = value;
     }
 
-    public ServerSession getSystemSession() {
+    public SystemSession getSystemSession() {
         return systemSession;
     }
 
@@ -2170,10 +2151,6 @@ public class Database implements DataHandler, DbObject {
         return quoteIdentifier(name);
     }
 
-    public static String getCreateSQL(String quotedDbName, ConnectionInfo ci) {
-        return getCreateSQL(quotedDbName, ci.getDbSettings().getSettings(), null, null);
-    }
-
     private static String getCreateSQL(String quotedDbName, Map<String, String> parameters,
             Map<String, String> replicationProperties, RunMode runMode) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
@@ -2390,36 +2367,8 @@ public class Database implements DataHandler, DbObject {
         return version;
     }
 
-    private static final String ROOT_USER = "ROOT";
-
     public void createRootUserIfNotExists() {
         getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
     }
 
-    boolean isRootUser(String userName) {
-        return ROOT_USER.equalsIgnoreCase(userName);
-    }
-
-    synchronized User alterRootUserPassword(byte[] userPasswordHash) {
-        String userName = ROOT_USER;
-        if (!getSettings().databaseToUpper)
-            userName = "root";
-        User rootUser = users.get(userName);
-        if (!rootUser.validateUserPasswordHash(userPasswordHash)) {
-            rootUser.setUserPasswordHash(userPasswordHash);
-            updateMeta(systemSession, rootUser);
-            systemSession.commit();
-        }
-        return rootUser;
-    }
-
-    synchronized User createAdminUser(String userName, byte[] userPasswordHash) {
-        User user = new User(this, allocateObjectId(), userName, false);
-        user.setAdmin(true);
-        user.setUserPasswordHash(userPasswordHash);
-        lockMeta(systemSession);
-        addDatabaseObject(systemSession, user);
-        systemSession.commit();
-        return user;
-    }
 }

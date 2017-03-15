@@ -50,7 +50,6 @@ protocol_server_engines:
           trace: false,
           allow_others: true,
           daemon: false,
-          if_exists: false,
           blocked_thread_check_interval: -1,
           ssl: false
       }

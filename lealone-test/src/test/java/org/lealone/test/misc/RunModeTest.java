@@ -31,7 +31,7 @@ public class RunModeTest extends SqlTestBase {
     public void run() throws Exception {
         String dbName = "RunModeTestDB1";
         stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server");
-        new CrudTest(dbName).runTest();
+        // new CrudTest(dbName).runTest();
 
         dbName = "RunModeTestDB2";
         stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE replication");
@@ -39,17 +39,17 @@ public class RunModeTest extends SqlTestBase {
 
         dbName = "RunModeTestDB3";
         stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding");
-        new CrudTest(dbName).runTest();
+        // new CrudTest(dbName).runTest();
 
         // String p = " PARAMETERS(hostIds='1,2')";
         // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding" + p);
     }
 
-    private class CrudTest extends SqlTestBase {
+    private static class CrudTest extends SqlTestBase {
 
         public CrudTest(String dbName) {
             super(dbName);
-            // setHost("127.0.0.1"); //可以测试localhost和127.0.0.1是否复用了同一张TCP连接
+            // setHost("127.0.0.1"); //可以测试localhost和127.0.0.1是否复用了同一个TCP连接
         }
 
         @Override

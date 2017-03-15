@@ -64,14 +64,11 @@ public class DatabaseEngine {
 
         @Override
         public synchronized ServerSession createSession(ConnectionInfo ci) {
-            String dbName = ci.getDatabaseName();
-            dbName = Database.parseDatabaseShortName(ci.getDbSettings(), dbName);
-
+            String dbName = ci.getDatabaseShortName();
             try {
-                boolean ifExists = ci.getProperty("IFEXISTS", false);
                 ServerSession session;
                 for (int i = 0;; i++) {
-                    session = createSession(dbName, ci, ifExists);
+                    session = createSession(dbName, ci);
                     if (session != null) {
                         break;
                     }
@@ -103,30 +100,10 @@ public class DatabaseEngine {
             }
         }
 
-        private ServerSession createSession(String dbName, ConnectionInfo ci, boolean ifExists) {
+        private ServerSession createSession(String dbName, ConnectionInfo ci) {
+            Database database = LealoneDatabase.getInstance().getDatabase(dbName);
             boolean opened = false;
             User user = null;
-            Database database = LealoneDatabase.getInstance().findDatabase(dbName);
-            if (database == null) {
-                if (ifExists)
-                    throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
-                // ***********************************************************
-                // **************以下代码是不安全的****************************
-                // ***********************************************************
-                // 最安全的做法是先连到LealoneDatabase，然后执行CREATE DATABASE语句创建新的数据库
-                // 为了方便测试(不安全的做法)，如果数据库不存在，按ConnectionInfo中指定的数据库名和用户名自动创建数据库
-                database = LealoneDatabase.getInstance().createDatabase(dbName, ci);
-                opened = true;
-
-                String userName = ci.getUserName();
-                byte[] userPasswordHash = ci.getUserPasswordHash();
-                if (database.isRootUser(userName)) {
-                    user = database.alterRootUserPassword(userPasswordHash);
-                } else {
-                    // 把当前连接进来的用户当成Admin
-                    user = database.createAdminUser(userName, userPasswordHash);
-                }
-            }
 
             String url = ci.getURL();
             int pos1 = url.indexOf("//") + 2;
