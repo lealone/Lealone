@@ -2371,4 +2371,14 @@ public class Database implements DataHandler, DbObject {
         getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
     }
 
+    synchronized User createAdminUser(String userName, byte[] userPasswordHash) {
+        User user = new User(this, allocateObjectId(), userName, false);
+        user.setAdmin(true);
+        user.setUserPasswordHash(userPasswordHash);
+        lockMeta(systemSession);
+        addDatabaseObject(systemSession, user);
+        systemSession.commit();
+        return user;
+    }
+
 }

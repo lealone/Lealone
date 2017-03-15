@@ -71,7 +71,7 @@ public class TestBase extends Assert {
             Map<String, String> config = new HashMap<>();
             config.put("base_dir", TEST_DIR);
             config.put("transaction_log_dir", "tlog");
-            config.put("log_sync_type", LogStorage.LOG_SYNC_TYPE_NO_SYNC);
+            config.put("log_sync_type", LogStorage.LOG_SYNC_TYPE_PERIODIC);
             te.init(config);
         }
     }

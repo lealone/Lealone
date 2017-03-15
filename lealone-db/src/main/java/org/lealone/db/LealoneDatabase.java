@@ -18,8 +18,10 @@
 package org.lealone.db;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.api.ErrorCode;
@@ -54,6 +56,28 @@ public class LealoneDatabase extends Database {
 
         init();
         createRootUserIfNotExists();
+    }
+
+    public synchronized Database createEmbeddedDatabase(String name, ConnectionInfo ci) {
+        Database db = databases.get(name);
+        if (db != null)
+            return db;
+
+        HashMap<String, String> parameters = new HashMap<>();
+        for (Entry<Object, Object> e : ci.getProperties().entrySet()) {
+            parameters.put(e.getKey().toString(), e.getValue().toString());
+        }
+        parameters.put("PERSISTENT", ci.isPersistent() ? "true" : "false");
+        int id = INSTANCE.allocateObjectId();
+        db = new Database(id, name, parameters);
+        db.setRunMode(RunMode.EMBEDDED);
+        db.init();
+        String userName = ci.getUserName();
+        byte[] userPasswordHash = ci.getUserPasswordHash();
+        db.createAdminUser(userName, userPasswordHash);
+        addDatabaseObject(getSystemSession(), db);
+        getSystemSession().commit();
+        return db;
     }
 
     void closeDatabase(String dbName) {

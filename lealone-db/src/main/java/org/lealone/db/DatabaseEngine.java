@@ -65,6 +65,10 @@ public class DatabaseEngine {
         @Override
         public synchronized ServerSession createSession(ConnectionInfo ci) {
             String dbName = ci.getDatabaseShortName();
+            // 内嵌数据库，如果不存在，则自动创建
+            if (ci.isEmbedded() && LealoneDatabase.getInstance().findDatabase(dbName) == null) {
+                LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
+            }
             try {
                 ServerSession session;
                 for (int i = 0;; i++) {
@@ -105,47 +109,51 @@ public class DatabaseEngine {
             boolean opened = false;
             User user = null;
 
-            String url = ci.getURL();
-            int pos1 = url.indexOf("//") + 2;
-            String host;
-            String port;
-            int pos2 = url.indexOf(':', pos1);
-            int pos3 = url.indexOf('/', pos1);
-            if (pos2 != -1) {
-                host = url.substring(pos1, pos2);
-                port = url.substring(pos2 + 1, pos3);
-            } else {
-                host = url.substring(pos1, pos3);
-                port = String.valueOf(Constants.DEFAULT_TCP_PORT);
-            }
-            String currentEndpoint;
-            try {
-                currentEndpoint = InetAddress.getByName(host).getHostAddress() + ":" + port;
-            } catch (UnknownHostException e) {
-                throw DbException.convert(e);
-            }
             String targetEndpoints;
-            String[] endpoints = database.getEndpoints();
-            boolean isTargetEndpoint = false;
-            if (endpoints != null) {
-                for (String e : endpoints) {
-                    if (e.equalsIgnoreCase(currentEndpoint)) {
-                        isTargetEndpoint = true;
-                        break;
-                    }
-                }
-                targetEndpoints = database.getTargetEndpoints();
+            if (ci.isEmbedded()) {
+                targetEndpoints = null;
             } else {
-                isTargetEndpoint = true;
-                targetEndpoints = currentEndpoint;
-            }
-            if (!isTargetEndpoint) {
-                ServerSession session = new ServerSession(database,
-                        LealoneDatabase.getInstance().getSystemSession().getUser(), 0);
-                session.setTargetEndpoints(targetEndpoints);
-                session.setRunMode(database.getRunMode());
-                session.setInvalid(true);
-                return session;
+                String url = ci.getURL();
+                int pos1 = url.indexOf("//") + 2;
+                String host;
+                String port;
+                int pos2 = url.indexOf(':', pos1);
+                int pos3 = url.indexOf('/', pos1);
+                if (pos2 != -1) {
+                    host = url.substring(pos1, pos2);
+                    port = url.substring(pos2 + 1, pos3);
+                } else {
+                    host = url.substring(pos1, pos3);
+                    port = String.valueOf(Constants.DEFAULT_TCP_PORT);
+                }
+                String currentEndpoint;
+                try {
+                    currentEndpoint = InetAddress.getByName(host).getHostAddress() + ":" + port;
+                } catch (UnknownHostException e) {
+                    throw DbException.convert(e);
+                }
+                String[] endpoints = database.getEndpoints();
+                boolean isTargetEndpoint = false;
+                if (endpoints != null) {
+                    for (String e : endpoints) {
+                        if (e.equalsIgnoreCase(currentEndpoint)) {
+                            isTargetEndpoint = true;
+                            break;
+                        }
+                    }
+                    targetEndpoints = database.getTargetEndpoints();
+                } else {
+                    isTargetEndpoint = true;
+                    targetEndpoints = currentEndpoint;
+                }
+                if (!isTargetEndpoint) {
+                    ServerSession session = new ServerSession(database,
+                            LealoneDatabase.getInstance().getSystemSession().getUser(), 0);
+                    session.setTargetEndpoints(targetEndpoints);
+                    session.setRunMode(database.getRunMode());
+                    session.setInvalid(true);
+                    return session;
+                }
             }
 
             if (!database.isInitialized())

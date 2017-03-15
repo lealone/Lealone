@@ -258,6 +258,7 @@ public class ConnectionInfo implements Cloneable {
             remote = false;
             embedded = true;
             dbName = dbName.substring(Constants.URL_EMBED.length());
+            dbName = parseShortName();
             if (!mem)
                 persistent = true;
         } else {
@@ -473,7 +474,12 @@ public class ConnectionInfo implements Cloneable {
     public String getDatabaseShortName() {
         if (dbName != null)
             return dbName;
-        String n = getDatabaseName();
+        dbName = parseShortName();
+        return dbName;
+    }
+
+    private String parseShortName() {
+        String n = dbName;
         if (n.endsWith(":")) {
             n = null;
         }
@@ -486,7 +492,6 @@ public class ConnectionInfo implements Cloneable {
         if (n == null || n.length() == 0) {
             n = "unnamed";
         }
-        dbName = n;
         return n;
     }
 

@@ -4241,6 +4241,8 @@ public class Parser implements SQLParser {
                 return RunMode.CLIENT_SERVER;
             else if (readIf("REPLICATION"))
                 return RunMode.REPLICATION;
+            else if (readIf("EMBEDDED"))
+                return RunMode.EMBEDDED;
             else {
                 read("SHARDING");
                 return RunMode.SHARDING;
