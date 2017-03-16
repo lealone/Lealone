@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -507,13 +509,25 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             transfer.writeBytes(hmac);
             transfer.writeLong(offset);
             transfer.writeInt(length);
+            AtomicInteger lengthAI = new AtomicInteger();
+            AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        int length = transfer.readInt();
+                        if (length > 0) {
+                            transfer.readBytes(buff, off, length);
+                        }
+                        lengthAI.set(length);
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
             transfer.flush();
-            length = transfer.readInt();
-            if (length <= 0) {
-                return length;
-            }
-            transfer.readBytes(buff, off, length);
-            return length;
+            ac.await();
+            return lengthAI.get();
         } catch (IOException e) {
             handleException(e);
         }
@@ -576,8 +590,22 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             int id = getNextId();
             transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE);
-            transfer.writeInt(sessionId).writeString(localTransactionName).flush();
-            return transfer.readBoolean();
+            transfer.writeInt(sessionId).writeString(localTransactionName);
+            AtomicBoolean isValid = new AtomicBoolean();
+            AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        isValid.set(transfer.readBoolean());
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
+            ac.await();
+            return isValid.get();
         } catch (Exception e) {
             handleException(e);
             return false;

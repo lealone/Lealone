@@ -1284,16 +1284,16 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     @Override
     public boolean validate(String hostAndPort, String localTransactionName) {
-        Session fs = null;
+        Session s = null;
         try {
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, hostAndPort);
-            fs = SessionPool.getSession(this, url);
-            return fs.validateTransaction(localTransactionName);
+            s = SessionPool.getSession(this, url);
+            return s.validateTransaction(localTransactionName);
         } catch (Exception e) {
             throw DbException.convert(e);
         } finally {
-            SessionPool.release(fs);
+            SessionPool.release(s);
         }
     }
 

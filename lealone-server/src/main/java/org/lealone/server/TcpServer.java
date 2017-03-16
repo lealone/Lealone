@@ -17,6 +17,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
+import org.lealone.db.HostAndPort;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.CommandHandler;
 import org.lealone.net.NetFactory;
@@ -68,6 +69,8 @@ public class TcpServer implements ProtocolServer {
                 vertx = NetFactory.getVertx(config);
             }
         }
+
+        HostAndPort.setLocalHostAndPort(host, port);
     }
 
     @Override

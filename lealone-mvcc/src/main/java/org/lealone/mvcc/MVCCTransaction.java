@@ -56,7 +56,7 @@ public class MVCCTransaction implements Transaction {
     public MVCCTransaction(MVCCTransactionEngine engine, long tid, String hostAndPort) {
         transactionEngine = engine;
         transactionId = tid;
-        transactionName = getTransactionName(null, tid);
+        transactionName = getTransactionName(hostAndPort, tid);
         status = Transaction.STATUS_OPEN;
     }
 

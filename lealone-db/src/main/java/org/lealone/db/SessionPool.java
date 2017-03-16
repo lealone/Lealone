@@ -68,7 +68,8 @@ public class SessionPool {
             if (usesClientSession)
                 ci.setClient(true);
             try {
-                session = ci.getSessionFactory().createSession(ci).connectEmbeddedOrServer();
+                // 因为已经精确知道要连哪个节点了，connectEmbeddedOrServer不用考虑运行模式，所以用false
+                session = ci.getSessionFactory().createSession(ci).connectEmbeddedOrServer(false);
                 session.setLocal(true);
             } catch (SQLException e) {
                 throw DbException.convert(e);

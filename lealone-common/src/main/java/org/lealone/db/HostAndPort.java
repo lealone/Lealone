@@ -21,6 +21,16 @@ import java.net.InetSocketAddress;
 
 public class HostAndPort {
 
+    private static HostAndPort local = new HostAndPort(Constants.DEFAULT_HOST, Constants.DEFAULT_TCP_PORT);
+
+    public static void setLocalHostAndPort(String host, int port) {
+        local = new HostAndPort(host, port);
+    }
+
+    public static HostAndPort getLocalHostAndPort() {
+        return local;
+    }
+
     public final String host;
     public final int port;
 
@@ -39,21 +49,22 @@ public class HostAndPort {
             port = Integer.decode(str.substring(idx + 1));
             str = str.substring(0, idx);
         }
-
         this.host = str;
         this.port = port;
         this.value = host + ":" + port;
+        this.inetSocketAddress = new InetSocketAddress(this.host, this.port);
+    }
 
+    public HostAndPort(String host, int port) {
+        this.host = host;
+        this.port = port;
+        this.value = host + ":" + port;
         this.inetSocketAddress = new InetSocketAddress(this.host, this.port);
     }
 
     @Override
     public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((host == null) ? 0 : host.hashCode());
-        result = prime * result + port;
-        return result;
+        return inetSocketAddress.hashCode();
     }
 
     @Override
@@ -65,14 +76,11 @@ public class HostAndPort {
         if (getClass() != obj.getClass())
             return false;
         HostAndPort other = (HostAndPort) obj;
-        if (host == null) {
-            if (other.host != null)
-                return false;
-        } else if (!host.equals(other.host))
-            return false;
-        if (port != other.port)
-            return false;
-        return true;
+        return this.inetSocketAddress.equals(other.inetSocketAddress);
+    }
+
+    public boolean equals(String str) {
+        return equals(new HostAndPort(str));
     }
 
 }
