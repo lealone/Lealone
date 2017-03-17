@@ -36,8 +36,6 @@ import org.lealone.common.logging.LoggerFactory;
 public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
     private static final Logger logger = LoggerFactory.getLogger(GossipingPropertyFileSnitch.class);
 
-    private PropertyFileSnitch psnitch;
-
     private volatile String myDC;
     private volatile String myRack;
     private volatile boolean preferLocal;
@@ -58,14 +56,6 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         snitchHelperReference = new AtomicReference<ReconnectableSnitchHelper>();
 
         reloadConfiguration();
-
-        try {
-            psnitch = new PropertyFileSnitch();
-            logger.info("Loaded {} for compatibility", PropertyFileSnitch.SNITCH_PROPERTIES_FILENAME);
-        } catch (ConfigurationException e) {
-            logger.info("Unable to load {}; compatibility mode disabled",
-                    PropertyFileSnitch.SNITCH_PROPERTIES_FILENAME);
-        }
 
         String fileName = null;
         try {
@@ -98,14 +88,11 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (epState == null || epState.getApplicationState(ApplicationState.DC) == null) {
-            if (psnitch == null) {
-                if (savedEndpoints == null)
-                    savedEndpoints = ClusterMetaData.loadDcRackInfo();
-                if (savedEndpoints.containsKey(endpoint))
-                    return savedEndpoints.get(endpoint).get("data_center");
-                return DEFAULT_DC;
-            } else
-                return psnitch.getDatacenter(endpoint);
+            if (savedEndpoints == null)
+                savedEndpoints = ClusterMetaData.loadDcRackInfo();
+            if (savedEndpoints.containsKey(endpoint))
+                return savedEndpoints.get(endpoint).get("data_center");
+            return DEFAULT_DC;
         }
         return epState.getApplicationState(ApplicationState.DC).value;
     }
@@ -123,14 +110,11 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (epState == null || epState.getApplicationState(ApplicationState.RACK) == null) {
-            if (psnitch == null) {
-                if (savedEndpoints == null)
-                    savedEndpoints = ClusterMetaData.loadDcRackInfo();
-                if (savedEndpoints.containsKey(endpoint))
-                    return savedEndpoints.get(endpoint).get("rack");
-                return DEFAULT_RACK;
-            } else
-                return psnitch.getRack(endpoint);
+            if (savedEndpoints == null)
+                savedEndpoints = ClusterMetaData.loadDcRackInfo();
+            if (savedEndpoints.containsKey(endpoint))
+                return savedEndpoints.get(endpoint).get("rack");
+            return DEFAULT_RACK;
         }
         return epState.getApplicationState(ApplicationState.RACK).value;
     }
@@ -140,7 +124,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageServer.VALUE_FACTORY.internalIP(Utils.getLocalAddress().getHostAddress()));
+                StorageServer.VALUE_FACTORY.internalIP(Utils.getBroadcastAddress().getHostAddress()));
 
         reloadGossiperState();
 
