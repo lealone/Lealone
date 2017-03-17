@@ -51,8 +51,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public V putCommitted(K key, V value);
 
     /**
-     * Whether the entry for this key was added or removed from this
-     * session.
+     * Whether the entry for this key was added or removed from this session.
      *
      * @param key the key
      * @return true if yes
@@ -65,7 +64,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      * @param from the first key to return
      * @return the iterator
      */
-    public Iterator<Entry<K, V>> entryIterator(final K from);
+    public Iterator<Entry<K, V>> entryIterator(K from);
 
     /**
      * Iterate over keys.
@@ -82,6 +81,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      * @param includeUncommitted whether uncommitted entries should be included
      * @return the iterator
      */
-    public Iterator<K> keyIterator(final K from, final boolean includeUncommitted);
+    public Iterator<K> keyIterator(K from, boolean includeUncommitted);
 
 }

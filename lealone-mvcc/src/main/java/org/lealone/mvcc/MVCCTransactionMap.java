@@ -173,8 +173,8 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     /**
      * Try to remove the value for the given key.
      * <p>
-     * This will fail if the row is locked by another transaction (that
-     * means, if another open transaction changed the row).
+     * This will fail if the row is locked by another transaction
+     * (that means, if another open transaction changed the row).
      *
      * @param key the key
      * @return whether the entry could be removed
@@ -186,8 +186,8 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     /**
      * Try to update the value for the given key.
      * <p>
-     * This will fail if the row is locked by another transaction (that
-     * means, if another open transaction changed the row).
+     * This will fail if the row is locked by another transaction
+     * (that means, if another open transaction changed the row).
      *
      * @param key the key
      * @param value the new value
@@ -200,8 +200,7 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
     /**
      * Try to set or remove the value. When updating only unchanged entries,
-     * then the value is only changed if it was not changed after opening
-     * the map.
+     * then the value is only changed if it was not changed after opening the map.
      *
      * @param key the key
      * @param value the new value (null to remove the value)
@@ -283,22 +282,12 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         return false;
     }
 
-    /**
-     * Get the first key.
-     *
-     * @return the first key, or null if empty
-     */
     @Override
     public K firstKey() {
         Iterator<K> it = keyIterator(null);
         return it.hasNext() ? it.next() : null;
     }
 
-    /**
-     * Get the last key.
-     *
-     * @return the last key, or null if empty
-     */
     @Override
     public K lastKey() {
         K k = map.lastKey();
@@ -313,13 +302,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         }
     }
 
-    /**
-     * Get the largest key that is smaller than the given key, or null if no
-     * such key exists.
-     *
-     * @param key the key (may not be null)
-     * @return the result
-     */
     @Override
     public K lowerKey(K key) {
         while (true) {
@@ -342,13 +324,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         }
     }
 
-    /**
-     * Get the smallest key that is larger than the given key, or null if no
-     * such key exists.
-     *
-     * @param key the key (may not be null)
-     * @return the result
-     */
     @Override
     public K higherKey(K key) {
         // TODO 处理事务
@@ -451,12 +426,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         return size;
     }
 
-    /**
-     * Whether the map contains the key.
-     *
-     * @param key the key
-     * @return true if the map contains an entry for this key
-     */
     @Override
     public boolean containsKey(K key) {
         return get(key) != null;
@@ -555,35 +524,17 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         return map.getStorage();
     }
 
-    /**
-    * Get the size of the raw map. This includes uncommitted entries, and
-    * transiently removed entries, so it is the maximum number of entries.
-    *
-    * @return the maximum size
-    */
+    ///////////////////////// 以下是TransactionMap接口API的实现 /////////////////////////
     @Override
     public long rawSize() {
         return map.sizeAsLong();
     }
 
-    /**
-     * Get a clone of this map for the given transaction.
-     *
-     * @param transaction the transaction
-     * @return the map
-     */
     @Override
     public MVCCTransactionMap<K, V> getInstance(Transaction transaction) {
         return new MVCCTransactionMap<K, V>((MVCCTransaction) transaction, map);
     }
 
-    /**
-     * Update the value for the given key, without adding an undo log entry.
-     *
-     * @param key the key
-     * @param value the value
-     * @return the old value
-     */
     @Override
     @SuppressWarnings("unchecked")
     public V putCommitted(K key, V value) {
@@ -593,13 +544,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         return (V) (oldValue == null ? null : oldValue.value);
     }
 
-    /**
-     * Whether the entry for this key was added or removed from this
-     * session.
-     *
-     * @param key the key
-     * @return true if yes
-     */
     @Override
     public boolean isSameTransaction(K key) {
         TransactionalValue data = map.get(key);
@@ -611,12 +555,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         return data.tid == transaction.transactionId;
     }
 
-    /**
-    * Iterate over entries.
-    *
-    * @param from the first key to return
-    * @return the iterator
-    */
     @Override
     public Iterator<Entry<K, V>> entryIterator(final K from) {
         return new Iterator<Entry<K, V>>() {
@@ -683,28 +621,13 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
                 throw DataUtils.newUnsupportedOperationException("Removing is not supported");
             }
         };
-
     }
 
-    /**
-     * Iterate over keys.
-     *
-     * @param from the first key to return
-     * @return the iterator
-     */
     @Override
     public Iterator<K> keyIterator(K from) {
         return keyIterator(from, false);
     }
 
-    /**
-     * Iterate over keys.
-     *
-     * @param from the first key to return
-     * @param includeUncommitted whether uncommitted entries should be
-     *            included
-     * @return the iterator
-     */
     @Override
     public Iterator<K> keyIterator(final K from, final boolean includeUncommitted) {
         return new Iterator<K>() {

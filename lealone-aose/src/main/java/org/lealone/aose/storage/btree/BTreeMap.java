@@ -661,8 +661,7 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
 
     /**
      * Get the child page count for this page. This is to allow another map
-     * implementation to override the default, in case the last child is not to
-     * be used.
+     * implementation to override the default, in case the last child is not to be used.
      * 
      * @param p the page
      * @return the number of direct children
@@ -730,7 +729,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
 
     @Override
     public void transferFrom(ReadableByteChannel src) throws IOException {
-
     }
 
     // 1.root为空时怎么处理；2.不为空时怎么处理

@@ -72,8 +72,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     }
 
     /**
-     * Iterate over all keys that are fully contained within the given
-     * rectangle.
+     * Iterate over all keys that are fully contained within the given rectangle.
      *
      * @param x the rectangle
      * @return the iterator

@@ -105,8 +105,7 @@ public interface StorageMap<K, V> {
     K lastKey();
 
     /**
-     * Get the largest key that is smaller than the given key, or null if no
-     * such key exists.
+     * Get the largest key that is smaller than the given key, or null if no such key exists.
      *
      * @param key the key
      * @return the result
@@ -122,8 +121,7 @@ public interface StorageMap<K, V> {
     K floorKey(K key);
 
     /**
-     * Get the smallest key that is larger than the given key, or null if no
-     * such key exists.
+     * Get the smallest key that is larger than the given key, or null if no such key exists.
      *
      * @param key the key
      * @return the result
@@ -161,8 +159,19 @@ public interface StorageMap<K, V> {
      */
     long sizeAsLong();
 
+    /**
+     * Whether the map contains the key.
+     *
+     * @param key the key
+     * @return true if the map contains an entry for this key
+     */
     boolean containsKey(K key);
 
+    /**
+     * Whether the map is empty.
+     *
+     * @return true if the map is empty
+     */
     boolean isEmpty();
 
     /**
@@ -190,11 +199,16 @@ public interface StorageMap<K, V> {
      */
     void remove();
 
+    /**
+     * Whether the map is closed.
+     *
+     * @return true if the map is closed
+     */
     boolean isClosed();
 
     /**
-     * Close the map. Accessing the data is still possible (to allow concurrent
-     * reads), but it is marked as closed.
+     * Close the map. Accessing the data is still possible (to allow concurrent reads),
+     * but it is marked as closed.
      */
     void close();
 

@@ -243,12 +243,10 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
 
     @Override
     public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
-        // TODO Auto-generated method stub
     }
 
     @Override
     public void transferFrom(ReadableByteChannel src) throws IOException {
-        // TODO Auto-generated method stub
     }
 
     @Override
