@@ -17,7 +17,7 @@ import java.util.Set;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.Gossiper;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.AOStorageEngine;
 import org.lealone.aose.storage.StorageMapBuilder;
@@ -102,15 +102,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             if (isShardingMode) {
                 // 后面加入的新节点对应的host_id必须大于现有的，否则这里可能会导致错误
                 // 例如节点A执行完DDL后，加入了新节点B，然后在老的节点C上执行DDL，此时节点C就可能看到节点B的host_id了
-                ArrayList<Integer> hostIds = StorageServer.instance.getTopologyMetaData().sortedHostIds();
+                ArrayList<Integer> hostIds = P2PServer.instance.getTopologyMetaData().sortedHostIds();
                 if (!hostIds.isEmpty()) {
                     Integer hostId = hostIds.get(Math.abs(name.hashCode() % hostIds.size()));
-                    List<InetAddress> replicationEndpoints = StorageServer.instance.getReplicationEndpoints(db, hostId);
+                    List<InetAddress> replicationEndpoints = P2PServer.instance.getReplicationEndpoints(db, hostId);
                     int size = replicationEndpoints.size();
                     root.replicationHostIds = new ArrayList<>(size);
                     for (int i = 0; i < size; i++) {
                         root.replicationHostIds.add(
-                                StorageServer.instance.getTopologyMetaData().getHostId(replicationEndpoints.get(i)));
+                                P2PServer.instance.getTopologyMetaData().getHostId(replicationEndpoints.get(i)));
                     }
                 }
             }
@@ -251,10 +251,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
 
     private void moveLeafPage(Object splitKey, BTreePage rightChildPage) {
         if (isShardingMode
-                && rightChildPage.replicationHostIds.get(0).equals(StorageServer.instance.getLocalHostId())) {
+                && rightChildPage.replicationHostIds.get(0).equals(P2PServer.instance.getLocalHostId())) {
             Integer hostId = rightChildPage.replicationHostIds.get(0);
-            Integer nextHostId = StorageServer.instance.getTopologyMetaData().getNextHostId(hostId);
-            List<InetAddress> newReplicationEndpoints = StorageServer.instance.getReplicationEndpoints(db, nextHostId);
+            Integer nextHostId = P2PServer.instance.getTopologyMetaData().getNextHostId(hostId);
+            List<InetAddress> newReplicationEndpoints = P2PServer.instance.getReplicationEndpoints(db, nextHostId);
             List<InetAddress> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
             newReplicationEndpoints.remove(getLocalEndpoint());
             oldReplicationEndpoints.remove(getLocalEndpoint());
@@ -265,7 +265,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             int size = newReplicationEndpoints.size();
             List<Integer> moveTo = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
-                moveTo.add(StorageServer.instance.getTopologyMetaData().getHostId(newReplicationEndpoints.get(i)));
+                moveTo.add(P2PServer.instance.getTopologyMetaData().getHostId(newReplicationEndpoints.get(i)));
             }
             rightChildPage.replicationHostIds = moveTo;
 
@@ -410,7 +410,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
     }
 
     private void removeLeafPage(Object key, BTreePage leafPage) {
-        if (leafPage.replicationHostIds.get(0).equals(StorageServer.instance.getLocalHostId())) {
+        if (leafPage.replicationHostIds.get(0).equals(P2PServer.instance.getLocalHostId())) {
             List<InetAddress> oldReplicationEndpoints = getReplicationEndpoints(leafPage);
             oldReplicationEndpoints.remove(getLocalEndpoint());
             Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
@@ -731,7 +731,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         List<InetAddress> replicationEndpoints = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             replicationEndpoints.add(
-                    StorageServer.instance.getTopologyMetaData().getEndpointForHostId(p.replicationHostIds.get(i)));
+                    P2PServer.instance.getTopologyMetaData().getEndpointForHostId(p.replicationHostIds.get(i)));
         }
         return replicationEndpoints;
     }

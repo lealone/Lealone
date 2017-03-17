@@ -38,7 +38,7 @@ import org.lealone.aose.locator.IEndpointSnitch;
 import org.lealone.aose.locator.SeedProvider;
 import org.lealone.aose.locator.SimpleStrategy;
 import org.lealone.aose.net.MessagingService;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
@@ -192,12 +192,12 @@ public class ConfigDescriptor {
 
     private static void initDefaultReplicationStrategy() throws ConfigurationException {
         if (conf.replication_strategy == null)
-            defaultReplicationStrategy = new SimpleStrategy("system", StorageServer.instance.getTopologyMetaData(),
+            defaultReplicationStrategy = new SimpleStrategy("system", P2PServer.instance.getTopologyMetaData(),
                     getEndpointSnitch(), ImmutableMap.of("replication_factor", "1"));
         else
             defaultReplicationStrategy = AbstractReplicationStrategy.createReplicationStrategy("system",
                     AbstractReplicationStrategy.getClass(conf.replication_strategy.class_name),
-                    StorageServer.instance.getTopologyMetaData(), getEndpointSnitch(),
+                    P2PServer.instance.getTopologyMetaData(), getEndpointSnitch(),
                     conf.replication_strategy.parameters);
     }
 

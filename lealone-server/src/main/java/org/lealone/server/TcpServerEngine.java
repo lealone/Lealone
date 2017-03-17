@@ -24,7 +24,7 @@ public class TcpServerEngine extends ProtocolServerEngineBase {
     private final TcpServer tcpServer = new TcpServer();
 
     public TcpServerEngine() {
-        super("TcpServer");
+        super("TCP");
     }
 
     @Override

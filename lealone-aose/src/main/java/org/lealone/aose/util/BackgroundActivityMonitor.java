@@ -31,7 +31,7 @@ import org.lealone.aose.gms.ApplicationState;
 import org.lealone.aose.gms.EndpointState;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.gms.VersionedValue;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 
@@ -148,7 +148,7 @@ public class BackgroundActivityMonitor {
             if (!Gossiper.instance.isEnabled())
                 return;
             report += manual_severity.get(); // add manual severity setting.
-            VersionedValue updated = StorageServer.VALUE_FACTORY.severity(report);
+            VersionedValue updated = P2PServer.VALUE_FACTORY.severity(report);
             Gossiper.instance.addLocalApplicationState(ApplicationState.SEVERITY, updated);
         }
     }

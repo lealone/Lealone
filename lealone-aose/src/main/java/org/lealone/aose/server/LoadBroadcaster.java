@@ -55,7 +55,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
                 if (logger.isDebugEnabled())
                     logger.debug("Disseminating load info ...");
                 Gossiper.instance.addLocalApplicationState(ApplicationState.LOAD,
-                        StorageServer.VALUE_FACTORY.load(StorageServer.instance.getLoad()));
+                        P2PServer.VALUE_FACTORY.load(P2PServer.instance.getLoad()));
             }
         };
         ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.INTERVAL_IN_MILLIS,

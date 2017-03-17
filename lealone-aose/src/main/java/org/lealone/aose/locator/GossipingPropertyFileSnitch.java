@@ -26,7 +26,7 @@ import org.lealone.aose.gms.ApplicationState;
 import org.lealone.aose.gms.EndpointState;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.server.ClusterMetaData;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.aose.util.ResourceWatcher;
 import org.lealone.aose.util.Utils;
 import org.lealone.aose.util.WrappedRunnable;
@@ -125,7 +125,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageServer.VALUE_FACTORY.internalIP(ConfigDescriptor.getLocalAddress().getHostAddress()));
+                P2PServer.VALUE_FACTORY.internalIP(ConfigDescriptor.getLocalAddress().getHostAddress()));
 
         reloadGossiperState();
 
@@ -152,11 +152,11 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
 
             reloadGossiperState();
 
-            if (StorageServer.instance != null)
-                StorageServer.instance.getTopologyMetaData().invalidateCachedRings();
+            if (P2PServer.instance != null)
+                P2PServer.instance.getTopologyMetaData().invalidateCachedRings();
 
             if (gossipStarted)
-                StorageServer.instance.gossipSnitchInfo();
+                P2PServer.instance.gossipSnitchInfo();
         }
     }
 

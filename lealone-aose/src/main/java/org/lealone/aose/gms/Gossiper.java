@@ -53,7 +53,7 @@ import org.lealone.aose.net.IAsyncCallback;
 import org.lealone.aose.net.MessageIn;
 import org.lealone.aose.net.MessageOut;
 import org.lealone.aose.net.MessagingService;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.aose.util.JVMStabilityInspector;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
@@ -88,7 +88,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     // Maximum difference in generation and version values we are willing to accept about a peer
     private static final long MAX_GENERATION_DIFFERENCE = 86400 * 365;
-    private static final int QUARANTINE_DELAY = StorageServer.RING_DELAY * 2;
+    private static final int QUARANTINE_DELAY = P2PServer.RING_DELAY * 2;
     // half of QUARATINE_DELAY, to ensure justRemovedEndpoints has enough leeway to prevent re-gossip
     private static final long FAT_CLIENT_TIMEOUT = QUARANTINE_DELAY / 2;
     private static final long A_VERY_LONG_TIME = 259200 * 1000; // 3 days
@@ -376,7 +376,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 // check for dead state removal
                 long expireTime = getExpireTimeForEndpoint(endpoint);
                 if (!epState.isAlive() && (now > expireTime)
-                        && (!StorageServer.instance.getTopologyMetaData().isMember(endpoint))) {
+                        && (!P2PServer.instance.getTopologyMetaData().isMember(endpoint))) {
                     if (logger.isDebugEnabled()) {
                         logger.debug("time is expiring for endpoint : {} ({})", endpoint, expireTime);
                     }
@@ -454,7 +454,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     public Set<InetAddress> getUnreachableTokenOwners() {
         Set<InetAddress> tokenOwners = new HashSet<>();
         for (InetAddress endpoint : unreachableEndpoints.keySet()) {
-            if (StorageServer.instance.getTopologyMetaData().isMember(endpoint))
+            if (P2PServer.instance.getTopologyMetaData().isMember(endpoint))
                 tokenOwners.add(endpoint);
         }
 
@@ -591,8 +591,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         // remember this node's generation
         int generation = epState.getHeartBeatState().getGeneration();
         logger.info("Removing host: {}", hostId);
-        logger.info("Sleeping for {}ms to ensure {} does not change", StorageServer.RING_DELAY, endpoint);
-        Uninterruptibles.sleepUninterruptibly(StorageServer.RING_DELAY, TimeUnit.MILLISECONDS);
+        logger.info("Sleeping for {}ms to ensure {} does not change", P2PServer.RING_DELAY, endpoint);
+        Uninterruptibles.sleepUninterruptibly(P2PServer.RING_DELAY, TimeUnit.MILLISECONDS);
         // make sure it did not change
         epState = endpointStateMap.get(endpoint);
         if (epState.getHeartBeatState().getGeneration() != generation)
@@ -601,9 +601,9 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         logger.info("Advertising removal for {}", endpoint);
         epState.updateTimestamp(); // make sure we don't evict it too soon
         epState.getHeartBeatState().forceNewerGenerationUnsafe();
-        epState.addApplicationState(ApplicationState.STATUS, StorageServer.VALUE_FACTORY.removingNonlocal(hostId));
+        epState.addApplicationState(ApplicationState.STATUS, P2PServer.VALUE_FACTORY.removingNonlocal(hostId));
         epState.addApplicationState(ApplicationState.REMOVAL_COORDINATOR,
-                StorageServer.VALUE_FACTORY.removalCoordinator(localHostId));
+                P2PServer.VALUE_FACTORY.removalCoordinator(localHostId));
         endpointStateMap.put(endpoint, epState);
     }
 
@@ -626,8 +626,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         } else {
             int generation = epState.getHeartBeatState().getGeneration();
             int heartbeat = epState.getHeartBeatState().getHeartBeatVersion();
-            logger.info("Sleeping for {}ms to ensure {} does not change", StorageServer.RING_DELAY, endpoint);
-            Uninterruptibles.sleepUninterruptibly(StorageServer.RING_DELAY, TimeUnit.MILLISECONDS);
+            logger.info("Sleeping for {}ms to ensure {} does not change", P2PServer.RING_DELAY, endpoint);
+            Uninterruptibles.sleepUninterruptibly(P2PServer.RING_DELAY, TimeUnit.MILLISECONDS);
             // make sure it did not change
             EndpointState newState = endpointStateMap.get(endpoint);
             if (newState == null)
@@ -644,7 +644,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
         // do not pass go, do not collect 200 dollars, just gtfo
         epState.addApplicationState(ApplicationState.STATUS,
-                StorageServer.VALUE_FACTORY.left(null, computeExpireTime()));
+                P2PServer.VALUE_FACTORY.left(null, computeExpireTime()));
         handleMajorStateChange(endpoint, epState);
         Uninterruptibles.sleepUninterruptibly(INTERVAL_IN_MILLIS * 4, TimeUnit.MILLISECONDS);
         logger.warn("Finished assassinating {}", endpoint);
@@ -663,7 +663,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         if (epState == null) {
             return false;
         }
-        return !isDeadState(epState) && !StorageServer.instance.getTopologyMetaData().isMember(endpoint);
+        return !isDeadState(epState) && !P2PServer.instance.getTopologyMetaData().isMember(endpoint);
     }
 
     protected long getExpireTimeForEndpoint(InetAddress endpoint) {
@@ -1082,7 +1082,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 if (!inShadowRound)
                     break;
                 slept += 1000;
-                if (slept > StorageServer.RING_DELAY)
+                if (slept > P2PServer.RING_DELAY)
                     throw new RuntimeException("Unable to gossip with any seeds");
             }
         } catch (InterruptedException wtf) {
@@ -1124,7 +1124,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         // Notifications may have taken some time, so preventively raise the version
         // of the new value, otherwise it could be ignored by the remote node
         // if another value with a newer version was received in the meantime:
-        value = StorageServer.VALUE_FACTORY.cloneWithHigherVersion(value);
+        value = P2PServer.VALUE_FACTORY.cloneWithHigherVersion(value);
         // Add to local application state and fire "on change" notifications:
         epState.addApplicationState(state, value);
         doOnChangeNotifications(epAddr, state, value);

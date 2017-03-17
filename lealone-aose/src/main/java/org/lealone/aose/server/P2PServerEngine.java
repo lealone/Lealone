@@ -26,17 +26,17 @@ import org.lealone.server.ProtocolServerEngineBase;
 import org.lealone.sql.router.Router;
 import org.lealone.sql.router.RouterHolder;
 
-public class StorageServerEngine extends ProtocolServerEngineBase {
+public class P2PServerEngine extends ProtocolServerEngineBase {
 
-    public static final String NAME = "StorageServer";
+    public static final String NAME = "P2P";
 
-    public StorageServerEngine() {
+    public P2PServerEngine() {
         super(NAME);
     }
 
     @Override
     public ProtocolServer getProtocolServer() {
-        return StorageServer.instance;
+        return P2PServer.instance;
     }
 
     @Override
@@ -47,12 +47,12 @@ public class StorageServerEngine extends ProtocolServerEngineBase {
 
     @Override
     public void close() {
-        StorageServer.instance.stop();
+        P2PServer.instance.stop();
     }
 
     @Override
     protected ProtocolServer getProtocolServer(int port) {
-        return StorageServer.instance;
+        return P2PServer.instance;
     }
 
     private static void initRouter() {

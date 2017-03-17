@@ -62,7 +62,7 @@ public class ClusterMetaData {
             }
 
             replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getName(),
-                    AbstractReplicationStrategy.getClass(className), StorageServer.instance.getTopologyMetaData(),
+                    AbstractReplicationStrategy.getClass(className), P2PServer.instance.getTopologyMetaData(),
                     ConfigDescriptor.getEndpointSnitch(), map);
             replicationStrategys.put(db, replicationStrategy);
         }
@@ -190,7 +190,7 @@ public class ClusterMetaData {
         }
 
         // ID not found, generate a new one, persist, and then return it.
-        Integer hostId = StorageServer.getHostId();
+        Integer hostId = P2PServer.getHostId();
         return setLocalHostId(hostId);
     }
 

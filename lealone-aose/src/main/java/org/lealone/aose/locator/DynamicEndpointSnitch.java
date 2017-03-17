@@ -35,7 +35,7 @@ import javax.management.ObjectName;
 import org.lealone.aose.concurrent.ScheduledExecutors;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.net.MessagingService;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.aose.util.Utils;
 
 import com.yammer.metrics.stats.ExponentiallyDecayingSample;
@@ -214,7 +214,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
 
     private void updateScores() // this is expensive
     {
-        if (!StorageServer.instance.isStarted())
+        if (!P2PServer.instance.isStarted())
             return;
         if (!registered) {
             if (MessagingService.instance() != null) {
@@ -237,7 +237,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
             // finally, add the severity without any weighting,
             // since hosts scale this relative to their own load and the size of the task causing the severity.
             // "Severity" is basically a measure of compaction activity (lealone-3722).
-            score += StorageServer.instance.getSeverity(entry.getKey());
+            score += P2PServer.instance.getSeverity(entry.getKey());
             // lowest score (least amount of badness) wins.
             scores.put(entry.getKey(), score);
         }
@@ -287,12 +287,12 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
 
     @Override
     public void setSeverity(double severity) {
-        StorageServer.instance.reportManualSeverity(severity);
+        P2PServer.instance.reportManualSeverity(severity);
     }
 
     @Override
     public double getSeverity() {
-        return StorageServer.instance.getSeverity(ConfigDescriptor.getLocalAddress());
+        return P2PServer.instance.getSeverity(ConfigDescriptor.getLocalAddress());
     }
 
     @Override

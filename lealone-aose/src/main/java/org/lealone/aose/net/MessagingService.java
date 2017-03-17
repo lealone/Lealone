@@ -65,7 +65,7 @@ import org.lealone.aose.server.PullSchema;
 import org.lealone.aose.server.PullSchemaAck;
 import org.lealone.aose.server.PullSchemaAckVerbHandler;
 import org.lealone.aose.server.PullSchemaVerbHandler;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.aose.util.ExpiringMap;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
@@ -359,20 +359,20 @@ public final class MessagingService implements MessagingServiceMBean {
         if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.none) {
             NetServerOptions nso = NetFactory.getNetServerOptions(options);
             nso.setHost(host);
-            nso.setPort(StorageServer.instance.getSSLPort());
+            nso.setPort(P2PServer.instance.getSSLPort());
             NetServer server = vertx.createNetServer(nso);
             servers.add(server);
-            logger.info("Starting Encrypted Messaging Service on SSL port {}", StorageServer.instance.getSSLPort());
+            logger.info("Starting Encrypted Messaging Service on SSL port {}", P2PServer.instance.getSSLPort());
         }
 
         if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.all) {
             NetServerOptions nso = NetFactory.getNetServerOptions(null);
             nso.setHost(host);
-            nso.setPort(StorageServer.instance.getPort());
+            nso.setPort(P2PServer.instance.getPort());
             nso.setReuseAddress(true);
             NetServer server = vertx.createNetServer(nso);
             servers.add(server);
-            logger.info("Starting Messaging Service on port {}", StorageServer.instance.getPort());
+            logger.info("Starting Messaging Service on port {}", P2PServer.instance.getPort());
         }
         return servers;
     }
@@ -549,8 +549,8 @@ public final class MessagingService implements MessagingServiceMBean {
 
     public TcpConnection getConnection(InetAddress remoteEndpoint) {
         InetAddress resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-        final int port = isEncryptedChannel(resetEndpoint) ? StorageServer.instance.getSSLPort()
-                : StorageServer.instance.getPort();
+        final int port = isEncryptedChannel(resetEndpoint) ? P2PServer.instance.getSSLPort()
+                : P2PServer.instance.getPort();
         // 不能用resetEndpoint.getHostName()，很慢
         final String host = resetEndpoint.getHostAddress();
         final String remoteHostAndPort = host + ":" + port;

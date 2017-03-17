@@ -65,13 +65,13 @@ import org.lealone.server.ProtocolServer;
  * @author Cassandra Group
  * @author zhh
  */
-public class StorageServer extends NotificationBroadcasterSupport
+public class P2PServer extends NotificationBroadcasterSupport
         implements IEndpointStateChangeSubscriber, ProtocolServer {
 
-    private static final Logger logger = LoggerFactory.getLogger(StorageServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(P2PServer.class);
     private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
 
-    public static final StorageServer instance = new StorageServer();
+    public static final P2PServer instance = new P2PServer();
     public static final VersionedValueFactory VALUE_FACTORY = new VersionedValueFactory();
     public static final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
 
@@ -123,7 +123,7 @@ public class StorageServer extends NotificationBroadcasterSupport
     public volatile boolean pullSchemaFinished;
     private ServerEncryptionOptions options;
 
-    private StorageServer() {
+    private P2PServer() {
     }
 
     public Integer getLocalHostId() {

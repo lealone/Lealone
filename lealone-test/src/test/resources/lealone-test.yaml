@@ -43,7 +43,7 @@ sql_engines:
       }
       
 protocol_server_engines:
-    - name: TcpServer
+    - name: TCP
       enabled: true
       parameters: {
           port: 5210,
@@ -53,15 +53,11 @@ protocol_server_engines:
           blocked_thread_check_interval: -1,
           ssl: false
       }
-    - name: StorageServer
+    - name: P2P
       enabled: true
       parameters: {
-          port: 5215,
-          trace: false,
-          allow_others: true,
-          daemon: false,
-          if_exists: false,
-          ssl: false
+          port: 5211,
+          ssl_port: 5212 
       }
 
 seed_provider:
@@ -94,6 +90,5 @@ server_encryption_options:
 #方便在eclipse中debug，不会产生超时
 request_timeout_in_ms: 100000000
 #request_timeout_in_ms: 2000
-#auto_bootstrap: false
 
 

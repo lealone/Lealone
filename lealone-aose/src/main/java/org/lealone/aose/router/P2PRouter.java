@@ -28,7 +28,7 @@ import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.server.ClusterMetaData;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
@@ -76,7 +76,7 @@ public class P2PRouter implements Router {
             } else {
                 liveMembers = new HashSet<>(hostIds.length);
                 for (int hostId : hostIds) {
-                    liveMembers.add(StorageServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
+                    liveMembers.add(P2PServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
                 }
             }
         }
@@ -128,7 +128,7 @@ public class P2PRouter implements Router {
         if (runMode == RunMode.CLIENT_SERVER) {
             int i = random.nextInt(size);
             InetAddress addr = list.get(i);
-            return new int[] { StorageServer.instance.getTopologyMetaData().getHostId(addr) };
+            return new int[] { P2PServer.instance.getTopologyMetaData().getHostId(addr) };
         } else if (runMode == RunMode.REPLICATION) {
             AbstractReplicationStrategy replicationStrategy = ClusterMetaData.getReplicationStrategy(db);
             int replicationFactor = replicationStrategy.getReplicationFactor();
@@ -160,7 +160,7 @@ public class P2PRouter implements Router {
 
         int[] hostIds = new int[replicationNodes];
         for (int i : indexSet) {
-            Integer hostId = StorageServer.instance.getTopologyMetaData().getHostId(list.get(i));
+            Integer hostId = P2PServer.instance.getTopologyMetaData().getHostId(list.get(i));
             if (hostId != null)
                 hostIds[i] = hostId.intValue();
         }
@@ -211,7 +211,7 @@ public class P2PRouter implements Router {
         } else {
             liveMembers = new HashSet<>(hostIds.length);
             for (int hostId : hostIds) {
-                liveMembers.add(StorageServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
+                liveMembers.add(P2PServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
             }
         }
 

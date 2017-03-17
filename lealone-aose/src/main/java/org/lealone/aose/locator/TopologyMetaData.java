@@ -29,7 +29,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.FailureDetector;
-import org.lealone.aose.server.StorageServer;
+import org.lealone.aose.server.P2PServer;
 import org.lealone.aose.util.Pair;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -278,7 +278,7 @@ public class TopologyMetaData {
      * when Topology methods are subsequently used by the caller.
      */
     public Topology getTopology() {
-        assert this != StorageServer.instance.getTopologyMetaData();
+        assert this != P2PServer.instance.getTopologyMetaData();
         return topology;
     }
 
