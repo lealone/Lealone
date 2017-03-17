@@ -15,9 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.net;
 
 import java.net.InetSocketAddress;
+
+import org.lealone.db.Constants;
 
 public class HostAndPort {
 

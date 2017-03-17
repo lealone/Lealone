@@ -675,7 +675,7 @@ public class P2PServer extends NotificationBroadcasterSupport
 
     @Override
     public String getURL() {
-        return "storage://" + getHost() + ":" + getHost();
+        return "p2p://" + getHost() + ":" + getPort();
     }
 
     @Override
