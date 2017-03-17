@@ -141,9 +141,9 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 taskLock.lock();
 
                 /* Update the local heartbeat counter. */
-                endpointStateMap.get(Utils.getBroadcastAddress()).getHeartBeatState().updateHeartBeat();
+                endpointStateMap.get(ConfigDescriptor.getLocalAddress()).getHeartBeatState().updateHeartBeat();
                 if (logger.isTraceEnabled())
-                    logger.trace("My heartbeat is now {}", endpointStateMap.get(Utils.getBroadcastAddress())
+                    logger.trace("My heartbeat is now {}", endpointStateMap.get(ConfigDescriptor.getLocalAddress())
                             .getHeartBeatState().getHeartBeatVersion());
                 final List<GossipDigest> gDigests = new ArrayList<>();
                 Gossiper.instance.makeRandomGossipDigest(gDigests);
@@ -212,7 +212,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         buildSeedsList();
         // initialize the heartbeat state for this localEndpoint
         maybeInitializeLocalState(generationNbr);
-        EndpointState localState = endpointStateMap.get(Utils.getBroadcastAddress());
+        EndpointState localState = endpointStateMap.get(ConfigDescriptor.getLocalAddress());
         for (Map.Entry<ApplicationState, VersionedValue> entry : preloadLocalStates.entrySet())
             localState.addApplicationState(entry.getKey(), entry.getValue());
 
@@ -227,7 +227,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     private void buildSeedsList() {
         for (InetAddress seed : ConfigDescriptor.getSeeds()) {
-            if (seed.equals(Utils.getBroadcastAddress()))
+            if (seed.equals(ConfigDescriptor.getLocalAddress()))
                 continue;
             seeds.add(seed);
         }
@@ -237,7 +237,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private void maybeInitializeLocalState(int generationNbr) {
         HeartBeatState hbState = new HeartBeatState(generationNbr);
         EndpointState localState = new EndpointState(hbState);
-        endpointStateMap.putIfAbsent(Utils.getBroadcastAddress(), localState);
+        endpointStateMap.putIfAbsent(ConfigDescriptor.getLocalAddress(), localState);
     }
 
     /**
@@ -297,7 +297,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private void doGossipToSeed(MessageOut<GossipDigestSyn> prod) {
         int size = seeds.size();
         if (size > 0) {
-            if (size == 1 && seeds.contains(Utils.getBroadcastAddress())) {
+            if (size == 1 && seeds.contains(ConfigDescriptor.getLocalAddress())) {
                 return;
             }
 
@@ -357,7 +357,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
         Set<InetAddress> eps = endpointStateMap.keySet();
         for (InetAddress endpoint : eps) {
-            if (endpoint.equals(Utils.getBroadcastAddress()))
+            if (endpoint.equals(ConfigDescriptor.getLocalAddress()))
                 continue;
 
             FailureDetector.instance.interpret(endpoint);
@@ -436,8 +436,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     public Set<InetAddress> getLiveMembers() {
         Set<InetAddress> liveMembers = new HashSet<InetAddress>(liveEndpoints);
-        if (!liveMembers.contains(Utils.getBroadcastAddress()))
-            liveMembers.add(Utils.getBroadcastAddress());
+        if (!liveMembers.contains(ConfigDescriptor.getLocalAddress()))
+            liveMembers.add(ConfigDescriptor.getLocalAddress());
         return liveMembers;
     }
 
@@ -887,7 +887,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     void applyStateLocally(Map<InetAddress, EndpointState> epStateMap) {
         for (Entry<InetAddress, EndpointState> entry : epStateMap.entrySet()) {
             InetAddress ep = entry.getKey();
-            if (ep.equals(Utils.getBroadcastAddress()) && !isInShadowRound())
+            if (ep.equals(ConfigDescriptor.getLocalAddress()) && !isInShadowRound())
                 continue;
             if (justRemovedEndpoints.containsKey(ep)) {
                 if (logger.isTraceEnabled())
@@ -1094,7 +1094,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
      * Add an endpoint we knew about previously, but whose state is unknown
      */
     public void addSavedEndpoint(InetAddress ep) {
-        if (ep.equals(Utils.getBroadcastAddress())) {
+        if (ep.equals(ConfigDescriptor.getLocalAddress())) {
             logger.debug("Attempt to add self as saved endpoint");
             return;
         }
@@ -1116,7 +1116,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     }
 
     public void addLocalApplicationState(ApplicationState state, VersionedValue value) {
-        InetAddress epAddr = Utils.getBroadcastAddress();
+        InetAddress epAddr = ConfigDescriptor.getLocalAddress();
         EndpointState epState = endpointStateMap.get(epAddr);
         assert epState != null;
         // Fire "before change" notifications:
@@ -1201,7 +1201,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     public InetAddress getLiveSeedEndpoint() {
         IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        String dc = snitch.getDatacenter(Utils.getBroadcastAddress());
+        String dc = snitch.getDatacenter(ConfigDescriptor.getLocalAddress());
         for (InetAddress seed : ConfigDescriptor.getSeedList()) {
             if (FailureDetector.instance.isAlive(seed) && dc.equals(snitch.getDatacenter(seed)))
                 return seed;

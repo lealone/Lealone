@@ -52,6 +52,7 @@ import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.server.ProtocolServer;
 
@@ -112,6 +113,10 @@ public class StorageServer extends NotificationBroadcasterSupport
 
     private boolean started;
 
+    private String host = Constants.DEFAULT_HOST;
+    private int port = 5211;
+    private int sslPort = 5212;
+
     private Integer localHostId;
     private Mode operationMode = Mode.STARTING;
 
@@ -141,7 +146,7 @@ public class StorageServer extends NotificationBroadcasterSupport
             logger.info("Loading persisted ring state");
             Map<InetAddress, Integer> loadedHostIds = ClusterMetaData.loadHostIds();
             for (InetAddress ep : loadedHostIds.keySet()) {
-                if (ep.equals(Utils.getBroadcastAddress())) {
+                if (ep.equals(ConfigDescriptor.getLocalAddress())) {
                     // entry has been mistakenly added, delete it
                     ClusterMetaData.removeEndpoint(ep);
                 } else {
@@ -154,19 +159,18 @@ public class StorageServer extends NotificationBroadcasterSupport
 
     private void prepareToJoin() throws ConfigurationException {
         localHostId = ClusterMetaData.getLocalHostId();
-        topologyMetaData.updateHostId(localHostId, Utils.getBroadcastAddress());
+        topologyMetaData.updateHostId(localHostId, ConfigDescriptor.getLocalAddress());
 
         Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
         appStates.put(ApplicationState.NET_VERSION, VALUE_FACTORY.networkVersion());
         appStates.put(ApplicationState.HOST_ID, VALUE_FACTORY.hostId(localHostId));
-        appStates.put(ApplicationState.RPC_ADDRESS,
-                VALUE_FACTORY.rpcAddress(ConfigDescriptor.getBroadcastRpcAddress()));
+        appStates.put(ApplicationState.RPC_ADDRESS, VALUE_FACTORY.rpcAddress(ConfigDescriptor.getLocalAddress()));
         appStates.put(ApplicationState.RELEASE_VERSION, VALUE_FACTORY.releaseVersion());
         appStates.put(ApplicationState.DC, getDatacenter());
         appStates.put(ApplicationState.RACK, getRack());
 
         // 先启动Gossiper再启动Gossiper
-        MessagingService.instance().start(Utils.getLocalAddress(), config);
+        MessagingService.instance().start(ConfigDescriptor.getLocalAddress(), config);
 
         logger.info("Starting up server gossip");
         Gossiper.instance.register(this);
@@ -183,13 +187,13 @@ public class StorageServer extends NotificationBroadcasterSupport
 
     private VersionedValue getDatacenter() {
         IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        String dc = snitch.getDatacenter(Utils.getBroadcastAddress());
+        String dc = snitch.getDatacenter(ConfigDescriptor.getLocalAddress());
         return VALUE_FACTORY.datacenter(dc);
     }
 
     private VersionedValue getRack() {
         IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        String rack = snitch.getRack(Utils.getBroadcastAddress());
+        String rack = snitch.getRack(ConfigDescriptor.getLocalAddress());
         return VALUE_FACTORY.rack(rack);
     }
 
@@ -280,7 +284,7 @@ public class StorageServer extends NotificationBroadcasterSupport
     }
 
     public String getLocalHostIdAsString() {
-        return topologyMetaData.getHostId(Utils.getBroadcastAddress()).toString();
+        return topologyMetaData.getHostId(ConfigDescriptor.getLocalAddress()).toString();
     }
 
     public Map<String, String> getHostIdMap() {
@@ -327,7 +331,7 @@ public class StorageServer extends NotificationBroadcasterSupport
                 return;
             }
 
-            if (!endpoint.equals(Utils.getBroadcastAddress()))
+            if (!endpoint.equals(ConfigDescriptor.getLocalAddress()))
                 updatePeerInfo(endpoint, state, value);
         }
     }
@@ -360,7 +364,7 @@ public class StorageServer extends NotificationBroadcasterSupport
     }
 
     private void updatePeerInfo(InetAddress endpoint) {
-        if (endpoint.equals(Utils.getBroadcastAddress()))
+        if (endpoint.equals(ConfigDescriptor.getLocalAddress()))
             return;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -388,7 +392,7 @@ public class StorageServer extends NotificationBroadcasterSupport
             InetAddress existing = topologyMetaData.getEndpointForHostId(hostId);
 
             if (existing != null && !existing.equals(endpoint)) {
-                if (existing.equals(Utils.getBroadcastAddress())) {
+                if (existing.equals(ConfigDescriptor.getLocalAddress())) {
                     logger.warn("Not updating host ID {} for {} because it's mine", hostId, endpoint);
                     topologyMetaData.removeEndpoint(endpoint);
                     endpointsToRemove.add(endpoint);
@@ -445,7 +449,7 @@ public class StorageServer extends NotificationBroadcasterSupport
     private void handleStateRemoving(InetAddress endpoint, String[] pieces) {
         assert (pieces.length > 0);
 
-        if (endpoint.equals(Utils.getBroadcastAddress())) {
+        if (endpoint.equals(ConfigDescriptor.getLocalAddress())) {
             logger.info(
                     "Received removenode gossip about myself. Is this node rejoining after an explicit removenode?");
             try {
@@ -552,7 +556,7 @@ public class StorageServer extends NotificationBroadcasterSupport
             map.put(entry.getKey().getHostAddress(), FileUtils.stringifyFileSize(entry.getValue()));
         }
         // gossiper doesn't see its own updates, so we need to special-case the local node
-        map.put(Utils.getBroadcastAddress().getHostAddress(), getLoadString());
+        map.put(ConfigDescriptor.getLocalAddress().getHostAddress(), getLoadString());
         return map;
     }
 
@@ -650,6 +654,12 @@ public class StorageServer extends NotificationBroadcasterSupport
     @Override
     public void init(Map<String, String> config) {
         this.config = config;
+        if (config.containsKey("host"))
+            host = config.get("host");
+        if (config.containsKey("port"))
+            port = Integer.parseInt(config.get("port"));
+        if (config.containsKey("ssl_port"))
+            sslPort = Integer.parseInt(config.get("ssl_port"));
     }
 
     @Override
@@ -670,12 +680,16 @@ public class StorageServer extends NotificationBroadcasterSupport
 
     @Override
     public int getPort() {
-        return ConfigDescriptor.getStoragePort();
+        return port;
+    }
+
+    public int getSSLPort() {
+        return sslPort;
     }
 
     @Override
     public String getHost() {
-        return ConfigDescriptor.getListenAddress().getHostAddress();
+        return host;
     }
 
     @Override

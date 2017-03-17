@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.lealone.aose.util.Utils;
+import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.common.exceptions.ConfigurationException;
 
 public class LocalStrategy extends AbstractReplicationStrategy {
@@ -41,13 +41,13 @@ public class LocalStrategy extends AbstractReplicationStrategy {
     @Override
     public ArrayList<InetAddress> getReplicationEndpoints(Integer hostId) {
         ArrayList<InetAddress> l = new ArrayList<InetAddress>(1);
-        l.add(Utils.getBroadcastAddress());
+        l.add(ConfigDescriptor.getLocalAddress());
         return l;
     }
 
     @Override
     public List<InetAddress> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metadata) {
-        return Collections.singletonList(Utils.getBroadcastAddress());
+        return Collections.singletonList(ConfigDescriptor.getLocalAddress());
     }
 
     @Override

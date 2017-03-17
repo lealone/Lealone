@@ -21,7 +21,6 @@ import org.lealone.aose.server.StorageServer;
 import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.AOStorageEngine;
 import org.lealone.aose.storage.StorageMapBuilder;
-import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.ConnectionInfo;
@@ -739,7 +738,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
 
     @Override
     public InetAddress getLocalEndpoint() {
-        return Utils.getBroadcastAddress();
+        return ConfigDescriptor.getLocalAddress();
     }
 
     @Override

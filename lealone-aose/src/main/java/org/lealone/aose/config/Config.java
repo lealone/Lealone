@@ -39,8 +39,6 @@ public class Config {
 
     public Integer host_id;
 
-    public Boolean auto_bootstrap = true;
-
     public SeedProviderDef seed_provider;
     public ReplicationStrategyDef replication_strategy;
 
@@ -48,15 +46,9 @@ public class Config {
     public volatile Double phi_convict_threshold = 8.0;
     public boolean cross_node_timeout = false;
 
-    public Integer storage_port = 6210;
-    public Integer ssl_storage_port = 6211;
-
-    public Integer listen_port;
     public String listen_address;
     public String listen_interface;
     public Boolean listen_interface_prefer_ipv6 = false;
-    public String broadcast_address;
-    public String broadcast_rpc_address;
 
     public String endpoint_snitch;
     public Boolean dynamic_snitch = true;

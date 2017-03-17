@@ -26,7 +26,6 @@ import java.util.Map;
 import org.lealone.aose.concurrent.Stage;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.util.TypeSizes;
-import org.lealone.aose.util.Utils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -49,7 +48,7 @@ public class MessageOut<T> {
 
     private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
             Map<String, byte[]> parameters) {
-        this(Utils.getBroadcastAddress(), verb, payload, serializer, parameters);
+        this(ConfigDescriptor.getLocalAddress(), verb, payload, serializer, parameters);
     }
 
     @VisibleForTesting

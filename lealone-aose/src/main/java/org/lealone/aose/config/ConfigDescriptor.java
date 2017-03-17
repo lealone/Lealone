@@ -53,8 +53,6 @@ public class ConfigDescriptor {
     private static IInternodeAuthenticator internodeAuthenticator;
 
     private static InetAddress listenAddress; // leave null so we can fall through to getLocalHost
-    private static InetAddress broadcastAddress;
-    private static InetAddress broadcastRpcAddress;
 
     private static IEndpointSnitch snitch;
     private static String localDC;
@@ -80,7 +78,7 @@ public class ConfigDescriptor {
         applyAddressConfig(config);
         createEndpointSnitch();
 
-        localDC = snitch.getDatacenter(Utils.getBroadcastAddress());
+        localDC = snitch.getDatacenter(getLocalAddress());
         localComparator = new Comparator<InetAddress>() {
             @Override
             public int compare(InetAddress endpoint1, InetAddress endpoint2) {
@@ -115,43 +113,16 @@ public class ConfigDescriptor {
         } else if (conf.listen_interface != null) {
             listenAddress = getNetworkInterfaceAddress(conf.listen_interface, "listen_interface",
                     conf.listen_interface_prefer_ipv6);
-        } else {
-            listenAddress = Utils.getLocalAddress();
-            conf.listen_address = listenAddress.getHostAddress();
         }
 
-        // Gossip Address to broadcast
-        if (conf.broadcast_address != null) {
+        if (listenAddress == null) {
             try {
-                broadcastAddress = InetAddress.getByName(conf.broadcast_address);
+                listenAddress = InetAddress.getLocalHost();
             } catch (UnknownHostException e) {
-                throw new ConfigurationException("Unknown broadcast_address '" + conf.broadcast_address + "'");
+                throw new RuntimeException(e);
             }
-
-            if (broadcastAddress.isAnyLocalAddress())
-                throw new ConfigurationException(
-                        "broadcast_address cannot be a wildcard address (" + conf.broadcast_address + ")!");
         }
-
-        // RPC address to broadcast
-        if (conf.broadcast_rpc_address != null) {
-            try {
-                broadcastRpcAddress = InetAddress.getByName(conf.broadcast_rpc_address);
-            } catch (UnknownHostException e) {
-                throw new ConfigurationException("Unknown broadcast_rpc_address '" + conf.broadcast_rpc_address + "'");
-            }
-
-            if (broadcastRpcAddress.isAnyLocalAddress())
-                throw new ConfigurationException(
-                        "broadcast_rpc_address cannot be a wildcard address (" + conf.broadcast_rpc_address + ")!");
-        } else {
-            broadcastRpcAddress = Utils.getLocalAddress();
-
-            if (broadcastRpcAddress.isAnyLocalAddress())
-                throw new ConfigurationException(
-                        "If rpc_address is set to a wildcard address (" + broadcastRpcAddress + "), then "
-                                + "you must set broadcast_rpc_address to a value other than " + broadcastRpcAddress);
-        }
+        conf.listen_address = listenAddress.getHostAddress();
     }
 
     private static InetAddress getNetworkInterfaceAddress(String intf, String configName, boolean preferIPv6)
@@ -242,14 +213,6 @@ public class ConfigDescriptor {
         return conf.cluster_name;
     }
 
-    public static int getStoragePort() {
-        return Integer.parseInt(Config.getProperty("storage.port", conf.storage_port.toString()));
-    }
-
-    public static int getSSLStoragePort() {
-        return Integer.parseInt(Config.getProperty("ssl.storage.port", conf.ssl_storage_port.toString()));
-    }
-
     public static long getRpcTimeout() {
         return conf.request_timeout_in_ms;
     }
@@ -279,32 +242,12 @@ public class ConfigDescriptor {
         return seedProvider.getSeeds();
     }
 
-    public static InetAddress getListenAddress() {
+    public static InetAddress getLocalAddress() {
         return listenAddress;
-    }
-
-    public static InetAddress getBroadcastAddress() {
-        return broadcastAddress;
-    }
-
-    public static void setBroadcastAddress(InetAddress broadcastAdd) {
-        broadcastAddress = broadcastAdd;
-    }
-
-    public static void setBroadcastRpcAddress(InetAddress broadcastRPCAddr) {
-        broadcastRpcAddress = broadcastRPCAddr;
-    }
-
-    public static InetAddress getBroadcastRpcAddress() {
-        return broadcastRpcAddress;
     }
 
     public static IInternodeAuthenticator getInternodeAuthenticator() {
         return internodeAuthenticator;
-    }
-
-    public static boolean isAutoBootstrap() {
-        return Boolean.parseBoolean(Config.getProperty("auto.bootstrap", conf.auto_bootstrap.toString()));
     }
 
     public static int getDynamicUpdateInterval() {

@@ -29,7 +29,6 @@ import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.server.StorageServer;
-import org.lealone.aose.util.Utils;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
@@ -85,7 +84,7 @@ public class P2PRouter implements Router {
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
         for (InetAddress ia : liveMembers)
-            sessions[i++] = SessionPool.getSession(s, s.getURL(ia), !Utils.getBroadcastAddress().equals(ia));
+            sessions[i++] = SessionPool.getSession(s, s.getURL(ia), !ConfigDescriptor.getLocalAddress().equals(ia));
 
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
@@ -186,7 +185,7 @@ public class P2PRouter implements Router {
         int i = 0;
         for (InetAddress ia : liveMembers) {
             sessions[i++] = SessionPool.getSession(currentSession, currentSession.getURL(ia),
-                    !Utils.getBroadcastAddress().equals(ia));
+                    !ConfigDescriptor.getLocalAddress().equals(ia));
         }
 
         ReplicationSession rs = new ReplicationSession(sessions);

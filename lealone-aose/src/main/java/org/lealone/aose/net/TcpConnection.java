@@ -29,7 +29,6 @@ import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.util.JVMStabilityInspector;
-import org.lealone.aose.util.Utils;
 import org.lealone.db.Session;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
@@ -66,8 +65,8 @@ public class TcpConnection extends AsyncConnection {
     }
 
     InetAddress endpoint() {
-        if (remoteEndpoint.equals(Utils.getBroadcastAddress()))
-            return Utils.getLocalAddress();
+        if (remoteEndpoint.equals(ConfigDescriptor.getLocalAddress()))
+            return ConfigDescriptor.getLocalAddress();
         return resetEndpoint;
     }
 
@@ -163,7 +162,7 @@ public class TcpConnection extends AsyncConnection {
 
     private static boolean isLocalDC(InetAddress targetHost) {
         String remoteDC = ConfigDescriptor.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = ConfigDescriptor.getEndpointSnitch().getDatacenter(Utils.getBroadcastAddress());
+        String localDC = ConfigDescriptor.getEndpointSnitch().getDatacenter(ConfigDescriptor.getLocalAddress());
         return remoteDC.equals(localDC);
     }
 

@@ -65,6 +65,7 @@ import org.lealone.aose.server.PullSchema;
 import org.lealone.aose.server.PullSchemaAck;
 import org.lealone.aose.server.PullSchemaAckVerbHandler;
 import org.lealone.aose.server.PullSchemaVerbHandler;
+import org.lealone.aose.server.StorageServer;
 import org.lealone.aose.util.ExpiringMap;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
@@ -358,20 +359,20 @@ public final class MessagingService implements MessagingServiceMBean {
         if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.none) {
             NetServerOptions nso = NetFactory.getNetServerOptions(options);
             nso.setHost(host);
-            nso.setPort(ConfigDescriptor.getSSLStoragePort());
+            nso.setPort(StorageServer.instance.getSSLPort());
             NetServer server = vertx.createNetServer(nso);
             servers.add(server);
-            logger.info("Starting Encrypted Messaging Service on SSL port {}", ConfigDescriptor.getSSLStoragePort());
+            logger.info("Starting Encrypted Messaging Service on SSL port {}", StorageServer.instance.getSSLPort());
         }
 
         if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.all) {
             NetServerOptions nso = NetFactory.getNetServerOptions(null);
             nso.setHost(host);
-            nso.setPort(ConfigDescriptor.getStoragePort());
+            nso.setPort(StorageServer.instance.getPort());
             nso.setReuseAddress(true);
             NetServer server = vertx.createNetServer(nso);
             servers.add(server);
-            logger.info("Starting Messaging Service on port {}", ConfigDescriptor.getStoragePort());
+            logger.info("Starting Messaging Service on port {}", StorageServer.instance.getPort());
         }
         return servers;
     }
@@ -425,7 +426,7 @@ public final class MessagingService implements MessagingServiceMBean {
                     logger.info("MessagingService listening on port " + netServer.actualPort());
                 } else {
                     Throwable e = res.cause();
-                    String address = ConfigDescriptor.getListenAddress().getHostAddress();
+                    String address = ConfigDescriptor.getLocalAddress().getHostAddress();
                     if (e instanceof BindException) {
                         if (e.getMessage().contains("in use"))
                             throw new ConfigurationException(address + " is in use by another process.  "
@@ -535,10 +536,10 @@ public final class MessagingService implements MessagingServiceMBean {
      */
     public void sendOneWay(MessageOut message, int id, InetAddress to) {
         if (logger.isTraceEnabled()) {
-            if (to.equals(Utils.getBroadcastAddress()))
+            if (to.equals(ConfigDescriptor.getLocalAddress()))
                 logger.trace("Message-to-self {} going over MessagingService", message);
             else
-                logger.trace("{} sending {} to {}@{}", Utils.getBroadcastAddress(), message.verb, id, to);
+                logger.trace("{} sending {} to {}@{}", ConfigDescriptor.getLocalAddress(), message.verb, id, to);
         }
 
         TcpConnection conn = getConnection(to);
@@ -548,8 +549,8 @@ public final class MessagingService implements MessagingServiceMBean {
 
     public TcpConnection getConnection(InetAddress remoteEndpoint) {
         InetAddress resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-        final int port = isEncryptedChannel(resetEndpoint) ? ConfigDescriptor.getSSLStoragePort()
-                : ConfigDescriptor.getStoragePort();
+        final int port = isEncryptedChannel(resetEndpoint) ? StorageServer.instance.getSSLPort()
+                : StorageServer.instance.getPort();
         // 不能用resetEndpoint.getHostName()，很慢
         final String host = resetEndpoint.getHostAddress();
         final String remoteHostAndPort = host + ":" + port;
@@ -582,7 +583,7 @@ public final class MessagingService implements MessagingServiceMBean {
                         latch.await();
                         asyncConnection = connRef.get();
                         if (asyncConnection != null) {
-                            String localHost = Utils.getLocalAddress().getHostAddress();
+                            String localHost = ConfigDescriptor.getLocalAddress().getHostAddress();
                             String localHostAndPort = localHost + ":" + port;
                             asyncConnection.initTransfer(resetEndpoint, remoteHostAndPort, localHostAndPort);
                             asyncConnections.put(remoteHostAndPort, asyncConnection);
@@ -605,13 +606,13 @@ public final class MessagingService implements MessagingServiceMBean {
         case all:
             break;
         case dc:
-            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(Utils.getBroadcastAddress())))
+            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(ConfigDescriptor.getLocalAddress())))
                 return false;
             break;
         case rack:
             // for rack then check if the DC's are the same.
-            if (snitch.getRack(address).equals(snitch.getRack(Utils.getBroadcastAddress()))
-                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(Utils.getBroadcastAddress())))
+            if (snitch.getRack(address).equals(snitch.getRack(ConfigDescriptor.getLocalAddress()))
+                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(ConfigDescriptor.getLocalAddress())))
                 return false;
             break;
         }

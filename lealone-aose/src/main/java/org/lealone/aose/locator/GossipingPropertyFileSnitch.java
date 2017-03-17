@@ -21,6 +21,7 @@ import java.net.InetAddress;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.ApplicationState;
 import org.lealone.aose.gms.EndpointState;
 import org.lealone.aose.gms.Gossiper;
@@ -83,7 +84,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
      */
     @Override
     public String getDatacenter(InetAddress endpoint) {
-        if (endpoint.equals(Utils.getBroadcastAddress()))
+        if (endpoint.equals(ConfigDescriptor.getLocalAddress()))
             return myDC;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -105,7 +106,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
      */
     @Override
     public String getRack(InetAddress endpoint) {
-        if (endpoint.equals(Utils.getBroadcastAddress()))
+        if (endpoint.equals(ConfigDescriptor.getLocalAddress()))
             return myRack;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -124,7 +125,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                StorageServer.VALUE_FACTORY.internalIP(Utils.getBroadcastAddress().getHostAddress()));
+                StorageServer.VALUE_FACTORY.internalIP(ConfigDescriptor.getLocalAddress().getHostAddress()));
 
         reloadGossiperState();
 

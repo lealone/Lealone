@@ -136,7 +136,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
 
     @Override
     public void sortByProximity(final InetAddress address, List<InetAddress> addresses) {
-        assert address.equals(Utils.getBroadcastAddress()); // we only know about ourself
+        assert address.equals(ConfigDescriptor.getLocalAddress()); // we only know about ourself
         if (BADNESS_THRESHOLD == 0) {
             sortByProximityWithScore(address, addresses);
         } else {
@@ -292,7 +292,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
 
     @Override
     public double getSeverity() {
-        return StorageServer.instance.getSeverity(Utils.getBroadcastAddress());
+        return StorageServer.instance.getSeverity(ConfigDescriptor.getLocalAddress());
     }
 
     @Override
