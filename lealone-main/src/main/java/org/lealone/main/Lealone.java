@@ -214,8 +214,9 @@ public class Lealone {
 
     private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters)
             throws Exception {
-        if (!parameters.containsKey("host") && Config.getProperty("tcp.listen.address") != null)
-            parameters.put("host", Config.getProperty("tcp.listen.address"));
+        // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
+        if (!parameters.containsKey("host") && config.listen_address != null)
+            parameters.put("host", config.listen_address);
         if (config.server_encryption_options.enabled)
             server.setServerEncryptionOptions(config.server_encryption_options);
         server.init(parameters);

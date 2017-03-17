@@ -76,11 +76,6 @@ public class NodeBase extends YamlConfigurationLoader {
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.base_dir);
 
-        // 如果TcpServer的配置参数中没有指定host，那么就取listen_address的值
-        if (listen_address != null) {
-            System.setProperty("lealone.tcp.listen.address", listen_address);
-        }
-
         System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
         System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
         System.setProperty("vertx.cacheDirBase", "./" + config.base_dir + "/.vertx");
