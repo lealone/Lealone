@@ -33,10 +33,9 @@ import org.lealone.replication.Replication;
 import org.lealone.replication.ReplicationSession;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
-import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.WriteBuffer;
 import org.lealone.storage.type.WriteBufferPool;
 
@@ -58,7 +57,7 @@ import org.lealone.storage.type.WriteBufferPool;
  * @author H2 Group
  * @author zhh
  */
-public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
+public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication {
 
     /**
      * A builder for this class.
@@ -70,9 +69,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
         }
     }
 
-    protected final String name;
-    protected final DataType keyType;
-    protected final DataType valueType;
     protected final boolean readOnly;
     protected final boolean isShardingMode;
 
@@ -89,19 +85,9 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
     @SuppressWarnings("unchecked")
     protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
-        DataUtils.checkArgument(name != null, "The name may not be null");
+        super(name, keyType, valueType);
         DataUtils.checkArgument(config != null, "The config may not be null");
 
-        if (keyType == null) {
-            keyType = new ObjectDataType();
-        }
-        if (valueType == null) {
-            valueType = new ObjectDataType();
-        }
-
-        this.name = name;
-        this.keyType = keyType;
-        this.valueType = valueType;
         this.readOnly = config.containsKey("readOnly");
         this.isShardingMode = config.containsKey("isShardingMode");
         this.config = config;
@@ -130,21 +116,6 @@ public class BTreeMap<K, V> implements StorageMap<K, V>, Replication {
                 }
             }
         }
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public DataType getKeyType() {
-        return keyType;
-    }
-
-    @Override
-    public DataType getValueType() {
-        return valueType;
     }
 
     @Override

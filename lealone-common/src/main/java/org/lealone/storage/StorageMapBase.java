@@ -29,7 +29,6 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
 
     protected StorageMapBase(String name, DataType keyType, DataType valueType) {
         DataUtils.checkArgument(name != null, "The name may not be null");
-
         if (keyType == null) {
             keyType = new ObjectDataType();
         }

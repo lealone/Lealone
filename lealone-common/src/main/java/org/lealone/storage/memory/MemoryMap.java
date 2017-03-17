@@ -24,10 +24,9 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.storage.Storage;
-import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.ObjectDataType;
 
 /**
  * A skipList-based memory map
@@ -37,7 +36,7 @@ import org.lealone.storage.type.ObjectDataType;
  * 
  * @author zhh
  */
-public class MemoryMap<K, V> implements StorageMap<K, V> {
+public class MemoryMap<K, V> extends StorageMapBase<K, V> {
 
     private static class KeyComparator<K> implements java.util.Comparator<K> {
         DataType keyType;
@@ -52,24 +51,12 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
         }
     }
 
-    protected final String name;
-    protected final DataType keyType;
-    protected final DataType valueType;
     protected final ConcurrentSkipListMap<K, V> skipListMap;
-
     protected MemoryStorage memoryStorage;
-
     protected boolean closed;
 
     public MemoryMap(String name, DataType keyType, DataType valueType) {
-        if (keyType == null)
-            keyType = new ObjectDataType();
-        if (valueType == null)
-            valueType = new ObjectDataType();
-
-        this.name = name;
-        this.keyType = keyType;
-        this.valueType = valueType;
+        super(name, keyType, valueType);
         skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<K>(keyType));
     }
 
@@ -79,21 +66,6 @@ public class MemoryMap<K, V> implements StorageMap<K, V> {
 
     public void setMemoryStorage(MemoryStorage memoryStorage) {
         this.memoryStorage = memoryStorage;
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public DataType getKeyType() {
-        return keyType;
-    }
-
-    @Override
-    public DataType getValueType() {
-        return valueType;
     }
 
     @Override
