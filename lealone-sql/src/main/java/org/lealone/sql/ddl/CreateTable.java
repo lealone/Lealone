@@ -21,6 +21,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
+import org.lealone.db.value.CaseInsensitiveMap;
 import org.lealone.db.value.DataType;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.dml.Insert;
@@ -206,7 +207,7 @@ public class CreateTable extends SchemaStatement {
             DataType dt = DataType.getDataType(type);
             if (precision > 0 && //
                     (dt.defaultPrecision == 0 //
-                    || (dt.defaultPrecision > precision && dt.defaultPrecision < Byte.MAX_VALUE))) {
+                            || (dt.defaultPrecision > precision && dt.defaultPrecision < Byte.MAX_VALUE))) {
                 // dont' set precision to MAX_VALUE if this is the default
                 precision = dt.defaultPrecision;
             }
@@ -288,7 +289,12 @@ public class CreateTable extends SchemaStatement {
     }
 
     public void setStorageEngineParams(Map<String, String> storageEngineParams) {
-        data.storageEngineParams = storageEngineParams;
+        if (storageEngineParams instanceof CaseInsensitiveMap) {
+            data.storageEngineParams = (CaseInsensitiveMap<String>) storageEngineParams;
+        } else {
+            data.storageEngineParams = new CaseInsensitiveMap<>();
+            data.storageEngineParams.putAll(storageEngineParams);
+        }
     }
 
 }

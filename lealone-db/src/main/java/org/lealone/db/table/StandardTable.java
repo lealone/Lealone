@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -47,16 +46,12 @@ import org.lealone.transaction.Transaction;
 
 public class StandardTable extends Table {
 
+    private final ConcurrentHashMap<ServerSession, ServerSession> sharedSessions = new ConcurrentHashMap<>();
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = New.arrayList();
     private final StorageEngine storageEngine;
-    private final String storageEngineName;
-    private final Map<String, String> storageEngineParams;
     private final String mapType;
     private final boolean globalTemporary;
-
-    // using a ConcurrentHashMap as a set
-    private final ConcurrentHashMap<ServerSession, ServerSession> sharedSessions = new ConcurrentHashMap<>();
 
     private long lastModificationId;
     private int changesSinceAnalyze;
@@ -71,17 +66,11 @@ public class StandardTable extends Table {
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
         this.storageEngine = storageEngine;
-        storageEngineName = data.storageEngineName;
-        storageEngineParams = data.storageEngineParams;
-        if (storageEngineParams != null) {
-            if (database.getSettings().databaseToUpper)
-                mapType = storageEngineParams.get("MAP_TYPE");
-            else
-                mapType = storageEngineParams.get("map_type");
+        if (data.storageEngineParams != null) {
+            mapType = data.storageEngineParams.get("map_type");
         } else {
             mapType = null;
         }
-
         globalTemporary = data.globalTemporary;
         isHidden = data.isHidden;
         nextAnalyze = database.getSettings().analyzeAuto;
@@ -148,6 +137,7 @@ public class StandardTable extends Table {
             buff.append(column.getCreateSQL());
         }
         buff.append("\n)");
+        String storageEngineName = storageEngine.getName();
         if (storageEngineName != null) {
             String d = getDatabase().getSettings().defaultStorageEngine;
             if (d == null || !storageEngineName.endsWith(d)) {

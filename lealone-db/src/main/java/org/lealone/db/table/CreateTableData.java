@@ -7,11 +7,11 @@
 package org.lealone.db.table;
 
 import java.util.ArrayList;
-import java.util.Map;
 
 import org.lealone.common.util.New;
 import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.value.CaseInsensitiveMap;
 
 /**
  * The data required to create a table.
@@ -76,7 +76,7 @@ public class CreateTableData {
     /**
      * The storage engine parameters to use for creating the table.
      */
-    public Map<String, String> storageEngineParams;
+    public CaseInsensitiveMap<String> storageEngineParams;
 
     /**
      * The table is hidden.
