@@ -16,8 +16,10 @@
 
 base_dir: ../data
 
+listen_address: 127.0.0.1
+
 storage_engines:
-    - name: MVStore
+    - name: AOSE
       enabled: true
       parameters: {
           # key1: v1,
@@ -40,7 +42,7 @@ sql_engines:
       }
       
 protocol_server_engines:
-    - name: TcpServer
+    - name: TCP
       enabled: true
       parameters: {
           host: 127.0.0.1,
@@ -50,4 +52,38 @@ protocol_server_engines:
           daemon: false,
           ssl: false
       }
+    - name: P2P
+      enabled: false
+      parameters: {
+          port: 5211,
+          ssl_port: 5212 
+      }
 
+cluster_name: Test Cluster
+
+seed_provider:
+    - class_name: SimpleSeedProvider
+      parameters:
+          - seeds: "127.0.0.1"
+          
+replication_strategy:
+    - class_name: SimpleStrategy
+      parameters:
+          - replication_factor: 3
+
+# replication_strategy:
+#     - class_name: NetworkTopologyStrategy
+#       parameters:
+#          - dc1: 1
+#          - dc2: 2
+
+endpoint_snitch: SimpleSnitch
+dynamic_snitch: true
+
+server_encryption_options:
+    enabled: false
+    internode_encryption: none
+    keystore: conf/.keystore
+    keystore_password: lealone
+    truststore: conf/.truststore
+    truststore_password: lealone
