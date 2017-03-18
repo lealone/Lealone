@@ -315,10 +315,6 @@ public class ConfigDescriptor {
         return localComparator;
     }
 
-    public static Config.InternodeCompression internodeCompression() {
-        return config.internode_compression;
-    }
-
     public static boolean hasLargeAddressSpace() {
         // currently we just check if it's a 64bit arch,
         // but any we only really care if the address space is large

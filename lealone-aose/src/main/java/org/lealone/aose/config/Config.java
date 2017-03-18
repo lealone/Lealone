@@ -57,13 +57,6 @@ public class Config {
     public Double dynamic_snitch_badness_threshold = 0.1;
 
     public String internode_authenticator;
-    public InternodeCompression internode_compression = InternodeCompression.none;
-
-    public static enum InternodeCompression {
-        all,
-        none,
-        dc
-    }
 
     public static String getProperty(String key) {
         return getProperty(key, null);

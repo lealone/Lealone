@@ -23,7 +23,6 @@ import java.io.IOException;
 
 import org.lealone.aose.concurrent.LealoneExecutorService;
 import org.lealone.aose.concurrent.StageManager;
-import org.lealone.aose.config.Config;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.server.ClusterMetaData;
@@ -111,21 +110,15 @@ public class TcpConnection extends AsyncConnection {
             transfer = new Transfer(this, socket, (Session) null);
             out = transfer.getDataOutputStream();
             targetVersion = MessagingService.instance().getVersion(remoteEndpoint);
-            writeInitPacket(transfer, 0, targetVersion, shouldCompressConnection(), localHostAndPort);
+            writeInitPacket(transfer, 0, targetVersion, localHostAndPort);
         }
     }
 
-    private void writeInitPacket(Transfer transfer, int sessionId, int version, boolean compressionEnabled,
-            String hostId) throws Exception {
+    private void writeInitPacket(Transfer transfer, int sessionId, int version, String hostAndPort) throws Exception {
         transfer.writeRequestHeader(sessionId, Session.SESSION_INIT);
         transfer.writeInt(MessagingService.PROTOCOL_MAGIC);
         transfer.writeInt(version);
-        int header = 0;
-        if (compressionEnabled)
-            header |= 4;
-        header |= (version << 8);
-        transfer.writeInt(header);
-        transfer.writeString(hostId);
+        transfer.writeString(hostAndPort);
         AsyncCallback<Void> ac = new AsyncCallback<>();
         transfer.addAsyncCallback(sessionId, ac);
         transfer.flush();
@@ -138,10 +131,8 @@ public class TcpConnection extends AsyncConnection {
                 this.transfer = new Transfer(this, socket, (Session) null);
                 out = this.transfer.getDataOutputStream();
             }
-
             MessagingService.validateMagic(transfer.readInt());
             version = transfer.readInt();
-            transfer.readInt();
             hostAndPort = transfer.readString();
             if (remoteEndpoint == null) {
                 remoteEndpoint = NetEndpoint.createP2P(hostAndPort);
@@ -156,22 +147,8 @@ public class TcpConnection extends AsyncConnection {
         }
     }
 
-    private boolean shouldCompressConnection() {
-        return ConfigDescriptor.internodeCompression() == Config.InternodeCompression.all
-                || (ConfigDescriptor.internodeCompression() == Config.InternodeCompression.dc
-                        && !isLocalDC(remoteEndpoint));
-    }
-
-    private static boolean isLocalDC(NetEndpoint targetHost) {
-        String remoteDC = ConfigDescriptor.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = ConfigDescriptor.getEndpointSnitch().getDatacenter(ConfigDescriptor.getLocalEndpoint());
-        return remoteDC.equals(localDC);
-    }
-
     private void receiveMessage(DataInputStream in, int id) throws IOException {
         MessagingService.validateMagic(in.readInt());
-        // int id = in.readInt();
-
         long timestamp = System.currentTimeMillis();
         // make sure to readInt, even if cross_node_to is not enabled
         int partial = in.readInt();
