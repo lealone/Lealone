@@ -48,7 +48,6 @@ public class NodeBase extends YamlConfigurationLoader {
         // System.setProperty("lealone.check2", "true");
     }
 
-    protected Integer host_id;
     protected String listen_address;
     protected String dir;
     protected String nodeBaseDirPrefix;
@@ -60,9 +59,6 @@ public class NodeBase extends YamlConfigurationLoader {
 
     @Override
     public void applyConfig(Config config) throws ConfigurationException {
-        if (host_id != null)
-            config.host_id = host_id;
-
         config.base_dir = config.base_dir + "/" + nodeBaseDirPrefix;
         if (dir != null) {
             config.base_dir = config.base_dir + dir;

@@ -113,4 +113,8 @@ public class CreateIndex extends SchemaStatement {
         return 0;
     }
 
+    @Override
+    public boolean isReplicationStatement() {
+        return true;
+    }
 }

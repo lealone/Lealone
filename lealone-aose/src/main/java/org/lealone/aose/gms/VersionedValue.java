@@ -100,7 +100,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
             return new VersionedValue(value.value);
         }
 
-        public VersionedValue normal(Integer hostId) {
+        public VersionedValue normal(String hostId) {
             return new VersionedValue(versionString(VersionedValue.STATUS_NORMAL, hostId.toString()));
         }
 
@@ -112,16 +112,16 @@ public class VersionedValue implements Comparable<VersionedValue> {
             return new VersionedValue(newVersion.toString());
         }
 
-        public VersionedValue leaving(Integer hostId) {
+        public VersionedValue leaving(String hostId) {
             return new VersionedValue(versionString(VersionedValue.STATUS_LEAVING, hostId.toString()));
         }
 
-        public VersionedValue left(Integer hostId, long expireTime) {
+        public VersionedValue left(String hostId, long expireTime) {
             return new VersionedValue(
                     versionString(VersionedValue.STATUS_LEFT, hostId.toString(), Long.toString(expireTime)));
         }
 
-        public VersionedValue hostId(Integer hostId) {
+        public VersionedValue hostId(String hostId) {
             return new VersionedValue(hostId.toString());
         }
 

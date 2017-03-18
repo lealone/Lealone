@@ -6,7 +6,6 @@
  */
 package org.lealone.db;
 
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -1181,31 +1180,16 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         this.isRoot = isRoot;
     }
 
-    public String getURL(InetAddress... hosts) {
+    public String getURL(String hostId) {
         if (connectionInfo == null)
             return null;
         StringBuilder buff = new StringBuilder();
         String url = connectionInfo.getURL();
-        int pos1 = url.indexOf("//");
-        buff.append(url.substring(0, pos1 + 2));
+        int pos1 = url.indexOf("//") + 2;
+        buff.append(url.substring(0, pos1)).append(hostId);
 
-        String port = null;
-        int pos2 = url.indexOf(':', pos1 + 2);
-        int pos3 = url.indexOf('/', pos1 + 2);
-        if (pos2 != -1)
-            port = url.substring(pos2 + 1, pos3);
-        else
-            port = String.valueOf(Constants.DEFAULT_TCP_PORT);
-        boolean first = true;
-        for (InetAddress host : hosts) {
-            if (first) {
-                first = false;
-            } else {
-                buff.append(',');
-            }
-            buff.append(host.getHostAddress()).append(':').append(port);
-        }
-        buff.append(url.substring(pos3));
+        int pos2 = url.indexOf('/', pos1);
+        buff.append(url.substring(pos2));
         return buff.toString();
     }
 

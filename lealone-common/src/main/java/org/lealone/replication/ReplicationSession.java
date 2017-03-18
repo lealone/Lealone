@@ -19,6 +19,7 @@ package org.lealone.replication;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.trace.Trace;
@@ -49,7 +50,22 @@ public class ReplicationSession extends SessionBase {
     long rpcTimeoutMillis = 2000L;
 
     public ReplicationSession(Session[] sessions) {
+        this(sessions, null);
+    }
+
+    public ReplicationSession(Session[] sessions, List<String> initReplicationEndpoints) {
         this.sessions = sessions;
+
+        String replicationEndpoints = null;
+        if (initReplicationEndpoints != null) {
+            StringBuilder buff = new StringBuilder();
+            for (int i = 0, size = initReplicationEndpoints.size(); i < size; i++) {
+                if (i > 0)
+                    buff.append('&');
+                buff.append(initReplicationEndpoints.get(i));
+            }
+            replicationEndpoints = buff.toString();
+        }
 
         n = sessions.length;
         w = r = n / 2 + 1;
@@ -65,7 +81,11 @@ public class ReplicationSession extends SessionBase {
         serversStr = buff.toString();
 
         try {
-            hostName = InetAddress.getLocalHost().getHostAddress();
+            String hostName = InetAddress.getLocalHost().getHostAddress();
+            if (replicationEndpoints != null) {
+                hostName = replicationEndpoints + "@" + hostName;
+            }
+            this.hostName = hostName;
         } catch (UnknownHostException e) {
             throw new RuntimeException(e);
         }
@@ -80,10 +100,14 @@ public class ReplicationSession extends SessionBase {
     }
 
     String createReplicationName() {
-        StringBuilder tn = new StringBuilder(hostName);
-        tn.append("_").append(System.nanoTime() / 1000).append("_").append(counter.getAndIncrement());
-        tn.append(',').append(serversStr);
-        return tn.toString();
+        StringBuilder n = new StringBuilder(hostName);
+        n.append("_").append(System.nanoTime() / 1000).append("_").append(counter.getAndIncrement());
+        n.append(',').append(serversStr);
+        String replicationName = n.toString();
+        for (Session s : sessions) {
+            s.setReplicationName(replicationName);
+        }
+        return replicationName;
     }
 
     @Override

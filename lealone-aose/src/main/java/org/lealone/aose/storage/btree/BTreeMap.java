@@ -22,6 +22,7 @@ import org.lealone.aose.storage.AOStorageEngine;
 import org.lealone.aose.storage.StorageMapBuilder;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -100,18 +101,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         else {
             root = BTreePage.createEmpty(this);
             if (isShardingMode) {
-                // 后面加入的新节点对应的host_id必须大于现有的，否则这里可能会导致错误
-                // 例如节点A执行完DDL后，加入了新节点B，然后在老的节点C上执行DDL，此时节点C就可能看到节点B的host_id了
-                ArrayList<Integer> hostIds = P2pServer.instance.getTopologyMetaData().sortedHostIds();
-                if (!hostIds.isEmpty()) {
-                    Integer hostId = hostIds.get(Math.abs(name.hashCode() % hostIds.size()));
-                    List<NetEndpoint> replicationEndpoints = P2pServer.instance.getReplicationEndpoints(db, hostId);
-                    int size = replicationEndpoints.size();
-                    root.replicationHostIds = new ArrayList<>(size);
-                    for (int i = 0; i < size; i++) {
-                        root.replicationHostIds
-                                .add(P2pServer.instance.getTopologyMetaData().getHostId(replicationEndpoints.get(i)));
-                    }
+                String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
+                DataUtils.checkArgument(initReplicationEndpoints != null,
+                        "The initReplicationEndpoints may not be null");
+                String[] replicationEndpoints = StringUtils.arraySplit(initReplicationEndpoints, '&');
+                int size = replicationEndpoints.length;
+                root.replicationHostIds = new ArrayList<>(size);
+                for (int i = 0; i < size; i++) {
+                    root.replicationHostIds.add(replicationEndpoints[i]);
                 }
             }
         }
@@ -251,8 +248,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
 
     private void moveLeafPage(Object splitKey, BTreePage rightChildPage) {
         if (isShardingMode && rightChildPage.replicationHostIds.get(0).equals(P2pServer.instance.getLocalHostId())) {
-            Integer hostId = rightChildPage.replicationHostIds.get(0);
-            Integer nextHostId = P2pServer.instance.getTopologyMetaData().getNextHostId(hostId);
+            String hostId = rightChildPage.replicationHostIds.get(0);
+            String nextHostId = P2pServer.instance.getTopologyMetaData().getNextHostId(hostId);
             List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db, nextHostId);
             List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
             newReplicationEndpoints.remove(getLocalEndpoint());
@@ -262,7 +259,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             liveMembers.removeAll(oldReplicationEndpoints);
 
             int size = newReplicationEndpoints.size();
-            List<Integer> moveTo = new ArrayList<>(size);
+            List<String> moveTo = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
                 moveTo.add(P2pServer.instance.getTopologyMetaData().getHostId(newReplicationEndpoints.get(i)));
             }
@@ -273,8 +270,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             Session[] sessions = new Session[size];
             ServerSession s = (ServerSession) session;
             int i = 0;
-            for (NetEndpoint ia : newReplicationEndpoints)
-                sessions[i++] = SessionPool.getSession(s, s.getURL(ia.geInetAddress()));
+            for (NetEndpoint e : newReplicationEndpoints) {
+                String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
+                sessions[i++] = SessionPool.getSession(s, s.getURL(id));
+            }
 
             ReplicationSession rs = new ReplicationSession(sessions);
             rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
@@ -283,9 +282,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             // split root page
             i = 0;
             size = liveMembers.size();
-            sessions = new Session[size];
-            for (NetEndpoint ia : liveMembers)
-                sessions[i++] = SessionPool.getSession(s, s.getURL(ia.geInetAddress()));
+            for (NetEndpoint e : liveMembers) {
+                String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
+                sessions[i++] = SessionPool.getSession(s, s.getURL(id));
+            }
 
             rs = new ReplicationSession(sessions);
             rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
@@ -420,8 +420,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             Session session = ConnectionInfo.getAndRemoveInternalSession();
             Session[] sessions = new Session[size];
             ServerSession s = (ServerSession) session;
-            for (NetEndpoint ia : liveMembers)
-                sessions[i++] = SessionPool.getSession(s, s.getURL(ia.geInetAddress()));
+            for (NetEndpoint e : liveMembers) {
+                String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
+                sessions[i++] = SessionPool.getSession(s, s.getURL(id));
+            }
 
             ReplicationSession rs = new ReplicationSession(sessions);
             rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
@@ -748,8 +750,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         Session[] sessions = new Session[replicationEndpoints.size()];
         ServerSession s = (ServerSession) session;
         int i = 0;
-        for (NetEndpoint ia : replicationEndpoints) {
-            sessions[i++] = SessionPool.getSession(s, s.getURL(ia.geInetAddress()), !localEndpoint.equals(ia));
+        for (NetEndpoint e : replicationEndpoints) {
+            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+            sessions[i++] = SessionPool.getSession(s, s.getURL(hostId), !localEndpoint.equals(e));
         }
 
         ReplicationSession rs = new ReplicationSession(sessions);
@@ -793,9 +796,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         Session[] sessions = new Session[replicationEndpoints.size()];
         ServerSession s = (ServerSession) session;
         int i = 0;
-        for (NetEndpoint ia : replicationEndpoints)
-            sessions[i++] = SessionPool.getSession(s, s.getURL(ia.geInetAddress()), !localEndpoint.equals(ia));
-
+        for (NetEndpoint e : replicationEndpoints) {
+            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+            sessions[i++] = SessionPool.getSession(s, s.getURL(hostId), !localEndpoint.equals(e));
+        }
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         StorageCommand c = null;

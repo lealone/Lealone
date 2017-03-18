@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.net.NetEndpoint;
@@ -40,18 +41,19 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
     }
 
     @Override
-    public List<NetEndpoint> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metadata) {
+    public List<NetEndpoint> calculateReplicationEndpoints(String searchHostId, TopologyMetaData metadata,
+            Set<NetEndpoint> candidateEndpoints) {
         int replicas = getReplicationFactor();
-        ArrayList<Integer> hostIds = metadata.sortedHostIds();
+        ArrayList<String> hostIds = metadata.sortedHostIds();
         List<NetEndpoint> endpoints = new ArrayList<NetEndpoint>(replicas);
 
         if (hostIds.isEmpty())
             return endpoints;
 
-        Iterator<Integer> iter = hostIds.iterator();
+        Iterator<String> iter = hostIds.iterator();
         while (endpoints.size() < replicas && iter.hasNext()) {
             NetEndpoint ep = metadata.getEndpointForHostId(iter.next());
-            if (!endpoints.contains(ep))
+            if (candidateEndpoints.contains(ep) && !endpoints.contains(ep))
                 endpoints.add(ep);
         }
         return endpoints;

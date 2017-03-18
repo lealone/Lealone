@@ -44,18 +44,13 @@ public class LocalRouter implements Router {
     }
 
     @Override
-    public int[] getHostIds(Database db) {
-        return new int[0];
+    public String[] getHostIds(Database db) {
+        return new String[0];
     }
 
     @Override
     public int createDatabase(Database db, ServerSession currentSession) {
         return 0;
-    }
-
-    @Override
-    public String[] getEndpoints(Database db) {
-        return null;
     }
 
 }

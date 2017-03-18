@@ -611,4 +611,8 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     public boolean isDatabaseStatement() {
         return false;
     }
+
+    public boolean isReplicationStatement() {
+        return false;
+    }
 }

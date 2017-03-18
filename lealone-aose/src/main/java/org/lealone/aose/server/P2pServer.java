@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ThreadLocalRandom;
 
 import javax.management.NotificationBroadcasterSupport;
 
@@ -83,18 +82,6 @@ public class P2pServer extends NotificationBroadcasterSupport
             return 30 * 1000;
     }
 
-    private static final int maxHostId = 1 << 22;
-
-    public static Integer getHostId() {
-        Integer hostId = ConfigDescriptor.getHostId();
-        if (hostId == null) {
-            hostId = ThreadLocalRandom.current().nextInt(maxHostId);
-
-            logger.warn("No host ID found, created {} (Note: This should happen exactly once per node).", hostId);
-        }
-        return hostId;
-    }
-
     private static enum Mode {
         STARTING,
         NORMAL,
@@ -116,7 +103,7 @@ public class P2pServer extends NotificationBroadcasterSupport
     private int port = Constants.DEFAULT_P2P_PORT;
     private boolean ssl;
 
-    private Integer localHostId;
+    private String localHostId;
     private Mode operationMode = Mode.STARTING;
 
     public volatile boolean pullSchemaFinished;
@@ -125,7 +112,7 @@ public class P2pServer extends NotificationBroadcasterSupport
     private P2pServer() {
     }
 
-    public Integer getLocalHostId() {
+    public String getLocalHostId() {
         return localHostId;
     }
 
@@ -143,7 +130,7 @@ public class P2pServer extends NotificationBroadcasterSupport
     private void loadRingState() {
         if (Boolean.parseBoolean(Config.getProperty("load.ring.state", "true"))) {
             logger.info("Loading persisted ring state");
-            Map<NetEndpoint, Integer> loadedHostIds = ClusterMetaData.loadHostIds();
+            Map<NetEndpoint, String> loadedHostIds = ClusterMetaData.loadHostIds();
             for (NetEndpoint ep : loadedHostIds.keySet()) {
                 if (ep.equals(ConfigDescriptor.getLocalEndpoint())) {
                     // entry has been mistakenly added, delete it
@@ -289,7 +276,7 @@ public class P2pServer extends NotificationBroadcasterSupport
 
     public Map<String, String> getHostIdMap() {
         Map<String, String> mapOut = new HashMap<>();
-        for (Map.Entry<NetEndpoint, Integer> entry : topologyMetaData.getEndpointToHostIdMapForReading().entrySet())
+        for (Map.Entry<NetEndpoint, String> entry : topologyMetaData.getEndpointToHostIdMapForReading().entrySet())
             mapOut.put(entry.getKey().getHostAddress(), entry.getValue().toString());
         return mapOut;
     }
@@ -388,7 +375,7 @@ public class P2pServer extends NotificationBroadcasterSupport
         updatePeerInfo(endpoint);
         // Order Matters, TM.updateHostID() should be called before TM.updateNormalToken(), (see Cassandra-4300).
         if (Gossiper.instance.usesHostId(endpoint)) {
-            Integer hostId = Gossiper.instance.getHostId(endpoint);
+            String hostId = Gossiper.instance.getHostId(endpoint);
             NetEndpoint existing = topologyMetaData.getEndpointForHostId(hostId);
 
             if (existing != null && !existing.equals(endpoint)) {
@@ -592,8 +579,12 @@ public class P2pServer extends NotificationBroadcasterSupport
      * @param pos position for which we need to find the endpoint
      * @return the endpoint responsible for this token
      */
-    public List<NetEndpoint> getReplicationEndpoints(Database db, Integer hostId) {
-        return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId);
+    public List<NetEndpoint> getReplicationEndpoints(Database db, String hostId) {
+        return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId, null);
+    }
+
+    public List<NetEndpoint> getReplicationEndpoints(Database db, String hostId, Set<NetEndpoint> candidateEndpoints) {
+        return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId, candidateEndpoints);
     }
 
     /**
@@ -605,8 +596,8 @@ public class P2pServer extends NotificationBroadcasterSupport
      * @return the endpoint responsible for this key
      */
 
-    public List<NetEndpoint> getLiveReplicationEndpoints(Database db, Integer hostId) {
-        List<NetEndpoint> endpoints = ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId);
+    public List<NetEndpoint> getLiveReplicationEndpoints(Database db, String hostId) {
+        List<NetEndpoint> endpoints = ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId, null);
         List<NetEndpoint> liveEps = new ArrayList<>(endpoints.size());
 
         for (NetEndpoint endpoint : endpoints) {

@@ -132,9 +132,9 @@ public class DatabaseEngine {
                 } catch (UnknownHostException e) {
                     throw DbException.convert(e);
                 }
-                String[] endpoints = database.getEndpoints();
+                String[] endpoints = database.getHostIds();
                 boolean isTargetEndpoint = false;
-                if (endpoints != null) {
+                if (endpoints != null && endpoints.length > 0) {
                     for (String e : endpoints) {
                         if (e.equalsIgnoreCase(currentEndpoint)) {
                             isTargetEndpoint = true;

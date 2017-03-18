@@ -297,4 +297,9 @@ public class CreateTable extends SchemaStatement {
         }
     }
 
+    @Override
+    public boolean isReplicationStatement() {
+        return true;
+    }
+
 }

@@ -25,6 +25,5 @@ public class OneDCNode1 extends OneDCNodeBase {
     public OneDCNode1() {
         this.listen_address = "127.0.0.1";
         this.dir = "node1";
-        this.host_id = 1;
     }
 }

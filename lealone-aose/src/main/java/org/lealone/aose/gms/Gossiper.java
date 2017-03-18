@@ -682,11 +682,10 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         return false;
     }
 
-    public Integer getHostId(NetEndpoint endpoint) {
+    public String getHostId(NetEndpoint endpoint) {
         if (!usesHostId(endpoint))
             throw new RuntimeException("Host " + endpoint + " does not use new-style tokens!");
-        return Integer
-                .valueOf(getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.HOST_ID).value);
+        return getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.HOST_ID).value;
     }
 
     EndpointState getStateForVersionBiggerThan(NetEndpoint forEndpoint, int version) {

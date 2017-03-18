@@ -331,7 +331,4 @@ public class ConfigDescriptor {
         return arch.contains("64") || arch.contains("sparcv9");
     }
 
-    public static Integer getHostId() {
-        return config.host_id;
-    }
 }

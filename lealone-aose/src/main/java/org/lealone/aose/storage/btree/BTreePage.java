@@ -16,6 +16,7 @@ import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StringDataType;
 import org.lealone.storage.type.WriteBuffer;
 
 /**
@@ -92,9 +93,9 @@ public class BTreePage {
      */
     private volatile boolean removedInMemory;
 
-    // Integer hostId;
+    // String hostId;
     boolean remote;
-    List<Integer> replicationHostIds;
+    List<String> replicationHostIds;
 
     BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
@@ -517,8 +518,9 @@ public class BTreePage {
             buff.putInt(0);
         else {
             buff.putInt(replicationHostIds.size());
-            for (Integer id : replicationHostIds)
-                buff.putInt(id);
+            for (String id : replicationHostIds) {
+                StringDataType.INSTANCE.write(buff, id);
+            }
         }
         buff.put((byte) (remote ? 1 : 0));
         if (!remote) {
@@ -534,9 +536,9 @@ public class BTreePage {
 
     static BTreePage readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
         int length = page.getInt();
-        List<Integer> replicationHostIds = new ArrayList<>(length);
+        List<String> replicationHostIds = new ArrayList<>(length);
         for (int i = 0; i < length; i++)
-            replicationHostIds.add(page.getInt());
+            replicationHostIds.add(StringDataType.INSTANCE.read(page));
         boolean remote = page.get() == 1;
         BTreePage p;
 

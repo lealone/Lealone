@@ -37,8 +37,6 @@ public class Config {
 
     public String cluster_name = "Test Cluster";
 
-    public Integer host_id;
-
     public SeedProviderDef seed_provider;
     public ReplicationStrategyDef replication_strategy;
 

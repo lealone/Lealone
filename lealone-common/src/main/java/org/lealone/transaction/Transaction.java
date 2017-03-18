@@ -92,7 +92,7 @@ public interface Transaction {
     <K, V> TransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType, Storage storage);
 
     <K, V> TransactionMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
-            Storage storage, boolean isShardingMode);
+            Storage storage, boolean isShardingMode, String initReplicationEndpoints);
 
     void addSavepoint(String name);
 

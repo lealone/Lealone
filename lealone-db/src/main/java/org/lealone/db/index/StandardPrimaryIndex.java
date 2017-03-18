@@ -53,8 +53,8 @@ public class StandardPrimaryIndex extends IndexBase {
     private int mainIndexColumn = -1;
 
     public StandardPrimaryIndex(ServerSession session, StandardTable table) {
-        super(table, table.getId(), table.getName() + "_DATA", IndexType.createScan(), IndexColumn.wrap(table
-                .getColumns()));
+        super(table, table.getId(), table.getName() + "_DATA", IndexType.createScan(),
+                IndexColumn.wrap(table.getColumns()));
         this.table = table;
         mapName = table.getMapNameForTable(getId());
         int[] sortTypes = new int[columns.length];
@@ -68,9 +68,17 @@ public class StandardPrimaryIndex extends IndexBase {
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
         boolean isShardingMode = session.isShardingMode();
-        dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
-                keyType, vvType, storage, isShardingMode);
 
+        String initReplicationEndpoints = null;
+        String replicationName = session.getReplicationName();
+        if (replicationName != null) {
+            int pos = replicationName.indexOf('@');
+            if (pos != -1) {
+                initReplicationEndpoints = replicationName.substring(0, pos);
+            }
+        }
+        dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
+                keyType, vvType, storage, isShardingMode, initReplicationEndpoints);
         transactionEngine.addTransactionMap(dataMap);
 
         Value k = dataMap.lastKey();
@@ -259,8 +267,8 @@ public class StandardPrimaryIndex extends IndexBase {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
         if (v == null) {
-            return new StandardPrimaryIndexCursor(session, table, this, Collections
-                    .<Entry<Value, VersionedValue>> emptyList().iterator(), null);
+            return new StandardPrimaryIndexCursor(session, table, this,
+                    Collections.<Entry<Value, VersionedValue>> emptyList().iterator(), null);
         }
         VersionedValue value = map.get(v);
         Entry<Value, VersionedValue> e = new DataUtils.MapEntry<Value, VersionedValue>(v, value);
@@ -400,8 +408,8 @@ public class StandardPrimaryIndex extends IndexBase {
                     row.setVersion(version);
 
                     if (table.getVersion() != version) {
-                        ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getTableAlterHistoryRecord(
-                                table.getId(), version, table.getVersion());
+                        ArrayList<TableAlterHistoryRecord> records = table.getDatabase()
+                                .getTableAlterHistoryRecord(table.getId(), version, table.getVersion());
                         Value[] newValues = data;
                         for (TableAlterHistoryRecord record : records) {
                             newValues = record.redo(session, newValues);

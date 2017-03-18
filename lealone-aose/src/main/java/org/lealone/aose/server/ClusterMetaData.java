@@ -79,7 +79,7 @@ public class ClusterMetaData {
             stmt.execute("CREATE TABLE IF NOT EXISTS " + PEERS_TABLE + "(" //
                     + "peer varchar,"//
                     + "data_center varchar,"//
-                    + "host_id int,"//
+                    + "host_id varchar,"//
                     + "preferred_ip varchar,"//
                     + "rack varchar,"//
                     + "release_version varchar,"//
@@ -94,7 +94,7 @@ public class ClusterMetaData {
                     + "cql_version varchar,"//
                     + "data_center varchar,"//
                     + "gossip_generation int,"//
-                    + "host_id int,"//
+                    + "host_id varchar,"//
                     + "native_protocol_version varchar,"//
                     + "partitioner varchar,"//
                     + "rack varchar,"//
@@ -159,14 +159,14 @@ public class ClusterMetaData {
         }
     }
 
-    public static Map<NetEndpoint, Integer> loadHostIds() {
-        Map<NetEndpoint, Integer> hostIdMap = new HashMap<>();
+    public static Map<NetEndpoint, String> loadHostIds() {
+        Map<NetEndpoint, String> hostIdMap = new HashMap<>();
         try {
             ResultSet rs = stmt.executeQuery("SELECT peer, host_id FROM " + PEERS_TABLE);
             while (rs.next()) {
-                int hostId = rs.getInt(2);
+                String hostId = rs.getString(2);
                 NetEndpoint peer = NetEndpoint.getByName(rs.getString(1));
-                hostIdMap.put(peer, Integer.valueOf(hostId));
+                hostIdMap.put(peer, hostId);
             }
             rs.close();
         } catch (Exception e) {
@@ -175,27 +175,26 @@ public class ClusterMetaData {
         return hostIdMap;
     }
 
-    public static Integer getLocalHostId() {
+    public static String getLocalHostId() {
         String sql = "SELECT host_id FROM %s WHERE key='%s'";
 
         try {
             ResultSet rs = stmt.executeQuery(String.format(sql, LOCAL_TABLE, LOCAL_KEY));
             if (rs.next()) {
-                int hostId = rs.getInt(1);
+                String hostId = rs.getString(1);
                 rs.close();
-                return Integer.valueOf(hostId);
+                return hostId;
             }
             rs.close();
         } catch (Exception e) {
             handleException(e);
         }
 
-        // ID not found, generate a new one, persist, and then return it.
-        Integer hostId = P2pServer.getHostId();
+        String hostId = NetEndpoint.getLocalTcpEndpoint().getHostAndPort();
         return setLocalHostId(hostId);
     }
 
-    public static Integer setLocalHostId(Integer hostId) {
+    public static String setLocalHostId(String hostId) {
         String sql = "INSERT INTO %s (key, host_id) VALUES ('%s', '%s')";
         try {
             stmt.executeUpdate(String.format(sql, LOCAL_TABLE, LOCAL_KEY, hostId.toString()));

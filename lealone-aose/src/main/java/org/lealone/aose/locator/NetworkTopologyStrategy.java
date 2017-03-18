@@ -84,7 +84,8 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
      */
     @Override
     @SuppressWarnings("serial")
-    public List<NetEndpoint> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metaData) {
+    public List<NetEndpoint> calculateReplicationEndpoints(String searchHostId, TopologyMetaData metaData,
+            Set<NetEndpoint> candidateEndpoints) {
         // we want to preserve insertion order so that the first added endpoint becomes primary
         Set<NetEndpoint> replicas = new LinkedHashSet<>();
         // replicas we have found in each DC
@@ -111,11 +112,13 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         for (Map.Entry<String, Integer> dc : datacenters.entrySet())
             skippedDcEndpoints.put(dc.getKey(), new LinkedHashSet<NetEndpoint>());
 
-        ArrayList<Integer> hostIds = metaData.sortedHostIds();
-        Iterator<Integer> tokenIter = hostIds.iterator();
+        ArrayList<String> hostIds = metaData.sortedHostIds();
+        Iterator<String> tokenIter = hostIds.iterator();
         while (tokenIter.hasNext() && !hasSufficientReplicas(dcReplicas, allEndpoints)) {
-            Integer next = tokenIter.next();
+            String next = tokenIter.next();
             NetEndpoint ep = metaData.getEndpointForHostId(next);
+            if (!candidateEndpoints.contains(ep))
+                continue;
             String dc = snitch.getDatacenter(ep);
             // have we already found all replicas for this dc?
             if (!datacenters.containsKey(dc) || hasSufficientReplicas(dc, dcReplicas, allEndpoints))

@@ -2236,33 +2236,23 @@ public class Database implements DataHandler, DbObject {
         return null;
     }
 
-    private int[] hostIds;
+    private String[] hostIds;
 
-    public int[] getHostIds() {
-        if (hostIds == null) {
-            if (parameters != null && parameters.containsKey("hostIds")) {
-                hostIds = StringUtils.arraySplitAsInt(parameters.get("hostIds"), ',');
-            }
+    public String[] getHostIds() {
+        if (hostIds != null) {
+            return hostIds;
+        }
+        if (parameters != null && parameters.containsKey("hostIds")) {
+            hostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',');
         }
         if (hostIds == null)
-            hostIds = new int[0];
+            hostIds = new String[0];
         return hostIds;
-    }
-
-    private String[] endpoints;
-
-    public String[] getEndpoints() {
-        if (endpoints == null) {
-            if (parameters != null && parameters.containsKey("endpoints")) {
-                endpoints = StringUtils.arraySplit(parameters.get("endpoints"), ',', true);
-            }
-        }
-        return endpoints;
     }
 
     public String getTargetEndpoints() {
         if (parameters != null) {
-            return parameters.get("endpoints");
+            return parameters.get("hostIds");
         }
         return null;
     }

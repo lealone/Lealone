@@ -28,10 +28,8 @@ public interface Router {
 
     Result executeQuery(StatementBase statement, int maxRows);
 
-    public int[] getHostIds(Database db);
+    public String[] getHostIds(Database db);
 
     int createDatabase(Database db, ServerSession currentSession);
-
-    public String[] getEndpoints(Database db);
 
 }

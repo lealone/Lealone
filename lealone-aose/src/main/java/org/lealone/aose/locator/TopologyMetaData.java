@@ -44,7 +44,7 @@ public class TopologyMetaData {
     private static final Logger logger = LoggerFactory.getLogger(TopologyMetaData.class);
 
     /** Maintains endpoint to host ID map of every node in the cluster */
-    private final BiMap<NetEndpoint, Integer> endpointToHostIdMap;
+    private final BiMap<NetEndpoint, String> endpointToHostIdMap;
 
     // (don't need to record Token here since it's still part of tokenToEndpointMap until it's done leaving)
     private final Set<NetEndpoint> leavingEndpoints = new HashSet<>();
@@ -60,10 +60,10 @@ public class TopologyMetaData {
     private volatile long ringVersion = 0;
 
     public TopologyMetaData() {
-        this(HashBiMap.<NetEndpoint, Integer> create(), new Topology());
+        this(HashBiMap.<NetEndpoint, String> create(), new Topology());
     }
 
-    private TopologyMetaData(BiMap<NetEndpoint, Integer> endpointsMap, Topology topology) {
+    private TopologyMetaData(BiMap<NetEndpoint, String> endpointsMap, Topology topology) {
         this.topology = topology;
         endpointToHostIdMap = endpointsMap;
     }
@@ -75,7 +75,7 @@ public class TopologyMetaData {
      * @param hostId
      * @param endpoint
      */
-    public void updateHostId(Integer hostId, NetEndpoint endpoint) {
+    public void updateHostId(String hostId, NetEndpoint endpoint) {
         assert hostId != null;
         assert endpoint != null;
 
@@ -89,7 +89,7 @@ public class TopologyMetaData {
                 }
             }
 
-            Integer storedId = endpointToHostIdMap.get(endpoint);
+            String storedId = endpointToHostIdMap.get(endpoint);
             if ((storedId != null) && (!storedId.equals(hostId)))
                 logger.warn("Changing {}'s host ID from {} to {}", endpoint, storedId, hostId);
 
@@ -100,7 +100,7 @@ public class TopologyMetaData {
     }
 
     /** Return the unique host ID for an end-point. */
-    public Integer getHostId(NetEndpoint endpoint) {
+    public String getHostId(NetEndpoint endpoint) {
         lock.readLock().lock();
         try {
             return endpointToHostIdMap.get(endpoint);
@@ -110,7 +110,7 @@ public class TopologyMetaData {
     }
 
     /** Return the end-point for a unique host ID */
-    public NetEndpoint getEndpointForHostId(Integer hostId) {
+    public NetEndpoint getEndpointForHostId(String hostId) {
         lock.readLock().lock();
         try {
             return endpointToHostIdMap.inverse().get(hostId);
@@ -120,10 +120,10 @@ public class TopologyMetaData {
     }
 
     /** @return a copy of the endpoint-to-id map for read-only operations */
-    public Map<NetEndpoint, Integer> getEndpointToHostIdMapForReading() {
+    public Map<NetEndpoint, String> getEndpointToHostIdMapForReading() {
         lock.readLock().lock();
         try {
-            Map<NetEndpoint, Integer> readMap = new HashMap<NetEndpoint, Integer>();
+            Map<NetEndpoint, String> readMap = new HashMap<>();
             readMap.putAll(endpointToHostIdMap);
             return readMap;
         } finally {
@@ -214,7 +214,7 @@ public class TopologyMetaData {
         }
     }
 
-    public ArrayList<Integer> sortedHostIds() {
+    public ArrayList<String> sortedHostIds() {
         return new ArrayList<>(endpointToHostIdMap.inverse().keySet());
     }
 
@@ -291,8 +291,8 @@ public class TopologyMetaData {
         cachedMap.set(null);
     }
 
-    public Integer getNextHostId(Integer hostId) {
-        ArrayList<Integer> list = sortedHostIds();
+    public String getNextHostId(String hostId) {
+        ArrayList<String> list = sortedHostIds();
         int index = list.indexOf(hostId);
         if (index == -1 || index == list.size() - 1)
             index = 0;

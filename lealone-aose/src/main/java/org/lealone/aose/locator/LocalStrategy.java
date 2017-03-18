@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.common.exceptions.ConfigurationException;
@@ -39,14 +40,15 @@ public class LocalStrategy extends AbstractReplicationStrategy {
      * LocalStrategy may be used before tokens are set up.
      */
     @Override
-    public ArrayList<NetEndpoint> getReplicationEndpoints(Integer hostId) {
+    public ArrayList<NetEndpoint> getReplicationEndpoints(String hostId, Set<NetEndpoint> candidateEndpoints) {
         ArrayList<NetEndpoint> l = new ArrayList<NetEndpoint>(1);
         l.add(ConfigDescriptor.getLocalEndpoint());
         return l;
     }
 
     @Override
-    public List<NetEndpoint> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metadata) {
+    public List<NetEndpoint> calculateReplicationEndpoints(String searchHostId, TopologyMetaData metadata,
+            Set<NetEndpoint> candidateEndpoints) {
         return Collections.singletonList(ConfigDescriptor.getLocalEndpoint());
     }
 

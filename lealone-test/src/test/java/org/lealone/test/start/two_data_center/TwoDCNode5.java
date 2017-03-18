@@ -25,6 +25,5 @@ public class TwoDCNode5 extends TwoDCNodeBase {
     public TwoDCNode5() {
         this.listen_address = "127.0.0.5";
         this.dir = "node5";
-        this.host_id = 5;
     }
 }

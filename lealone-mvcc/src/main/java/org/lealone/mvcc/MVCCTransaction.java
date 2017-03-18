@@ -141,13 +141,13 @@ public class MVCCTransaction implements Transaction {
 
     @Override
     public <K, V> MVCCTransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType, Storage storage) {
-        return openMap(name, null, keyType, valueType, storage, false);
+        return openMap(name, null, keyType, valueType, storage, false, null);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
-            Storage storage, boolean isShardingMode) {
+            Storage storage, boolean isShardingMode, String initReplicationEndpoints) {
         if (keyType == null)
             keyType = new ObjectDataType();
         if (valueType == null)
@@ -159,6 +159,7 @@ public class MVCCTransaction implements Transaction {
         if (isShardingMode) {
             mapType = "BTreeMap";
             parameters.put("isShardingMode", "true");
+            parameters.put("initReplicationEndpoints", initReplicationEndpoints);
         }
         StorageMap<K, TransactionalValue> map = storage.openMap(name, mapType, keyType, valueType, parameters);
         transactionEngine.redo(map);
