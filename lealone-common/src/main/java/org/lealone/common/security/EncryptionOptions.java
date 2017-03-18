@@ -29,19 +29,10 @@ public abstract class EncryptionOptions {
     public String algorithm = "SunX509";
     public String store_type = "JKS";
     public boolean require_client_auth = false;
-    public boolean enabled = false;
 
     public static class ClientEncryptionOptions extends EncryptionOptions {
     }
 
     public static class ServerEncryptionOptions extends EncryptionOptions {
-        public static enum InternodeEncryption {
-            all,
-            none,
-            dc,
-            rack
-        }
-
-        public InternodeEncryption internode_encryption = InternodeEncryption.none;
     }
 }

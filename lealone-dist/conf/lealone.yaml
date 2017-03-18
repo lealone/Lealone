@@ -56,7 +56,7 @@ protocol_server_engines:
       enabled: false
       parameters: {
           port: 5211,
-          ssl_port: 5212 
+          ssl: false
       }
 
 cluster_name: Test Cluster
@@ -81,8 +81,6 @@ endpoint_snitch: SimpleSnitch
 dynamic_snitch: true
 
 server_encryption_options:
-    enabled: false
-    internode_encryption: none
     keystore: conf/.keystore
     keystore_password: lealone
     truststore: conf/.truststore

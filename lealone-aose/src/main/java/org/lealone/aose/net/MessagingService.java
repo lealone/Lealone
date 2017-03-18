@@ -55,7 +55,6 @@ import org.lealone.aose.gms.GossipDigestSyn;
 import org.lealone.aose.gms.GossipDigestSynVerbHandler;
 import org.lealone.aose.gms.GossipShutdownVerbHandler;
 import org.lealone.aose.gms.Gossiper;
-import org.lealone.aose.locator.IEndpointSnitch;
 import org.lealone.aose.locator.ILatencySubscriber;
 import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.metrics.DroppedMessageMetrics;
@@ -77,7 +76,6 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 
 import com.google.common.base.Function;
-import com.google.common.collect.Lists;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.net.NetClient;
@@ -334,7 +332,7 @@ public final class MessagingService implements MessagingServiceMBean {
             subscriber.receiveTiming(address, latency);
     }
 
-    private final List<Server> servers = Lists.newArrayList();
+    private Server server;
 
     /**
      * Listen on the specified port.
@@ -343,39 +341,27 @@ public final class MessagingService implements MessagingServiceMBean {
      */
     public void start(NetEndpoint localEp, Map<String, String> config) throws ConfigurationException {
         initVertx(config);
-
         callbacks.reset(); // hack to allow tests to stop/restart MS
-        for (NetServer netServer : getNetServers(localEp)) {
-            Server server = new Server(netServer);
-            server.start();
-            servers.add(server);
-        }
+        server = new Server(getNetServer(localEp));
+        server.start();
     }
 
-    private List<NetServer> getNetServers(NetEndpoint localEp) throws ConfigurationException {
-        String host = localEp.getHost();
+    private NetServer getNetServer(NetEndpoint localEp) throws ConfigurationException {
+        boolean ssl = P2pServer.instance.isSSL();
         int port = localEp.getPort();
-        final List<NetServer> servers = new ArrayList<>(2);
-        ServerEncryptionOptions options = ConfigDescriptor.getServerEncryptionOptions();
-        if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.none) {
-            NetServerOptions nso = NetFactory.getNetServerOptions(options);
-            nso.setHost(host);
-            nso.setPort(P2pServer.instance.getSSLPort());
-            NetServer server = vertx.createNetServer(nso);
-            servers.add(server);
-            logger.info("Starting Encrypted Messaging Service on SSL port {}", P2pServer.instance.getSSLPort());
-        }
-
-        if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.all) {
-            NetServerOptions nso = NetFactory.getNetServerOptions(null);
-            nso.setHost(host);
-            nso.setPort(port);
-            nso.setReuseAddress(true);
-            NetServer server = vertx.createNetServer(nso);
-            servers.add(server);
+        NetServerOptions nso;
+        if (ssl) {
+            ServerEncryptionOptions options = ConfigDescriptor.getServerEncryptionOptions();
+            nso = NetFactory.getNetServerOptions(options);
+            logger.info("Starting Encrypted Messaging Service on port {}", port);
+        } else {
+            nso = NetFactory.getNetServerOptions(null);
             logger.info("Starting Messaging Service on port {}", port);
         }
-        return servers;
+        nso.setHost(localEp.getHost());
+        nso.setPort(port);
+        NetServer server = vertx.createNetServer(nso);
+        return server;
     }
 
     private static Vertx vertx;
@@ -553,8 +539,7 @@ public final class MessagingService implements MessagingServiceMBean {
         final String remoteHostAndPort = resetEndpoint.getHostAndPort();
         TcpConnection asyncConnection = asyncConnections.get(remoteHostAndPort);
         if (asyncConnection == null) {
-            final int port = isEncryptedChannel(resetEndpoint) ? P2pServer.instance.getSSLPort()
-                    : resetEndpoint.getPort();
+            final int port = resetEndpoint.getPort();
             final String host = resetEndpoint.getHost();
             synchronized (TcpConnection.class) {
                 asyncConnection = asyncConnections.get(remoteHostAndPort);
@@ -597,27 +582,6 @@ public final class MessagingService implements MessagingServiceMBean {
         return asyncConnection;
     }
 
-    private static boolean isEncryptedChannel(NetEndpoint address) {
-        IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        switch (ConfigDescriptor.getServerEncryptionOptions().internode_encryption) {
-        case none:
-            return false; // if nothing needs to be encrypted then return immediately.
-        case all:
-            break;
-        case dc:
-            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(ConfigDescriptor.getLocalEndpoint())))
-                return false;
-            break;
-        case rack:
-            // for rack then check if the DC's are the same.
-            if (snitch.getRack(address).equals(snitch.getRack(ConfigDescriptor.getLocalEndpoint()))
-                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(ConfigDescriptor.getLocalEndpoint())))
-                return false;
-            break;
-        }
-        return true;
-    }
-
     public void destroyConnection(NetEndpoint to) {
         TcpConnection conn = connectionManagers.get(to);
         if (conn == null)
@@ -656,10 +620,8 @@ public final class MessagingService implements MessagingServiceMBean {
         // the important part
         callbacks.shutdownBlocking();
 
-        // attempt to humor tests that try to stop and restart MS
         try {
-            for (Server server : servers)
-                server.close();
+            server.close();
         } catch (IOException e) {
             throw new IOError(e);
         }

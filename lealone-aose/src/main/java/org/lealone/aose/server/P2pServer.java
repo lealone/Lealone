@@ -114,7 +114,7 @@ public class P2pServer extends NotificationBroadcasterSupport
 
     private String host = Constants.DEFAULT_HOST;
     private int port = Constants.DEFAULT_P2P_PORT;
-    private int sslPort = 5212;
+    private boolean ssl;
 
     private Integer localHostId;
     private Mode operationMode = Mode.STARTING;
@@ -658,8 +658,8 @@ public class P2pServer extends NotificationBroadcasterSupport
             host = config.get("host");
         if (config.containsKey("port"))
             port = Integer.parseInt(config.get("port"));
-        if (config.containsKey("ssl_port"))
-            sslPort = Integer.parseInt(config.get("ssl_port"));
+
+        ssl = Boolean.parseBoolean(config.get("ssl"));
 
         NetEndpoint.setLocalP2pEndpoint(host, port);
     }
@@ -685,8 +685,8 @@ public class P2pServer extends NotificationBroadcasterSupport
         return port;
     }
 
-    public int getSSLPort() {
-        return sslPort;
+    public boolean isSSL() {
+        return ssl;
     }
 
     @Override

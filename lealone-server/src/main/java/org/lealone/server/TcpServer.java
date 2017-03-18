@@ -77,7 +77,7 @@ public class TcpServer implements ProtocolServer {
 
     @Override
     public synchronized void start() {
-        server = NetFactory.createNetServer(vertx, options);
+        server = NetFactory.createNetServer(vertx, ssl ? options : null);
         server.connectHandler(socket -> {
             if (TcpServer.this.allow(socket)) {
                 AsyncConnection ac = new AsyncConnection(socket, true);
