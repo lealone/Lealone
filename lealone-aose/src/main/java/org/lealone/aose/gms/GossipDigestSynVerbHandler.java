@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.gms;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,13 +30,14 @@ import org.lealone.aose.net.MessageOut;
 import org.lealone.aose.net.MessagingService;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestSynVerbHandler.class);
 
     @Override
     public void doVerb(MessageIn<GossipDigestSyn> message, int id) {
-        InetAddress from = message.from;
+        NetEndpoint from = message.from;
         if (logger.isTraceEnabled())
             logger.trace("Received a GossipDigestSynMessage from {}", from);
         if (!Gossiper.instance.isEnabled()) {
@@ -67,7 +67,7 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
         doSort(gDigestList);
 
         List<GossipDigest> deltaGossipDigestList = new ArrayList<>();
-        Map<InetAddress, EndpointState> deltaEpStateMap = new HashMap<>();
+        Map<NetEndpoint, EndpointState> deltaEpStateMap = new HashMap<>();
         Gossiper.instance.examineGossiper(gDigestList, deltaGossipDigestList, deltaEpStateMap);
         if (logger.isTraceEnabled())
             logger.trace("sending {} digests and {} deltas", deltaGossipDigestList.size(), deltaEpStateMap.size());
@@ -81,13 +81,13 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
     /*
      * First construct a map whose key is the endpoint in the GossipDigest and the value is the
      * GossipDigest itself. Then build a list of version differences i.e difference between the
-     * version in the GossipDigest and the version in the local state for a given InetAddress.
+     * version in the GossipDigest and the version in the local state for a given NetEndpoint.
      * Sort this list. Now loop through the sorted list and retrieve the GossipDigest corresponding
      * to the endpoint from the map that was initially constructed.
     */
     private void doSort(List<GossipDigest> gDigestList) {
         /* Construct a map of endpoint to GossipDigest. */
-        Map<InetAddress, GossipDigest> epToDigestMap = new HashMap<>();
+        Map<NetEndpoint, GossipDigest> epToDigestMap = new HashMap<>();
         for (GossipDigest gDigest : gDigestList) {
             epToDigestMap.put(gDigest.getEndpoint(), gDigest);
         }
@@ -98,7 +98,7 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
         */
         List<GossipDigest> diffDigests = new ArrayList<>(gDigestList.size());
         for (GossipDigest gDigest : gDigestList) {
-            InetAddress ep = gDigest.getEndpoint();
+            NetEndpoint ep = gDigest.getEndpoint();
             EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);
             int version = (epState != null) ? Gossiper.instance.getMaxEndpointStateVersion(epState) : 0;
             int diffVersion = Math.abs(version - gDigest.getMaxVersion());

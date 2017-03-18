@@ -161,7 +161,6 @@ public class Lealone {
 
                     if (Config.getProperty("default.sql.engine") == null)
                         Config.setProperty("default.sql.engine", se.getName());
-
                     initPluggableEngine(se, def);
                 }
             }
@@ -181,6 +180,9 @@ public class Lealone {
                                     e);
                         }
                     }
+                    // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
+                    if (!def.getParameters().containsKey("host") && config.listen_address != null)
+                        def.getParameters().put("host", config.listen_address);
                     initPluggableEngine(pse, def);
                 }
             }
@@ -219,7 +221,6 @@ public class Lealone {
             parameters.put("host", config.listen_address);
         if (config.server_encryption_options.enabled)
             server.setServerEncryptionOptions(config.server_encryption_options);
-        server.init(parameters);
         server.start();
         final String name = server.getName();
         ShutdownHookUtils.addShutdownHook(server, () -> {

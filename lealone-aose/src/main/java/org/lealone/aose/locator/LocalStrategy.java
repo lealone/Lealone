@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,6 +25,7 @@ import java.util.Map;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.net.NetEndpoint;
 
 public class LocalStrategy extends AbstractReplicationStrategy {
     public LocalStrategy(String dbName, TopologyMetaData metaData, IEndpointSnitch snitch,
@@ -39,15 +39,15 @@ public class LocalStrategy extends AbstractReplicationStrategy {
      * LocalStrategy may be used before tokens are set up.
      */
     @Override
-    public ArrayList<InetAddress> getReplicationEndpoints(Integer hostId) {
-        ArrayList<InetAddress> l = new ArrayList<InetAddress>(1);
-        l.add(ConfigDescriptor.getLocalAddress());
+    public ArrayList<NetEndpoint> getReplicationEndpoints(Integer hostId) {
+        ArrayList<NetEndpoint> l = new ArrayList<NetEndpoint>(1);
+        l.add(ConfigDescriptor.getLocalEndpoint());
         return l;
     }
 
     @Override
-    public List<InetAddress> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metadata) {
-        return Collections.singletonList(ConfigDescriptor.getLocalAddress());
+    public List<NetEndpoint> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metadata) {
+        return Collections.singletonList(ConfigDescriptor.getLocalEndpoint());
     }
 
     @Override

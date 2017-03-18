@@ -17,9 +17,10 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.util.Collection;
 import java.util.List;
+
+import org.lealone.net.NetEndpoint;
 
 /**
  * This interface helps determine location of node in the data center relative to another node.
@@ -30,27 +31,27 @@ public interface IEndpointSnitch {
     /**
      * returns a String repesenting the rack this endpoint belongs to
      */
-    public String getRack(InetAddress endpoint);
+    public String getRack(NetEndpoint endpoint);
 
     /**
      * returns a String representing the datacenter this endpoint belongs to
      */
-    public String getDatacenter(InetAddress endpoint);
+    public String getDatacenter(NetEndpoint endpoint);
 
     /**
      * returns a new <tt>List</tt> sorted by proximity to the given endpoint
      */
-    public List<InetAddress> getSortedListByProximity(InetAddress address, Collection<InetAddress> unsortedAddress);
+    public List<NetEndpoint> getSortedListByProximity(NetEndpoint address, Collection<NetEndpoint> unsortedAddress);
 
     /**
      * This method will sort the <tt>List</tt> by proximity to the given address.
      */
-    public void sortByProximity(InetAddress address, List<InetAddress> addresses);
+    public void sortByProximity(NetEndpoint address, List<NetEndpoint> addresses);
 
     /**
      * compares two endpoints in relation to the target endpoint, returning as Comparator.compare would
      */
-    public int compareEndpoints(InetAddress target, InetAddress a1, InetAddress a2);
+    public int compareEndpoints(NetEndpoint target, NetEndpoint a1, NetEndpoint a2);
 
     /**
      * called after Gossiper instance exists immediately before it starts gossiping
@@ -61,5 +62,5 @@ public interface IEndpointSnitch {
      * Returns whether for a range query doing a query against merged is likely
      * to be faster than 2 sequential queries, one against l1 followed by one against l2.
      */
-    public boolean isWorthMergingForRangeQuery(List<InetAddress> merged, List<InetAddress> l1, List<InetAddress> l2);
+    public boolean isWorthMergingForRangeQuery(List<NetEndpoint> merged, List<NetEndpoint> l1, List<NetEndpoint> l2);
 }

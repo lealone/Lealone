@@ -17,7 +17,7 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
+import org.lealone.net.NetEndpoint;
 
 /**
  * A simple endpoint snitch implementation that assumes datacenter and rack information is encoded
@@ -25,12 +25,12 @@ import java.net.InetAddress;
  */
 public class RackInferringSnitch extends AbstractNetworkTopologySnitch {
     @Override
-    public String getRack(InetAddress endpoint) {
+    public String getRack(NetEndpoint endpoint) {
         return Integer.toString(endpoint.getAddress()[2] & 0xFF, 10);
     }
 
     @Override
-    public String getDatacenter(InetAddress endpoint) {
+    public String getDatacenter(NetEndpoint endpoint) {
         return Integer.toString(endpoint.getAddress()[1] & 0xFF, 10);
     }
 }

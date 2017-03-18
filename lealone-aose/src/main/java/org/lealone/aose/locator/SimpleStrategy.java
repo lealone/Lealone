@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.net.NetEndpoint;
 
 /**
  * This class returns the nodes responsible for a given
@@ -40,17 +40,17 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
     }
 
     @Override
-    public List<InetAddress> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metadata) {
+    public List<NetEndpoint> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metadata) {
         int replicas = getReplicationFactor();
         ArrayList<Integer> hostIds = metadata.sortedHostIds();
-        List<InetAddress> endpoints = new ArrayList<InetAddress>(replicas);
+        List<NetEndpoint> endpoints = new ArrayList<NetEndpoint>(replicas);
 
         if (hostIds.isEmpty())
             return endpoints;
 
         Iterator<Integer> iter = hostIds.iterator();
         while (endpoints.size() < replicas && iter.hasNext()) {
-            InetAddress ep = metadata.getEndpointForHostId(iter.next());
+            NetEndpoint ep = metadata.getEndpointForHostId(iter.next());
             if (!endpoints.contains(ep))
                 endpoints.add(ep);
         }

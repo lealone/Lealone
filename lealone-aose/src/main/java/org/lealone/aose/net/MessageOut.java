@@ -19,19 +19,19 @@ package org.lealone.aose.net;
 
 import java.io.DataOutput;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.Collections;
 import java.util.Map;
 
 import org.lealone.aose.concurrent.Stage;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.util.TypeSizes;
+import org.lealone.net.NetEndpoint;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 
 public class MessageOut<T> {
-    public final InetAddress from;
+    public final NetEndpoint from;
     public final MessagingService.Verb verb;
     public final T payload;
     public final IVersionedSerializer<T> serializer;
@@ -48,11 +48,11 @@ public class MessageOut<T> {
 
     private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
             Map<String, byte[]> parameters) {
-        this(ConfigDescriptor.getLocalAddress(), verb, payload, serializer, parameters);
+        this(ConfigDescriptor.getLocalEndpoint(), verb, payload, serializer, parameters);
     }
 
     @VisibleForTesting
-    public MessageOut(InetAddress from, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
+    public MessageOut(NetEndpoint from, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
             Map<String, byte[]> parameters) {
         this.from = from;
         this.verb = verb;

@@ -23,7 +23,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -44,6 +43,7 @@ import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 /**
  * This FailureDetector is an implementation of the paper titled
@@ -64,7 +64,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     // change.
     private final double PHI_FACTOR = 1.0 / Math.log(10.0); // 0.434...
 
-    private final Map<InetAddress, ArrivalWindow> arrivalSamples = new Hashtable<>();
+    private final Map<NetEndpoint, ArrivalWindow> arrivalSamples = new Hashtable<>();
     private final List<IFailureDetectionEventListener> fdEvntListeners = new CopyOnWriteArrayList<>();
 
     public FailureDetector() {
@@ -90,7 +90,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     @Override
     public String getAllEndpointStates() {
         StringBuilder sb = new StringBuilder();
-        for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
+        for (Map.Entry<NetEndpoint, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
             sb.append(entry.getKey()).append("\n");
             appendEndpointState(sb, entry.getValue());
         }
@@ -100,7 +100,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     @Override
     public Map<String, String> getSimpleStates() {
         Map<String, String> nodesStatus = new HashMap<>(Gossiper.instance.endpointStateMap.size());
-        for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
+        for (Map.Entry<NetEndpoint, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
             if (entry.getValue().isAlive())
                 nodesStatus.put(entry.getKey().toString(), "UP");
             else
@@ -112,7 +112,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     @Override
     public int getDownEndpointCount() {
         int count = 0;
-        for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
+        for (Map.Entry<NetEndpoint, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
             if (!entry.getValue().isAlive())
                 count++;
         }
@@ -122,7 +122,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     @Override
     public int getUpEndpointCount() {
         int count = 0;
-        for (Map.Entry<InetAddress, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
+        for (Map.Entry<NetEndpoint, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
             if (entry.getValue().isAlive())
                 count++;
         }
@@ -132,7 +132,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     @Override
     public String getEndpointState(String address) throws UnknownHostException {
         StringBuilder sb = new StringBuilder();
-        EndpointState endpointState = Gossiper.instance.getEndpointStateForEndpoint(InetAddress.getByName(address));
+        EndpointState endpointState = Gossiper.instance.getEndpointStateForEndpoint(NetEndpoint.getByName(address));
         appendEndpointState(sb, endpointState);
         return sb.toString();
     }
@@ -174,8 +174,8 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public boolean isAlive(InetAddress ep) {
-        if (ep.equals(ConfigDescriptor.getLocalAddress()))
+    public boolean isAlive(NetEndpoint ep) {
+        if (ep.equals(ConfigDescriptor.getLocalEndpoint()))
             return true;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);
@@ -188,7 +188,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public void report(InetAddress ep) {
+    public void report(NetEndpoint ep) {
         if (logger.isTraceEnabled())
             logger.trace("reporting {}", ep);
         long now = System.nanoTime();
@@ -204,7 +204,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public void interpret(InetAddress ep) {
+    public void interpret(NetEndpoint ep) {
         ArrivalWindow hbWnd = arrivalSamples.get(ep);
         if (hbWnd == null) {
             return;
@@ -224,7 +224,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public void forceConviction(InetAddress ep) {
+    public void forceConviction(NetEndpoint ep) {
         logger.debug("Forcing conviction of {}", ep);
         for (IFailureDetectionEventListener listener : fdEvntListeners) {
             listener.convict(ep, getPhiConvictThreshold());
@@ -232,7 +232,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public void remove(InetAddress ep) {
+    public void remove(NetEndpoint ep) {
         arrivalSamples.remove(ep);
     }
 
@@ -249,10 +249,10 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        Set<InetAddress> eps = arrivalSamples.keySet();
+        Set<NetEndpoint> eps = arrivalSamples.keySet();
 
         sb.append("-----------------------------------------------------------------------");
-        for (InetAddress ep : eps) {
+        for (NetEndpoint ep : eps) {
             ArrivalWindow hWnd = arrivalSamples.get(ep);
             sb.append(ep + " : ");
             sb.append(hWnd);

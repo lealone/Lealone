@@ -29,6 +29,6 @@ public class PullSchemaAckVerbHandler implements IVerbHandler<PullSchemaAck> {
         for (String sql : message.payload.sqls)
             s.prepareStatementLocal(sql).executeUpdate();
 
-        P2PServer.instance.pullSchemaFinished = true;
+        P2pServer.instance.pullSchemaFinished = true;
     }
 }

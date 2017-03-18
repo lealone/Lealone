@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,10 +28,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.FailureDetector;
-import org.lealone.aose.server.P2PServer;
+import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.util.Pair;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -44,10 +44,10 @@ public class TopologyMetaData {
     private static final Logger logger = LoggerFactory.getLogger(TopologyMetaData.class);
 
     /** Maintains endpoint to host ID map of every node in the cluster */
-    private final BiMap<InetAddress, Integer> endpointToHostIdMap;
+    private final BiMap<NetEndpoint, Integer> endpointToHostIdMap;
 
     // (don't need to record Token here since it's still part of tokenToEndpointMap until it's done leaving)
-    private final Set<InetAddress> leavingEndpoints = new HashSet<>();
+    private final Set<NetEndpoint> leavingEndpoints = new HashSet<>();
 
     /* Use this lock for manipulating the token map */
     private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
@@ -60,10 +60,10 @@ public class TopologyMetaData {
     private volatile long ringVersion = 0;
 
     public TopologyMetaData() {
-        this(HashBiMap.<InetAddress, Integer> create(), new Topology());
+        this(HashBiMap.<NetEndpoint, Integer> create(), new Topology());
     }
 
-    private TopologyMetaData(BiMap<InetAddress, Integer> endpointsMap, Topology topology) {
+    private TopologyMetaData(BiMap<NetEndpoint, Integer> endpointsMap, Topology topology) {
         this.topology = topology;
         endpointToHostIdMap = endpointsMap;
     }
@@ -75,13 +75,13 @@ public class TopologyMetaData {
      * @param hostId
      * @param endpoint
      */
-    public void updateHostId(Integer hostId, InetAddress endpoint) {
+    public void updateHostId(Integer hostId, NetEndpoint endpoint) {
         assert hostId != null;
         assert endpoint != null;
 
         lock.writeLock().lock();
         try {
-            InetAddress storedEp = endpointToHostIdMap.inverse().get(hostId);
+            NetEndpoint storedEp = endpointToHostIdMap.inverse().get(hostId);
             if (storedEp != null) {
                 if (!storedEp.equals(endpoint) && (FailureDetector.instance.isAlive(storedEp))) {
                     throw new RuntimeException(String.format(
@@ -100,7 +100,7 @@ public class TopologyMetaData {
     }
 
     /** Return the unique host ID for an end-point. */
-    public Integer getHostId(InetAddress endpoint) {
+    public Integer getHostId(NetEndpoint endpoint) {
         lock.readLock().lock();
         try {
             return endpointToHostIdMap.get(endpoint);
@@ -110,7 +110,7 @@ public class TopologyMetaData {
     }
 
     /** Return the end-point for a unique host ID */
-    public InetAddress getEndpointForHostId(Integer hostId) {
+    public NetEndpoint getEndpointForHostId(Integer hostId) {
         lock.readLock().lock();
         try {
             return endpointToHostIdMap.inverse().get(hostId);
@@ -120,10 +120,10 @@ public class TopologyMetaData {
     }
 
     /** @return a copy of the endpoint-to-id map for read-only operations */
-    public Map<InetAddress, Integer> getEndpointToHostIdMapForReading() {
+    public Map<NetEndpoint, Integer> getEndpointToHostIdMapForReading() {
         lock.readLock().lock();
         try {
-            Map<InetAddress, Integer> readMap = new HashMap<InetAddress, Integer>();
+            Map<NetEndpoint, Integer> readMap = new HashMap<NetEndpoint, Integer>();
             readMap.putAll(endpointToHostIdMap);
             return readMap;
         } finally {
@@ -131,7 +131,7 @@ public class TopologyMetaData {
         }
     }
 
-    public void addLeavingEndpoint(InetAddress endpoint) {
+    public void addLeavingEndpoint(NetEndpoint endpoint) {
         assert endpoint != null;
 
         lock.writeLock().lock();
@@ -142,7 +142,7 @@ public class TopologyMetaData {
         }
     }
 
-    public void removeEndpoint(InetAddress endpoint) {
+    public void removeEndpoint(NetEndpoint endpoint) {
         assert endpoint != null;
 
         lock.writeLock().lock();
@@ -156,7 +156,7 @@ public class TopologyMetaData {
         }
     }
 
-    public boolean isMember(InetAddress endpoint) {
+    public boolean isMember(NetEndpoint endpoint) {
         assert endpoint != null;
 
         lock.readLock().lock();
@@ -167,7 +167,7 @@ public class TopologyMetaData {
         }
     }
 
-    public boolean isLeaving(InetAddress endpoint) {
+    public boolean isLeaving(NetEndpoint endpoint) {
         assert endpoint != null;
 
         lock.readLock().lock();
@@ -218,7 +218,7 @@ public class TopologyMetaData {
         return new ArrayList<>(endpointToHostIdMap.inverse().keySet());
     }
 
-    public Set<InetAddress> getAllEndpoints() {
+    public Set<NetEndpoint> getAllEndpoints() {
         lock.readLock().lock();
         try {
             return ImmutableSet.copyOf(endpointToHostIdMap.keySet());
@@ -228,7 +228,7 @@ public class TopologyMetaData {
     }
 
     /** caller should not modify leavingEndpoints */
-    public Set<InetAddress> getLeavingEndpoints() {
+    public Set<NetEndpoint> getLeavingEndpoints() {
         lock.readLock().lock();
         try {
             return ImmutableSet.copyOf(leavingEndpoints);
@@ -259,7 +259,7 @@ public class TopologyMetaData {
             if (!leavingEndpoints.isEmpty()) {
                 sb.append("Leaving Endpoints:");
                 sb.append(lineSeparator);
-                for (InetAddress ep : leavingEndpoints) {
+                for (NetEndpoint ep : leavingEndpoints) {
                     sb.append(ep);
                     sb.append(lineSeparator);
                 }
@@ -278,7 +278,7 @@ public class TopologyMetaData {
      * when Topology methods are subsequently used by the caller.
      */
     public Topology getTopology() {
-        assert this != P2PServer.instance.getTopologyMetaData();
+        assert this != P2pServer.instance.getTopologyMetaData();
         return topology;
     }
 
@@ -308,11 +308,11 @@ public class TopologyMetaData {
      */
     public static class Topology {
         /** multi-map of DC to endpoints in that DC */
-        private final Multimap<String, InetAddress> dcEndpoints;
+        private final Multimap<String, NetEndpoint> dcEndpoints;
         /** map of DC to multi-map of rack to endpoints in that rack */
-        private final Map<String, Multimap<String, InetAddress>> dcRacks;
+        private final Map<String, Multimap<String, NetEndpoint>> dcRacks;
         /** reverse-lookup map for endpoint to current known dc/rack assignment */
-        private final Map<InetAddress, Pair<String, String>> currentLocations;
+        private final Map<NetEndpoint, Pair<String, String>> currentLocations;
 
         protected Topology() {
             dcEndpoints = HashMultimap.create();
@@ -340,7 +340,7 @@ public class TopologyMetaData {
         /**
          * Stores current DC/rack assignment for ep
          */
-        protected void addEndpoint(InetAddress ep) {
+        protected void addEndpoint(NetEndpoint ep) {
             IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
             String dc = snitch.getDatacenter(ep);
             String rack = snitch.getRack(ep);
@@ -355,7 +355,7 @@ public class TopologyMetaData {
             dcEndpoints.put(dc, ep);
 
             if (!dcRacks.containsKey(dc))
-                dcRacks.put(dc, HashMultimap.<String, InetAddress> create());
+                dcRacks.put(dc, HashMultimap.<String, NetEndpoint> create());
             dcRacks.get(dc).put(rack, ep);
 
             currentLocations.put(ep, Pair.create(dc, rack));
@@ -364,7 +364,7 @@ public class TopologyMetaData {
         /**
          * Removes current DC/rack assignment for ep
          */
-        protected void removeEndpoint(InetAddress ep) {
+        protected void removeEndpoint(NetEndpoint ep) {
             if (!currentLocations.containsKey(ep))
                 return;
             Pair<String, String> current = currentLocations.remove(ep);
@@ -375,14 +375,14 @@ public class TopologyMetaData {
         /**
          * @return multi-map of DC to endpoints in that DC
          */
-        public Multimap<String, InetAddress> getDatacenterEndpoints() {
+        public Multimap<String, NetEndpoint> getDatacenterEndpoints() {
             return dcEndpoints;
         }
 
         /**
          * @return map of DC to multi-map of rack to endpoints in that rack
          */
-        public Map<String, Multimap<String, InetAddress>> getDatacenterRacks() {
+        public Map<String, Multimap<String, NetEndpoint>> getDatacenterRacks() {
             return dcRacks;
         }
     }

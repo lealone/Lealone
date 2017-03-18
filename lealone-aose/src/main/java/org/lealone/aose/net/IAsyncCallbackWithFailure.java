@@ -17,11 +17,11 @@
  */
 package org.lealone.aose.net;
 
-import java.net.InetAddress;
+import org.lealone.net.NetEndpoint;
 
 public interface IAsyncCallbackWithFailure<T> extends IAsyncCallback<T> {
     /**
      * Called when there is an exception on the remote node or timeout happens
      */
-    public void onFailure(InetAddress from);
+    public void onFailure(NetEndpoint from);
 }

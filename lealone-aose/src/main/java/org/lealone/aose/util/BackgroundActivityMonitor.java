@@ -20,7 +20,6 @@ package org.lealone.aose.util;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -31,9 +30,10 @@ import org.lealone.aose.gms.ApplicationState;
 import org.lealone.aose.gms.EndpointState;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.gms.VersionedValue;
-import org.lealone.aose.server.P2PServer;
+import org.lealone.aose.server.P2pServer;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 import com.google.common.util.concurrent.AtomicDouble;
 
@@ -123,7 +123,7 @@ public class BackgroundActivityMonitor {
         return avg / NUM_CPUS;
     }
 
-    public double getSeverity(InetAddress endpoint) {
+    public double getSeverity(NetEndpoint endpoint) {
         VersionedValue event;
         EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
         if (state != null && (event = state.getApplicationState(ApplicationState.SEVERITY)) != null)
@@ -148,7 +148,7 @@ public class BackgroundActivityMonitor {
             if (!Gossiper.instance.isEnabled())
                 return;
             report += manual_severity.get(); // add manual severity setting.
-            VersionedValue updated = P2PServer.VALUE_FACTORY.severity(report);
+            VersionedValue updated = P2pServer.VALUE_FACTORY.severity(report);
             Gossiper.instance.addLocalApplicationState(ApplicationState.SEVERITY, updated);
         }
     }

@@ -20,7 +20,6 @@ package org.lealone.aose.net;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.InetAddress;
 
 import org.lealone.aose.concurrent.LealoneExecutorService;
 import org.lealone.aose.concurrent.StageManager;
@@ -32,6 +31,7 @@ import org.lealone.aose.util.JVMStabilityInspector;
 import org.lealone.db.Session;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
+import org.lealone.net.NetEndpoint;
 import org.lealone.net.Transfer;
 
 import io.vertx.core.net.NetSocket;
@@ -40,8 +40,8 @@ public class TcpConnection extends AsyncConnection {
 
     private Transfer transfer;
     private DataOutputStream out;
-    private InetAddress remoteEndpoint;
-    private InetAddress resetEndpoint; // pointer to the reset Address.
+    private NetEndpoint remoteEndpoint;
+    private NetEndpoint resetEndpoint; // pointer to the reset Address.
     private String hostAndPort;
     private int targetVersion;
     private int version;
@@ -64,9 +64,9 @@ public class TcpConnection extends AsyncConnection {
         metrics.timeouts.mark();
     }
 
-    InetAddress endpoint() {
-        if (remoteEndpoint.equals(ConfigDescriptor.getLocalAddress()))
-            return ConfigDescriptor.getLocalAddress();
+    NetEndpoint endpoint() {
+        if (remoteEndpoint.equals(ConfigDescriptor.getLocalEndpoint()))
+            return ConfigDescriptor.getLocalEndpoint();
         return resetEndpoint;
     }
 
@@ -92,7 +92,7 @@ public class TcpConnection extends AsyncConnection {
         closeSocket(false);
     }
 
-    void reset(InetAddress remoteEndpoint) {
+    void reset(NetEndpoint remoteEndpoint) {
         ClusterMetaData.updatePreferredIP(this.remoteEndpoint, remoteEndpoint);
         resetEndpoint = remoteEndpoint;
         // softCloseSocket();
@@ -102,7 +102,7 @@ public class TcpConnection extends AsyncConnection {
         metrics = new ConnectionMetrics(resetEndpoint);
     }
 
-    void initTransfer(InetAddress remoteEndpoint, String remoteHostAndPort, String localHostAndPort) throws Exception {
+    void initTransfer(NetEndpoint remoteEndpoint, String remoteHostAndPort, String localHostAndPort) throws Exception {
         if (transfer == null) {
             this.remoteEndpoint = remoteEndpoint;
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
@@ -135,9 +135,6 @@ public class TcpConnection extends AsyncConnection {
     private void readInitPacket(Transfer transfer, int sessionId) {
         try {
             if (this.transfer == null) {
-                remoteEndpoint = InetAddress.getByName(socket.remoteAddress().host());
-                resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-                metrics = new ConnectionMetrics(remoteEndpoint);
                 this.transfer = new Transfer(this, socket, (Session) null);
                 out = this.transfer.getDataOutputStream();
             }
@@ -146,6 +143,11 @@ public class TcpConnection extends AsyncConnection {
             version = transfer.readInt();
             transfer.readInt();
             hostAndPort = transfer.readString();
+            if (remoteEndpoint == null) {
+                remoteEndpoint = NetEndpoint.createP2P(hostAndPort);
+                resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
+                metrics = new ConnectionMetrics(remoteEndpoint);
+            }
             transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
             transfer.flush();
             MessagingService.instance().addConnection(this);
@@ -160,9 +162,9 @@ public class TcpConnection extends AsyncConnection {
                         && !isLocalDC(remoteEndpoint));
     }
 
-    private static boolean isLocalDC(InetAddress targetHost) {
+    private static boolean isLocalDC(NetEndpoint targetHost) {
         String remoteDC = ConfigDescriptor.getEndpointSnitch().getDatacenter(targetHost);
-        String localDC = ConfigDescriptor.getEndpointSnitch().getDatacenter(ConfigDescriptor.getLocalAddress());
+        String localDC = ConfigDescriptor.getEndpointSnitch().getDatacenter(ConfigDescriptor.getLocalEndpoint());
         return remoteDC.equals(localDC);
     }
 

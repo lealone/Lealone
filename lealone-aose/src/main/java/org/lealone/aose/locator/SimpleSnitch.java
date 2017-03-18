@@ -17,8 +17,9 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.util.List;
+
+import org.lealone.net.NetEndpoint;
 
 /**
  * A simple endpoint snitch implementation that treats Strategy order as proximity,
@@ -27,22 +28,22 @@ import java.util.List;
  */
 public class SimpleSnitch extends AbstractEndpointSnitch {
     @Override
-    public String getRack(InetAddress endpoint) {
+    public String getRack(NetEndpoint endpoint) {
         return "rack1";
     }
 
     @Override
-    public String getDatacenter(InetAddress endpoint) {
+    public String getDatacenter(NetEndpoint endpoint) {
         return "datacenter1";
     }
 
     @Override
-    public void sortByProximity(final InetAddress address, List<InetAddress> addresses) {
+    public void sortByProximity(final NetEndpoint address, List<NetEndpoint> addresses) {
         // Optimization to avoid walking the list
     }
 
     @Override
-    public int compareEndpoints(InetAddress target, InetAddress a1, InetAddress a2) {
+    public int compareEndpoints(NetEndpoint target, NetEndpoint a1, NetEndpoint a2) {
         // Making all endpoints equal ensures we won't change the original ordering (since
         // Collections.sort is guaranteed to be stable)
         return 0;

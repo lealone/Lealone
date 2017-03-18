@@ -17,7 +17,7 @@
  */
 package org.lealone.aose.net;
 
-import java.net.InetAddress;
+import org.lealone.net.NetEndpoint;
 
 /**
  * Encapsulates the callback information.
@@ -25,12 +25,12 @@ import java.net.InetAddress;
  * to be written due to a timeout in the response from a replica.
  */
 public class CallbackInfo {
-    protected final InetAddress target;
+    protected final NetEndpoint target;
     protected final IAsyncCallback<?> callback;
     protected final IVersionedSerializer<?> serializer;
     private final boolean failureCallback;
 
-    public CallbackInfo(InetAddress target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer) {
+    public CallbackInfo(NetEndpoint target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer) {
         this(target, callback, serializer, false);
     }
 
@@ -41,7 +41,7 @@ public class CallbackInfo {
      * @param callback
      * @param serializer serializer to deserialize response message
      */
-    public CallbackInfo(InetAddress target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer,
+    public CallbackInfo(NetEndpoint target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer,
             boolean failureCallback) {
         this.target = target;
         this.callback = callback;

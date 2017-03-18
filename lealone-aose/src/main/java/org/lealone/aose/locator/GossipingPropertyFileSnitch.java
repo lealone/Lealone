@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -26,13 +25,14 @@ import org.lealone.aose.gms.ApplicationState;
 import org.lealone.aose.gms.EndpointState;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.server.ClusterMetaData;
-import org.lealone.aose.server.P2PServer;
+import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.util.ResourceWatcher;
 import org.lealone.aose.util.Utils;
 import org.lealone.aose.util.WrappedRunnable;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
     private static final Logger logger = LoggerFactory.getLogger(GossipingPropertyFileSnitch.class);
@@ -43,7 +43,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
     private final AtomicReference<ReconnectableSnitchHelper> snitchHelperReference;
     private volatile boolean gossipStarted;
 
-    private Map<InetAddress, Map<String, String>> savedEndpoints;
+    private Map<NetEndpoint, Map<String, String>> savedEndpoints;
     private static final String DEFAULT_DC = "UNKNOWN_DC";
     private static final String DEFAULT_RACK = "UNKNOWN_RACK";
 
@@ -83,8 +83,8 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
      * @return string of data center
      */
     @Override
-    public String getDatacenter(InetAddress endpoint) {
-        if (endpoint.equals(ConfigDescriptor.getLocalAddress()))
+    public String getDatacenter(NetEndpoint endpoint) {
+        if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
             return myDC;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -105,8 +105,8 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
      * @return string of rack
      */
     @Override
-    public String getRack(InetAddress endpoint) {
-        if (endpoint.equals(ConfigDescriptor.getLocalAddress()))
+    public String getRack(NetEndpoint endpoint) {
+        if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
             return myRack;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -125,7 +125,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                P2PServer.VALUE_FACTORY.internalIP(ConfigDescriptor.getLocalAddress().getHostAddress()));
+                P2pServer.VALUE_FACTORY.internalIP(ConfigDescriptor.getLocalEndpoint().getHostAddress()));
 
         reloadGossiperState();
 
@@ -152,11 +152,11 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
 
             reloadGossiperState();
 
-            if (P2PServer.instance != null)
-                P2PServer.instance.getTopologyMetaData().invalidateCachedRings();
+            if (P2pServer.instance != null)
+                P2pServer.instance.getTopologyMetaData().invalidateCachedRings();
 
             if (gossipStarted)
-                P2PServer.instance.gossipSnitchInfo();
+                P2pServer.instance.gossipSnitchInfo();
         }
     }
 

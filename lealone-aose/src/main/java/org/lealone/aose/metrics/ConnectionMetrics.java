@@ -17,8 +17,9 @@
  */
 package org.lealone.aose.metrics;
 
-import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
+
+import org.lealone.net.NetEndpoint;
 
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
@@ -42,7 +43,7 @@ public class ConnectionMetrics {
      *
      * @param ip IP address to use for metrics label
      */
-    public ConnectionMetrics(InetAddress ip) {
+    public ConnectionMetrics(NetEndpoint ip) {
         // ipv6 addresses will contain colons, which are invalid in a JMX ObjectName
         String address = ip.getHostAddress().replaceAll(":", ".");
 

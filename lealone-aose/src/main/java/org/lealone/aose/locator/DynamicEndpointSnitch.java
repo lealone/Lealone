@@ -18,7 +18,6 @@
 package org.lealone.aose.locator;
 
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,8 +34,9 @@ import javax.management.ObjectName;
 import org.lealone.aose.concurrent.ScheduledExecutors;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.net.MessagingService;
-import org.lealone.aose.server.P2PServer;
+import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.util.Utils;
+import org.lealone.net.NetEndpoint;
 
 import com.yammer.metrics.stats.ExponentiallyDecayingSample;
 
@@ -59,8 +59,8 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
     private String mbeanName;
     private boolean registered = false;
 
-    private final ConcurrentHashMap<InetAddress, Double> scores = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<InetAddress, ExponentiallyDecayingSample> samples = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<NetEndpoint, Double> scores = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<NetEndpoint, ExponentiallyDecayingSample> samples = new ConcurrentHashMap<>();
 
     public final IEndpointSnitch subsnitch;
 
@@ -118,25 +118,25 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
     }
 
     @Override
-    public String getRack(InetAddress endpoint) {
+    public String getRack(NetEndpoint endpoint) {
         return subsnitch.getRack(endpoint);
     }
 
     @Override
-    public String getDatacenter(InetAddress endpoint) {
+    public String getDatacenter(NetEndpoint endpoint) {
         return subsnitch.getDatacenter(endpoint);
     }
 
     @Override
-    public List<InetAddress> getSortedListByProximity(final InetAddress address, Collection<InetAddress> addresses) {
-        List<InetAddress> list = new ArrayList<InetAddress>(addresses);
+    public List<NetEndpoint> getSortedListByProximity(final NetEndpoint address, Collection<NetEndpoint> addresses) {
+        List<NetEndpoint> list = new ArrayList<NetEndpoint>(addresses);
         sortByProximity(address, list);
         return list;
     }
 
     @Override
-    public void sortByProximity(final InetAddress address, List<InetAddress> addresses) {
-        assert address.equals(ConfigDescriptor.getLocalAddress()); // we only know about ourself
+    public void sortByProximity(final NetEndpoint address, List<NetEndpoint> addresses) {
+        assert address.equals(ConfigDescriptor.getLocalEndpoint()); // we only know about ourself
         if (BADNESS_THRESHOLD == 0) {
             sortByProximityWithScore(address, addresses);
         } else {
@@ -144,17 +144,17 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
         }
     }
 
-    private void sortByProximityWithScore(final InetAddress address, List<InetAddress> addresses) {
+    private void sortByProximityWithScore(final NetEndpoint address, List<NetEndpoint> addresses) {
         super.sortByProximity(address, addresses);
     }
 
-    private void sortByProximityWithBadness(final InetAddress address, List<InetAddress> addresses) {
+    private void sortByProximityWithBadness(final NetEndpoint address, List<NetEndpoint> addresses) {
         if (addresses.size() < 2)
             return;
 
         subsnitch.sortByProximity(address, addresses);
         ArrayList<Double> subsnitchOrderedScores = new ArrayList<>(addresses.size());
-        for (InetAddress inet : addresses) {
+        for (NetEndpoint inet : addresses) {
             Double score = scores.get(inet);
             if (score == null)
                 return;
@@ -177,7 +177,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
     }
 
     @Override
-    public int compareEndpoints(InetAddress target, InetAddress a1, InetAddress a2) {
+    public int compareEndpoints(NetEndpoint target, NetEndpoint a1, NetEndpoint a2) {
         Double scored1 = scores.get(a1);
         Double scored2 = scores.get(a2);
 
@@ -200,7 +200,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
     }
 
     @Override
-    public void receiveTiming(InetAddress host, long latency) // this is cheap
+    public void receiveTiming(NetEndpoint host, long latency) // this is cheap
     {
         ExponentiallyDecayingSample sample = samples.get(host);
         if (sample == null) {
@@ -214,7 +214,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
 
     private void updateScores() // this is expensive
     {
-        if (!P2PServer.instance.isStarted())
+        if (!P2pServer.instance.isStarted())
             return;
         if (!registered) {
             if (MessagingService.instance() != null) {
@@ -226,18 +226,18 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
         double maxLatency = 1;
         // We're going to weight the latency for each host against the worst one we see, to
         // arrive at sort of a 'badness percentage' for them. First, find the worst for each:
-        for (Map.Entry<InetAddress, ExponentiallyDecayingSample> entry : samples.entrySet()) {
+        for (Map.Entry<NetEndpoint, ExponentiallyDecayingSample> entry : samples.entrySet()) {
             double mean = entry.getValue().getSnapshot().getMedian();
             if (mean > maxLatency)
                 maxLatency = mean;
         }
         // now make another pass to do the weighting based on the maximums we found before
-        for (Map.Entry<InetAddress, ExponentiallyDecayingSample> entry : samples.entrySet()) {
+        for (Map.Entry<NetEndpoint, ExponentiallyDecayingSample> entry : samples.entrySet()) {
             double score = entry.getValue().getSnapshot().getMedian() / maxLatency;
             // finally, add the severity without any weighting,
             // since hosts scale this relative to their own load and the size of the task causing the severity.
             // "Severity" is basically a measure of compaction activity (lealone-3722).
-            score += P2PServer.instance.getSeverity(entry.getKey());
+            score += P2pServer.instance.getSeverity(entry.getKey());
             // lowest score (least amount of badness) wins.
             scores.put(entry.getKey(), score);
         }
@@ -249,7 +249,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
     }
 
     @Override
-    public Map<InetAddress, Double> getScores() {
+    public Map<NetEndpoint, Double> getScores() {
         return scores;
     }
 
@@ -275,7 +275,7 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
 
     @Override
     public List<Double> dumpTimings(String hostname) throws UnknownHostException {
-        InetAddress host = InetAddress.getByName(hostname);
+        NetEndpoint host = NetEndpoint.getByName(hostname);
         ArrayList<Double> timings = new ArrayList<Double>();
         ExponentiallyDecayingSample sample = samples.get(host);
         if (sample != null) {
@@ -287,16 +287,16 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
 
     @Override
     public void setSeverity(double severity) {
-        P2PServer.instance.reportManualSeverity(severity);
+        P2pServer.instance.reportManualSeverity(severity);
     }
 
     @Override
     public double getSeverity() {
-        return P2PServer.instance.getSeverity(ConfigDescriptor.getLocalAddress());
+        return P2pServer.instance.getSeverity(ConfigDescriptor.getLocalEndpoint());
     }
 
     @Override
-    public boolean isWorthMergingForRangeQuery(List<InetAddress> merged, List<InetAddress> l1, List<InetAddress> l2) {
+    public boolean isWorthMergingForRangeQuery(List<NetEndpoint> merged, List<NetEndpoint> l1, List<NetEndpoint> l2) {
         if (!subsnitch.isWorthMergingForRangeQuery(merged, l1, l2))
             return false;
 
@@ -315,9 +315,9 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
     }
 
     // Return the max score for the endpoint in the provided list, or -1.0 if no node have a score.
-    private double maxScore(List<InetAddress> endpoints) {
+    private double maxScore(List<NetEndpoint> endpoints) {
         double maxScore = -1.0;
-        for (InetAddress endpoint : endpoints) {
+        for (NetEndpoint endpoint : endpoints) {
             Double score = scores.get(endpoint);
             if (score == null)
                 continue;

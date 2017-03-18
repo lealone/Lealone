@@ -435,6 +435,10 @@ public class StringUtils {
         return s;
     }
 
+    public static String[] arraySplit(String s, char separatorChar) {
+        return arraySplit(s, separatorChar, true);
+    }
+
     /**
      * Split a string into an array of strings using the given separator. A null
      * string will result in a null array, and an empty string in a zero element

@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,6 +34,7 @@ import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 import com.google.common.collect.Multimap;
 
@@ -84,19 +84,19 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
      */
     @Override
     @SuppressWarnings("serial")
-    public List<InetAddress> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metaData) {
+    public List<NetEndpoint> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metaData) {
         // we want to preserve insertion order so that the first added endpoint becomes primary
-        Set<InetAddress> replicas = new LinkedHashSet<>();
+        Set<NetEndpoint> replicas = new LinkedHashSet<>();
         // replicas we have found in each DC
-        Map<String, Set<InetAddress>> dcReplicas = new HashMap<>(datacenters.size());
+        Map<String, Set<NetEndpoint>> dcReplicas = new HashMap<>(datacenters.size());
         for (Map.Entry<String, Integer> dc : datacenters.entrySet())
-            dcReplicas.put(dc.getKey(), new HashSet<InetAddress>(dc.getValue()));
+            dcReplicas.put(dc.getKey(), new HashSet<NetEndpoint>(dc.getValue()));
 
         Topology topology = metaData.getTopology();
         // all endpoints in each DC, so we can check when we have exhausted all the members of a DC
-        Multimap<String, InetAddress> allEndpoints = topology.getDatacenterEndpoints();
+        Multimap<String, NetEndpoint> allEndpoints = topology.getDatacenterEndpoints();
         // all racks in a DC so we can check when we have exhausted all racks in a DC
-        Map<String, Multimap<String, InetAddress>> racks = topology.getDatacenterRacks();
+        Map<String, Multimap<String, NetEndpoint>> racks = topology.getDatacenterRacks();
         assert !allEndpoints.isEmpty() && !racks.isEmpty() : "not aware of any cluster members";
 
         // tracks the racks we have already placed replicas in
@@ -107,15 +107,15 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         // tracks the endpoints that we skipped over while looking for unique racks
         // when we relax the rack uniqueness we can append this to the current result
         // so we don't have to wind back the iterator
-        Map<String, Set<InetAddress>> skippedDcEndpoints = new HashMap<>(datacenters.size());
+        Map<String, Set<NetEndpoint>> skippedDcEndpoints = new HashMap<>(datacenters.size());
         for (Map.Entry<String, Integer> dc : datacenters.entrySet())
-            skippedDcEndpoints.put(dc.getKey(), new LinkedHashSet<InetAddress>());
+            skippedDcEndpoints.put(dc.getKey(), new LinkedHashSet<NetEndpoint>());
 
         ArrayList<Integer> hostIds = metaData.sortedHostIds();
         Iterator<Integer> tokenIter = hostIds.iterator();
         while (tokenIter.hasNext() && !hasSufficientReplicas(dcReplicas, allEndpoints)) {
             Integer next = tokenIter.next();
-            InetAddress ep = metaData.getEndpointForHostId(next);
+            NetEndpoint ep = metaData.getEndpointForHostId(next);
             String dc = snitch.getDatacenter(ep);
             // have we already found all replicas for this dc?
             if (!datacenters.containsKey(dc) || hasSufficientReplicas(dc, dcReplicas, allEndpoints))
@@ -135,9 +135,9 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
                     seenRacks.get(dc).add(rack);
                     // if we've run out of distinct racks, add the hosts we skipped past already (up to RF)
                     if (seenRacks.get(dc).size() == racks.get(dc).keySet().size()) {
-                        Iterator<InetAddress> skippedIt = skippedDcEndpoints.get(dc).iterator();
+                        Iterator<NetEndpoint> skippedIt = skippedDcEndpoints.get(dc).iterator();
                         while (skippedIt.hasNext() && !hasSufficientReplicas(dc, dcReplicas, allEndpoints)) {
-                            InetAddress nextSkipped = skippedIt.next();
+                            NetEndpoint nextSkipped = skippedIt.next();
                             dcReplicas.get(dc).add(nextSkipped);
                             replicas.add(nextSkipped);
                         }
@@ -146,16 +146,16 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
             }
         }
 
-        return new ArrayList<InetAddress>(replicas);
+        return new ArrayList<NetEndpoint>(replicas);
     }
 
-    private boolean hasSufficientReplicas(String dc, Map<String, Set<InetAddress>> dcReplicas,
-            Multimap<String, InetAddress> allEndpoints) {
+    private boolean hasSufficientReplicas(String dc, Map<String, Set<NetEndpoint>> dcReplicas,
+            Multimap<String, NetEndpoint> allEndpoints) {
         return dcReplicas.get(dc).size() >= Math.min(allEndpoints.get(dc).size(), getReplicationFactor(dc));
     }
 
-    private boolean hasSufficientReplicas(Map<String, Set<InetAddress>> dcReplicas,
-            Multimap<String, InetAddress> allEndpoints) {
+    private boolean hasSufficientReplicas(Map<String, Set<NetEndpoint>> dcReplicas,
+            Multimap<String, NetEndpoint> allEndpoints) {
         for (String dc : datacenters.keySet())
             if (!hasSufficientReplicas(dc, dcReplicas, allEndpoints))
                 return false;

@@ -17,7 +17,7 @@
  */
 package org.lealone.aose.gms;
 
-import java.net.InetAddress;
+import org.lealone.net.NetEndpoint;
 
 /**
  * An interface that provides an application with the ability
@@ -33,7 +33,7 @@ public interface IFailureDetector {
      * @param ep endpoint in question.
      * @return true if UP and false if DOWN.
      */
-    public boolean isAlive(InetAddress ep);
+    public boolean isAlive(NetEndpoint ep);
 
     /**
      * This method is invoked by any entity wanting to interrogate the status of an endpoint.
@@ -42,7 +42,7 @@ public interface IFailureDetector {
      * <p/>
      * param ep endpoint for which we interpret the inter arrival times.
      */
-    public void interpret(InetAddress ep);
+    public void interpret(NetEndpoint ep);
 
     /**
      * This method is invoked by the receiver of the heartbeat. In our case it would be
@@ -51,17 +51,17 @@ public interface IFailureDetector {
      * <p/>
      * param ep endpoint being reported.
      */
-    public void report(InetAddress ep);
+    public void report(NetEndpoint ep);
 
     /**
      * remove endpoint from failure detector
      */
-    public void remove(InetAddress ep);
+    public void remove(NetEndpoint ep);
 
     /**
      * force conviction of endpoint in the failure detector
      */
-    public void forceConviction(InetAddress ep);
+    public void forceConviction(NetEndpoint ep);
 
     /**
      * Register interest for Failure Detector events.

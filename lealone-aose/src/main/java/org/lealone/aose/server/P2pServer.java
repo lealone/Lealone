@@ -17,8 +17,6 @@
  */
 package org.lealone.aose.server;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -54,6 +52,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
+import org.lealone.net.NetEndpoint;
 import org.lealone.server.ProtocolServer;
 
 /**
@@ -65,13 +64,13 @@ import org.lealone.server.ProtocolServer;
  * @author Cassandra Group
  * @author zhh
  */
-public class P2PServer extends NotificationBroadcasterSupport
+public class P2pServer extends NotificationBroadcasterSupport
         implements IEndpointStateChangeSubscriber, ProtocolServer {
 
-    private static final Logger logger = LoggerFactory.getLogger(P2PServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(P2pServer.class);
     private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
 
-    public static final P2PServer instance = new P2PServer();
+    public static final P2pServer instance = new P2pServer();
     public static final VersionedValueFactory VALUE_FACTORY = new VersionedValueFactory();
     public static final int RING_DELAY = getRingDelay(); // delay after which we assume ring has stablized
 
@@ -107,14 +106,14 @@ public class P2PServer extends NotificationBroadcasterSupport
 
     private final TopologyMetaData topologyMetaData = new TopologyMetaData();
     private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
-    private final Set<InetAddress> replicatingNodes = Collections.synchronizedSet(new HashSet<InetAddress>());
+    private final Set<NetEndpoint> replicatingNodes = Collections.synchronizedSet(new HashSet<NetEndpoint>());
 
     // private final JMXProgressSupport progressSupport = new JMXProgressSupport(this);
 
     private boolean started;
 
     private String host = Constants.DEFAULT_HOST;
-    private int port = 5211;
+    private int port = Constants.DEFAULT_P2P_PORT;
     private int sslPort = 5212;
 
     private Integer localHostId;
@@ -123,7 +122,7 @@ public class P2PServer extends NotificationBroadcasterSupport
     public volatile boolean pullSchemaFinished;
     private ServerEncryptionOptions options;
 
-    private P2PServer() {
+    private P2pServer() {
     }
 
     public Integer getLocalHostId() {
@@ -144,9 +143,9 @@ public class P2PServer extends NotificationBroadcasterSupport
     private void loadRingState() {
         if (Boolean.parseBoolean(Config.getProperty("load.ring.state", "true"))) {
             logger.info("Loading persisted ring state");
-            Map<InetAddress, Integer> loadedHostIds = ClusterMetaData.loadHostIds();
-            for (InetAddress ep : loadedHostIds.keySet()) {
-                if (ep.equals(ConfigDescriptor.getLocalAddress())) {
+            Map<NetEndpoint, Integer> loadedHostIds = ClusterMetaData.loadHostIds();
+            for (NetEndpoint ep : loadedHostIds.keySet()) {
+                if (ep.equals(ConfigDescriptor.getLocalEndpoint())) {
                     // entry has been mistakenly added, delete it
                     ClusterMetaData.removeEndpoint(ep);
                 } else {
@@ -159,18 +158,19 @@ public class P2PServer extends NotificationBroadcasterSupport
 
     private void prepareToJoin() throws ConfigurationException {
         localHostId = ClusterMetaData.getLocalHostId();
-        topologyMetaData.updateHostId(localHostId, ConfigDescriptor.getLocalAddress());
+        topologyMetaData.updateHostId(localHostId, ConfigDescriptor.getLocalEndpoint());
 
         Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
         appStates.put(ApplicationState.NET_VERSION, VALUE_FACTORY.networkVersion());
         appStates.put(ApplicationState.HOST_ID, VALUE_FACTORY.hostId(localHostId));
-        appStates.put(ApplicationState.RPC_ADDRESS, VALUE_FACTORY.rpcAddress(ConfigDescriptor.getLocalAddress()));
+        appStates.put(ApplicationState.TCP_ENDPOINT, VALUE_FACTORY.endpoint(NetEndpoint.getLocalTcpEndpoint()));
+        appStates.put(ApplicationState.P2P_ENDPOINT, VALUE_FACTORY.endpoint(NetEndpoint.getLocalP2pEndpoint()));
         appStates.put(ApplicationState.RELEASE_VERSION, VALUE_FACTORY.releaseVersion());
         appStates.put(ApplicationState.DC, getDatacenter());
         appStates.put(ApplicationState.RACK, getRack());
 
         // 先启动Gossiper再启动Gossiper
-        MessagingService.instance().start(ConfigDescriptor.getLocalAddress(), config);
+        MessagingService.instance().start(ConfigDescriptor.getLocalEndpoint(), config);
 
         logger.info("Starting up server gossip");
         Gossiper.instance.register(this);
@@ -187,13 +187,13 @@ public class P2PServer extends NotificationBroadcasterSupport
 
     private VersionedValue getDatacenter() {
         IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        String dc = snitch.getDatacenter(ConfigDescriptor.getLocalAddress());
+        String dc = snitch.getDatacenter(ConfigDescriptor.getLocalEndpoint());
         return VALUE_FACTORY.datacenter(dc);
     }
 
     private VersionedValue getRack() {
         IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        String rack = snitch.getRack(ConfigDescriptor.getLocalAddress());
+        String rack = snitch.getRack(ConfigDescriptor.getLocalEndpoint());
         return VALUE_FACTORY.rack(rack);
     }
 
@@ -207,7 +207,7 @@ public class P2PServer extends NotificationBroadcasterSupport
     // private void pullSchema() {
     // pullSchemaFinished = false;
     //
-    // InetAddress seed = Gossiper.instance.getLiveSeedEndpoint();
+    // NetEndpoint seed = Gossiper.instance.getLiveSeedEndpoint();
     // MessageOut<PullSchema> message = new MessageOut<>(MessagingService.Verb.PULL_SCHEMA, new PullSchema(),
     // PullSchema.serializer);
     // MessagingService.instance().sendOneWay(message, seed);
@@ -279,29 +279,29 @@ public class P2PServer extends NotificationBroadcasterSupport
         bgMonitor.incrManualSeverity(incr);
     }
 
-    public double getSeverity(InetAddress endpoint) {
+    public double getSeverity(NetEndpoint endpoint) {
         return bgMonitor.getSeverity(endpoint);
     }
 
     public String getLocalHostIdAsString() {
-        return topologyMetaData.getHostId(ConfigDescriptor.getLocalAddress()).toString();
+        return topologyMetaData.getHostId(ConfigDescriptor.getLocalEndpoint()).toString();
     }
 
     public Map<String, String> getHostIdMap() {
         Map<String, String> mapOut = new HashMap<>();
-        for (Map.Entry<InetAddress, Integer> entry : topologyMetaData.getEndpointToHostIdMapForReading().entrySet())
+        for (Map.Entry<NetEndpoint, Integer> entry : topologyMetaData.getEndpointToHostIdMapForReading().entrySet())
             mapOut.put(entry.getKey().getHostAddress(), entry.getValue().toString());
         return mapOut;
     }
 
     @Override
-    public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
+    public void beforeChange(NetEndpoint endpoint, EndpointState currentState, ApplicationState newStateKey,
             VersionedValue newValue) {
         // no-op
     }
 
     @Override
-    public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value) {
+    public void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
         if (state == ApplicationState.STATUS) {
             String apStateValue = value.value;
             String[] pieces = apStateValue.split(VersionedValue.DELIMITER_STR, -1);
@@ -331,12 +331,12 @@ public class P2PServer extends NotificationBroadcasterSupport
                 return;
             }
 
-            if (!endpoint.equals(ConfigDescriptor.getLocalAddress()))
+            if (!endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
                 updatePeerInfo(endpoint, state, value);
         }
     }
 
-    private void updatePeerInfo(InetAddress endpoint, ApplicationState state, VersionedValue value) {
+    private void updatePeerInfo(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
         switch (state) {
         case RELEASE_VERSION:
             ClusterMetaData.updatePeerInfo(endpoint, "release_version", value.value);
@@ -347,12 +347,12 @@ public class P2PServer extends NotificationBroadcasterSupport
         case RACK:
             ClusterMetaData.updatePeerInfo(endpoint, "rack", value.value);
             break;
-        case RPC_ADDRESS:
-            try {
-                ClusterMetaData.updatePeerInfo(endpoint, "rpc_address", InetAddress.getByName(value.value));
-            } catch (UnknownHostException e) {
-                throw new RuntimeException(e);
-            }
+        case TCP_ENDPOINT:
+            ClusterMetaData.updatePeerInfo(endpoint, "tcp_endpoint", value.value);
+            endpoint.setTcpHostAndPort(value.value);
+            break;
+        case P2P_ENDPOINT:
+            ClusterMetaData.updatePeerInfo(endpoint, "p2p_endpoint", value.value);
             break;
         case SCHEMA:
             ClusterMetaData.updatePeerInfo(endpoint, "db_version", UUID.fromString(value.value));
@@ -363,8 +363,8 @@ public class P2PServer extends NotificationBroadcasterSupport
         }
     }
 
-    private void updatePeerInfo(InetAddress endpoint) {
-        if (endpoint.equals(ConfigDescriptor.getLocalAddress()))
+    private void updatePeerInfo(NetEndpoint endpoint) {
+        if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
             return;
 
         EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
@@ -379,8 +379,8 @@ public class P2PServer extends NotificationBroadcasterSupport
      *
      * @param endpoint node
      */
-    private void handleStateNormal(final InetAddress endpoint) {
-        Set<InetAddress> endpointsToRemove = new HashSet<>();
+    private void handleStateNormal(final NetEndpoint endpoint) {
+        Set<NetEndpoint> endpointsToRemove = new HashSet<>();
 
         if (topologyMetaData.isMember(endpoint))
             logger.info("Node {} state jump to normal", endpoint);
@@ -389,10 +389,10 @@ public class P2PServer extends NotificationBroadcasterSupport
         // Order Matters, TM.updateHostID() should be called before TM.updateNormalToken(), (see Cassandra-4300).
         if (Gossiper.instance.usesHostId(endpoint)) {
             Integer hostId = Gossiper.instance.getHostId(endpoint);
-            InetAddress existing = topologyMetaData.getEndpointForHostId(hostId);
+            NetEndpoint existing = topologyMetaData.getEndpointForHostId(hostId);
 
             if (existing != null && !existing.equals(endpoint)) {
-                if (existing.equals(ConfigDescriptor.getLocalAddress())) {
+                if (existing.equals(ConfigDescriptor.getLocalEndpoint())) {
                     logger.warn("Not updating host ID {} for {} because it's mine", hostId, endpoint);
                     topologyMetaData.removeEndpoint(endpoint);
                     endpointsToRemove.add(endpoint);
@@ -421,7 +421,7 @@ public class P2PServer extends NotificationBroadcasterSupport
      *
      * @param endpoint node
      */
-    private void handleStateLeaving(InetAddress endpoint) {
+    private void handleStateLeaving(NetEndpoint endpoint) {
         if (!topologyMetaData.isMember(endpoint)) {
             logger.info("Node {} state jump to leaving", endpoint);
         }
@@ -436,7 +436,7 @@ public class P2PServer extends NotificationBroadcasterSupport
      * @param endpoint If reason for leaving is decommission, endpoint is the leaving node.
      * @param pieces STATE_LEFT,token
      */
-    private void handleStateLeft(InetAddress endpoint, String[] pieces) {
+    private void handleStateLeft(NetEndpoint endpoint, String[] pieces) {
         excise(endpoint, extractExpireTime(pieces));
     }
 
@@ -446,10 +446,10 @@ public class P2PServer extends NotificationBroadcasterSupport
      * @param endpoint node
      * @param pieces either REMOVED_TOKEN (node is gone) or REMOVING_TOKEN (replicas need to be restored)
      */
-    private void handleStateRemoving(InetAddress endpoint, String[] pieces) {
+    private void handleStateRemoving(NetEndpoint endpoint, String[] pieces) {
         assert (pieces.length > 0);
 
-        if (endpoint.equals(ConfigDescriptor.getLocalAddress())) {
+        if (endpoint.equals(ConfigDescriptor.getLocalEndpoint())) {
             logger.info(
                     "Received removenode gossip about myself. Is this node rejoining after an explicit removenode?");
             try {
@@ -476,7 +476,7 @@ public class P2PServer extends NotificationBroadcasterSupport
         }
     }
 
-    private void excise(InetAddress endpoint) {
+    private void excise(NetEndpoint endpoint) {
         logger.info("Removing endpoint {} ", endpoint);
         removeEndpoint(endpoint);
         topologyMetaData.removeEndpoint(endpoint);
@@ -485,18 +485,18 @@ public class P2PServer extends NotificationBroadcasterSupport
             subscriber.onLeaveCluster(endpoint);
     }
 
-    private void excise(InetAddress endpoint, long expireTime) {
+    private void excise(NetEndpoint endpoint, long expireTime) {
         addExpireTimeIfFound(endpoint, expireTime);
         excise(endpoint);
     }
 
     /** unlike excise we just need this endpoint gone without going through any notifications **/
-    private void removeEndpoint(InetAddress endpoint) {
+    private void removeEndpoint(NetEndpoint endpoint) {
         Gossiper.instance.removeEndpoint(endpoint);
         ClusterMetaData.removeEndpoint(endpoint);
     }
 
-    private void addExpireTimeIfFound(InetAddress endpoint, long expireTime) {
+    private void addExpireTimeIfFound(NetEndpoint endpoint, long expireTime) {
         if (expireTime != 0L) {
             Gossiper.instance.addExpireTimeForEndpoint(endpoint, expireTime);
         }
@@ -507,14 +507,14 @@ public class P2PServer extends NotificationBroadcasterSupport
     }
 
     @Override
-    public void onJoin(InetAddress endpoint, EndpointState epState) {
+    public void onJoin(NetEndpoint endpoint, EndpointState epState) {
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
             onChange(endpoint, entry.getKey(), entry.getValue());
         }
     }
 
     @Override
-    public void onAlive(InetAddress endpoint, EndpointState state) {
+    public void onAlive(NetEndpoint endpoint, EndpointState state) {
         if (topologyMetaData.isMember(endpoint)) {
             for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
                 subscriber.onUp(endpoint);
@@ -522,19 +522,19 @@ public class P2PServer extends NotificationBroadcasterSupport
     }
 
     @Override
-    public void onRemove(InetAddress endpoint) {
+    public void onRemove(NetEndpoint endpoint) {
         topologyMetaData.removeEndpoint(endpoint);
     }
 
     @Override
-    public void onDead(InetAddress endpoint, EndpointState state) {
+    public void onDead(NetEndpoint endpoint, EndpointState state) {
         MessagingService.instance().convict(endpoint);
         for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
             subscriber.onDown(endpoint);
     }
 
     @Override
-    public void onRestart(InetAddress endpoint, EndpointState state) {
+    public void onRestart(NetEndpoint endpoint, EndpointState state) {
         // If we have restarted before the node was even marked down, we need to reset the connection pool
         if (state.isAlive())
             onDead(endpoint, state);
@@ -552,11 +552,11 @@ public class P2PServer extends NotificationBroadcasterSupport
 
     public Map<String, String> getLoadMap() {
         Map<String, String> map = new HashMap<>();
-        for (Map.Entry<InetAddress, Double> entry : LoadBroadcaster.instance.getLoadInfo().entrySet()) {
+        for (Map.Entry<NetEndpoint, Double> entry : LoadBroadcaster.instance.getLoadInfo().entrySet()) {
             map.put(entry.getKey().getHostAddress(), FileUtils.stringifyFileSize(entry.getValue()));
         }
         // gossiper doesn't see its own updates, so we need to special-case the local node
-        map.put(ConfigDescriptor.getLocalAddress().getHostAddress(), getLoadString());
+        map.put(ConfigDescriptor.getLocalEndpoint().getHostAddress(), getLoadString());
         return map;
     }
 
@@ -576,9 +576,9 @@ public class P2PServer extends NotificationBroadcasterSupport
         return stringify(Gossiper.instance.getUnreachableMembers());
     }
 
-    private List<String> stringify(Iterable<InetAddress> endpoints) {
+    private List<String> stringify(Iterable<NetEndpoint> endpoints) {
         List<String> stringEndpoints = new ArrayList<>();
-        for (InetAddress ep : endpoints) {
+        for (NetEndpoint ep : endpoints) {
             stringEndpoints.add(ep.getHostAddress());
         }
         return stringEndpoints;
@@ -592,7 +592,7 @@ public class P2PServer extends NotificationBroadcasterSupport
      * @param pos position for which we need to find the endpoint
      * @return the endpoint responsible for this token
      */
-    public List<InetAddress> getReplicationEndpoints(Database db, Integer hostId) {
+    public List<NetEndpoint> getReplicationEndpoints(Database db, Integer hostId) {
         return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId);
     }
 
@@ -605,11 +605,11 @@ public class P2PServer extends NotificationBroadcasterSupport
      * @return the endpoint responsible for this key
      */
 
-    public List<InetAddress> getLiveReplicationEndpoints(Database db, Integer hostId) {
-        List<InetAddress> endpoints = ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId);
-        List<InetAddress> liveEps = new ArrayList<>(endpoints.size());
+    public List<NetEndpoint> getLiveReplicationEndpoints(Database db, Integer hostId) {
+        List<NetEndpoint> endpoints = ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId);
+        List<NetEndpoint> liveEps = new ArrayList<>(endpoints.size());
 
-        for (InetAddress endpoint : endpoints) {
+        for (NetEndpoint endpoint : endpoints) {
             if (FailureDetector.instance.isAlive(endpoint))
                 liveEps.add(endpoint);
         }
@@ -637,7 +637,7 @@ public class P2PServer extends NotificationBroadcasterSupport
         return operationMode == Mode.STARTING;
     }
 
-    public void confirmReplication(InetAddress node) {
+    public void confirmReplication(NetEndpoint node) {
         // replicatingNodes can be empty in the case where this node used to be a removal coordinator,
         // but restarted before all 'replication finished' messages arrived. In that case, we'll
         // still go ahead and acknowledge it.
@@ -660,6 +660,8 @@ public class P2PServer extends NotificationBroadcasterSupport
             port = Integer.parseInt(config.get("port"));
         if (config.containsKey("ssl_port"))
             sslPort = Integer.parseInt(config.get("ssl_port"));
+
+        NetEndpoint.setLocalP2pEndpoint(host, port);
     }
 
     @Override

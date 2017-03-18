@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 import org.lealone.aose.gms.ApplicationState;
@@ -27,6 +26,7 @@ import org.lealone.aose.gms.VersionedValue;
 import org.lealone.aose.net.MessagingService;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 /**
  * Sidekick helper for snitches that want to reconnect from one IP addr for a node to another.
@@ -45,9 +45,9 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
         this.preferLocal = preferLocal;
     }
 
-    private void reconnect(InetAddress publicAddress, VersionedValue localAddressValue) {
+    private void reconnect(NetEndpoint publicAddress, VersionedValue localAddressValue) {
         try {
-            InetAddress localAddress = InetAddress.getByName(localAddressValue.value);
+            NetEndpoint localAddress = NetEndpoint.getByName(localAddressValue.value);
 
             if (snitch.getDatacenter(publicAddress).equals(localDc)
                     && MessagingService.instance().getVersion(publicAddress) == MessagingService.CURRENT_VERSION
@@ -65,36 +65,36 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
     }
 
     @Override
-    public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value) {
+    public void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
         if (preferLocal && state == ApplicationState.INTERNAL_IP)
             reconnect(endpoint, value);
     }
 
     @Override
-    public void onJoin(InetAddress endpoint, EndpointState epState) {
+    public void onJoin(NetEndpoint endpoint, EndpointState epState) {
         if (preferLocal && epState.getApplicationState(ApplicationState.INTERNAL_IP) != null)
             reconnect(endpoint, epState.getApplicationState(ApplicationState.INTERNAL_IP));
     }
 
     @Override
-    public void onAlive(InetAddress endpoint, EndpointState state) {
+    public void onAlive(NetEndpoint endpoint, EndpointState state) {
         onJoin(endpoint, state);
     }
 
     @Override
-    public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
+    public void beforeChange(NetEndpoint endpoint, EndpointState currentState, ApplicationState newStateKey,
             VersionedValue newValue) {
     }
 
     @Override
-    public void onDead(InetAddress endpoint, EndpointState state) {
+    public void onDead(NetEndpoint endpoint, EndpointState state) {
     }
 
     @Override
-    public void onRemove(InetAddress endpoint) {
+    public void onRemove(NetEndpoint endpoint) {
     }
 
     @Override
-    public void onRestart(InetAddress endpoint, EndpointState state) {
+    public void onRestart(NetEndpoint endpoint, EndpointState state) {
     }
 }

@@ -26,7 +26,7 @@ import org.lealone.storage.type.DataType;
 public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     /**
-     * The spatial key type.
+     * The spatial key type. 
      */
     final SpatialDataType keyType;
 

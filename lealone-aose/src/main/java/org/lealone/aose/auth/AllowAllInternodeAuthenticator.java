@@ -18,13 +18,12 @@
  */
 package org.lealone.aose.auth;
 
-import java.net.InetAddress;
-
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.net.NetEndpoint;
 
 public class AllowAllInternodeAuthenticator implements IInternodeAuthenticator {
     @Override
-    public boolean authenticate(InetAddress remoteAddress, int remotePort) {
+    public boolean authenticate(NetEndpoint remoteAddress, int remotePort) {
         return true;
     }
 

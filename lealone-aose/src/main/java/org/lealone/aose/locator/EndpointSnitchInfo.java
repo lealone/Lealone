@@ -18,7 +18,6 @@
 package org.lealone.aose.locator;
 
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 import javax.management.MBeanServer;
@@ -26,6 +25,7 @@ import javax.management.ObjectName;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.util.Utils;
+import org.lealone.net.NetEndpoint;
 
 public class EndpointSnitchInfo implements EndpointSnitchInfoMBean {
     public static void create() {
@@ -39,12 +39,12 @@ public class EndpointSnitchInfo implements EndpointSnitchInfoMBean {
 
     @Override
     public String getDatacenter(String host) throws UnknownHostException {
-        return ConfigDescriptor.getEndpointSnitch().getDatacenter(InetAddress.getByName(host));
+        return ConfigDescriptor.getEndpointSnitch().getDatacenter(NetEndpoint.getByName(host));
     }
 
     @Override
     public String getRack(String host) throws UnknownHostException {
-        return ConfigDescriptor.getEndpointSnitch().getRack(InetAddress.getByName(host));
+        return ConfigDescriptor.getEndpointSnitch().getRack(NetEndpoint.getByName(host));
     }
 
     @Override

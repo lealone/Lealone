@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.server;
 
-import java.net.InetAddress;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,6 +31,7 @@ import org.lealone.aose.gms.IEndpointStateChangeSubscriber;
 import org.lealone.aose.gms.VersionedValue;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
     private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
@@ -40,7 +40,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
 
     public static final LoadBroadcaster instance = new LoadBroadcaster();
 
-    private final ConcurrentMap<InetAddress, Double> loadInfo = new ConcurrentHashMap<>();
+    private final ConcurrentMap<NetEndpoint, Double> loadInfo = new ConcurrentHashMap<>();
 
     private LoadBroadcaster() {
         Gossiper.instance.register(this);
@@ -55,26 +55,26 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
                 if (logger.isDebugEnabled())
                     logger.debug("Disseminating load info ...");
                 Gossiper.instance.addLocalApplicationState(ApplicationState.LOAD,
-                        P2PServer.VALUE_FACTORY.load(P2PServer.instance.getLoad()));
+                        P2pServer.VALUE_FACTORY.load(P2pServer.instance.getLoad()));
             }
         };
         ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.INTERVAL_IN_MILLIS,
                 BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
-    public Map<InetAddress, Double> getLoadInfo() {
+    public Map<NetEndpoint, Double> getLoadInfo() {
         return Collections.unmodifiableMap(loadInfo);
     }
 
     @Override
-    public void onChange(InetAddress endpoint, ApplicationState state, VersionedValue value) {
+    public void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
         if (state != ApplicationState.LOAD)
             return;
         loadInfo.put(endpoint, Double.valueOf(value.value));
     }
 
     @Override
-    public void onJoin(InetAddress endpoint, EndpointState epState) {
+    public void onJoin(NetEndpoint endpoint, EndpointState epState) {
         VersionedValue localValue = epState.getApplicationState(ApplicationState.LOAD);
         if (localValue != null) {
             onChange(endpoint, ApplicationState.LOAD, localValue);
@@ -82,24 +82,24 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
     }
 
     @Override
-    public void onRemove(InetAddress endpoint) {
+    public void onRemove(NetEndpoint endpoint) {
         loadInfo.remove(endpoint);
     }
 
     @Override
-    public void beforeChange(InetAddress endpoint, EndpointState currentState, ApplicationState newStateKey,
+    public void beforeChange(NetEndpoint endpoint, EndpointState currentState, ApplicationState newStateKey,
             VersionedValue newValue) {
     }
 
     @Override
-    public void onAlive(InetAddress endpoint, EndpointState state) {
+    public void onAlive(NetEndpoint endpoint, EndpointState state) {
     }
 
     @Override
-    public void onDead(InetAddress endpoint, EndpointState state) {
+    public void onDead(NetEndpoint endpoint, EndpointState state) {
     }
 
     @Override
-    public void onRestart(InetAddress endpoint, EndpointState state) {
+    public void onRestart(NetEndpoint endpoint, EndpointState state) {
     }
 }

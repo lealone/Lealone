@@ -34,7 +34,7 @@ public class TcpServerEngine extends ProtocolServerEngineBase {
 
     @Override
     public void init(Map<String, String> config) {
-        // tcpServer.init(config);
+        tcpServer.init(config);
     }
 
     @Override

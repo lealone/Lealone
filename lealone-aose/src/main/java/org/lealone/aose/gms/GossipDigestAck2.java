@@ -20,13 +20,13 @@ package org.lealone.aose.gms;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.aose.net.CompactEndpointSerializationHelper;
 import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.util.TypeSizes;
+import org.lealone.net.NetEndpoint;
 
 /**
  * This ack gets sent out as a result of the receipt of a GossipDigestAckMessage. This the
@@ -35,13 +35,13 @@ import org.lealone.aose.util.TypeSizes;
 public class GossipDigestAck2 {
     public static final IVersionedSerializer<GossipDigestAck2> serializer = new GossipDigestAck2Serializer();
 
-    final Map<InetAddress, EndpointState> epStateMap;
+    final Map<NetEndpoint, EndpointState> epStateMap;
 
-    GossipDigestAck2(Map<InetAddress, EndpointState> epStateMap) {
+    GossipDigestAck2(Map<NetEndpoint, EndpointState> epStateMap) {
         this.epStateMap = epStateMap;
     }
 
-    Map<InetAddress, EndpointState> getEndpointStateMap() {
+    Map<NetEndpoint, EndpointState> getEndpointStateMap() {
         return epStateMap;
     }
 
@@ -49,8 +49,8 @@ public class GossipDigestAck2 {
         @Override
         public void serialize(GossipDigestAck2 ack2, DataOutput out, int version) throws IOException {
             out.writeInt(ack2.epStateMap.size());
-            for (Map.Entry<InetAddress, EndpointState> entry : ack2.epStateMap.entrySet()) {
-                InetAddress ep = entry.getKey();
+            for (Map.Entry<NetEndpoint, EndpointState> entry : ack2.epStateMap.entrySet()) {
+                NetEndpoint ep = entry.getKey();
                 CompactEndpointSerializationHelper.serialize(ep, out);
                 EndpointState.serializer.serialize(entry.getValue(), out, version);
             }
@@ -59,10 +59,10 @@ public class GossipDigestAck2 {
         @Override
         public GossipDigestAck2 deserialize(DataInput in, int version) throws IOException {
             int size = in.readInt();
-            Map<InetAddress, EndpointState> epStateMap = new HashMap<>(size);
+            Map<NetEndpoint, EndpointState> epStateMap = new HashMap<>(size);
 
             for (int i = 0; i < size; ++i) {
-                InetAddress ep = CompactEndpointSerializationHelper.deserialize(in);
+                NetEndpoint ep = CompactEndpointSerializationHelper.deserialize(in);
                 EndpointState epState = EndpointState.serializer.deserialize(in, version);
                 epStateMap.put(ep, epState);
             }
@@ -72,7 +72,7 @@ public class GossipDigestAck2 {
         @Override
         public long serializedSize(GossipDigestAck2 ack2, int version) {
             long size = TypeSizes.NATIVE.sizeof(ack2.epStateMap.size());
-            for (Map.Entry<InetAddress, EndpointState> entry : ack2.epStateMap.entrySet())
+            for (Map.Entry<NetEndpoint, EndpointState> entry : ack2.epStateMap.entrySet())
                 size += CompactEndpointSerializationHelper.serializedSize(entry.getKey())
                         + EndpointState.serializer.serializedSize(entry.getValue(), version);
             return size;

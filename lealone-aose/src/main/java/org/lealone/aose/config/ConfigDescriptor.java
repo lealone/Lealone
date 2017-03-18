@@ -38,50 +38,43 @@ import org.lealone.aose.locator.IEndpointSnitch;
 import org.lealone.aose.locator.SeedProvider;
 import org.lealone.aose.locator.SimpleStrategy;
 import org.lealone.aose.net.MessagingService;
-import org.lealone.aose.server.P2PServer;
+import org.lealone.aose.server.P2pServer;
+import org.lealone.aose.server.P2pServerEngine;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.db.Constants;
+import org.lealone.net.NetEndpoint;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
 public class ConfigDescriptor {
 
-    private static Config conf;
-    private static IInternodeAuthenticator internodeAuthenticator;
-
-    private static InetAddress listenAddress; // leave null so we can fall through to getLocalHost
-
+    private static Config config;
+    private static NetEndpoint localEndpoint;
     private static IEndpointSnitch snitch;
     private static String localDC;
-    private static Comparator<InetAddress> localComparator;
+    private static Comparator<NetEndpoint> localComparator;
     private static SeedProvider seedProvider;
+    private static IInternodeAuthenticator internodeAuthenticator;
     private static AbstractReplicationStrategy defaultReplicationStrategy;
 
     public static void applyConfig(Config config) throws ConfigurationException {
-        conf = config;
-
-        if (conf.internode_authenticator != null)
-            internodeAuthenticator = Utils.construct(conf.internode_authenticator, "internode_authenticator");
-        else
-            internodeAuthenticator = new AllowAllInternodeAuthenticator();
-
-        internodeAuthenticator.validateConfiguration();
-
+        ConfigDescriptor.config = config;
         // phi convict threshold for FailureDetector
-        if (conf.phi_convict_threshold < 5 || conf.phi_convict_threshold > 16) {
+        if (config.phi_convict_threshold < 5 || config.phi_convict_threshold > 16) {
             throw new ConfigurationException("phi_convict_threshold must be between 5 and 16");
         }
 
-        applyAddressConfig(config);
-        createEndpointSnitch();
+        localEndpoint = createLocalEndpoint(config);
+        snitch = createEndpointSnitch(config);
 
-        localDC = snitch.getDatacenter(getLocalAddress());
-        localComparator = new Comparator<InetAddress>() {
+        localDC = snitch.getDatacenter(localEndpoint);
+        localComparator = new Comparator<NetEndpoint>() {
             @Override
-            public int compare(InetAddress endpoint1, InetAddress endpoint2) {
+            public int compare(NetEndpoint endpoint1, NetEndpoint endpoint2) {
                 boolean local1 = localDC.equals(snitch.getDatacenter(endpoint1));
                 boolean local2 = localDC.equals(snitch.getDatacenter(endpoint2));
                 if (local1 && !local2)
@@ -92,27 +85,28 @@ public class ConfigDescriptor {
             }
         };
 
-        createSeedProvider();
-        initDefaultReplicationStrategy();
+        seedProvider = createSeedProvider(config);
+        internodeAuthenticator = createInternodeAuthenticator(config);
+        defaultReplicationStrategy = createDefaultReplicationStrategy(config);
     }
 
-    private static void applyAddressConfig(Config conf) throws ConfigurationException {
+    private static NetEndpoint createLocalEndpoint(Config config) throws ConfigurationException {
+        InetAddress listenAddress = null;
         // Local IP, hostname or interface to bind services to
-        if (conf.listen_address != null && conf.listen_interface != null) {
+        if (config.listen_address != null && config.listen_interface != null) {
             throw new ConfigurationException("Set listen_address OR listen_interface, not both");
-        } else if (conf.listen_address != null) {
+        } else if (config.listen_address != null) {
             try {
-                listenAddress = InetAddress.getByName(conf.listen_address);
+                listenAddress = InetAddress.getByName(config.listen_address);
             } catch (UnknownHostException e) {
-                throw new ConfigurationException("Unknown listen_address '" + conf.listen_address + "'");
+                throw new ConfigurationException("Unknown listen_address '" + config.listen_address + "'");
             }
-
             if (listenAddress.isAnyLocalAddress())
                 throw new ConfigurationException(
-                        "listen_address cannot be a wildcard address (" + conf.listen_address + ")!");
-        } else if (conf.listen_interface != null) {
-            listenAddress = getNetworkInterfaceAddress(conf.listen_interface, "listen_interface",
-                    conf.listen_interface_prefer_ipv6);
+                        "listen_address cannot be a wildcard address (" + config.listen_address + ")!");
+        } else if (config.listen_interface != null) {
+            listenAddress = getNetworkInterfaceAddress(config.listen_interface, "listen_interface",
+                    config.listen_interface_prefer_ipv6);
         }
 
         if (listenAddress == null) {
@@ -122,7 +116,22 @@ public class ConfigDescriptor {
                 throw new RuntimeException(e);
             }
         }
-        conf.listen_address = listenAddress.getHostAddress();
+        config.listen_address = listenAddress.getHostAddress();
+        String host = config.listen_address;
+        int port = Constants.DEFAULT_P2P_PORT;
+        if (config.protocol_server_engines != null) {
+            for (PluggableEngineDef def : config.protocol_server_engines) {
+                if (def.enabled && def.name.equalsIgnoreCase(P2pServerEngine.NAME)) {
+                    Map<String, String> parameters = def.getParameters();
+                    if (parameters.containsKey("host"))
+                        host = parameters.get("host");
+                    if (parameters.containsKey("port"))
+                        port = Integer.parseInt(parameters.get("port"));
+                    break;
+                }
+            }
+        }
+        return new NetEndpoint(host, port);
     }
 
     private static InetAddress getNetworkInterfaceAddress(String intf, String configName, boolean preferIPv6)
@@ -152,34 +161,35 @@ public class ConfigDescriptor {
         }
     }
 
-    private static void createEndpointSnitch() throws ConfigurationException {
+    private static IEndpointSnitch createEndpointSnitch(Config config) throws ConfigurationException {
         // end point snitch
-        if (conf.endpoint_snitch == null) {
+        if (config.endpoint_snitch == null) {
             throw new ConfigurationException("Missing endpoint_snitch directive");
         }
 
-        String className = conf.endpoint_snitch;
+        String className = config.endpoint_snitch;
         if (!className.contains("."))
             className = IEndpointSnitch.class.getPackage().getName() + "." + className;
-        snitch = Utils.construct(className, "snitch");
-        if (conf.dynamic_snitch)
+        IEndpointSnitch snitch = Utils.construct(className, "snitch");
+        if (config.dynamic_snitch)
             snitch = new DynamicEndpointSnitch(snitch);
 
         EndpointSnitchInfo.create();
+        return snitch;
     }
 
-    private static void createSeedProvider() throws ConfigurationException {
-        if (conf.seed_provider == null) {
+    private static SeedProvider createSeedProvider(Config config) throws ConfigurationException {
+        if (config.seed_provider == null) {
             throw new ConfigurationException("seeds configuration is missing; a minimum of one seed is required.");
         }
-
-        String className = conf.seed_provider.class_name;
+        SeedProvider seedProvider;
+        String className = config.seed_provider.class_name;
         if (!className.contains("."))
             className = SeedProvider.class.getPackage().getName() + "." + className;
         try {
             Class<?> seedProviderClass = Class.forName(className);
             seedProvider = (SeedProvider) seedProviderClass.getConstructor(Map.class)
-                    .newInstance(conf.seed_provider.parameters);
+                    .newInstance(config.seed_provider.parameters);
         }
         // there are about 5 checked exceptions that could be thrown here.
         catch (Exception e) {
@@ -188,17 +198,32 @@ public class ConfigDescriptor {
         }
         if (seedProvider.getSeeds().isEmpty())
             throw new ConfigurationException("The seed provider lists no seeds.");
+        return seedProvider;
     }
 
-    private static void initDefaultReplicationStrategy() throws ConfigurationException {
-        if (conf.replication_strategy == null)
-            defaultReplicationStrategy = new SimpleStrategy("system", P2PServer.instance.getTopologyMetaData(),
+    private static IInternodeAuthenticator createInternodeAuthenticator(Config config) throws ConfigurationException {
+        IInternodeAuthenticator internodeAuthenticator;
+        if (config.internode_authenticator != null)
+            internodeAuthenticator = Utils.construct(config.internode_authenticator, "internode_authenticator");
+        else
+            internodeAuthenticator = new AllowAllInternodeAuthenticator();
+
+        internodeAuthenticator.validateConfiguration();
+        return internodeAuthenticator;
+    }
+
+    private static AbstractReplicationStrategy createDefaultReplicationStrategy(Config config)
+            throws ConfigurationException {
+        AbstractReplicationStrategy defaultReplicationStrategy;
+        if (config.replication_strategy == null)
+            defaultReplicationStrategy = new SimpleStrategy("system", P2pServer.instance.getTopologyMetaData(),
                     getEndpointSnitch(), ImmutableMap.of("replication_factor", "1"));
         else
             defaultReplicationStrategy = AbstractReplicationStrategy.createReplicationStrategy("system",
-                    AbstractReplicationStrategy.getClass(conf.replication_strategy.class_name),
-                    P2PServer.instance.getTopologyMetaData(), getEndpointSnitch(),
-                    conf.replication_strategy.parameters);
+                    AbstractReplicationStrategy.getClass(config.replication_strategy.class_name),
+                    P2pServer.instance.getTopologyMetaData(), getEndpointSnitch(),
+                    config.replication_strategy.parameters);
+        return defaultReplicationStrategy;
     }
 
     public static AbstractReplicationStrategy getDefaultReplicationStrategy() {
@@ -210,15 +235,15 @@ public class ConfigDescriptor {
     }
 
     public static String getClusterName() {
-        return conf.cluster_name;
+        return config.cluster_name;
     }
 
     public static long getRpcTimeout() {
-        return conf.request_timeout_in_ms;
+        return config.request_timeout_in_ms;
     }
 
     public static boolean hasCrossNodeTimeout() {
-        return conf.cross_node_timeout;
+        return config.cross_node_timeout;
     }
 
     // not part of the Verb enum so we can change timeouts easily via JMX
@@ -227,23 +252,23 @@ public class ConfigDescriptor {
     }
 
     public static double getPhiConvictThreshold() {
-        return conf.phi_convict_threshold;
+        return config.phi_convict_threshold;
     }
 
     public static void setPhiConvictThreshold(double phiConvictThreshold) {
-        conf.phi_convict_threshold = phiConvictThreshold;
+        config.phi_convict_threshold = phiConvictThreshold;
     }
 
-    public static Set<InetAddress> getSeeds() {
-        return ImmutableSet.<InetAddress> builder().addAll(seedProvider.getSeeds()).build();
+    public static Set<NetEndpoint> getSeeds() {
+        return ImmutableSet.<NetEndpoint> builder().addAll(seedProvider.getSeeds()).build();
     }
 
-    public static List<InetAddress> getSeedList() {
+    public static List<NetEndpoint> getSeedList() {
         return seedProvider.getSeeds();
     }
 
-    public static InetAddress getLocalAddress() {
-        return listenAddress;
+    public static NetEndpoint getLocalEndpoint() {
+        return localEndpoint;
     }
 
     public static IInternodeAuthenticator getInternodeAuthenticator() {
@@ -251,47 +276,47 @@ public class ConfigDescriptor {
     }
 
     public static int getDynamicUpdateInterval() {
-        return conf.dynamic_snitch_update_interval_in_ms;
+        return config.dynamic_snitch_update_interval_in_ms;
     }
 
     public static void setDynamicUpdateInterval(Integer dynamicUpdateInterval) {
-        conf.dynamic_snitch_update_interval_in_ms = dynamicUpdateInterval;
+        config.dynamic_snitch_update_interval_in_ms = dynamicUpdateInterval;
     }
 
     public static int getDynamicResetInterval() {
-        return conf.dynamic_snitch_reset_interval_in_ms;
+        return config.dynamic_snitch_reset_interval_in_ms;
     }
 
     public static void setDynamicResetInterval(Integer dynamicResetInterval) {
-        conf.dynamic_snitch_reset_interval_in_ms = dynamicResetInterval;
+        config.dynamic_snitch_reset_interval_in_ms = dynamicResetInterval;
     }
 
     public static double getDynamicBadnessThreshold() {
-        return conf.dynamic_snitch_badness_threshold;
+        return config.dynamic_snitch_badness_threshold;
     }
 
     public static void setDynamicBadnessThreshold(Double dynamicBadnessThreshold) {
-        conf.dynamic_snitch_badness_threshold = dynamicBadnessThreshold;
+        config.dynamic_snitch_badness_threshold = dynamicBadnessThreshold;
     }
 
     public static ServerEncryptionOptions getServerEncryptionOptions() {
-        return conf.server_encryption_options;
+        return config.server_encryption_options;
     }
 
     public static ClientEncryptionOptions getClientEncryptionOptions() {
-        return conf.client_encryption_options;
+        return config.client_encryption_options;
     }
 
     public static String getLocalDataCenter() {
         return localDC;
     }
 
-    public static Comparator<InetAddress> getLocalComparator() {
+    public static Comparator<NetEndpoint> getLocalComparator() {
         return localComparator;
     }
 
     public static Config.InternodeCompression internodeCompression() {
-        return conf.internode_compression;
+        return config.internode_compression;
     }
 
     public static boolean hasLargeAddressSpace() {
@@ -311,6 +336,6 @@ public class ConfigDescriptor {
     }
 
     public static Integer getHostId() {
-        return conf.host_id;
+        return config.host_id;
     }
 }

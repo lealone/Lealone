@@ -17,11 +17,12 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.util.List;
+
+import org.lealone.net.NetEndpoint;
 
 public interface SeedProvider {
 
-    List<InetAddress> getSeeds();
+    List<NetEndpoint> getSeeds();
 
 }

@@ -20,6 +20,7 @@ import org.lealone.db.Constants;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.CommandHandler;
 import org.lealone.net.HostAndPort;
+import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 
 import io.vertx.core.Vertx;
@@ -71,6 +72,7 @@ public class TcpServer implements ProtocolServer {
         }
 
         HostAndPort.setLocalHostAndPort(host, port);
+        NetEndpoint.setLocalTcpEndpoint(host, port);
     }
 
     @Override

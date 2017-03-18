@@ -17,13 +17,13 @@
  */
 package org.lealone.aose.gms;
 
-import java.net.InetAddress;
 import java.util.Map;
 
 import org.lealone.aose.net.IVerbHandler;
 import org.lealone.aose.net.MessageIn;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck2> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestAck2VerbHandler.class);
@@ -31,7 +31,7 @@ public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck
     @Override
     public void doVerb(MessageIn<GossipDigestAck2> message, int id) {
         if (logger.isTraceEnabled()) {
-            InetAddress from = message.from;
+            NetEndpoint from = message.from;
             logger.trace("Received a GossipDigestAck2Message from {}", from);
         }
         if (!Gossiper.instance.isEnabled()) {
@@ -39,7 +39,7 @@ public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck
                 logger.trace("Ignoring GossipDigestAck2Message because gossip is disabled");
             return;
         }
-        Map<InetAddress, EndpointState> remoteEpStateMap = message.payload.getEndpointStateMap();
+        Map<NetEndpoint, EndpointState> remoteEpStateMap = message.payload.getEndpointStateMap();
         /* Notify the Failure Detector */
         Gossiper.instance.notifyFailureDetector(remoteEpStateMap);
         Gossiper.instance.applyStateLocally(remoteEpStateMap);

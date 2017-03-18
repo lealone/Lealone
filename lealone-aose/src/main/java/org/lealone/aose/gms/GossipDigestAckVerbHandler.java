@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.gms;
 
-import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,13 +27,14 @@ import org.lealone.aose.net.MessageOut;
 import org.lealone.aose.net.MessagingService;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 public class GossipDigestAckVerbHandler implements IVerbHandler<GossipDigestAck> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestAckVerbHandler.class);
 
     @Override
     public void doVerb(MessageIn<GossipDigestAck> message, int id) {
-        InetAddress from = message.from;
+        NetEndpoint from = message.from;
         if (logger.isTraceEnabled())
             logger.trace("Received a GossipDigestAckMessage from {}", from);
         if (!Gossiper.instance.isEnabled() && !Gossiper.instance.isInShadowRound()) {
@@ -45,7 +45,7 @@ public class GossipDigestAckVerbHandler implements IVerbHandler<GossipDigestAck>
 
         GossipDigestAck gDigestAckMessage = message.payload;
         List<GossipDigest> gDigestList = gDigestAckMessage.getGossipDigestList();
-        Map<InetAddress, EndpointState> epStateMap = gDigestAckMessage.getEndpointStateMap();
+        Map<NetEndpoint, EndpointState> epStateMap = gDigestAckMessage.getEndpointStateMap();
 
         if (logger.isTraceEnabled())
             logger.trace("Received ack with {} digests and {} states", gDigestList.size(), epStateMap.size());
@@ -64,9 +64,9 @@ public class GossipDigestAckVerbHandler implements IVerbHandler<GossipDigestAck>
         }
 
         /* Get the state required to send to this gossipee - construct GossipDigestAck2Message */
-        Map<InetAddress, EndpointState> deltaEpStateMap = new HashMap<>();
+        Map<NetEndpoint, EndpointState> deltaEpStateMap = new HashMap<>();
         for (GossipDigest gDigest : gDigestList) {
-            InetAddress addr = gDigest.getEndpoint();
+            NetEndpoint addr = gDigest.getEndpoint();
             EndpointState localEpStatePtr = Gossiper.instance.getStateForVersionBiggerThan(addr,
                     gDigest.getMaxVersion());
             if (localEpStatePtr != null)

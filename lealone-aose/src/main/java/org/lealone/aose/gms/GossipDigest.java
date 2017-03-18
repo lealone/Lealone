@@ -20,11 +20,11 @@ package org.lealone.aose.gms;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.net.InetAddress;
 
 import org.lealone.aose.net.CompactEndpointSerializationHelper;
 import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.util.TypeSizes;
+import org.lealone.net.NetEndpoint;
 
 /**
  * Contains information about a specified list of Endpoints and the largest version
@@ -33,17 +33,17 @@ import org.lealone.aose.util.TypeSizes;
 public class GossipDigest implements Comparable<GossipDigest> {
     public static final IVersionedSerializer<GossipDigest> serializer = new GossipDigestSerializer();
 
-    final InetAddress endpoint;
+    final NetEndpoint endpoint;
     final int generation;
     final int maxVersion;
 
-    GossipDigest(InetAddress ep, int gen, int version) {
+    GossipDigest(NetEndpoint ep, int gen, int version) {
         endpoint = ep;
         generation = gen;
         maxVersion = version;
     }
 
-    InetAddress getEndpoint() {
+    NetEndpoint getEndpoint() {
         return endpoint;
     }
 
@@ -83,7 +83,7 @@ public class GossipDigest implements Comparable<GossipDigest> {
 
         @Override
         public GossipDigest deserialize(DataInput in, int version) throws IOException {
-            InetAddress endpoint = CompactEndpointSerializationHelper.deserialize(in);
+            NetEndpoint endpoint = CompactEndpointSerializationHelper.deserialize(in);
             int generation = in.readInt();
             int maxVersion = in.readInt();
             return new GossipDigest(endpoint, generation, maxVersion);

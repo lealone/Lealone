@@ -17,18 +17,18 @@
  */
 package org.lealone.replication;
 
-import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lealone.db.Session;
+import org.lealone.net.NetEndpoint;
 import org.lealone.storage.type.DataType;
 
 public interface Replication {
 
-    List<InetAddress> getReplicationEndpoints(Object key);
+    List<NetEndpoint> getReplicationEndpoints(Object key);
 
-    InetAddress getLocalEndpoint();
+    NetEndpoint getLocalEndpoint();
 
     Object put(Object key, Object value, DataType valueType, Session session);
 

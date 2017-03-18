@@ -20,13 +20,13 @@ package org.lealone.aose.gms;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.UUID;
 
 import org.lealone.aose.net.IVersionedSerializer;
 import org.lealone.aose.net.MessagingService;
 import org.lealone.aose.util.TypeSizes;
 import org.lealone.aose.util.Utils;
+import org.lealone.net.NetEndpoint;
 
 /**
  * This abstraction represents the state associated with a particular node which an
@@ -150,8 +150,8 @@ public class VersionedValue implements Comparable<VersionedValue> {
             return new VersionedValue(rackId);
         }
 
-        public VersionedValue rpcAddress(InetAddress endpoint) {
-            return new VersionedValue(endpoint.getHostAddress());
+        public VersionedValue endpoint(NetEndpoint endpoint) {
+            return new VersionedValue(endpoint.getHostAndPort());
         }
 
         public VersionedValue releaseVersion() {

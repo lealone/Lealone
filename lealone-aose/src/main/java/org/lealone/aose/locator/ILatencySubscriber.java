@@ -17,8 +17,8 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
+import org.lealone.net.NetEndpoint;
 
 public interface ILatencySubscriber {
-    public void receiveTiming(InetAddress address, long latency);
+    public void receiveTiming(NetEndpoint address, long latency);
 }

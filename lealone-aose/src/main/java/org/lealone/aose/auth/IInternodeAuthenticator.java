@@ -18,9 +18,8 @@
  */
 package org.lealone.aose.auth;
 
-import java.net.InetAddress;
-
 import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.net.NetEndpoint;
 
 public interface IInternodeAuthenticator {
     /**
@@ -31,7 +30,7 @@ public interface IInternodeAuthenticator {
      * @param remotePort port of the connecting node.
      * @return true if the connection should be accepted, false otherwise.
      */
-    boolean authenticate(InetAddress remoteAddress, int remotePort);
+    boolean authenticate(NetEndpoint remoteAddress, int remotePort);
 
     /**
      * Validates configuration of IInternodeAuthenticator implementation (if configurable).

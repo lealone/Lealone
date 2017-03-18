@@ -19,24 +19,24 @@ package org.lealone.aose.net;
 
 import java.io.DataInput;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.Collections;
 import java.util.Map;
 
 import org.lealone.aose.concurrent.Stage;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.util.FileUtils;
+import org.lealone.net.NetEndpoint;
 
 import com.google.common.collect.ImmutableMap;
 
 public class MessageIn<T> {
-    public final InetAddress from;
+    public final NetEndpoint from;
     public final T payload;
     public final Map<String, byte[]> parameters;
     public final MessagingService.Verb verb;
     public final int version;
 
-    private MessageIn(InetAddress from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb,
+    private MessageIn(NetEndpoint from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb,
             int version) {
         this.from = from;
         this.payload = payload;
@@ -69,7 +69,7 @@ public class MessageIn<T> {
     }
 
     public static MessageIn<?> read(DataInput in, int version, int id) throws IOException {
-        InetAddress from = CompactEndpointSerializationHelper.deserialize(in);
+        NetEndpoint from = CompactEndpointSerializationHelper.deserialize(in);
 
         MessagingService.Verb verb = MessagingService.Verb.values()[in.readInt()];
         int parameterCount = in.readInt();

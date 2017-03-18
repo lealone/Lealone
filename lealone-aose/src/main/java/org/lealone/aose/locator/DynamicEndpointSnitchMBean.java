@@ -17,13 +17,14 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
 
+import org.lealone.net.NetEndpoint;
+
 public interface DynamicEndpointSnitchMBean {
-    public Map<InetAddress, Double> getScores();
+    public Map<NetEndpoint, Double> getScores();
 
     public int getUpdateInterval();
 

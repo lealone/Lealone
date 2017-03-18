@@ -19,44 +19,45 @@ package org.lealone.aose.server;
 
 import java.util.Map;
 
-import org.lealone.aose.router.P2PRouter;
+import org.lealone.aose.router.P2pRouter;
 import org.lealone.aose.router.TransactionalRouter;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngineBase;
 import org.lealone.sql.router.Router;
 import org.lealone.sql.router.RouterHolder;
 
-public class P2PServerEngine extends ProtocolServerEngineBase {
+public class P2pServerEngine extends ProtocolServerEngineBase {
 
     public static final String NAME = "P2P";
 
-    public P2PServerEngine() {
+    public P2pServerEngine() {
         super(NAME);
     }
 
     @Override
     public ProtocolServer getProtocolServer() {
-        return P2PServer.instance;
+        return P2pServer.instance;
     }
 
     @Override
     public void init(Map<String, String> config) {
         super.init(config);
         initRouter();
+        P2pServer.instance.init(config);
     }
 
     @Override
     public void close() {
-        P2PServer.instance.stop();
+        P2pServer.instance.stop();
     }
 
     @Override
     protected ProtocolServer getProtocolServer(int port) {
-        return P2PServer.instance;
+        return P2pServer.instance;
     }
 
     private static void initRouter() {
-        Router r = P2PRouter.getInstance();
+        Router r = P2pRouter.getInstance();
         RouterHolder.setRouter(new TransactionalRouter(r));
     }
 

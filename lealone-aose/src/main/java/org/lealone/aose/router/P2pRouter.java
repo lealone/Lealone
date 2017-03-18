@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.router;
 
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -28,7 +27,7 @@ import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.server.ClusterMetaData;
-import org.lealone.aose.server.P2PServer;
+import org.lealone.aose.server.P2pServer;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
@@ -40,25 +39,26 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.SessionPool;
 import org.lealone.db.result.Result;
+import org.lealone.net.NetEndpoint;
 import org.lealone.replication.ReplicationSession;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.ddl.DatabaseStatement;
 import org.lealone.sql.ddl.DefineStatement;
 import org.lealone.sql.router.Router;
 
-public class P2PRouter implements Router {
+public class P2pRouter implements Router {
 
-    private static final P2PRouter INSTANCE = new P2PRouter();
+    private static final P2pRouter INSTANCE = new P2pRouter();
 
-    public static P2PRouter getInstance() {
+    public static P2pRouter getInstance() {
         return INSTANCE;
     }
 
-    protected P2PRouter() {
+    protected P2pRouter() {
     }
 
     private int executeDefineStatement(DefineStatement defineStatement) {
-        Set<InetAddress> liveMembers;
+        Set<NetEndpoint> liveMembers;
         ServerSession s = defineStatement.getSession();
         Database db = s.getDatabase();
         if (defineStatement instanceof DatabaseStatement) {
@@ -76,15 +76,16 @@ public class P2PRouter implements Router {
             } else {
                 liveMembers = new HashSet<>(hostIds.length);
                 for (int hostId : hostIds) {
-                    liveMembers.add(P2PServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
+                    liveMembers.add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
                 }
             }
         }
 
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
-        for (InetAddress ia : liveMembers)
-            sessions[i++] = SessionPool.getSession(s, s.getURL(ia), !ConfigDescriptor.getLocalAddress().equals(ia));
+        for (NetEndpoint ia : liveMembers)
+            sessions[i++] = SessionPool.getSession(s, s.getURL(ia.geInetAddress()),
+                    !ConfigDescriptor.getLocalEndpoint().equals(ia));
 
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
@@ -122,13 +123,13 @@ public class P2PRouter implements Router {
     public int[] getHostIds(Database db) {
         RunMode runMode = db.getRunMode();
         // Map<String, String> parameters;
-        Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
-        ArrayList<InetAddress> list = new ArrayList<>(liveMembers);
+        Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
+        ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
         int size = liveMembers.size();
         if (runMode == RunMode.CLIENT_SERVER) {
             int i = random.nextInt(size);
-            InetAddress addr = list.get(i);
-            return new int[] { P2PServer.instance.getTopologyMetaData().getHostId(addr) };
+            NetEndpoint addr = list.get(i);
+            return new int[] { P2pServer.instance.getTopologyMetaData().getHostId(addr) };
         } else if (runMode == RunMode.REPLICATION) {
             AbstractReplicationStrategy replicationStrategy = ClusterMetaData.getReplicationStrategy(db);
             int replicationFactor = replicationStrategy.getReplicationFactor();
@@ -147,7 +148,7 @@ public class P2PRouter implements Router {
         return new int[0];
     }
 
-    private int[] getHostIds(ArrayList<InetAddress> list, int liveNodes, int replicationNodes) {
+    private int[] getHostIds(ArrayList<NetEndpoint> list, int liveNodes, int replicationNodes) {
         if (replicationNodes > liveNodes)
             replicationNodes = liveNodes;
         Set<Integer> indexSet = new HashSet<>(replicationNodes);
@@ -160,7 +161,7 @@ public class P2PRouter implements Router {
 
         int[] hostIds = new int[replicationNodes];
         for (int i : indexSet) {
-            Integer hostId = P2PServer.instance.getTopologyMetaData().getHostId(list.get(i));
+            Integer hostId = P2pServer.instance.getTopologyMetaData().getHostId(list.get(i));
             if (hostId != null)
                 hostIds[i] = hostId.intValue();
         }
@@ -170,7 +171,7 @@ public class P2PRouter implements Router {
 
     @Override
     public int createDatabase(Database db, ServerSession currentSession) {
-        Set<InetAddress> liveMembers = Gossiper.instance.getLiveMembers();
+        Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
         // liveMembers.remove(Utils.getBroadcastAddress()); // TODO 要不要删除当前节点
         // int[] hostIds = db.getHostIds();
         // if (hostIds.length == 0) {
@@ -183,9 +184,9 @@ public class P2PRouter implements Router {
         // }
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
-        for (InetAddress ia : liveMembers) {
-            sessions[i++] = SessionPool.getSession(currentSession, currentSession.getURL(ia),
-                    !ConfigDescriptor.getLocalAddress().equals(ia));
+        for (NetEndpoint ia : liveMembers) {
+            sessions[i++] = SessionPool.getSession(currentSession, currentSession.getURL(ia.geInetAddress()),
+                    !ConfigDescriptor.getLocalEndpoint().equals(ia));
         }
 
         ReplicationSession rs = new ReplicationSession(sessions);
@@ -204,22 +205,22 @@ public class P2PRouter implements Router {
 
     @Override
     public String[] getEndpoints(Database db) {
-        Set<InetAddress> liveMembers;
+        Set<NetEndpoint> liveMembers;
         int[] hostIds = db.getHostIds();
         if (hostIds.length == 0) {
             liveMembers = Gossiper.instance.getLiveMembers();
         } else {
             liveMembers = new HashSet<>(hostIds.length);
             for (int hostId : hostIds) {
-                liveMembers.add(P2PServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
+                liveMembers.add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
             }
         }
 
         String[] endpoints = new String[liveMembers.size()];
         int i = 0;
-        for (InetAddress inetAddress : liveMembers) {
+        for (NetEndpoint NetEndpoint : liveMembers) {
             // TODO 如何不用默认端口？
-            endpoints[i++] = inetAddress.getHostAddress() + ":" + Constants.DEFAULT_TCP_PORT;
+            endpoints[i++] = NetEndpoint.getHostAddress() + ":" + Constants.DEFAULT_TCP_PORT;
         }
         return endpoints;
     }

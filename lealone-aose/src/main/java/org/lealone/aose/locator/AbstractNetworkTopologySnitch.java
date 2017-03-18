@@ -17,7 +17,7 @@
  */
 package org.lealone.aose.locator;
 
-import java.net.InetAddress;
+import org.lealone.net.NetEndpoint;
 
 /**
  * An endpoint snitch tells lealone information about network topology that it can use to route
@@ -30,7 +30,7 @@ public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnit
      * @return string of rack
      */
     @Override
-    abstract public String getRack(InetAddress endpoint);
+    abstract public String getRack(NetEndpoint endpoint);
 
     /**
      * Return the data center for which an endpoint resides in
@@ -38,10 +38,10 @@ public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnit
      * @return string of data center
      */
     @Override
-    abstract public String getDatacenter(InetAddress endpoint);
+    abstract public String getDatacenter(NetEndpoint endpoint);
 
     @Override
-    public int compareEndpoints(InetAddress address, InetAddress a1, InetAddress a2) {
+    public int compareEndpoints(NetEndpoint address, NetEndpoint a1, NetEndpoint a2) {
         if (address.equals(a1) && !address.equals(a2))
             return -1;
         if (address.equals(a2) && !address.equals(a1))

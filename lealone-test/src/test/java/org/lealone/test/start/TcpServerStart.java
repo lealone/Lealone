@@ -19,7 +19,7 @@ package org.lealone.test.start;
 
 import org.lealone.aose.config.Config;
 import org.lealone.aose.config.PluggableEngineDef;
-import org.lealone.aose.server.P2PServerEngine;
+import org.lealone.aose.server.P2pServerEngine;
 import org.lealone.common.exceptions.ConfigurationException;
 
 //-javaagent:E:\continuations\target\continuations-1.0-SNAPSHOT.jar
@@ -33,7 +33,7 @@ public class TcpServerStart extends NodeBase {
     @Override
     public void applyConfig(Config config) throws ConfigurationException {
         for (PluggableEngineDef e : config.protocol_server_engines) {
-            if (P2PServerEngine.NAME.equalsIgnoreCase(e.name)) {
+            if (P2pServerEngine.NAME.equalsIgnoreCase(e.name)) {
                 e.enabled = false;
             }
         }

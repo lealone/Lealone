@@ -24,23 +24,27 @@ import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 
+import org.lealone.net.NetEndpoint;
+
 public class CompactEndpointSerializationHelper {
-    public static void serialize(InetAddress endpoint, DataOutput out) throws IOException {
+    public static void serialize(NetEndpoint endpoint, DataOutput out) throws IOException {
         byte[] buf = endpoint.getAddress();
         out.writeByte(buf.length);
         out.write(buf);
+        out.writeInt(endpoint.getPort());
     }
 
-    public static InetAddress deserialize(DataInput in) throws IOException {
+    public static NetEndpoint deserialize(DataInput in) throws IOException {
         byte[] bytes = new byte[in.readByte()];
         in.readFully(bytes, 0, bytes.length);
-        return InetAddress.getByAddress(bytes);
+        int port = in.readInt();
+        return new NetEndpoint(InetAddress.getByAddress(bytes), port);
     }
 
-    public static int serializedSize(InetAddress from) {
-        if (from instanceof Inet4Address)
-            return 1 + 4;
-        assert from instanceof Inet6Address;
-        return 1 + 16;
+    public static int serializedSize(NetEndpoint from) {
+        if (from.geInetAddress() instanceof Inet4Address)
+            return 1 + 4 + 4;
+        assert from.geInetAddress() instanceof Inet6Address;
+        return 1 + 16 + 4;
     }
 }

@@ -18,7 +18,6 @@
 package org.lealone.aose.locator;
 
 import java.lang.reflect.Constructor;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,6 +29,7 @@ import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigurationException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.net.NetEndpoint;
 
 /**
  * A abstract parent for all replication strategies.
@@ -39,7 +39,7 @@ public abstract class AbstractReplicationStrategy {
 
     protected final Map<String, String> configOptions;
     private final TopologyMetaData metaData;
-    private final Map<Integer, ArrayList<InetAddress>> cachedEndpoints = new NonBlockingHashMap<>();
+    private final Map<Integer, ArrayList<NetEndpoint>> cachedEndpoints = new NonBlockingHashMap<>();
     private final String dbName;
 
     // track when the token range changes, signaling we need to invalidate our endpoint cache
@@ -64,7 +64,7 @@ public abstract class AbstractReplicationStrategy {
      * @param searchHostId the token the natural endpoints are requested for
      * @return a copy of the natural endpoints for the given token
      */
-    public abstract List<InetAddress> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metaData);
+    public abstract List<NetEndpoint> calculateReplicationEndpoints(Integer searchHostId, TopologyMetaData metaData);
 
     /**
      * calculate the RF based on strategy_options. When overwriting, ensure that this get()
@@ -76,7 +76,7 @@ public abstract class AbstractReplicationStrategy {
 
     public abstract void validateOptions() throws ConfigurationException;
 
-    public ArrayList<InetAddress> getCachedEndpoints(Integer hostId) {
+    public ArrayList<NetEndpoint> getCachedEndpoints(Integer hostId) {
         long lastVersion = metaData.getRingVersion();
 
         if (lastVersion > lastInvalidatedVersion) {
@@ -100,15 +100,15 @@ public abstract class AbstractReplicationStrategy {
      * @param searchPosition the position the natural endpoints are requested for
      * @return a copy of the natural endpoints for the given token
      */
-    public ArrayList<InetAddress> getReplicationEndpoints(Integer hostId) {
-        ArrayList<InetAddress> endpoints = getCachedEndpoints(hostId);
+    public ArrayList<NetEndpoint> getReplicationEndpoints(Integer hostId) {
+        ArrayList<NetEndpoint> endpoints = getCachedEndpoints(hostId);
         if (endpoints == null) {
             TopologyMetaData tm = metaData.cachedOnlyTokenMap();
-            endpoints = new ArrayList<InetAddress>(calculateReplicationEndpoints(hostId, tm));
+            endpoints = new ArrayList<NetEndpoint>(calculateReplicationEndpoints(hostId, tm));
             cachedEndpoints.put(hostId, endpoints);
         }
 
-        return new ArrayList<InetAddress>(endpoints);
+        return new ArrayList<NetEndpoint>(endpoints);
     }
 
     /*

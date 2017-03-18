@@ -17,7 +17,6 @@
  */
 package org.lealone.aose.server;
 
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -32,6 +31,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.net.NetEndpoint;
 
 public class ClusterMetaData {
 
@@ -62,7 +62,7 @@ public class ClusterMetaData {
             }
 
             replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getName(),
-                    AbstractReplicationStrategy.getClass(className), P2PServer.instance.getTopologyMetaData(),
+                    AbstractReplicationStrategy.getClass(className), P2pServer.instance.getTopologyMetaData(),
                     ConfigDescriptor.getEndpointSnitch(), map);
             replicationStrategys.put(db, replicationStrategy);
         }
@@ -83,7 +83,8 @@ public class ClusterMetaData {
                     + "preferred_ip varchar,"//
                     + "rack varchar,"//
                     + "release_version varchar,"//
-                    + "rpc_address varchar,"//
+                    + "tcp_endpoint varchar,"//
+                    + "p2p_endpoint varchar,"//
                     + "schema_version uuid,"//
                     + "PRIMARY KEY (peer))");
             stmt.execute("CREATE TABLE IF NOT EXISTS " + LOCAL_TABLE + "("//
@@ -110,15 +111,15 @@ public class ClusterMetaData {
         logger.error("Cluster metadata exception", e);
     }
 
-    public static Map<InetAddress, Map<String, String>> loadDcRackInfo() {
+    public static Map<NetEndpoint, Map<String, String>> loadDcRackInfo() {
         return null;
     }
 
-    public static InetAddress getPreferredIP(InetAddress ep) {
+    public static NetEndpoint getPreferredIP(NetEndpoint ep) {
         return ep;
     }
 
-    public static synchronized void updatePreferredIP(InetAddress ep, InetAddress preferred_ip) {
+    public static synchronized void updatePreferredIP(NetEndpoint ep, NetEndpoint preferred_ip) {
     }
 
     public static BootstrapState getBootstrapState() {
@@ -158,13 +159,13 @@ public class ClusterMetaData {
         }
     }
 
-    public static Map<InetAddress, Integer> loadHostIds() {
-        Map<InetAddress, Integer> hostIdMap = new HashMap<>();
+    public static Map<NetEndpoint, Integer> loadHostIds() {
+        Map<NetEndpoint, Integer> hostIdMap = new HashMap<>();
         try {
             ResultSet rs = stmt.executeQuery("SELECT peer, host_id FROM " + PEERS_TABLE);
             while (rs.next()) {
                 int hostId = rs.getInt(2);
-                InetAddress peer = InetAddress.getByName(rs.getString(1));
+                NetEndpoint peer = NetEndpoint.getByName(rs.getString(1));
                 hostIdMap.put(peer, Integer.valueOf(hostId));
             }
             rs.close();
@@ -190,7 +191,7 @@ public class ClusterMetaData {
         }
 
         // ID not found, generate a new one, persist, and then return it.
-        Integer hostId = P2PServer.getHostId();
+        Integer hostId = P2pServer.getHostId();
         return setLocalHostId(hostId);
     }
 
@@ -246,17 +247,16 @@ public class ClusterMetaData {
     }
 
     // 由调用者确定是否把本地节点的信息存入PEERS表
-    public static synchronized void updatePeerInfo(InetAddress ep, String columnName, Object value) {
+    public static synchronized void updatePeerInfo(NetEndpoint ep, String columnName, Object value) {
         String sql = "MERGE INTO %s (peer, %s) KEY(peer) VALUES('%s', '%s')";
         try {
-            // InetAddress.getCanonicalHostName很慢，别用它
-            stmt.executeUpdate(String.format(sql, PEERS_TABLE, columnName, ep.getHostAddress(), value));
+            stmt.executeUpdate(String.format(sql, PEERS_TABLE, columnName, ep.getHostAndPort(), value));
         } catch (SQLException e) {
             handleException(e);
         }
     }
 
-    public static synchronized void removeEndpoint(InetAddress ep) {
+    public static synchronized void removeEndpoint(NetEndpoint ep) {
         String sql = "DELETE FROM %s WHERE peer = '%s'";
         try {
             stmt.executeUpdate(String.format(sql, PEERS_TABLE, ep.getHostAddress()));

@@ -23,7 +23,6 @@ import java.io.IOError;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.net.BindException;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -61,11 +60,11 @@ import org.lealone.aose.locator.ILatencySubscriber;
 import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.metrics.DroppedMessageMetrics;
 import org.lealone.aose.server.ClusterMetaData;
+import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.server.PullSchema;
 import org.lealone.aose.server.PullSchemaAck;
 import org.lealone.aose.server.PullSchemaAckVerbHandler;
 import org.lealone.aose.server.PullSchemaVerbHandler;
-import org.lealone.aose.server.P2PServer;
 import org.lealone.aose.util.ExpiringMap;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
@@ -74,6 +73,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 
 import com.google.common.base.Function;
@@ -218,7 +218,7 @@ public final class MessagingService implements MessagingServiceMBean {
     /* Lookup table for registering message handlers based on the verb. */
     private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);;
 
-    private final ConcurrentMap<InetAddress, TcpConnection> connectionManagers = new NonBlockingHashMap<>();
+    private final ConcurrentMap<NetEndpoint, TcpConnection> connectionManagers = new NonBlockingHashMap<>();
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
@@ -228,7 +228,7 @@ public final class MessagingService implements MessagingServiceMBean {
     private final List<ILatencySubscriber> subscribers = new ArrayList<>();
 
     // protocol versions of the other nodes in the cluster
-    private final ConcurrentMap<InetAddress, Integer> versions = new NonBlockingHashMap<>();
+    private final ConcurrentMap<NetEndpoint, Integer> versions = new NonBlockingHashMap<>();
 
     private static class MSHandle {
         public static final MessagingService instance = new MessagingService();
@@ -324,12 +324,12 @@ public final class MessagingService implements MessagingServiceMBean {
      * @param address the host that replied to the message
      * @param latency
      */
-    public void maybeAddLatency(IAsyncCallback cb, InetAddress address, long latency) {
+    public void maybeAddLatency(IAsyncCallback cb, NetEndpoint address, long latency) {
         if (cb.isLatencyForSnitch())
             addLatency(address, latency);
     }
 
-    public void addLatency(InetAddress address, long latency) {
+    public void addLatency(NetEndpoint address, long latency) {
         for (ILatencySubscriber subscriber : subscribers)
             subscriber.receiveTiming(address, latency);
     }
@@ -339,9 +339,9 @@ public final class MessagingService implements MessagingServiceMBean {
     /**
      * Listen on the specified port.
      *
-     * @param localEp InetAddress whose port to listen on.
+     * @param localEp NetEndpoint whose port to listen on.
      */
-    public void start(InetAddress localEp, Map<String, String> config) throws ConfigurationException {
+    public void start(NetEndpoint localEp, Map<String, String> config) throws ConfigurationException {
         initVertx(config);
 
         callbacks.reset(); // hack to allow tests to stop/restart MS
@@ -352,27 +352,28 @@ public final class MessagingService implements MessagingServiceMBean {
         }
     }
 
-    private List<NetServer> getNetServers(InetAddress localEp) throws ConfigurationException {
-        String host = localEp.getHostAddress();
+    private List<NetServer> getNetServers(NetEndpoint localEp) throws ConfigurationException {
+        String host = localEp.getHost();
+        int port = localEp.getPort();
         final List<NetServer> servers = new ArrayList<>(2);
         ServerEncryptionOptions options = ConfigDescriptor.getServerEncryptionOptions();
         if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.none) {
             NetServerOptions nso = NetFactory.getNetServerOptions(options);
             nso.setHost(host);
-            nso.setPort(P2PServer.instance.getSSLPort());
+            nso.setPort(P2pServer.instance.getSSLPort());
             NetServer server = vertx.createNetServer(nso);
             servers.add(server);
-            logger.info("Starting Encrypted Messaging Service on SSL port {}", P2PServer.instance.getSSLPort());
+            logger.info("Starting Encrypted Messaging Service on SSL port {}", P2pServer.instance.getSSLPort());
         }
 
         if (options.internode_encryption != ServerEncryptionOptions.InternodeEncryption.all) {
             NetServerOptions nso = NetFactory.getNetServerOptions(null);
             nso.setHost(host);
-            nso.setPort(P2PServer.instance.getPort());
+            nso.setPort(port);
             nso.setReuseAddress(true);
             NetServer server = vertx.createNetServer(nso);
             servers.add(server);
-            logger.info("Starting Messaging Service on port {}", P2PServer.instance.getPort());
+            logger.info("Starting Messaging Service on port {}", port);
         }
         return servers;
     }
@@ -426,7 +427,7 @@ public final class MessagingService implements MessagingServiceMBean {
                     logger.info("MessagingService listening on port " + netServer.actualPort());
                 } else {
                     Throwable e = res.cause();
-                    String address = ConfigDescriptor.getLocalAddress().getHostAddress();
+                    String address = ConfigDescriptor.getLocalEndpoint().getHostAddress();
                     if (e instanceof BindException) {
                         if (e.getMessage().contains("in use"))
                             throw new ConfigurationException(address + " is in use by another process.  "
@@ -485,11 +486,11 @@ public final class MessagingService implements MessagingServiceMBean {
         return verbHandlers.get(type);
     }
 
-    public int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb) {
+    public int sendRR(MessageOut message, NetEndpoint to, IAsyncCallback cb) {
         return sendRR(message, to, cb, message.getTimeout(), false);
     }
 
-    public int sendRRWithFailure(MessageOut message, InetAddress to, IAsyncCallbackWithFailure cb) {
+    public int sendRRWithFailure(MessageOut message, NetEndpoint to, IAsyncCallbackWithFailure cb) {
         return sendRR(message, to, cb, message.getTimeout(), true);
     }
 
@@ -504,13 +505,13 @@ public final class MessagingService implements MessagingServiceMBean {
      * @param timeout the timeout used for expiration
      * @return an reference to message id used to match with the result
      */
-    public int sendRR(MessageOut message, InetAddress to, IAsyncCallback cb, long timeout, boolean failureCallback) {
+    public int sendRR(MessageOut message, NetEndpoint to, IAsyncCallback cb, long timeout, boolean failureCallback) {
         int id = addCallback(message, to, cb, timeout, failureCallback);
         sendOneWay(failureCallback ? message.withParameter(FAILURE_CALLBACK_PARAM, ONE_BYTE) : message, id, to);
         return id;
     }
 
-    private int addCallback(MessageOut message, InetAddress to, IAsyncCallback cb, long timeout,
+    private int addCallback(MessageOut message, NetEndpoint to, IAsyncCallback cb, long timeout,
             boolean failureCallback) {
         int messageId = nextId();
         CallbackInfo previous = callbacks.put(messageId,
@@ -519,11 +520,11 @@ public final class MessagingService implements MessagingServiceMBean {
         return messageId;
     }
 
-    public void sendOneWay(MessageOut message, InetAddress to) {
+    public void sendOneWay(MessageOut message, NetEndpoint to) {
         sendOneWay(message, nextId(), to);
     }
 
-    public void sendReply(MessageOut message, int id, InetAddress to) {
+    public void sendReply(MessageOut message, int id, NetEndpoint to) {
         sendOneWay(message, id, to);
     }
 
@@ -534,12 +535,12 @@ public final class MessagingService implements MessagingServiceMBean {
      * @param message messages to be sent.
      * @param to      endpoint to which the message needs to be sent
      */
-    public void sendOneWay(MessageOut message, int id, InetAddress to) {
+    public void sendOneWay(MessageOut message, int id, NetEndpoint to) {
         if (logger.isTraceEnabled()) {
-            if (to.equals(ConfigDescriptor.getLocalAddress()))
+            if (to.equals(ConfigDescriptor.getLocalEndpoint()))
                 logger.trace("Message-to-self {} going over MessagingService", message);
             else
-                logger.trace("{} sending {} to {}@{}", ConfigDescriptor.getLocalAddress(), message.verb, id, to);
+                logger.trace("{} sending {} to {}@{}", ConfigDescriptor.getLocalEndpoint(), message.verb, id, to);
         }
 
         TcpConnection conn = getConnection(to);
@@ -547,16 +548,14 @@ public final class MessagingService implements MessagingServiceMBean {
             conn.enqueue(message, id);
     }
 
-    public TcpConnection getConnection(InetAddress remoteEndpoint) {
-        InetAddress resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-        final int port = isEncryptedChannel(resetEndpoint) ? P2PServer.instance.getSSLPort()
-                : P2PServer.instance.getPort();
-        // 不能用resetEndpoint.getHostName()，很慢
-        final String host = resetEndpoint.getHostAddress();
-        final String remoteHostAndPort = host + ":" + port;
-
+    public TcpConnection getConnection(NetEndpoint remoteEndpoint) {
+        NetEndpoint resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
+        final String remoteHostAndPort = resetEndpoint.getHostAndPort();
         TcpConnection asyncConnection = asyncConnections.get(remoteHostAndPort);
         if (asyncConnection == null) {
+            final int port = isEncryptedChannel(resetEndpoint) ? P2pServer.instance.getSSLPort()
+                    : resetEndpoint.getPort();
+            final String host = resetEndpoint.getHost();
             synchronized (TcpConnection.class) {
                 asyncConnection = asyncConnections.get(remoteHostAndPort);
                 if (asyncConnection == null) {
@@ -583,7 +582,7 @@ public final class MessagingService implements MessagingServiceMBean {
                         latch.await();
                         asyncConnection = connRef.get();
                         if (asyncConnection != null) {
-                            String localHost = ConfigDescriptor.getLocalAddress().getHostAddress();
+                            String localHost = ConfigDescriptor.getLocalEndpoint().getHostAddress();
                             String localHostAndPort = localHost + ":" + port;
                             asyncConnection.initTransfer(resetEndpoint, remoteHostAndPort, localHostAndPort);
                             asyncConnections.put(remoteHostAndPort, asyncConnection);
@@ -598,7 +597,7 @@ public final class MessagingService implements MessagingServiceMBean {
         return asyncConnection;
     }
 
-    private static boolean isEncryptedChannel(InetAddress address) {
+    private static boolean isEncryptedChannel(NetEndpoint address) {
         IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
         switch (ConfigDescriptor.getServerEncryptionOptions().internode_encryption) {
         case none:
@@ -606,20 +605,20 @@ public final class MessagingService implements MessagingServiceMBean {
         case all:
             break;
         case dc:
-            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(ConfigDescriptor.getLocalAddress())))
+            if (snitch.getDatacenter(address).equals(snitch.getDatacenter(ConfigDescriptor.getLocalEndpoint())))
                 return false;
             break;
         case rack:
             // for rack then check if the DC's are the same.
-            if (snitch.getRack(address).equals(snitch.getRack(ConfigDescriptor.getLocalAddress()))
-                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(ConfigDescriptor.getLocalAddress())))
+            if (snitch.getRack(address).equals(snitch.getRack(ConfigDescriptor.getLocalEndpoint()))
+                    && snitch.getDatacenter(address).equals(snitch.getDatacenter(ConfigDescriptor.getLocalEndpoint())))
                 return false;
             break;
         }
         return true;
     }
 
-    public void destroyConnection(InetAddress to) {
+    public void destroyConnection(NetEndpoint to) {
         TcpConnection conn = connectionManagers.get(to);
         if (conn == null)
             return;
@@ -627,18 +626,18 @@ public final class MessagingService implements MessagingServiceMBean {
         connectionManagers.remove(to);
     }
 
-    public InetAddress getConnectionEndpoint(InetAddress to) {
+    public NetEndpoint getConnectionEndpoint(NetEndpoint to) {
         return getConnection(to).endpoint();
     }
 
-    public void reconnect(InetAddress old, InetAddress to) {
+    public void reconnect(NetEndpoint old, NetEndpoint to) {
         getConnection(old).reset(to);
     }
 
     /**
      * called from gossiper when it notices a node is not responding.
      */
-    public void convict(InetAddress ep) {
+    public void convict(NetEndpoint ep) {
         if (logger.isDebugEnabled())
             logger.debug("Resetting pool for {}", ep);
         getConnection(ep).reset();
@@ -681,20 +680,20 @@ public final class MessagingService implements MessagingServiceMBean {
         return callbacks.getAge(messageId);
     }
 
-    public void setVersion(InetAddress endpoint, int version) {
+    public void setVersion(NetEndpoint endpoint, int version) {
         if (logger.isDebugEnabled())
             logger.debug("Setting version {} for {}", version, endpoint);
 
         versions.put(endpoint, version);
     }
 
-    public void removeVersion(InetAddress endpoint) {
+    public void removeVersion(NetEndpoint endpoint) {
         if (logger.isDebugEnabled())
             logger.debug("Removing version for {}", endpoint);
         versions.remove(endpoint);
     }
 
-    public int getVersion(InetAddress endpoint) {
+    public int getVersion(NetEndpoint endpoint) {
         Integer v = versions.get(endpoint);
         if (v == null) {
             // we don't know the version. assume current. we'll know soon enough if that was incorrect.
@@ -705,7 +704,7 @@ public final class MessagingService implements MessagingServiceMBean {
             return Math.min(v, MessagingService.CURRENT_VERSION);
     }
 
-    public boolean knowsVersion(InetAddress endpoint) {
+    public boolean knowsVersion(NetEndpoint endpoint) {
         return versions.containsKey(endpoint);
     }
 
@@ -713,13 +712,13 @@ public final class MessagingService implements MessagingServiceMBean {
 
     @Override
     public int getVersion(String endpoint) throws UnknownHostException {
-        return getVersion(InetAddress.getByName(endpoint));
+        return getVersion(NetEndpoint.getByName(endpoint));
     }
 
     @Override
     public Map<String, Integer> getResponsePendingTasks() {
         Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, TcpConnection> entry : connectionManagers.entrySet())
+        for (Map.Entry<NetEndpoint, TcpConnection> entry : connectionManagers.entrySet())
             pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().getPendingMessages());
         return pendingTasks;
     }
@@ -727,7 +726,7 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Long> getResponseCompletedTasks() {
         Map<String, Long> completedTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, TcpConnection> entry : connectionManagers.entrySet())
+        for (Map.Entry<NetEndpoint, TcpConnection> entry : connectionManagers.entrySet())
             completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().getCompletedMesssages());
         return completedTasks;
     }
@@ -748,7 +747,7 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Long> getTimeoutsPerHost() {
         Map<String, Long> result = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<InetAddress, TcpConnection> entry : connectionManagers.entrySet()) {
+        for (Map.Entry<NetEndpoint, TcpConnection> entry : connectionManagers.entrySet()) {
             String ip = entry.getKey().getHostAddress();
             long recent = entry.getValue().getTimeouts();
             result.put(ip, recent);

@@ -191,6 +191,11 @@ public class Constants {
      */
     public static final int DEFAULT_TCP_PORT = 5210;
 
+    /**
+     * The default port of the P2P server.
+     */
+    public static final int DEFAULT_P2P_PORT = 5211;
+
     public static final String DEFAULT_HOST = "localhost";
 
     /**
