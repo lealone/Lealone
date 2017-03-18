@@ -19,10 +19,10 @@
     <jmxConfigurator />
     <appender name="FILE"
         class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${lealone.logdir}/system.log</file>
+        <file>${lealone.logdir}/lealone.log</file>
         <rollingPolicy
             class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>${lealone.logdir}/system.log.%i.zip
+            <fileNamePattern>${lealone.logdir}/lealone.log.%i.zip
             </fileNamePattern>
             <minIndex>1</minIndex>
             <maxIndex>20</maxIndex>
