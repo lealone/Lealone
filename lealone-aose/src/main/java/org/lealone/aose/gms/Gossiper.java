@@ -47,7 +47,6 @@ import org.lealone.aose.concurrent.MetricsEnabledThreadPoolExecutor;
 import org.lealone.aose.concurrent.Stage;
 import org.lealone.aose.concurrent.StageManager;
 import org.lealone.aose.config.ConfigDescriptor;
-import org.lealone.aose.locator.IEndpointSnitch;
 import org.lealone.aose.net.IAsyncCallback;
 import org.lealone.aose.net.MessageIn;
 import org.lealone.aose.net.MessageOut;
@@ -60,7 +59,6 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetEndpoint;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.Uninterruptibles;
 
@@ -400,22 +398,6 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         this.lastProcessedMessageAt = timeInMillis;
     }
 
-    public boolean seenAnySeed() {
-        for (Map.Entry<NetEndpoint, EndpointState> entry : endpointStateMap.entrySet()) {
-            if (seeds.contains(entry.getKey()))
-                return true;
-            try {
-                if (entry.getValue().getApplicationStateMap().containsKey(ApplicationState.INTERNAL_IP)
-                        && seeds.contains(NetEndpoint
-                                .getByName(entry.getValue().getApplicationState(ApplicationState.INTERNAL_IP).value)))
-                    return true;
-            } catch (UnknownHostException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return false;
-    }
-
     /**
      * Register for interesting state changes.
      *
@@ -435,7 +417,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     }
 
     public Set<NetEndpoint> getLiveMembers() {
-        Set<NetEndpoint> liveMembers = new HashSet<NetEndpoint>(liveEndpoints);
+        Set<NetEndpoint> liveMembers = new HashSet<>(liveEndpoints);
         if (!liveMembers.contains(ConfigDescriptor.getLocalEndpoint()))
             liveMembers.add(ConfigDescriptor.getLocalEndpoint());
         return liveMembers;
@@ -448,26 +430,18 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         return unreachableEndpoints.keySet();
     }
 
-    /**
-     * @return a list of unreachable token owners
-     */
-    public Set<NetEndpoint> getUnreachableTokenOwners() {
-        Set<NetEndpoint> tokenOwners = new HashSet<>();
-        for (NetEndpoint endpoint : unreachableEndpoints.keySet()) {
-            if (P2pServer.instance.getTopologyMetaData().isMember(endpoint))
-                tokenOwners.add(endpoint);
-        }
-
-        return tokenOwners;
-    }
-
-    public long getEndpointDowntime(NetEndpoint ep) {
-        Long downtime = unreachableEndpoints.get(ep);
-        if (downtime != null)
-            return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - downtime);
-        else
-            return 0L;
-    }
+    // /**
+    // * @return a list of unreachable token owners
+    // */
+    // public Set<NetEndpoint> getUnreachableTokenOwners() {
+    // Set<NetEndpoint> tokenOwners = new HashSet<>();
+    // for (NetEndpoint endpoint : unreachableEndpoints.keySet()) {
+    // if (P2pServer.instance.getTopologyMetaData().isMember(endpoint))
+    // tokenOwners.add(endpoint);
+    // }
+    //
+    // return tokenOwners;
+    // }
 
     /**
      * This method is part of IFailureDetectionEventListener interface. This is invoked
@@ -572,6 +546,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
      *
      * @param endpoint The endpoint that has been replaced
      */
+    // TODO 没用到，考虑删除
     public void replacedEndpoint(NetEndpoint endpoint) {
         removeEndpoint(endpoint);
         evictFromMembership(endpoint);
@@ -586,6 +561,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
      * @param hostId      - the ID of the host being removed
      * @param localHostId - my own host ID for replication coordination
      */
+    // TODO 没用到，考虑删除
     public void advertiseRemoving(NetEndpoint endpoint, UUID hostId, UUID localHostId) {
         EndpointState epState = endpointStateMap.get(endpoint);
         // remember this node's generation
@@ -649,12 +625,24 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         logger.warn("Finished assassinating {}", endpoint);
     }
 
-    public boolean isKnownEndpoint(NetEndpoint endpoint) {
-        return endpointStateMap.containsKey(endpoint);
+    @Override
+    public long getEndpointDowntime(String address) throws UnknownHostException {
+        NetEndpoint ep = NetEndpoint.getByName(address);
+        Long downtime = unreachableEndpoints.get(ep);
+        if (downtime != null)
+            return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - downtime);
+        else
+            return 0L;
     }
 
-    public int getCurrentGenerationNumber(NetEndpoint endpoint) {
-        return endpointStateMap.get(endpoint).getHeartBeatState().getGeneration();
+    @Override
+    public int getCurrentGenerationNumber(String address) throws UnknownHostException {
+        NetEndpoint ep = NetEndpoint.getByName(address);
+        return endpointStateMap.get(ep).getHeartBeatState().getGeneration();
+    }
+
+    public boolean isKnownEndpoint(NetEndpoint endpoint) {
+        return endpointStateMap.containsKey(endpoint);
     }
 
     public boolean isGossipOnlyMember(NetEndpoint endpoint) {
@@ -1089,6 +1077,15 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         }
     }
 
+    protected void finishShadowRound() {
+        if (inShadowRound)
+            inShadowRound = false;
+    }
+
+    protected boolean isInShadowRound() {
+        return inShadowRound;
+    }
+
     /**
      * Add an endpoint we knew about previously, but whose state is unknown
      */
@@ -1154,31 +1151,6 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         return (scheduledGossipTask != null) && (!scheduledGossipTask.isCancelled());
     }
 
-    protected void finishShadowRound() {
-        if (inShadowRound)
-            inShadowRound = false;
-    }
-
-    protected boolean isInShadowRound() {
-        return inShadowRound;
-    }
-
-    @VisibleForTesting
-    public void injectApplicationState(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
-        EndpointState localState = endpointStateMap.get(endpoint);
-        localState.addApplicationState(state, value);
-    }
-
-    @Override
-    public long getEndpointDowntime(String address) throws UnknownHostException {
-        return getEndpointDowntime(NetEndpoint.getByName(address));
-    }
-
-    @Override
-    public int getCurrentGenerationNumber(String address) throws UnknownHostException {
-        return getCurrentGenerationNumber(NetEndpoint.getByName(address));
-    }
-
     public void addExpireTimeForEndpoint(NetEndpoint endpoint, long expireTime) {
         if (logger.isDebugEnabled()) {
             logger.debug("adding expire time for endpoint : {} ({})", endpoint, expireTime);
@@ -1190,26 +1162,47 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         return System.currentTimeMillis() + Gossiper.A_VERY_LONG_TIME;
     }
 
-    public NetEndpoint getFirstLiveSeedEndpoint() {
-        for (NetEndpoint seed : ConfigDescriptor.getSeedList()) {
-            if (FailureDetector.instance.isAlive(seed))
-                return seed;
-        }
-        throw new IllegalStateException("Unable to find any live seeds!");
-    }
-
-    public NetEndpoint getLiveSeedEndpoint() {
-        IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        String dc = snitch.getDatacenter(ConfigDescriptor.getLocalEndpoint());
-        for (NetEndpoint seed : ConfigDescriptor.getSeedList()) {
-            if (FailureDetector.instance.isAlive(seed) && dc.equals(snitch.getDatacenter(seed)))
-                return seed;
-        }
-
-        for (NetEndpoint seed : ConfigDescriptor.getSeedList()) {
-            if (FailureDetector.instance.isAlive(seed))
-                return seed;
-        }
-        throw new IllegalStateException("Unable to find any live seeds!");
-    }
+    // @VisibleForTesting
+    // public void injectApplicationState(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
+    // EndpointState localState = endpointStateMap.get(endpoint);
+    // localState.addApplicationState(state, value);
+    // }
+    // public boolean seenAnySeed() {
+    // for (Map.Entry<NetEndpoint, EndpointState> entry : endpointStateMap.entrySet()) {
+    // if (seeds.contains(entry.getKey()))
+    // return true;
+    // try {
+    // if (entry.getValue().getApplicationStateMap().containsKey(ApplicationState.INTERNAL_IP)
+    // && seeds.contains(NetEndpoint
+    // .getByName(entry.getValue().getApplicationState(ApplicationState.INTERNAL_IP).value)))
+    // return true;
+    // } catch (UnknownHostException e) {
+    // throw new RuntimeException(e);
+    // }
+    // }
+    // return false;
+    // }
+    //
+    // public NetEndpoint getFirstLiveSeedEndpoint() {
+    // for (NetEndpoint seed : ConfigDescriptor.getSeedList()) {
+    // if (FailureDetector.instance.isAlive(seed))
+    // return seed;
+    // }
+    // throw new IllegalStateException("Unable to find any live seeds!");
+    // }
+    //
+    // public NetEndpoint getLiveSeedEndpoint() {
+    // IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
+    // String dc = snitch.getDatacenter(ConfigDescriptor.getLocalEndpoint());
+    // for (NetEndpoint seed : ConfigDescriptor.getSeedList()) {
+    // if (FailureDetector.instance.isAlive(seed) && dc.equals(snitch.getDatacenter(seed)))
+    // return seed;
+    // }
+    //
+    // for (NetEndpoint seed : ConfigDescriptor.getSeedList()) {
+    // if (FailureDetector.instance.isAlive(seed))
+    // return seed;
+    // }
+    // throw new IllegalStateException("Unable to find any live seeds!");
+    // }
 }
