@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -49,7 +50,7 @@ public class StandardPrimaryIndex extends IndexBase {
     private final StandardTable table;
     private final String mapName;
     private final TransactionMap<Value, VersionedValue> dataMap;
-    private long lastKey;
+    private final AtomicLong lastKey = new AtomicLong(0);
     private int mainIndexColumn = -1;
 
     public StandardPrimaryIndex(ServerSession session, StandardTable table) {
@@ -82,7 +83,7 @@ public class StandardPrimaryIndex extends IndexBase {
         transactionEngine.addTransactionMap(dataMap);
 
         Value k = dataMap.lastKey();
-        lastKey = k == null ? 0 : k.getLong();
+        lastKey.set(k == null ? 0 : k.getLong());
     }
 
     @Override
@@ -121,7 +122,7 @@ public class StandardPrimaryIndex extends IndexBase {
     public void add(ServerSession session, Row row) {
         if (mainIndexColumn == -1) {
             if (row.getKey() == 0) {
-                row.setKey(++lastKey);
+                row.setKey(lastKey.incrementAndGet());
             }
         } else {
             long k = row.getValue(mainIndexColumn).getLong();
@@ -159,7 +160,10 @@ public class StandardPrimaryIndex extends IndexBase {
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
         }
-        lastKey = Math.max(lastKey, row.getKey());
+        // because it's possible to directly update the key using the _rowid_ syntax
+        if (row.getKey() > lastKey.get()) {
+            lastKey.set(row.getKey());
+        }
     }
 
     @Override
