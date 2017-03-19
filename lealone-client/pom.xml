@@ -41,6 +41,10 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <transformers>
+                                <!-- 合并多个服务接口文件，就是在META-INF/services目录下的那些文件，可能有多个 -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
                             <outputFile>${project.build.directory}/${project.artifactId}-${project.version}-all.jar</outputFile>
                         </configuration>
                     </execution>
