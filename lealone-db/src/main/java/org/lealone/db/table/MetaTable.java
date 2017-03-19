@@ -30,6 +30,7 @@ import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.QueryStatisticsData;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Setting;
 import org.lealone.db.UserAggregate;
@@ -99,7 +100,8 @@ public class MetaTable extends Table {
     private static final int SESSIONS = 25;
     private static final int LOCKS = 26;
     private static final int SESSION_STATE = 27;
-    private static final int META_TABLE_TYPE_COUNT = SESSION_STATE + 1;
+    private static final int QUERY_STATISTICS = 28;
+    private static final int META_TABLE_TYPE_COUNT = QUERY_STATISTICS + 1;
 
     private final int type;
     private final int indexColumn;
@@ -278,6 +280,14 @@ public class MetaTable extends Table {
         case SESSION_STATE: {
             setObjectName("SESSION_STATE");
             cols = createColumns("KEY", "SQL");
+            break;
+        }
+        case QUERY_STATISTICS: {
+            setObjectName("QUERY_STATISTICS");
+            cols = createColumns("SQL_STATEMENT", "EXECUTION_COUNT INT", "MIN_EXECUTION_TIME DOUBLE",
+                    "MAX_EXECUTION_TIME DOUBLE", "CUMULATIVE_EXECUTION_TIME DOUBLE", "AVERAGE_EXECUTION_TIME DOUBLE",
+                    "STD_DEV_EXECUTION_TIME DOUBLE", "MIN_ROW_COUNT INT", "MAX_ROW_COUNT INT",
+                    "CUMULATIVE_ROW_COUNT LONG", "AVERAGE_ROW_COUNT DOUBLE", "STD_DEV_ROW_COUNT DOUBLE");
             break;
         }
         default:
@@ -1324,6 +1334,39 @@ public class MetaTable extends Table {
                         "SCHEMA",
                         // SQL
                         "SET SCHEMA " + StringUtils.quoteIdentifier(schema));
+            }
+            break;
+        }
+        case QUERY_STATISTICS: {
+            QueryStatisticsData control = database.getQueryStatisticsData();
+            if (control != null) {
+                for (QueryStatisticsData.QueryEntry entry : control.getQueries()) {
+                    add(rows,
+                            // SQL_STATEMENT
+                            entry.sqlStatement,
+                            // EXECUTION_COUNT
+                            "" + entry.count,
+                            // MIN_EXECUTION_TIME
+                            "" + entry.executionTimeMinNanos / 1000d / 1000,
+                            // MAX_EXECUTION_TIME
+                            "" + entry.executionTimeMaxNanos / 1000d / 1000,
+                            // CUMULATIVE_EXECUTION_TIME
+                            "" + entry.executionTimeCumulativeNanos / 1000d / 1000,
+                            // AVERAGE_EXECUTION_TIME
+                            "" + entry.executionTimeMeanNanos / 1000d / 1000,
+                            // STD_DEV_EXECUTION_TIME
+                            "" + entry.getExecutionTimeStandardDeviation() / 1000d / 1000,
+                            // MIN_ROW_COUNT
+                            "" + entry.rowCountMin,
+                            // MAX_ROW_COUNT
+                            "" + entry.rowCountMax,
+                            // CUMULATIVE_ROW_COUNT
+                            "" + entry.rowCountCumulative,
+                            // AVERAGE_ROW_COUNT
+                            "" + entry.rowCountMean,
+                            // STD_DEV_ROW_COUNT
+                            "" + entry.getRowCountStandardDeviation());
+                }
             }
             break;
         }

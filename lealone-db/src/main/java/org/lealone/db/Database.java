@@ -160,6 +160,7 @@ public class Database implements DataHandler, DbObject {
     private DbException backgroundException;
 
     private boolean queryStatistics;
+    private int queryStatisticsMaxEntries = Constants.QUERY_STATISTICS_MAX_ENTRIES;
     private QueryStatisticsData queryStatisticsData;
 
     private final int id;
@@ -1809,12 +1810,25 @@ public class Database implements DataHandler, DbObject {
     public void setQueryStatistics(boolean b) {
         queryStatistics = b;
         synchronized (this) {
-            queryStatisticsData = null;
+            if (!b) {
+                queryStatisticsData = null;
+            }
         }
     }
 
     public boolean getQueryStatistics() {
         return queryStatistics;
+    }
+
+    public void setQueryStatisticsMaxEntries(int n) {
+        queryStatisticsMaxEntries = n;
+        if (queryStatisticsData != null) {
+            synchronized (this) {
+                if (queryStatisticsData != null) {
+                    queryStatisticsData.setMaxQueryEntries(queryStatisticsMaxEntries);
+                }
+            }
+        }
     }
 
     public QueryStatisticsData getQueryStatisticsData() {
@@ -1824,7 +1838,7 @@ public class Database implements DataHandler, DbObject {
         if (queryStatisticsData == null) {
             synchronized (this) {
                 if (queryStatisticsData == null) {
-                    queryStatisticsData = new QueryStatisticsData();
+                    queryStatisticsData = new QueryStatisticsData(queryStatisticsMaxEntries);
                 }
             }
         }

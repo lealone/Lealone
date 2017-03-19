@@ -43,7 +43,7 @@ class StatementWrapper extends StatementBase {
     /**
      * The last start time.
      */
-    private long startTime;
+    private long startTimeNanos;
 
     /**
      * If this query was canceled.
@@ -244,7 +244,7 @@ class StatementWrapper extends StatementBase {
     private Object execute(int maxRows, boolean isUpdate, AsyncHandler<AsyncResult<Integer>> updateHandler,
             AsyncHandler<AsyncResult<Result>> queryHandler) {
         boolean async = (updateHandler != null) || (queryHandler != null);
-        startTime = 0;
+        startTimeNanos = 0;
         long start = 0;
         Database database = session.getDatabase();
         session.waitIfExclusiveModeEnabled();
@@ -288,7 +288,7 @@ class StatementWrapper extends StatementBase {
                             asyncResult = ar;
                         }
                     }
-                    statement.trace(startTime, rowCount);
+                    statement.trace(startTimeNanos, rowCount);
                     setProgress(DatabaseEventListener.STATE_STATEMENT_END);
                     return result;
                 } catch (DbException e) {
@@ -342,8 +342,8 @@ class StatementWrapper extends StatementBase {
      * Start the stopwatch.
      */
     private void start() {
-        if (trace.isInfoEnabled()) {
-            startTime = System.currentTimeMillis();
+        if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
+            startTimeNanos = System.nanoTime();
         }
     }
 
@@ -430,10 +430,11 @@ class StatementWrapper extends StatementBase {
                 session.commit();
             }
         }
-        if (startTime > 0 && trace.isInfoEnabled()) {
-            long time = System.currentTimeMillis() - startTime;
-            if (time > Constants.SLOW_QUERY_LIMIT_MS) {
-                trace.info("slow query: {0} ms", time);
+        if (startTimeNanos > 0 && trace.isInfoEnabled()) {
+            long timeMillis = (System.nanoTime() - startTimeNanos) / 1000 / 1000;
+            // 如果一条sql的执行时间大于100毫秒，记下它
+            if (timeMillis > Constants.SLOW_QUERY_LIMIT_MS) {
+                trace.info("slow query: {0} ms, sql: {1}", timeMillis, getSQL());
             }
         }
     }

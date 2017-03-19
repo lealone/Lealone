@@ -332,21 +332,22 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     }
 
     /**
-     * Print information about the statement executed if info trace level is
-     * enabled.
+     * Print information about the statement executed if info trace level is enabled.
      *
-     * @param startTime when the statement was started
+     * @param startTimeNanos when the statement was started
      * @param rowCount the query or update row count
      */
-    void trace(long startTime, int rowCount) {
-        if (session.getTrace().isInfoEnabled() && startTime > 0) {
-            long deltaTime = System.currentTimeMillis() - startTime;
+    void trace(long startTimeNanos, int rowCount) {
+        if (startTimeNanos > 0 && session.getTrace().isInfoEnabled()) {
+            long deltaTimeNanos = System.nanoTime() - startTimeNanos;
             String params = Trace.formatParams(getParameters());
-            session.getTrace().infoSQL(getSQL(), params, rowCount, deltaTime);
+            session.getTrace().infoSQL(getSQL(), params, rowCount, deltaTimeNanos / 1000 / 1000);
         }
-        if (session.getDatabase().getQueryStatistics()) {
-            long deltaTime = System.currentTimeMillis() - startTime;
-            session.getDatabase().getQueryStatisticsData().update(toString(), deltaTime, rowCount);
+
+        // startTimeNanos can be zero for the command that actually turns on statistics
+        if (startTimeNanos > 0 && session.getDatabase().getQueryStatistics()) {
+            long deltaTimeNanos = System.nanoTime() - startTimeNanos;
+            session.getDatabase().getQueryStatisticsData().update(getSQL(), deltaTimeNanos, rowCount);
         }
     }
 

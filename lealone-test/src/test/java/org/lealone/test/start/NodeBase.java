@@ -64,7 +64,8 @@ public class NodeBase extends YamlConfigurationLoader {
             config.base_dir = config.base_dir + dir;
         }
 
-        config.listen_address = listen_address;
+        if (listen_address != null)
+            config.listen_address = listen_address;
 
         if (endpoint_snitch != null)
             config.endpoint_snitch = endpoint_snitch;

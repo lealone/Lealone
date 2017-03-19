@@ -207,9 +207,14 @@ public class SetTypes {
     public static final int BINARY_COLLATION = 38;
 
     /**
-     * The type of a SET AUTOCOMMIT statement.
+     * The type of a SET QUERY_STATISTICS_ACTIVE statement.
      */
-    public static final int AUTOCOMMIT = 39;
+    public static final int QUERY_STATISTICS = 39;
+
+    /**
+     * The type of a SET QUERY_STATISTICS_MAX_ENTRIES statement.
+     */
+    public static final int QUERY_STATISTICS_MAX_ENTRIES = 40;
 
     private static final ArrayList<String> TYPES = New.arrayList();
 
@@ -260,7 +265,8 @@ public class SetTypes {
         list.add(QUERY_TIMEOUT, "QUERY_TIMEOUT");
         list.add(REDO_LOG_BINARY, "REDO_LOG_BINARY");
         list.add(BINARY_COLLATION, "BINARY_COLLATION");
-        list.add(AUTOCOMMIT, "AUTOCOMMIT");
+        list.add(QUERY_STATISTICS, "QUERY_STATISTICS");
+        list.add(QUERY_STATISTICS_MAX_ENTRIES, "QUERY_STATISTICS_MAX_ENTRIES");
 
         TYPE_NAMES.addAll(TYPES);
     }

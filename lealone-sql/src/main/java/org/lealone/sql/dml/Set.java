@@ -309,6 +309,24 @@ public class Set extends ManipulateStatement {
             database.setReferentialIntegrity(value == 1);
             break;
         }
+        case SetTypes.QUERY_STATISTICS: {
+            session.getUser().checkAdmin();
+            int value = getIntValue();
+            if (value < 0 || value > 1) {
+                throw DbException.getInvalidValueException("QUERY_STATISTICS", getIntValue());
+            }
+            database.setQueryStatistics(value == 1);
+            break;
+        }
+        case SetTypes.QUERY_STATISTICS_MAX_ENTRIES: {
+            session.getUser().checkAdmin();
+            int value = getIntValue();
+            if (value < 1) {
+                throw DbException.getInvalidValueException("QUERY_STATISTICS_MAX_ENTRIES", getIntValue());
+            }
+            database.setQueryStatisticsMaxEntries(value);
+            break;
+        }
         case SetTypes.SCHEMA: {
             Schema schema = database.getSchema(stringValue);
             session.setCurrentSchema(schema);

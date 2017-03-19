@@ -19,8 +19,6 @@ import java.util.Map.Entry;
  */
 public class QueryStatisticsData {
 
-    private static final int MAX_QUERY_ENTRIES = 100;
-
     private static final Comparator<QueryEntry> QUERY_ENTRY_COMPARATOR = new Comparator<QueryEntry>() {
         @Override
         public int compare(QueryEntry o1, QueryEntry o2) {
@@ -30,6 +28,16 @@ public class QueryStatisticsData {
 
     private final HashMap<String, QueryEntry> map = new HashMap<String, QueryEntry>();
 
+    private int maxQueryEntries;
+
+    public QueryStatisticsData(int maxQueryEntries) {
+        this.maxQueryEntries = maxQueryEntries;
+    }
+
+    public synchronized void setMaxQueryEntries(int maxQueryEntries) {
+        this.maxQueryEntries = maxQueryEntries;
+    }
+
     public synchronized List<QueryEntry> getQueries() {
         // return a copy of the map so we don't have to
         // worry about external synchronization
@@ -37,29 +45,28 @@ public class QueryStatisticsData {
         list.addAll(map.values());
         // only return the newest 100 entries
         Collections.sort(list, QUERY_ENTRY_COMPARATOR);
-        return list.subList(0, Math.min(list.size(), MAX_QUERY_ENTRIES));
+        return list.subList(0, Math.min(list.size(), maxQueryEntries));
     }
 
     /**
      * Update query statistics.
      *
      * @param sqlStatement the statement being executed
-     * @param executionTime the time in milliseconds the query/update took to
-     *            execute
+     * @param executionTimeNanos the time in nanoseconds the query/update took
+     *            to execute
      * @param rowCount the query or update row count
      */
-    public synchronized void update(String sqlStatement, long executionTime, int rowCount) {
+    public synchronized void update(String sqlStatement, long executionTimeNanos, int rowCount) {
         QueryEntry entry = map.get(sqlStatement);
         if (entry == null) {
-            entry = new QueryEntry();
-            entry.sqlStatement = sqlStatement;
+            entry = new QueryEntry(sqlStatement);
             map.put(sqlStatement, entry);
         }
-        entry.update(executionTime, rowCount);
+        entry.update(executionTimeNanos, rowCount);
 
         // Age-out the oldest entries if the map gets too big.
         // Test against 1.5 x max-size so we don't do this too often
-        if (map.size() > MAX_QUERY_ENTRIES * 1.5f) {
+        if (map.size() > maxQueryEntries * 1.5f) {
             // Sort the entries by age
             ArrayList<QueryEntry> list = new ArrayList<QueryEntry>();
             list.addAll(map.values());
@@ -85,7 +92,7 @@ public class QueryStatisticsData {
         /**
          * The SQL statement.
          */
-        public String sqlStatement;
+        public final String sqlStatement;
 
         /**
          * The number of times the statement was executed.
@@ -99,19 +106,19 @@ public class QueryStatisticsData {
         public long lastUpdateTime;
 
         /**
-         * The minimum execution time, in milliseconds.
+         * The minimum execution time, in nanoseconds.
          */
-        public long executionTimeMin;
+        public long executionTimeMinNanos;
 
         /**
-         * The maximum execution time, in milliseconds.
+         * The maximum execution time, in nanoseconds.
          */
-        public long executionTimeMax;
+        public long executionTimeMaxNanos;
 
         /**
          * The total execution time.
          */
-        public long executionTimeCumulative;
+        public long executionTimeCumulativeNanos;
 
         /**
          * The minimum number of rows.
@@ -131,7 +138,7 @@ public class QueryStatisticsData {
         /**
          * The mean execution time.
          */
-        public double executionTimeMean;
+        public double executionTimeMeanNanos;
 
         /**
          * The mean number of rows.
@@ -142,39 +149,42 @@ public class QueryStatisticsData {
         // http://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
         // http://www.johndcook.com/standard_deviation.html
 
-        private double executionTimeM2;
+        private double executionTimeM2Nanos;
         private double rowCountM2;
+
+        public QueryEntry(String sql) {
+            this.sqlStatement = sql;
+        }
 
         /**
          * Update the statistics entry.
          *
-         * @param time the execution time
+         * @param timeNanos the execution time in nanos
          * @param rows the number of rows
          */
-        void update(long time, int rows) {
+        void update(long timeNanos, int rows) {
             count++;
-            executionTimeMin = Math.min(time, executionTimeMin);
-            executionTimeMax = Math.max(time, executionTimeMax);
+            executionTimeMinNanos = Math.min(timeNanos, executionTimeMinNanos);
+            executionTimeMaxNanos = Math.max(timeNanos, executionTimeMaxNanos);
             rowCountMin = Math.min(rows, rowCountMin);
             rowCountMax = Math.max(rows, rowCountMax);
 
-            double delta = rows - rowCountMean;
-            rowCountMean += delta / count;
-            rowCountM2 += delta * (rows - rowCountMean);
+            double rowDelta = rows - rowCountMean;
+            rowCountMean += rowDelta / count;
+            rowCountM2 += rowDelta * (rows - rowCountMean);
 
-            delta = time - executionTimeMean;
-            executionTimeMean += delta / count;
-            executionTimeM2 += delta * (time - executionTimeMean);
+            double timeDelta = timeNanos - executionTimeMeanNanos;
+            executionTimeMeanNanos += timeDelta / count;
+            executionTimeM2Nanos += timeDelta * (timeNanos - executionTimeMeanNanos);
 
-            executionTimeCumulative += time;
+            executionTimeCumulativeNanos += timeNanos;
             rowCountCumulative += rows;
             lastUpdateTime = System.currentTimeMillis();
-
         }
 
         public double getExecutionTimeStandardDeviation() {
             // population standard deviation
-            return Math.sqrt(executionTimeM2 / count);
+            return Math.sqrt(executionTimeM2Nanos / count);
         }
 
         public double getRowCountStandardDeviation() {
