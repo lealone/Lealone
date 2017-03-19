@@ -79,6 +79,9 @@ public class SqlTestBase extends TestBase {
                 cause = cause.getCause();
             }
             if (cause instanceof SQLException) {
+                String dbName = this.dbName;
+                if (dbName == null)
+                    dbName = TestBase.DB_NAME;
                 if (((SQLException) cause).getErrorCode() == ErrorCode.DATABASE_NOT_FOUND_1) {
                     String sql = "CREATE DATABASE IF NOT EXISTS " + dbName;
                     if (runMode != null)
