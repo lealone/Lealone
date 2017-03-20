@@ -15,6 +15,7 @@ import org.lealone.async.AsyncResult;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.MathUtils;
+import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -457,5 +458,25 @@ class StatementWrapper extends StatementBase {
     @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
         execute(0, true, handler, null);
+    }
+
+    @Override
+    public int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult) {
+        int updateCount = executeUpdate();
+        if (commandUpdateResult != null) {
+            commandUpdateResult.setUpdateCount(updateCount);
+            commandUpdateResult.addResult(this, session.getLastRowKey());
+        }
+        return updateCount;
+    }
+
+    @Override
+    public void replicationCommit(long validKey) {
+        session.replicationCommit(validKey);
+    }
+
+    @Override
+    public void replicationRollback() {
+        session.rollback();
     }
 }

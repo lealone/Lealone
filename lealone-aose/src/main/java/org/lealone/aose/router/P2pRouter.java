@@ -186,13 +186,15 @@ public class P2pRouter implements Router {
     @Override
     public int createDatabase(Database db, ServerSession currentSession) {
         Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
-        // liveMembers.remove(Utils.getBroadcastAddress()); // TODO 要不要删除当前节点
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
         for (NetEndpoint e : liveMembers) {
             String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
-            sessions[i++] = SessionPool.getSession(currentSession, currentSession.getURL(hostId),
-                    !ConfigDescriptor.getLocalEndpoint().equals(e));
+            boolean isLocal = ConfigDescriptor.getLocalEndpoint().equals(e);
+            if (isLocal)
+                sessions[i++] = currentSession; // 如果复制节点就是当前节点，那么重用当前Session
+            else
+                sessions[i++] = SessionPool.getSession(currentSession, currentSession.getURL(hostId), true);
         }
 
         ReplicationSession rs = new ReplicationSession(sessions);
