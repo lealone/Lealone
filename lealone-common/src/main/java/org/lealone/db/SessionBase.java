@@ -125,4 +125,14 @@ public abstract class SessionBase implements Session {
     public RunMode getRunMode() {
         return runMode;
     }
+
+    @Override
+    public long getLastRowKey() {
+        return 0;
+    }
+
+    @Override
+    public void replicationCommit(long validKey) {
+    }
+
 }

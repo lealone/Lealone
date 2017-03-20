@@ -14,7 +14,9 @@ import org.lealone.async.AsyncResult;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
+import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
+import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
@@ -31,7 +33,7 @@ import org.lealone.sql.expression.Parameter;
  * @author H2 Group
  * @author zhh
  */
-public abstract class StatementBase implements PreparedStatement, ParsedStatement {
+public abstract class StatementBase extends CommandBase implements PreparedStatement, ParsedStatement {
 
     /**
      * The session.
@@ -575,7 +577,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     }
 
     @Override
-    public int executeUpdate(String replicationName) {
+    public int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult) {
         return executeUpdate();
     }
 
@@ -616,4 +618,5 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     public boolean isReplicationStatement() {
         return false;
     }
+
 }

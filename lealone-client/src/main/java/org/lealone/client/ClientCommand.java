@@ -21,7 +21,9 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.New;
 import org.lealone.db.Command;
+import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
+import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
@@ -37,7 +39,7 @@ import org.lealone.storage.StorageCommand;
  * @author H2 Group
  * @author zhh
  */
-public class ClientCommand implements StorageCommand {
+public class ClientCommand extends CommandBase implements StorageCommand {
 
     private final Transfer transfer;
     private final ArrayList<CommandParameter> parameters;
@@ -264,20 +266,21 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public int executeUpdate() {
-        return executeUpdate(null, null, false);
+        return executeUpdate(null, null, false, null);
     }
 
     @Override
-    public int executeUpdate(String replicationName) {
-        return executeUpdate(replicationName, null, false);
+    public int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult) {
+        return executeUpdate(replicationName, null, false, commandUpdateResult);
     }
 
     @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        executeUpdate(null, handler, true);
+        executeUpdate(null, handler, true, null);
     }
 
-    private int executeUpdate(String replicationName, AsyncHandler<AsyncResult<Integer>> handler, boolean async) {
+    private int executeUpdate(String replicationName, AsyncHandler<AsyncResult<Integer>> handler, boolean async,
+            CommandUpdateResult commandUpdateResult) {
         if (prepared) {
             checkParameters();
             prepareIfRequired();
@@ -320,7 +323,7 @@ public class ClientCommand implements StorageCommand {
             if (prepared)
                 sendParameters(transfer);
 
-            updateCount = getUpdateCount(isDistributedUpdate, id, handler, async);
+            updateCount = getUpdateCount(isDistributedUpdate, id, handler, async, commandUpdateResult);
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -328,7 +331,7 @@ public class ClientCommand implements StorageCommand {
     }
 
     private int getUpdateCount(boolean isDistributedUpdate, int id, AsyncHandler<AsyncResult<Integer>> handler,
-            boolean async) throws IOException {
+            boolean async, CommandUpdateResult commandUpdateResult) throws IOException {
         isQuery = false;
         AsyncCallback<Integer> ac = new AsyncCallback<Integer>() {
             @Override
@@ -338,6 +341,11 @@ public class ClientCommand implements StorageCommand {
                         session.getTransaction().addLocalTransactionNames(transfer.readString());
 
                     int updateCount = transfer.readInt();
+                    long key = transfer.readLong();
+                    if (commandUpdateResult != null) {
+                        commandUpdateResult.setUpdateCount(updateCount);
+                        commandUpdateResult.addResult(ClientCommand.this, key);
+                    }
                     setResult(updateCount);
                     if (handler != null) {
                         AsyncResult<Integer> r = new AsyncResult<>();
@@ -621,6 +629,29 @@ public class ClientCommand implements StorageCommand {
             nullable = transfer.readInt();
         }
 
+    }
+
+    @Override
+    public void replicationCommit(long validKey) {
+        session.traceOperation("COMMAND_REPLICATION_COMMIT", id);
+        try {
+            transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_COMMIT);
+            transfer.writeInt(session.getSessionId());
+            transfer.writeLong(validKey).flush();
+        } catch (IOException e) {
+            trace.error(e, "replicationCommit");
+        }
+    }
+
+    @Override
+    public void replicationRollback() {
+        session.traceOperation("COMMAND_REPLICATION_ROLLBACK", id);
+        try {
+            transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_ROLLBACK);
+            transfer.writeInt(session.getSessionId()).flush();
+        } catch (IOException e) {
+            trace.error(e, "replicationRollback");
+        }
     }
 
 }

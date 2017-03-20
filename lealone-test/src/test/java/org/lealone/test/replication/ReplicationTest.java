@@ -35,36 +35,49 @@ public class ReplicationTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationTest");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int primary key, f2 long)");
-        stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
+        // stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int primary key, f2 long)");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int, f2 long)");
+        // stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
 
         // 启动两个新事务更新同一行，可以用来测试Replication冲突的场景
-        Thread t1 = new Thread(new CrudTest());
-        Thread t2 = new Thread(new CrudTest());
+        Thread t1 = new Thread(new CrudTest("INSERT INTO ReplicationTest(f1, f2) VALUES(3, 4)"));
+        Thread t2 = new Thread(new CrudTest("INSERT INTO ReplicationTest(f1, f2) VALUES(5, 6)"));
         t1.start();
         t2.start();
         t1.join();
         t2.join();
 
         ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM ReplicationTest");
-        assertTrue(rs.next());
-        assertEquals(1, rs.getInt(1));
-        assertEquals(20, rs.getLong(2));
+        // assertTrue(rs.next());
+        // assertEquals(1, rs.getInt(1));
+        // assertEquals(20, rs.getLong(2));
         rs.close();
-        stmt.executeUpdate("DELETE FROM ReplicationTest WHERE f1 = 1");
+        // stmt.executeUpdate("DELETE FROM ReplicationTest WHERE f1 = 1");
     }
 
     private static class CrudTest extends SqlTestBase implements Runnable {
+        String insert;
 
-        public CrudTest() {
+        public CrudTest(String insert) {
             super(REPLICATION_DB_NAME);
+            this.insert = insert;
         }
 
         @Override
         protected void test() throws Exception {
+            stmt.executeUpdate(insert);
             // conn.setAutoCommit(false);
-            stmt.executeUpdate("update ReplicationTest set f2 = 20 where f1 = 1");
+            // stmt.executeUpdate("update ReplicationTest set f2 = 20 where f1 = 1");
             // conn.commit();
+
+            sql = "select * from ReplicationTest where _rowid_=1";
+            printResultSet();
+            sql = "select * from ReplicationTest where _rowid_=1";
+            printResultSet();
+            sql = "select * from ReplicationTest where _rowid_=1";
+            printResultSet();
+            sql = "select * from ReplicationTest where _rowid_=1";
+            printResultSet();
         }
 
         @Override

@@ -444,6 +444,7 @@ public class AsyncConnection implements Handler<Buffer> {
                                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
                             }
                             transfer.writeInt(updateCount);
+                            transfer.writeLong(session.getLastRowKey());
                             transfer.flush();
                         } catch (Exception e) {
                             sendError(transfer, id, e);
@@ -625,6 +626,19 @@ public class AsyncConnection implements Handler<Buffer> {
             PreparedStatement command = session.prepareStatement(sql, -1);
             cache.addObject(id, command);
             executeUpdateAsync(transfer, session, sessionId, id, command, operation);
+            break;
+        }
+        case Session.COMMAND_REPLICATION_COMMIT: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
+            long validKey = transfer.readLong();
+            session.replicationCommit(validKey);
+            break;
+        }
+        case Session.COMMAND_REPLICATION_ROLLBACK: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
+            session.rollback();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:

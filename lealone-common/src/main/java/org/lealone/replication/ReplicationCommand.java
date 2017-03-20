@@ -23,11 +23,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
-import org.lealone.async.AsyncHandler;
-import org.lealone.async.AsyncResult;
 import org.lealone.common.util.New;
 import org.lealone.db.Command;
+import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
+import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.result.Result;
 import org.lealone.replication.exceptions.ReadFailureException;
 import org.lealone.replication.exceptions.ReadTimeoutException;
@@ -35,7 +35,7 @@ import org.lealone.replication.exceptions.WriteFailureException;
 import org.lealone.replication.exceptions.WriteTimeoutException;
 import org.lealone.storage.StorageCommand;
 
-public class ReplicationCommand implements StorageCommand {
+public class ReplicationCommand extends CommandBase implements StorageCommand {
 
     private static final Random random = new Random(System.currentTimeMillis());
 
@@ -101,6 +101,7 @@ public class ReplicationCommand implements StorageCommand {
                         result = c.executeQuery(maxRows, scrollable);
                         readResponseHandler.response(result);
                     } catch (Exception e) {
+                        exceptions.add(e);
                         if (readResponseHandler != null) {
                             readResponseHandler.onFailure();
                             Command c = getRandomNode(seen);
@@ -110,7 +111,6 @@ public class ReplicationCommand implements StorageCommand {
                                 return;
                             }
                         }
-                        exceptions.add(e);
                     }
                 }
             };
@@ -136,7 +136,7 @@ public class ReplicationCommand implements StorageCommand {
     }
 
     @Override
-    public int executeUpdate(String replicationName) {
+    public int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult) {
         return executeUpdate();
     }
 
@@ -146,6 +146,7 @@ public class ReplicationCommand implements StorageCommand {
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
         final ArrayList<Runnable> commands = New.arrayList(n);
         final ArrayList<Exception> exceptions = New.arrayList(1);
+        final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w, this.commands);
 
         for (int i = 0; i < n; i++) {
             final Command c = this.commands[i];
@@ -153,7 +154,7 @@ public class ReplicationCommand implements StorageCommand {
                 @Override
                 public void run() {
                     try {
-                        writeResponseHandler.response(c.executeUpdate(rn));
+                        writeResponseHandler.response(c.executeUpdate(rn, commandUpdateResult));
                     } catch (Exception e) {
                         if (writeResponseHandler != null)
                             writeResponseHandler.onFailure();
@@ -169,7 +170,9 @@ public class ReplicationCommand implements StorageCommand {
         }
 
         try {
-            return writeResponseHandler.getUpdateCount(session.rpcTimeoutMillis);
+            writeResponseHandler.getUpdateCount(session.rpcTimeoutMillis);
+            commandUpdateResult.validate();
+            return commandUpdateResult.getUpdateCount();
         } catch (WriteTimeoutException | WriteFailureException e) {
             if (tries < session.maxRries)
                 return executeUpdate(++tries);
@@ -339,18 +342,6 @@ public class ReplicationCommand implements StorageCommand {
     @Override
     public Command prepare() {
         return this;
-    }
-
-    @Override
-    public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        // TODO Auto-generated method stub
-
-    }
-
-    @Override
-    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        // TODO Auto-generated method stub
-
     }
 
 }

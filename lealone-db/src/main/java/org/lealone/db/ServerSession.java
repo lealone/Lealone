@@ -25,7 +25,9 @@ import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
+import org.lealone.db.index.StandardPrimaryIndex;
 import org.lealone.db.result.Result;
+import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -1355,5 +1357,47 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         if (isExclusiveMode())
             return SessionStatus.EXCLUSIVE_MODE;
         return sessionStatus;
+    }
+
+    private StandardPrimaryIndex lastIndex;
+    private Row lastRow;
+
+    public void setLastIndex(StandardPrimaryIndex i) {
+        lastIndex = i;
+    }
+
+    public void setLastRow(Row r) {
+        lastRow = r;
+    }
+
+    @Override
+    public long getLastRowKey() {
+        if (lastRow == null)
+            return 0;
+        return lastRow.getKey();
+    }
+
+    @Override
+    public void replicationCommit(long validKey) {
+        if (lastRow != null && validKey != -1) {
+            Table table = lastIndex.getTable();
+            Row oldRow = lastIndex.getRow(this, validKey);
+            // 已经修正过了
+            if (oldRow != null && oldRow.getValueList() == lastRow.getValueList()) {
+                commit();
+                return;
+            }
+            if (oldRow != null)
+                table.removeRow(this, oldRow);
+            table.removeRow(this, lastRow);
+
+            if (oldRow != null) {
+                oldRow.setKey(lastRow.getKey());
+                table.addRow(this, oldRow);
+            }
+            lastRow.setKey(validKey);
+            table.addRow(this, lastRow);
+        }
+        commit();
     }
 }

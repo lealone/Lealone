@@ -164,6 +164,9 @@ public class StandardPrimaryIndex extends IndexBase {
         if (row.getKey() > lastKey.get()) {
             lastKey.set(row.getKey());
         }
+
+        session.setLastRow(row);
+        session.setLastIndex(this);
     }
 
     @Override

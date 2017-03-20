@@ -85,7 +85,7 @@ public interface Command {
      * @param replicationName the replication name
      * @return the update count
      */
-    int executeUpdate(String replicationName);
+    int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult);
 
     /**
      * Cancel the command if it is still processing.
@@ -99,4 +99,7 @@ public interface Command {
 
     Command prepare();
 
+    void replicationCommit(long validKey);
+
+    void replicationRollback();
 }
