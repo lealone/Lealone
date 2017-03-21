@@ -25,6 +25,7 @@ import org.lealone.test.TestBase;
 
 public class EmbeddedExample {
     public static void main(String[] args) throws Exception {
+        TestBase.initTransactionEngine();
         TestBase test = new TestBase();
         test.setInMemory(true);
         test.setEmbedded(true);
@@ -48,5 +49,6 @@ public class EmbeddedExample {
 
         stmt.close();
         conn.close();
+        TestBase.te.close();
     }
 }

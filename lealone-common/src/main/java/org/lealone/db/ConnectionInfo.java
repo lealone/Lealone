@@ -188,11 +188,7 @@ public class ConnectionInfo implements Cloneable {
         if (isKnownSetting(key)) {
             prop.put(key, value);
         } else {
-            if (DbSettings.getDefaultSettings().containsKey(key)) {
-                prop.put(key, value);
-            } else {
-                throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
-            }
+            throw DbException.get(ErrorCode.UNSUPPORTED_SETTING_1, key);
         }
     }
 

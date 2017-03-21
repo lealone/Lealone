@@ -162,7 +162,9 @@ public class MVCCTransaction implements Transaction {
             parameters.put("initReplicationEndpoints", initReplicationEndpoints);
         }
         StorageMap<K, TransactionalValue> map = storage.openMap(name, mapType, keyType, valueType, parameters);
-        transactionEngine.redo(map);
+        if (!map.isInMemory()) {
+            transactionEngine.redo(map);
+        }
         transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
         return createTransactionMap(map);
     }

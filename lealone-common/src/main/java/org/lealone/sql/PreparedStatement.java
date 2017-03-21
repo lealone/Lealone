@@ -61,8 +61,6 @@ public interface PreparedStatement extends SQLStatement {
 
     int update(String replicationName);
 
-    void rollback();
-
     boolean isDDL();
 
     boolean isDatabaseStatement();

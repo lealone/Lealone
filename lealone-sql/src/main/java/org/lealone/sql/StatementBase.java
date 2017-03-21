@@ -602,10 +602,6 @@ public abstract class StatementBase extends CommandBase implements PreparedState
     }
 
     @Override
-    public void rollback() {
-    }
-
-    @Override
     public boolean isDDL() {
         return false;
     }

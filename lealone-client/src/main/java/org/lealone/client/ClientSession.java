@@ -86,7 +86,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     public ClientSession(ConnectionInfo ci) {
         this.ci = ci;
-        if (vertx == null) {
+        if (ci.isRemote() && vertx == null) {
             synchronized (ClientSession.class) {
                 if (vertx == null) {
                     vertx = NetFactory.getVertx(ci.getProperties());
