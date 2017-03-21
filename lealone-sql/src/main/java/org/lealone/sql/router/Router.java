@@ -28,7 +28,7 @@ public interface Router {
 
     Result executeQuery(StatementBase statement, int maxRows);
 
-    public String[] getHostIds(Database db);
+    String[] getHostIds(Database db);
 
     int createDatabase(Database db, ServerSession currentSession);
 

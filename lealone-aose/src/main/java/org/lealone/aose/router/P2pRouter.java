@@ -50,6 +50,7 @@ import org.lealone.sql.router.Router;
 public class P2pRouter implements Router {
 
     private static final P2pRouter INSTANCE = new P2pRouter();
+    private static final Random random = new Random();
 
     public static P2pRouter getInstance() {
         return INSTANCE;
@@ -63,6 +64,7 @@ public class P2pRouter implements Router {
         ServerSession s = defineStatement.getSession();
         Database db = s.getDatabase();
         if (defineStatement instanceof DatabaseStatement) {
+            // TODO 需要细分哪些DatabaseStatement语句可以让普通用户执行
             if (db == LealoneDatabase.getInstance()) {
                 liveMembers = Gossiper.instance.getLiveMembers();
             } else {
@@ -73,7 +75,8 @@ public class P2pRouter implements Router {
         } else {
             String[] hostIds = db.getHostIds();
             if (hostIds.length == 0) {
-                liveMembers = Gossiper.instance.getLiveMembers();
+                throw DbException
+                        .throwInternalError("DB: " + db.getName() + ", Run Mode: " + db.getRunMode() + ", no hostIds");
             } else {
                 liveMembers = new HashSet<>(hostIds.length);
                 TopologyMetaData metaData = P2pServer.instance.getTopologyMetaData();
@@ -83,13 +86,12 @@ public class P2pRouter implements Router {
             }
         }
         List<String> initReplicationEndpoints = null;
-        if (defineStatement.isReplicationStatement()) {
-            if (!db.isStarting()) {
-                List<NetEndpoint> endpoints = P2pServer.instance.getReplicationEndpoints(db,
-                        P2pServer.instance.getLocalHostId(), liveMembers);
-                if (!endpoints.isEmpty()) {
-                    initReplicationEndpoints = new ArrayList<>(endpoints.size());
-                }
+        // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
+        if (defineStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
+            List<NetEndpoint> endpoints = P2pServer.instance.getReplicationEndpoints(db,
+                    P2pServer.instance.getLocalHostId(), liveMembers);
+            if (!endpoints.isEmpty()) {
+                initReplicationEndpoints = new ArrayList<>(endpoints.size());
                 for (NetEndpoint e : endpoints) {
                     String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
                     initReplicationEndpoints.add(hostId);
@@ -131,12 +133,9 @@ public class P2pRouter implements Router {
         return statement.executeQuery(maxRows);
     }
 
-    private final static Random random = new Random();
-
     @Override
     public String[] getHostIds(Database db) {
         RunMode runMode = db.getRunMode();
-        // Map<String, String> parameters;
         Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
         ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
         int size = liveMembers.size();
@@ -156,7 +155,6 @@ public class P2pRouter implements Router {
             if (parameters != null && parameters.containsKey("nodes")) {
                 nodes = Integer.parseInt(parameters.get("nodes"));
             }
-
             return getHostIds(list, size, nodes);
         }
         return new String[0];
@@ -191,10 +189,11 @@ public class P2pRouter implements Router {
         for (NetEndpoint e : liveMembers) {
             String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
             boolean isLocal = ConfigDescriptor.getLocalEndpoint().equals(e);
-            if (isLocal)
-                sessions[i++] = currentSession; // 如果复制节点就是当前节点，那么重用当前Session
-            else
-                sessions[i++] = SessionPool.getSession(currentSession, currentSession.getURL(hostId), true);
+            sessions[i] = SessionPool.getSession(currentSession, currentSession.getURL(hostId), !isLocal);
+            if (isLocal) {
+                currentSession.copyLastReplicationStatusTo((ServerSession) sessions[i]);
+            }
+            i++;
         }
 
         ReplicationSession rs = new ReplicationSession(sessions);

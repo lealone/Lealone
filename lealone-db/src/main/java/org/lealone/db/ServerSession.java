@@ -568,6 +568,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         currentStatements.clear();
         containsDDL = false;
         containsDatabaseStatement = false;
+        setReplicationName(null);
     }
 
     private void checkCommitRollback() {
@@ -1399,5 +1400,10 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             table.addRow(this, lastRow);
         }
         commit();
+    }
+
+    public void copyLastReplicationStatusTo(ServerSession newSession) {
+        newSession.lastRow = lastRow;
+        newSession.lastIndex = lastIndex;
     }
 }

@@ -418,7 +418,7 @@ class StatementWrapper extends StatementBase {
         session.closeTemporaryResults();
         session.setCurrentCommand(null);
         if (async) {
-            if (session.isAutoCommit()) {
+            if (session.isAutoCommit() && session.getReplicationName() == null) { // 在复制模式下不能自动提交
                 // 等到事务日志写成功后再返回语句的执行结果
                 session.setRunnable(() -> ah.handle(ar));
                 session.prepareCommit();
@@ -427,7 +427,7 @@ class StatementWrapper extends StatementBase {
                 ah.handle(ar);
             }
         } else {
-            if (session.isAutoCommit()) {
+            if (session.isAutoCommit() && session.getReplicationName() == null) {
                 session.commit();
             }
         }
