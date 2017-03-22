@@ -162,9 +162,9 @@ public interface Session extends Closeable, Transaction.Participant {
 
     void commit(String allLocalTransactionNames);
 
-    Session connectEmbeddedOrServer();
+    Session connect();
 
-    Session connectEmbeddedOrServer(boolean first);
+    Session connect(boolean first);
 
     String getURL();
 

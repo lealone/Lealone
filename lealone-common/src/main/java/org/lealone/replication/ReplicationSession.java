@@ -238,13 +238,13 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public Session connectEmbeddedOrServer() {
-        return sessions[0].connectEmbeddedOrServer();
+    public Session connect() {
+        return sessions[0].connect();
     }
 
     @Override
-    public Session connectEmbeddedOrServer(boolean first) {
-        return sessions[0].connectEmbeddedOrServer(first);
+    public Session connect(boolean first) {
+        return sessions[0].connect(first);
     }
 
     @Override

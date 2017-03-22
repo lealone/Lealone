@@ -165,7 +165,7 @@ public class AsyncConnection implements Handler<Buffer> {
         transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
         transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
         transfer.writeString(hostAndPort);
-        transfer.writeString(ci.getDatabaseName());
+        transfer.writeString(ci.getDatabaseShortName());
         transfer.writeString(ci.getURL()); // 不带参数的URL
         transfer.writeString(ci.getUserName());
         transfer.writeBytes(ci.getUserPasswordHash());
@@ -266,7 +266,7 @@ public class AsyncConnection implements Handler<Buffer> {
         }
 
         try {
-            Session session = ci.getSessionFactory().createSession(ci);
+            Session session = ci.createSession();
             if (ci.getProperty("IS_LOCAL") != null)
                 session.setLocal(Boolean.parseBoolean(ci.getProperty("IS_LOCAL")));
             return session;

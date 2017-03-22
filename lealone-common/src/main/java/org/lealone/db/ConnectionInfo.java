@@ -7,6 +7,7 @@
 package org.lealone.db;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
@@ -101,7 +102,6 @@ public class ConnectionInfo implements Cloneable {
 
     private SessionFactory sessionFactory;
 
-    private boolean isClient;
     private Boolean persistent; // 首次调用isPersistent()时才初始化
 
     public ConnectionInfo() {
@@ -118,14 +118,15 @@ public class ConnectionInfo implements Cloneable {
         this.dbName = dbName;
 
         checkURL();
-        embedded = false;
         url = url.substring(Constants.URL_PREFIX.length());
         // server端接收到的URL不可能是嵌入式的
         if (url.startsWith(Constants.URL_EMBED)) {
             throw DbException.throwInternalError("Server backend URL: " + this.url);
         }
 
-        remote = true; // server端的remote总是true
+        // server端这两参数总是false
+        embedded = false;
+        remote = false;
     }
 
     public ConnectionInfo(String url) {
@@ -148,6 +149,13 @@ public class ConnectionInfo implements Cloneable {
 
         setUserName(removeProperty("USER", ""));
         convertPasswords();
+
+        if (isEmbedded() && isPersistent()) {
+            String baseDir = SysProperties.getBaseDirSilently();
+            if (baseDir != null) {
+                setBaseDir(baseDir);
+            }
+        }
     }
 
     private void checkURL() {
@@ -307,6 +315,10 @@ public class ConnectionInfo implements Cloneable {
      */
     public boolean isRemote() {
         return remote;
+    }
+
+    public void setRemote(boolean b) {
+        remote = b;
     }
 
     /**
@@ -667,11 +679,15 @@ public class ConnectionInfo implements Cloneable {
         return DbException.get(ErrorCode.URL_FORMAT_ERROR_2, Constants.URL_FORMAT, url);
     }
 
+    public Session createSession() throws SQLException {
+        return getSessionFactory().createSession(this);
+    }
+
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
             try {
                 // 要使用反射，避免编译期依赖
-                if (isClient)
+                if (remote)
                     sessionFactory = (SessionFactory) Class.forName("org.lealone.client.ClientSessionFactory")
                             .getMethod("getInstance").invoke(null);
                 else
@@ -711,10 +727,6 @@ public class ConnectionInfo implements Cloneable {
         return prop;
     }
 
-    public void setClient(boolean b) {
-        isClient = b;
-    }
-
     public ConnectionInfo copy(String newServer) {
         ConnectionInfo ci = new ConnectionInfo();
         ci.prop.putAll(prop);
@@ -732,7 +744,7 @@ public class ConnectionInfo implements Cloneable {
         ci.embedded = embedded;
         ci.servers = newServer;
         ci.sessionFactory = sessionFactory;
-        ci.isClient = isClient;
+        ci.persistent = persistent;
         return ci;
     }
 }

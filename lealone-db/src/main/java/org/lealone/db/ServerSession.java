@@ -1310,12 +1310,12 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public Session connectEmbeddedOrServer() {
+    public Session connect() {
         return this;
     }
 
     @Override
-    public Session connectEmbeddedOrServer(boolean first) {
+    public Session connect(boolean first) {
         return this;
     }
 

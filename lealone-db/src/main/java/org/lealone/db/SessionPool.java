@@ -66,10 +66,12 @@ public class SessionPool {
             ci.setFilePasswordHash(oldCi.getFilePasswordHash());
             ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
             if (usesClientSession)
-                ci.setClient(true);
+                ci.setRemote(true);
+            else
+                ci.setRemote(false);
             try {
-                // 因为已经精确知道要连哪个节点了，connectEmbeddedOrServer不用考虑运行模式，所以用false
-                session = ci.getSessionFactory().createSession(ci).connectEmbeddedOrServer(false);
+                // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
+                session = ci.createSession().connect(false);
                 session.setLocal(true);
             } catch (SQLException e) {
                 throw DbException.convert(e);

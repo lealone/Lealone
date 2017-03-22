@@ -84,9 +84,12 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private AsyncConnection asyncConnection;
     private InetSocketAddress inetSocketAddress;
 
-    public ClientSession(ConnectionInfo ci) {
+    ClientSession(ConnectionInfo ci) {
+        if (!ci.isRemote()) {
+            throw DbException.throwInternalError();
+        }
         this.ci = ci;
-        if (ci.isRemote() && vertx == null) {
+        if (vertx == null) {
             synchronized (ClientSession.class) {
                 if (vertx == null) {
                     vertx = NetFactory.getVertx(ci.getProperties());
@@ -103,24 +106,17 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     /**
-     * Open a new (remote or embedded) session.
+     * Open a new session.
      *
      * @return the session
      */
     @Override
-    public Session connectEmbeddedOrServer() {
-        return connectEmbeddedOrServer(true);
+    public Session connect() {
+        return connect(true);
     }
 
     @Override
-    public Session connectEmbeddedOrServer(boolean first) {
-        if (!ci.isRemote()) {
-            try {
-                return ci.getSessionFactory().createSession(ci);
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            }
-        }
+    public Session connect(boolean first) {
         connectServer();
         if (first) {
             if (getRunMode() == RunMode.REPLICATION) {
@@ -139,7 +135,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     }
                     ci = this.ci.copy(servers[i]);
                     sessions[i] = new ClientSession(ci);
-                    sessions[i] = sessions[i].connectEmbeddedOrServer(false);
+                    sessions[i] = sessions[i].connect(false);
                 }
                 return new ReplicationSession(sessions);
             }
@@ -150,7 +146,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     ConnectionInfo ci = this.ci.copy(getTargetEndpoints());
                     ClientSession session = new ClientSession(ci);
                     this.close(); // 关闭当前session,因为连到的节点不是所要的
-                    return session.connectEmbeddedOrServer(false);
+                    return session.connect(false);
                 }
                 default:
                     return this;
