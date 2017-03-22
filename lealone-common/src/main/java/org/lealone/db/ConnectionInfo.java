@@ -96,13 +96,13 @@ public class ConnectionInfo implements Cloneable {
     private String nameNormalized;
     private boolean remote;
     private boolean ssl;
-    private boolean persistent;
     private boolean embedded;
     private String servers;
 
     private SessionFactory sessionFactory;
 
     private boolean isClient;
+    private Boolean persistent; // 首次调用isPersistent()时才初始化
 
     public ConnectionInfo() {
     }
@@ -118,15 +118,8 @@ public class ConnectionInfo implements Cloneable {
         this.dbName = dbName;
 
         checkURL();
-
-        persistent = true;
         embedded = false;
-
         url = url.substring(Constants.URL_PREFIX.length());
-        if (url.startsWith(Constants.URL_MEM)) {
-            persistent = false;
-            url = url.substring(Constants.URL_MEM.length());
-        }
         // server端接收到的URL不可能是嵌入式的
         if (url.startsWith(Constants.URL_EMBED)) {
             throw DbException.throwInternalError("Server backend URL: " + this.url);
@@ -236,14 +229,8 @@ public class ConnectionInfo implements Cloneable {
     }
 
     private void parseURL() {
-        boolean mem = false;
         remote = true;
         dbName = url.substring(Constants.URL_PREFIX.length());
-
-        if (dbName.startsWith(Constants.URL_MEM)) {
-            dbName = dbName.substring(Constants.URL_MEM.length());
-            mem = true;
-        }
 
         if (dbName.startsWith(Constants.URL_TCP)) {
             dbName = dbName.substring(Constants.URL_TCP.length());
@@ -255,8 +242,6 @@ public class ConnectionInfo implements Cloneable {
             embedded = true;
             dbName = dbName.substring(Constants.URL_EMBED.length());
             dbName = parseShortName();
-            if (!mem)
-                persistent = true;
         } else {
             throw getFormatException();
         }
@@ -280,7 +265,7 @@ public class ConnectionInfo implements Cloneable {
      * @param dir the new base directory
      */
     public void setBaseDir(String dir) {
-        if (persistent) {
+        if (isPersistent()) {
             String absDir = FileUtils.unwrap(FileUtils.toRealPath(dir));
             boolean absolute = FileUtils.isAbsolute(dbName);
             String n;
@@ -330,7 +315,10 @@ public class ConnectionInfo implements Cloneable {
      * @return true if it is
      */
     public boolean isPersistent() {
-        return persistent;
+        if (persistent == null) {
+            persistent = getProperty("PERSISTENT", true);
+        }
+        return persistent.booleanValue();
     }
 
     public boolean isEmbedded() {
@@ -440,7 +428,7 @@ public class ConnectionInfo implements Cloneable {
     }
 
     public String getDatabaseName() {
-        if (persistent) {
+        if (isPersistent()) {
             String name = dbName;
             if (nameNormalized == null) {
                 if (!FileUtils.isAbsolute(name)) {
@@ -741,7 +729,6 @@ public class ConnectionInfo implements Cloneable {
         ci.nameNormalized = nameNormalized;
         ci.remote = remote;
         ci.ssl = ssl;
-        ci.persistent = persistent;
         ci.embedded = embedded;
         ci.servers = newServer;
         ci.sessionFactory = sessionFactory;

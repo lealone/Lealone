@@ -67,7 +67,6 @@ public class LealoneDatabase extends Database {
         for (Entry<Object, Object> e : ci.getProperties().entrySet()) {
             parameters.put(e.getKey().toString(), e.getValue().toString());
         }
-        parameters.put("PERSISTENT", ci.isPersistent() ? "true" : "false");
         int id = INSTANCE.allocateObjectId();
         db = new Database(id, name, parameters);
         db.setRunMode(RunMode.EMBEDDED);

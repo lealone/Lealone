@@ -189,8 +189,9 @@ public class TestBase extends Assert {
         StringBuilder url = new StringBuilder(100);
 
         url.append(Constants.URL_PREFIX);
-        if (inMemory)
-            url.append(Constants.URL_MEM);
+        if (inMemory) {
+            addConnectionParameter("PERSISTENT", "false");
+        }
 
         if (embedded) {
             url.append(Constants.URL_EMBED);
