@@ -28,7 +28,7 @@ storage_engines:
       }
 
 transaction_engines:
-    - name: MVCC
+    - name: AOTE
       enabled: true
       parameters: {
           transaction_log_dir: transaction_log, # ${base_dir} + "/"+ ${transaction_log_dir}

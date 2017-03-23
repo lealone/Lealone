@@ -29,6 +29,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.SysProperties;
@@ -111,7 +112,7 @@ public class Lealone {
                             se = (StorageEngine) clz.newInstance();
                             StorageEngineManager.getInstance().registerEngine(se);
                         } catch (Exception e) {
-                            throw new ConfigurationException("StorageEngine '" + def.name + "' can not found", e);
+                            throw newConfigurationException("StorageEngine", def, e);
                         }
                     }
 
@@ -133,7 +134,10 @@ public class Lealone {
                             te = (TransactionEngine) clz.newInstance();
                             TransactionEngineManager.getInstance().registerEngine(te);
                         } catch (Exception e) {
-                            throw new ConfigurationException("TransactionEngine '" + def.name + "' can not found", e);
+                            te = TransactionEngineManager.getInstance()
+                                    .getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+                            if (te == null)
+                                throw newConfigurationException("TransactionEngine", def, e);
                         }
                     }
 
@@ -155,7 +159,7 @@ public class Lealone {
                             se = (SQLEngine) clz.newInstance();
                             SQLEngineManager.getInstance().registerEngine(se);
                         } catch (Exception e) {
-                            throw new ConfigurationException("SQLEngine '" + def.name + "' can not found", e);
+                            throw newConfigurationException("SQLEngine", def, e);
                         }
                     }
 
@@ -176,8 +180,7 @@ public class Lealone {
                             pse = (ProtocolServerEngine) clz.newInstance();
                             ProtocolServerEngineManager.getInstance().registerEngine(pse);
                         } catch (Exception e) {
-                            throw new ConfigurationException("ProtocolServerEngine '" + def.name + "' can not found",
-                                    e);
+                            throw newConfigurationException("ProtocolServerEngine", def, e);
                         }
                     }
                     // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
@@ -187,6 +190,11 @@ public class Lealone {
                 }
             }
         }
+    }
+
+    private static ConfigurationException newConfigurationException(String engineName, PluggableEngineDef def,
+            Exception e) {
+        return new ConfigurationException(engineName + " '" + def.name + "' can not found", e);
     }
 
     private static void initPluggableEngine(PluggableEngine pe, PluggableEngineDef def) {

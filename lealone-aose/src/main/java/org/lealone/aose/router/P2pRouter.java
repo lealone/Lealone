@@ -161,18 +161,23 @@ public class P2pRouter implements Router {
         return new String[0];
     }
 
-    private String[] getHostIds(ArrayList<NetEndpoint> list, int liveNodes, int replicationNodes) {
-        if (replicationNodes > liveNodes)
-            replicationNodes = liveNodes;
-        Set<Integer> indexSet = new HashSet<>(replicationNodes);
-        while (true) {
-            int i = random.nextInt(liveNodes);
-            indexSet.add(i);
-            if (indexSet.size() == replicationNodes)
-                break;
+    private String[] getHostIds(ArrayList<NetEndpoint> list, int totalNodes, int needNodes) {
+        Set<Integer> indexSet = new HashSet<>(needNodes);
+        if (needNodes >= totalNodes) {
+            needNodes = totalNodes;
+            for (int i = 0; i < totalNodes; i++) {
+                indexSet.add(i);
+            }
+        } else {
+            while (true) {
+                int i = random.nextInt(totalNodes);
+                indexSet.add(i);
+                if (indexSet.size() == needNodes)
+                    break;
+            }
         }
 
-        String[] hostIds = new String[replicationNodes];
+        String[] hostIds = new String[needNodes];
         for (int i : indexSet) {
             String hostId = P2pServer.instance.getTopologyMetaData().getHostId(list.get(i));
             if (hostId != null)
