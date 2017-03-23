@@ -62,7 +62,7 @@ public class DatabaseEngine {
         private volatile long wrongPasswordDelay = SysProperties.DELAY_WRONG_PASSWORD_MIN;
 
         @Override
-        public synchronized ServerSession createSession(ConnectionInfo ci) {
+        public ServerSession createSession(ConnectionInfo ci) {
             String dbName = ci.getDatabaseShortName();
             // 内嵌数据库，如果不存在，则自动创建
             if (ci.isEmbedded() && LealoneDatabase.getInstance().findDatabase(dbName) == null) {
@@ -105,9 +105,6 @@ public class DatabaseEngine {
 
         private ServerSession createSession(String dbName, ConnectionInfo ci) {
             Database database = LealoneDatabase.getInstance().getDatabase(dbName);
-            boolean opened = false;
-            User user = null;
-
             String targetEndpoints;
             if (ci.isEmbedded()) {
                 targetEndpoints = null;
@@ -127,46 +124,31 @@ public class DatabaseEngine {
                 }
             }
 
-            if (!database.isInitialized())
+            if (!database.isInitialized()) {
                 database.init();
-
-            synchronized (database)
-
-            {
-                if (opened) {
-                    // start the thread when already synchronizing on the database
-                    // otherwise a deadlock can occur when the writer thread
-                    // opens a new database (as in recovery testing)
-                    database.opened();
-                }
-                if (database.isClosing()) {
-                    return null;
-                }
-                if (user == null) {
-                    if (database.validateFilePasswordHash(ci.getProperty("CIPHER", null), ci.getFilePasswordHash())) {
-                        user = database.findUser(ci.getUserName());
-                        if (user != null) {
-                            if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
-                                user = null;
-                            }
-                        }
-                    }
-                    if (opened && (user == null || !user.isAdmin())) {
-                        // reset - because the user is not an admin, and has no
-                        // right to listen to exceptions
-                        database.setEventListener(null);
-                    }
-                }
-                if (user == null) {
-                    database.removeSession(null);
-                    throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
-                }
-                ServerSession session = database.createSession(user);
-                session.setConnectionInfo(ci);
-                session.setTargetEndpoints(targetEndpoints);
-                session.setRunMode(database.getRunMode());
-                return session;
             }
+            if (database.isClosing()) {
+                return null;
+            }
+
+            User user = null;
+            if (database.validateFilePasswordHash(ci.getProperty("CIPHER", null), ci.getFilePasswordHash())) {
+                user = database.findUser(ci.getUserName());
+                if (user != null) {
+                    if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
+                        user = null;
+                    }
+                }
+            }
+            if (user == null) {
+                database.removeSession(null);
+                throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
+            }
+            ServerSession session = database.createSession(user);
+            session.setConnectionInfo(ci);
+            session.setTargetEndpoints(targetEndpoints);
+            session.setRunMode(database.getRunMode());
+            return session;
         }
 
         private void initSession(ServerSession session, ConnectionInfo ci) {

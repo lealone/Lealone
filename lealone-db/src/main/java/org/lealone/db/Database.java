@@ -339,6 +339,8 @@ public class Database implements DataHandler, DbObject {
         openDatabase();
         addShutdownHook();
         initDbObjectVersionTable();
+
+        opened();
     }
 
     private void initTraceSystem() {
