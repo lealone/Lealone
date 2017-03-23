@@ -22,6 +22,8 @@
 
 * 支持索引、视图、Join、子查询、触发器、自定义函数、Order By、Group By、聚合
 
+* 支持混合运行模式，包括4种模式: 嵌入式、Client/Server模式、复制模式、Sharding模式
+
 * 从[H2数据库](http://www.h2database.com/html/main.html)借鉴了大量成熟的代码和思想
 
 
