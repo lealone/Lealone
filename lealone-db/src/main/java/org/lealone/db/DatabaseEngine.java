@@ -19,14 +19,13 @@
  */
 package org.lealone.db;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.List;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.auth.User;
+import org.lealone.net.NetEndpoint;
 
 /**
  * The engine is responsible for creating new sessions.
@@ -113,40 +112,12 @@ public class DatabaseEngine {
             if (ci.isEmbedded()) {
                 targetEndpoints = null;
             } else {
-                String url = ci.getURL();
-                int pos1 = url.indexOf("//") + 2;
-                String host;
-                String port;
-                int pos2 = url.indexOf(':', pos1);
-                int pos3 = url.indexOf('/', pos1);
-                if (pos2 != -1) {
-                    host = url.substring(pos1, pos2);
-                    port = url.substring(pos2 + 1, pos3);
-                } else {
-                    host = url.substring(pos1, pos3);
-                    port = String.valueOf(Constants.DEFAULT_TCP_PORT);
-                }
-                String currentEndpoint;
-                try {
-                    currentEndpoint = InetAddress.getByName(host).getHostAddress() + ":" + port;
-                } catch (UnknownHostException e) {
-                    throw DbException.convert(e);
-                }
-                String[] endpoints = database.getHostIds();
-                boolean isTargetEndpoint = false;
-                if (endpoints != null && endpoints.length > 0) {
-                    for (String e : endpoints) {
-                        if (e.equalsIgnoreCase(currentEndpoint)) {
-                            isTargetEndpoint = true;
-                            break;
-                        }
-                    }
-                    targetEndpoints = database.getTargetEndpoints();
-                } else {
-                    isTargetEndpoint = true;
-                    targetEndpoints = currentEndpoint;
-                }
-                if (!isTargetEndpoint) {
+                NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
+                targetEndpoints = database.getTargetEndpoints();
+                // 为null时总是认为当前节点就是数据库所在的节点
+                if (targetEndpoints == null) {
+                    targetEndpoints = localEndpoint.getHostAndPort();
+                } else if (!database.isTargetEndpoint(localEndpoint)) {
                     ServerSession session = new ServerSession(database,
                             LealoneDatabase.getInstance().getSystemSession().getUser(), 0);
                     session.setTargetEndpoints(targetEndpoints);
@@ -159,7 +130,9 @@ public class DatabaseEngine {
             if (!database.isInitialized())
                 database.init();
 
-            synchronized (database) {
+            synchronized (database)
+
+            {
                 if (opened) {
                     // start the thread when already synchronizing on the database
                     // otherwise a deadlock can occur when the writer thread

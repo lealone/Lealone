@@ -63,6 +63,7 @@ import org.lealone.db.value.CaseInsensitiveMap;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
+import org.lealone.net.NetEndpoint;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
@@ -2251,17 +2252,38 @@ public class Database implements DataHandler, DbObject {
     }
 
     private String[] hostIds;
+    private HashSet<NetEndpoint> endpoints;
 
     public String[] getHostIds() {
-        if (hostIds != null) {
-            return hostIds;
+        if (hostIds == null) {
+            synchronized (this) {
+                if (hostIds == null) {
+                    if (parameters != null && parameters.containsKey("hostIds")) {
+                        hostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',');
+                    }
+                    if (hostIds == null) {
+                        hostIds = new String[0];
+                        endpoints = null;
+                    } else {
+                        endpoints = new HashSet<>(hostIds.length);
+                        for (String id : hostIds) {
+                            endpoints.add(NetEndpoint.createTCP(id));
+                        }
+                    }
+                    if (endpoints != null && endpoints.isEmpty()) {
+                        endpoints = null;
+                    }
+                }
+            }
         }
-        if (parameters != null && parameters.containsKey("hostIds")) {
-            hostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',');
-        }
-        if (hostIds == null)
-            hostIds = new String[0];
         return hostIds;
+    }
+
+    public boolean isTargetEndpoint(NetEndpoint endpoint) {
+        if (hostIds == null) {
+            getHostIds();
+        }
+        return endpoints == null || endpoints.contains(endpoint);
     }
 
     public String getTargetEndpoints() {

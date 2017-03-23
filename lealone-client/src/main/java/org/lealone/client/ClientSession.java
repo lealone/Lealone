@@ -144,8 +144,10 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 case CLIENT_SERVER:
                 case SHARDING: {
                     ConnectionInfo ci = this.ci.copy(getTargetEndpoints());
+                    // 关闭当前session,因为连到的节点不是所要的,这里可能会关闭vertx,
+                    // 所以要放在构造下一个ClientSession前调用
+                    this.close();
                     ClientSession session = new ClientSession(ci);
-                    this.close(); // 关闭当前session,因为连到的节点不是所要的
                     return session.connect(false);
                 }
                 default:
