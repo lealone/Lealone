@@ -107,6 +107,7 @@ public class P2pRouter implements Router {
         }
 
         ReplicationSession rs = new ReplicationSession(sessions, initReplicationEndpoints);
+        rs.setAutoCommit(s.isAutoCommit());
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         Command c = null;
         try {
@@ -198,6 +199,7 @@ public class P2pRouter implements Router {
 
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+        rs.setAutoCommit(currentSession.isAutoCommit());
         Command c = null;
         try {
             c = rs.createCommand(db.getCreateSQL(), -1);

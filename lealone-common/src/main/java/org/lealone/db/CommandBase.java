@@ -32,7 +32,7 @@ public abstract class CommandBase implements Command {
     }
 
     @Override
-    public void replicationCommit(long validKey) {
+    public void replicationCommit(long validKey, boolean autoCommit) {
     }
 
     @Override

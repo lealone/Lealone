@@ -632,12 +632,12 @@ public class ClientCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public void replicationCommit(long validKey) {
+    public void replicationCommit(long validKey, boolean autoCommit) {
         session.traceOperation("COMMAND_REPLICATION_COMMIT", id);
         try {
             transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_COMMIT);
             transfer.writeInt(session.getSessionId());
-            transfer.writeLong(validKey).flush();
+            transfer.writeLong(validKey).writeBoolean(autoCommit).flush();
         } catch (IOException e) {
             trace.error(e, "replicationCommit");
         }

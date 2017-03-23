@@ -161,14 +161,10 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public boolean isAutoCommit() {
-        return sessions[0].isAutoCommit();
-    }
-
-    @Override
     public void setAutoCommit(boolean autoCommit) {
         for (int i = 0; i < n; i++)
             sessions[i].setAutoCommit(autoCommit);
+        super.setAutoCommit(autoCommit);
     }
 
     @Override

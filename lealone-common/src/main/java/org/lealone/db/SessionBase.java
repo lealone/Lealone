@@ -33,6 +33,8 @@ public abstract class SessionBase implements Session {
     protected RunMode runMode;
     protected boolean invalid;
 
+    protected boolean autoCommit = true;
+
     @Override
     public String getReplicationName() {
         return replicationName;
@@ -132,7 +134,17 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void replicationCommit(long validKey) {
+    public void replicationCommit(long validKey, boolean autoCommit) {
+    }
+
+    @Override
+    public boolean isAutoCommit() {
+        return autoCommit;
+    }
+
+    @Override
+    public void setAutoCommit(boolean autoCommit) {
+        this.autoCommit = autoCommit;
     }
 
 }

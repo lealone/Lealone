@@ -206,5 +206,5 @@ public interface Session extends Closeable, Transaction.Participant {
 
     long getLastRowKey();
 
-    void replicationCommit(long validKey);
+    void replicationCommit(long validKey, boolean autoCommit);
 }

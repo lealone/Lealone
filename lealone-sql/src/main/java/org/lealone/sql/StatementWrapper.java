@@ -471,8 +471,8 @@ class StatementWrapper extends StatementBase {
     }
 
     @Override
-    public void replicationCommit(long validKey) {
-        session.replicationCommit(validKey);
+    public void replicationCommit(long validKey, boolean autoCommit) {
+        session.replicationCommit(validKey, autoCommit);
     }
 
     @Override

@@ -60,8 +60,10 @@ public class ShardingTest extends SqlTestBase {
 
         void insert() throws Exception {
             stmt.executeUpdate("drop table IF EXISTS ShardingTest");
+            conn.setAutoCommit(false);
             stmt.executeUpdate("create table IF NOT EXISTS ShardingTest(f1 int SELECTIVITY 10, f2 int, f3 int)");
-
+            conn.commit();
+            conn.setAutoCommit(true);
             // stmt.executeUpdate("create index IF NOT EXISTS ShardingTest_i1 on ShardingTest(f1)");
 
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(1,2,3)");
@@ -69,11 +71,15 @@ public class ShardingTest extends SqlTestBase {
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
+
+            conn.setAutoCommit(false);
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
             stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+            conn.commit();
+            conn.setAutoCommit(true);
         }
 
         void select() throws Exception {

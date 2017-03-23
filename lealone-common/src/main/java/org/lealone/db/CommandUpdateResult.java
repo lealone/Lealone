@@ -29,11 +29,13 @@ public class CommandUpdateResult {
     private int updateCount;
     private final int n; // 复制集群节点总个数
     private final int w; // 写成功的最少节点个数
+    private final boolean autoCommit;
     private final HashMap<Command, AtomicLong> results;
 
-    public CommandUpdateResult(int n, int w, Command[] commands) {
+    public CommandUpdateResult(int n, int w, boolean autoCommit, Command[] commands) {
         this.n = n;
         this.w = w;
+        this.autoCommit = autoCommit;
         results = new HashMap<>(commands.length);
         for (Command c : commands) {
             results.put(c, new AtomicLong(-1));
@@ -86,16 +88,16 @@ public class CommandUpdateResult {
         if (successful) {
             if (validNodes.size() == n) {
                 for (Command c : results.keySet()) {
-                    c.replicationCommit(-1);
+                    c.replicationCommit(-1, autoCommit);
                 }
             } else {
                 if (validNodes != null) {
                     for (Command c : validNodes) {
-                        c.replicationCommit(-1);
+                        c.replicationCommit(-1, autoCommit);
                     }
                 }
                 for (Command c : invalidNodes) {
-                    c.replicationCommit(validKey);
+                    c.replicationCommit(validKey, autoCommit);
                 }
             }
         } else {

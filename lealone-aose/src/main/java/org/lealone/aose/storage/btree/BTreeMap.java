@@ -277,6 +277,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
 
             ReplicationSession rs = new ReplicationSession(sessions);
             rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+            rs.setAutoCommit(session.isAutoCommit());
             moveLeafPage(splitKey, rightChildPage, rs, false);
 
             // split root page
@@ -289,6 +290,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
 
             rs = new ReplicationSession(sessions);
             rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+            rs.setAutoCommit(session.isAutoCommit());
             moveLeafPage(splitKey, rightChildPage, rs, true);
         }
     }
@@ -427,6 +429,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
 
             ReplicationSession rs = new ReplicationSession(sessions);
             rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+            rs.setAutoCommit(session.isAutoCommit());
             StorageCommand c = null;
             try {
                 c = rs.createStorageCommand();
@@ -757,6 +760,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
 
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+        rs.setAutoCommit(session.isAutoCommit());
         StorageCommand c = null;
         try {
             c = rs.createStorageCommand();
@@ -802,6 +806,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         }
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+        rs.setAutoCommit(session.isAutoCommit());
         StorageCommand c = null;
         try {
             c = rs.createStorageCommand();

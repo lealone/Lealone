@@ -146,7 +146,8 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
         final ArrayList<Runnable> commands = New.arrayList(n);
         final ArrayList<Exception> exceptions = New.arrayList(1);
-        final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w, this.commands);
+        final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w,
+                session.isAutoCommit(), this.commands);
 
         for (int i = 0; i < n; i++) {
             final Command c = this.commands[i];

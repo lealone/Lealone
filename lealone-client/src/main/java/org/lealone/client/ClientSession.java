@@ -73,7 +73,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private TraceSystem traceSystem;
     private Trace trace;
     private Transfer transfer;
-    private boolean autoCommit = true;
     private final ConnectionInfo ci;
     private String cipher;
     private byte[] fileEncryptionKey;
@@ -137,7 +136,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     sessions[i] = new ClientSession(ci);
                     sessions[i] = sessions[i].connect(false);
                 }
-                return new ReplicationSession(sessions);
+                ReplicationSession rs = new ReplicationSession(sessions);
+                rs.setAutoCommit(this.isAutoCommit());
+                return rs;
             }
             if (isInvalid()) {
                 switch (getRunMode()) {
@@ -295,11 +296,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         } catch (IOException e) {
             trace.debug(e, "could not cancel statement");
         }
-    }
-
-    @Override
-    public boolean isAutoCommit() {
-        return autoCommit;
     }
 
     @Override

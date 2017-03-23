@@ -632,7 +632,8 @@ public class AsyncConnection implements Handler<Buffer> {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             long validKey = transfer.readLong();
-            session.replicationCommit(validKey);
+            boolean autoCommit = transfer.readBoolean();
+            session.replicationCommit(validKey, autoCommit);
             break;
         }
         case Session.COMMAND_REPLICATION_ROLLBACK: {

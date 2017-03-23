@@ -99,7 +99,7 @@ public interface Command {
 
     Command prepare();
 
-    void replicationCommit(long validKey);
+    void replicationCommit(long validKey, boolean autoCommit);
 
     void replicationRollback();
 }

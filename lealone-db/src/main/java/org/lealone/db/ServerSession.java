@@ -62,7 +62,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private final User user;
     private final int id;
     private final ArrayList<Table> locks = New.arrayList();
-    private boolean autoCommit = true;
     private Random random;
     private int lockTimeout;
     private Value lastIdentity = ValueLong.get(0);
@@ -341,18 +340,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
     }
 
-    @Override
-    public boolean isAutoCommit() {
-        return autoCommit;
-    }
-
     public User getUser() {
         return user;
-    }
-
-    @Override
-    public void setAutoCommit(boolean b) {
-        autoCommit = b;
     }
 
     public int getLockTimeout() {
@@ -554,9 +543,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     private void endTransaction() {
         if (!sessionCache.isEmpty()) {
-            for (Session fs : sessionCache.values()) {
-                fs.setTransaction(null);
-                SessionPool.release(fs);
+            for (Session s : sessionCache.values()) {
+                s.setTransaction(null);
+                SessionPool.release(s);
             }
 
             sessionCache.clear();
@@ -714,9 +703,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     private void releaseSessionCache() {
         if (!sessionCache.isEmpty()) {
-            for (Session cs : sessionCache.values()) {
-                cs.setTransaction(null);
-                SessionPool.release(cs);
+            for (Session s : sessionCache.values()) {
+                s.setTransaction(null);
+                SessionPool.release(s);
             }
 
             sessionCache.clear();
@@ -1235,7 +1224,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     public void addSession(String url, Session s) {
-        if (transaction != null)
+        if (transaction != null && !sessionCache.containsKey(url))
             transaction.addParticipant(s);
         sessionCache.put(url, s);
     }
@@ -1326,12 +1315,12 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     @Override
     public void commitTransaction(String localTransactionName) {
-
+        commit(localTransactionName);
     }
 
     @Override
     public void rollbackTransaction() {
-
+        rollback();
     }
 
     @Override
@@ -1379,7 +1368,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public void replicationCommit(long validKey) {
+    public void replicationCommit(long validKey, boolean autoCommit) {
         if (lastRow != null && validKey != -1) {
             Table table = lastIndex.getTable();
             Row oldRow = lastIndex.getRow(this, validKey);
@@ -1399,11 +1388,13 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             lastRow.setKey(validKey);
             table.addRow(this, lastRow);
         }
-        commit();
+        if (autoCommit)
+            commit();
     }
 
     public void copyLastReplicationStatusTo(ServerSession newSession) {
         newSession.lastRow = lastRow;
         newSession.lastIndex = lastIndex;
     }
+
 }
