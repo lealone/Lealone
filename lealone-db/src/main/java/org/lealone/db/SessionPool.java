@@ -50,35 +50,30 @@ public class SessionPool {
         return getSession(originalSession, url, true);
     }
 
-    public static Session getSession(ServerSession originalSession, String url, boolean usesClientSession) {
-        Session session = getQueue(url).poll();
+    public static Session getSession(ServerSession originalSession, String url, boolean remote) {
+        Session session = remote ? getQueue(url).poll() : null; // 在本地创建session时不用从缓存队列中找
 
         if (session == null || session.isClosed()) {
             ConnectionInfo oldCi = originalSession.getConnectionInfo();
-            // 未来新加的代码如果忘记设置这两个字段，出问题时方便查找原因
-            if (originalSession.getOriginalProperties() == null || oldCi == null)
+            // 未来新加的代码如果忘记设置这个字段，出问题时方便查找原因
+            if (oldCi == null) {
                 throw DbException.throwInternalError();
+            }
 
-            ConnectionInfo ci = new ConnectionInfo(url, originalSession.getOriginalProperties());
+            ConnectionInfo ci = new ConnectionInfo(url, oldCi.getProperties());
             ci.setProperty("IS_LOCAL", "true");
             ci.setUserName(oldCi.getUserName());
             ci.setUserPasswordHash(oldCi.getUserPasswordHash());
             ci.setFilePasswordHash(oldCi.getFilePasswordHash());
             ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
-            if (usesClientSession)
-                ci.setRemote(true);
-            else
-                ci.setRemote(false);
+            ci.setRemote(remote);
             try {
                 // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
                 session = ci.createSession().connect(false);
-                session.setLocal(true);
             } catch (SQLException e) {
                 throw DbException.convert(e);
             }
         }
-
-        // originalSession.addSession(url, session);
         return session;
     }
 

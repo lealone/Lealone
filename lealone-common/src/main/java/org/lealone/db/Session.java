@@ -174,8 +174,6 @@ public interface Session extends Closeable, Transaction.Participant {
 
     ConnectionInfo getConnectionInfo();
 
-    void setLocal(boolean local);
-
     boolean isLocal();
 
     boolean isShardingMode();

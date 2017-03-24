@@ -152,6 +152,9 @@ public class DatabaseEngine {
         }
 
         private void initSession(ServerSession session, ConnectionInfo ci) {
+            if (ci.getProperty("IS_LOCAL") != null)
+                session.setLocal(Boolean.parseBoolean(ci.getProperty("IS_LOCAL")));
+
             boolean ignoreUnknownSetting = ci.getProperty("IGNORE_UNKNOWN_SETTINGS", false);
             String init = ci.getProperty("INIT", null);
 

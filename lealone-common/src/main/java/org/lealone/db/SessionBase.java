@@ -25,7 +25,6 @@ import org.lealone.storage.StorageMap;
 public abstract class SessionBase implements Session {
 
     protected String replicationName;
-    protected boolean local;
     protected AtomicInteger nextId = new AtomicInteger(0);
     protected Runnable runnable;
 
@@ -46,13 +45,8 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void setLocal(boolean local) {
-        this.local = local;
-    }
-
-    @Override
     public boolean isLocal() {
-        return local;
+        return true;
     }
 
     @Override

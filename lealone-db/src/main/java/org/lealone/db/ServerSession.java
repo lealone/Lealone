@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Random;
 
 import org.lealone.api.ErrorCode;
@@ -354,7 +353,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     private Boolean local;
 
-    @Override
     public void setLocal(boolean local) {
         this.local = local;
     }
@@ -1231,10 +1229,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public Session getSession(String url) {
         return sessionCache.get(url);
-    }
-
-    public Properties getOriginalProperties() {
-        return connectionInfo == null ? null : connectionInfo.getProperties();
     }
 
     @Override
