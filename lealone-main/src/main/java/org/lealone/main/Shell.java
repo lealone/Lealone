@@ -253,13 +253,13 @@ public class Shell {
     private void connect() throws IOException, SQLException {
         StringBuilder buff = new StringBuilder(100);
         buff.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//").append("127.0.0.1").append(':')
-                .append(Constants.DEFAULT_TCP_PORT).append('/').append("test");
+                .append(Constants.DEFAULT_TCP_PORT).append('/').append(Constants.PROJECT_NAME);
         String url = buff.toString();
         println("[Enter]   " + url);
         print("URL       ");
         url = readLine(url).trim();
 
-        String user = "lealone";
+        String user = "root";
         println("[Enter]   " + user);
         print("User      ");
         user = readLine(user);
