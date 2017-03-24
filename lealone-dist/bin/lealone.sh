@@ -36,10 +36,12 @@ LEALONE_MAIN=org.lealone.main.Lealone
 # JAVA_OPTS="$JAVA_OPTS -XX:MaxTenuringThreshold=1"
 # JAVA_OPTS="$JAVA_OPTS -XX:CMSInitiatingOccupancyFraction=75"
 # JAVA_OPTS="$JAVA_OPTS -XX:+UseCMSInitiatingOccupancyOnly"
-# JAVA_OPTS="$JAVA_OPTS -Dlogback.configurationFile=logback.xml"
 
 JAVA_OPTS=-Xms10M
 JAVA_OPTS="$JAVA_OPTS -Dlogback.configurationFile=logback.xml"
+JAVA_OPTS="$JAVA_OPTS -Dlealone.logdir=$LEALONE_HOME/logs"
+JAVA_OPTS="$JAVA_OPTS -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader"
+# JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y"
 
 CLASSPATH=$LEALONE_HOME/conf
 
@@ -47,10 +49,4 @@ for jar in "$LEALONE_HOME"/lib/*.jar; do
     CLASSPATH="$CLASSPATH:$jar"
 done
 
-LEALONE_CLASSPATH="$CLASSPATH"
-LEALONE_PARAMS="-Dlealone.logdir=$LEALONE_HOME/logs"
-LEALONE_PARAMS="$LEALONE_PARAMS -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader"
-# LEALONE_PARAMS="$LEALONE_PARAMS -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y"
-
-
-"$JAVA_HOME/bin/java" $JAVA_OPTS $LEALONE_PARAMS -cp $LEALONE_CLASSPATH $LEALONE_MAIN
+"$JAVA_HOME/bin/java" $JAVA_OPTS -cp $CLASSPATH $LEALONE_MAIN

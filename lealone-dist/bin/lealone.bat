@@ -37,13 +37,14 @@ REM  -XX:+CMSParallelRemarkEnabled^
 REM  -XX:SurvivorRatio=8^
 REM  -XX:MaxTenuringThreshold=1^
 REM  -XX:CMSInitiatingOccupancyFraction=75^
-REM  -XX:+UseCMSInitiatingOccupancyOnly^
-REM  -Dlogback.configurationFile=logback.xml
+REM  -XX:+UseCMSInitiatingOccupancyOnly
 
 set JAVA_OPTS=-Xms10M^
- -Dlogback.configurationFile=logback.xml
+ -Dlogback.configurationFile=logback.xml^
+ -Dlealone.logdir="%LEALONE_HOME%\logs"^
+ -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader
 
-REM ***** CLASSPATH library setting *****
+REM set JAVA_OPTS=%JAVA_OPTS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
 
 REM Ensure that any user defined CLASSPATH variables are not used on startup
 set CLASSPATH="%LEALONE_HOME%\conf"
@@ -57,15 +58,11 @@ set CLASSPATH=%CLASSPATH%;%1
 goto :eof
 
 :okClasspath
-set LEALONE_CLASSPATH=%CLASSPATH%;
-set LEALONE_PARAMS=-Dlealone.logdir="%LEALONE_HOME%\logs"
-set LEALONE_PARAMS=%LEALONE_PARAMS% -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader
-REM set LEALONE_PARAMS=%LEALONE_PARAMS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
 goto runDaemon
 
 :runDaemon
 REM echo Starting Lealone Server
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% %LEALONE_PARAMS% -cp %LEALONE_CLASSPATH% "%LEALONE_MAIN%"
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% "%LEALONE_MAIN%"
 goto finally
 
 :err

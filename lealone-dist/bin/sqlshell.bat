@@ -25,6 +25,10 @@ popd
 
 if NOT DEFINED LEALONE_MAIN set LEALONE_MAIN=org.lealone.main.Shell
 
+set JAVA_OPTS=-Xms10M^
+ -Dlogback.configurationFile=logback.xml^
+ -Dlealone.logdir="%LEALONE_HOME%\logs"
+
 REM ***** CLASSPATH library setting *****
 
 REM Ensure that any user defined CLASSPATH variables are not used on startup
@@ -39,13 +43,27 @@ set CLASSPATH=%CLASSPATH%;%1
 goto :eof
 
 :okClasspath
-set LEALONE_CLASSPATH=%CLASSPATH%;
-set LEALONE_PARAMS="%1 %2"
-REM set LEALONE_PARAMS=%LEALONE_PARAMS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
-goto runShell
+REM set LEALONE_PARAMS=%1 %2
+REM goto runShell
+
+set LEALONE_PARAMS=
+
+:param
+set str=%1
+if "%str%"=="" (
+    goto end
+)
+set LEALONE_PARAMS=%LEALONE_PARAMS% %str%
+shift /0
+goto param
+
+:end
+if "%LEALONE_PARAMS%"=="" (
+    goto runShell
+)
 
 :runShell
-"%JAVA_HOME%\bin\java" -cp %LEALONE_CLASSPATH% "%LEALONE_MAIN%" %LEALONE_PARAMS%
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% "%LEALONE_MAIN%" %LEALONE_PARAMS%
 goto finally
 
 :err
