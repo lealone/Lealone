@@ -125,7 +125,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 Session[] sessions = new ClientSession[size];
                 for (int i = 0; i < size; i++) {
                     // 如果首次连接的节点就是复制节点之一，则复用它
-                    if (!isInvalid()) {
+                    if (isValid()) {
                         HostAndPort hostAndPort = new HostAndPort(servers[i]);
                         if (hostAndPort.inetSocketAddress.equals(this.inetSocketAddress)) {
                             sessions[i] = this;
@@ -259,7 +259,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         sessionId = getNextId();
         transfer = asyncConnection.createTransfer(this);
         asyncConnection.writeInitPacket(this, sessionId, transfer, ci);
-        asyncConnection.addSession(sessionId, this);
+        if (isValid())
+            asyncConnection.addSession(sessionId, this);
         return transfer;
     }
 
@@ -367,8 +368,11 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         synchronized (this) {
             try {
                 traceOperation("SESSION_CLOSE", 0);
-                transfer.writeRequestHeader(sessionId, Session.SESSION_CLOSE).flush();
-                asyncConnection.removeSession(sessionId);
+                // 只有当前Session有效时服务器端才持有对应的session
+                if (isValid()) {
+                    transfer.writeRequestHeader(sessionId, Session.SESSION_CLOSE).flush();
+                    asyncConnection.removeSession(sessionId);
+                }
 
                 synchronized (ClientSession.class) {
                     if (asyncConnection.isEmpty()) {

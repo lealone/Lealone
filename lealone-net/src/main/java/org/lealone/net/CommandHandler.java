@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.db.SessionStatus;
 import org.lealone.net.AsyncConnection.SessionInfo;
@@ -74,17 +75,23 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         c.close();
     }
 
-    private final ConcurrentHashMap<SessionInfo, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
+    private final AtomicLong sequence = new AtomicLong(0);
+    private final ConcurrentHashMap<Long, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
     private final Semaphore haveWork = new Semaphore(1);
     private boolean stop;
     private int nested;
 
+    long getNextSequence() {
+        return sequence.incrementAndGet();
+    }
+
     void addSession(SessionInfo sessionInfo) {
-        sessionInfoMap.put(sessionInfo, sessionInfo);
+        // SessionInfo的hostAndPort和sessionId字段不足以区别它自身，所以用commandHandlerSequence
+        sessionInfoMap.put(sessionInfo.commandHandlerSequence, sessionInfo);
     }
 
     void removeSession(SessionInfo sessionInfo) {
-        sessionInfoMap.remove(sessionInfo);
+        sessionInfoMap.remove(sessionInfo.commandHandlerSequence);
     }
 
     public CommandHandler(int id) {

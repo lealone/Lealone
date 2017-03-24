@@ -64,6 +64,7 @@ public class AsyncConnection implements Handler<Buffer> {
         final Session session;
         final CommandHandler commandHandler;
         final ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue;
+        final long commandHandlerSequence;
 
         SessionInfo(String hostAndPort, int sessionId, Session session, CommandHandler commandHandler) {
             this.sessionId = sessionId;
@@ -71,39 +72,14 @@ public class AsyncConnection implements Handler<Buffer> {
             this.session = session;
             this.commandHandler = commandHandler;
             this.preparedCommandQueue = new ConcurrentLinkedQueue<>();
+
+            // SessionInfo的hostAndPort和sessionId字段不足以区别它自身，所以用commandHandlerSequence
+            commandHandlerSequence = commandHandler.getNextSequence();
         }
 
         @Override
         public String toString() {
             return "SessionInfo [hostAndPort=" + hostAndPort + ", sessionId=" + sessionId + "]";
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + ((hostAndPort == null) ? 0 : hostAndPort.hashCode());
-            result = prime * result + sessionId;
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            SessionInfo other = (SessionInfo) obj;
-            if (hostAndPort == null) {
-                if (other.hostAndPort != null)
-                    return false;
-            } else if (!hostAndPort.equals(other.hostAndPort))
-                return false;
-            if (sessionId != other.sessionId)
-                return false;
-            return true;
         }
     }
 
@@ -221,7 +197,7 @@ public class AsyncConnection implements Handler<Buffer> {
             String userName = transfer.readString();
             userName = StringUtils.toUpperEnglish(userName);
             Session session = createSession(transfer, originalURL, dbName, userName);
-            if (!session.isInvalid()) {
+            if (session.isValid()) {
                 CommandHandler commandHandler = CommandHandler.getNextCommandHandler();
                 sessions.put(sessionId, session);
                 SessionInfo sessionInfo = new SessionInfo(hostAndPort, sessionId, session, commandHandler);
@@ -772,16 +748,16 @@ public class AsyncConnection implements Handler<Buffer> {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             session.commit(transfer.readString());
-            writeResponseHeader(transfer, session, id);
-            transfer.flush();
+            // writeResponseHeader(transfer, session, id); //不需要发回响应
+            // transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
             int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             session.rollback();
-            writeResponseHeader(transfer, session, id);
-            transfer.flush();
+            // writeResponseHeader(transfer, session, id); //不需要发回响应
+            // transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT:
@@ -793,8 +769,8 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.addSavepoint(name);
             else
                 session.rollbackToSavepoint(name);
-            writeResponseHeader(transfer, session, id);
-            transfer.flush();
+            // writeResponseHeader(transfer, session, id); //不需要发回响应
+            // transfer.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE: {
@@ -892,9 +868,13 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.SESSION_CLOSE: {
             SessionInfo si = sessionInfoMap.remove(id);
-            si.commandHandler.removeSession(si);
-            Session session = sessions.remove(id);
-            closeSession(session);
+            if (si != null) {
+                si.commandHandler.removeSession(si);
+                Session session = sessions.remove(id);
+                closeSession(session);
+            } else {
+                logger.warn("SessionInfo is null, may be a bug! sessionId = " + id);
+            }
             break;
         }
         case Session.SESSION_CANCEL_STATEMENT: {

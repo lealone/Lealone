@@ -103,6 +103,11 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
+    public boolean isValid() {
+        return !invalid;
+    }
+
+    @Override
     public void setTargetEndpoints(String targetEndpoints) {
         this.targetEndpoints = targetEndpoints;
     }

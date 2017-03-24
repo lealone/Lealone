@@ -88,7 +88,7 @@ public class DatabaseEngine {
                         // ignore
                     }
                 }
-                if (session.isInvalid()) {
+                if (session.isInvalid()) { // 无效session，不需要进行后续的操作
                     return session;
                 }
 

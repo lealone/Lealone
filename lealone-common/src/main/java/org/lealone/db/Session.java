@@ -194,6 +194,8 @@ public interface Session extends Closeable, Transaction.Participant {
 
     boolean isInvalid();
 
+    boolean isValid();
+
     void setTargetEndpoints(String targetEndpoints);
 
     String getTargetEndpoints();
