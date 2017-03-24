@@ -27,7 +27,6 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
-import org.lealone.db.SessionPool;
 import org.lealone.net.NetEndpoint;
 import org.lealone.replication.Replication;
 import org.lealone.replication.ReplicationSession;
@@ -272,7 +271,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             int i = 0;
             for (NetEndpoint e : newReplicationEndpoints) {
                 String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
-                sessions[i++] = SessionPool.getSession(s, s.getURL(id));
+                sessions[i++] = s.getNestedSession(id, true);
             }
 
             ReplicationSession rs = new ReplicationSession(sessions);
@@ -285,7 +284,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             size = liveMembers.size();
             for (NetEndpoint e : liveMembers) {
                 String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
-                sessions[i++] = SessionPool.getSession(s, s.getURL(id));
+                sessions[i++] = s.getNestedSession(id, true);
             }
 
             rs = new ReplicationSession(sessions);
@@ -424,7 +423,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             ServerSession s = (ServerSession) session;
             for (NetEndpoint e : liveMembers) {
                 String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
-                sessions[i++] = SessionPool.getSession(s, s.getURL(id));
+                sessions[i++] = s.getNestedSession(id, true);
             }
 
             ReplicationSession rs = new ReplicationSession(sessions);
@@ -755,7 +754,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         int i = 0;
         for (NetEndpoint e : replicationEndpoints) {
             String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
-            sessions[i++] = SessionPool.getSession(s, s.getURL(hostId), !localEndpoint.equals(e));
+            sessions[i++] = s.getNestedSession(hostId, !localEndpoint.equals(e));
         }
 
         ReplicationSession rs = new ReplicationSession(sessions);
@@ -802,7 +801,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         int i = 0;
         for (NetEndpoint e : replicationEndpoints) {
             String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
-            sessions[i++] = SessionPool.getSession(s, s.getURL(hostId), !localEndpoint.equals(e));
+            sessions[i++] = s.getNestedSession(hostId, !localEndpoint.equals(e));
         }
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());

@@ -1227,6 +1227,20 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         sessionCache.put(url, s);
     }
 
+    // 得到的嵌套session会参与当前事务
+    public Session getNestedSession(String hostAndPort, boolean remote) {
+        // 不能直接把hostAndPort当成key，因为每个Session是对应到具体数据库的，所以URL中要包含数据库名
+        String url = getURL(hostAndPort);
+        Session s = sessionCache.get(url);
+        if (s == null) {
+            s = SessionPool.getSession(this, url, remote);
+            if (transaction != null)
+                transaction.addParticipant(s);
+            sessionCache.put(url, s);
+        }
+        return s;
+    }
+
     public Session getSession(String url) {
         return sessionCache.get(url);
     }
@@ -1239,16 +1253,17 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     @Override
     public boolean validate(String localTransactionName) {
         String[] a = localTransactionName.split(":");
-        Session fs = null;
+        Session s = null;
         try {
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, a[0], a[1]);
-            fs = SessionPool.getSession(this, url);
-            return fs.validateTransaction(localTransactionName);
+            // 不参与当前事务，所以不用当成当前session的嵌套session
+            s = SessionPool.getSession(this, url, true);
+            return s.validateTransaction(localTransactionName);
         } catch (Exception e) {
             throw DbException.convert(e);
         } finally {
-            SessionPool.release(fs);
+            SessionPool.release(s);
         }
     }
 
@@ -1258,7 +1273,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         try {
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, hostAndPort);
-            s = SessionPool.getSession(this, url);
+            // 不参与当前事务，所以不用当成当前session的嵌套session
+            s = SessionPool.getSession(this, url, true);
             return s.validateTransaction(localTransactionName);
         } catch (Exception e) {
             throw DbException.convert(e);

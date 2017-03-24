@@ -38,7 +38,6 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
-import org.lealone.db.SessionPool;
 import org.lealone.db.result.Result;
 import org.lealone.net.NetEndpoint;
 import org.lealone.replication.ReplicationSession;
@@ -61,8 +60,8 @@ public class P2pRouter implements Router {
 
     private int executeDefineStatement(DefineStatement defineStatement) {
         Set<NetEndpoint> liveMembers;
-        ServerSession s = defineStatement.getSession();
-        Database db = s.getDatabase();
+        ServerSession currentSession = defineStatement.getSession();
+        Database db = currentSession.getDatabase();
         if (defineStatement instanceof DatabaseStatement) {
             // TODO 需要细分哪些DatabaseStatement语句可以让普通用户执行
             if (db == LealoneDatabase.getInstance()) {
@@ -103,11 +102,11 @@ public class P2pRouter implements Router {
         int i = 0;
         for (NetEndpoint e : liveMembers) {
             String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
-            sessions[i++] = SessionPool.getSession(s, s.getURL(hostId), !ConfigDescriptor.getLocalEndpoint().equals(e));
+            sessions[i++] = currentSession.getNestedSession(hostId, !ConfigDescriptor.getLocalEndpoint().equals(e));
         }
 
         ReplicationSession rs = new ReplicationSession(sessions, initReplicationEndpoints);
-        rs.setAutoCommit(s.isAutoCommit());
+        rs.setAutoCommit(currentSession.isAutoCommit());
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         Command c = null;
         try {
@@ -195,7 +194,7 @@ public class P2pRouter implements Router {
         for (NetEndpoint e : liveMembers) {
             String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
             boolean isLocal = ConfigDescriptor.getLocalEndpoint().equals(e);
-            sessions[i] = SessionPool.getSession(currentSession, currentSession.getURL(hostId), !isLocal);
+            sessions[i] = currentSession.getNestedSession(hostId, !isLocal);
             if (isLocal) {
                 currentSession.copyLastReplicationStatusTo((ServerSession) sessions[i]);
             }

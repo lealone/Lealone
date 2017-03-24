@@ -46,10 +46,6 @@ public class SessionPool {
         return queue;
     }
 
-    public static Session getSession(ServerSession originalSession, String url) {
-        return getSession(originalSession, url, true);
-    }
-
     public static Session getSession(ServerSession originalSession, String url, boolean remote) {
         Session session = remote ? getQueue(url).poll() : null; // 在本地创建session时不用从缓存队列中找
 
@@ -96,7 +92,7 @@ public class SessionPool {
         boolean isNew = false;
         if (session == null) {
             isNew = true;
-            session = getSession(originalSession, url);
+            session = getSession(originalSession, url, true);
         }
 
         if (session.getTransaction() == null)
