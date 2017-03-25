@@ -17,16 +17,16 @@
  */
 package org.lealone.common.exceptions;
 
-public class ConfigurationException extends RequestValidationException {
-    public ConfigurationException(String msg) {
+public class ConfigException extends RequestValidationException {
+    public ConfigException(String msg) {
         super(ExceptionCode.CONFIG_ERROR, msg);
     }
 
-    public ConfigurationException(String msg, Throwable e) {
+    public ConfigException(String msg, Throwable e) {
         super(ExceptionCode.CONFIG_ERROR, msg, e);
     }
 
-    protected ConfigurationException(ExceptionCode code, String msg) {
+    protected ConfigException(ExceptionCode code, String msg) {
         super(code, msg);
     }
 }

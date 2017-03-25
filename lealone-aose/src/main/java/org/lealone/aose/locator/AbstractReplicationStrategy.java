@@ -27,7 +27,7 @@ import java.util.Set;
 
 import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.lealone.aose.util.Utils;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetEndpoint;
@@ -76,7 +76,7 @@ public abstract class AbstractReplicationStrategy {
      */
     public abstract int getReplicationFactor();
 
-    public abstract void validateOptions() throws ConfigurationException;
+    public abstract void validateOptions() throws ConfigException;
 
     public ArrayList<NetEndpoint> getCachedEndpoints(String hostId) {
         long lastVersion = metaData.getRingVersion();
@@ -123,24 +123,24 @@ public abstract class AbstractReplicationStrategy {
         return null;
     }
 
-    protected void validateReplicationFactor(String rf) throws ConfigurationException {
+    protected void validateReplicationFactor(String rf) throws ConfigException {
         try {
             if (Integer.parseInt(rf) < 0) {
-                throw new ConfigurationException("Replication factor must be non-negative; found " + rf);
+                throw new ConfigException("Replication factor must be non-negative; found " + rf);
             }
         } catch (NumberFormatException e2) {
-            throw new ConfigurationException("Replication factor must be numeric; found " + rf);
+            throw new ConfigException("Replication factor must be numeric; found " + rf);
         }
     }
 
-    private void validateExpectedOptions() throws ConfigurationException {
+    private void validateExpectedOptions() throws ConfigException {
         Collection<?> expectedOptions = recognizedOptions();
         if (expectedOptions == null)
             return;
 
         for (String key : configOptions.keySet()) {
             if (!expectedOptions.contains(key))
-                throw new ConfigurationException(
+                throw new ConfigException(
                         String.format("Unrecognized strategy option {%s} passed to %s for keyspace %s", key,
                                 getClass().getSimpleName(), dbName));
         }
@@ -148,7 +148,7 @@ public abstract class AbstractReplicationStrategy {
 
     private static AbstractReplicationStrategy createInternal(String dbName,
             Class<? extends AbstractReplicationStrategy> strategyClass, TopologyMetaData metaData,
-            IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigurationException {
+            IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigException {
         AbstractReplicationStrategy strategy;
         Class<?>[] parameterTypes = new Class[] { String.class, TopologyMetaData.class, IEndpointSnitch.class,
                 Map.class };
@@ -157,7 +157,7 @@ public abstract class AbstractReplicationStrategy {
                     .getConstructor(parameterTypes);
             strategy = constructor.newInstance(dbName, metaData, snitch, strategyOptions);
         } catch (Exception e) {
-            throw new ConfigurationException("Error constructing replication strategy class", e);
+            throw new ConfigException("Error constructing replication strategy class", e);
         }
         return strategy;
     }
@@ -172,13 +172,13 @@ public abstract class AbstractReplicationStrategy {
             // Because we used to not properly validate unrecognized options, we only log a warning if we find one.
             try {
                 strategy.validateExpectedOptions();
-            } catch (ConfigurationException e) {
+            } catch (ConfigException e) {
                 logger.warn("Ignoring {}", e.getMessage());
             }
 
             strategy.validateOptions();
             return strategy;
-        } catch (ConfigurationException e) {
+        } catch (ConfigException e) {
             // If that happens at this point, there is nothing we can do about it.
             throw new RuntimeException(e);
         }
@@ -186,18 +186,18 @@ public abstract class AbstractReplicationStrategy {
 
     public static void validateReplicationStrategy(String dbName,
             Class<? extends AbstractReplicationStrategy> strategyClass, TopologyMetaData metaData,
-            IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigurationException {
+            IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigException {
         AbstractReplicationStrategy strategy = createInternal(dbName, strategyClass, metaData, snitch, strategyOptions);
         strategy.validateExpectedOptions();
         strategy.validateOptions();
     }
 
-    public static Class<AbstractReplicationStrategy> getClass(String cls) throws ConfigurationException {
+    public static Class<AbstractReplicationStrategy> getClass(String cls) throws ConfigException {
         String className = cls.contains(".") ? cls
                 : AbstractReplicationStrategy.class.getPackage().getName() + "." + cls;
         Class<AbstractReplicationStrategy> strategyClass = Utils.classForName(className, "replication strategy");
         if (!AbstractReplicationStrategy.class.isAssignableFrom(strategyClass)) {
-            throw new ConfigurationException(String.format(
+            throw new ConfigException(String.format(
                     "Specified replication strategy class (%s) is not derived from AbstractReplicationStrategy",
                     className));
         }

@@ -18,7 +18,7 @@
  */
 package org.lealone.aose.auth;
 
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.net.NetEndpoint;
 
 public interface IInternodeAuthenticator {
@@ -35,7 +35,7 @@ public interface IInternodeAuthenticator {
     /**
      * Validates configuration of IInternodeAuthenticator implementation (if configurable).
      *
-     * @throws ConfigurationException when there is a configuration error.
+     * @throws ConfigException when there is a configuration error.
      */
-    void validateConfiguration() throws ConfigurationException;
+    void validateConfiguration() throws ConfigException;
 }

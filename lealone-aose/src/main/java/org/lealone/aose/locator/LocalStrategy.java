@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.lealone.aose.config.ConfigDescriptor;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.net.NetEndpoint;
 
 public class LocalStrategy extends AbstractReplicationStrategy {
@@ -58,7 +58,7 @@ public class LocalStrategy extends AbstractReplicationStrategy {
     }
 
     @Override
-    public void validateOptions() throws ConfigurationException {
+    public void validateOptions() throws ConfigException {
     }
 
     @Override

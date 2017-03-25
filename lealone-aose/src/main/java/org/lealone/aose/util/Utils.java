@@ -22,7 +22,7 @@ import java.net.URL;
 import java.util.Iterator;
 
 import org.lealone.aose.config.Config;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.db.Constants;
 
 public class Utils extends org.lealone.common.util.Utils {
@@ -40,11 +40,11 @@ public class Utils extends org.lealone.common.util.Utils {
             return Runtime.getRuntime().availableProcessors();
     }
 
-    public static String resourceToFile(String filename) throws ConfigurationException {
+    public static String resourceToFile(String filename) throws ConfigException {
         ClassLoader loader = Utils.class.getClassLoader();
         URL scpurl = loader.getResource(filename);
         if (scpurl == null)
-            throw new ConfigurationException("unable to locate " + filename);
+            throw new ConfigException("unable to locate " + filename);
 
         return new File(scpurl.getFile()).getAbsolutePath();
     }

@@ -26,7 +26,8 @@ import java.net.URL;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.aose.config.Config.MapPropertyTypeDef;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.IOUtils;
@@ -38,16 +39,13 @@ import org.yaml.snakeyaml.introspector.MissingProperty;
 import org.yaml.snakeyaml.introspector.Property;
 import org.yaml.snakeyaml.introspector.PropertyUtils;
 
-public class YamlConfigurationLoader implements ConfigurationLoader {
+public class YamlConfigLoader implements ConfigLoader {
 
-    private static final Logger logger = LoggerFactory.getLogger(YamlConfigurationLoader.class);
+    private static final Logger logger = LoggerFactory.getLogger(YamlConfigLoader.class);
 
     private final static String DEFAULT_CONFIGURATION = "lealone.yaml";
 
-    /**
-     * Inspect the classpath to find storage configuration file
-     */
-    private URL getStorageConfigURL() throws ConfigurationException {
+    private URL getConfigURL() throws ConfigException {
         String configUrl = Config.getProperty("config");
         if (configUrl == null)
             configUrl = DEFAULT_CONFIGURATION;
@@ -57,16 +55,16 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
             url = new URL(configUrl);
             url.openStream().close(); // catches well-formed but bogus URLs
         } catch (Exception e) {
-            ClassLoader loader = YamlConfigurationLoader.class.getClassLoader();
+            ClassLoader loader = YamlConfigLoader.class.getClassLoader();
             url = loader.getResource(configUrl);
             if (url == null) {
                 String required = "file:" + File.separator + File.separator;
                 if (!configUrl.startsWith(required))
-                    throw new ConfigurationException(
+                    throw new ConfigException(
                             "Expecting URI in variable: [lealone.config].  Please prefix the file with " + required
                                     + File.separator + " for local files or " + required + "<server>" + File.separator
                                     + " for remote files.  Aborting.");
-                throw new ConfigurationException(
+                throw new ConfigException(
                         "Cannot locate " + configUrl + ".  If this is a local file, please confirm you've provided "
                                 + required + File.separator + " as a URI prefix.");
             }
@@ -75,24 +73,24 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
     }
 
     @Override
-    public Config loadConfig() throws ConfigurationException {
-        Config config = loadConfig(getStorageConfigURL());
+    public Config loadConfig() throws ConfigException {
+        Config config = loadConfig(getConfigURL());
         applyConfig(config);
         return config;
     }
 
-    public void applyConfig(Config config) throws ConfigurationException {
+    public void applyConfig(Config config) throws ConfigException {
         ConfigDescriptor.applyConfig(config);
     }
 
-    public Config loadConfig(URL url) throws ConfigurationException {
+    public Config loadConfig(URL url) throws ConfigException {
         try {
             logger.info("Loading settings from {}", url);
             byte[] configBytes;
             try (InputStream is = url.openStream()) {
                 configBytes = IOUtils.toByteArray(is);
             } catch (IOException e) {
-                // getStorageConfigURL should have ruled this out
+                // getConfigURL should have ruled this out
                 throw new AssertionError(e);
             }
 
@@ -106,7 +104,7 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
             propertiesChecker.check();
             return result;
         } catch (YAMLException e) {
-            throw new ConfigurationException("Invalid yaml", e);
+            throw new ConfigException("Invalid yaml", e);
         }
     }
 
@@ -115,17 +113,9 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
     }
 
     protected void addTypeDescription(Constructor configConstructor) {
-        TypeDescription engineDesc = new TypeDescription(PluggableEngineDef.class);
-        engineDesc.putMapPropertyType("parameters", String.class, String.class);
-
-        configConstructor.addTypeDescription(engineDesc);
-        TypeDescription seedDesc = new TypeDescription(SeedProviderDef.class);
-        seedDesc.putMapPropertyType("parameters", String.class, String.class);
-        configConstructor.addTypeDescription(seedDesc);
-
-        TypeDescription replicationStrategyDesc = new TypeDescription(ReplicationStrategyDef.class);
-        replicationStrategyDesc.putMapPropertyType("parameters", String.class, String.class);
-        configConstructor.addTypeDescription(replicationStrategyDesc);
+        TypeDescription mapPropertyTypeDesc = new TypeDescription(MapPropertyTypeDef.class);
+        mapPropertyTypeDesc.putMapPropertyType("parameters", String.class, String.class);
+        configConstructor.addTypeDescription(mapPropertyTypeDesc);
     }
 
     private static class MissingPropertiesChecker extends PropertyUtils {
@@ -144,9 +134,9 @@ public class YamlConfigurationLoader implements ConfigurationLoader {
             return result;
         }
 
-        public void check() throws ConfigurationException {
+        public void check() throws ConfigException {
             if (!missingProperties.isEmpty()) {
-                throw new ConfigurationException(
+                throw new ConfigException(
                         "Invalid yaml. Please remove properties " + missingProperties + " from your lealone.yaml");
             }
         }

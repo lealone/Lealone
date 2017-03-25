@@ -26,7 +26,7 @@ import java.util.Map;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Database;
@@ -58,7 +58,7 @@ public class ClusterMetaData {
             HashMap<String, String> map = new HashMap<>(db.getReplicationProperties());
             String className = map.remove("class");
             if (className == null) {
-                throw new ConfigurationException("Missing replication strategy class");
+                throw new ConfigException("Missing replication strategy class");
             }
 
             replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getName(),

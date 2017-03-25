@@ -18,20 +18,20 @@
 package org.lealone.test.start;
 
 import org.lealone.aose.config.Config;
-import org.lealone.aose.config.PluggableEngineDef;
+import org.lealone.aose.config.Config.PluggableEngineDef;
 import org.lealone.aose.server.P2pServerEngine;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 
 //-javaagent:E:\continuations\target\continuations-1.0-SNAPSHOT.jar
 public class TcpServerStart extends NodeBase {
 
-    // YamlConfigurationLoader的子类必须有一个无参数的构造函数
+    // YamlConfigLoader的子类必须有一个无参数的构造函数
     public TcpServerStart() {
         nodeBaseDirPrefix = "client-server";
     }
 
     @Override
-    public void applyConfig(Config config) throws ConfigurationException {
+    public void applyConfig(Config config) throws ConfigException {
         for (PluggableEngineDef e : config.protocol_server_engines) {
             if (P2pServerEngine.NAME.equalsIgnoreCase(e.name)) {
                 e.enabled = false;

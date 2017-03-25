@@ -45,7 +45,7 @@ import org.lealone.aose.util.BackgroundActivityMonitor;
 import org.lealone.aose.util.FileUtils;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
@@ -117,7 +117,7 @@ public class P2pServer extends NotificationBroadcasterSupport
     }
 
     @Override
-    public synchronized void start() throws ConfigurationException {
+    public synchronized void start() throws ConfigException {
         if (started)
             return;
         started = true;
@@ -143,7 +143,7 @@ public class P2pServer extends NotificationBroadcasterSupport
         }
     }
 
-    private void prepareToJoin() throws ConfigurationException {
+    private void prepareToJoin() throws ConfigException {
         localHostId = ClusterMetaData.getLocalHostId();
         topologyMetaData.updateHostId(localHostId, ConfigDescriptor.getLocalEndpoint());
 

@@ -31,7 +31,7 @@ import java.util.Set;
 
 import org.lealone.aose.locator.TopologyMetaData.Topology;
 import org.lealone.aose.util.Utils;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetEndpoint;
@@ -58,7 +58,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
     private final Map<String, Integer> datacenters;
 
     public NetworkTopologyStrategy(String dbName, TopologyMetaData metaData, IEndpointSnitch snitch,
-            Map<String, String> configOptions) throws ConfigurationException {
+            Map<String, String> configOptions) throws ConfigException {
         super(dbName, metaData, snitch, configOptions);
         this.snitch = snitch;
 
@@ -67,7 +67,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
             for (Entry<String, String> entry : configOptions.entrySet()) {
                 String dc = entry.getKey();
                 if (dc.equalsIgnoreCase("replication_factor"))
-                    throw new ConfigurationException(
+                    throw new ConfigException(
                             "replication_factor is an option for SimpleStrategy, not NetworkTopologyStrategy");
                 Integer replicas = Integer.valueOf(entry.getValue());
                 newDatacenters.put(dc, replicas);
@@ -183,10 +183,10 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
     }
 
     @Override
-    public void validateOptions() throws ConfigurationException {
+    public void validateOptions() throws ConfigException {
         for (Entry<String, String> e : this.configOptions.entrySet()) {
             if (e.getKey().equalsIgnoreCase("replication_factor"))
-                throw new ConfigurationException(
+                throw new ConfigException(
                         "replication_factor is an option for SimpleStrategy, not NetworkTopologyStrategy");
             validateReplicationFactor(e.getValue());
         }

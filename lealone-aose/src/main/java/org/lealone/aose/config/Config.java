@@ -17,7 +17,9 @@
  */
 package org.lealone.aose.config;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
@@ -72,5 +74,27 @@ public class Config {
         public SeedProviderDef seed_provider;
         public ReplicationStrategyDef replication_strategy;
 
+    }
+
+    public static abstract class MapPropertyTypeDef {
+        public String name;
+        public Map<String, String> parameters = new HashMap<>();
+
+        public MapPropertyTypeDef() {
+        }
+
+        public Map<String, String> getParameters() {
+            return parameters;
+        }
+    }
+
+    public static class SeedProviderDef extends MapPropertyTypeDef {
+    }
+
+    public static class ReplicationStrategyDef extends MapPropertyTypeDef {
+    }
+
+    public static class PluggableEngineDef extends MapPropertyTypeDef {
+        public Boolean enabled = true;
     }
 }

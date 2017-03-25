@@ -29,7 +29,7 @@ import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.util.ResourceWatcher;
 import org.lealone.aose.util.Utils;
 import org.lealone.aose.util.WrappedRunnable;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetEndpoint;
@@ -49,11 +49,11 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
 
     private static final int DEFAULT_REFRESH_PERIOD_IN_SECONDS = 60;
 
-    public GossipingPropertyFileSnitch() throws ConfigurationException {
+    public GossipingPropertyFileSnitch() throws ConfigException {
         this(DEFAULT_REFRESH_PERIOD_IN_SECONDS);
     }
 
-    public GossipingPropertyFileSnitch(int refreshPeriodInSeconds) throws ConfigurationException {
+    public GossipingPropertyFileSnitch(int refreshPeriodInSeconds) throws ConfigException {
         snitchHelperReference = new AtomicReference<ReconnectableSnitchHelper>();
 
         reloadConfiguration();
@@ -66,12 +66,12 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
             Utils.resourceToFile(fileName);
             Runnable runnable = new WrappedRunnable() {
                 @Override
-                protected void runMayThrow() throws ConfigurationException {
+                protected void runMayThrow() throws ConfigException {
                     reloadConfiguration();
                 }
             };
             ResourceWatcher.watch(fileName, runnable, refreshPeriodInSeconds * 1000);
-        } catch (ConfigurationException ex) {
+        } catch (ConfigException ex) {
             logger.error("{} found, but does not look like a plain file. Will not watch it for changes", fileName);
         }
     }
@@ -132,13 +132,13 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         gossipStarted = true;
     }
 
-    private void reloadConfiguration() throws ConfigurationException {
+    private void reloadConfiguration() throws ConfigException {
         final SnitchProperties properties = new SnitchProperties();
 
         String newDc = properties.get("dc", null);
         String newRack = properties.get("rack", null);
         if (newDc == null || newRack == null)
-            throw new ConfigurationException("DC or rack not found in snitch properties, check your configuration in: "
+            throw new ConfigException("DC or rack not found in snitch properties, check your configuration in: "
                     + SnitchProperties.RACKDC_PROPERTY_FILENAME);
 
         newDc = newDc.trim();

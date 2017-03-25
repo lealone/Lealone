@@ -17,16 +17,16 @@
  */
 package org.lealone.aose.config;
 
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 
-public interface ConfigurationLoader {
+public interface ConfigLoader {
 
     /**
      * Loads a {@link Config} object to use to configure a node.
      *
      * @return the {@link Config} to use.
-     * @throws ConfigurationException if the configuration cannot be properly loaded.
+     * @throws ConfigException if the configuration cannot be properly loaded.
      */
-    Config loadConfig() throws ConfigurationException;
+    Config loadConfig() throws ConfigException;
 
 }

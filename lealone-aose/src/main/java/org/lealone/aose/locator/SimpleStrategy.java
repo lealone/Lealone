@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.net.NetEndpoint;
 
 /**
@@ -65,10 +65,10 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
     }
 
     @Override
-    public void validateOptions() throws ConfigurationException {
+    public void validateOptions() throws ConfigException {
         String rf = configOptions.get("replication_factor");
         if (rf == null)
-            throw new ConfigurationException("SimpleStrategy requires a replication_factor strategy option.");
+            throw new ConfigException("SimpleStrategy requires a replication_factor strategy option.");
         validateReplicationFactor(rf);
     }
 

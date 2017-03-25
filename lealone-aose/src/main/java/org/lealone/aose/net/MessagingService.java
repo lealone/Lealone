@@ -67,7 +67,7 @@ import org.lealone.aose.server.PullSchemaVerbHandler;
 import org.lealone.aose.util.ExpiringMap;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -339,14 +339,14 @@ public final class MessagingService implements MessagingServiceMBean {
      *
      * @param localEp NetEndpoint whose port to listen on.
      */
-    public void start(NetEndpoint localEp, Map<String, String> config) throws ConfigurationException {
+    public void start(NetEndpoint localEp, Map<String, String> config) throws ConfigException {
         initVertx(config);
         callbacks.reset(); // hack to allow tests to stop/restart MS
         server = new Server(getNetServer(localEp));
         server.start();
     }
 
-    private NetServer getNetServer(NetEndpoint localEp) throws ConfigurationException {
+    private NetServer getNetServer(NetEndpoint localEp) throws ConfigException {
         boolean ssl = P2pServer.instance.isSSL();
         int port = localEp.getPort();
         NetServerOptions nso;
@@ -416,11 +416,11 @@ public final class MessagingService implements MessagingServiceMBean {
                     String address = ConfigDescriptor.getLocalEndpoint().getHostAddress();
                     if (e instanceof BindException) {
                         if (e.getMessage().contains("in use"))
-                            throw new ConfigurationException(address + " is in use by another process.  "
+                            throw new ConfigException(address + " is in use by another process.  "
                                     + "Change listen_address:storage_port in lealone.yaml "
                                     + "to values that do not conflict with other services");
                         else if (e.getMessage().contains("Cannot assign requested address"))
-                            throw new ConfigurationException("Unable to bind to address " + address
+                            throw new ConfigException("Unable to bind to address " + address
                                     + ". Set listen_address in lealone.yaml to an interface you can bind to, e.g.,"
                                     + " your private IP address on EC2");
                     }

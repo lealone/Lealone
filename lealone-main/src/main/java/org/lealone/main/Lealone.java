@@ -21,10 +21,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.aose.config.Config;
-import org.lealone.aose.config.ConfigurationLoader;
-import org.lealone.aose.config.PluggableEngineDef;
-import org.lealone.aose.config.YamlConfigurationLoader;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.aose.config.Config.PluggableEngineDef;
+import org.lealone.aose.config.ConfigLoader;
+import org.lealone.aose.config.YamlConfigLoader;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ShutdownHookUtils;
@@ -75,12 +75,12 @@ public class Lealone {
     }
 
     private static void loadConfig() {
-        ConfigurationLoader loader;
+        ConfigLoader loader;
         String loaderClass = Config.getProperty("config.loader");
         if (loaderClass != null && Lealone.class.getResource("/" + loaderClass.replace('.', '/') + ".class") != null) {
-            loader = Utils.<ConfigurationLoader> construct(loaderClass, "configuration loading");
+            loader = Utils.<ConfigLoader> construct(loaderClass, "configuration loading");
         } else {
-            loader = new YamlConfigurationLoader();
+            loader = new YamlConfigLoader();
         }
         config = loader.loadConfig();
     }
@@ -93,7 +93,7 @@ public class Lealone {
 
     private static void initBaseDir() {
         if (config.base_dir == null || config.base_dir.isEmpty())
-            throw new ConfigurationException("base_dir must be specified and not empty");
+            throw new ConfigException("base_dir must be specified and not empty");
         SysProperties.setBaseDir(config.base_dir);
 
         logger.info("Base dir: {}", config.base_dir);
@@ -105,6 +105,7 @@ public class Lealone {
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
                 if (def.enabled) {
+                    checkName("StorageEngine", def);
                     StorageEngine se = StorageEngineManager.getInstance().getEngine(def.name);
                     if (se == null) {
                         try {
@@ -112,7 +113,7 @@ public class Lealone {
                             se = (StorageEngine) clz.newInstance();
                             StorageEngineManager.getInstance().registerEngine(se);
                         } catch (Exception e) {
-                            throw newConfigurationException("StorageEngine", def, e);
+                            throw newConfigException("StorageEngine", def, e);
                         }
                     }
 
@@ -127,6 +128,7 @@ public class Lealone {
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
                 if (def.enabled) {
+                    checkName("TransactionEngine", def);
                     TransactionEngine te = TransactionEngineManager.getInstance().getEngine(def.name);
                     if (te == null) {
                         try {
@@ -137,7 +139,7 @@ public class Lealone {
                             te = TransactionEngineManager.getInstance()
                                     .getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
                             if (te == null)
-                                throw newConfigurationException("TransactionEngine", def, e);
+                                throw newConfigException("TransactionEngine", def, e);
                         }
                     }
 
@@ -152,6 +154,7 @@ public class Lealone {
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
                 if (def.enabled) {
+                    checkName("SQLEngine", def);
                     SQLEngine se = SQLEngineManager.getInstance().getEngine(def.name);
                     if (se == null) {
                         try {
@@ -159,7 +162,7 @@ public class Lealone {
                             se = (SQLEngine) clz.newInstance();
                             SQLEngineManager.getInstance().registerEngine(se);
                         } catch (Exception e) {
-                            throw newConfigurationException("SQLEngine", def, e);
+                            throw newConfigException("SQLEngine", def, e);
                         }
                     }
 
@@ -173,6 +176,7 @@ public class Lealone {
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
                 if (def.enabled) {
+                    checkName("ProtocolServerEngine", def);
                     ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
                     if (pse == null) {
                         try {
@@ -180,7 +184,7 @@ public class Lealone {
                             pse = (ProtocolServerEngine) clz.newInstance();
                             ProtocolServerEngineManager.getInstance().registerEngine(pse);
                         } catch (Exception e) {
-                            throw newConfigurationException("ProtocolServerEngine", def, e);
+                            throw newConfigException("ProtocolServerEngine", def, e);
                         }
                     }
                     // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
@@ -192,9 +196,13 @@ public class Lealone {
         }
     }
 
-    private static ConfigurationException newConfigurationException(String engineName, PluggableEngineDef def,
-            Exception e) {
-        return new ConfigurationException(engineName + " '" + def.name + "' can not found", e);
+    private static void checkName(String engineName, PluggableEngineDef def) {
+        if (def.name == null || def.name.trim().isEmpty())
+            throw new ConfigException(engineName + ".name is missing.");
+    }
+
+    private static ConfigException newConfigException(String engineName, PluggableEngineDef def, Exception e) {
+        return new ConfigException(engineName + " '" + def.name + "' can not found", e);
     }
 
     private static void initPluggableEngine(PluggableEngine pe, PluggableEngineDef def) {

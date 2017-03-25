@@ -32,6 +32,7 @@ import java.util.Set;
 import org.lealone.aose.auth.AllowAllInternodeAuthenticator;
 import org.lealone.aose.auth.IInternodeAuthenticator;
 import org.lealone.aose.config.Config.ClusterConfig;
+import org.lealone.aose.config.Config.PluggableEngineDef;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.locator.DynamicEndpointSnitch;
 import org.lealone.aose.locator.EndpointSnitchInfo;
@@ -42,7 +43,7 @@ import org.lealone.aose.net.MessagingService;
 import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.server.P2pServerEngine;
 import org.lealone.aose.util.Utils;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
@@ -62,11 +63,11 @@ public class ConfigDescriptor {
     private static IInternodeAuthenticator internodeAuthenticator;
     private static AbstractReplicationStrategy defaultReplicationStrategy;
 
-    public static void applyConfig(Config config) throws ConfigurationException {
+    public static void applyConfig(Config config) throws ConfigException {
         ConfigDescriptor.config = config;
         // phi convict threshold for FailureDetector
         if (config.cluster_config.phi_convict_threshold < 5 || config.cluster_config.phi_convict_threshold > 16) {
-            throw new ConfigurationException("phi_convict_threshold must be between 5 and 16");
+            throw new ConfigException("phi_convict_threshold must be between 5 and 16");
         }
 
         localEndpoint = createLocalEndpoint(config);
@@ -91,19 +92,19 @@ public class ConfigDescriptor {
         defaultReplicationStrategy = createDefaultReplicationStrategy(config.cluster_config);
     }
 
-    private static NetEndpoint createLocalEndpoint(Config config) throws ConfigurationException {
+    private static NetEndpoint createLocalEndpoint(Config config) throws ConfigException {
         InetAddress listenAddress = null;
         // Local IP, hostname or interface to bind services to
         if (config.listen_address != null && config.listen_interface != null) {
-            throw new ConfigurationException("Set listen_address OR listen_interface, not both");
+            throw new ConfigException("Set listen_address OR listen_interface, not both");
         } else if (config.listen_address != null) {
             try {
                 listenAddress = InetAddress.getByName(config.listen_address);
             } catch (UnknownHostException e) {
-                throw new ConfigurationException("Unknown listen_address '" + config.listen_address + "'");
+                throw new ConfigException("Unknown listen_address '" + config.listen_address + "'");
             }
             if (listenAddress.isAnyLocalAddress())
-                throw new ConfigurationException(
+                throw new ConfigException(
                         "listen_address cannot be a wildcard address (" + config.listen_address + ")!");
         } else if (config.listen_interface != null) {
             listenAddress = getNetworkInterfaceAddress(config.listen_interface, "listen_interface",
@@ -136,14 +137,14 @@ public class ConfigDescriptor {
     }
 
     private static InetAddress getNetworkInterfaceAddress(String intf, String configName, boolean preferIPv6)
-            throws ConfigurationException {
+            throws ConfigException {
         try {
             NetworkInterface ni = NetworkInterface.getByName(intf);
             if (ni == null)
-                throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" could not be found");
+                throw new ConfigException("Configured " + configName + " \"" + intf + "\" could not be found");
             Enumeration<InetAddress> addrs = ni.getInetAddresses();
             if (!addrs.hasMoreElements())
-                throw new ConfigurationException(
+                throw new ConfigException(
                         "Configured " + configName + " \"" + intf + "\" was found, but had no addresses");
             // Try to return the first address of the preferred type, otherwise return the first address
             InetAddress retval = null;
@@ -158,14 +159,14 @@ public class ConfigDescriptor {
             }
             return retval;
         } catch (SocketException e) {
-            throw new ConfigurationException("Configured " + configName + " \"" + intf + "\" caused an exception", e);
+            throw new ConfigException("Configured " + configName + " \"" + intf + "\" caused an exception", e);
         }
     }
 
-    private static IEndpointSnitch createEndpointSnitch(ClusterConfig config) throws ConfigurationException {
+    private static IEndpointSnitch createEndpointSnitch(ClusterConfig config) throws ConfigException {
         // end point snitch
         if (config.endpoint_snitch == null) {
-            throw new ConfigurationException("Missing endpoint_snitch directive");
+            throw new ConfigException("Missing endpoint_snitch directive");
         }
 
         String className = config.endpoint_snitch;
@@ -179,12 +180,15 @@ public class ConfigDescriptor {
         return snitch;
     }
 
-    private static SeedProvider createSeedProvider(ClusterConfig config) throws ConfigurationException {
+    private static SeedProvider createSeedProvider(ClusterConfig config) throws ConfigException {
         if (config.seed_provider == null) {
-            throw new ConfigurationException("seeds configuration is missing; a minimum of one seed is required.");
+            throw new ConfigException("seeds configuration is missing; a minimum of one seed is required.");
+        }
+        if (config.seed_provider.name == null) {
+            throw new ConfigException("seed_provider.name is missing.");
         }
         SeedProvider seedProvider;
-        String className = config.seed_provider.class_name;
+        String className = config.seed_provider.name;
         if (!className.contains("."))
             className = SeedProvider.class.getPackage().getName() + "." + className;
         try {
@@ -194,16 +198,15 @@ public class ConfigDescriptor {
         }
         // there are about 5 checked exceptions that could be thrown here.
         catch (Exception e) {
-            throw new ConfigurationException(
+            throw new ConfigException(
                     e.getMessage() + "\nFatal configuration error; unable to start server.  See log for stacktrace.");
         }
         if (seedProvider.getSeeds().isEmpty())
-            throw new ConfigurationException("The seed provider lists no seeds.");
+            throw new ConfigException("The seed provider lists no seeds.");
         return seedProvider;
     }
 
-    private static IInternodeAuthenticator createInternodeAuthenticator(ClusterConfig config)
-            throws ConfigurationException {
+    private static IInternodeAuthenticator createInternodeAuthenticator(ClusterConfig config) throws ConfigException {
         IInternodeAuthenticator internodeAuthenticator;
         if (config.internode_authenticator != null)
             internodeAuthenticator = Utils.construct(config.internode_authenticator, "internode_authenticator");
@@ -215,16 +218,20 @@ public class ConfigDescriptor {
     }
 
     private static AbstractReplicationStrategy createDefaultReplicationStrategy(ClusterConfig config)
-            throws ConfigurationException {
+            throws ConfigException {
         AbstractReplicationStrategy defaultReplicationStrategy;
-        if (config.replication_strategy == null)
+        if (config.replication_strategy == null) {
             defaultReplicationStrategy = new SimpleStrategy("system", P2pServer.instance.getTopologyMetaData(),
                     getEndpointSnitch(), ImmutableMap.of("replication_factor", "1"));
-        else
+        } else {
+            if (config.replication_strategy.name == null) {
+                throw new ConfigException("replication_strategy.name is missing.");
+            }
             defaultReplicationStrategy = AbstractReplicationStrategy.createReplicationStrategy("system",
-                    AbstractReplicationStrategy.getClass(config.replication_strategy.class_name),
+                    AbstractReplicationStrategy.getClass(config.replication_strategy.name),
                     P2pServer.instance.getTopologyMetaData(), getEndpointSnitch(),
                     config.replication_strategy.parameters);
+        }
         return defaultReplicationStrategy;
     }
 

@@ -18,13 +18,13 @@
 package org.lealone.test.start;
 
 import org.lealone.aose.config.Config;
-import org.lealone.aose.config.YamlConfigurationLoader;
-import org.lealone.common.exceptions.ConfigurationException;
+import org.lealone.aose.config.YamlConfigLoader;
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.main.Lealone;
 
 import io.vertx.core.impl.FileResolver;
 
-public class NodeBase extends YamlConfigurationLoader {
+public class NodeBase extends YamlConfigLoader {
 
     public static void run(Class<?> loader, String[] args) {
         init(loader);
@@ -57,7 +57,7 @@ public class NodeBase extends YamlConfigurationLoader {
     }
 
     @Override
-    public void applyConfig(Config config) throws ConfigurationException {
+    public void applyConfig(Config config) throws ConfigException {
         config.base_dir = config.base_dir + "/" + nodeBaseDirPrefix;
         if (dir != null) {
             config.base_dir = config.base_dir + dir;
