@@ -101,7 +101,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private final Comparator<NetEndpoint> inetcomparator = new Comparator<NetEndpoint>() {
         @Override
         public int compare(NetEndpoint addr1, NetEndpoint addr2) {
-            return addr1.getHostAddress().compareTo(addr2.getHostAddress());
+            return addr1.compareTo(addr2);
         }
     };
 

@@ -23,7 +23,7 @@ import java.net.UnknownHostException;
 
 import org.lealone.db.Constants;
 
-public class NetEndpoint {
+public class NetEndpoint implements Comparable<NetEndpoint> {
 
     private static NetEndpoint localTcpEndpoint = new NetEndpoint(Constants.DEFAULT_HOST, Constants.DEFAULT_TCP_PORT);
     private static NetEndpoint localP2pEndpoint = new NetEndpoint(Constants.DEFAULT_HOST, Constants.DEFAULT_P2P_PORT);
@@ -45,44 +45,15 @@ public class NetEndpoint {
     }
 
     private final InetAddress inetAddress;
-    private InetSocketAddress inetSocketAddress;
-    private String host;
-    private int port;
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + ((inetSocketAddress == null) ? 0 : inetSocketAddress.hashCode());
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        NetEndpoint other = (NetEndpoint) obj;
-        if (inetSocketAddress == null) {
-            if (other.inetSocketAddress != null)
-                return false;
-        } else if (!inetSocketAddress.equals(other.inetSocketAddress))
-            return false;
-        return true;
-    }
+    private final InetSocketAddress inetSocketAddress;
+    private final String host;
+    private final int port;
 
     public NetEndpoint(String host, int port) {
         this.host = host;
         this.port = port;
         inetSocketAddress = new InetSocketAddress(host, port);
         inetAddress = inetSocketAddress.getAddress();
-    }
-
-    public NetEndpoint(InetAddress inetAddress) {
-        this.inetAddress = inetAddress;
     }
 
     public NetEndpoint(InetAddress inetAddress, int port) {
@@ -163,6 +134,43 @@ public class NetEndpoint {
 
     public String getTcpHostAndPort() {
         return tcpHostAndPort;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((inetAddress == null) ? 0 : inetAddress.hashCode());
+        result = prime * result + port;
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        NetEndpoint other = (NetEndpoint) obj;
+        if (inetAddress == null) {
+            if (other.inetAddress != null)
+                return false;
+        } else if (!inetAddress.equals(other.inetAddress))
+            return false;
+        if (port != other.port)
+            return false;
+        return true;
+    }
+
+    @Override
+    public int compareTo(NetEndpoint o) {
+        int v = this.getHostAddress().compareTo(o.getHostAddress());
+        if (v == 0) {
+            return this.port - o.port;
+        }
+        return v;
     }
 
 }
