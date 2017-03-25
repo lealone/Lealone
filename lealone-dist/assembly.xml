@@ -35,11 +35,18 @@
         </fileSet>
     </fileSets>
 
+    <files>
+        <file>
+            <source>lealone-dist/target/lealone-${project.version}.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
+    </files>
+
     <moduleSets>
         <moduleSet>
             <includes>
                 <include>org.lealone:lealone-main</include>
-            </includes>
+            </includes><!--
             <binaries>
                 <unpack>false</unpack>
                 <outputDirectory>lib</outputDirectory>
@@ -49,7 +56,7 @@
                         <useTransitiveDependencies>true</useTransitiveDependencies>
                     </dependencySet>
                 </dependencySets>
-            </binaries>
+            </binaries>-->
         </moduleSet>
     </moduleSets>
 </assembly>
