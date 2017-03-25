@@ -19,68 +19,68 @@ base_dir: ../data
 listen_address: 127.0.0.1
 
 storage_engines:
-    - name: AOSE
-      enabled: true
-      parameters: {
-          # key1: v1,
-          # key2: v2,
-      }
-      
+  - name: AOSE
+    enabled: true
+    parameters: {
+        # key1: v1,
+        # key2: v2,
+    }
+
 transaction_engines:
-    - name: MVCC
-      enabled: true
-      parameters: {
-          transaction_log_dir: tlog
-      }
+  - name: AOTE
+    enabled: true
+    parameters: {
+        transaction_log_dir: tlog
+    }
 
 sql_engines:
-    - name: Lealone
-      enabled: true
-      parameters: {
-          # key1: v1,
-          # key2: v2,
-      }
-      
+  - name: Lealone
+    enabled: true
+    parameters: {
+        # key1: v1,
+        # key2: v2,
+    }
+
 protocol_server_engines:
-    - name: TCP
-      enabled: true
-      parameters: {
-          port: 5210,
-          trace: false,
-          allow_others: true,
-          daemon: false,
-          ssl: false
-      }
-    - name: P2P
-      enabled: false
-      parameters: {
-          port: 5211,
-          ssl: false
-      }
-
-cluster_name: Test Cluster
-
-seed_provider:
-    - class_name: SimpleSeedProvider
-      parameters:
-          - seeds: "127.0.0.1"
-          
-replication_strategy:
-    - class_name: SimpleStrategy
-      parameters:
-          - replication_factor: 3
-
-# replication_strategy:
-#     - class_name: NetworkTopologyStrategy
-#       parameters:
-#          - dc1: 1
-#          - dc2: 2
-
-endpoint_snitch: SimpleSnitch
-dynamic_snitch: true
+  - name: TCP
+    enabled: true
+    parameters: {
+        port: 5210,
+        trace: false,
+        allow_others: true,
+        daemon: false,
+        ssl: false
+    }
+  - name: P2P
+    enabled: false
+    parameters: {
+        port: 5211,
+        ssl: false
+    }
 
 server_encryption_options:
     keystore: conf/.keystore
     keystore_password: lealone
     truststore: conf/.truststore
     truststore_password: lealone
+
+cluster_config:
+    cluster_name: Test Cluster
+    endpoint_snitch: SimpleSnitch
+    dynamic_snitch: true
+    request_timeout_in_ms: 10000
+
+    seed_provider:
+      - class_name: SimpleSeedProvider
+        parameters:
+          - seeds: "127.0.0.1"
+
+    replication_strategy:
+      - class_name: SimpleStrategy
+        parameters:
+          - replication_factor: 3
+    # replication_strategy:
+    #   - class_name: NetworkTopologyStrategy
+    #     parameters:
+    #       - dc1: 1
+    #       - dc2: 2

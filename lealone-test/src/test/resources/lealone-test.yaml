@@ -15,69 +15,49 @@
 # limitations under the License.
 
 base_dir: target/test-data
-cluster_name: Test Cluster
 
 listen_address: 127.0.0.1
 
 storage_engines:
-    - name: AOSE
-      enabled: true
-      parameters: {
-          # key1: v1,
-          # key2: v2,
-      }
+  - name: AOSE
+    enabled: true
+    parameters: {
+        # key1: v1,
+        # key2: v2,
+    }
 
 transaction_engines:
-    - name: AOTE
-      enabled: true
-      parameters: {
-          transaction_log_dir: transaction_log, # ${base_dir} + "/"+ ${transaction_log_dir}
-      }
+  - name: AOTE
+    enabled: true
+    parameters: {
+        transaction_log_dir: transaction_log, # ${base_dir} + "/"+ ${transaction_log_dir}
+    }
 
 sql_engines:
-    - name: Lealone
-      enabled: true
-      parameters: {
-          # key1: v1,
-          # key2: v2,
-      }
-      
+  - name: Lealone
+    enabled: true
+    parameters: {
+        # key1: v1,
+        # key2: v2,
+    }
+
 protocol_server_engines:
-    - name: TCP
-      enabled: true
-      parameters: {
-          port: 5210,
-          trace: false,
-          allow_others: true,
-          daemon: false,
-          blocked_thread_check_interval: -1,
-          ssl: false
-      }
-    - name: P2P
-      enabled: true
-      parameters: {
-          port: 5211,
-          ssl: false
-      }
-
-seed_provider:
-    - class_name: SimpleSeedProvider
-      parameters:
-          - seeds: "127.0.0.1"
-          
-replication_strategy:
-    - class_name: SimpleStrategy
-      parameters:
-          - replication_factor: 3
-
-# replication_strategy:
-#     - class_name: NetworkTopologyStrategy
-#       parameters:
-#          - dc1: 1
-#          - dc2: 2
-
-endpoint_snitch: SimpleSnitch
-dynamic_snitch: true
+  - name: TCP
+    enabled: true
+    parameters: {
+        port: 5210,
+        trace: false,
+        allow_others: true,
+        daemon: false,
+        blocked_thread_check_interval: -1,
+        ssl: false
+    }
+  - name: P2P
+    enabled: true
+    parameters: {
+        port: 5211,
+        ssl: false
+    }
 
 server_encryption_options:
     keystore: conf/.keystore
@@ -85,8 +65,27 @@ server_encryption_options:
     truststore: conf/.truststore
     truststore_password: lealone
 
-#方便在eclipse中debug，不会产生超时
-request_timeout_in_ms: 100000000
-#request_timeout_in_ms: 2000
+cluster_config:
+    cluster_name: Test Cluster
+    endpoint_snitch: SimpleSnitch
+    dynamic_snitch: true
+    #方便在eclipse中debug，不会产生超时
+    request_timeout_in_ms: 100000000
+    #request_timeout_in_ms: 2000
+
+    seed_provider:
+      - class_name: SimpleSeedProvider
+        parameters:
+          - seeds: "127.0.0.1"
+
+    replication_strategy:
+      - class_name: SimpleStrategy
+        parameters:
+          - replication_factor: 3
+    # replication_strategy:
+    #   - class_name: NetworkTopologyStrategy
+    #     parameters:
+    #       - dc1: 1
+    #       - dc2: 2
 
 

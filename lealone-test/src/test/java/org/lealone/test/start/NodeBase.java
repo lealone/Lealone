@@ -67,7 +67,7 @@ public class NodeBase extends YamlConfigurationLoader {
             config.listen_address = listen_address;
 
         if (endpoint_snitch != null)
-            config.endpoint_snitch = endpoint_snitch;
+            config.cluster_config.endpoint_snitch = endpoint_snitch;
 
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.base_dir);

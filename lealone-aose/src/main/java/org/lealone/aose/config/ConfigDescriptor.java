@@ -31,6 +31,7 @@ import java.util.Set;
 
 import org.lealone.aose.auth.AllowAllInternodeAuthenticator;
 import org.lealone.aose.auth.IInternodeAuthenticator;
+import org.lealone.aose.config.Config.ClusterConfig;
 import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.locator.DynamicEndpointSnitch;
 import org.lealone.aose.locator.EndpointSnitchInfo;
@@ -64,12 +65,12 @@ public class ConfigDescriptor {
     public static void applyConfig(Config config) throws ConfigurationException {
         ConfigDescriptor.config = config;
         // phi convict threshold for FailureDetector
-        if (config.phi_convict_threshold < 5 || config.phi_convict_threshold > 16) {
+        if (config.cluster_config.phi_convict_threshold < 5 || config.cluster_config.phi_convict_threshold > 16) {
             throw new ConfigurationException("phi_convict_threshold must be between 5 and 16");
         }
 
         localEndpoint = createLocalEndpoint(config);
-        snitch = createEndpointSnitch(config);
+        snitch = createEndpointSnitch(config.cluster_config);
 
         localDC = snitch.getDatacenter(localEndpoint);
         localComparator = new Comparator<NetEndpoint>() {
@@ -85,9 +86,9 @@ public class ConfigDescriptor {
             }
         };
 
-        seedProvider = createSeedProvider(config);
-        internodeAuthenticator = createInternodeAuthenticator(config);
-        defaultReplicationStrategy = createDefaultReplicationStrategy(config);
+        seedProvider = createSeedProvider(config.cluster_config);
+        internodeAuthenticator = createInternodeAuthenticator(config.cluster_config);
+        defaultReplicationStrategy = createDefaultReplicationStrategy(config.cluster_config);
     }
 
     private static NetEndpoint createLocalEndpoint(Config config) throws ConfigurationException {
@@ -161,7 +162,7 @@ public class ConfigDescriptor {
         }
     }
 
-    private static IEndpointSnitch createEndpointSnitch(Config config) throws ConfigurationException {
+    private static IEndpointSnitch createEndpointSnitch(ClusterConfig config) throws ConfigurationException {
         // end point snitch
         if (config.endpoint_snitch == null) {
             throw new ConfigurationException("Missing endpoint_snitch directive");
@@ -178,7 +179,7 @@ public class ConfigDescriptor {
         return snitch;
     }
 
-    private static SeedProvider createSeedProvider(Config config) throws ConfigurationException {
+    private static SeedProvider createSeedProvider(ClusterConfig config) throws ConfigurationException {
         if (config.seed_provider == null) {
             throw new ConfigurationException("seeds configuration is missing; a minimum of one seed is required.");
         }
@@ -201,7 +202,8 @@ public class ConfigDescriptor {
         return seedProvider;
     }
 
-    private static IInternodeAuthenticator createInternodeAuthenticator(Config config) throws ConfigurationException {
+    private static IInternodeAuthenticator createInternodeAuthenticator(ClusterConfig config)
+            throws ConfigurationException {
         IInternodeAuthenticator internodeAuthenticator;
         if (config.internode_authenticator != null)
             internodeAuthenticator = Utils.construct(config.internode_authenticator, "internode_authenticator");
@@ -212,7 +214,7 @@ public class ConfigDescriptor {
         return internodeAuthenticator;
     }
 
-    private static AbstractReplicationStrategy createDefaultReplicationStrategy(Config config)
+    private static AbstractReplicationStrategy createDefaultReplicationStrategy(ClusterConfig config)
             throws ConfigurationException {
         AbstractReplicationStrategy defaultReplicationStrategy;
         if (config.replication_strategy == null)
@@ -235,15 +237,15 @@ public class ConfigDescriptor {
     }
 
     public static String getClusterName() {
-        return config.cluster_name;
+        return config.cluster_config.cluster_name;
     }
 
     public static long getRpcTimeout() {
-        return config.request_timeout_in_ms;
+        return config.cluster_config.request_timeout_in_ms;
     }
 
     public static boolean hasCrossNodeTimeout() {
-        return config.cross_node_timeout;
+        return config.cluster_config.cross_node_timeout;
     }
 
     // not part of the Verb enum so we can change timeouts easily via JMX
@@ -252,11 +254,11 @@ public class ConfigDescriptor {
     }
 
     public static double getPhiConvictThreshold() {
-        return config.phi_convict_threshold;
+        return config.cluster_config.phi_convict_threshold;
     }
 
     public static void setPhiConvictThreshold(double phiConvictThreshold) {
-        config.phi_convict_threshold = phiConvictThreshold;
+        config.cluster_config.phi_convict_threshold = phiConvictThreshold;
     }
 
     public static Set<NetEndpoint> getSeeds() {
@@ -276,27 +278,27 @@ public class ConfigDescriptor {
     }
 
     public static int getDynamicUpdateInterval() {
-        return config.dynamic_snitch_update_interval_in_ms;
+        return config.cluster_config.dynamic_snitch_update_interval_in_ms;
     }
 
     public static void setDynamicUpdateInterval(Integer dynamicUpdateInterval) {
-        config.dynamic_snitch_update_interval_in_ms = dynamicUpdateInterval;
+        config.cluster_config.dynamic_snitch_update_interval_in_ms = dynamicUpdateInterval;
     }
 
     public static int getDynamicResetInterval() {
-        return config.dynamic_snitch_reset_interval_in_ms;
+        return config.cluster_config.dynamic_snitch_reset_interval_in_ms;
     }
 
     public static void setDynamicResetInterval(Integer dynamicResetInterval) {
-        config.dynamic_snitch_reset_interval_in_ms = dynamicResetInterval;
+        config.cluster_config.dynamic_snitch_reset_interval_in_ms = dynamicResetInterval;
     }
 
     public static double getDynamicBadnessThreshold() {
-        return config.dynamic_snitch_badness_threshold;
+        return config.cluster_config.dynamic_snitch_badness_threshold;
     }
 
     public static void setDynamicBadnessThreshold(Double dynamicBadnessThreshold) {
-        config.dynamic_snitch_badness_threshold = dynamicBadnessThreshold;
+        config.cluster_config.dynamic_snitch_badness_threshold = dynamicBadnessThreshold;
     }
 
     public static ServerEncryptionOptions getServerEncryptionOptions() {
