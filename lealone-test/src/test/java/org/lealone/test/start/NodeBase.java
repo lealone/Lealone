@@ -73,7 +73,6 @@ public class NodeBase extends YamlConfigLoader {
         System.setProperty("lealone.base.dir", "./" + config.base_dir);
 
         System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
-        System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
         System.setProperty("vertx.cacheDirBase", "./" + config.base_dir + "/.vertx");
 
         super.applyConfig(config);

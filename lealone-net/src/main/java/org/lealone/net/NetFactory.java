@@ -28,13 +28,17 @@ import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.http.ClientAuth;
+import io.vertx.core.impl.FileResolver;
 import io.vertx.core.net.JksOptions;
 import io.vertx.core.net.NetClientOptions;
 import io.vertx.core.net.NetServer;
 import io.vertx.core.net.NetServerOptions;
 
 public class NetFactory {
-
+    static {
+        if (System.getProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME) == null)
+            System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
+    }
     private static Vertx vertx;
 
     public static void closeVertx(Vertx v) {
