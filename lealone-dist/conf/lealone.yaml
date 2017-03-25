@@ -71,16 +71,20 @@ cluster_config:
     request_timeout_in_ms: 10000
 
     seed_provider:
-      - class_name: SimpleSeedProvider
-        parameters:
-          - seeds: "127.0.0.1"
+        name: SimpleSeedProvider
+        parameters: {
+            seeds: "127.0.0.1"
+        }
 
     replication_strategy:
-      - class_name: SimpleStrategy
-        parameters:
-          - replication_factor: 3
+        name: SimpleStrategy
+        parameters: {
+            replication_factor: 3
+        }
+
     # replication_strategy:
-    #   - class_name: NetworkTopologyStrategy
-    #     parameters:
-    #       - dc1: 1
-    #       - dc2: 2
+    #     name: NetworkTopologyStrategy
+    #     parameters: {
+    #         dc1: 1,
+    #         dc2: 2
+    #     }
