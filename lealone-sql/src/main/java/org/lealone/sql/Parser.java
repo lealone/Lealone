@@ -944,7 +944,7 @@ public class Parser implements SQLParser {
     }
 
     private static StatementBase prepare(ServerSession s, String sql, ArrayList<Value> paramValues) {
-        StatementBase prep = (StatementBase) s.prepareStatement(sql);
+        StatementBase prep = (StatementBase) s.prepareStatementLocal(sql).getWrappedStatement();
         ArrayList<Parameter> params = prep.getParameters();
         if (params != null) {
             for (int i = 0, size = params.size(); i < size; i++) {
