@@ -77,6 +77,10 @@ public class TestBase extends Assert {
         }
     }
 
+    protected String dbName = DB_NAME;
+    protected String user = USER;
+    protected String password = PASSWORD;
+
     private final Map<String, String> connectionParameters = new HashMap<>();
     private String storageEngineName = getDefaultStorageEngineName();
     private boolean embedded = false;
@@ -166,7 +170,7 @@ public class TestBase extends Assert {
     }
 
     public synchronized String getURL() {
-        return getURL(DB_NAME);
+        return getURL(dbName);
     }
 
     public synchronized String getURL(String user, String password) {

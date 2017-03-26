@@ -387,6 +387,9 @@ public class ConnectionInfo implements Cloneable {
         if (passwordHash) {
             return StringUtils.convertHexToBytes(new String(password));
         }
+        // 不能用用户名和密码组成hash，否则重命名用户后将不能通过原来的密码登录
+        // TODO 如果不用固定的名称是否还有更好办法？
+        userName = Constants.PROJECT_NAME;
         if (userName.length() == 0 && password.length == 0) {
             return new byte[0];
         }

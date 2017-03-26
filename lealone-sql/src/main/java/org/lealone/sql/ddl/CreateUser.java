@@ -10,6 +10,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.auth.User;
@@ -129,6 +130,9 @@ public class CreateUser extends DefineStatement implements AuthStatement {
         char[] passwordChars = pwd == null ? new char[0] : pwd.toCharArray();
         byte[] userPasswordHash;
         String userName = user.getName();
+        // 不能用用户名和密码组成hash，否则重命名用户后将不能通过原来的密码登录
+        // TODO 如果不用固定的名称是否还有更好办法？
+        userName = Constants.PROJECT_NAME;
         if (userName.isEmpty() && passwordChars.length == 0) {
             userPasswordHash = new byte[0];
         } else {

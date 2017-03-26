@@ -32,10 +32,6 @@ import org.lealone.test.TestBase;
 
 public class SqlTestBase extends TestBase {
 
-    protected String dbName;
-    protected String user;
-    protected String password;
-
     protected Connection conn;
     protected Statement stmt;
     protected ResultSet rs;
