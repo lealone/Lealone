@@ -2396,6 +2396,12 @@ public class Database implements DataHandler, DbObject {
     }
 
     public void createRootUserIfNotExists() {
+        // 如果已经存在一个Admin权限的用户，那就不再创建root用户了
+        // 最常见的是对默认的root用户重命名后会出现这种情况
+        for (User user : getAllUsers()) {
+            if (user.isAdmin())
+                return;
+        }
         getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
     }
 

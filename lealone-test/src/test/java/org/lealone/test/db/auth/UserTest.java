@@ -132,6 +132,12 @@ public class UserTest extends DbObjectTestBase {
         user = findUser("sa33");
         assertFalse(user.isAdmin());
 
+        executeUpdate("ALTER USER ROOT RENAME TO new_root");
+        user = findUser("ROOT");
+        assertNull(user);
+        user = findUser("new_root");
+        assertNotNull(user);
+        executeUpdate("ALTER USER new_root RENAME TO ROOT");
     }
 
     void drop() {
