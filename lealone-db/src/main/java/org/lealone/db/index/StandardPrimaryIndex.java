@@ -120,9 +120,13 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public void add(ServerSession session, Row row) {
+        // insert新记录并且由系统自动增加rowKey时，不用每次都调用一次map.get
+        // update原有记录row.getKey()不为0，所以依然要调用map.get
+        boolean checkDuplicateKey = true;
         if (mainIndexColumn == -1) {
             if (row.getKey() == 0) {
                 row.setKey(lastKey.incrementAndGet());
+                checkDuplicateKey = false;
             }
         } else {
             long k = row.getValue(mainIndexColumn).getLong();
@@ -144,15 +148,17 @@ public class StandardPrimaryIndex extends IndexBase {
 
         TransactionMap<Value, VersionedValue> map = getMap(session);
         Value key = ValueLong.get(row.getKey());
-        VersionedValue old = map.get(key);
-        if (old != null) {
-            String sql = "PRIMARY KEY ON " + table.getSQL();
-            if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
-                sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+        if (checkDuplicateKey) {
+            VersionedValue old = map.get(key);
+            if (old != null) {
+                String sql = "PRIMARY KEY ON " + table.getSQL();
+                if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
+                    sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+                }
+                DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
+                e.setSource(this);
+                throw e;
             }
-            DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-            e.setSource(this);
-            throw e;
         }
         try {
             VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
