@@ -14,6 +14,7 @@ import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Session;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
 import org.lealone.replication.Replication;
 import org.lealone.storage.Storage;
@@ -35,8 +36,34 @@ import org.lealone.transaction.TransactionMap;
  */
 public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
+    public static class MVCCShardingTransactionMap<K, V> extends MVCCTransactionMap<K, V> {
+
+        private final Replication replication;
+        private final Session session;
+        private final DataType valueType;
+
+        public MVCCShardingTransactionMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
+            super(transaction, map);
+            replication = (Replication) map;
+            session = transaction.getSession();
+            valueType = getValueType();
+            ConnectionInfo.setInternalSession(session);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public V get(K key) {
+            return (V) replication.get(key, session);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public V put(K key, V value) {
+            return (V) replication.put(key, value, valueType, session);
+        }
+    }
+
     private final MVCCTransaction transaction;
-    private final boolean isShardingMode;
 
     /**
      * The map used for writing (the latest version).
@@ -49,9 +76,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     public MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
         this.transaction = transaction;
         this.map = map;
-        isShardingMode = transaction.isShardingMode();
-        if (isShardingMode)
-            ConnectionInfo.setInternalSession(transaction.getSession());
     }
 
     @Override
@@ -78,9 +102,6 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @SuppressWarnings("unchecked")
     @Override
     public V get(K key) {
-        if (isShardingMode && (map instanceof Replication)) {
-            return (V) ((Replication) map).get(key, transaction.getSession());
-        }
         TransactionalValue data = map.get(key);
         data = getValue(key, data);
         return data == null ? null : (V) data.value;
@@ -150,12 +171,8 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
      * @return the old value
      * @throws IllegalStateException if a lock timeout occurs
      */
-    @SuppressWarnings("unchecked")
     @Override
     public V put(K key, V value) {
-        if (isShardingMode && (map instanceof Replication)) {
-            return (V) ((Replication) map).put(key, value, getValueType(), transaction.getSession());
-        }
         DataUtils.checkArgument(value != null, "The value may not be null");
         return set(key, value);
     }
@@ -532,7 +549,11 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public MVCCTransactionMap<K, V> getInstance(Transaction transaction) {
-        return new MVCCTransactionMap<K, V>((MVCCTransaction) transaction, map);
+        MVCCTransaction t = (MVCCTransaction) transaction;
+        if (t.isShardingMode())
+            return new MVCCShardingTransactionMap<>(t, map);
+        else
+            return new MVCCTransactionMap<>(t, map);
     }
 
     @Override
