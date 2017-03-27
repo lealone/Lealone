@@ -15,6 +15,7 @@ import java.sql.Timestamp;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -30,6 +31,7 @@ import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.QueryStatisticsData;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Setting;
@@ -101,15 +103,12 @@ public class MetaTable extends Table {
     private static final int LOCKS = 26;
     private static final int SESSION_STATE = 27;
     private static final int QUERY_STATISTICS = 28;
-    private static final int META_TABLE_TYPE_COUNT = QUERY_STATISTICS + 1;
+    private static final int DATABASES = 29;
+    private static final int META_TABLE_TYPE_COUNT = DATABASES + 1;
 
     private final int type;
     private final int indexColumn;
     private final MetaIndex metaIndex;
-
-    private void setObjectName(String name) {
-        this.name = name;
-    }
 
     /**
      * Create a new metadata table.
@@ -290,6 +289,10 @@ public class MetaTable extends Table {
                     "CUMULATIVE_ROW_COUNT LONG", "AVERAGE_ROW_COUNT DOUBLE", "STD_DEV_ROW_COUNT DOUBLE");
             break;
         }
+        case DATABASES:
+            setObjectName("DATABASES");
+            cols = createColumns("DATABASE_NAME", "RUN_MODE", "NODES");
+            break;
         default:
             throw DbException.throwInternalError("type=" + type);
         }
@@ -303,6 +306,10 @@ public class MetaTable extends Table {
             IndexColumn[] indexCols = IndexColumn.wrap(new Column[] { cols[indexColumn] });
             metaIndex = new MetaIndex(this, indexCols, false);
         }
+    }
+
+    private void setObjectName(String name) {
+        this.name = name;
     }
 
     private Column[] createColumns(String... names) {
@@ -322,11 +329,6 @@ public class MetaTable extends Table {
             cols[i] = new Column(name, dataType);
         }
         return cols;
-    }
-
-    @Override
-    public String getCreateSQL() {
-        return null;
     }
 
     private String identifier(String s) {
@@ -1370,6 +1372,25 @@ public class MetaTable extends Table {
             }
             break;
         }
+        case DATABASES: {
+            List<Database> databases;
+            if (session.getDatabase() == LealoneDatabase.getInstance()) {
+                databases = LealoneDatabase.getInstance().getDatabases();
+            } else {
+                databases = new ArrayList<>(1);
+                databases.add(session.getDatabase());
+            }
+            for (Database database : databases) {
+                add(rows,
+                        // DATABASE_NAME
+                        database.getShortName(),
+                        // RUN_MODE
+                        database.getRunMode().toString(),
+                        // NODES
+                        database.getTargetEndpoints());
+            }
+            break;
+        }
         default:
             DbException.throwInternalError("type=" + type);
         }
@@ -1389,11 +1410,6 @@ public class MetaTable extends Table {
         default:
             throw DbException.throwInternalError("action=" + action);
         }
-    }
-
-    @Override
-    public void removeChildrenAndResources(ServerSession session) {
-        throw DbException.getUnsupportedException("META");
     }
 
     private void addPrivileges(ArrayList<Row> rows, DbObject grantee, String catalog, Table table, String column,
@@ -1459,7 +1475,7 @@ public class MetaTable extends Table {
         }
     }
 
-    public void add(ArrayList<Row> rows, String... strings) {
+    private void add(ArrayList<Row> rows, String... strings) {
         Value[] values = new Value[strings.length];
         for (int i = 0; i < strings.length; i++) {
             String s = strings[i];
@@ -1476,6 +1492,16 @@ public class MetaTable extends Table {
     @Override
     public TableType getTableType() {
         return TableType.META_TABLE;
+    }
+
+    @Override
+    public String getCreateSQL() {
+        return null;
+    }
+
+    @Override
+    public void removeChildrenAndResources(ServerSession session) {
+        throw DbException.getUnsupportedException("META");
     }
 
     @Override

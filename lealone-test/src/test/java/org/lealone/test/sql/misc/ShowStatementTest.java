@@ -29,9 +29,35 @@ public class ShowStatementTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
-        sql = "show databases";
+        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS db_client_server RUN MODE client_server");
+        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS db_replication RUN MODE replication");
+        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS db_sharding RUN MODE sharding");
+
+        ShowStatementTest t = new ShowStatementTest();
+        t.dbName = DEFAULT_DB_NAME;
+        t.runTest();
+
+        test();
+    }
+
+    @Override
+    protected void test() throws Exception {
+        p("dbName=" + dbName);
+        p("--------------------");
         sql = "show schemas";
         printResultSet();
+
+        sql = "show databases";
+        printResultSet();
+
+        sql = "select * from information_schema.databases";
+        printResultSet();
+
+        sql = "select count(*) from information_schema.databases";
+        if (dbName.equals(LealoneDatabase.NAME))
+            assertTrue(getIntValue(1, true) >= (4 + 1)); // 至少有5个数据库
+        else
+            assertEquals(1, getIntValue(1, true));
     }
 
 }

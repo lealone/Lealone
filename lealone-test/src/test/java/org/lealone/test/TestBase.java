@@ -41,9 +41,9 @@ public class TestBase extends Assert {
     public static final String TEST_DIR = TEST_BASE_DIR + File.separatorChar + "test";
     public static final String TEST = "test";
     public static final String LEALONE = "lealone";
-    public static final String DB_NAME = TEST;
-    public static final String USER = "root";
-    public static final String PASSWORD = "";
+    public static final String DEFAULT_DB_NAME = TEST;
+    public static final String DEFAULT_USER = "root";
+    public static final String DEFAULT_PASSWORD = "";
 
     public static TransactionEngine te;
 
@@ -77,9 +77,9 @@ public class TestBase extends Assert {
         }
     }
 
-    protected String dbName = DB_NAME;
-    protected String user = USER;
-    protected String password = PASSWORD;
+    protected String dbName = DEFAULT_DB_NAME;
+    protected String user = DEFAULT_USER;
+    protected String password = DEFAULT_PASSWORD;
 
     private final Map<String, String> connectionParameters = new HashMap<>();
     private String storageEngineName = getDefaultStorageEngineName();
@@ -187,8 +187,8 @@ public class TestBase extends Assert {
         // addConnectionParameter("IGNORE_UNKNOWN_SETTINGS", "true");
 
         if (!connectionParameters.containsKey("user")) {
-            addConnectionParameter("user", USER);
-            addConnectionParameter("password", PASSWORD);
+            addConnectionParameter("user", DEFAULT_USER);
+            addConnectionParameter("password", DEFAULT_PASSWORD);
         }
 
         StringBuilder url = new StringBuilder(100);

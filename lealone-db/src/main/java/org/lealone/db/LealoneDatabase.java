@@ -87,7 +87,7 @@ public class LealoneDatabase extends Database {
         return databases;
     }
 
-    List<Database> getDatabases() {
+    public List<Database> getDatabases() {
         return new ArrayList<>(databases.values());
     }
 

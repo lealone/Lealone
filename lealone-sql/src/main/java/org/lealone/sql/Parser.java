@@ -882,7 +882,11 @@ public class Parser implements SQLParser {
     private StatementBase parseShow() {
         ArrayList<Value> paramValues = New.arrayList();
         StringBuilder buff = new StringBuilder("SELECT ");
-        if (readIf("CLIENT_ENCODING")) {
+        if (readIf("DATABASES")) {
+            buff.append("DATABASE_NAME FROM INFORMATION_SCHEMA.DATABASES");
+        } else if (readIf("SCHEMAS")) {
+            buff.append("SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA");
+        } else if (readIf("CLIENT_ENCODING")) {
             // for PostgreSQL compatibility
             buff.append("'UNICODE' AS CLIENT_ENCODING FROM DUAL");
         } else if (readIf("DEFAULT_TRANSACTION_ISOLATION")) {
@@ -928,9 +932,6 @@ public class Parser implements SQLParser {
                     + "IFNULL(COLUMN_DEFAULT, 'NULL') DEFAULT " + "FROM INFORMATION_SCHEMA.COLUMNS C "
                     + "WHERE C.TABLE_NAME=? AND C.TABLE_SCHEMA=? " + "ORDER BY C.ORDINAL_POSITION");
             paramValues.add(ValueString.get(schemaName));
-        } else if (readIf("DATABASES") || readIf("SCHEMAS")) {
-            // for MySQL compatibility
-            buff.append("SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA");
         }
         boolean b = session.getAllowLiterals();
         try {
