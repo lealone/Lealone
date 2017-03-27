@@ -36,6 +36,10 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
         return localTcpEndpoint;
     }
 
+    public static String getLocalTcpHostAndPort() {
+        return localTcpEndpoint.getHostAndPort();
+    }
+
     public static void setLocalP2pEndpoint(String host, int port) {
         localP2pEndpoint = new NetEndpoint(host, port);
     }
@@ -48,12 +52,14 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
     private final InetSocketAddress inetSocketAddress;
     private final String host;
     private final int port;
+    private final String hostAndPort; // host + ":" + port;
 
     public NetEndpoint(String host, int port) {
         this.host = host;
         this.port = port;
         inetSocketAddress = new InetSocketAddress(host, port);
         inetAddress = inetSocketAddress.getAddress();
+        hostAndPort = host + ":" + port;
     }
 
     public NetEndpoint(InetAddress inetAddress, int port) {
@@ -61,6 +67,7 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
         this.host = inetAddress.getHostAddress();
         this.port = port;
         inetSocketAddress = new InetSocketAddress(host, port);
+        hostAndPort = host + ":" + port;
     }
 
     public static NetEndpoint getByName(String str) throws UnknownHostException {
@@ -95,6 +102,7 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
         this.port = port;
         this.inetSocketAddress = new InetSocketAddress(this.host, this.port);
         inetAddress = inetSocketAddress.getAddress();
+        hostAndPort = host + ":" + port;
     }
 
     public String getHostAddress() {
@@ -102,7 +110,7 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
     }
 
     public String getHostAndPort() {
-        return host + ":" + port;
+        return hostAndPort;
     }
 
     public String getHost() {
@@ -119,6 +127,10 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
 
     public InetAddress geInetAddress() {
         return inetAddress;
+    }
+
+    public InetSocketAddress getInetSocketAddress() {
+        return inetSocketAddress;
     }
 
     @Override

@@ -19,7 +19,6 @@ import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.CommandHandler;
-import org.lealone.net.HostAndPort;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 
@@ -71,7 +70,6 @@ public class TcpServer implements ProtocolServer {
             }
         }
 
-        HostAndPort.setLocalHostAndPort(host, port);
         NetEndpoint.setLocalTcpEndpoint(host, port);
     }
 

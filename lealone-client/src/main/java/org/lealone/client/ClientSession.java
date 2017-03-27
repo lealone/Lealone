@@ -37,7 +37,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
-import org.lealone.net.HostAndPort;
+import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 import org.lealone.net.Transfer;
 import org.lealone.replication.ReplicationSession;
@@ -126,8 +126,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 for (int i = 0; i < size; i++) {
                     // 如果首次连接的节点就是复制节点之一，则复用它
                     if (isValid()) {
-                        HostAndPort hostAndPort = new HostAndPort(servers[i]);
-                        if (hostAndPort.inetSocketAddress.equals(this.inetSocketAddress)) {
+                        NetEndpoint endpoint = NetEndpoint.createTCP(servers[i]);
+                        if (endpoint.getInetSocketAddress().equals(this.inetSocketAddress)) {
                             sessions[i] = this;
                             continue;
                         }
@@ -173,9 +173,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             for (int i = 0, len = servers.length; i < len; i++) {
                 String s = servers[random.nextInt(len)];
-                HostAndPort hostAndPort = new HostAndPort(s);
+                NetEndpoint endpoint = NetEndpoint.createTCP(s);
                 try {
-                    transfer = initTransfer(ci, hostAndPort);
+                    transfer = initTransfer(ci, endpoint);
                     break;
                 } catch (Exception e) {
                     if (i == len - 1) {
@@ -229,20 +229,20 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         trace = traceSystem.getTrace(Trace.JDBC);
     }
 
-    private Transfer initTransfer(ConnectionInfo ci, HostAndPort hostAndPort) throws Exception {
-        inetSocketAddress = hostAndPort.inetSocketAddress;
+    private Transfer initTransfer(ConnectionInfo ci, NetEndpoint endpoint) throws Exception {
+        inetSocketAddress = endpoint.getInetSocketAddress();
         asyncConnection = asyncConnections.get(inetSocketAddress);
         if (asyncConnection == null) {
             synchronized (ClientSession.class) {
                 asyncConnection = asyncConnections.get(inetSocketAddress);
                 if (asyncConnection == null) {
                     CountDownLatch latch = new CountDownLatch(1);
-                    client.connect(hostAndPort.port, hostAndPort.host, res -> {
+                    client.connect(endpoint.getPort(), endpoint.getHost(), res -> {
                         try {
                             if (res.succeeded()) {
                                 NetSocket socket = res.result();
                                 asyncConnection = new AsyncConnection(socket, false);
-                                asyncConnection.setHostAndPort(hostAndPort.value);
+                                asyncConnection.setHostAndPort(endpoint.getHostAndPort());
                                 asyncConnections.put(inetSocketAddress, asyncConnection);
                                 socket.handler(asyncConnection);
                             } else {
