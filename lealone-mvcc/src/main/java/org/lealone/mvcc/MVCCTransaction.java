@@ -25,6 +25,7 @@ import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
+import org.lealone.db.value.ValueLong;
 import org.lealone.mvcc.MVCCTransactionMap.MVCCShardingTransactionMap;
 import org.lealone.mvcc.log.RedoLogValue;
 import org.lealone.storage.Storage;
@@ -63,7 +64,7 @@ public class MVCCTransaction implements Transaction {
 
     static class LogRecord {
         final String mapName;
-        final Object key;
+        Object key;
         final TransactionalValue oldValue;
         final TransactionalValue newValue;
 
@@ -343,5 +344,22 @@ public class MVCCTransaction implements Transaction {
 
     public boolean isShardingMode() {
         return session != null && !session.isLocal() && session.isShardingMode();
+    }
+
+    Object lastKey;
+    TransactionalValue lastValue;
+    StorageMap<Object, TransactionalValue> lastStorageMap;
+
+    @Override
+    public void replicationPrepareCommit(long validKey) {
+        if (lastValue != null && validKey != -1) {
+            Object key = ValueLong.get(validKey);
+            TransactionalValue newValue = lastStorageMap.get(lastKey);
+            if (newValue == lastValue) {
+                lastStorageMap.remove(lastKey);
+            }
+            lastStorageMap.put(key, lastValue);
+            logRecords.getLast().key = key; // 替换原来的key
+        }
     }
 }

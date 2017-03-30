@@ -147,8 +147,10 @@ public class StandardPrimaryIndex extends IndexBase {
         }
 
         TransactionMap<Value, VersionedValue> map = getMap(session);
-        Value key = ValueLong.get(row.getKey());
+        VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
+        Value key;
         if (checkDuplicateKey) {
+            key = ValueLong.get(row.getKey());
             VersionedValue old = map.get(key);
             if (old != null) {
                 String sql = "PRIMARY KEY ON " + table.getSQL();
@@ -159,12 +161,23 @@ public class StandardPrimaryIndex extends IndexBase {
                 e.setSource(this);
                 throw e;
             }
-        }
-        try {
-            VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
-            map.put(key, value);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+            try {
+                map.put(key, value);
+            } catch (IllegalStateException e) {
+                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+            }
+        } else {
+            if (!session.isLocal() && session.isShardingMode()) {
+                key = map.append(value);
+                row.setKey(key.getLong());
+            } else {
+                key = ValueLong.get(row.getKey());
+                try {
+                    map.put(key, value);
+                } catch (IllegalStateException e) {
+                    throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+                }
+            }
         }
         // because it's possible to directly update the key using the _rowid_ syntax
         if (row.getKey() > lastKey.get()) {

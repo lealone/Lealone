@@ -535,7 +535,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             unlinkLobMap = null;
         }
         unlockAll();
-
+        clean();
         sessionStatus = SessionStatus.NO_TRANSACTION;
     }
 
@@ -1379,24 +1379,30 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     @Override
     public void replicationCommit(long validKey, boolean autoCommit) {
-        if (lastRow != null && validKey != -1) {
-            Table table = lastIndex.getTable();
-            Row oldRow = lastIndex.getRow(this, validKey);
-            // 已经修正过了
-            if (oldRow != null && oldRow.getValueList() == lastRow.getValueList()) {
-                commit();
-                return;
+        if (validKey != -1) {
+            if (transaction != null) {
+                transaction.replicationPrepareCommit(validKey);
             }
-            if (oldRow != null)
-                table.removeRow(this, oldRow);
-            table.removeRow(this, lastRow);
+            if (lastRow != null) {
+                Table table = lastIndex.getTable();
+                Row oldRow = lastIndex.getRow(this, validKey);
+                // 已经修正过了
+                if (oldRow != null && oldRow.getValueList() == lastRow.getValueList()) {
+                    if (autoCommit)
+                        commit();
+                    return;
+                }
+                if (oldRow != null)
+                    table.removeRow(this, oldRow);
+                table.removeRow(this, lastRow);
 
-            if (oldRow != null) {
-                oldRow.setKey(lastRow.getKey());
-                table.addRow(this, oldRow);
+                if (oldRow != null) {
+                    oldRow.setKey(lastRow.getKey());
+                    table.addRow(this, oldRow);
+                }
+                lastRow.setKey(validKey);
+                table.addRow(this, lastRow);
             }
-            lastRow.setKey(validKey);
-            table.addRow(this, lastRow);
         }
         if (autoCommit)
             commit();
@@ -1405,6 +1411,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     public void copyLastReplicationStatusTo(ServerSession newSession) {
         newSession.lastRow = lastRow;
         newSession.lastIndex = lastIndex;
+    }
+
+    private void clean() {
+        lastRow = null;
+        lastIndex = null;
     }
 
 }

@@ -413,6 +413,7 @@ public class Transfer {
      * @return itself
      */
     public Transfer writeBytes(byte[] buff, int off, int len) throws IOException {
+        writeInt(len);
         out.write(buff, off, len);
         return this;
     }

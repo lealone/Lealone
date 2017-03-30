@@ -20,6 +20,7 @@ package org.lealone.storage;
 import java.nio.ByteBuffer;
 
 import org.lealone.db.Command;
+import org.lealone.db.CommandUpdateResult;
 
 public interface StorageCommand extends Command {
 
@@ -30,5 +31,8 @@ public interface StorageCommand extends Command {
     void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page);
 
     void removeLeafPage(String mapName, ByteBuffer key);
+
+    Object executeAppend(String replicationName, String mapName, ByteBuffer value,
+            CommandUpdateResult commandUpdateResult);
 
 }

@@ -345,4 +345,55 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         return this;
     }
 
+    @Override
+    public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
+            CommandUpdateResult commandUpdateResult) {
+        return executeAppend(mapName, value, 1);
+    }
+
+    private Object executeAppend(final String mapName, final ByteBuffer value, int tries) {
+        int n = session.n;
+        final String rn = session.createReplicationName();
+        final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
+        final ArrayList<Runnable> commands = New.arrayList(n);
+        final ArrayList<Exception> exceptions = New.arrayList(1);
+        final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w,
+                session.isAutoCommit(), this.commands);
+
+        for (int i = 0; i < n; i++) {
+            final StorageCommand c = (StorageCommand) this.commands[i];
+            Runnable command = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        writeResponseHandler.response(c.executeAppend(rn, mapName, value.slice(), commandUpdateResult));
+                    } catch (Exception e) {
+                        if (writeResponseHandler != null)
+                            writeResponseHandler.onFailure();
+                        exceptions.add(e);
+                    }
+                }
+            };
+            commands.add(command);
+        }
+
+        for (int i = 0; i < n; i++) {
+            ThreadPool.executor.submit(commands.get(i));
+        }
+
+        try {
+            Object result = writeResponseHandler.getResult(session.rpcTimeoutMillis);
+            commandUpdateResult.validate();
+            return result;
+        } catch (WriteTimeoutException | WriteFailureException e) {
+            if (tries < session.maxRries) {
+                value.rewind();
+                return executeAppend(mapName, value, ++tries);
+            } else {
+                if (!exceptions.isEmpty())
+                    e.initCause(exceptions.get(0));
+                throw e;
+            }
+        }
+    }
 }

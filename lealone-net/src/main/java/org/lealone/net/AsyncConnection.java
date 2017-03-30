@@ -38,6 +38,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
+import org.lealone.db.value.ValueLong;
 import org.lealone.replication.Replication;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
@@ -631,7 +632,7 @@ public class AsyncConnection implements Handler<Buffer> {
             executeUpdateAsync(transfer, session, sessionId, id, command, operation);
             break;
         }
-        case Session.COMMAND_STORAGE_DISTRIBUTED_PUT:
+        case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT:
         case Session.COMMAND_STORAGE_PUT:
         case Session.COMMAND_STORAGE_REPLICATION_PUT: {
             int sessionId = transfer.readInt();
@@ -639,12 +640,13 @@ public class AsyncConnection implements Handler<Buffer> {
             byte[] key = transfer.readBytes();
             byte[] value = transfer.readBytes();
             Session session = getSession(sessionId);
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT) {
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            if (operation == Session.COMMAND_STORAGE_REPLICATION_PUT)
-                session.setReplicationName(transfer.readString());
+            // if (operation == Session.COMMAND_STORAGE_REPLICATION_PUT)
+            // session.setReplicationName(transfer.readString());
+            session.setReplicationName(transfer.readString());
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
 
@@ -653,7 +655,7 @@ public class AsyncConnection implements Handler<Buffer> {
             Object v = valueType.read(ByteBuffer.wrap(value));
             Object result = map.put(k, v);
             writeResponseHeader(transfer, session, id);
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             if (result != null) {
@@ -669,13 +671,35 @@ public class AsyncConnection implements Handler<Buffer> {
             transfer.flush();
             break;
         }
-        case Session.COMMAND_STORAGE_DISTRIBUTED_GET:
+        case Session.COMMAND_STORAGE_APPEND:
+        case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND: {
+            int sessionId = transfer.readInt();
+            String mapName = transfer.readString();
+            byte[] value = transfer.readBytes();
+            Session session = getSession(sessionId);
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
+            session.setReplicationName(transfer.readString());
+
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            Object v = map.getValueType().read(ByteBuffer.wrap(value));
+            Object result = map.append(v);
+            writeResponseHeader(transfer, session, id);
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND)
+                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+            transfer.writeLong(((ValueLong) result).getLong());
+            transfer.flush();
+            break;
+        }
+        case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET:
         case Session.COMMAND_STORAGE_GET: {
             int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             byte[] key = transfer.readBytes();
             Session session = getSession(sessionId);
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_GET) {
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
@@ -685,7 +709,7 @@ public class AsyncConnection implements Handler<Buffer> {
             Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
 
             writeResponseHeader(transfer, session, id);
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_PUT)
+            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET)
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             if (result != null) {

@@ -35,9 +35,11 @@ public class ShardingTest extends SqlTestBase {
         // stmt.executeUpdate("CREATE TENANT IF NOT EXISTS ShardingTestDB RUN MODE client_server");
         // stmt.executeUpdate("ALTER TENANT ShardingTestDB RUN MODE sharding");
 
+        // sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
+
         String dbName = "ShardingTestDB1";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName
-                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:2)";
+                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:3)";
         stmt.executeUpdate(sql);
         // stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");
         // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding
@@ -56,6 +58,7 @@ public class ShardingTest extends SqlTestBase {
         protected void test() throws Exception {
             insert();
             select();
+            testMultiThread(dbName);
         }
 
         void insert() throws Exception {
@@ -86,6 +89,37 @@ public class ShardingTest extends SqlTestBase {
             sql = "select distinct * from ShardingTest where f1 > 3";
             sql = "select distinct f1 from ShardingTest";
             printResultSet();
+        }
+
+        void testMultiThread(String dbName) throws Exception {
+            // 启动两个新事务更新同一行，可以用来测试Replication冲突的场景
+            Thread t1 = new Thread(new MultiThreadShardingCrudTest(dbName));
+            Thread t2 = new Thread(new MultiThreadShardingCrudTest(dbName));
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+        }
+
+        private class MultiThreadShardingCrudTest extends SqlTestBase implements Runnable {
+
+            public MultiThreadShardingCrudTest(String dbName) {
+                super(dbName);
+            }
+
+            @Override
+            protected void test() throws Exception {
+                stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+                stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
+                stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+                stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(3,2,3)");
+                stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(8,2,3)");
+            }
+
+            @Override
+            public void run() {
+                runTest();
+            }
         }
     }
 }

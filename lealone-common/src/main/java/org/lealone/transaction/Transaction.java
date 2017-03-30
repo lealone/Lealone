@@ -112,6 +112,8 @@ public interface Transaction {
 
     void rollbackToSavepoint(int savepointId);
 
+    void replicationPrepareCommit(long validKey);
+
     interface Participant {
         void addSavepoint(String name);
 

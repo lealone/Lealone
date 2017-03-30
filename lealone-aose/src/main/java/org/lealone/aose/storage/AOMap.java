@@ -318,4 +318,14 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     public Storage getStorage() {
         return map.getStorage();
     }
+
+    @Override
+    public K append(V value) {
+        beforeWrite();
+        try {
+            return map.append(value);
+        } finally {
+            afterWrite();
+        }
+    }
 }

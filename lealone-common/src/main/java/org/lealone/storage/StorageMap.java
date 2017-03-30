@@ -219,4 +219,6 @@ public interface StorageMap<K, V> {
     void transferFrom(ReadableByteChannel src) throws IOException;
 
     Storage getStorage();
+
+    K append(V value);
 }

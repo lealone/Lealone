@@ -22,7 +22,9 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.lealone.db.value.ValueLong;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
@@ -224,5 +226,15 @@ public class MemoryMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public Storage getStorage() {
         return memoryStorage;
+    }
+
+    private final AtomicLong lastKey = new AtomicLong(0);
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public K append(V value) {
+        K key = (K) ValueLong.get(lastKey.incrementAndGet());
+        skipListMap.put(key, value);
+        return key;
     }
 }

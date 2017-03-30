@@ -13,12 +13,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.storage.AOStorage;
-import org.lealone.aose.storage.AOStorageEngine;
 import org.lealone.aose.storage.StorageMapBuilder;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -27,6 +27,7 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
+import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
 import org.lealone.replication.Replication;
 import org.lealone.replication.ReplicationSession;
@@ -81,6 +82,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
      */
     protected volatile BTreePage root;
 
+    // TODO 考虑是否要使用总是递增的数字
+    protected final AtomicLong lastKey = new AtomicLong(0);
+
     @SuppressWarnings("unchecked")
     protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
@@ -110,6 +114,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
                     root.replicationHostIds.add(replicationEndpoints[i]);
                 }
             }
+        }
+
+        K lastKey = lastKey();
+        if (lastKey != null && lastKey instanceof ValueLong) {
+            this.lastKey.set(((ValueLong) lastKey).getLong());
         }
     }
 
@@ -739,6 +748,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         return replicationEndpoints;
     }
 
+    private List<NetEndpoint> getLastPageReplicationEndpoints() {
+        BTreePage p = root;
+        while (true) {
+            if (p.isLeaf()) {
+                return getReplicationEndpoints(p);
+            }
+            p = p.getChildPage(getChildPageCount(p) - 1);
+        }
+    }
+
     @Override
     public NetEndpoint getLocalEndpoint() {
         return ConfigDescriptor.getLocalEndpoint();
@@ -779,7 +798,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             valueBuffer.put(buffer);
             valueBuffer.flip();
             WriteBufferPool.offer(writeBuffer);
-            byte[] oldValue = (byte[]) c.executePut(AOStorageEngine.NAME, getName(), keyBuffer, valueBuffer);
+            byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer);
             if (oldValue == null)
                 return null;
             return valueType.read(ByteBuffer.wrap(oldValue));
@@ -913,5 +932,50 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
     @Override
     public Storage getStorage() {
         return aoStorage;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public K append(V value) {
+        K key = (K) ValueLong.get(lastKey.incrementAndGet());
+        put(key, value);
+        return key;
+    }
+
+    @Override
+    public Object append(Object value, DataType valueType, Session session) {
+        List<NetEndpoint> replicationEndpoints = getLastPageReplicationEndpoints();
+        NetEndpoint localEndpoint = getLocalEndpoint();
+
+        Session[] sessions = new Session[replicationEndpoints.size()];
+        ServerSession s = (ServerSession) session;
+        int i = 0;
+        for (NetEndpoint e : replicationEndpoints) {
+            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+            sessions[i++] = s.getNestedSession(hostId, !localEndpoint.equals(e));
+        }
+
+        ReplicationSession rs = new ReplicationSession(sessions);
+        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+        rs.setAutoCommit(session.isAutoCommit());
+        StorageCommand c = null;
+        try {
+            c = rs.createStorageCommand();
+            WriteBuffer writeBuffer = WriteBufferPool.poll();
+            valueType.write(writeBuffer, value);
+            ByteBuffer buffer = writeBuffer.getBuffer();
+            buffer = writeBuffer.getBuffer();
+            buffer.flip();
+            ByteBuffer valueBuffer = ByteBuffer.allocateDirect(buffer.limit());
+            valueBuffer.put(buffer);
+            valueBuffer.flip();
+            WriteBufferPool.offer(writeBuffer);
+            return c.executeAppend(null, getName(), valueBuffer, null);
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        } finally {
+            if (c != null)
+                c.close();
+        }
     }
 }

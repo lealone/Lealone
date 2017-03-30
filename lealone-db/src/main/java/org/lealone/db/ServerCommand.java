@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import org.lealone.db.result.Result;
+import org.lealone.db.value.ValueLong;
 import org.lealone.replication.Replication;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
@@ -130,4 +131,23 @@ public class ServerCommand extends CommandBase implements StorageCommand {
         return this;
     }
 
+    @Override
+    public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
+            CommandUpdateResult commandUpdateResult) {
+        session.setReplicationName(replicationName);
+        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        Object result = map.append(map.getValueType().read(value));
+        commandUpdateResult.addResult(this, ((ValueLong) result).getLong());
+        return result;
+    }
+
+    @Override
+    public void replicationCommit(long validKey, boolean autoCommit) {
+        session.replicationCommit(validKey, autoCommit);
+    }
+
+    @Override
+    public void replicationRollback() {
+        session.rollback();
+    }
 }

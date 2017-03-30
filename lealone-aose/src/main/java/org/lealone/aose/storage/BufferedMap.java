@@ -418,4 +418,9 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
     public Storage getStorage() {
         return map.getStorage();
     }
+
+    @Override
+    public K append(V value) {
+        return map.append(value);
+    }
 }

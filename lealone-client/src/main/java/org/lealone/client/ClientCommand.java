@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.api.ErrorCode;
@@ -28,6 +29,7 @@ import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLong;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.Transfer;
 import org.lealone.storage.StorageCommand;
@@ -444,8 +446,8 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         try {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
-                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_PUT", id);
-                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_PUT);
+                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT", id);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT);
             } else if (replicationName != null) {
                 session.traceOperation("COMMAND_STORAGE_REPLICATION_PUT", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_REPLICATION_PUT);
@@ -454,8 +456,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_PUT);
             }
             transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
-            if (replicationName != null)
-                transfer.writeString(replicationName);
+            transfer.writeString(replicationName);
 
             AtomicReference<byte[]> resultRef = new AtomicReference<>();
             AsyncCallback<Void> ac = new AsyncCallback<Void>() {
@@ -464,8 +465,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                     try {
                         if (isDistributedUpdate)
                             session.getTransaction().addLocalTransactionNames(transfer.readString());
-                        byte[] bytes = transfer.readBytes();
-                        resultRef.set(bytes);
+                        resultRef.set(transfer.readBytes());
                     } catch (IOException e) {
                         throw DbException.convert(e);
                     }
@@ -488,8 +488,8 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         try {
             boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
             if (isDistributedUpdate) {
-                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_GET", id);
-                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_GET);
+                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET", id);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET);
             } else {
                 session.traceOperation("COMMAND_STORAGE_GET", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_GET);
@@ -502,8 +502,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                     try {
                         if (isDistributedUpdate)
                             session.getTransaction().addLocalTransactionNames(transfer.readString());
-                        byte[] bytes = transfer.readBytes();
-                        resultRef.set(bytes);
+                        resultRef.set(transfer.readBytes());
                     } catch (IOException e) {
                         throw DbException.convert(e);
                     }
@@ -544,6 +543,45 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         } catch (Exception e) {
             session.handleException(e);
         }
+    }
+
+    @Override
+    public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
+            CommandUpdateResult commandUpdateResult) {
+        AtomicLong resultAL = new AtomicLong();
+        int id = session.getNextId();
+        try {
+            boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+            if (isDistributedUpdate) {
+                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND", id);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND);
+            } else {
+                session.traceOperation("COMMAND_STORAGE_APPEND", id);
+                transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_APPEND);
+            }
+            transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(value);
+            transfer.writeString(replicationName);
+
+            AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        if (isDistributedUpdate)
+                            session.getTransaction().addLocalTransactionNames(transfer.readString());
+                        resultAL.set(transfer.readLong());
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
+            ac.await();
+        } catch (Exception e) {
+            session.handleException(e);
+        }
+        commandUpdateResult.addResult(this, resultAL.get());
+        return ValueLong.get(resultAL.get());
     }
 
     /**

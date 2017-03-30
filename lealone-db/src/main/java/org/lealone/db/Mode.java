@@ -143,6 +143,7 @@ public class Mode {
     static {
         Mode mode = new Mode(REGULAR);
         mode.nullConcatIsNull = true;
+        mode.indexDefinitionInCreateTable = true;
         add(mode);
 
         mode = new Mode("MySQL");

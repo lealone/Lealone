@@ -61,6 +61,12 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         public V put(K key, V value) {
             return (V) replication.put(key, value, valueType, session);
         }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public K append(V value) {
+            return (K) replication.append(value, valueType, session);
+        }
     }
 
     private final MVCCTransaction transaction;
@@ -539,6 +545,19 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Storage getStorage() {
         return map.getStorage();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public K append(V value) { // 追加新记录时不会产生事务冲突
+        TransactionalValue newValue = new TransactionalValue(transaction, value);
+        K key = map.append(newValue);
+        String mapName = getName();
+        transaction.log(mapName, key, null, newValue);
+        transaction.lastKey = key;
+        transaction.lastValue = newValue;
+        transaction.lastStorageMap = (StorageMap<Object, TransactionalValue>) map;
+        return key;
     }
 
     ///////////////////////// 以下是TransactionMap接口API的实现 /////////////////////////
