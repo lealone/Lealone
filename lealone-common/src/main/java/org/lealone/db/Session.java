@@ -153,9 +153,9 @@ public interface Session extends Closeable, Transaction.Participant {
 
     Transaction getTransaction();
 
-    boolean containsTransaction();
+    Transaction getParentTransaction();
 
-    void setTransaction(Transaction transaction);
+    void setParentTransaction(Transaction transaction);
 
     void rollback();
 

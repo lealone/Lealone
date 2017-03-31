@@ -536,19 +536,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
         unlockAll();
         clean();
+        releaseSessionCache();
         sessionStatus = SessionStatus.NO_TRANSACTION;
     }
 
     private void endTransaction() {
-        if (!sessionCache.isEmpty()) {
-            for (Session s : sessionCache.values()) {
-                s.setTransaction(null);
-                SessionPool.release(s);
-            }
-
-            sessionCache.clear();
-        }
-
         if (!isRoot)
             setAutoCommit(true);
 
@@ -598,6 +590,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         // currentStatements.get(i).rollback();
         // }
         currentStatements.clear();
+        clean();
+        releaseSessionCache();
     }
 
     /**
@@ -690,7 +684,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             }
             locks.clear();
         }
-        releaseSessionCache();
     }
 
     public ArrayList<ServerSession> checkDeadlock() {
@@ -702,7 +695,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private void releaseSessionCache() {
         if (!sessionCache.isEmpty()) {
             for (Session s : sessionCache.values()) {
-                s.setTransaction(null);
+                s.setParentTransaction(null);
                 SessionPool.release(s);
             }
 
@@ -1304,11 +1297,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public void setTransaction(Transaction transaction) {
-        this.transaction = transaction;
-    }
-
-    @Override
     public Session connect() {
         return this;
     }
@@ -1343,11 +1331,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         TransactionEngine transactionEngine = database.getTransactionEngine();
         return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName).getInstance(getTransaction());
-    }
-
-    @Override
-    public boolean containsTransaction() {
-        return transaction != null;
     }
 
     private SessionStatus sessionStatus = SessionStatus.NO_TRANSACTION;

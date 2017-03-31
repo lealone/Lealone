@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.storage.StorageMap;
+import org.lealone.transaction.Transaction;
 
 public abstract class SessionBase implements Session {
 
@@ -33,6 +34,7 @@ public abstract class SessionBase implements Session {
     protected boolean invalid;
 
     protected boolean autoCommit = true;
+    protected Transaction parentTransaction;
 
     @Override
     public String getReplicationName() {
@@ -57,11 +59,6 @@ public abstract class SessionBase implements Session {
     @Override
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         throw DbException.getUnsupportedException("getStorageMap");
-    }
-
-    @Override
-    public boolean containsTransaction() {
-        return false;
     }
 
     @Override
@@ -146,4 +143,19 @@ public abstract class SessionBase implements Session {
         this.autoCommit = autoCommit;
     }
 
+    @Override
+    public Transaction getTransaction() {
+        throw DbException.getUnsupportedException("getTransaction");
+    }
+
+    @Override
+    public Transaction getParentTransaction() {
+        return parentTransaction;
+    }
+
+    // 要加synchronized，避免ClientCommand在执行更新和查询时其他线程把transaction置null
+    @Override
+    public synchronized void setParentTransaction(Transaction parentTransaction) {
+        this.parentTransaction = parentTransaction;
+    }
 }

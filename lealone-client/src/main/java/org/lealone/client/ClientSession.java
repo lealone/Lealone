@@ -79,7 +79,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private final Object lobSyncObject = new Object();
     private int sessionId;
     private LobStorage lobStorage;
-    private Transaction transaction;
     private AsyncConnection asyncConnection;
     private InetSocketAddress inetSocketAddress;
 
@@ -608,17 +607,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             handleException(e);
             return false;
         }
-    }
-
-    // 要加synchronized，避免ClientCommand在执行更新和查询时其他线程把transaction置null
-    @Override
-    public synchronized void setTransaction(Transaction transaction) {
-        this.transaction = transaction;
-    }
-
-    @Override
-    public Transaction getTransaction() {
-        return transaction;
     }
 
     public synchronized ClientBatchCommand getClientBatchCommand(ArrayList<String> batchCommands) {

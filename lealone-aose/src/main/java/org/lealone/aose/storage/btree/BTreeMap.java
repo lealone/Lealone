@@ -958,6 +958,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         rs.setAutoCommit(session.isAutoCommit());
+        rs.setParentTransaction(s.getTransaction());
         StorageCommand c = null;
         try {
             c = rs.createStorageCommand();

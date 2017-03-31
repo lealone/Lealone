@@ -187,7 +187,8 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         int resultId = session.getNextId();
         Result result = null;
         try {
-            boolean isDistributedQuery = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+            boolean isDistributedQuery = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
 
             if (prepared) {
                 if (isDistributedQuery) {
@@ -232,7 +233,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
             public void runInternal() {
                 try {
                     if (isDistributedQuery)
-                        session.getTransaction().addLocalTransactionNames(transfer.readString());
+                        session.getParentTransaction().addLocalTransactionNames(transfer.readString());
 
                     int columnCount = transfer.readInt();
                     int rowCount = transfer.readInt();
@@ -291,7 +292,8 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         }
         int updateCount = 0;
         try {
-            boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
+            boolean isDistributedUpdate = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
 
             if (prepared) {
                 if (isDistributedUpdate) {
@@ -340,7 +342,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
             public void runInternal() {
                 try {
                     if (isDistributedUpdate)
-                        session.getTransaction().addLocalTransactionNames(transfer.readString());
+                        session.getParentTransaction().addLocalTransactionNames(transfer.readString());
 
                     int updateCount = transfer.readInt();
                     long key = transfer.readLong();
@@ -444,8 +446,9 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         byte[] bytes = null;
         int id = session.getNextId();
         try {
-            boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
-            if (isDistributedUpdate) {
+            boolean isDistributed = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
+            if (isDistributed) {
                 session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT);
             } else if (replicationName != null) {
@@ -463,8 +466,8 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 @Override
                 public void runInternal() {
                     try {
-                        if (isDistributedUpdate)
-                            session.getTransaction().addLocalTransactionNames(transfer.readString());
+                        if (isDistributed)
+                            session.getParentTransaction().addLocalTransactionNames(transfer.readString());
                         resultRef.set(transfer.readBytes());
                     } catch (IOException e) {
                         throw DbException.convert(e);
@@ -486,8 +489,9 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         byte[] bytes = null;
         int id = session.getNextId();
         try {
-            boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
-            if (isDistributedUpdate) {
+            boolean isDistributed = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
+            if (isDistributed) {
                 session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET);
             } else {
@@ -500,8 +504,8 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 @Override
                 public void runInternal() {
                     try {
-                        if (isDistributedUpdate)
-                            session.getTransaction().addLocalTransactionNames(transfer.readString());
+                        if (isDistributed)
+                            session.getParentTransaction().addLocalTransactionNames(transfer.readString());
                         resultRef.set(transfer.readBytes());
                     } catch (IOException e) {
                         throw DbException.convert(e);
@@ -551,8 +555,9 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         AtomicLong resultAL = new AtomicLong();
         int id = session.getNextId();
         try {
-            boolean isDistributedUpdate = session.getTransaction() != null && !session.getTransaction().isAutoCommit();
-            if (isDistributedUpdate) {
+            boolean isDistributed = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
+            if (isDistributed) {
                 session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND);
             } else {
@@ -566,8 +571,8 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 @Override
                 public void runInternal() {
                     try {
-                        if (isDistributedUpdate)
-                            session.getTransaction().addLocalTransactionNames(transfer.readString());
+                        if (isDistributed)
+                            session.getParentTransaction().addLocalTransactionNames(transfer.readString());
                         resultAL.set(transfer.readLong());
                     } catch (IOException e) {
                         throw DbException.convert(e);

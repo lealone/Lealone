@@ -95,8 +95,8 @@ public class SessionPool {
             session = getSession(originalSession, url, true);
         }
 
-        if (session.getTransaction() == null)
-            session.setTransaction(originalSession.getTransaction());
+        if (session.getParentTransaction() == null)
+            session.setParentTransaction(originalSession.getTransaction());
 
         if (isNew)
             originalSession.addSession(url, session);

@@ -27,6 +27,7 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.WriteBuffer;
 import org.lealone.storage.type.WriteBufferPool;
+import org.lealone.transaction.Transaction;
 
 public class ServerCommand extends CommandBase implements StorageCommand {
 
@@ -138,6 +139,10 @@ public class ServerCommand extends CommandBase implements StorageCommand {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.append(map.getValueType().read(value));
         commandUpdateResult.addResult(this, ((ValueLong) result).getLong());
+        Transaction parentTransaction = session.getParentTransaction();
+        if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
+            parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
+        }
         return result;
     }
 

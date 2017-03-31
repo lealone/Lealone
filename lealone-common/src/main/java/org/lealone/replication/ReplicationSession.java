@@ -200,14 +200,9 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public Transaction getTransaction() {
-        return sessions[0].getTransaction();
-    }
-
-    @Override
-    public void setTransaction(Transaction transaction) {
+    public void setParentTransaction(Transaction transaction) {
         for (int i = 0; i < n; i++)
-            sessions[i].setTransaction(transaction);
+            sessions[i].setParentTransaction(transaction);
     }
 
     @Override
