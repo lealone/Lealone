@@ -2255,13 +2255,15 @@ public class Database implements DataHandler, DbObject {
 
     private String[] hostIds;
     private HashSet<NetEndpoint> endpoints;
+    private String targetEndpoints;
 
     public String[] getHostIds() {
         if (hostIds == null) {
             synchronized (this) {
                 if (hostIds == null) {
                     if (parameters != null && parameters.containsKey("hostIds")) {
-                        hostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',');
+                        targetEndpoints = parameters.get("hostIds").trim();
+                        hostIds = StringUtils.arraySplit(targetEndpoints, ',');
                     }
                     if (hostIds == null) {
                         hostIds = new String[0];
@@ -2275,6 +2277,8 @@ public class Database implements DataHandler, DbObject {
                     if (endpoints != null && endpoints.isEmpty()) {
                         endpoints = null;
                     }
+                    if (targetEndpoints != null && targetEndpoints.isEmpty())
+                        targetEndpoints = null;
                 }
             }
         }
@@ -2289,10 +2293,10 @@ public class Database implements DataHandler, DbObject {
     }
 
     public String getTargetEndpoints() {
-        if (parameters != null) {
-            return parameters.get("hostIds");
+        if (hostIds == null) {
+            getHostIds();
         }
-        return null;
+        return targetEndpoints;
     }
 
     private java.sql.PreparedStatement psGetVersion;

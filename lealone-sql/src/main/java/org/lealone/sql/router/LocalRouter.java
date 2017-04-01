@@ -20,6 +20,7 @@ package org.lealone.sql.router;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
+import org.lealone.net.NetEndpoint;
 import org.lealone.sql.StatementBase;
 
 public class LocalRouter implements Router {
@@ -45,7 +46,7 @@ public class LocalRouter implements Router {
 
     @Override
     public String[] getHostIds(Database db) {
-        return new String[0];
+        return new String[] { NetEndpoint.getLocalTcpHostAndPort() };
     }
 
     @Override

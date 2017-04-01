@@ -89,6 +89,10 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
                 else
                     newDB.getParameters().put("hostIds", "");
             }
+            if (newDB.getHostIds().length <= 1) {
+                // 如果可用节点只有1个，那就退化到CLIENT_SERVER模式
+                newDB.setRunMode(RunMode.CLIENT_SERVER);
+            }
             lealoneDB.addDatabaseObject(session, newDB);
         }
 
