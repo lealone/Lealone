@@ -92,7 +92,7 @@ public class ShardingTest extends SqlTestBase {
         }
 
         void testMultiThread(String dbName) throws Exception {
-            // 启动两个新事务更新同一行，可以用来测试Replication冲突的场景
+            // 启动两个线程，可以用来测试_rowid_递增的场景
             Thread t1 = new Thread(new MultiThreadShardingCrudTest(dbName));
             Thread t2 = new Thread(new MultiThreadShardingCrudTest(dbName));
             t1.start();

@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.gms.Gossiper;
@@ -82,9 +81,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
      */
     protected volatile BTreePage root;
 
-    // TODO 考虑是否要使用总是递增的数字
-    protected final AtomicLong lastKey = new AtomicLong(0);
-
     @SuppressWarnings("unchecked")
     protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
@@ -99,9 +95,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
 
         storage = new BTreeStorage((BTreeMap<Object, Object>) this);
 
-        if (storage.lastChunk != null)
+        if (storage.lastChunk != null) {
             root = storage.readPage(storage.lastChunk.rootPagePos);
-        else {
+            setLastKey(lastKey());
+        } else {
             root = BTreePage.createEmpty(this);
             if (isShardingMode) {
                 String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
@@ -114,11 +111,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
                     root.replicationHostIds.add(replicationEndpoints[i]);
                 }
             }
-        }
-
-        K lastKey = lastKey();
-        if (lastKey != null && lastKey instanceof ValueLong) {
-            this.lastKey.set(((ValueLong) lastKey).getLong());
         }
     }
 
@@ -223,6 +215,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             if (index < 0) {
                 index = -index - 1;
                 p.insertLeaf(index, key, value);
+                setLastKey(key);
                 return null;
             }
             return p.setValue(index, value);

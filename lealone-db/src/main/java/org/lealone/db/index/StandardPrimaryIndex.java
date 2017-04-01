@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -50,7 +49,6 @@ public class StandardPrimaryIndex extends IndexBase {
     private final StandardTable table;
     private final String mapName;
     private final TransactionMap<Value, VersionedValue> dataMap;
-    private final AtomicLong lastKey = new AtomicLong(0);
     private int mainIndexColumn = -1;
 
     public StandardPrimaryIndex(ServerSession session, StandardTable table) {
@@ -81,9 +79,6 @@ public class StandardPrimaryIndex extends IndexBase {
         dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
                 keyType, vvType, storage, isShardingMode, initReplicationEndpoints);
         transactionEngine.addTransactionMap(dataMap);
-
-        Value k = dataMap.lastKey();
-        lastKey.set(k == null ? 0 : k.getLong());
     }
 
     @Override
@@ -125,7 +120,6 @@ public class StandardPrimaryIndex extends IndexBase {
         boolean checkDuplicateKey = true;
         if (mainIndexColumn == -1) {
             if (row.getKey() == 0) {
-                row.setKey(lastKey.incrementAndGet());
                 checkDuplicateKey = false;
             }
         } else {
@@ -167,23 +161,9 @@ public class StandardPrimaryIndex extends IndexBase {
                 throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
             }
         } else {
-            if (!session.isLocal() && session.isShardingMode()) {
-                key = map.append(value);
-                row.setKey(key.getLong());
-            } else {
-                key = ValueLong.get(row.getKey());
-                try {
-                    map.put(key, value);
-                } catch (IllegalStateException e) {
-                    throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-                }
-            }
+            key = map.append(value);
+            row.setKey(key.getLong());
         }
-        // because it's possible to directly update the key using the _rowid_ syntax
-        if (row.getKey() > lastKey.get()) {
-            lastKey.set(row.getKey());
-        }
-
         session.setLastRow(row);
         session.setLastIndex(this);
     }

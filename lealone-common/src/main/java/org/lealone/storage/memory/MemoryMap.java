@@ -22,7 +22,6 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.Storage;
@@ -77,11 +76,13 @@ public class MemoryMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public V put(K key, V value) {
+        setLastKey(key);
         return skipListMap.put(key, value);
     }
 
     @Override
     public V putIfAbsent(K key, V value) {
+        setLastKey(key);
         return skipListMap.putIfAbsent(key, value);
     }
 
@@ -227,8 +228,6 @@ public class MemoryMap<K, V> extends StorageMapBase<K, V> {
     public Storage getStorage() {
         return memoryStorage;
     }
-
-    private final AtomicLong lastKey = new AtomicLong(0);
 
     @SuppressWarnings("unchecked")
     @Override

@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 
@@ -78,6 +79,9 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
 
     @Override
     public V put(K key, V value) {
+        if (map instanceof StorageMapBase) {
+            ((StorageMapBase<K, V>) map).setLastKey(key);
+        }
         return (V) buffer.put(key, value);
     }
 

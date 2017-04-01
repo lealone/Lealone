@@ -47,6 +47,16 @@ public class PseudoColumnTest extends SqlTestBase {
         stmt.executeUpdate("insert into PseudoColumnTest(f1, f2, f3) values(5,2,3)");
         stmt.executeUpdate("insert into PseudoColumnTest(f1, f2, f3) values(3,2,3)");
         stmt.executeUpdate("insert into PseudoColumnTest(f1, f2, f3) values(8,2,3)");
+
+        stmt.executeUpdate("drop table IF EXISTS PseudoColumnTest2");
+        stmt.executeUpdate("create table IF NOT EXISTS PseudoColumnTest2(f1 int, f2 int, f3 int)");
+        // 手动指定_rowid_为2
+        stmt.executeUpdate("insert into PseudoColumnTest2(_rowid_, f1, f2, f3) values(2,8,2,3)");
+        // 自动生成的_rowid_从3开始
+        stmt.executeUpdate("insert into PseudoColumnTest2(f1, f2, f3) values(8,2,3)");
+
+        sql = "SELECT count(*) FROM PseudoColumnTest2 WHERE _rowid_=3";
+        assertEquals(1, getIntValue(1, true));
     }
 
     void select() throws Exception {

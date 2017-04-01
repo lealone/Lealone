@@ -17,7 +17,10 @@
  */
 package org.lealone.storage;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.value.ValueLong;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 
@@ -26,6 +29,8 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     protected final String name;
     protected final DataType keyType;
     protected final DataType valueType;
+    // TODO 考虑是否要使用总是递增的数字
+    protected final AtomicLong lastKey = new AtomicLong(0);
 
     protected StorageMapBase(String name, DataType keyType, DataType valueType) {
         DataUtils.checkArgument(name != null, "The name may not be null");
@@ -53,6 +58,23 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     @Override
     public DataType getValueType() {
         return valueType;
+    }
+
+    // 如果新key比lastKey大就更新lastKey
+    // 允许多线程并发更新
+    public void setLastKey(Object key) {
+        if (key instanceof ValueLong) {
+            long k = ((ValueLong) key).getLong();
+            while (true) {
+                long old = lastKey.get();
+                if (k > old) {
+                    if (lastKey.compareAndSet(old, k))
+                        break;
+                } else {
+                    break;
+                }
+            }
+        }
     }
 
 }

@@ -553,6 +553,8 @@ public class MVCCTransactionMap<K, V> implements TransactionMap<K, V> {
         TransactionalValue newValue = new TransactionalValue(transaction, value);
         K key = map.append(newValue);
         String mapName = getName();
+        // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
+        // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
         transaction.log(mapName, key, null, newValue);
         transaction.lastKey = key;
         transaction.lastValue = newValue;
