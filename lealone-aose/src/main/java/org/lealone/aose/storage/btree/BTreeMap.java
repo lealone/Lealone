@@ -15,6 +15,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.lealone.aose.concurrent.LealoneExecutorService;
+import org.lealone.aose.concurrent.Stage;
+import org.lealone.aose.concurrent.StageManager;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.locator.TopologyMetaData;
 import org.lealone.aose.router.P2pRouter;
@@ -157,8 +160,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
 
         Object result = put(p, key, value);
-        if (split && isShardingMode && root.isLeaf())
+        if (split && isShardingMode && root.isLeaf()) {
             moveLeafPage(p.getKey(0), p.getChildPage(1));
+        }
 
         newRoot(p);
         return (V) result;
@@ -190,8 +194,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         int at = p.getKeyCount() / 2;
         Object k = p.getKey(at);
         BTreePage split = p.split(at);
-        if (p.isLeaf())
+        if (p.isLeaf()) {
             split.replicationHostIds = p.replicationHostIds;
+        }
         Object[] keys = { k };
         BTreePage.PageReference[] children = { new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
                 new BTreePage.PageReference(split, split.getPos(), split.getTotalCount()), };
@@ -236,8 +241,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             // now we are not sure where to add
             // return put(p, key, value);
             Object result = put(p, key, value);
-            if (isLeaf)
+            if (isLeaf) {
+                split.replicationHostIds = c.replicationHostIds;
                 moveLeafPage(k, split);
+            }
             return result;
         }
         Object result = put(c, key, value);
@@ -257,32 +264,37 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private void moveLeafPage(Object splitKey, BTreePage rightChildPage) {
         if (isShardingMode && rightChildPage.replicationHostIds.get(0).equals(P2pServer.instance.getLocalHostId())) {
-            Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
-            List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
-            List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db,
-                    new HashSet<>(oldReplicationEndpoints), candidateEndpoints);
-            oldReplicationEndpoints.remove(getLocalEndpoint());
-            newReplicationEndpoints.remove(getLocalEndpoint());
+            LealoneExecutorService stage = StageManager.getStage(Stage.REQUEST_RESPONSE);
+            stage.execute(() -> {
+                Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
+                List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
+                List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db,
+                        new HashSet<>(oldReplicationEndpoints), candidateEndpoints);
+                NetEndpoint localEndpoint = getLocalEndpoint();
+                oldReplicationEndpoints.remove(localEndpoint);
+                newReplicationEndpoints.remove(localEndpoint);
 
-            Set<NetEndpoint> otherEndpoints = new HashSet<>(candidateEndpoints);
-            otherEndpoints.removeAll(oldReplicationEndpoints);
-            otherEndpoints.removeAll(newReplicationEndpoints);
+                Set<NetEndpoint> otherEndpoints = new HashSet<>(candidateEndpoints);
+                otherEndpoints.removeAll(oldReplicationEndpoints);
+                otherEndpoints.removeAll(newReplicationEndpoints);
+                otherEndpoints.remove(localEndpoint);
 
-            Session session = ConnectionInfo.getAndRemoveInternalSession();
+                Session session = ConnectionInfo.getAndRemoveInternalSession();
 
-            // 移动右边的leafPage到新的复制节点(Page中包含数据)
-            if (!newReplicationEndpoints.isEmpty()) {
-                rightChildPage.replicationHostIds.clear();
-                ReplicationSession rs = P2pRouter.createReplicationSession(session, newReplicationEndpoints,
-                        rightChildPage.replicationHostIds, true);
-                moveLeafPage(splitKey, rightChildPage, rs, false);
-            }
+                // 移动右边的leafPage到新的复制节点(Page中包含数据)
+                if (!newReplicationEndpoints.isEmpty()) {
+                    rightChildPage.replicationHostIds.clear();
+                    ReplicationSession rs = P2pRouter.createReplicationSession(session, newReplicationEndpoints,
+                            rightChildPage.replicationHostIds, true);
+                    moveLeafPage(splitKey, rightChildPage, rs, false);
+                }
 
-            // 移动右边的leafPage到其他节点(Page中不包含数据，只包含这个Page各数据副本所在节点信息)
-            if (!otherEndpoints.isEmpty()) {
-                ReplicationSession rs = P2pRouter.createReplicationSession(session, otherEndpoints, true);
-                moveLeafPage(splitKey, rightChildPage, rs, true);
-            }
+                // 移动右边的leafPage到其他节点(Page中不包含数据，只包含这个Page各数据副本所在节点信息)
+                if (!otherEndpoints.isEmpty()) {
+                    ReplicationSession rs = P2pRouter.createReplicationSession(session, otherEndpoints, true);
+                    moveLeafPage(splitKey, rightChildPage, rs, true);
+                }
+            });
         }
     }
 
@@ -383,16 +395,19 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private void removeLeafPage(Object key, BTreePage leafPage) {
         if (leafPage.replicationHostIds.get(0).equals(P2pServer.instance.getLocalHostId())) {
-            List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(leafPage);
-            oldReplicationEndpoints.remove(getLocalEndpoint());
-            Set<NetEndpoint> liveMembers = getCandidateEndpoints();
-            liveMembers.removeAll(oldReplicationEndpoints);
-            Session session = ConnectionInfo.getAndRemoveInternalSession();
-            ReplicationSession rs = P2pRouter.createReplicationSession(session, liveMembers, true);
-            try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
-                ByteBuffer keyBuffer = k.write(keyType, key);
-                c.removeLeafPage(getName(), keyBuffer);
-            }
+            LealoneExecutorService stage = StageManager.getStage(Stage.REQUEST_RESPONSE);
+            stage.execute(() -> {
+                List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(leafPage);
+                oldReplicationEndpoints.remove(getLocalEndpoint());
+                Set<NetEndpoint> liveMembers = getCandidateEndpoints();
+                liveMembers.removeAll(oldReplicationEndpoints);
+                Session session = ConnectionInfo.getAndRemoveInternalSession();
+                ReplicationSession rs = P2pRouter.createReplicationSession(session, liveMembers, true);
+                try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+                    ByteBuffer keyBuffer = k.write(keyType, key);
+                    c.removeLeafPage(getName(), keyBuffer);
+                }
+            });
         }
     }
 
@@ -748,7 +763,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             BTreePage parent = p;
             int index = 0;
             while (true) {
-                index = p.binarySearch(splitKey);
+                index = p.binarySearch(k);
                 if (!p.isLeaf()) {
                     if (index < 0) {
                         index = -index - 1;
@@ -769,9 +784,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public synchronized void removeLeafPage(ByteBuffer key) {
         beforeWrite();
+        Object k = keyType.read(key);
         synchronized (this) {
             BTreePage p = root.copy();
-            removeLeafPage(p, key);
+            removeLeafPage(p, k);
             if (!p.isLeaf() && p.getTotalCount() == 0) {
                 p.removePage();
                 p = BTreePage.createEmpty(this);
