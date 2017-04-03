@@ -579,10 +579,6 @@ public class P2pServer extends NotificationBroadcasterSupport
      * @param pos position for which we need to find the endpoint
      * @return the endpoint responsible for this token
      */
-    public List<NetEndpoint> getReplicationEndpoints(Database db, String hostId) {
-        return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId, null);
-    }
-
     public List<NetEndpoint> getReplicationEndpoints(Database db, String hostId, Set<NetEndpoint> candidateEndpoints) {
         return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId, candidateEndpoints);
     }

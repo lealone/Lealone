@@ -10,12 +10,13 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.lealone.aose.config.ConfigDescriptor;
-import org.lealone.aose.gms.Gossiper;
+import org.lealone.aose.locator.TopologyMetaData;
 import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.StorageMapBuilder;
@@ -247,15 +248,27 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         return result;
     }
 
+    private Set<NetEndpoint> getCandidateEndpoints() {
+        String[] hostIds = db.getHostIds();
+        Set<NetEndpoint> candidateEndpoints = new HashSet<>(hostIds.length);
+        TopologyMetaData metaData = P2pServer.instance.getTopologyMetaData();
+        for (String hostId : hostIds) {
+            candidateEndpoints.add(metaData.getEndpointForHostId(hostId));
+        }
+        return candidateEndpoints;
+    }
+
     private void moveLeafPage(Object splitKey, BTreePage rightChildPage) {
         if (isShardingMode && rightChildPage.replicationHostIds.get(0).equals(P2pServer.instance.getLocalHostId())) {
             String hostId = rightChildPage.replicationHostIds.get(0);
             String nextHostId = P2pServer.instance.getTopologyMetaData().getNextHostId(hostId);
-            List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db, nextHostId);
+            Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
+            List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db, nextHostId,
+                    candidateEndpoints);
             List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
             newReplicationEndpoints.remove(getLocalEndpoint());
             oldReplicationEndpoints.remove(getLocalEndpoint());
-            Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
+            Set<NetEndpoint> liveMembers = new HashSet<>(candidateEndpoints);
             liveMembers.removeAll(newReplicationEndpoints);
             liveMembers.removeAll(oldReplicationEndpoints);
 
@@ -415,7 +428,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         if (leafPage.replicationHostIds.get(0).equals(P2pServer.instance.getLocalHostId())) {
             List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(leafPage);
             oldReplicationEndpoints.remove(getLocalEndpoint());
-            Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
+            Set<NetEndpoint> liveMembers = getCandidateEndpoints();
             liveMembers.removeAll(oldReplicationEndpoints);
 
             int i = 0;
@@ -751,8 +764,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         }
     }
 
-    @Override
-    public NetEndpoint getLocalEndpoint() {
+    private NetEndpoint getLocalEndpoint() {
         return ConfigDescriptor.getLocalEndpoint();
     }
 

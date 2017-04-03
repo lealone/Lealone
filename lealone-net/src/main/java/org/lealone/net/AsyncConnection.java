@@ -510,7 +510,12 @@ public class AsyncConnection implements Handler<Buffer> {
 
         AsyncCallback<?> ac = callbackMap.remove(id);
         if (ac == null) {
-            logger.warn("Async callback is null, may be a bug! id = " + id);
+            String msg = "Async callback is null, may be a bug! id = " + id;
+            if (e != null) {
+                logger.warn(msg, e);
+            } else {
+                logger.warn(msg);
+            }
             return;
         }
         if (e != null)

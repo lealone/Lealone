@@ -28,8 +28,6 @@ public interface Replication {
 
     List<NetEndpoint> getReplicationEndpoints(Object key);
 
-    NetEndpoint getLocalEndpoint();
-
     Object put(Object key, Object value, DataType valueType, Session session);
 
     Object get(Object key, Session session);
