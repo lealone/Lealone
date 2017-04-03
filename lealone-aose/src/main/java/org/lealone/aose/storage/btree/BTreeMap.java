@@ -26,7 +26,6 @@ import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.StorageMapBuilder;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
@@ -279,7 +278,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 otherEndpoints.removeAll(newReplicationEndpoints);
                 otherEndpoints.remove(localEndpoint);
 
-                Session session = ConnectionInfo.getAndRemoveInternalSession();
+                Session session = db.getLastSession();
 
                 // 移动右边的leafPage到新的复制节点(Page中包含数据)
                 if (!newReplicationEndpoints.isEmpty()) {
@@ -401,7 +400,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 oldReplicationEndpoints.remove(getLocalEndpoint());
                 Set<NetEndpoint> liveMembers = getCandidateEndpoints();
                 liveMembers.removeAll(oldReplicationEndpoints);
-                Session session = ConnectionInfo.getAndRemoveInternalSession();
+                Session session = db.getLastSession();
                 ReplicationSession rs = P2pRouter.createReplicationSession(session, liveMembers, true);
                 try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
                     ByteBuffer keyBuffer = k.write(keyType, key);

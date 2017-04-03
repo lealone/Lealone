@@ -376,6 +376,9 @@ public class Constants {
 
     public static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
+    // 为了避免模块之间在编译期存在依赖，有些地方会用到反射，在这里统一定义类名
+    public static final String REFLECTION_JDBC_CONNECTION = "org.lealone.client.jdbc.JdbcConnection";
+
     private Constants() {
         // utility class
     }

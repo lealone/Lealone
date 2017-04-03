@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -1011,6 +1010,13 @@ public class Database implements DataHandler, DbObject {
             delayedCloser = null;
         }
         return session;
+    }
+
+    public ServerSession getLastSession() {
+        if (exclusiveSession != null) {
+            return exclusiveSession;
+        }
+        return userSessions.iterator().next();
     }
 
     /**
@@ -2014,14 +2020,7 @@ public class Database implements DataHandler, DbObject {
     }
 
     public Connection getInternalConnection() {
-        ConnectionInfo.setInternalSession(systemSession);
-        try {
-            return DriverManager.getConnection(Constants.CONN_URL_INTERNAL, systemUser.getName(), "");
-        } catch (SQLException e) {
-            throw DbException.convert(e);
-        } finally {
-            ConnectionInfo.removeInternalSession();
-        }
+        return systemSession.createConnection(systemUser.getName(), Constants.CONN_URL_INTERNAL);
     }
 
     public int getDefaultTableType() {

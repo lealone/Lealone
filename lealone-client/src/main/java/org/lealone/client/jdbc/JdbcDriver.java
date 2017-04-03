@@ -15,9 +15,7 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
-import org.lealone.db.Session;
 
 /**
  * The database driver. An application should not use this class directly. 
@@ -25,7 +23,6 @@ import org.lealone.db.Session;
 public class JdbcDriver implements java.sql.Driver {
 
     private static final JdbcDriver INSTANCE = new JdbcDriver();
-    private static final String DEFAULT_URL = Constants.CONN_URL_INTERNAL;
 
     private static volatile boolean registered;
 
@@ -51,11 +48,6 @@ public class JdbcDriver implements java.sql.Driver {
             if (info == null) {
                 info = new Properties();
             }
-            if (url.equals(DEFAULT_URL)) {
-                Session s = ConnectionInfo.getInternalSession();
-                return new JdbcConnection(s, info.getProperty("user"), url);
-            }
-
             return new JdbcConnection(url, info);
         } catch (Exception e) {
             throw DbException.toSQLException(e);

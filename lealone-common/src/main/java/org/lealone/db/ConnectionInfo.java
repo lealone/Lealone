@@ -30,38 +30,6 @@ import org.lealone.storage.fs.FileUtils;
  */
 public class ConnectionInfo implements Cloneable {
 
-    private static final ThreadLocal<Session> INTERNAL_SESSION = new ThreadLocal<>();
-
-    /**
-     * INTERNAL
-     */
-    public static void setInternalSession(Session s) {
-        INTERNAL_SESSION.set(s);
-    }
-
-    /**
-     * INTERNAL
-     */
-    public static Session getInternalSession() {
-        return INTERNAL_SESSION.get();
-    }
-
-    /**
-     * INTERNAL
-     */
-    public static void removeInternalSession() {
-        INTERNAL_SESSION.remove();
-    }
-
-    /**
-     * INTERNAL
-     */
-    public static Session getAndRemoveInternalSession() {
-        Session s = getInternalSession();
-        INTERNAL_SESSION.remove();
-        return s;
-    }
-
     private static final HashSet<String> KNOWN_SETTINGS = New.hashSet();
 
     static {
@@ -690,12 +658,13 @@ public class ConnectionInfo implements Cloneable {
         if (sessionFactory == null) {
             try {
                 // 要使用反射，避免编译期依赖
-                if (remote)
+                if (remote) {
                     sessionFactory = (SessionFactory) Class.forName("org.lealone.client.ClientSessionFactory")
                             .getMethod("getInstance").invoke(null);
-                else
+                } else {
                     sessionFactory = (SessionFactory) Class.forName("org.lealone.db.DatabaseEngine")
                             .getMethod("getSessionFactory").invoke(null);
+                }
             } catch (Exception e) {
                 throw DbException.convert(e);
             }

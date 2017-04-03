@@ -7,8 +7,6 @@
 package org.lealone.db;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -877,13 +875,17 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         } else {
             url = Constants.CONN_URL_INTERNAL;
         }
+        return createConnection(getUser().getName(), url);
+    }
+
+    public Connection createConnection(String user, String url) {
         try {
-            ConnectionInfo.setInternalSession(this);
-            return DriverManager.getConnection(url, getUser().getName(), "");
-        } catch (SQLException e) {
+            Class<?> jdbcConnectionClass = Class.forName(Constants.REFLECTION_JDBC_CONNECTION);
+            Connection conn = (Connection) jdbcConnectionClass.getConstructor(Session.class, String.class, String.class)
+                    .newInstance(this, user, url);
+            return conn;
+        } catch (Exception e) {
             throw DbException.convert(e);
-        } finally {
-            ConnectionInfo.removeInternalSession();
         }
     }
 

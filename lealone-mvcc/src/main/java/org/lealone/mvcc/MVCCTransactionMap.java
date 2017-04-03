@@ -10,7 +10,6 @@ import java.util.LinkedList;
 import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Session;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
 import org.lealone.storage.DelegatedStorageMap;
@@ -78,7 +77,6 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         super((StorageMap<K, V>) map);
         this.transaction = transaction;
         this.map = map;
-        ConnectionInfo.setInternalSession(transaction.getSession());
     }
 
     @Override
