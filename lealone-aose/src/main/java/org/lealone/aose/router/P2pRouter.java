@@ -18,6 +18,7 @@
 package org.lealone.aose.router;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -87,8 +88,7 @@ public class P2pRouter implements Router {
         List<String> initReplicationEndpoints = null;
         // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
         if (defineStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
-            List<NetEndpoint> endpoints = P2pServer.instance.getReplicationEndpoints(db,
-                    P2pServer.instance.getLocalHostId(), liveMembers);
+            List<NetEndpoint> endpoints = P2pServer.instance.getReplicationEndpoints(db, new HashSet<>(0), liveMembers);
             if (!endpoints.isEmpty()) {
                 initReplicationEndpoints = new ArrayList<>(endpoints.size());
                 for (NetEndpoint e : endpoints) {
@@ -201,9 +201,7 @@ public class P2pRouter implements Router {
             i++;
         }
 
-        ReplicationSession rs = new ReplicationSession(sessions);
-        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-        rs.setAutoCommit(currentSession.isAutoCommit());
+        ReplicationSession rs = createReplicationSession(currentSession, sessions);
         Command c = null;
         try {
             c = rs.createCommand(db.getCreateSQL(), -1);
@@ -214,6 +212,42 @@ public class P2pRouter implements Router {
             if (c != null)
                 c.close();
         }
+    }
+
+    public static ReplicationSession createReplicationSession(Session session,
+            Collection<NetEndpoint> replicationEndpoints) {
+        return createReplicationSession(session, replicationEndpoints, null, null);
+    }
+
+    public static ReplicationSession createReplicationSession(Session session,
+            Collection<NetEndpoint> replicationEndpoints, Boolean remote) {
+        return createReplicationSession(session, replicationEndpoints, null, remote);
+    }
+
+    public static ReplicationSession createReplicationSession(Session s, Collection<NetEndpoint> replicationEndpoints,
+            List<String> hostIds, Boolean remote) {
+        ServerSession session = (ServerSession) s;
+        NetEndpoint localEndpoint = ConfigDescriptor.getLocalEndpoint();
+        TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
+        int size = replicationEndpoints.size();
+        Session[] sessions = new Session[size];
+        int i = 0;
+        for (NetEndpoint e : replicationEndpoints) {
+            String id = md.getHostId(e);
+            if (hostIds != null)
+                hostIds.add(id);
+            sessions[i++] = session.getNestedSession(id,
+                    remote != null ? remote.booleanValue() : !localEndpoint.equals(e));
+        }
+        return createReplicationSession(session, sessions);
+    }
+
+    private static ReplicationSession createReplicationSession(ServerSession s, Session[] sessions) {
+        ReplicationSession rs = new ReplicationSession(sessions);
+        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
+        rs.setAutoCommit(s.isAutoCommit());
+        rs.setParentTransaction(s.getTransaction());
+        return rs;
     }
 
 }

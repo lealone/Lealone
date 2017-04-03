@@ -17,6 +17,7 @@ import java.util.Set;
 
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.locator.TopologyMetaData;
+import org.lealone.aose.router.P2pRouter;
 import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.StorageMapBuilder;
@@ -24,7 +25,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
-import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
@@ -257,52 +257,32 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private void moveLeafPage(Object splitKey, BTreePage rightChildPage) {
         if (isShardingMode && rightChildPage.replicationHostIds.get(0).equals(P2pServer.instance.getLocalHostId())) {
-            String hostId = rightChildPage.replicationHostIds.get(0);
-            String nextHostId = P2pServer.instance.getTopologyMetaData().getNextHostId(hostId);
             Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
-            List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db, nextHostId,
-                    candidateEndpoints);
             List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
-            newReplicationEndpoints.remove(getLocalEndpoint());
+            List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db,
+                    new HashSet<>(oldReplicationEndpoints), candidateEndpoints);
             oldReplicationEndpoints.remove(getLocalEndpoint());
-            Set<NetEndpoint> liveMembers = new HashSet<>(candidateEndpoints);
-            liveMembers.removeAll(newReplicationEndpoints);
-            liveMembers.removeAll(oldReplicationEndpoints);
+            newReplicationEndpoints.remove(getLocalEndpoint());
 
-            int size = newReplicationEndpoints.size();
-            List<String> moveTo = new ArrayList<>(size);
-            for (int i = 0; i < size; i++) {
-                moveTo.add(P2pServer.instance.getTopologyMetaData().getHostId(newReplicationEndpoints.get(i)));
-            }
-            rightChildPage.replicationHostIds = moveTo;
+            Set<NetEndpoint> otherEndpoints = new HashSet<>(candidateEndpoints);
+            otherEndpoints.removeAll(oldReplicationEndpoints);
+            otherEndpoints.removeAll(newReplicationEndpoints);
+
+            Session session = ConnectionInfo.getAndRemoveInternalSession();
 
             // 移动右边的leafPage到新的复制节点(Page中包含数据)
-            Session session = ConnectionInfo.getAndRemoveInternalSession();
-            Session[] sessions = new Session[size];
-            ServerSession s = (ServerSession) session;
-            int i = 0;
-            for (NetEndpoint e : newReplicationEndpoints) {
-                String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
-                sessions[i++] = s.getNestedSession(id, true);
+            if (!newReplicationEndpoints.isEmpty()) {
+                rightChildPage.replicationHostIds.clear();
+                ReplicationSession rs = P2pRouter.createReplicationSession(session, newReplicationEndpoints,
+                        rightChildPage.replicationHostIds, true);
+                moveLeafPage(splitKey, rightChildPage, rs, false);
             }
-
-            ReplicationSession rs = new ReplicationSession(sessions);
-            rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-            rs.setAutoCommit(session.isAutoCommit());
-            moveLeafPage(splitKey, rightChildPage, rs, false);
 
             // 移动右边的leafPage到其他节点(Page中不包含数据，只包含这个Page各数据副本所在节点信息)
-            i = 0;
-            size = liveMembers.size();
-            for (NetEndpoint e : liveMembers) {
-                String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
-                sessions[i++] = s.getNestedSession(id, true);
+            if (!otherEndpoints.isEmpty()) {
+                ReplicationSession rs = P2pRouter.createReplicationSession(session, otherEndpoints, true);
+                moveLeafPage(splitKey, rightChildPage, rs, true);
             }
-
-            rs = new ReplicationSession(sessions);
-            rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-            rs.setAutoCommit(session.isAutoCommit());
-            moveLeafPage(splitKey, rightChildPage, rs, true);
         }
     }
 
@@ -407,20 +387,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             oldReplicationEndpoints.remove(getLocalEndpoint());
             Set<NetEndpoint> liveMembers = getCandidateEndpoints();
             liveMembers.removeAll(oldReplicationEndpoints);
-
-            int i = 0;
-            int size = liveMembers.size();
             Session session = ConnectionInfo.getAndRemoveInternalSession();
-            Session[] sessions = new Session[size];
-            ServerSession s = (ServerSession) session;
-            for (NetEndpoint e : liveMembers) {
-                String id = P2pServer.instance.getTopologyMetaData().getHostId(e);
-                sessions[i++] = s.getNestedSession(id, true);
-            }
-
-            ReplicationSession rs = new ReplicationSession(sessions);
-            rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-            rs.setAutoCommit(session.isAutoCommit());
+            ReplicationSession rs = P2pRouter.createReplicationSession(session, liveMembers, true);
             try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
                 ByteBuffer keyBuffer = k.write(keyType, key);
                 c.removeLeafPage(getName(), keyBuffer);
@@ -734,19 +702,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public Object replicationPut(Object key, Object value, DataType valueType, Session session) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
-        NetEndpoint localEndpoint = getLocalEndpoint();
-
-        Session[] sessions = new Session[replicationEndpoints.size()];
-        ServerSession s = (ServerSession) session;
-        int i = 0;
-        for (NetEndpoint e : replicationEndpoints) {
-            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
-            sessions[i++] = s.getNestedSession(hostId, !localEndpoint.equals(e));
-        }
-
-        ReplicationSession rs = new ReplicationSession(sessions);
-        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-        rs.setAutoCommit(session.isAutoCommit());
+        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
         try (WriteBuffer k = WriteBuffer.create();
                 WriteBuffer v = WriteBuffer.create();
                 StorageCommand c = rs.createStorageCommand()) {
@@ -762,18 +718,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public Object replicationGet(Object key, Session session) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
-        NetEndpoint localEndpoint = getLocalEndpoint();
-
-        Session[] sessions = new Session[replicationEndpoints.size()];
-        ServerSession s = (ServerSession) session;
-        int i = 0;
-        for (NetEndpoint e : replicationEndpoints) {
-            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
-            sessions[i++] = s.getNestedSession(hostId, !localEndpoint.equals(e));
-        }
-        ReplicationSession rs = new ReplicationSession(sessions);
-        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-        rs.setAutoCommit(session.isAutoCommit());
+        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
         try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
             byte[] value = (byte[]) c.executeGet(getName(), keyBuffer);
@@ -881,20 +826,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public Object replicationAppend(Object value, DataType valueType, Session session) {
         List<NetEndpoint> replicationEndpoints = getLastPageReplicationEndpoints();
-        NetEndpoint localEndpoint = getLocalEndpoint();
-
-        Session[] sessions = new Session[replicationEndpoints.size()];
-        ServerSession s = (ServerSession) session;
-        int i = 0;
-        for (NetEndpoint e : replicationEndpoints) {
-            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
-            sessions[i++] = s.getNestedSession(hostId, !localEndpoint.equals(e));
-        }
-
-        ReplicationSession rs = new ReplicationSession(sessions);
-        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-        rs.setAutoCommit(session.isAutoCommit());
-        rs.setParentTransaction(s.getTransaction());
+        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
         try (WriteBuffer v = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer valueBuffer = v.write(valueType, value);
             return c.executeAppend(null, getName(), valueBuffer, null);
