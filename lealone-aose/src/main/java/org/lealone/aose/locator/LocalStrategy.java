@@ -35,20 +35,19 @@ public class LocalStrategy extends AbstractReplicationStrategy {
     }
 
     /**
-     * We need to override this even if we override calculateReplicationEndpoints,
-     * because the default implementation depends on token calculations but
-     * LocalStrategy may be used before tokens are set up.
+     * 覆盖默认实现，默认实现里要拷贝TopologyMetaData
      */
     @Override
-    public ArrayList<NetEndpoint> getReplicationEndpoints(String hostId, Set<NetEndpoint> candidateEndpoints) {
+    public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
+            Set<NetEndpoint> candidateEndpoints) {
         ArrayList<NetEndpoint> l = new ArrayList<NetEndpoint>(1);
         l.add(ConfigDescriptor.getLocalEndpoint());
         return l;
     }
 
     @Override
-    public List<NetEndpoint> calculateReplicationEndpoints(String searchHostId, TopologyMetaData metadata,
-            Set<NetEndpoint> candidateEndpoints) {
+    public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints) {
         return Collections.singletonList(ConfigDescriptor.getLocalEndpoint());
     }
 

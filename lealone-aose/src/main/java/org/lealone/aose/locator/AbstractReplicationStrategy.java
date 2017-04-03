@@ -18,14 +18,12 @@
 package org.lealone.aose.locator;
 
 import java.lang.reflect.Constructor;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.lealone.aose.util.Utils;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
@@ -40,11 +38,7 @@ public abstract class AbstractReplicationStrategy {
 
     protected final Map<String, String> configOptions;
     private final TopologyMetaData metaData;
-    private final Map<String, ArrayList<NetEndpoint>> cachedEndpoints = new NonBlockingHashMap<>();
     private final String dbName;
-
-    // track when the token range changes, signaling we need to invalidate our endpoint cache
-    private volatile long lastInvalidatedVersion = 0;
 
     AbstractReplicationStrategy(String dbName, TopologyMetaData metaData, IEndpointSnitch snitch,
             Map<String, String> configOptions) {
@@ -65,8 +59,8 @@ public abstract class AbstractReplicationStrategy {
      * @param searchHostId the token the natural endpoints are requested for
      * @return a copy of the natural endpoints for the given token
      */
-    public abstract List<NetEndpoint> calculateReplicationEndpoints(String searchHostId, TopologyMetaData metaData,
-            Set<NetEndpoint> candidateEndpoints);
+    public abstract List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints);
 
     /**
      * calculate the RF based on strategy_options. When overwriting, ensure that this get()
@@ -78,39 +72,10 @@ public abstract class AbstractReplicationStrategy {
 
     public abstract void validateOptions() throws ConfigException;
 
-    public ArrayList<NetEndpoint> getCachedEndpoints(String hostId) {
-        long lastVersion = metaData.getRingVersion();
-
-        if (lastVersion > lastInvalidatedVersion) {
-            synchronized (this) {
-                if (lastVersion > lastInvalidatedVersion) {
-                    if (logger.isDebugEnabled())
-                        logger.debug("clearing cached endpoints");
-                    cachedEndpoints.clear();
-                    lastInvalidatedVersion = lastVersion;
-                }
-            }
-        }
-
-        return cachedEndpoints.get(hostId);
-    }
-
-    /**
-     * get the (possibly cached) endpoints that should store the given Token.
-     * Note that while the endpoints are conceptually a Set (no duplicates will be included),
-     * we return a List to avoid an extra allocation when sorting by proximity later
-     * @param searchPosition the position the natural endpoints are requested for
-     * @return a copy of the natural endpoints for the given token
-     */
-    public ArrayList<NetEndpoint> getReplicationEndpoints(String hostId, Set<NetEndpoint> candidateEndpoints) {
-        ArrayList<NetEndpoint> endpoints = getCachedEndpoints(hostId);
-        if (endpoints == null) {
-            TopologyMetaData tm = metaData.cachedOnlyTokenMap();
-            endpoints = new ArrayList<>(calculateReplicationEndpoints(hostId, tm, candidateEndpoints));
-            cachedEndpoints.put(hostId, endpoints);
-        }
-
-        return new ArrayList<>(endpoints);
+    public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
+            Set<NetEndpoint> candidateEndpoints) {
+        TopologyMetaData tm = metaData.cachedOnlyTokenMap();
+        return calculateReplicationEndpoints(tm, oldReplicationEndpoints, candidateEndpoints);
     }
 
     /*

@@ -41,10 +41,10 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
     }
 
     @Override
-    public List<NetEndpoint> calculateReplicationEndpoints(String searchHostId, TopologyMetaData metadata,
-            Set<NetEndpoint> candidateEndpoints) {
+    public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints) {
         int replicas = getReplicationFactor();
-        ArrayList<String> hostIds = metadata.sortedHostIds();
+        ArrayList<String> hostIds = metaData.sortedHostIds();
         List<NetEndpoint> endpoints = new ArrayList<NetEndpoint>(replicas);
 
         if (hostIds.isEmpty())
@@ -52,8 +52,8 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
 
         Iterator<String> iter = hostIds.iterator();
         while (endpoints.size() < replicas && iter.hasNext()) {
-            NetEndpoint ep = metadata.getEndpointForHostId(iter.next());
-            if (candidateEndpoints.contains(ep) && !endpoints.contains(ep))
+            NetEndpoint ep = metaData.getEndpointForHostId(iter.next());
+            if (candidateEndpoints.contains(ep) && !oldReplicationEndpoints.contains(ep) && !endpoints.contains(ep))
                 endpoints.add(ep);
         }
         return endpoints;

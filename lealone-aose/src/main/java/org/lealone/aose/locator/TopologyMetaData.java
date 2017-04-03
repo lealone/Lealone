@@ -291,17 +291,6 @@ public class TopologyMetaData {
         cachedMap.set(null);
     }
 
-    public String getNextHostId(String hostId) {
-        ArrayList<String> list = sortedHostIds();
-        int index = list.indexOf(hostId);
-        if (index == -1 || index == list.size() - 1)
-            index = 0;
-        else
-            index++;
-
-        return list.get(index);
-    }
-
     /**
      * Tracks the assignment of racks and endpoints in each datacenter for all the "normal" endpoints
      * in this TopologyMetaData. This allows faster calculation of endpoints in NetworkTopologyStrategy.

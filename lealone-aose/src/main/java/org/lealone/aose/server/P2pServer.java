@@ -579,28 +579,20 @@ public class P2pServer extends NotificationBroadcasterSupport
      * @param pos position for which we need to find the endpoint
      * @return the endpoint responsible for this token
      */
-    public List<NetEndpoint> getReplicationEndpoints(Database db, String hostId, Set<NetEndpoint> candidateEndpoints) {
-        return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId, candidateEndpoints);
+    public List<NetEndpoint> getReplicationEndpoints(Database db, Set<NetEndpoint> oldReplicationEndpoints,
+            Set<NetEndpoint> candidateEndpoints) {
+        return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(oldReplicationEndpoints,
+                candidateEndpoints);
     }
 
-    /**
-     * This method attempts to return N endpoints that are responsible for storing the
-     * specified key i.e for replication.
-     *
-     * @param db the db
-     * @param key key for which we need to find the endpoint
-     * @return the endpoint responsible for this key
-     */
-
-    public List<NetEndpoint> getLiveReplicationEndpoints(Database db, String hostId) {
-        List<NetEndpoint> endpoints = ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(hostId, null);
+    public List<NetEndpoint> getLiveReplicationEndpoints(Database db, Set<NetEndpoint> oldReplicationEndpoints,
+            Set<NetEndpoint> candidateEndpoints) {
+        List<NetEndpoint> endpoints = getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints);
         List<NetEndpoint> liveEps = new ArrayList<>(endpoints.size());
-
         for (NetEndpoint endpoint : endpoints) {
             if (FailureDetector.instance.isAlive(endpoint))
                 liveEps.add(endpoint);
         }
-
         return liveEps;
     }
 
