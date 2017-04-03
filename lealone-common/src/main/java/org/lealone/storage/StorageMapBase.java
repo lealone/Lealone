@@ -17,10 +17,15 @@
  */
 package org.lealone.storage;
 
+import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
+import org.lealone.net.NetEndpoint;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.ObjectDataType;
 
@@ -75,6 +80,36 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
                 }
             }
         }
+    }
+
+    @Override
+    public void addLeafPage(ByteBuffer splitKey, ByteBuffer page) {
+        throw DbException.getUnsupportedException("addLeafPage");
+    }
+
+    @Override
+    public void removeLeafPage(ByteBuffer key) {
+        throw DbException.getUnsupportedException("removeLeafPage");
+    }
+
+    @Override
+    public List<NetEndpoint> getReplicationEndpoints(Object key) {
+        throw DbException.getUnsupportedException("getReplicationEndpoints");
+    }
+
+    @Override
+    public Object replicationPut(Object key, Object value, DataType valueType, Session session) {
+        throw DbException.getUnsupportedException("put");
+    }
+
+    @Override
+    public Object replicationGet(Object key, Session session) {
+        throw DbException.getUnsupportedException("get");
+    }
+
+    @Override
+    public Object replicationAppend(Object value, DataType valueType, Session session) {
+        throw DbException.getUnsupportedException("append");
     }
 
 }

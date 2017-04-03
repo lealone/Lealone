@@ -22,7 +22,6 @@ import java.util.ArrayList;
 
 import org.lealone.db.result.Result;
 import org.lealone.db.value.ValueLong;
-import org.lealone.replication.Replication;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.WriteBuffer;
@@ -109,17 +108,13 @@ public class ServerCommand extends CommandBase implements StorageCommand {
     @Override
     public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        if (map instanceof Replication) {
-            ((Replication) map).addLeafPage(splitKey, page);
-        }
+        map.addLeafPage(splitKey, page);
     }
 
     @Override
     public void removeLeafPage(String mapName, ByteBuffer key) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        if (map instanceof Replication) {
-            ((Replication) map).removeLeafPage(key);
-        }
+        map.removeLeafPage(key);
     }
 
     @Override

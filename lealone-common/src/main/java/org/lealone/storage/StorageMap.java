@@ -18,12 +18,14 @@
 package org.lealone.storage;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
+import org.lealone.replication.ReplicationMap;
 import org.lealone.storage.type.DataType;
 
-public interface StorageMap<K, V> {
+public interface StorageMap<K, V> extends ReplicationMap {
 
     /**
      * Get the map name.
@@ -221,4 +223,8 @@ public interface StorageMap<K, V> {
     Storage getStorage();
 
     K append(V value);
+
+    void addLeafPage(ByteBuffer splitKey, ByteBuffer page);
+
+    void removeLeafPage(ByteBuffer key);
 }

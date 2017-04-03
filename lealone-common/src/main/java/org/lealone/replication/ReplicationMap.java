@@ -17,24 +17,20 @@
  */
 package org.lealone.replication;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.type.DataType;
 
-public interface Replication {
+public interface ReplicationMap {
 
     List<NetEndpoint> getReplicationEndpoints(Object key);
 
-    Object put(Object key, Object value, DataType valueType, Session session);
+    Object replicationPut(Object key, Object value, DataType valueType, Session session);
 
-    Object get(Object key, Session session);
+    Object replicationGet(Object key, Session session);
 
-    void addLeafPage(ByteBuffer splitKey, ByteBuffer page);
+    Object replicationAppend(Object value, DataType valueType, Session session);
 
-    void removeLeafPage(ByteBuffer key);
-
-    Object append(Object value, DataType valueType, Session session);
 }

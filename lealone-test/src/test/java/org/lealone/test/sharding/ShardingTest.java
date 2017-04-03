@@ -57,6 +57,7 @@ public class ShardingTest extends SqlTestBase {
         @Override
         protected void test() throws Exception {
             insert();
+            split();
             select();
             testMultiThread(dbName);
         }
@@ -119,6 +120,12 @@ public class ShardingTest extends SqlTestBase {
             @Override
             public void run() {
                 runTest();
+            }
+        }
+
+        void split() throws Exception {
+            for (int i = 0; i < 1000; i++) {
+                stmt.executeUpdate("insert into ShardingTest(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
             }
         }
     }

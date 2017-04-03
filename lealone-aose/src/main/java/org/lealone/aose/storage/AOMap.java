@@ -17,14 +17,9 @@
  */
 package org.lealone.aose.storage;
 
-import java.io.IOException;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-
-import org.lealone.storage.Storage;
+import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.type.DataType;
 
 /**
  * An adaptive optimization map
@@ -34,9 +29,8 @@ import org.lealone.storage.type.DataType;
  * 
  * @author zhh
  */
-public class AOMap<K, V> implements StorageMap<K, V> {
+public class AOMap<K, V> extends DelegatedStorageMap<K, V> {
     private final Object sync = new Object();
-    private volatile StorageMap<K, V> map;
     private volatile BufferedMap<K, V> bmap;
 
     private volatile boolean writing;
@@ -49,7 +43,7 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     private int writeCount;
 
     public AOMap(StorageMap<K, V> map) {
-        this.map = map;
+        super(map);
         switchToBufferedMap(); // 默认最开始就使用BufferedMap
     }
 
@@ -144,21 +138,6 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public String getName() {
-        return map.getName();
-    }
-
-    @Override
-    public DataType getKeyType() {
-        return map.getKeyType();
-    }
-
-    @Override
-    public DataType getValueType() {
-        return map.getValueType();
-    }
-
-    @Override
     public V get(K key) {
         readCount++;
         return map.get(key);
@@ -247,29 +226,9 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public int size() {
-        return map.size();
-    }
-
-    @Override
-    public long sizeAsLong() {
-        return map.sizeAsLong();
-    }
-
-    @Override
     public boolean containsKey(K key) {
         readCount++;
         return map.containsKey(key);
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return map.isEmpty();
-    }
-
-    @Override
-    public boolean isInMemory() {
-        return map.isInMemory();
     }
 
     @Override
@@ -279,44 +238,9 @@ public class AOMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public void clear() {
-        map.clear();
-    }
-
-    @Override
-    public void remove() {
-        map.remove();
-    }
-
-    @Override
-    public boolean isClosed() {
-        return map.isClosed();
-    }
-
-    @Override
     public void close() {
         map.close();
         AOStorageService.removeAOMap(this);
-    }
-
-    @Override
-    public void save() {
-        map.save();
-    }
-
-    @Override
-    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
-        map.transferTo(target, firstKey, lastKey);
-    }
-
-    @Override
-    public void transferFrom(ReadableByteChannel src) throws IOException {
-        map.transferFrom(src);
-    }
-
-    @Override
-    public Storage getStorage() {
-        return map.getStorage();
     }
 
     @Override

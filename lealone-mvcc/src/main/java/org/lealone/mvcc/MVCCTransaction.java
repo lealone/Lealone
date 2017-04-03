@@ -26,7 +26,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
-import org.lealone.mvcc.MVCCTransactionMap.MVCCShardingTransactionMap;
+import org.lealone.mvcc.MVCCTransactionMap.MVCCReplicationMap;
 import org.lealone.mvcc.log.RedoLogValue;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
@@ -173,7 +173,7 @@ public class MVCCTransaction implements Transaction {
 
     protected <K, V> MVCCTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map) {
         if (isShardingMode())
-            return new MVCCShardingTransactionMap<>(this, map);
+            return new MVCCReplicationMap<>(this, map);
         else
             return new MVCCTransactionMap<>(this, map);
     }

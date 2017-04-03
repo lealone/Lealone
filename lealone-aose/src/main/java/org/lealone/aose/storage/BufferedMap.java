@@ -17,9 +17,6 @@
  */
 package org.lealone.aose.storage;
 
-import java.io.IOException;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
@@ -27,7 +24,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.Storage;
+import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
@@ -42,31 +39,16 @@ import org.lealone.storage.type.DataType;
  * @author zhh
  */
 @SuppressWarnings("unchecked")
-public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
-    private final StorageMap<K, V> map;
+public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Callable<Void> {
     private final ConcurrentSkipListMap<Object, Object> buffer = new ConcurrentSkipListMap<>();
 
     public BufferedMap(StorageMap<K, V> map) {
+        super(map);
         this.map = map;
     }
 
     public StorageMap<K, V> getMap() {
         return map;
-    }
-
-    @Override
-    public String getName() {
-        return map.getName();
-    }
-
-    @Override
-    public DataType getKeyType() {
-        return map.getKeyType();
-    }
-
-    @Override
-    public DataType getValueType() {
-        return map.getValueType();
     }
 
     @Override
@@ -406,25 +388,5 @@ public class BufferedMap<K, V> implements StorageMap<K, V>, Callable<Void> {
         public V getValue() {
             return value;
         }
-    }
-
-    @Override
-    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
-        map.transferTo(target, firstKey, lastKey);
-    }
-
-    @Override
-    public void transferFrom(ReadableByteChannel src) throws IOException {
-        map.transferFrom(src);
-    }
-
-    @Override
-    public Storage getStorage() {
-        return map.getStorage();
-    }
-
-    @Override
-    public K append(V value) {
-        return map.append(value);
     }
 }

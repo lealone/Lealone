@@ -28,7 +28,6 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
-import org.lealone.replication.Replication;
 import org.lealone.replication.ReplicationSession;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
@@ -55,7 +54,7 @@ import org.lealone.storage.type.WriteBuffer;
  * @author H2 Group
  * @author zhh
  */
-public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication {
+public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     /**
      * A builder for this class.
@@ -733,7 +732,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
     }
 
     @Override
-    public Object put(Object key, Object value, DataType valueType, Session session) {
+    public Object replicationPut(Object key, Object value, DataType valueType, Session session) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
         NetEndpoint localEndpoint = getLocalEndpoint();
 
@@ -761,7 +760,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
     }
 
     @Override
-    public Object get(Object key, Session session) {
+    public Object replicationGet(Object key, Session session) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
         NetEndpoint localEndpoint = getLocalEndpoint();
 
@@ -880,7 +879,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
     }
 
     @Override
-    public Object append(Object value, DataType valueType, Session session) {
+    public Object replicationAppend(Object value, DataType valueType, Session session) {
         List<NetEndpoint> replicationEndpoints = getLastPageReplicationEndpoints();
         NetEndpoint localEndpoint = getLocalEndpoint();
 

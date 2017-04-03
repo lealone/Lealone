@@ -39,7 +39,6 @@ import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
-import org.lealone.replication.Replication;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageMap;
@@ -735,9 +734,7 @@ public class AsyncConnection implements Handler<Buffer> {
             Session session = getSession(sessionId);
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            if (map instanceof Replication) {
-                ((Replication) map).addLeafPage(splitKey, page);
-            }
+            map.addLeafPage(splitKey, page);
             writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;
@@ -749,9 +746,7 @@ public class AsyncConnection implements Handler<Buffer> {
             Session session = getSession(sessionId);
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            if (map instanceof Replication) {
-                ((Replication) map).removeLeafPage(key);
-            }
+            map.removeLeafPage(key);
             writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;
