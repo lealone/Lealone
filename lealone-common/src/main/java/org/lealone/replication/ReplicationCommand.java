@@ -309,7 +309,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
-                    c.moveLeafPage(mapName, splitKey, page);
+                    c.moveLeafPage(mapName, splitKey.slice(), page.slice());
                 }
             };
             commands.add(command);
@@ -329,7 +329,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
-                    c.removeLeafPage(mapName, key);
+                    c.removeLeafPage(mapName, key.slice());
                 }
             };
             commands.add(command);

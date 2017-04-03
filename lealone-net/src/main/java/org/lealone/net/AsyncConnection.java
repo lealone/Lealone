@@ -45,7 +45,6 @@ import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
-import org.lealone.storage.type.WriteBufferPool;
 
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
@@ -664,12 +663,11 @@ public class AsyncConnection implements Handler<Buffer> {
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             if (result != null) {
-                WriteBuffer writeBuffer = WriteBufferPool.poll();
-                valueType.write(writeBuffer, result);
-                ByteBuffer buffer = writeBuffer.getBuffer();
-                buffer.flip();
-                WriteBufferPool.offer(writeBuffer);
-                transfer.writeByteBuffer(buffer);
+                try (WriteBuffer writeBuffer = WriteBuffer.create()) {
+                    valueType.write(writeBuffer, result);
+                    ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
+                    transfer.writeByteBuffer(buffer);
+                }
             } else {
                 transfer.writeByteBuffer(null);
             }
@@ -718,12 +716,11 @@ public class AsyncConnection implements Handler<Buffer> {
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             if (result != null) {
-                WriteBuffer writeBuffer = WriteBufferPool.poll();
-                valueType.write(writeBuffer, result);
-                ByteBuffer buffer = writeBuffer.getBuffer();
-                buffer.flip();
-                WriteBufferPool.offer(writeBuffer);
-                transfer.writeByteBuffer(buffer);
+                try (WriteBuffer writeBuffer = WriteBuffer.create()) {
+                    valueType.write(writeBuffer, result);
+                    ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
+                    transfer.writeByteBuffer(buffer);
+                }
             } else {
                 transfer.writeByteBuffer(null);
             }

@@ -26,7 +26,6 @@ import org.lealone.replication.Replication;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.WriteBuffer;
-import org.lealone.storage.type.WriteBufferPool;
 import org.lealone.transaction.Transaction;
 
 public class ServerCommand extends CommandBase implements StorageCommand {
@@ -93,15 +92,11 @@ public class ServerCommand extends CommandBase implements StorageCommand {
 
         if (result == null)
             return null;
-        WriteBuffer writeBuffer = WriteBufferPool.poll();
-        map.getValueType().write(writeBuffer, result);
-        ByteBuffer buffer = writeBuffer.getBuffer();
-        buffer.flip();
-        ByteBuffer valueBuffer = ByteBuffer.allocate(buffer.limit());
-        valueBuffer.put(buffer);
-        valueBuffer.flip();
-        WriteBufferPool.offer(writeBuffer);
-        return valueBuffer.array();
+
+        try (WriteBuffer b = WriteBuffer.create()) {
+            ByteBuffer valueBuffer = b.write(map.getValueType(), result);
+            return valueBuffer.array();
+        }
     }
 
     @Override

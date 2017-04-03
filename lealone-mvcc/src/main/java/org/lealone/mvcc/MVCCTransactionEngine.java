@@ -42,7 +42,6 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.StringDataType;
 import org.lealone.storage.type.WriteBuffer;
-import org.lealone.storage.type.WriteBufferPool;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
 
@@ -382,45 +381,42 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     public RedoLogValue getRedoLog(MVCCTransaction t) {
         if (t.logRecords.isEmpty())
             return null;
-        WriteBuffer writeBuffer = WriteBufferPool.poll();
+        try (WriteBuffer writeBuffer = WriteBuffer.create()) {
+            String mapName;
+            TransactionalValue value;
+            StorageMap<?, ?> map;
+            int lastPosition = 0, keyValueStart, memory;
 
-        String mapName;
-        TransactionalValue value;
-        StorageMap<?, ?> map;
-        int lastPosition = 0, keyValueStart, memory;
+            for (LogRecord r : t.logRecords) {
+                mapName = r.mapName;
+                value = r.newValue;
+                map = maps.get(mapName);
 
-        for (LogRecord r : t.logRecords) {
-            mapName = r.mapName;
-            value = r.newValue;
-            map = maps.get(mapName);
+                StringDataType.INSTANCE.write(writeBuffer, mapName);
+                keyValueStart = writeBuffer.position();
+                writeBuffer.putInt(0);
 
-            StringDataType.INSTANCE.write(writeBuffer, mapName);
-            keyValueStart = writeBuffer.position();
-            writeBuffer.putInt(0);
+                map.getKeyType().write(writeBuffer, r.key);
+                if (value.value == null)
+                    writeBuffer.put((byte) 0);
+                else {
+                    writeBuffer.put((byte) 1);
+                    ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
+                }
 
-            map.getKeyType().write(writeBuffer, r.key);
-            if (value.value == null)
-                writeBuffer.put((byte) 0);
-            else {
-                writeBuffer.put((byte) 1);
-                ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
+                writeBuffer.putInt(keyValueStart, writeBuffer.position() - keyValueStart - 4);
+                memory = estimatedMemory.get(mapName);
+                memory += writeBuffer.position() - lastPosition;
+                lastPosition = writeBuffer.position();
+                estimatedMemory.put(mapName, memory);
             }
 
-            writeBuffer.putInt(keyValueStart, writeBuffer.position() - keyValueStart - 4);
-            memory = estimatedMemory.get(mapName);
-            memory += writeBuffer.position() - lastPosition;
-            lastPosition = writeBuffer.position();
-            estimatedMemory.put(mapName, memory);
+            ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
+            ByteBuffer values = ByteBuffer.allocateDirect(buffer.limit());
+            values.put(buffer);
+            values.flip();
+            return new RedoLogValue(values);
         }
-
-        ByteBuffer buffer = writeBuffer.getBuffer();
-        buffer.flip();
-        ByteBuffer values = ByteBuffer.allocateDirect(buffer.limit());
-        values.put(buffer);
-        values.flip();
-
-        WriteBufferPool.offer(writeBuffer);
-        return new RedoLogValue(values);
     }
 
     @Override

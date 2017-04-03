@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
-import org.lealone.storage.type.WriteBufferPool;
 
 /**
  * A skipList-based redo log chunk
@@ -124,8 +123,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         // : skipListMap.tailMap(lastKey, false).entrySet();
         Set<Entry<Long, RedoLogValue>> entrySet = newSkipListMap.entrySet();
         if (!entrySet.isEmpty()) {
-            WriteBuffer buff = WriteBufferPool.poll();
-            try {
+            try (WriteBuffer buff = WriteBuffer.create()) {
                 for (Entry<Long, RedoLogValue> e : entrySet) {
                     lastKey = e.getKey();
                     keyType.write(buff, lastKey);
@@ -140,8 +138,6 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
                     fileStorage.sync();
                 }
                 this.lastSyncKey = lastKey;
-            } finally {
-                WriteBufferPool.offer(buff);
             }
         }
     }

@@ -20,7 +20,6 @@ import org.lealone.aose.locator.TopologyMetaData;
 import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.StorageMapBuilder;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
@@ -37,7 +36,6 @@ import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.WriteBuffer;
-import org.lealone.storage.type.WriteBufferPool;
 
 /**
  * A read optimization BTree stored map.
@@ -279,7 +277,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             }
             rightChildPage.replicationHostIds = moveTo;
 
-            // move page
+            // 移动右边的leafPage到新的复制节点(Page中包含数据)
             Session session = ConnectionInfo.getAndRemoveInternalSession();
             Session[] sessions = new Session[size];
             ServerSession s = (ServerSession) session;
@@ -294,7 +292,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             rs.setAutoCommit(session.isAutoCommit());
             moveLeafPage(splitKey, rightChildPage, rs, false);
 
-            // split root page
+            // 移动右边的leafPage到其他节点(Page中不包含数据，只包含这个Page各数据副本所在节点信息)
             i = 0;
             size = liveMembers.size();
             for (NetEndpoint e : liveMembers) {
@@ -310,33 +308,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
     }
 
     private void moveLeafPage(Object splitKey, BTreePage rightChildPage, ReplicationSession rs, boolean remote) {
-        StorageCommand c = null;
-        try {
-            c = rs.createStorageCommand();
-
-            WriteBuffer writeBuffer = WriteBufferPool.poll();
-            keyType.write(writeBuffer, splitKey);
-            ByteBuffer buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            ByteBuffer keyBuffer = ByteBuffer.allocateDirect(buffer.limit());
-            keyBuffer.put(buffer);
-            keyBuffer.flip();
-
-            writeBuffer.clear();
-
-            rightChildPage.writeLeaf(writeBuffer, remote);
-            buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            ByteBuffer pageBuffer = ByteBuffer.allocateDirect(buffer.limit());
-            pageBuffer.put(buffer);
-            pageBuffer.flip();
-            WriteBufferPool.offer(writeBuffer);
+        try (WriteBuffer k = WriteBuffer.create();
+                WriteBuffer p = WriteBuffer.create();
+                StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = k.write(keyType, splitKey);
+            rightChildPage.writeLeaf(p, remote);
+            ByteBuffer pageBuffer = p.getAndFlipBuffer();
             c.moveLeafPage(getName(), keyBuffer, pageBuffer);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            if (c != null)
-                c.close();
         }
     }
 
@@ -444,23 +422,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
             ReplicationSession rs = new ReplicationSession(sessions);
             rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
             rs.setAutoCommit(session.isAutoCommit());
-            StorageCommand c = null;
-            try {
-                c = rs.createStorageCommand();
-
-                WriteBuffer writeBuffer = WriteBufferPool.poll();
-                keyType.write(writeBuffer, key);
-                ByteBuffer buffer = writeBuffer.getBuffer();
-                buffer.flip();
-                ByteBuffer keyBuffer = ByteBuffer.allocateDirect(buffer.limit());
-                keyBuffer.put(buffer);
-                keyBuffer.flip();
+            try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+                ByteBuffer keyBuffer = k.write(keyType, key);
                 c.removeLeafPage(getName(), keyBuffer);
-            } catch (Exception e) {
-                throw DbException.convert(e);
-            } finally {
-                if (c != null)
-                    c.close();
             }
         }
     }
@@ -784,34 +748,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         rs.setAutoCommit(session.isAutoCommit());
-        StorageCommand c = null;
-        try {
-            c = rs.createStorageCommand();
-            WriteBuffer writeBuffer = WriteBufferPool.poll();
-            keyType.write(writeBuffer, key);
-            ByteBuffer buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            ByteBuffer keyBuffer = ByteBuffer.allocateDirect(buffer.limit());
-            keyBuffer.put(buffer);
-            keyBuffer.flip();
-
-            writeBuffer.clear();
-            valueType.write(writeBuffer, value);
-            buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            ByteBuffer valueBuffer = ByteBuffer.allocateDirect(buffer.limit());
-            valueBuffer.put(buffer);
-            valueBuffer.flip();
-            WriteBufferPool.offer(writeBuffer);
+        try (WriteBuffer k = WriteBuffer.create();
+                WriteBuffer v = WriteBuffer.create();
+                StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = k.write(keyType, key);
+            ByteBuffer valueBuffer = v.write(valueType, value);
             byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer);
             if (oldValue == null)
                 return null;
             return valueType.read(ByteBuffer.wrap(oldValue));
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            if (c != null)
-                c.close();
         }
     }
 
@@ -830,25 +775,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         rs.setAutoCommit(session.isAutoCommit());
-        StorageCommand c = null;
-        try {
-            c = rs.createStorageCommand();
-            WriteBuffer writeBuffer = WriteBufferPool.poll();
-            keyType.write(writeBuffer, key);
-            ByteBuffer buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            ByteBuffer keyBuffer = ByteBuffer.allocateDirect(buffer.limit());
-            keyBuffer.put(buffer);
-            keyBuffer.flip();
+        try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = k.write(keyType, key);
             byte[] value = (byte[]) c.executeGet(getName(), keyBuffer);
             if (value == null)
                 return null;
             return valueType.read(ByteBuffer.wrap(value));
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            if (c != null)
-                c.close();
         }
     }
 
@@ -964,24 +896,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> implements Replication 
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         rs.setAutoCommit(session.isAutoCommit());
         rs.setParentTransaction(s.getTransaction());
-        StorageCommand c = null;
-        try {
-            c = rs.createStorageCommand();
-            WriteBuffer writeBuffer = WriteBufferPool.poll();
-            valueType.write(writeBuffer, value);
-            ByteBuffer buffer = writeBuffer.getBuffer();
-            buffer = writeBuffer.getBuffer();
-            buffer.flip();
-            ByteBuffer valueBuffer = ByteBuffer.allocateDirect(buffer.limit());
-            valueBuffer.put(buffer);
-            valueBuffer.flip();
-            WriteBufferPool.offer(writeBuffer);
+        try (WriteBuffer v = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer valueBuffer = v.write(valueType, value);
             return c.executeAppend(null, getName(), valueBuffer, null);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            if (c != null)
-                c.close();
         }
     }
 }

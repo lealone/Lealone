@@ -22,7 +22,7 @@ import java.nio.ByteBuffer;
 import org.lealone.db.Command;
 import org.lealone.db.CommandUpdateResult;
 
-public interface StorageCommand extends Command {
+public interface StorageCommand extends Command, AutoCloseable {
 
     Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value);
 

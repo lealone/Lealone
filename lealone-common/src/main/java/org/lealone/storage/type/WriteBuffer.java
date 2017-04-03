@@ -6,13 +6,14 @@
 package org.lealone.storage.type;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.util.DataUtils;
 
 /**
  * An auto-resize buffer to write data into a ByteBuffer.
  */
-public class WriteBuffer {
+public class WriteBuffer implements AutoCloseable {
 
     private static final int MAX_REUSE_CAPACITY = 4 * 1024 * 1024;
 
@@ -292,6 +293,11 @@ public class WriteBuffer {
         return buff;
     }
 
+    public ByteBuffer getAndFlipBuffer() {
+        buff.flip();
+        return buff;
+    }
+
     private ByteBuffer ensureCapacity(int len) {
         if (buff.remaining() < len) {
             grow(len);
@@ -320,6 +326,46 @@ public class WriteBuffer {
         buff.put(temp);
         if (newCapacity <= MAX_REUSE_CAPACITY) {
             reuse = buff;
+        }
+    }
+
+    public ByteBuffer write(DataType type, Object obj) {
+        type.write(this, obj);
+        return getAndFlipBuffer();
+    }
+
+    @Override
+    public void close() {
+        WriteBufferPool.offer(this);
+    }
+
+    public static WriteBuffer create() {
+        return WriteBufferPool.poll();
+    }
+
+    private static class WriteBufferPool {
+        // 不要求精确
+        private static int poolSize;
+        private static final int capacity = 4 * 1024 * 1024;
+        private static final ConcurrentLinkedQueue<WriteBuffer> writeBufferPool = new ConcurrentLinkedQueue<>();
+
+        public static WriteBuffer poll() {
+            WriteBuffer writeBuffer = writeBufferPool.poll();
+            if (writeBuffer == null)
+                writeBuffer = new WriteBuffer();
+            else {
+                writeBuffer.clear();
+                poolSize--;
+            }
+
+            return writeBuffer;
+        }
+
+        public static void offer(WriteBuffer writeBuffer) {
+            if (poolSize < 5 && writeBuffer.capacity() <= capacity) {
+                poolSize++;
+                writeBufferPool.offer(writeBuffer);
+            }
         }
     }
 
