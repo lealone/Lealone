@@ -28,7 +28,7 @@ public class ConnectionTest {
 
     public static void main(String[] args) throws Exception {
         String url = "jdbc:h2:tcp://localhost:9092/test;user=sa;password=";
-        url = "jdbc:lealone:tcp://localhost:5210/test;user=sa;password=";
+        url = "jdbc:lealone:tcp://localhost:7210/test;user=sa;password=";
 
         Connection conn = getConnection(url);
         int loop = 1;

@@ -189,12 +189,12 @@ public class Constants {
     /**
      * The default port of the TCP server.
      */
-    public static final int DEFAULT_TCP_PORT = 5210;
+    public static final int DEFAULT_TCP_PORT = 7210;
 
     /**
      * The default port of the P2P server.
      */
-    public static final int DEFAULT_P2P_PORT = 5211;
+    public static final int DEFAULT_P2P_PORT = 7211;
 
     public static final String DEFAULT_HOST = "localhost";
 

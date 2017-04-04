@@ -45,7 +45,7 @@ protocol_server_engines:
   - name: TCP
     enabled: true
     parameters: {
-        port: 5210,
+        port: 7210,
         trace: false,
         allow_others: true,
         daemon: false,
@@ -55,7 +55,7 @@ protocol_server_engines:
   - name: P2P
     enabled: true
     parameters: {
-        port: 5211,
+        port: 7211,
         ssl: false
     }
 
