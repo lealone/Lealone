@@ -118,11 +118,6 @@ public class ServerCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public Command prepare() {
-        return this;
-    }
-
-    @Override
     public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
             CommandUpdateResult commandUpdateResult) {
         session.setReplicationName(replicationName);

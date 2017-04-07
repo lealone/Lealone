@@ -605,20 +605,6 @@ public class AsyncConnection implements Handler<Buffer> {
             executeUpdateAsync(transfer, session, sessionId, id, command, operation);
             break;
         }
-        case Session.COMMAND_REPLICATION_COMMIT: {
-            int sessionId = transfer.readInt();
-            Session session = getSession(sessionId);
-            long validKey = transfer.readLong();
-            boolean autoCommit = transfer.readBoolean();
-            session.replicationCommit(validKey, autoCommit);
-            break;
-        }
-        case Session.COMMAND_REPLICATION_ROLLBACK: {
-            int sessionId = transfer.readInt();
-            Session session = getSession(sessionId);
-            session.rollback();
-            break;
-        }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
@@ -633,6 +619,20 @@ public class AsyncConnection implements Handler<Buffer> {
                 session.setRoot(false);
             }
             executeUpdateAsync(transfer, session, sessionId, id, command, operation);
+            break;
+        }
+        case Session.COMMAND_REPLICATION_COMMIT: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
+            long validKey = transfer.readLong();
+            boolean autoCommit = transfer.readBoolean();
+            session.replicationCommit(validKey, autoCommit);
+            break;
+        }
+        case Session.COMMAND_REPLICATION_ROLLBACK: {
+            int sessionId = transfer.readInt();
+            Session session = getSession(sessionId);
+            session.rollback();
             break;
         }
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT:
@@ -707,7 +707,6 @@ public class AsyncConnection implements Handler<Buffer> {
             }
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            DataType valueType = map.getValueType();
             Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
 
             writeResponseHeader(transfer, session, id);
@@ -716,7 +715,7 @@ public class AsyncConnection implements Handler<Buffer> {
 
             if (result != null) {
                 try (WriteBuffer writeBuffer = WriteBuffer.create()) {
-                    valueType.write(writeBuffer, result);
+                    map.getValueType().write(writeBuffer, result);
                     ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
                     transfer.writeByteBuffer(buffer);
                 }

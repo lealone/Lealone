@@ -1389,8 +1389,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
                 table.addRow(this, lastRow);
             }
         }
-        if (autoCommit)
+        if (autoCommit) {
             commit();
+        }
     }
 
     public void copyLastReplicationStatusTo(ServerSession newSession) {

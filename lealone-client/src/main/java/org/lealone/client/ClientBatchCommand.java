@@ -188,9 +188,4 @@ public class ClientBatchCommand extends CommandBase {
         return result;
     }
 
-    @Override
-    public Command prepare() {
-        return this;
-    }
-
 }

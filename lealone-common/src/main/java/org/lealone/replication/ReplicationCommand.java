@@ -341,11 +341,6 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public Command prepare() {
-        return this;
-    }
-
-    @Override
     public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
             CommandUpdateResult commandUpdateResult) {
         return executeAppend(mapName, value, 1);

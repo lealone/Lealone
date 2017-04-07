@@ -24,6 +24,11 @@ import org.lealone.db.result.Result;
 public abstract class CommandBase implements Command {
 
     @Override
+    public Command prepare() {
+        return this;
+    }
+
+    @Override
     public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
     }
 

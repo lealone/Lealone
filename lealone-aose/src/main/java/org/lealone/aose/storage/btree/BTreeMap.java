@@ -188,17 +188,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @param p the page
      * @return the new root page
      */
-    protected BTreePage splitRoot(BTreePage p) {
+    private BTreePage splitRoot(BTreePage p) {
         long totalCount = p.getTotalCount();
         int at = p.getKeyCount() / 2;
         Object k = p.getKey(at);
-        BTreePage split = p.split(at);
-        if (p.isLeaf()) {
-            split.replicationHostIds = p.replicationHostIds;
-        }
+        BTreePage rightChildPage = p.split(at);
         Object[] keys = { k };
         BTreePage.PageReference[] children = { new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
-                new BTreePage.PageReference(split, split.getPos(), split.getTotalCount()), };
+                new BTreePage.PageReference(rightChildPage, rightChildPage.getPos(), rightChildPage.getTotalCount()) };
         p = BTreePage.create(this, keys, null, children, totalCount, 0);
         return p;
     }
@@ -211,7 +208,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @param value the value (may not be null)
      * @return the old value, or null
      */
-    protected Object put(BTreePage p, Object key, Object value) {
+    private Object put(BTreePage p, Object key, Object value) {
         int index = p.binarySearch(key);
         if (p.isLeaf()) {
             if (index < 0) {
@@ -234,15 +231,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             // split on the way down
             int at = c.getKeyCount() / 2;
             Object k = c.getKey(at);
-            BTreePage split = c.split(at);
-            p.setChild(index, split);
+            BTreePage rightChildPage = c.split(at);
+            p.setChild(index, rightChildPage);
             p.insertNode(index, k, c);
             // now we are not sure where to add
-            // return put(p, key, value);
             Object result = put(p, key, value);
             if (isLeaf) {
-                split.replicationHostIds = c.replicationHostIds;
-                moveLeafPage(k, split);
+                moveLeafPage(k, rightChildPage);
             }
             return result;
         }
@@ -671,78 +666,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public List<NetEndpoint> getReplicationEndpoints(Object key) {
-        return getReplicationEndpoints(root, key);
-    }
-
-    private List<NetEndpoint> getReplicationEndpoints(BTreePage p, Object key) {
-        if (p.isLeaf()) {
-            return getReplicationEndpoints(p);
-        }
-        int index = p.binarySearch(key);
-        // p is a node
-        if (index < 0) {
-            index = -index - 1;
-        } else {
-            index++;
-        }
-        return getReplicationEndpoints(p.getChildPage(index), key);
-    }
-
-    private List<NetEndpoint> getReplicationEndpoints(BTreePage p) {
-        int size = p.replicationHostIds.size();
-        List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            replicationEndpoints
-                    .add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(p.replicationHostIds.get(i)));
-        }
-        return replicationEndpoints;
-    }
-
-    private List<NetEndpoint> getLastPageReplicationEndpoints() {
-        BTreePage p = root;
-        while (true) {
-            if (p.isLeaf()) {
-                return getReplicationEndpoints(p);
-            }
-            p = p.getChildPage(getChildPageCount(p) - 1);
-        }
-    }
-
-    private NetEndpoint getLocalEndpoint() {
-        return ConfigDescriptor.getLocalEndpoint();
-    }
-
-    @Override
-    public Object replicationPut(Object key, Object value, DataType valueType, Session session) {
-        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
-        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
-        try (WriteBuffer k = WriteBuffer.create();
-                WriteBuffer v = WriteBuffer.create();
-                StorageCommand c = rs.createStorageCommand()) {
-            ByteBuffer keyBuffer = k.write(keyType, key);
-            ByteBuffer valueBuffer = v.write(valueType, value);
-            byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer);
-            if (oldValue == null)
-                return null;
-            return valueType.read(ByteBuffer.wrap(oldValue));
-        }
-    }
-
-    @Override
-    public Object replicationGet(Object key, Session session) {
-        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
-        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
-        try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
-            ByteBuffer keyBuffer = k.write(keyType, key);
-            byte[] value = (byte[]) c.executeGet(getName(), keyBuffer);
-            if (value == null)
-                return null;
-            return valueType.read(ByteBuffer.wrap(value));
-        }
-    }
-
-    @Override
     public synchronized void addLeafPage(ByteBuffer splitKey, ByteBuffer page) {
         BTreePage p = root;
         Object k = keyType.read(splitKey);
@@ -836,6 +759,78 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         K key = (K) ValueLong.get(lastKey.incrementAndGet());
         put(key, value);
         return key;
+    }
+
+    @Override
+    public List<NetEndpoint> getReplicationEndpoints(Object key) {
+        return getReplicationEndpoints(root, key);
+    }
+
+    private List<NetEndpoint> getReplicationEndpoints(BTreePage p, Object key) {
+        if (p.isLeaf()) {
+            return getReplicationEndpoints(p);
+        }
+        int index = p.binarySearch(key);
+        // p is a node
+        if (index < 0) {
+            index = -index - 1;
+        } else {
+            index++;
+        }
+        return getReplicationEndpoints(p.getChildPage(index), key);
+    }
+
+    private List<NetEndpoint> getReplicationEndpoints(BTreePage p) {
+        int size = p.replicationHostIds.size();
+        List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            replicationEndpoints
+                    .add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(p.replicationHostIds.get(i)));
+        }
+        return replicationEndpoints;
+    }
+
+    private List<NetEndpoint> getLastPageReplicationEndpoints() {
+        BTreePage p = root;
+        while (true) {
+            if (p.isLeaf()) {
+                return getReplicationEndpoints(p);
+            }
+            p = p.getChildPage(getChildPageCount(p) - 1);
+        }
+    }
+
+    private NetEndpoint getLocalEndpoint() {
+        return ConfigDescriptor.getLocalEndpoint();
+    }
+
+    @Override
+    public Object replicationPut(Object key, Object value, DataType valueType, Session session) {
+        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
+        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
+        try (WriteBuffer k = WriteBuffer.create();
+                WriteBuffer v = WriteBuffer.create();
+                StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = k.write(keyType, key);
+            ByteBuffer valueBuffer = v.write(valueType, value);
+            byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer);
+            if (oldValue == null)
+                return null;
+            return valueType.read(ByteBuffer.wrap(oldValue));
+        }
+    }
+
+    @Override
+    public Object replicationGet(Object key, Session session) {
+        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
+        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
+        try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = k.write(keyType, key);
+            byte[] value = (byte[]) c.executeGet(getName(), keyBuffer);
+            if (value == null)
+                return null;
+            return valueType.read(ByteBuffer.wrap(value));
+        }
     }
 
     @Override

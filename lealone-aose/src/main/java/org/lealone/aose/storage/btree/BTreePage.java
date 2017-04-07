@@ -244,6 +244,7 @@ public class BTreePage {
         values = aValues;
         totalCount = a;
         BTreePage newPage = create(map, bKeys, bValues, null, bKeys.length, 0);
+        newPage.replicationHostIds = replicationHostIds;
         recalculateMemory();
         return newPage;
     }
