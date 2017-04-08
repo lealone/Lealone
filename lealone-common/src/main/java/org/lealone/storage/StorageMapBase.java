@@ -98,17 +98,17 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public Object replicationPut(Object key, Object value, DataType valueType, Session session) {
+    public Object replicationPut(Session session, Object key, Object value, DataType valueType) {
         throw DbException.getUnsupportedException("put");
     }
 
     @Override
-    public Object replicationGet(Object key, Session session) {
+    public Object replicationGet(Session session, Object key) {
         throw DbException.getUnsupportedException("get");
     }
 
     @Override
-    public Object replicationAppend(Object value, DataType valueType, Session session) {
+    public Object replicationAppend(Session session, Object value, DataType valueType) {
         throw DbException.getUnsupportedException("append");
     }
 

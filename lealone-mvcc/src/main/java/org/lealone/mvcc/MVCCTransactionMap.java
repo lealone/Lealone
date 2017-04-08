@@ -46,19 +46,19 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         @SuppressWarnings("unchecked")
         @Override
         public V get(K key) {
-            return (V) map.replicationGet(key, session);
+            return (V) map.replicationGet(session, key);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public V put(K key, V value) {
-            return (V) map.replicationPut(key, value, valueType, session);
+            return (V) map.replicationPut(session, key, value, valueType);
         }
 
         @SuppressWarnings("unchecked")
         @Override
         public K append(V value) {
-            return (K) map.replicationAppend(value, valueType, session);
+            return (K) map.replicationAppend(session, value, valueType);
         }
     }
 

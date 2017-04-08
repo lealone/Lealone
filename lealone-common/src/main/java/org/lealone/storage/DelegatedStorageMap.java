@@ -36,28 +36,8 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public List<NetEndpoint> getReplicationEndpoints(Object key) {
-        return map.getReplicationEndpoints(key);
-    }
-
-    @Override
-    public Object replicationPut(Object key, Object value, DataType valueType, Session session) {
-        return map.replicationPut(key, value, valueType, session);
-    }
-
-    @Override
     public String getName() {
         return map.getName();
-    }
-
-    @Override
-    public Object replicationGet(Object key, Session session) {
-        return map.replicationGet(key, session);
-    }
-
-    @Override
-    public Object replicationAppend(Object value, DataType valueType, Session session) {
-        return map.replicationAppend(value, valueType, session);
     }
 
     @Override
@@ -213,6 +193,26 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     @Override
     public void removeLeafPage(ByteBuffer key) {
         map.removeLeafPage(key);
+    }
+
+    @Override
+    public List<NetEndpoint> getReplicationEndpoints(Object key) {
+        return map.getReplicationEndpoints(key);
+    }
+
+    @Override
+    public Object replicationPut(Session session, Object key, Object value, DataType valueType) {
+        return map.replicationPut(session, key, value, valueType);
+    }
+
+    @Override
+    public Object replicationGet(Session session, Object key) {
+        return map.replicationGet(session, key);
+    }
+
+    @Override
+    public Object replicationAppend(Session session, Object value, DataType valueType) {
+        return map.replicationAppend(session, value, valueType);
     }
 
 }

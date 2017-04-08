@@ -27,10 +27,10 @@ public interface ReplicationMap {
 
     List<NetEndpoint> getReplicationEndpoints(Object key);
 
-    Object replicationPut(Object key, Object value, DataType valueType, Session session);
+    Object replicationPut(Session session, Object key, Object value, DataType valueType);
 
-    Object replicationGet(Object key, Session session);
+    Object replicationGet(Session session, Object key);
 
-    Object replicationAppend(Object value, DataType valueType, Session session);
+    Object replicationAppend(Session session, Object value, DataType valueType);
 
 }

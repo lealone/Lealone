@@ -805,7 +805,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object replicationPut(Object key, Object value, DataType valueType, Session session) {
+    public Object replicationPut(Session session, Object key, Object value, DataType valueType) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
         try (WriteBuffer k = WriteBuffer.create();
@@ -821,7 +821,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object replicationGet(Object key, Session session) {
+    public Object replicationGet(Session session, Object key) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
         try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
@@ -834,7 +834,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object replicationAppend(Object value, DataType valueType, Session session) {
+    public Object replicationAppend(Session session, Object value, DataType valueType) {
         List<NetEndpoint> replicationEndpoints = getLastPageReplicationEndpoints();
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
         try (WriteBuffer v = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {

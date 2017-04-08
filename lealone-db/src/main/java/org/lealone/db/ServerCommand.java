@@ -84,6 +84,18 @@ public class ServerCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
+    public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page) {
+        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        map.addLeafPage(splitKey, page);
+    }
+
+    @Override
+    public void removeLeafPage(String mapName, ByteBuffer key) {
+        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        map.removeLeafPage(key);
+    }
+
+    @Override
     public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
@@ -103,18 +115,6 @@ public class ServerCommand extends CommandBase implements StorageCommand {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.get(map.getKeyType().read(key));
         return result;
-    }
-
-    @Override
-    public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page) {
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        map.addLeafPage(splitKey, page);
-    }
-
-    @Override
-    public void removeLeafPage(String mapName, ByteBuffer key) {
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        map.removeLeafPage(key);
     }
 
     @Override
