@@ -106,15 +106,17 @@ public class AOStorage implements Storage {
         return openMap(name, builder, null);
     }
 
-    public <K, V> AOMap<K, V> openAOMap(String name, DataType keyType, DataType valueType) {
-        BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, null);
+    public <K, V> AOMap<K, V> openAOMap(String name, DataType keyType, DataType valueType,
+            Map<String, String> parameters) {
+        BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, parameters);
         AOMap<K, V> map = new AOMap<>(btreeMap);
         AOStorageService.addAOMap(map);
         return map;
     }
 
-    public <K, V> BufferedMap<K, V> openBufferedMap(String name, DataType keyType, DataType valueType) {
-        BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, null);
+    public <K, V> BufferedMap<K, V> openBufferedMap(String name, DataType keyType, DataType valueType,
+            Map<String, String> parameters) {
+        BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, parameters);
         BufferedMap<K, V> map = new BufferedMap<>(btreeMap);
         AOStorageService.addBufferedMap(map);
         return map;
@@ -146,11 +148,11 @@ public class AOStorage implements Storage {
     public <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
             Map<String, String> parameters) {
         if (mapType == null || mapType.equalsIgnoreCase("AOMap")) {
-            return openAOMap(name, keyType, valueType);
+            return openAOMap(name, keyType, valueType, parameters);
         } else if (mapType.equalsIgnoreCase("BTreeMap")) {
             return openBTreeMap(name, keyType, valueType, parameters);
         } else if (mapType.equalsIgnoreCase("BufferedMap")) {
-            return openBufferedMap(name, keyType, valueType);
+            return openBufferedMap(name, keyType, valueType, parameters);
         } else if (mapType.equalsIgnoreCase("MemoryMap")) {
             return openMemoryMap(name, keyType, valueType);
         } else {

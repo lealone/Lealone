@@ -22,8 +22,10 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.value.ValueLong;
 import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapBase;
@@ -40,11 +42,17 @@ import org.lealone.storage.type.DataType;
  */
 @SuppressWarnings("unchecked")
 public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Callable<Void> {
+
     private final ConcurrentSkipListMap<Object, Object> buffer = new ConcurrentSkipListMap<>();
+    private final AtomicLong lastKey = new AtomicLong(0);
 
     public BufferedMap(StorageMap<K, V> map) {
         super(map);
         this.map = map;
+
+        if (map instanceof StorageMapBase) {
+            lastKey.set(((StorageMapBase<K, V>) map).getLastKey());
+        }
     }
 
     public StorageMap<K, V> getMap() {
@@ -63,8 +71,24 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
     public V put(K key, V value) {
         if (map instanceof StorageMapBase) {
             ((StorageMapBase<K, V>) map).setLastKey(key);
+            setLastKey(key);
         }
         return (V) buffer.put(key, value);
+    }
+
+    private void setLastKey(Object key) {
+        if (key instanceof ValueLong) {
+            long k = ((ValueLong) key).getLong();
+            while (true) {
+                long old = lastKey.get();
+                if (k > old) {
+                    if (lastKey.compareAndSet(old, k))
+                        break;
+                } else {
+                    break;
+                }
+            }
+        }
     }
 
     @Override
@@ -280,6 +304,13 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
             map.put((K) key, (V) value);
             buffer.remove(key);
         }
+    }
+
+    @Override
+    public K append(V value) {
+        K key = (K) ValueLong.get(lastKey.incrementAndGet());
+        put(key, value);
+        return key;
     }
 
     // 需要轮流从bufferIterator和mapCursor中取出一个值，哪个小先返回它

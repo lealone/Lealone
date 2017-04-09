@@ -65,7 +65,7 @@ public class AOStorageTest extends TestBase {
     }
 
     void testBufferedMap() {
-        BufferedMap<Integer, String> bmap = storage.openBufferedMap("testBufferedMap", null, null);
+        BufferedMap<Integer, String> bmap = storage.openBufferedMap("testBufferedMap", null, null, null);
         p(bmap.firstKey());
 
         for (int i = 10; i < 20; i += 2) {

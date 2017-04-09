@@ -82,6 +82,10 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         }
     }
 
+    public long getLastKey() {
+        return lastKey.get();
+    }
+
     @Override
     public void addLeafPage(ByteBuffer splitKey, ByteBuffer page) {
         throw DbException.getUnsupportedException("addLeafPage");

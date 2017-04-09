@@ -159,7 +159,6 @@ public class MVCCTransaction implements Transaction {
         valueType = new TransactionalValueType(valueType);
         Map<String, String> parameters = new HashMap<>(1);
         if (isShardingMode) {
-            mapType = "BTreeMap";
             parameters.put("isShardingMode", "true");
             parameters.put("initReplicationEndpoints", initReplicationEndpoints);
         }
