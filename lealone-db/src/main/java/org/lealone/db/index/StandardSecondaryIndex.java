@@ -261,8 +261,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         if (min != null) {
             min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         }
-        TransactionMap<Value, Value> map = getMap(session);
-        return new StandardSecondaryIndexCursor(session, map.keyIterator(min), last);
+        return new StandardSecondaryIndexCursor(session, getMap(session).keyIterator(min), last);
     }
 
     private ValueArray convertToKey(SearchRow r) {
@@ -321,8 +320,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     @Override
     public void truncate(ServerSession session) {
-        TransactionMap<Value, Value> map = getMap(session);
-        map.clear();
+        getMap(session).clear();
     }
 
     @Override
@@ -361,8 +359,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     @Override
     public long getRowCount(ServerSession session) {
-        TransactionMap<Value, Value> map = getMap(session);
-        return map.sizeAsLong();
+        return getMap(session).sizeAsLong();
     }
 
     @Override
