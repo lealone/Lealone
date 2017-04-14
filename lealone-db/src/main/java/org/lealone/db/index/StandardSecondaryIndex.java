@@ -71,7 +71,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        boolean isShardingMode = session.isShardingMode();
 
         String initReplicationEndpoints = null;
         String replicationName = session.getReplicationName();
@@ -82,8 +81,9 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             }
         }
 
-        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName,
-                table.getMapType(), keyType, valueType, storage, isShardingMode, initReplicationEndpoints);
+        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false, session.isShardingMode()).openMap(
+                mapName, table.getMapType(), keyType, valueType, storage, session.getDatabase().isShardingMode(),
+                initReplicationEndpoints);
         transactionEngine.addTransactionMap(map);
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");

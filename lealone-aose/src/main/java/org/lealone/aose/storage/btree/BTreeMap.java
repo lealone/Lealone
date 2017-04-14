@@ -10,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -105,11 +106,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 DataUtils.checkArgument(initReplicationEndpoints != null,
                         "The initReplicationEndpoints may not be null");
                 String[] replicationEndpoints = StringUtils.arraySplit(initReplicationEndpoints, '&');
-                int size = replicationEndpoints.length;
-                root.replicationHostIds = new ArrayList<>(size);
-                for (int i = 0; i < size; i++) {
-                    root.replicationHostIds.add(replicationEndpoints[i]);
-                }
+                root.replicationHostIds = Arrays.asList(replicationEndpoints);
+                // 强制把replicationHostIds持久化
+                storage.forceSave();
             }
         }
     }

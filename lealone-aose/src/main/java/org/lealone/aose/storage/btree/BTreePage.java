@@ -14,6 +14,7 @@ import java.util.List;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.value.ValueNull;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.StringDataType;
@@ -93,16 +94,10 @@ public class BTreePage {
      */
     private volatile boolean removedInMemory;
 
-    // String hostId;
-    boolean remote;
     List<String> replicationHostIds;
 
     BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
-    }
-
-    boolean isRemote() {
-        return remote;
     }
 
     /**
@@ -510,19 +505,13 @@ public class BTreePage {
             values = new Object[keyLength];
             map.getValueType().read(buff, values, keyLength, false);
             totalCount = keyLength;
+            replicationHostIds = readReplicationHostIds(buff);
         }
         recalculateMemory();
     }
 
     void writeLeaf(WriteBuffer buff, boolean remote) {
-        if (replicationHostIds == null || replicationHostIds.isEmpty())
-            buff.putInt(0);
-        else {
-            buff.putInt(replicationHostIds.size());
-            for (String id : replicationHostIds) {
-                StringDataType.INSTANCE.write(buff, id);
-            }
-        }
+        writeReplicationHostIds(buff);
         buff.put((byte) (remote ? 1 : 0));
         if (!remote) {
             DataType kt = map.getKeyType();
@@ -536,10 +525,7 @@ public class BTreePage {
     }
 
     static BTreePage readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
-        int length = page.getInt();
-        List<String> replicationHostIds = new ArrayList<>(length);
-        for (int i = 0; i < length; i++)
-            replicationHostIds.add(StringDataType.INSTANCE.read(page));
+        List<String> replicationHostIds = readReplicationHostIds(page);
         boolean remote = page.get() == 1;
         BTreePage p;
 
@@ -548,7 +534,7 @@ public class BTreePage {
         } else {
             DataType kt = map.getKeyType();
             DataType vt = map.getValueType();
-            length = page.getInt();
+            int length = page.getInt();
             Object[] keys = new Object[length];
             Object[] values = new Object[length];
             for (int i = 0; i < length; i++) {
@@ -558,10 +544,31 @@ public class BTreePage {
             p = BTreePage.create(map, keys, values, null, length, 0);
         }
 
-        p.remote = remote;
         p.replicationHostIds = replicationHostIds;
-
         return p;
+    }
+
+    private void writeReplicationHostIds(WriteBuffer buff) {
+        if (replicationHostIds == null || replicationHostIds.isEmpty())
+            buff.putInt(0);
+        else {
+            buff.putInt(replicationHostIds.size());
+            for (String id : replicationHostIds) {
+                StringDataType.INSTANCE.write(buff, id);
+            }
+        }
+    }
+
+    private static List<String> readReplicationHostIds(ByteBuffer buff) {
+        int length = buff.getInt();
+        List<String> replicationHostIds = new ArrayList<>(length);
+        for (int i = 0; i < length; i++)
+            replicationHostIds.add(StringDataType.INSTANCE.read(buff));
+
+        if (replicationHostIds.isEmpty())
+            replicationHostIds = null;
+
+        return replicationHostIds;
     }
 
     /**
@@ -577,9 +584,11 @@ public class BTreePage {
         int type = children != null ? DataUtils.PAGE_TYPE_NODE : DataUtils.PAGE_TYPE_LEAF;
         buff.putInt(0);
         if (type == DataUtils.PAGE_TYPE_LEAF) { // write first key
-            if (keyLength == 0)
-                throw new AssertionError();
-            map.getKeyType().write(buff, keys[0]);
+            if (keyLength == 0) {
+                map.getKeyType().write(buff, ValueNull.INSTANCE);
+            } else {
+                map.getKeyType().write(buff, keys[0]);
+            }
         }
         int checkPos = buff.position();
         buff.putShort((byte) 0).putVarInt(keyLength);
@@ -595,6 +604,7 @@ public class BTreePage {
         map.getKeyType().write(buff, keys, keyLength, true); // TODO 第4个参数目前未使用，考虑删除
         if (type == DataUtils.PAGE_TYPE_LEAF) {
             map.getValueType().write(buff, values, keyLength, false);
+            writeReplicationHostIds(buff);
         }
         BTreeStorage storage = map.getBTreeStorage();
         int expLen = buff.position() - compressStart;

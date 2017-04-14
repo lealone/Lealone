@@ -66,7 +66,6 @@ public class StandardPrimaryIndex extends IndexBase {
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        boolean isShardingMode = session.isShardingMode();
 
         String initReplicationEndpoints = null;
         String replicationName = session.getReplicationName();
@@ -76,8 +75,11 @@ public class StandardPrimaryIndex extends IndexBase {
                 initReplicationEndpoints = replicationName.substring(0, pos);
             }
         }
-        dataMap = transactionEngine.beginTransaction(false, isShardingMode).openMap(mapName, table.getMapType(),
-                keyType, vvType, storage, isShardingMode, initReplicationEndpoints);
+
+        // session.isShardingMode()是针对当前session的，如果是SystemSession，就算数据库是ShardingMode，也不管它
+        dataMap = transactionEngine.beginTransaction(false, session.isShardingMode()).openMap(mapName,
+                table.getMapType(), keyType, vvType, storage, session.getDatabase().isShardingMode(),
+                initReplicationEndpoints);
         transactionEngine.addTransactionMap(dataMap);
     }
 

@@ -487,12 +487,6 @@ public class BTreeStorage {
      * Close the file and the storage. Unsaved changes are written to disk first.
      */
     void close() {
-        if (closed) {
-            return;
-        }
-        if (hasUnsavedChanges()) {
-            save();
-        }
         closeStorage();
     }
 
@@ -514,7 +508,7 @@ public class BTreeStorage {
         if (closed) {
             return;
         }
-
+        save();
         closed = true;
         synchronized (this) {
             for (BTreeChunk c : chunks.values()) {
@@ -565,13 +559,17 @@ public class BTreeStorage {
         }
 
         try {
-            executeCompact(executeSave());
+            executeCompact(executeSave(false));
         } catch (IllegalStateException e) {
             throw panic(e);
         }
     }
 
-    private TreeSet<Long> executeSave() {
+    synchronized void forceSave() {
+        executeSave(true);
+    }
+
+    private TreeSet<Long> executeSave(boolean force) {
         WriteBuffer buff = getWriteBuffer();
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
@@ -587,7 +585,7 @@ public class BTreeStorage {
             this.removedPages.clear();
             p = map.root;
         }
-        if (p.getTotalCount() > 0) {
+        if (p.getTotalCount() > 0 || force) {
             p.writeUnsavedRecursive(c, buff);
             c.rootPagePos = p.getPos();
             p.writeEnd();
@@ -672,7 +670,7 @@ public class BTreeStorage {
             if (!old.isEmpty()) {
                 boolean saveIfNeeded = rewrite(old, removedPages);
                 if (saveIfNeeded) {
-                    removedPages = executeSave();
+                    removedPages = executeSave(false);
                     removeUnusedChunks(removedPages);
                 }
             }
