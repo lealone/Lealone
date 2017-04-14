@@ -17,12 +17,19 @@
  */
 package org.lealone.aose.storage;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.lealone.aose.storage.btree.BTreeMap;
 import org.lealone.aose.storage.rtree.RTreeMap;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.IOUtils;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
@@ -131,7 +138,32 @@ public class AOStorage extends StorageBase {
 
     @Override
     public void backupTo(String fileName) {
-        // TODO Auto-generated method stub
+        try {
+            save();
+            close(); // TODO 如何在不关闭存储的情况下备份，现在每个文件与FileStorage相关的在打开时就用排它锁锁住了，所以读不了
+            OutputStream zip = FileUtils.newOutputStream(fileName, false);
+            ZipOutputStream out = new ZipOutputStream(zip);
+            String storageName = (String) config.get("storageName");
+            String storageShortName = storageName.replace('\\', '/');
+            storageShortName = storageShortName.substring(storageShortName.lastIndexOf('/') + 1);
+            FilePath dir = FilePath.get(storageName);
+            for (FilePath map : dir.newDirectoryStream()) {
+                String entryNameBase = storageShortName + "/" + map.getName();
+                for (FilePath file : map.newDirectoryStream()) {
+                    backupFile(out, file.newInputStream(), entryNameBase + "/" + file.getName());
+                }
+            }
+            out.close();
+            zip.close();
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, fileName);
+        }
+    }
+
+    private static void backupFile(ZipOutputStream out, InputStream in, String entryName) throws IOException {
+        out.putNextEntry(new ZipEntry(entryName));
+        IOUtils.copyAndCloseInput(in, out);
+        out.closeEntry();
     }
 
 }

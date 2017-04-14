@@ -61,9 +61,16 @@ public class AOStorageTest extends TestBase {
 
             // openRTreeMap();
             // testRTreePut();
+
+            testBackupTo();
         } finally {
             storage.close();
         }
+    }
+
+    void testBackupTo() {
+        String fileName = joinDirs("testBackup", "backup1.zip");
+        storage.backupTo(fileName);
     }
 
     void testBufferedMap() {
