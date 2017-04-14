@@ -32,12 +32,12 @@ public interface Storage {
 
     void backupTo(String fileName);
 
-    void flush();
-
-    void sync();
+    void save();
 
     void close();
 
     void closeImmediately();
+
+    boolean isClosed();
 
 }

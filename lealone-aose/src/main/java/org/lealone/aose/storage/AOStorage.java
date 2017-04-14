@@ -18,20 +18,15 @@
 package org.lealone.aose.storage;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.aose.storage.btree.BTreeMap;
 import org.lealone.aose.storage.rtree.RTreeMap;
 import org.lealone.common.util.DataUtils;
-import org.lealone.db.Constants;
-import org.lealone.storage.Storage;
+import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.memory.MemoryMap;
 import org.lealone.storage.type.DataType;
 
 /**
@@ -39,18 +34,12 @@ import org.lealone.storage.type.DataType;
  * 
  * @author zhh
  */
-public class AOStorage implements Storage {
+public class AOStorage extends StorageBase {
 
     public static final String SUFFIX_AO_FILE = ".db";
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
 
-    private static final String TEMP_NAME_PREFIX = "temp" + Constants.NAME_SEPARATOR;
-
-    private final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
     private final Map<String, Object> config;
-
-    private boolean closed;
-    private int nextTemporaryMapId;
 
     AOStorage(Map<String, Object> config) {
         this.config = config;
@@ -67,28 +56,18 @@ public class AOStorage implements Storage {
         }
     }
 
-    public void closeMap(String name) {
-        maps.remove(name);
-    }
-
-    @SuppressWarnings("unchecked")
-    public <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder,
+    @Override
+    public <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
             Map<String, String> parameters) {
-        M map = (M) maps.get(name);
-        if (map == null) {
-            synchronized (this) {
-                map = (M) maps.get(name);
-                if (map == null) {
-                    HashMap<String, Object> c = new HashMap<>(config);
-                    if (parameters != null)
-                        c.putAll(parameters);
-                    builder.name(name).config(c).aoStorage(this);
-                    map = builder.openMap();
-                    maps.put(name, map);
-                }
-            }
+        if (mapType == null || mapType.equalsIgnoreCase("AOMap")) {
+            return openAOMap(name, keyType, valueType, parameters);
+        } else if (mapType.equalsIgnoreCase("BTreeMap")) {
+            return openBTreeMap(name, keyType, valueType, parameters);
+        } else if (mapType.equalsIgnoreCase("BufferedMap")) {
+            return openBufferedMap(name, keyType, valueType, parameters);
+        } else {
+            throw DataUtils.newIllegalArgumentException("Unknow map type: {0}", mapType);
         }
-        return map;
     }
 
     public <K, V> BTreeMap<K, V> openBTreeMap(String name) {
@@ -126,95 +105,33 @@ public class AOStorage implements Storage {
         return map;
     }
 
-    public <K, V> MemoryMap<K, V> openMemoryMap(String name, DataType keyType, DataType valueType) {
-        MemoryMapBuilder<K, V> builder = new MemoryMapBuilder<>();
-        builder.keyType(keyType);
-        builder.valueType(valueType);
-        return openMap(name, builder, null);
-    }
-
-    private static class MemoryMapBuilder<K, V> extends StorageMapBuilder<MemoryMap<K, V>, K, V> {
-        @Override
-        public MemoryMap<K, V> openMap() {
-            return new MemoryMap<>(name, keyType, valueType);
+    @SuppressWarnings("unchecked")
+    private <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder,
+            Map<String, String> parameters) {
+        M map = (M) maps.get(name);
+        if (map == null) {
+            synchronized (this) {
+                map = (M) maps.get(name);
+                if (map == null) {
+                    HashMap<String, Object> c = new HashMap<>(config);
+                    if (parameters != null)
+                        c.putAll(parameters);
+                    builder.name(name).config(c).aoStorage(this);
+                    map = builder.openMap();
+                    maps.put(name, map);
+                }
+            }
         }
+        return map;
     }
 
     public boolean isReadOnly() {
         return config.containsKey("readOnly");
     }
 
-    public Set<String> getMapNames() {
-        return new HashSet<String>(maps.keySet());
-    }
-
-    @Override
-    public <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
-            Map<String, String> parameters) {
-        if (mapType == null || mapType.equalsIgnoreCase("AOMap")) {
-            return openAOMap(name, keyType, valueType, parameters);
-        } else if (mapType.equalsIgnoreCase("BTreeMap")) {
-            return openBTreeMap(name, keyType, valueType, parameters);
-        } else if (mapType.equalsIgnoreCase("BufferedMap")) {
-            return openBufferedMap(name, keyType, valueType, parameters);
-        } else if (mapType.equalsIgnoreCase("MemoryMap")) {
-            return openMemoryMap(name, keyType, valueType);
-        } else {
-            throw DataUtils.newIllegalArgumentException("Unknow map type: {0}", mapType);
-        }
-    }
-
-    @Override
-    public synchronized String nextTemporaryMapName() {
-        return TEMP_NAME_PREFIX + nextTemporaryMapId++;
-    }
-
-    @Override
-    public boolean hasMap(String name) {
-        return maps.containsKey(name);
-    }
-
     @Override
     public void backupTo(String fileName) {
         // TODO Auto-generated method stub
-    }
-
-    @Override
-    public void flush() {
-        save();
-    }
-
-    @Override
-    public void sync() {
-        save();
-    }
-
-    public synchronized void save() {
-        for (StorageMap<?, ?> map : maps.values())
-            map.save();
-    }
-
-    public boolean isClosed() {
-        return closed;
-    }
-
-    @Override
-    public void close() {
-        close(true);
-    }
-
-    @Override
-    public void closeImmediately() {
-        close(false);
-    }
-
-    private synchronized void close(boolean closeMaps) {
-        closed = true;
-
-        for (StorageMap<?, ?> map : maps.values())
-            map.close();
-
-        maps.clear();
     }
 
 }

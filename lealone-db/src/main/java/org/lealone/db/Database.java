@@ -1621,7 +1621,7 @@ public class Database implements DataHandler, DbObject {
         }
         try {
             for (Storage s : getStorages()) {
-                s.flush();
+                s.save();
             }
         } catch (RuntimeException e) {
             backgroundException = DbException.convert(e);
@@ -1692,7 +1692,7 @@ public class Database implements DataHandler, DbObject {
         }
 
         for (Storage s : getStorages()) {
-            s.sync();
+            s.save();
         }
     }
 
@@ -1973,7 +1973,7 @@ public class Database implements DataHandler, DbObject {
     public void checkpoint() {
         if (persistent) {
             for (Storage s : getStorages()) {
-                s.flush();
+                s.save();
             }
         }
         getTempFileDeleter().deleteUnused();

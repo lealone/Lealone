@@ -18,15 +18,11 @@
 package org.lealone.storage.memory;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.db.Constants;
-import org.lealone.storage.Storage;
+import org.lealone.storage.StorageBase;
 import org.lealone.storage.type.DataType;
 
-public class MemoryStorage implements Storage {
-
-    private final ConcurrentHashMap<String, MemoryMap<?, ?>> maps = new ConcurrentHashMap<>();
+public class MemoryStorage extends StorageBase {
 
     @SuppressWarnings("unchecked")
     @Override
@@ -44,46 +40,6 @@ public class MemoryStorage implements Storage {
             }
         }
         return map;
-    }
-
-    @Override
-    public boolean hasMap(String name) {
-        return maps.containsKey(name);
-    }
-
-    @Override
-    public String nextTemporaryMapName() {
-        int i = 0;
-        String name = null;
-        while (true) {
-            name = "temp" + Constants.NAME_SEPARATOR + i;
-            if (!maps.containsKey(name))
-                return name;
-        }
-    }
-
-    @Override
-    public void backupTo(String fileName) {
-    }
-
-    @Override
-    public void flush() {
-    }
-
-    @Override
-    public void sync() {
-    }
-
-    @Override
-    public void close() {
-        for (MemoryMap<?, ?> map : maps.values())
-            map.close();
-        maps.clear();
-    }
-
-    @Override
-    public void closeImmediately() {
-        close();
     }
 
 }
