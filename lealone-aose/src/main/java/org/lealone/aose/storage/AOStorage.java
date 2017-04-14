@@ -72,18 +72,22 @@ public class AOStorage implements Storage {
     }
 
     @SuppressWarnings("unchecked")
-    public synchronized <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder,
+    public <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder,
             Map<String, String> parameters) {
         M map = (M) maps.get(name);
         if (map == null) {
-            HashMap<String, Object> c = new HashMap<>(config);
-            if (parameters != null)
-                c.putAll(parameters);
-            builder.name(name).config(c).aoStorage(this);
-            map = builder.openMap();
-            maps.put(name, map);
+            synchronized (this) {
+                map = (M) maps.get(name);
+                if (map == null) {
+                    HashMap<String, Object> c = new HashMap<>(config);
+                    if (parameters != null)
+                        c.putAll(parameters);
+                    builder.name(name).config(c).aoStorage(this);
+                    map = builder.openMap();
+                    maps.put(name, map);
+                }
+            }
         }
-
         return map;
     }
 
@@ -163,11 +167,6 @@ public class AOStorage implements Storage {
     @Override
     public synchronized String nextTemporaryMapName() {
         return TEMP_NAME_PREFIX + nextTemporaryMapId++;
-    }
-
-    @Override
-    public StorageMap<?, ?> getStorageMap(String name) {
-        return maps.get(name);
     }
 
     @Override

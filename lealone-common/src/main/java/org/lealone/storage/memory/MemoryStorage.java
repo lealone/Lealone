@@ -22,23 +22,44 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.db.Constants;
 import org.lealone.storage.Storage;
-import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
 
 public class MemoryStorage implements Storage {
 
     private final ConcurrentHashMap<String, MemoryMap<?, ?>> maps = new ConcurrentHashMap<>();
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void close() {
-        for (MemoryMap<?, ?> map : maps.values())
-            map.close();
-        maps.clear();
+    public <K, V> MemoryMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+            Map<String, String> parameters) {
+        MemoryMap<K, V> map = (MemoryMap<K, V>) maps.get(name);
+        if (map == null) {
+            synchronized (this) {
+                map = (MemoryMap<K, V>) maps.get(name);
+                if (map == null) {
+                    map = new MemoryMap<>(name, keyType, valueType);
+                    maps.put(name, map);
+                    map.setMemoryStorage(this);
+                }
+            }
+        }
+        return map;
     }
 
     @Override
-    public void closeImmediately() {
-        close();
+    public boolean hasMap(String name) {
+        return maps.containsKey(name);
+    }
+
+    @Override
+    public String nextTemporaryMapName() {
+        int i = 0;
+        String name = null;
+        while (true) {
+            name = "temp" + Constants.NAME_SEPARATOR + i;
+            if (!maps.containsKey(name))
+                return name;
+        }
     }
 
     @Override
@@ -54,32 +75,15 @@ public class MemoryStorage implements Storage {
     }
 
     @Override
-    public String nextTemporaryMapName() {
-        int i = 0;
-        String name = null;
-        while (true) {
-            name = "temp" + Constants.NAME_SEPARATOR + i;
-            if (!maps.containsKey(name))
-                return name;
-        }
+    public void close() {
+        for (MemoryMap<?, ?> map : maps.values())
+            map.close();
+        maps.clear();
     }
 
     @Override
-    public StorageMap<?, ?> getStorageMap(String name) {
-        return maps.get(name);
+    public void closeImmediately() {
+        close();
     }
 
-    @Override
-    public boolean hasMap(String name) {
-        return maps.containsKey(name);
-    }
-
-    @Override
-    public <K, V> MemoryMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
-            Map<String, String> parameters) {
-        MemoryMap<K, V> map = new MemoryMap<>(name, keyType, valueType);
-        maps.put(name, map);
-        map.setMemoryStorage(this);
-        return map;
-    }
 }
