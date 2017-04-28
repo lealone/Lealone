@@ -15,6 +15,7 @@ import java.util.List;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.value.ValueNull;
+import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.type.DataType;
 import org.lealone.storage.type.StringDataType;
@@ -95,6 +96,7 @@ public class BTreePage {
     private volatile boolean removedInMemory;
 
     List<String> replicationHostIds;
+    LeafPageMovePlan leafPageMovePlan;
 
     BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
@@ -1088,7 +1090,7 @@ public class BTreePage {
         }
     }
 
-    private BTreePage binarySearchLeafPage(BTreePage p, Object key) {
+    BTreePage binarySearchLeafPage(BTreePage p, Object key) {
         int index = p.binarySearch(key);
         if (!p.isLeaf()) {
             if (index < 0) {

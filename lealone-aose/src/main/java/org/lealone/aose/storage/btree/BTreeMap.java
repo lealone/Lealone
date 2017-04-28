@@ -23,15 +23,18 @@ import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.locator.TopologyMetaData;
 import org.lealone.aose.router.P2pRouter;
 import org.lealone.aose.server.P2pServer;
+import org.lealone.aose.storage.AOBalancer;
 import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.StorageMapBuilder;
 import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
 import org.lealone.replication.ReplicationSession;
+import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
@@ -89,7 +92,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         DataUtils.checkArgument(config != null, "The config may not be null");
 
         this.readOnly = config.containsKey("readOnly");
-        this.isShardingMode = config.containsKey("isShardingMode");
+        boolean isShardingMode = config.containsKey("isShardingMode");
         this.config = config;
         this.aoStorage = aoStorage;
         this.db = (Database) config.get("db");
@@ -101,16 +104,20 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             setLastKey(lastKey());
         } else {
             root = BTreePage.createEmpty(this);
-            if (isShardingMode) {
-                String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
-                DataUtils.checkArgument(initReplicationEndpoints != null,
-                        "The initReplicationEndpoints may not be null");
+            String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
+            // DataUtils.checkArgument(initReplicationEndpoints != null, "The initReplicationEndpoints may not be
+            // null");
+            if (isShardingMode && initReplicationEndpoints != null) {
                 String[] replicationEndpoints = StringUtils.arraySplit(initReplicationEndpoints, '&');
                 root.replicationHostIds = Arrays.asList(replicationEndpoints);
                 // 强制把replicationHostIds持久化
                 storage.forceSave();
+            } else {
+                isShardingMode = false;
             }
         }
+
+        this.isShardingMode = isShardingMode;
     }
 
     @Override
@@ -256,13 +263,34 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private void moveLeafPage(Object splitKey, BTreePage rightChildPage) {
-        if (isShardingMode && rightChildPage.replicationHostIds.get(0).equals(P2pServer.instance.getLocalHostId())) {
-            LealoneExecutorService stage = StageManager.getStage(Stage.REQUEST_RESPONSE);
-            stage.execute(() -> {
+        if (isShardingMode) {
+            AOBalancer.addTask(() -> {
                 Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
                 List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
                 List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db,
                         new HashSet<>(oldReplicationEndpoints), candidateEndpoints);
+
+                Session session = db.getLastSession();
+
+                LeafPageMovePlan leafPageMovePlan = null;
+                if (!oldReplicationEndpoints.isEmpty()) {
+                    ReplicationSession rs = P2pRouter.createReplicationSession(session, oldReplicationEndpoints);
+                    try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+                        ByteBuffer keyBuffer = k.write(keyType, splitKey);
+                        LeafPageMovePlan plan = new LeafPageMovePlan(P2pServer.instance.getLocalHostId(),
+                                newReplicationEndpoints, keyBuffer);
+                        leafPageMovePlan = c.prepareMoveLeafPage(getName(), plan);
+                    }
+                }
+
+                if (leafPageMovePlan == null)
+                    return;
+
+                if (!leafPageMovePlan.moverHostId.equals(P2pServer.instance.getLocalHostId())) {
+                    rightChildPage.replicationHostIds = leafPageMovePlan.getReplicationEndpoints();
+                    return;
+                }
+
                 NetEndpoint localEndpoint = getLocalEndpoint();
                 oldReplicationEndpoints.remove(localEndpoint);
                 newReplicationEndpoints.remove(localEndpoint);
@@ -272,35 +300,44 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 otherEndpoints.removeAll(newReplicationEndpoints);
                 otherEndpoints.remove(localEndpoint);
 
-                Session session = db.getLastSession();
-
                 // 移动右边的leafPage到新的复制节点(Page中包含数据)
                 if (!newReplicationEndpoints.isEmpty()) {
-                    rightChildPage.replicationHostIds.clear();
+                    rightChildPage.replicationHostIds = New.arrayList();
                     ReplicationSession rs = P2pRouter.createReplicationSession(session, newReplicationEndpoints,
                             rightChildPage.replicationHostIds, true);
-                    moveLeafPage(splitKey, rightChildPage, rs, false);
+                    moveLeafPage(leafPageMovePlan, rightChildPage, rs, false);
                 }
 
                 // 移动右边的leafPage到其他节点(Page中不包含数据，只包含这个Page各数据副本所在节点信息)
                 if (!otherEndpoints.isEmpty()) {
                     ReplicationSession rs = P2pRouter.createReplicationSession(session, otherEndpoints, true);
-                    moveLeafPage(splitKey, rightChildPage, rs, true);
+                    moveLeafPage(leafPageMovePlan, rightChildPage, rs, true);
                 }
             });
         }
     }
 
-    private void moveLeafPage(Object splitKey, BTreePage rightChildPage, ReplicationSession rs, boolean remote) {
-        try (WriteBuffer k = WriteBuffer.create();
-                WriteBuffer p = WriteBuffer.create();
-                StorageCommand c = rs.createStorageCommand()) {
-            ByteBuffer keyBuffer = k.write(keyType, splitKey);
+    private void moveLeafPage(LeafPageMovePlan leafPageMovePlan, BTreePage rightChildPage, ReplicationSession rs,
+            boolean remote) {
+        try (WriteBuffer p = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+            rightChildPage.replicationHostIds = leafPageMovePlan.getReplicationEndpoints();
             rightChildPage.writeLeaf(p, remote);
             ByteBuffer pageBuffer = p.getAndFlipBuffer();
-            c.moveLeafPage(getName(), keyBuffer, pageBuffer);
+            leafPageMovePlan.splitKey.flip();
+            c.moveLeafPage(getName(), leafPageMovePlan.splitKey, pageBuffer);
         }
     }
+
+    // private void moveLeafPage(Object splitKey, BTreePage rightChildPage, ReplicationSession rs, boolean remote) {
+    // try (WriteBuffer k = WriteBuffer.create();
+    // WriteBuffer p = WriteBuffer.create();
+    // StorageCommand c = rs.createStorageCommand()) {
+    // ByteBuffer keyBuffer = k.write(keyType, splitKey);
+    // rightChildPage.writeLeaf(p, remote);
+    // ByteBuffer pageBuffer = p.getAndFlipBuffer();
+    // c.moveLeafPage(getName(), keyBuffer, pageBuffer);
+    // }
+    // }
 
     /**
      * Use the new root page from now on.
@@ -840,5 +877,19 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             ByteBuffer valueBuffer = v.write(valueType, value);
             return c.executeAppend(null, getName(), valueBuffer, null);
         }
+    }
+
+    @Override
+    public synchronized LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
+        Object key = keyType.read(leafPageMovePlan.splitKey.slice());
+        BTreePage p = root.binarySearchLeafPage(root, key);
+        if (p.isLeaf()) {
+            // 老的index < 新的index时，说明上一次没有达成一致，进行第二次协商
+            if (p.leafPageMovePlan == null || p.leafPageMovePlan.getIndex() < leafPageMovePlan.getIndex()) {
+                p.leafPageMovePlan = leafPageMovePlan;
+            }
+            return p.leafPageMovePlan;
+        }
+        return null;
     }
 }

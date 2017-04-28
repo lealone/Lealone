@@ -30,6 +30,7 @@ public class AOStorageEngine extends StorageEngineBase {
     public static final String NAME = "AOSE";
 
     private PageReader pageReader;
+    private AOBalancer aoBalancer;
 
     public AOStorageEngine() {
         super(NAME);
@@ -48,6 +49,9 @@ public class AOStorageEngine extends StorageEngineBase {
 
         pageReader = new PageReader();
         pageReader.start();
+
+        aoBalancer = new AOBalancer();
+        aoBalancer.start();
     }
 
     @Override

@@ -215,4 +215,9 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
         return map.replicationAppend(session, value, valueType);
     }
 
+    @Override
+    public LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
+        return map.prepareMoveLeafPage(leafPageMovePlan);
+    }
+
 }

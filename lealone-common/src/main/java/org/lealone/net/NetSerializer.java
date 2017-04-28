@@ -15,26 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage;
+package org.lealone.net;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.lealone.db.Command;
-import org.lealone.db.CommandUpdateResult;
+public interface NetSerializer {
 
-public interface StorageCommand extends Command, AutoCloseable {
+    NetSerializer writeInt(int x) throws IOException;
 
-    Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value);
+    NetSerializer writeString(String s) throws IOException;
 
-    Object executeGet(String mapName, ByteBuffer key);
+    NetSerializer writeByteBuffer(ByteBuffer data) throws IOException;
 
-    LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan);
+    int readInt() throws IOException;
 
-    void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page);
+    String readString() throws IOException;
 
-    void removeLeafPage(String mapName, ByteBuffer key);
-
-    Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            CommandUpdateResult commandUpdateResult);
+    ByteBuffer readByteBuffer() throws IOException;
 
 }

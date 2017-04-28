@@ -40,6 +40,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.DataType;
@@ -722,6 +723,19 @@ public class AsyncConnection implements Handler<Buffer> {
             } else {
                 transfer.writeByteBuffer(null);
             }
+            transfer.flush();
+            break;
+        }
+        case Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE: {
+            int sessionId = transfer.readInt();
+            String mapName = transfer.readString();
+            LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(transfer);
+            Session session = getSession(sessionId);
+
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            leafPageMovePlan = map.prepareMoveLeafPage(leafPageMovePlan);
+            writeResponseHeader(transfer, session, id);
+            leafPageMovePlan.serialize(transfer);
             transfer.flush();
             break;
         }

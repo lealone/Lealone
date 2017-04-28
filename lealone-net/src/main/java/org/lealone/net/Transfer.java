@@ -64,7 +64,7 @@ import io.vertx.core.net.NetSocket;
  * @author H2 Group
  * @author zhh
  */
-public class Transfer {
+public class Transfer implements NetSerializer {
 
     private static final int BUFFER_SIZE = 4 * 1024;
     private static final int LOB_MAGIC = 0x1234;
@@ -255,6 +255,7 @@ public class Transfer {
      * @param x the value
      * @return itself
      */
+    @Override
     public Transfer writeInt(int x) throws IOException {
         out.writeInt(x);
         return this;
@@ -265,6 +266,7 @@ public class Transfer {
      *
      * @return the value
      */
+    @Override
     public int readInt() throws IOException {
         return in.readInt();
     }
@@ -335,6 +337,7 @@ public class Transfer {
      * @param s the value
      * @return itself
      */
+    @Override
     public Transfer writeString(String s) throws IOException {
         if (s == null) {
             out.writeInt(-1);
@@ -353,6 +356,7 @@ public class Transfer {
      *
      * @return the value
      */
+    @Override
     public String readString() throws IOException {
         int len = in.readInt();
         if (len == -1) {
@@ -373,6 +377,7 @@ public class Transfer {
      * @param data the value
      * @return itself
      */
+    @Override
     public Transfer writeByteBuffer(ByteBuffer data) throws IOException {
         if (data == null) {
             writeInt(-1);
@@ -423,6 +428,7 @@ public class Transfer {
      *
      * @return the value
      */
+    @Override
     public ByteBuffer readByteBuffer() throws IOException {
         byte[] b = readBytes();
         if (b == null)

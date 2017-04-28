@@ -22,6 +22,7 @@ import java.util.ArrayList;
 
 import org.lealone.db.result.Result;
 import org.lealone.db.value.ValueLong;
+import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.WriteBuffer;
@@ -81,6 +82,12 @@ public class ServerCommand extends CommandBase implements StorageCommand {
     @Override
     public Result getMetaData() {
         return null;
+    }
+
+    @Override
+    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
+        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        return map.prepareMoveLeafPage(leafPageMovePlan);
     }
 
     @Override

@@ -97,6 +97,11 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     }
 
     @Override
+    public LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
+        throw DbException.getUnsupportedException("prepareMoveLeafPage");
+    }
+
+    @Override
     public List<NetEndpoint> getReplicationEndpoints(Object key) {
         throw DbException.getUnsupportedException("getReplicationEndpoints");
     }

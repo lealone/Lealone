@@ -17,19 +17,18 @@
  */
 package org.lealone.aose.storage;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 
-public class PageReader extends Thread {
+public class AOBalancer extends Thread {
 
     private static final Logger logger = LoggerFactory.getLogger(AOBalancer.class);
-    public static final LinkedBlockingQueue<Callable<?>> readPageTaskQueue = new LinkedBlockingQueue<>();
+    private static final LinkedBlockingQueue<Runnable> taskQueue = new LinkedBlockingQueue<>();
 
-    public PageReader() {
-        super("PageReader");
+    public AOBalancer() {
+        super("AOBalancer");
         setDaemon(true);
     }
 
@@ -37,11 +36,16 @@ public class PageReader extends Thread {
     public void run() {
         while (true) {
             try {
-                Callable<?> call = readPageTaskQueue.take();
-                call.call();
+                Runnable task = taskQueue.take();
+                task.run();
             } catch (Exception e) {
                 logger.warn("Failed to run task", e);
             }
         }
     }
+
+    public static void addTask(Runnable task) {
+        taskQueue.add(task);
+    }
+
 }

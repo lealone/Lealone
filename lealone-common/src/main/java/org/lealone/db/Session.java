@@ -76,8 +76,9 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_STORAGE_GET = 170;
     public static final int COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET = 171;
 
-    public static final int COMMAND_STORAGE_MOVE_LEAF_PAGE = 180;
-    public static final int COMMAND_STORAGE_REMOVE_LEAF_PAGE = 181;
+    public static final int COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE = 180;
+    public static final int COMMAND_STORAGE_MOVE_LEAF_PAGE = 181;
+    public static final int COMMAND_STORAGE_REMOVE_LEAF_PAGE = 182;
 
     public static final int COMMAND_STORAGE_MESSAGE = 10000;
 

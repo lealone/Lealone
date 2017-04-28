@@ -32,6 +32,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.Transfer;
+import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageCommand;
 
 /**
@@ -695,6 +696,34 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         } catch (IOException e) {
             trace.error(e, "replicationRollback");
         }
+    }
+
+    @Override
+    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
+        int id = session.getNextId();
+        try {
+            session.traceOperation("COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE", id);
+            transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE);
+            transfer.writeInt(session.getSessionId()).writeString(mapName);
+            leafPageMovePlan.serialize(transfer);
+
+            AsyncCallback<LeafPageMovePlan> ac = new AsyncCallback<LeafPageMovePlan>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        result = LeafPageMovePlan.deserialize(transfer);
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
+            return ac.getResult();
+        } catch (Exception e) {
+            session.handleException(e);
+        }
+        return null;
     }
 
 }

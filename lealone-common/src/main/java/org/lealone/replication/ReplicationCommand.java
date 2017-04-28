@@ -19,9 +19,12 @@ package org.lealone.replication;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Random;
+import java.util.concurrent.Future;
 
 import org.lealone.common.util.New;
 import org.lealone.db.Command;
@@ -33,6 +36,7 @@ import org.lealone.replication.exceptions.ReadFailureException;
 import org.lealone.replication.exceptions.ReadTimeoutException;
 import org.lealone.replication.exceptions.WriteFailureException;
 import org.lealone.replication.exceptions.WriteTimeoutException;
+import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageCommand;
 
 public class ReplicationCommand extends CommandBase implements StorageCommand {
@@ -85,7 +89,6 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         int n = session.n;
         int r = session.r;
         r = 1; // 使用Write all read one模式
-        final ArrayList<Runnable> commands = New.arrayList(r);
         final HashSet<Command> seen = new HashSet<>();
         final ReadResponseHandler readResponseHandler = new ReadResponseHandler(n);
         final ArrayList<Exception> exceptions = New.arrayList(1);
@@ -114,11 +117,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                     }
                 }
             };
-            commands.add(command);
-        }
-
-        for (int i = 0; i < r; i++) {
-            ThreadPool.executor.submit(commands.get(i));
+            ThreadPool.executor.submit(command);
         }
 
         try {
@@ -144,7 +143,6 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         int n = session.n;
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Runnable> commands = New.arrayList(n);
         final ArrayList<Exception> exceptions = New.arrayList(1);
         final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w,
                 session.isAutoCommit(), this.commands);
@@ -157,17 +155,12 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                     try {
                         writeResponseHandler.response(c.executeUpdate(rn, commandUpdateResult));
                     } catch (Exception e) {
-                        if (writeResponseHandler != null)
-                            writeResponseHandler.onFailure();
+                        writeResponseHandler.onFailure();
                         exceptions.add(e);
                     }
                 }
             };
-            commands.add(command);
-        }
-
-        for (int i = 0; i < n; i++) {
-            ThreadPool.executor.submit(commands.get(i));
+            ThreadPool.executor.submit(command);
         }
 
         try {
@@ -211,7 +204,6 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         int n = session.n;
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Runnable> commands = New.arrayList(n);
         final ArrayList<Exception> exceptions = New.arrayList(1);
 
         for (int i = 0; i < n; i++) {
@@ -222,17 +214,12 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                     try {
                         writeResponseHandler.response(c.executePut(rn, mapName, key.slice(), value.slice()));
                     } catch (Exception e) {
-                        if (writeResponseHandler != null)
-                            writeResponseHandler.onFailure();
+                        writeResponseHandler.onFailure();
                         exceptions.add(e);
                     }
                 }
             };
-            commands.add(command);
-        }
-
-        for (int i = 0; i < n; i++) {
-            ThreadPool.executor.submit(commands.get(i));
+            ThreadPool.executor.submit(command);
         }
 
         try {
@@ -255,7 +242,6 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         int n = session.n;
         int r = session.r;
         r = 1; // 使用Write all read one模式
-        final ArrayList<Runnable> commands = New.arrayList(r);
         final HashSet<Command> seen = new HashSet<>();
         final ReadResponseHandler readResponseHandler = new ReadResponseHandler(n);
         final ArrayList<Exception> exceptions = New.arrayList(1);
@@ -284,11 +270,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                     }
                 }
             };
-            commands.add(command);
-        }
-
-        for (int i = 0; i < r; i++) {
-            ThreadPool.executor.submit(commands.get(i));
+            ThreadPool.executor.submit(command);
         }
 
         try {
@@ -303,7 +285,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
     @Override
     public void moveLeafPage(final String mapName, final ByteBuffer splitKey, final ByteBuffer page) {
         int n = session.n;
-        final ArrayList<Runnable> commands = New.arrayList(n);
+        ArrayList<Future<?>> futures = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
             final StorageCommand c = (StorageCommand) this.commands[i];
             Runnable command = new Runnable() {
@@ -312,18 +294,21 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                     c.moveLeafPage(mapName, splitKey.slice(), page.slice());
                 }
             };
-            commands.add(command);
+            futures.add(ThreadPool.executor.submit(command));
         }
-
-        for (int i = 0; i < n; i++) {
-            ThreadPool.executor.submit(commands.get(i));
+        for (Future<?> f : futures) {
+            try {
+                f.get();
+            } catch (Exception e) {
+                // ignore
+            }
         }
     }
 
     @Override
     public void removeLeafPage(final String mapName, final ByteBuffer key) {
         int n = session.n;
-        final ArrayList<Runnable> commands = New.arrayList(n);
+        ArrayList<Future<?>> futures = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
             final StorageCommand c = (StorageCommand) this.commands[i];
             Runnable command = new Runnable() {
@@ -332,11 +317,14 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                     c.removeLeafPage(mapName, key.slice());
                 }
             };
-            commands.add(command);
+            futures.add(ThreadPool.executor.submit(command));
         }
-
-        for (int i = 0; i < n; i++) {
-            ThreadPool.executor.submit(commands.get(i));
+        for (Future<?> f : futures) {
+            try {
+                f.get();
+            } catch (Exception e) {
+                // ignore
+            }
         }
     }
 
@@ -350,7 +338,6 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         int n = session.n;
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Runnable> commands = New.arrayList(n);
         final ArrayList<Exception> exceptions = New.arrayList(1);
         final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w,
                 session.isAutoCommit(), this.commands);
@@ -363,17 +350,12 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                     try {
                         writeResponseHandler.response(c.executeAppend(rn, mapName, value.slice(), commandUpdateResult));
                     } catch (Exception e) {
-                        if (writeResponseHandler != null)
-                            writeResponseHandler.onFailure();
+                        writeResponseHandler.onFailure();
                         exceptions.add(e);
                     }
                 }
             };
-            commands.add(command);
-        }
-
-        for (int i = 0; i < n; i++) {
-            ThreadPool.executor.submit(commands.get(i));
+            ThreadPool.executor.submit(command);
         }
 
         try {
@@ -390,5 +372,71 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                 throw e;
             }
         }
+    }
+
+    @Override
+    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
+        return prepareMoveLeafPage(mapName, leafPageMovePlan, 3);
+    }
+
+    private LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan, int tries) {
+        final int n = session.n;
+        final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
+        final ArrayList<Exception> exceptions = New.arrayList(1);
+        final ArrayList<LeafPageMovePlan> plans = New.arrayList(n);
+
+        for (int i = 0; i < n; i++) {
+            final StorageCommand c = (StorageCommand) this.commands[i];
+            Runnable command = new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        LeafPageMovePlan plan = c.prepareMoveLeafPage(mapName, leafPageMovePlan);
+                        plans.add(plan);
+                        writeResponseHandler.response(plan);
+                    } catch (Exception e) {
+                        writeResponseHandler.onFailure();
+                        exceptions.add(e);
+                    }
+                }
+            };
+            ThreadPool.executor.submit(command);
+        }
+
+        try {
+            writeResponseHandler.await(session.rpcTimeoutMillis);
+
+            LeafPageMovePlan plan = getValidPlan(plans, n);
+            if (plan == null && --tries > 0) {
+                leafPageMovePlan.incrementIndex();
+                return prepareMoveLeafPage(mapName, leafPageMovePlan, tries);
+            }
+            return plan;
+        } catch (WriteTimeoutException | WriteFailureException e) {
+            if (!exceptions.isEmpty())
+                e.initCause(exceptions.get(0));
+            throw e;
+        }
+    }
+
+    private LeafPageMovePlan getValidPlan(ArrayList<LeafPageMovePlan> plans, int n) {
+        HashMap<String, ArrayList<LeafPageMovePlan>> groupPlans = new HashMap<>(1);
+        for (LeafPageMovePlan p : plans) {
+            ArrayList<LeafPageMovePlan> group = groupPlans.get(p.moverHostId);
+            if (group == null) {
+                group = new ArrayList<>(n);
+                groupPlans.put(p.moverHostId, group);
+            }
+            group.add(p);
+        }
+        int w = n / 2 + 1;
+        LeafPageMovePlan validPlan = null;
+        for (Entry<String, ArrayList<LeafPageMovePlan>> e : groupPlans.entrySet()) {
+            ArrayList<LeafPageMovePlan> group = e.getValue();
+            if (group.size() >= w) {
+                validPlan = group.get(0);
+            }
+        }
+        return validPlan;
     }
 }

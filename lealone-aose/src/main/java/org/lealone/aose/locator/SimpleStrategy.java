@@ -56,6 +56,16 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
             if (candidateEndpoints.contains(ep) && !oldReplicationEndpoints.contains(ep) && !endpoints.contains(ep))
                 endpoints.add(ep);
         }
+
+        // 不够时，从原来的复制节点中取
+        if (endpoints.size() < replicas) {
+            Iterator<NetEndpoint> old = oldReplicationEndpoints.iterator();
+            while (endpoints.size() < replicas && old.hasNext()) {
+                NetEndpoint ep = old.next();
+                if (!endpoints.contains(ep))
+                    endpoints.add(ep);
+            }
+        }
         return endpoints;
     }
 
