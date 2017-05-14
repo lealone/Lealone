@@ -220,4 +220,9 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
         return map.prepareMoveLeafPage(leafPageMovePlan);
     }
 
+    @Override
+    public StorageMap<Object, Object> getRawMap() {
+        return map.getRawMap();
+    }
+
 }

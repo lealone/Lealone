@@ -651,8 +651,12 @@ public class AsyncConnection implements Handler<Buffer> {
             // if (operation == Session.COMMAND_STORAGE_REPLICATION_PUT)
             // session.setReplicationName(transfer.readString());
             session.setReplicationName(transfer.readString());
+            boolean raw = transfer.readBoolean();
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            if (raw) {
+                map = map.getRawMap();
+            }
 
             DataType valueType = map.getValueType();
             Object k = map.getKeyType().read(ByteBuffer.wrap(key));

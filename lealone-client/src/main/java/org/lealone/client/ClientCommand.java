@@ -443,7 +443,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value) {
+    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
         byte[] bytes = null;
         int id = session.getNextId();
         try {
@@ -460,7 +460,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_PUT);
             }
             transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
-            transfer.writeString(replicationName);
+            transfer.writeString(replicationName).writeBoolean(raw);
 
             AtomicReference<byte[]> resultRef = new AtomicReference<>();
             AsyncCallback<Void> ac = new AsyncCallback<Void>() {

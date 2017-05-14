@@ -121,4 +121,10 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         throw DbException.getUnsupportedException("append");
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public StorageMap<Object, Object> getRawMap() {
+        return (StorageMap<Object, Object>) this;
+    }
+
 }

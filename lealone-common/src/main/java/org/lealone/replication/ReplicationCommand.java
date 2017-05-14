@@ -196,11 +196,12 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value) {
-        return executePut(mapName, key, value, 1);
+    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
+        return executePut(mapName, key, value, raw, 1);
     }
 
-    private Object executePut(final String mapName, final ByteBuffer key, final ByteBuffer value, int tries) {
+    private Object executePut(final String mapName, final ByteBuffer key, final ByteBuffer value, final boolean raw,
+            int tries) {
         int n = session.n;
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
@@ -212,7 +213,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
                 @Override
                 public void run() {
                     try {
-                        writeResponseHandler.response(c.executePut(rn, mapName, key.slice(), value.slice()));
+                        writeResponseHandler.response(c.executePut(rn, mapName, key.slice(), value.slice(), raw));
                     } catch (Exception e) {
                         writeResponseHandler.onFailure();
                         exceptions.add(e);
@@ -228,7 +229,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
             if (tries < session.maxRries) {
                 key.rewind();
                 value.rewind();
-                return executePut(mapName, key, value, ++tries);
+                return executePut(mapName, key, value, raw, ++tries);
             } else {
                 if (!exceptions.isEmpty())
                     e.initCause(exceptions.get(0));

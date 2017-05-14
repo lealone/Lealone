@@ -103,9 +103,12 @@ public class ServerCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value) {
+    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        if (raw) {
+            map = map.getRawMap();
+        }
         Object result = map.put(map.getKeyType().read(key), map.getValueType().read(value));
 
         if (result == null)

@@ -217,13 +217,46 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private Object put(BTreePage p, Object key, Object value) {
         int index = p.binarySearch(key);
         if (p.isLeaf()) {
-            if (index < 0) {
-                index = -index - 1;
-                p.insertLeaf(index, key, value);
-                setLastKey(key);
-                return null;
+            boolean containsLocalEndpoint;
+            Object returnValue = null;
+            // 本地后台批量put时(比如通过BufferedMap执行)，可能会发生leafPage切割
+            // 这时，复制节点就发生改变了，需要重定向到新的复制节点
+            if (p.leafPageMovePlan != null) {
+                if (p.leafPageMovePlan.moverHostId.equals(P2pServer.instance.getLocalHostId())) {
+                    int size = p.leafPageMovePlan.replicationEndpoints.size();
+                    List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
+                    replicationEndpoints.addAll(p.leafPageMovePlan.replicationEndpoints);
+                    containsLocalEndpoint = replicationEndpoints.remove(getLocalEndpoint());
+
+                    ReplicationSession rs = P2pRouter.createReplicationSession(db.getLastSession(),
+                            replicationEndpoints);
+                    try (WriteBuffer k = WriteBuffer.create();
+                            WriteBuffer v = WriteBuffer.create();
+                            StorageCommand c = rs.createStorageCommand()) {
+                        ByteBuffer keyBuffer = k.write(keyType, key);
+                        ByteBuffer valueBuffer = v.write(valueType, value);
+                        byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer, true);
+                        if (oldValue != null) {
+                            returnValue = valueType.read(ByteBuffer.wrap(oldValue));
+                        }
+                    }
+                } else {
+                    containsLocalEndpoint = false;
+                }
+            } else {
+                containsLocalEndpoint = true;
             }
-            return p.setValue(index, value);
+            if (containsLocalEndpoint) {
+                if (index < 0) {
+                    index = -index - 1;
+                    p.insertLeaf(index, key, value);
+                    setLastKey(key);
+                    return null;
+                }
+                return p.setValue(index, value);
+            } else {
+                return returnValue;
+            }
         }
         // p is a node
         if (index < 0) {
@@ -286,6 +319,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 if (leafPageMovePlan == null)
                     return;
 
+                rightChildPage.leafPageMovePlan = leafPageMovePlan;
+
                 if (!leafPageMovePlan.moverHostId.equals(P2pServer.instance.getLocalHostId())) {
                     rightChildPage.replicationHostIds = leafPageMovePlan.getReplicationEndpoints();
                     return;
@@ -327,17 +362,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             c.moveLeafPage(getName(), leafPageMovePlan.splitKey, pageBuffer);
         }
     }
-
-    // private void moveLeafPage(Object splitKey, BTreePage rightChildPage, ReplicationSession rs, boolean remote) {
-    // try (WriteBuffer k = WriteBuffer.create();
-    // WriteBuffer p = WriteBuffer.create();
-    // StorageCommand c = rs.createStorageCommand()) {
-    // ByteBuffer keyBuffer = k.write(keyType, splitKey);
-    // rightChildPage.writeLeaf(p, remote);
-    // ByteBuffer pageBuffer = p.getAndFlipBuffer();
-    // c.moveLeafPage(getName(), keyBuffer, pageBuffer);
-    // }
-    // }
 
     /**
      * Use the new root page from now on.
@@ -849,7 +873,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
             ByteBuffer valueBuffer = v.write(valueType, value);
-            byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer);
+            byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer, false);
             if (oldValue == null)
                 return null;
             return valueType.read(ByteBuffer.wrap(oldValue));

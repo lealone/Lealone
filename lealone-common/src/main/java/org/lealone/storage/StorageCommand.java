@@ -24,7 +24,7 @@ import org.lealone.db.CommandUpdateResult;
 
 public interface StorageCommand extends Command, AutoCloseable {
 
-    Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value);
+    Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw);
 
     Object executeGet(String mapName, ByteBuffer key);
 

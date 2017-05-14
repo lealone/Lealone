@@ -766,6 +766,7 @@ public class BTreePage {
         BTreePage newPage = create(map, keys, values, children, totalCount, getMemory());
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
+        newPage.leafPageMovePlan = leafPageMovePlan;
         // mark the old as deleted
         removePage();
         return newPage;
