@@ -295,11 +295,20 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return candidateEndpoints;
     }
 
-    private void moveLeafPage(Object splitKey, BTreePage rightChildPage) {
+    // 必需同步
+    private synchronized BTreePage setLeafPageMovePlan(Object splitKey, LeafPageMovePlan leafPageMovePlan) {
+        BTreePage page = root.binarySearchLeafPage(root, splitKey);
+        if (page != null) {
+            page.leafPageMovePlan = leafPageMovePlan;
+        }
+        return page;
+    }
+
+    private void moveLeafPage(final Object splitKey, final BTreePage oldRightChildPage) {
         if (isShardingMode) {
             AOBalancer.addTask(() -> {
                 Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
-                List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(rightChildPage);
+                List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(oldRightChildPage);
                 List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db,
                         new HashSet<>(oldReplicationEndpoints), candidateEndpoints);
 
@@ -319,7 +328,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 if (leafPageMovePlan == null)
                     return;
 
-                rightChildPage.leafPageMovePlan = leafPageMovePlan;
+                // 重新按splitKey找到rightChildPage，因为经过前面的操作后，
+                // 可能rightChildPage已经有新数据了，如果只移动老的，会丢失数据
+                BTreePage rightChildPage = setLeafPageMovePlan(splitKey, leafPageMovePlan);
 
                 if (!leafPageMovePlan.moverHostId.equals(P2pServer.instance.getLocalHostId())) {
                     rightChildPage.replicationHostIds = leafPageMovePlan.getReplicationEndpoints();
@@ -355,10 +366,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private void moveLeafPage(LeafPageMovePlan leafPageMovePlan, BTreePage rightChildPage, ReplicationSession rs,
             boolean remote) {
         try (WriteBuffer p = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
-            rightChildPage.replicationHostIds = leafPageMovePlan.getReplicationEndpoints();
             rightChildPage.writeLeaf(p, remote);
             ByteBuffer pageBuffer = p.getAndFlipBuffer();
-            leafPageMovePlan.splitKey.flip();
             c.moveLeafPage(getName(), leafPageMovePlan.splitKey, pageBuffer);
         }
     }

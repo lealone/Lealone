@@ -436,6 +436,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
             ArrayList<LeafPageMovePlan> group = e.getValue();
             if (group.size() >= w) {
                 validPlan = group.get(0);
+                break;
             }
         }
         return validPlan;

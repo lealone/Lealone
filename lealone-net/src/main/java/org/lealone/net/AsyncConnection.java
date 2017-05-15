@@ -752,8 +752,8 @@ public class AsyncConnection implements Handler<Buffer> {
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
             map.addLeafPage(splitKey, page);
-            writeResponseHeader(transfer, session, id);
-            transfer.flush();
+            // writeResponseHeader(transfer, session, id);
+            // transfer.flush();
             break;
         }
         case Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE: {
