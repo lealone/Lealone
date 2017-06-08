@@ -3007,7 +3007,7 @@ public class Parser implements SQLParser {
                 }
                 i++;
             }
-            currentToken = StringUtils.fromCacheOrNew(sqlCommand.substring(start, i));
+            currentToken = StringUtils.cache(sqlCommand.substring(start, i));
             currentTokenType = getTokenType(currentToken);
             parseIndex = i;
             return;
@@ -3029,7 +3029,7 @@ public class Parser implements SQLParser {
                 }
                 i++;
             }
-            currentToken = StringUtils.fromCacheOrNew(result);
+            currentToken = StringUtils.cache(result);
             parseIndex = i;
             currentTokenQuoted = true;
             currentTokenType = IDENTIFIER;
@@ -3124,8 +3124,7 @@ public class Parser implements SQLParser {
             }
             currentToken = "'";
             checkLiterals(true);
-            currentValue = ValueString.get(StringUtils.fromCacheOrNew(result),
-                    database.getMode().treatEmptyStringsAsNull);
+            currentValue = ValueString.get(StringUtils.cache(result), database.getMode().treatEmptyStringsAsNull);
             parseIndex = i;
             currentTokenType = VALUE;
             return;
@@ -3139,8 +3138,7 @@ public class Parser implements SQLParser {
             result = sqlCommand.substring(begin, i);
             currentToken = "'";
             checkLiterals(true);
-            currentValue = ValueString.get(StringUtils.fromCacheOrNew(result),
-                    database.getMode().treatEmptyStringsAsNull);
+            currentValue = ValueString.get(StringUtils.cache(result), database.getMode().treatEmptyStringsAsNull);
             parseIndex = i;
             currentTokenType = VALUE;
             return;
@@ -4551,7 +4549,7 @@ public class Parser implements SQLParser {
             Query withQuery = parseSelect();
             read(")");
             withQuery.prepare();
-            querySQL = StringUtils.fromCacheOrNew(withQuery.getPlanSQL());
+            querySQL = StringUtils.cache(withQuery.getPlanSQL());
         } finally {
             session.removeLocalTempTable(recursiveTable);
         }
@@ -4580,7 +4578,7 @@ public class Parser implements SQLParser {
             String[] cols = parseColumnList();
             command.setColumnNames(cols);
         }
-        String select = StringUtils.fromCacheOrNew(sqlCommand.substring(parseIndex));
+        String select = StringUtils.cache(sqlCommand.substring(parseIndex));
         read("AS");
         try {
             Query query = parseSelect();
