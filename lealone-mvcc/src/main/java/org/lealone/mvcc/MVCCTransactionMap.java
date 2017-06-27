@@ -16,7 +16,7 @@ import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
@@ -35,7 +35,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     static class MVCCReplicationMap<K, V> extends MVCCTransactionMap<K, V> {
 
         private final Session session;
-        private final DataType valueType;
+        private final StorageDataType valueType;
 
         MVCCReplicationMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
             super(transaction, map);
@@ -80,7 +80,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     }
 
     @Override
-    public DataType getValueType() {
+    public StorageDataType getValueType() {
         return ((TransactionalValueType) map.getValueType()).valueType;
     }
 

@@ -6,11 +6,15 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.DataUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the DOUBLE data type.
@@ -43,25 +47,30 @@ public class ValueDouble extends Value {
         this.value = value;
     }
 
+    @Override
     public Value add(Value v) {
         ValueDouble v2 = (ValueDouble) v;
         return ValueDouble.get(value + v2.value);
     }
 
+    @Override
     public Value subtract(Value v) {
         ValueDouble v2 = (ValueDouble) v;
         return ValueDouble.get(value - v2.value);
     }
 
+    @Override
     public Value negate() {
         return ValueDouble.get(-value);
     }
 
+    @Override
     public Value multiply(Value v) {
         ValueDouble v2 = (ValueDouble) v;
         return ValueDouble.get(value * v2.value);
     }
 
+    @Override
     public Value divide(Value v) {
         ValueDouble v2 = (ValueDouble) v;
         if (v2.value == 0.0) {
@@ -70,6 +79,7 @@ public class ValueDouble extends Value {
         return ValueDouble.get(value / v2.value);
     }
 
+    @Override
     public ValueDouble modulus(Value v) {
         ValueDouble other = (ValueDouble) v;
         if (other.value == 0) {
@@ -78,6 +88,7 @@ public class ValueDouble extends Value {
         return ValueDouble.get(value % other.value);
     }
 
+    @Override
     public String getSQL() {
         if (value == Double.POSITIVE_INFINITY) {
             return "POWER(0, -1)";
@@ -93,44 +104,54 @@ public class ValueDouble extends Value {
         return s;
     }
 
+    @Override
     public int getType() {
         return Value.DOUBLE;
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         ValueDouble v = (ValueDouble) o;
         return Double.compare(value, v.value);
     }
 
+    @Override
     public int getSignum() {
         return value == 0 ? 0 : (value < 0 ? -1 : 1);
     }
 
+    @Override
     public double getDouble() {
         return value;
     }
 
+    @Override
     public String getString() {
         return String.valueOf(value);
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int getScale() {
         return 0;
     }
 
+    @Override
     public int hashCode() {
         long hash = Double.doubleToLongBits(value);
         return (int) (hash ^ (hash >> 32));
     }
 
+    @Override
     public Object getObject() {
         return Double.valueOf(value);
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setDouble(parameterIndex, value);
     }
@@ -156,15 +177,80 @@ public class ValueDouble extends Value {
         return (ValueDouble) Value.cache(new ValueDouble(d));
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     public boolean equals(Object other) {
         if (!(other instanceof ValueDouble)) {
             return false;
         }
         return compareSecure((ValueDouble) other, null) == 0;
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return DOUBLE;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            Double a = (Double) aObj;
+            Double b = (Double) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 30;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            double x = (Double) obj;
+            write0(buff, x);
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            double x = v.getDouble();
+            write0(buff, x);
+        }
+
+        private void write0(DataBuffer buff, double x) {
+            long d = Double.doubleToLongBits(x);
+            if (d == DOUBLE_ZERO_BITS) {
+                buff.put((byte) TAG_DOUBLE_0);
+            } else if (d == DOUBLE_ONE_BITS) {
+                buff.put((byte) TAG_DOUBLE_1);
+            } else {
+                long value = Long.reverse(d);
+                if (value >= 0 && value <= DataUtils.COMPRESSED_VAR_LONG_MAX) {
+                    buff.put((byte) DOUBLE);
+                    buff.putVarLong(value);
+                } else {
+                    buff.put((byte) TAG_DOUBLE_FIXED);
+                    buff.putDouble(x);
+                }
+            }
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff, int tag) {
+            switch (tag) {
+            case TAG_DOUBLE_0:
+                return ValueDouble.get(0d);
+            case TAG_DOUBLE_1:
+                return ValueDouble.get(1d);
+            case TAG_DOUBLE_FIXED:
+                return ValueDouble.get(buff.getDouble());
+            }
+            return ValueDouble.get(Double.longBitsToDouble(Long.reverse(DataUtils.readVarLong(buff))));
+        }
+    };
 
 }

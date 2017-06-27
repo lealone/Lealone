@@ -16,7 +16,7 @@ import org.lealone.aose.storage.btree.BTreePage;
 import org.lealone.aose.storage.btree.CursorPos;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * An r-tree implementation. It uses the quadratic split algorithm.
@@ -32,7 +32,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     private boolean quadraticSplit;
 
-    public RTreeMap(String name, int dimensions, DataType valueType, Map<String, Object> config, AOStorage aoStorage) {
+    public RTreeMap(String name, int dimensions, StorageDataType valueType, Map<String, Object> config, AOStorage aoStorage) {
         super(name, new SpatialDataType(dimensions), valueType, config, aoStorage);
         this.keyType = (SpatialDataType) getKeyType();
     }
@@ -45,7 +45,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
      * @param valueType the value type
      * @return the map
      */
-    public static <V> RTreeMap<V> create(String name, int dimensions, DataType valueType, Map<String, Object> config,
+    public static <V> RTreeMap<V> create(String name, int dimensions, StorageDataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
         return new RTreeMap<V>(name, dimensions, valueType, config, aoStorage);
     }

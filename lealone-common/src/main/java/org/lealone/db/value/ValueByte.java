@@ -6,12 +6,15 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the BYTE data type.
@@ -35,6 +38,7 @@ public class ValueByte extends Value {
         this.value = value;
     }
 
+    @Override
     public Value add(Value v) {
         ValueByte other = (ValueByte) v;
         return checkRange(value + other.value);
@@ -47,24 +51,29 @@ public class ValueByte extends Value {
         return ValueByte.get((byte) x);
     }
 
+    @Override
     public int getSignum() {
         return Integer.signum(value);
     }
 
+    @Override
     public Value negate() {
         return checkRange(-(int) value);
     }
 
+    @Override
     public Value subtract(Value v) {
         ValueByte other = (ValueByte) v;
         return checkRange(value - other.value);
     }
 
+    @Override
     public Value multiply(Value v) {
         ValueByte other = (ValueByte) v;
         return checkRange(value * other.value);
     }
 
+    @Override
     public Value divide(Value v) {
         ValueByte other = (ValueByte) v;
         if (other.value == 0) {
@@ -73,6 +82,7 @@ public class ValueByte extends Value {
         return ValueByte.get((byte) (value / other.value));
     }
 
+    @Override
     public Value modulus(Value v) {
         ValueByte other = (ValueByte) v;
         if (other.value == 0) {
@@ -81,39 +91,48 @@ public class ValueByte extends Value {
         return ValueByte.get((byte) (value % other.value));
     }
 
+    @Override
     public String getSQL() {
         return getString();
     }
 
+    @Override
     public int getType() {
         return Value.BYTE;
     }
 
+    @Override
     public byte getByte() {
         return value;
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         ValueByte v = (ValueByte) o;
         return MathUtils.compareInt(value, v.value);
     }
 
+    @Override
     public String getString() {
         return String.valueOf(value);
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int hashCode() {
         return value;
     }
 
+    @Override
     public Object getObject() {
         return Byte.valueOf(value);
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setByte(parameterIndex, value);
     }
@@ -128,12 +147,50 @@ public class ValueByte extends Value {
         return (ValueByte) Value.cache(new ValueByte(i));
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     public boolean equals(Object other) {
         return other instanceof ValueByte && value == ((ValueByte) other).value;
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return BYTE;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            Byte a = (Byte) aObj;
+            Byte b = (Byte) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 0;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            buff.put((byte) Value.BYTE).put(((Byte) obj).byteValue());
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            buff.put((byte) Value.BYTE).put(v.getByte());
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff) {
+            return ValueByte.get(buff.get());
+        }
+
+    };
 
 }

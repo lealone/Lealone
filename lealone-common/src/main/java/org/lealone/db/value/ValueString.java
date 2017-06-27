@@ -6,12 +6,16 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
+import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.SysProperties;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the VARCHAR data type.
@@ -173,5 +177,66 @@ public class ValueString extends Value {
     protected ValueString getNew(String s) {
         return ValueString.get(s);
     }
+
+    public static final StringDataType type = new StringDataType();
+
+    public static final class StringDataType extends StorageDataTypeBase {
+
+        private StringDataType() {
+        }
+
+        @Override
+        public int getType() {
+            return STRING;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            return aObj.toString().compareTo(bObj.toString());
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 24 + 2 * obj.toString().length();
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            String s = (String) obj;
+            write0(buff, s);
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            String s = v.getString();
+            write0(buff, s);
+        }
+
+        private void write0(DataBuffer buff, String s) {
+            int len = s.length();
+            if (len <= 15) {
+                buff.put((byte) (TAG_STRING_0_15 + len));
+            } else {
+                buff.put((byte) STRING).putVarInt(len);
+            }
+            buff.putStringData(s, len);
+        }
+
+        @Override
+        public String read(ByteBuffer buff) {
+            return (String) super.read(buff);
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff, int tag) {
+            int len;
+            if (tag == STRING) {
+                len = DataUtils.readVarInt(buff);
+            } else {
+                len = tag - TAG_STRING_0_15;
+            }
+            return ValueString.get(DataUtils.readString(buff, len));
+        }
+    };
 
 }

@@ -22,8 +22,8 @@ import org.lealone.aose.storage.btree.BTreeMap;
 import org.lealone.aose.storage.rtree.RTreeMap;
 import org.lealone.aose.storage.rtree.SpatialKey;
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.type.StringDataType;
 import org.lealone.test.TestBase;
 
 public class AOStorageTest extends TestBase {
@@ -180,12 +180,12 @@ public class AOStorageTest extends TestBase {
         HashMap<String, String> parameters = new HashMap<>();
         parameters.put("isShardingMode", "true");
         parameters.put("initReplicationEndpoints", "a&b&c");
-        map = storage.openBTreeMap("testBTreeMap", StringDataType.INSTANCE, StringDataType.INSTANCE, parameters);
+        map = storage.openBTreeMap("testBTreeMap", ValueString.type, ValueString.type, parameters);
         p(storage.getMapNames());
     }
 
     void openRTreeMap() {
-        rmap = storage.openRTreeMap("testRTreeMap", StringDataType.INSTANCE, 3);
+        rmap = storage.openRTreeMap("testRTreeMap", ValueString.type, 3);
         p(storage.getMapNames());
     }
 

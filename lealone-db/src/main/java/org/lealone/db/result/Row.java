@@ -8,7 +8,6 @@ package org.lealone.db.result;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Constants;
-import org.lealone.db.Data;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -95,20 +94,6 @@ public class Row implements SearchRow {
     @Override
     public Value getValue(int i) {
         return i == -1 ? ValueLong.get(key) : (i == -2 ? rowKey : data[i]);
-    }
-
-    /**
-     * Get the number of bytes required for the data.
-     *
-     * @param dummy the template buffer
-     * @return the number of bytes
-     */
-    public int getByteCount(Data dummy) {
-        int size = 0;
-        for (Value v : data) {
-            size += dummy.getValueLen(v);
-        }
-        return size;
     }
 
     @Override

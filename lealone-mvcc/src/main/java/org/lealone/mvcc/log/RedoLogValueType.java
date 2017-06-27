@@ -21,11 +21,11 @@ import java.nio.ByteBuffer;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.StringDataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.db.DataBuffer;
+import org.lealone.db.value.ValueString;
+import org.lealone.storage.type.StorageDataType;
 
-public class RedoLogValueType implements DataType {
+public class RedoLogValueType implements StorageDataType {
 
     private static ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
@@ -40,7 +40,7 @@ public class RedoLogValueType implements DataType {
     }
 
     @Override
-    public void write(WriteBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj) {
         RedoLogValue v = (RedoLogValue) obj;
 
         if (v.checkpoint != null) {
@@ -48,25 +48,18 @@ public class RedoLogValueType implements DataType {
             buff.putVarLong(v.checkpoint);
         } else if (v.droppedMap != null) {
             buff.put((byte) 3);
-            StringDataType.INSTANCE.write(buff, v.droppedMap);
+            ValueString.type.write(buff, v.droppedMap);
         } else {
             if (v.transactionName == null) {
                 buff.put((byte) 1);
             } else {
                 buff.put((byte) 2);
-                StringDataType.INSTANCE.write(buff, v.transactionName);
-                StringDataType.INSTANCE.write(buff, v.allLocalTransactionNames);
+                ValueString.type.write(buff, v.transactionName);
+                ValueString.type.write(buff, v.allLocalTransactionNames);
                 buff.putVarLong(v.commitTimestamp);
             }
             buff.putVarInt(v.values.remaining());
             buff.put(v.values);
-        }
-    }
-
-    @Override
-    public void write(WriteBuffer buff, Object[] obj, int len, boolean key) {
-        for (int i = 0; i < len; i++) {
-            write(buff, obj[i]);
         }
     }
 
@@ -76,14 +69,14 @@ public class RedoLogValueType implements DataType {
         if (type == 0)
             return new RedoLogValue(DataUtils.readVarLong(buff));
         else if (type == 3) {
-            String droppedMap = StringDataType.INSTANCE.read(buff);
+            String droppedMap = ValueString.type.read(buff);
             return new RedoLogValue(droppedMap);
         }
 
         RedoLogValue v = new RedoLogValue();
         if (type == 2) {
-            v.transactionName = StringDataType.INSTANCE.read(buff);
-            v.allLocalTransactionNames = StringDataType.INSTANCE.read(buff);
+            v.transactionName = ValueString.type.read(buff);
+            v.allLocalTransactionNames = ValueString.type.read(buff);
             v.commitTimestamp = DataUtils.readVarLong(buff);
         }
 
@@ -96,13 +89,6 @@ public class RedoLogValueType implements DataType {
             v.values = EMPTY_BUFFER;
         }
         return v;
-    }
-
-    @Override
-    public void read(ByteBuffer buff, Object[] obj, int len, boolean key) {
-        for (int i = 0; i < len; i++) {
-            obj[i] = read(buff);
-        }
     }
 
 }

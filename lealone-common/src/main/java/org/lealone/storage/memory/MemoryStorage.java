@@ -20,13 +20,13 @@ package org.lealone.storage.memory;
 import java.util.Map;
 
 import org.lealone.storage.StorageBase;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 public class MemoryStorage extends StorageBase {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <K, V> MemoryMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+    public <K, V> MemoryMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters) {
         MemoryMap<K, V> map = (MemoryMap<K, V>) maps.get(name);
         if (map == null) {

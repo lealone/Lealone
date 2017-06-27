@@ -26,18 +26,18 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 import org.lealone.storage.type.ObjectDataType;
 
 public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
 
     protected final String name;
-    protected final DataType keyType;
-    protected final DataType valueType;
+    protected final StorageDataType keyType;
+    protected final StorageDataType valueType;
     // TODO 考虑是否要使用总是递增的数字
     protected final AtomicLong lastKey = new AtomicLong(0);
 
-    protected StorageMapBase(String name, DataType keyType, DataType valueType) {
+    protected StorageMapBase(String name, StorageDataType keyType, StorageDataType valueType) {
         DataUtils.checkArgument(name != null, "The name may not be null");
         if (keyType == null) {
             keyType = new ObjectDataType();
@@ -56,12 +56,12 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public DataType getKeyType() {
+    public StorageDataType getKeyType() {
         return keyType;
     }
 
     @Override
-    public DataType getValueType() {
+    public StorageDataType getValueType() {
         return valueType;
     }
 
@@ -107,7 +107,7 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public Object replicationPut(Session session, Object key, Object value, DataType valueType) {
+    public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
         throw DbException.getUnsupportedException("put");
     }
 
@@ -117,7 +117,7 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public Object replicationAppend(Session session, Object value, DataType valueType) {
+    public Object replicationAppend(Session session, Object value, StorageDataType valueType) {
         throw DbException.getUnsupportedException("append");
     }
 

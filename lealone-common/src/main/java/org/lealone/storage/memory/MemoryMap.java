@@ -27,7 +27,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * A skipList-based memory map
@@ -40,9 +40,9 @@ import org.lealone.storage.type.DataType;
 public class MemoryMap<K, V> extends StorageMapBase<K, V> {
 
     private static class KeyComparator<K> implements java.util.Comparator<K> {
-        DataType keyType;
+        StorageDataType keyType;
 
-        public KeyComparator(DataType keyType) {
+        public KeyComparator(StorageDataType keyType) {
             this.keyType = keyType;
         }
 
@@ -56,7 +56,7 @@ public class MemoryMap<K, V> extends StorageMapBase<K, V> {
     protected MemoryStorage memoryStorage;
     protected boolean closed;
 
-    public MemoryMap(String name, DataType keyType, DataType valueType) {
+    public MemoryMap(String name, StorageDataType keyType, StorageDataType valueType) {
         super(name, keyType, valueType);
         skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<K>(keyType));
     }

@@ -30,7 +30,7 @@ import org.lealone.mvcc.MVCCTransactionMap.MVCCReplicationMap;
 import org.lealone.mvcc.log.RedoLogValue;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.transaction.Transaction;
 
@@ -142,13 +142,13 @@ public class MVCCTransaction implements Transaction {
     }
 
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, DataType keyType, DataType valueType, Storage storage) {
+    public <K, V> MVCCTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType, Storage storage) {
         return openMap(name, null, keyType, valueType, storage, false, null);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+    public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
             Storage storage, boolean isShardingMode, String initReplicationEndpoints) {
         if (keyType == null)
             keyType = new ObjectDataType();

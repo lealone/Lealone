@@ -27,7 +27,7 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
-import org.lealone.db.Data;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.Session;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.value.DataType;
@@ -70,11 +70,13 @@ public class Transfer implements NetSerializer {
     private static final int LOB_MAGIC = 0x1234;
     private static final int LOB_MAC_SALT_LENGTH = 16;
 
+    static final byte REQUEST = 1;
+    private static final byte RESPONSE = 2;
+
     private AsyncConnection conn;
     private NetSocket socket;
     private Session session;
     private DataInputStream in;
-    private BufferInputStream bufferInputStream;
     private final DataOutputStream out;
     private final ResettableBufferOutputStream resettableOutputStream;
     private byte[] lobMacSalt;
@@ -85,8 +87,8 @@ public class Transfer implements NetSerializer {
     }
 
     public Transfer(AsyncConnection conn, NetSocket socket, Buffer buffer) {
-        this.socket = socket;
         this.conn = conn;
+        this.socket = socket;
 
         resettableOutputStream = new ResettableBufferOutputStream(BUFFER_SIZE);
         out = new DataOutputStream(resettableOutputStream);
@@ -97,7 +99,7 @@ public class Transfer implements NetSerializer {
             throw new AssertionError();
         }
         if (buffer != null) {
-            bufferInputStream = new BufferInputStream(buffer);
+            BufferInputStream bufferInputStream = new BufferInputStream(buffer);
             in = new DataInputStream(bufferInputStream);
         }
     }
@@ -114,9 +116,6 @@ public class Transfer implements NetSerializer {
         ac.setTransfer(this);
         conn.addAsyncCallback(id, ac);
     }
-
-    static final byte REQUEST = 1;
-    static final byte RESPONSE = 2;
 
     public Transfer writeRequestHeader(int id, int packetType) throws IOException {
         // writeInt(id << 1).writeInt(packetType);
@@ -140,14 +139,6 @@ public class Transfer implements NetSerializer {
 
     public DataOutputStream getDataOutputStream() {
         return out;
-    }
-
-    public int available() {
-        try {
-            return in.available();
-        } catch (IOException e) {
-            throw new AssertionError();
-        }
     }
 
     /**
@@ -490,11 +481,11 @@ public class Transfer implements NetSerializer {
         case Value.BYTE:
             writeByte(v.getByte());
             break;
-        case Value.TIME:
-            writeLong(((ValueTime) v).getNanos());
-            break;
         case Value.DATE:
             writeLong(((ValueDate) v).getDateValue());
+            break;
+        case Value.TIME:
+            writeLong(((ValueTime) v).getNanos());
             break;
         case Value.TIMESTAMP: {
             ValueTimestamp ts = (ValueTimestamp) v;
@@ -511,44 +502,21 @@ public class Transfer implements NetSerializer {
         case Value.FLOAT:
             writeFloat(v.getFloat());
             break;
+        case Value.SHORT:
+            writeInt(v.getShort());
+            break;
         case Value.INT:
             writeInt(v.getInt());
             break;
         case Value.LONG:
             writeLong(v.getLong());
             break;
-        case Value.SHORT:
-            writeInt(v.getShort());
-            break;
         case Value.STRING:
         case Value.STRING_IGNORECASE:
         case Value.STRING_FIXED:
             writeString(v.getString());
             break;
-        case Value.BLOB: {
-            if (v instanceof ValueLob) {
-                ValueLob lob = (ValueLob) v;
-                if (lob.isStored()) {
-                    writeLong(-1);
-                    writeInt(lob.getTableId());
-                    writeLong(lob.getLobId());
-                    writeBytes(calculateLobMac(lob.getLobId()));
-                    writeLong(lob.getPrecision());
-                    break;
-                }
-            }
-            long length = v.getPrecision();
-            if (length < 0) {
-                throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "length=" + length);
-            }
-            writeLong(length);
-            long written = IOUtils.copyAndCloseInput(v.getInputStream(), out);
-            if (written != length) {
-                throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "length:" + length + " written:" + written);
-            }
-            writeInt(LOB_MAGIC);
-            break;
-        }
+        case Value.BLOB:
         case Value.CLOB: {
             if (v instanceof ValueLob) {
                 ValueLob lob = (ValueLob) v;
@@ -566,8 +534,15 @@ public class Transfer implements NetSerializer {
                 throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "length=" + length);
             }
             writeLong(length);
-            Reader reader = v.getReader();
-            Data.copyString(reader, out);
+            if (type == Value.BLOB) {
+                long written = IOUtils.copyAndCloseInput(v.getInputStream(), out);
+                if (written != length) {
+                    throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "length:" + length + " written:" + written);
+                }
+            } else {
+                Reader reader = v.getReader();
+                DataBuffer.copyString(reader, out);
+            }
             writeInt(LOB_MAGIC);
             break;
         }
@@ -632,10 +607,10 @@ public class Transfer implements NetSerializer {
             return ValueNull.INSTANCE;
         case Value.BYTES:
             return ValueBytes.getNoCopy(readBytes());
-        case Value.UUID:
-            return ValueUuid.get(readLong(), readLong());
         case Value.JAVA_OBJECT:
             return ValueJavaObject.getNoCopy(null, readBytes());
+        case Value.UUID:
+            return ValueUuid.get(readLong(), readLong());
         case Value.BOOLEAN:
             return ValueBoolean.get(readBoolean());
         case Value.BYTE:
@@ -644,45 +619,27 @@ public class Transfer implements NetSerializer {
             return ValueDate.fromDateValue(readLong());
         case Value.TIME:
             return ValueTime.fromNanos(readLong());
-        case Value.TIMESTAMP: {
+        case Value.TIMESTAMP:
             return ValueTimestamp.fromDateValueAndNanos(readLong(), readLong());
-        }
         case Value.DECIMAL:
             return ValueDecimal.get(new BigDecimal(readString()));
         case Value.DOUBLE:
             return ValueDouble.get(readDouble());
         case Value.FLOAT:
             return ValueFloat.get(readFloat());
+        case Value.SHORT:
+            return ValueShort.get((short) readInt());
         case Value.INT:
             return ValueInt.get(readInt());
         case Value.LONG:
             return ValueLong.get(readLong());
-        case Value.SHORT:
-            return ValueShort.get((short) readInt());
         case Value.STRING:
             return ValueString.get(readString());
         case Value.STRING_IGNORECASE:
             return ValueStringIgnoreCase.get(readString());
         case Value.STRING_FIXED:
             return ValueStringFixed.get(readString());
-        case Value.BLOB: {
-            long length = readLong();
-            if (length == -1) {
-                int tableId = readInt();
-                long id = readLong();
-                byte[] hmac = readBytes();
-                long precision = readLong();
-                return ValueLob.create(Value.BLOB, session.getDataHandler(), tableId, id, hmac, precision);
-            }
-            int len = (int) length;
-            byte[] small = new byte[len];
-            IOUtils.readFully(in, small, len);
-            int magic = readInt();
-            if (magic != LOB_MAGIC) {
-                throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
-            }
-            return ValueLob.createSmallLob(Value.BLOB, small, length);
-        }
+        case Value.BLOB:
         case Value.CLOB: {
             long length = readLong();
             if (length == -1) {
@@ -690,18 +647,24 @@ public class Transfer implements NetSerializer {
                 long id = readLong();
                 byte[] hmac = readBytes();
                 long precision = readLong();
-                return ValueLob.create(Value.CLOB, session.getDataHandler(), tableId, id, hmac, precision);
+                return ValueLob.create(type, session.getDataHandler(), tableId, id, hmac, precision);
             }
-            DataReader reader = new DataReader(in);
+            byte[] small;
             int len = (int) length;
-            char[] buff = new char[len];
-            IOUtils.readFully(reader, buff, len);
+            if (type == Value.BLOB) {
+                small = new byte[len];
+                IOUtils.readFully(in, small, len);
+            } else {
+                DataReader reader = new DataReader(in);
+                char[] buff = new char[len];
+                IOUtils.readFully(reader, buff, len);
+                small = new String(buff).getBytes("UTF-8");
+            }
             int magic = readInt();
             if (magic != LOB_MAGIC) {
                 throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "magic=" + magic);
             }
-            byte[] small = new String(buff).getBytes("UTF-8");
-            return ValueLob.createSmallLob(Value.CLOB, small, length);
+            return ValueLob.createSmallLob(type, small, length);
         }
         case Value.ARRAY: {
             int len = readInt();
@@ -862,14 +825,6 @@ public class Transfer implements NetSerializer {
         public int read() throws IOException {
             return buffer.getUnsignedByte(pos++);
         }
-    }
-
-    public void setPos(int pos) {
-        bufferInputStream.pos = pos;
-    }
-
-    public void setSize(int size) {
-        bufferInputStream.size = size;
     }
 
     private static class ResettableBufferOutputStream extends OutputStream {

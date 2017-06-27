@@ -10,15 +10,15 @@ import java.util.ArrayList;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * A spatial data type. This class supports up to 31 dimensions. Each dimension
  * can have a minimum and a maximum value of type float. For each dimension, the
  * maximum value is only stored when it is not the same as the minimum.
  */
-public class SpatialDataType implements DataType {
+public class SpatialDataType implements StorageDataType {
 
     private final int dimensions;
 
@@ -69,21 +69,21 @@ public class SpatialDataType implements DataType {
     }
 
     @Override
-    public void read(ByteBuffer buff, Object[] obj, int len, boolean key) {
+    public void read(ByteBuffer buff, Object[] obj, int len) {
         for (int i = 0; i < len; i++) {
             obj[i] = read(buff);
         }
     }
 
     @Override
-    public void write(WriteBuffer buff, Object[] obj, int len, boolean key) {
+    public void write(DataBuffer buff, Object[] obj, int len) {
         for (int i = 0; i < len; i++) {
             write(buff, obj[i]);
         }
     }
 
     @Override
-    public void write(WriteBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj) {
         SpatialKey k = (SpatialKey) obj;
         if (k.isNull()) {
             buff.putVarInt(-1);

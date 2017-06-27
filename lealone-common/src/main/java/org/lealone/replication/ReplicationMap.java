@@ -21,16 +21,16 @@ import java.util.List;
 
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 public interface ReplicationMap {
 
     List<NetEndpoint> getReplicationEndpoints(Object key);
 
-    Object replicationPut(Session session, Object key, Object value, DataType valueType);
+    Object replicationPut(Session session, Object key, Object value, StorageDataType valueType);
 
     Object replicationGet(Session session, Object key);
 
-    Object replicationAppend(Session session, Object value, DataType valueType);
+    Object replicationAppend(Session session, Object value, StorageDataType valueType);
 
 }

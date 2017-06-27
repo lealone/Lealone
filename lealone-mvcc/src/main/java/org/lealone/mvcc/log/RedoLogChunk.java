@@ -26,9 +26,9 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import org.lealone.db.DataBuffer;
 import org.lealone.storage.fs.FileStorage;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * A skipList-based redo log chunk
@@ -45,9 +45,9 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     }
 
     private static class KeyComparator<K> implements java.util.Comparator<K> {
-        DataType keyType;
+        StorageDataType keyType;
 
-        public KeyComparator(DataType keyType) {
+        public KeyComparator(StorageDataType keyType) {
             this.keyType = keyType;
         }
 
@@ -58,8 +58,8 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     }
 
     private final int id;
-    private final DataType keyType;
-    private final DataType valueType;
+    private final StorageDataType keyType;
+    private final StorageDataType valueType;
     private final ConcurrentSkipListMap<Long, RedoLogValue> skipListMap;
     private ConcurrentSkipListMap<Long, RedoLogValue> newSkipListMap;
     private final FileStorage fileStorage;
@@ -123,7 +123,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         // : skipListMap.tailMap(lastKey, false).entrySet();
         Set<Entry<Long, RedoLogValue>> entrySet = newSkipListMap.entrySet();
         if (!entrySet.isEmpty()) {
-            try (WriteBuffer buff = WriteBuffer.create()) {
+            try (DataBuffer buff = DataBuffer.create()) {
                 for (Entry<Long, RedoLogValue> e : entrySet) {
                     lastKey = e.getKey();
                     keyType.write(buff, lastKey);

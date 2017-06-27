@@ -33,15 +33,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.db.value.ValueString;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
 import org.lealone.mvcc.log.LogStorage;
 import org.lealone.mvcc.log.LogSyncService;
 import org.lealone.mvcc.log.RedoLog;
 import org.lealone.mvcc.log.RedoLogValue;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.StringDataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
 
@@ -222,7 +222,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 if (buff == null)
                     continue; // TODO 消除为NULL的可能
                 while (buff.hasRemaining()) {
-                    String mapName = StringDataType.INSTANCE.read(buff);
+                    String mapName = ValueString.type.read(buff);
 
                     ArrayList<ByteBuffer> logs = pendingRedoLog.get(mapName);
                     if (logs == null) {
@@ -244,8 +244,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (logs != null && !logs.isEmpty()) {
             K key;
             Object value;
-            DataType kt = map.getKeyType();
-            DataType vt = ((TransactionalValueType) map.getValueType()).valueType;
+            StorageDataType kt = map.getKeyType();
+            StorageDataType vt = ((TransactionalValueType) map.getValueType()).valueType;
             for (ByteBuffer log : logs) {
                 key = (K) kt.read(log);
                 if (log.get() == 0)
@@ -381,7 +381,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     public RedoLogValue getRedoLog(MVCCTransaction t) {
         if (t.logRecords.isEmpty())
             return null;
-        try (WriteBuffer writeBuffer = WriteBuffer.create()) {
+        try (DataBuffer writeBuffer = DataBuffer.create()) {
             String mapName;
             TransactionalValue value;
             StorageMap<?, ?> map;
@@ -392,7 +392,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 value = r.newValue;
                 map = maps.get(mapName);
 
-                StringDataType.INSTANCE.write(writeBuffer, mapName);
+                ValueString.type.write(writeBuffer, mapName);
                 keyValueStart = writeBuffer.position();
                 writeBuffer.putInt(0);
 

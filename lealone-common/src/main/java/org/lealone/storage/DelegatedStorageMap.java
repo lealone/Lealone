@@ -25,7 +25,7 @@ import java.util.List;
 
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
 
@@ -41,12 +41,12 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public DataType getKeyType() {
+    public StorageDataType getKeyType() {
         return map.getKeyType();
     }
 
     @Override
-    public DataType getValueType() {
+    public StorageDataType getValueType() {
         return map.getValueType();
     }
 
@@ -201,7 +201,7 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public Object replicationPut(Session session, Object key, Object value, DataType valueType) {
+    public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
         return map.replicationPut(session, key, value, valueType);
     }
 
@@ -211,7 +211,7 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public Object replicationAppend(Session session, Object value, DataType valueType) {
+    public Object replicationAppend(Session session, Object value, StorageDataType valueType) {
         return map.replicationAppend(session, value, valueType);
     }
 

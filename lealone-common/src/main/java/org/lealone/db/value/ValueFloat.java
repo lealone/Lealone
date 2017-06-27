@@ -6,11 +6,15 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.DataUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the REAL data type.
@@ -42,25 +46,30 @@ public class ValueFloat extends Value {
         this.value = value;
     }
 
+    @Override
     public Value add(Value v) {
         ValueFloat v2 = (ValueFloat) v;
         return ValueFloat.get(value + v2.value);
     }
 
+    @Override
     public Value subtract(Value v) {
         ValueFloat v2 = (ValueFloat) v;
         return ValueFloat.get(value - v2.value);
     }
 
+    @Override
     public Value negate() {
         return ValueFloat.get(-value);
     }
 
+    @Override
     public Value multiply(Value v) {
         ValueFloat v2 = (ValueFloat) v;
         return ValueFloat.get(value * v2.value);
     }
 
+    @Override
     public Value divide(Value v) {
         ValueFloat v2 = (ValueFloat) v;
         if (v2.value == 0.0) {
@@ -69,6 +78,7 @@ public class ValueFloat extends Value {
         return ValueFloat.get(value / v2.value);
     }
 
+    @Override
     public Value modulus(Value v) {
         ValueFloat other = (ValueFloat) v;
         if (other.value == 0) {
@@ -77,6 +87,7 @@ public class ValueFloat extends Value {
         return ValueFloat.get(value % other.value);
     }
 
+    @Override
     public String getSQL() {
         if (value == Float.POSITIVE_INFINITY) {
             return "POWER(0, -1)";
@@ -93,44 +104,54 @@ public class ValueFloat extends Value {
         return s;
     }
 
+    @Override
     public int getType() {
         return Value.FLOAT;
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         ValueFloat v = (ValueFloat) o;
         return Float.compare(value, v.value);
     }
 
+    @Override
     public int getSignum() {
         return value == 0 ? 0 : (value < 0 ? -1 : 1);
     }
 
+    @Override
     public float getFloat() {
         return value;
     }
 
+    @Override
     public String getString() {
         return String.valueOf(value);
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int getScale() {
         return 0;
     }
 
+    @Override
     public int hashCode() {
         long hash = Float.floatToIntBits(value);
         return (int) (hash ^ (hash >> 32));
     }
 
+    @Override
     public Object getObject() {
         return Float.valueOf(value);
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setFloat(parameterIndex, value);
     }
@@ -154,15 +175,78 @@ public class ValueFloat extends Value {
         return (ValueFloat) Value.cache(new ValueFloat(d));
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     public boolean equals(Object other) {
         if (!(other instanceof ValueFloat)) {
             return false;
         }
         return compareSecure((ValueFloat) other, null) == 0;
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return FLOAT;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            Float a = (Float) aObj;
+            Float b = (Float) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 24;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            float x = (Float) obj;
+            write0(buff, x);
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            float x = v.getFloat();
+            write0(buff, x);
+        }
+
+        private void write0(DataBuffer buff, float x) {
+            int f = Float.floatToIntBits(x);
+            if (f == FLOAT_ZERO_BITS) {
+                buff.put((byte) TAG_FLOAT_0);
+            } else if (f == FLOAT_ONE_BITS) {
+                buff.put((byte) TAG_FLOAT_1);
+            } else {
+                int value = Integer.reverse(f);
+                if (value >= 0 && value <= DataUtils.COMPRESSED_VAR_INT_MAX) {
+                    buff.put((byte) FLOAT).putVarInt(value);
+                } else {
+                    buff.put((byte) TAG_FLOAT_FIXED).putFloat(x);
+                }
+            }
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff, int tag) {
+            switch (tag) {
+            case TAG_FLOAT_0:
+                return ValueFloat.get(0f);
+            case TAG_FLOAT_1:
+                return ValueFloat.get(1f);
+            case TAG_FLOAT_FIXED:
+                return ValueFloat.get(buff.getFloat());
+            }
+            return ValueFloat.get(Float.intBitsToFloat(Integer.reverse(DataUtils.readVarInt(buff))));
+        }
+    };
 
 }

@@ -9,6 +9,7 @@ package org.lealone.db.value;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -16,6 +17,8 @@ import java.sql.Time;
 import java.sql.Timestamp;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of NULL. NULL is not a regular data type.
@@ -47,104 +50,168 @@ public class ValueNull extends Value {
         // don't allow construction
     }
 
+    @Override
     public String getSQL() {
         return "NULL";
     }
 
+    @Override
     public int getType() {
         return Value.NULL;
     }
 
+    @Override
     public String getString() {
         return null;
     }
 
+    @Override
     public Boolean getBoolean() {
         return null;
     }
 
+    @Override
     public Date getDate() {
         return null;
     }
 
+    @Override
     public Time getTime() {
         return null;
     }
 
+    @Override
     public Timestamp getTimestamp() {
         return null;
     }
 
+    @Override
     public byte[] getBytes() {
         return null;
     }
 
+    @Override
     public byte getByte() {
         return 0;
     }
 
+    @Override
     public short getShort() {
         return 0;
     }
 
+    @Override
     public BigDecimal getBigDecimal() {
         return null;
     }
 
+    @Override
     public double getDouble() {
         return 0.0;
     }
 
+    @Override
     public float getFloat() {
         return 0.0F;
     }
 
+    @Override
     public int getInt() {
         return 0;
     }
 
+    @Override
     public long getLong() {
         return 0;
     }
 
+    @Override
     public InputStream getInputStream() {
         return null;
     }
 
+    @Override
     public Reader getReader() {
         return null;
     }
 
+    @Override
     public Value convertTo(int type) {
         return this;
     }
 
+    @Override
     protected int compareSecure(Value v, CompareMode mode) {
         throw DbException.throwInternalError("compare null");
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int hashCode() {
         return 0;
     }
 
+    @Override
     public Object getObject() {
         return null;
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setNull(parameterIndex, DataType.convertTypeToSQLType(Value.NULL));
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     public boolean equals(Object other) {
         return other == this;
     }
 
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return NULL;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            if (aObj == null && bObj == null) {
+                return 0;
+            } else if (aObj == null) {
+                return -1;
+            } else {
+                return 1;
+            }
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 0;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            buff.put((byte) Value.NULL);
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            buff.put((byte) Value.NULL);
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff) {
+            return ValueNull.INSTANCE;
+        }
+
+    };
 }

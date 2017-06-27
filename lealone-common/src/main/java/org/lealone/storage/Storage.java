@@ -19,11 +19,11 @@ package org.lealone.storage;
 
 import java.util.Map;
 
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 public interface Storage {
 
-    <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+    <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters);
 
     boolean hasMap(String name);

@@ -3,15 +3,15 @@ package org.lealone.db.index;
 import java.nio.ByteBuffer;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueArray;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.storage.type.StorageDataType;
 
-class VersionedValueType implements DataType {
+class VersionedValueType implements StorageDataType {
 
-    final DataType valueType;
+    final StorageDataType valueType;
 
-    public VersionedValueType(DataType valueType) {
+    public VersionedValueType(StorageDataType valueType) {
         this.valueType = valueType;
     }
 
@@ -38,7 +38,7 @@ class VersionedValueType implements DataType {
     }
 
     @Override
-    public void read(ByteBuffer buff, Object[] obj, int len, boolean key) {
+    public void read(ByteBuffer buff, Object[] obj, int len) {
         for (int i = 0; i < len; i++) {
             obj[i] = read(buff);
         }
@@ -52,14 +52,14 @@ class VersionedValueType implements DataType {
     }
 
     @Override
-    public void write(WriteBuffer buff, Object[] obj, int len, boolean key) {
+    public void write(DataBuffer buff, Object[] obj, int len) {
         for (int i = 0; i < len; i++) {
             write(buff, obj[i]);
         }
     }
 
     @Override
-    public void write(WriteBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj) {
         VersionedValue v = (VersionedValue) obj;
         buff.putVarInt(v.vertion);
         valueType.write(buff, v.value);

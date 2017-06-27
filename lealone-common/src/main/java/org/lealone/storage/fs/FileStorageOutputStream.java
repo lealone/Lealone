@@ -10,7 +10,7 @@ import java.io.OutputStream;
 
 import org.lealone.common.compress.CompressTool;
 import org.lealone.db.Constants;
-import org.lealone.db.Data;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.DataHandler;
 
 /**
@@ -18,7 +18,7 @@ import org.lealone.db.DataHandler;
  */
 public class FileStorageOutputStream extends OutputStream {
     private FileStorage fileStorage;
-    private final Data page;
+    private final DataBuffer page;
     private final String compressionAlgorithm;
     private final CompressTool compress;
     private final byte[] buffer = { 0 };
@@ -32,7 +32,7 @@ public class FileStorageOutputStream extends OutputStream {
             this.compress = null;
             this.compressionAlgorithm = null;
         }
-        page = Data.create(handler, Constants.FILE_BLOCK_SIZE);
+        page = DataBuffer.create(handler, Constants.FILE_BLOCK_SIZE);
     }
 
     @Override
@@ -60,14 +60,12 @@ public class FileStorageOutputStream extends OutputStream {
                 int uncompressed = len;
                 buff = compress.compress(buff, compressionAlgorithm);
                 len = buff.length;
-                page.checkCapacity(2 * Data.LENGTH_INT + len);
-                page.writeInt(len);
-                page.writeInt(uncompressed);
-                page.write(buff, off, len);
+                page.putInt(len);
+                page.putInt(uncompressed);
+                page.put(buff, off, len);
             } else {
-                page.checkCapacity(Data.LENGTH_INT + len);
-                page.writeInt(len);
-                page.write(buff, off, len);
+                page.putInt(len);
+                page.put(buff, off, len);
             }
             page.fillAligned();
             fileStorage.write(page.getBytes(), 0, page.length());

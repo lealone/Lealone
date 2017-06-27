@@ -56,6 +56,7 @@ public class ValueArray extends Value {
         return new ValueArray(componentType, list);
     }
 
+    @Override
     public int hashCode() {
         if (hash != 0) {
             return hash;
@@ -72,6 +73,7 @@ public class ValueArray extends Value {
         return values;
     }
 
+    @Override
     public int getType() {
         return Value.ARRAY;
     }
@@ -80,6 +82,7 @@ public class ValueArray extends Value {
         return componentType;
     }
 
+    @Override
     public long getPrecision() {
         long p = 0;
         for (Value v : values) {
@@ -88,6 +91,7 @@ public class ValueArray extends Value {
         return p;
     }
 
+    @Override
     public String getString() {
         StatementBuilder buff = new StatementBuilder("(");
         for (Value v : values) {
@@ -97,6 +101,7 @@ public class ValueArray extends Value {
         return buff.append(')').toString();
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         ValueArray v = (ValueArray) o;
         if (values == v.values) {
@@ -116,6 +121,7 @@ public class ValueArray extends Value {
         return l > ol ? 1 : l == ol ? 0 : -1;
     }
 
+    @Override
     public Object getObject() {
         int len = values.length;
         Object[] list = (Object[]) Array.newInstance(componentType, len);
@@ -125,10 +131,12 @@ public class ValueArray extends Value {
         return list;
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) {
         throw throwUnsupportedExceptionForType("PreparedStatement.set");
     }
 
+    @Override
     public String getSQL() {
         StatementBuilder buff = new StatementBuilder("(");
         for (Value v : values) {
@@ -141,6 +149,7 @@ public class ValueArray extends Value {
         return buff.append(')').toString();
     }
 
+    @Override
     public String getTraceSQL() {
         StatementBuilder buff = new StatementBuilder("(");
         for (Value v : values) {
@@ -150,6 +159,7 @@ public class ValueArray extends Value {
         return buff.append(')').toString();
     }
 
+    @Override
     public int getDisplaySize() {
         long size = 0;
         for (Value v : values) {
@@ -158,6 +168,7 @@ public class ValueArray extends Value {
         return MathUtils.convertLongToInt(size);
     }
 
+    @Override
     public boolean equals(Object other) {
         if (!(other instanceof ValueArray)) {
             return false;
@@ -178,6 +189,7 @@ public class ValueArray extends Value {
         return true;
     }
 
+    @Override
     public int getMemory() {
         int memory = 32;
         for (Value v : values) {
@@ -186,6 +198,7 @@ public class ValueArray extends Value {
         return memory;
     }
 
+    @Override
     public Value convertPrecision(long precision, boolean force) {
         if (!force) {
             return this;

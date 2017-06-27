@@ -25,7 +25,6 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.WriteBuffer;
 import org.lealone.transaction.Transaction;
 
 public class ServerCommand extends CommandBase implements StorageCommand {
@@ -114,7 +113,7 @@ public class ServerCommand extends CommandBase implements StorageCommand {
         if (result == null)
             return null;
 
-        try (WriteBuffer b = WriteBuffer.create()) {
+        try (DataBuffer b = DataBuffer.create()) {
             ByteBuffer valueBuffer = b.write(map.getValueType(), result);
             return valueBuffer.array();
         }

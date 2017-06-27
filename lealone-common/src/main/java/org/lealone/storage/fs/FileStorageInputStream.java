@@ -13,7 +13,7 @@ import org.lealone.common.compress.CompressTool;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
-import org.lealone.db.Data;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.DataHandler;
 
 /**
@@ -22,7 +22,7 @@ import org.lealone.db.DataHandler;
 public class FileStorageInputStream extends InputStream {
 
     private FileStorage fileStorage;
-    private final Data page;
+    private final DataBuffer page;
     private int remainingInBuffer;
     private final CompressTool compress;
     private boolean endOfFile;
@@ -37,7 +37,7 @@ public class FileStorageInputStream extends InputStream {
         } else {
             compress = null;
         }
-        page = Data.create(handler, Constants.FILE_BLOCK_SIZE);
+        page = DataBuffer.create(handler, Constants.FILE_BLOCK_SIZE);
         try {
             if (fileStorage.length() <= FileStorage.HEADER_LENGTH) {
                 close();
@@ -100,27 +100,27 @@ public class FileStorageInputStream extends InputStream {
         }
         fileStorage.readFully(page.getBytes(), 0, Constants.FILE_BLOCK_SIZE);
         page.reset();
-        remainingInBuffer = page.readInt();
+        remainingInBuffer = page.getInt();
         if (remainingInBuffer < 0) {
             close();
             return;
         }
         page.checkCapacity(remainingInBuffer);
-        // get the length to read
+        // get the length to rea
         if (compress != null) {
-            page.checkCapacity(Data.LENGTH_INT);
-            page.readInt();
+            page.checkCapacity(DataBuffer.LENGTH_INT);
+            page.getInt();
         }
         page.setPos(page.length() + remainingInBuffer);
         page.fillAligned();
         int len = page.length() - Constants.FILE_BLOCK_SIZE;
         page.reset();
-        page.readInt();
+        page.getInt();
         fileStorage.readFully(page.getBytes(), Constants.FILE_BLOCK_SIZE, len);
         page.reset();
-        page.readInt();
+        page.getInt();
         if (compress != null) {
-            int uncompressed = page.readInt();
+            int uncompressed = page.getInt();
             byte[] buff = DataUtils.newBytes(remainingInBuffer);
             page.read(buff, 0, remainingInBuffer);
             page.reset();

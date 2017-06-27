@@ -8,12 +8,16 @@ package org.lealone.db.value;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the BIGINT data type.
@@ -58,6 +62,7 @@ public class ValueLong extends Value {
         this.value = value;
     }
 
+    @Override
     public Value add(Value v) {
         ValueLong other = (ValueLong) v;
         long result = value + other.value;
@@ -74,10 +79,12 @@ public class ValueLong extends Value {
         throw getOverflow();
     }
 
+    @Override
     public int getSignum() {
         return Long.signum(value);
     }
 
+    @Override
     public Value negate() {
         if (value == Long.MIN_VALUE) {
             throw getOverflow();
@@ -89,6 +96,7 @@ public class ValueLong extends Value {
         return DbException.get(ErrorCode.NUMERIC_VALUE_OUT_OF_RANGE_1, Long.toString(value));
     }
 
+    @Override
     public Value subtract(Value v) {
         ValueLong other = (ValueLong) v;
         int sv = Long.signum(value);
@@ -107,6 +115,7 @@ public class ValueLong extends Value {
         return a >= Integer.MIN_VALUE && a <= Integer.MAX_VALUE;
     }
 
+    @Override
     public Value multiply(Value v) {
         ValueLong other = (ValueLong) v;
         long result = value * other.value;
@@ -130,6 +139,7 @@ public class ValueLong extends Value {
         return ValueLong.get(br.longValue());
     }
 
+    @Override
     public Value divide(Value v) {
         ValueLong other = (ValueLong) v;
         if (other.value == 0) {
@@ -138,6 +148,7 @@ public class ValueLong extends Value {
         return ValueLong.get(value / other.value);
     }
 
+    @Override
     public Value modulus(Value v) {
         ValueLong other = (ValueLong) v;
         if (other.value == 0) {
@@ -146,39 +157,48 @@ public class ValueLong extends Value {
         return ValueLong.get(this.value % other.value);
     }
 
+    @Override
     public String getSQL() {
         return getString();
     }
 
+    @Override
     public int getType() {
         return Value.LONG;
     }
 
+    @Override
     public long getLong() {
         return value;
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         ValueLong v = (ValueLong) o;
         return MathUtils.compareLong(value, v.value);
     }
 
+    @Override
     public String getString() {
         return String.valueOf(value);
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int hashCode() {
         return (int) (value ^ (value >> 32));
     }
 
+    @Override
     public Object getObject() {
         return value;
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setLong(parameterIndex, value);
     }
@@ -196,12 +216,80 @@ public class ValueLong extends Value {
         return (ValueLong) Value.cache(new ValueLong(i));
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     public boolean equals(Object other) {
         return other instanceof ValueLong && value == ((ValueLong) other).value;
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return LONG;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            Long a = (Long) aObj;
+            Long b = (Long) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 30;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            long x = (Long) obj;
+            write0(buff, x);
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            long x = v.getLong();
+            write0(buff, x);
+        }
+
+        private void write0(DataBuffer buff, long x) {
+            if (x < 0) {
+                // -Long.MIN_VALUE is smaller than 0
+                if (-x < 0 || -x > DataUtils.COMPRESSED_VAR_LONG_MAX) {
+                    buff.put((byte) TAG_LONG_FIXED);
+                    buff.putLong(x);
+                } else {
+                    buff.put((byte) TAG_LONG_NEGATIVE);
+                    buff.putVarLong(-x);
+                }
+            } else if (x <= 7) {
+                buff.put((byte) (TAG_LONG_0_7 + x));
+            } else if (x <= DataUtils.COMPRESSED_VAR_LONG_MAX) {
+                buff.put((byte) LONG);
+                buff.putVarLong(x);
+            } else {
+                buff.put((byte) TAG_LONG_FIXED);
+                buff.putLong(x);
+            }
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff, int tag) {
+            switch (tag) {
+            case LONG:
+                return ValueLong.get(DataUtils.readVarLong(buff));
+            case TAG_LONG_NEGATIVE:
+                return ValueLong.get(-DataUtils.readVarLong(buff));
+            case TAG_LONG_FIXED:
+                return ValueLong.get(buff.getLong());
+            }
+            return ValueLong.get(Long.valueOf(tag - TAG_LONG_0_7));
+        }
+    };
 
 }

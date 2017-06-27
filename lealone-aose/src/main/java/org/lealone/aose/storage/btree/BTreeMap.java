@@ -29,6 +29,7 @@ import org.lealone.aose.storage.StorageMapBuilder;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.Database;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
@@ -39,8 +40,7 @@ import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * A read optimization BTree stored map.
@@ -86,7 +86,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     protected volatile BTreePage root;
 
     @SuppressWarnings("unchecked")
-    protected BTreeMap(String name, DataType keyType, DataType valueType, Map<String, Object> config,
+    protected BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
         super(name, keyType, valueType);
         DataUtils.checkArgument(config != null, "The config may not be null");
@@ -230,8 +230,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
                     ReplicationSession rs = P2pRouter.createReplicationSession(db.getLastSession(),
                             replicationEndpoints);
-                    try (WriteBuffer k = WriteBuffer.create();
-                            WriteBuffer v = WriteBuffer.create();
+                    try (DataBuffer k = DataBuffer.create();
+                            DataBuffer v = DataBuffer.create();
                             StorageCommand c = rs.createStorageCommand()) {
                         ByteBuffer keyBuffer = k.write(keyType, key);
                         ByteBuffer valueBuffer = v.write(valueType, value);
@@ -317,7 +317,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 LeafPageMovePlan leafPageMovePlan = null;
                 if (!oldReplicationEndpoints.isEmpty()) {
                     ReplicationSession rs = P2pRouter.createReplicationSession(session, oldReplicationEndpoints);
-                    try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+                    try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
                         ByteBuffer keyBuffer = k.write(keyType, splitKey);
                         LeafPageMovePlan plan = new LeafPageMovePlan(P2pServer.instance.getLocalHostId(),
                                 newReplicationEndpoints, keyBuffer);
@@ -365,7 +365,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private void moveLeafPage(LeafPageMovePlan leafPageMovePlan, BTreePage rightChildPage, ReplicationSession rs,
             boolean remote) {
-        try (WriteBuffer p = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+        try (DataBuffer p = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             rightChildPage.writeLeaf(p, remote);
             ByteBuffer pageBuffer = p.getAndFlipBuffer();
             c.moveLeafPage(getName(), leafPageMovePlan.splitKey, pageBuffer);
@@ -466,7 +466,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 liveMembers.removeAll(oldReplicationEndpoints);
                 Session session = db.getLastSession();
                 ReplicationSession rs = P2pRouter.createReplicationSession(session, liveMembers, true);
-                try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+                try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
                     ByteBuffer keyBuffer = k.write(keyType, key);
                     c.removeLeafPage(getName(), keyBuffer);
                 }
@@ -874,11 +874,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object replicationPut(Session session, Object key, Object value, DataType valueType) {
+    public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
-        try (WriteBuffer k = WriteBuffer.create();
-                WriteBuffer v = WriteBuffer.create();
+        try (DataBuffer k = DataBuffer.create();
+                DataBuffer v = DataBuffer.create();
                 StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
             ByteBuffer valueBuffer = v.write(valueType, value);
@@ -893,7 +893,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public Object replicationGet(Session session, Object key) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
-        try (WriteBuffer k = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+        try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
             byte[] value = (byte[]) c.executeGet(getName(), keyBuffer);
             if (value == null)
@@ -903,10 +903,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object replicationAppend(Session session, Object value, DataType valueType) {
+    public Object replicationAppend(Session session, Object value, StorageDataType valueType) {
         List<NetEndpoint> replicationEndpoints = getLastPageReplicationEndpoints();
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
-        try (WriteBuffer v = WriteBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+        try (DataBuffer v = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer valueBuffer = v.write(valueType, value);
             return c.executeAppend(null, getName(), valueBuffer, null);
         }

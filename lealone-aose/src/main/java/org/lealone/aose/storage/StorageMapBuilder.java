@@ -20,12 +20,12 @@ package org.lealone.aose.storage;
 import java.util.Map;
 
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
     protected String name;
-    protected DataType keyType;
-    protected DataType valueType;
+    protected StorageDataType keyType;
+    protected StorageDataType valueType;
     protected Map<String, Object> config;
     protected AOStorage aoStorage;
 
@@ -34,12 +34,12 @@ public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
         return this;
     }
 
-    public StorageMapBuilder<M, K, V> keyType(DataType keyType) {
+    public StorageMapBuilder<M, K, V> keyType(StorageDataType keyType) {
         this.keyType = keyType;
         return this;
     }
 
-    public StorageMapBuilder<M, K, V> valueType(DataType valueType) {
+    public StorageMapBuilder<M, K, V> valueType(StorageDataType valueType) {
         this.valueType = valueType;
         return this;
     }

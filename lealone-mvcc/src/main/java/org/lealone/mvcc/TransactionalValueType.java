@@ -8,9 +8,9 @@ package org.lealone.mvcc;
 import java.nio.ByteBuffer;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.StringDataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.db.DataBuffer;
+import org.lealone.db.value.ValueString;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * The value type for a transactional value.
@@ -18,19 +18,19 @@ import org.lealone.storage.type.WriteBuffer;
  * @author H2 Group
  * @author zhh
  */
-public class TransactionalValueType implements DataType {
+public class TransactionalValueType implements StorageDataType {
 
-    public final DataType valueType;
+    public final StorageDataType valueType;
 
-    public TransactionalValueType(DataType valueType) {
+    public TransactionalValueType(StorageDataType valueType) {
         this.valueType = valueType;
     }
 
     @Override
     public int getMemory(Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
-        return valueType.getMemory(v.value) + 12 + (v.globalReplicationName == null ? 1
-                : 9 + StringDataType.INSTANCE.getMemory(v.globalReplicationName));
+        return valueType.getMemory(v.value) + 12
+                + (v.globalReplicationName == null ? 1 : 9 + ValueString.type.getMemory(v.globalReplicationName));
     }
 
     @Override
@@ -50,7 +50,7 @@ public class TransactionalValueType implements DataType {
     }
 
     @Override
-    public void read(ByteBuffer buff, Object[] obj, int len, boolean key) {
+    public void read(ByteBuffer buff, Object[] obj, int len) {
         if (buff.get() == 0) {
             // fast path (no tid/logId or null entries)
             for (int i = 0; i < len; i++) {
@@ -74,14 +74,14 @@ public class TransactionalValueType implements DataType {
         }
         if (buff.get() == 1) {
             long version = DataUtils.readVarLong(buff);
-            String globalTransactionName = StringDataType.INSTANCE.read(buff);
+            String globalTransactionName = ValueString.type.read(buff);
             new TransactionalValue(tid, logId, value, version, globalTransactionName);
         }
         return new TransactionalValue(tid, logId, value);
     }
 
     @Override
-    public void write(WriteBuffer buff, Object[] obj, int len, boolean key) {
+    public void write(DataBuffer buff, Object[] obj, int len) {
         boolean fastPath = true;
         for (int i = 0; i < len; i++) {
             TransactionalValue v = (TransactionalValue) obj[i];
@@ -106,7 +106,7 @@ public class TransactionalValueType implements DataType {
     }
 
     @Override
-    public void write(WriteBuffer buff, Object obj) {
+    public void write(DataBuffer buff, Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
         buff.putVarLong(v.tid);
         buff.putVarInt(v.logId);
@@ -121,7 +121,7 @@ public class TransactionalValueType implements DataType {
         } else {
             buff.put((byte) 1);
             buff.putVarLong(v.version);
-            StringDataType.INSTANCE.write(buff, v.globalReplicationName);
+            ValueString.type.write(buff, v.globalReplicationName);
         }
     }
 }

@@ -6,8 +6,12 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the BOOLEAN data type.
@@ -37,44 +41,54 @@ public class ValueBoolean extends Value {
         this.value = Boolean.valueOf(value);
     }
 
+    @Override
     public int getType() {
         return Value.BOOLEAN;
     }
 
+    @Override
     public String getSQL() {
         return getString();
     }
 
+    @Override
     public String getString() {
         return value.booleanValue() ? "TRUE" : "FALSE";
     }
 
+    @Override
     public Value negate() {
         return (ValueBoolean) (value.booleanValue() ? FALSE : TRUE);
     }
 
+    @Override
     public Boolean getBoolean() {
         return value;
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         boolean v2 = ((ValueBoolean) o).value.booleanValue();
         boolean v = value.booleanValue();
         return (v == v2) ? 0 : (v ? 1 : -1);
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int hashCode() {
         return value.booleanValue() ? 1 : 0;
     }
 
+    @Override
     public Object getObject() {
         return value;
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setBoolean(parameterIndex, value.booleanValue());
     }
@@ -89,13 +103,57 @@ public class ValueBoolean extends Value {
         return (ValueBoolean) (b ? TRUE : FALSE);
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     public boolean equals(Object other) {
         // there are only ever two instances, so the instance must match
         return this == other;
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return TYPE_BOOLEAN;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            Boolean a = (Boolean) aObj;
+            Boolean b = (Boolean) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 0;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            write0(buff, ((Boolean) obj).booleanValue());
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            write0(buff, v.getBoolean().booleanValue());
+        }
+
+        private void write0(DataBuffer buff, boolean v) {
+            buff.put((byte) (v ? TAG_BOOLEAN_TRUE : TYPE_BOOLEAN));
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff, int tag) {
+            if (tag == TYPE_BOOLEAN)
+                return ValueBoolean.get(false);
+            else
+                return ValueBoolean.get(true);
+        }
+    };
 
 }

@@ -6,12 +6,15 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the SMALLINT data type.
@@ -35,6 +38,7 @@ public class ValueShort extends Value {
         this.value = value;
     }
 
+    @Override
     public Value add(Value v) {
         ValueShort other = (ValueShort) v;
         return checkRange(value + other.value);
@@ -47,24 +51,29 @@ public class ValueShort extends Value {
         return ValueShort.get((short) x);
     }
 
+    @Override
     public int getSignum() {
         return Integer.signum(value);
     }
 
+    @Override
     public Value negate() {
         return checkRange(-(int) value);
     }
 
+    @Override
     public Value subtract(Value v) {
         ValueShort other = (ValueShort) v;
         return checkRange(value - other.value);
     }
 
+    @Override
     public Value multiply(Value v) {
         ValueShort other = (ValueShort) v;
         return checkRange(value * other.value);
     }
 
+    @Override
     public Value divide(Value v) {
         ValueShort other = (ValueShort) v;
         if (other.value == 0) {
@@ -73,6 +82,7 @@ public class ValueShort extends Value {
         return ValueShort.get((short) (value / other.value));
     }
 
+    @Override
     public Value modulus(Value v) {
         ValueShort other = (ValueShort) v;
         if (other.value == 0) {
@@ -81,39 +91,48 @@ public class ValueShort extends Value {
         return ValueShort.get((short) (value % other.value));
     }
 
+    @Override
     public String getSQL() {
         return getString();
     }
 
+    @Override
     public int getType() {
         return Value.SHORT;
     }
 
+    @Override
     public short getShort() {
         return value;
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         ValueShort v = (ValueShort) o;
         return MathUtils.compareInt(value, v.value);
     }
 
+    @Override
     public String getString() {
         return String.valueOf(value);
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int hashCode() {
         return value;
     }
 
+    @Override
     public Object getObject() {
         return Short.valueOf(value);
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setShort(parameterIndex, value);
     }
@@ -128,12 +147,49 @@ public class ValueShort extends Value {
         return (ValueShort) Value.cache(new ValueShort(i));
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     public boolean equals(Object other) {
         return other instanceof ValueShort && value == ((ValueShort) other).value;
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return SHORT;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            Short a = (Short) aObj;
+            Short b = (Short) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 24;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            buff.put((byte) Value.SHORT).putShort(((Short) obj).shortValue());
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            buff.put((byte) Value.SHORT).putShort(v.getShort());
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff) {
+            return ValueShort.get(buff.getShort());
+        }
+    };
 
 }

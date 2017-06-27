@@ -32,6 +32,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
@@ -43,8 +44,7 @@ import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.storage.type.StorageDataType;
 
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
@@ -658,7 +658,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 map = map.getRawMap();
             }
 
-            DataType valueType = map.getValueType();
+            StorageDataType valueType = map.getValueType();
             Object k = map.getKeyType().read(ByteBuffer.wrap(key));
             Object v = valueType.read(ByteBuffer.wrap(value));
             Object result = map.put(k, v);
@@ -667,7 +667,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             if (result != null) {
-                try (WriteBuffer writeBuffer = WriteBuffer.create()) {
+                try (DataBuffer writeBuffer = DataBuffer.create()) {
                     valueType.write(writeBuffer, result);
                     ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
                     transfer.writeByteBuffer(buffer);
@@ -719,7 +719,7 @@ public class AsyncConnection implements Handler<Buffer> {
                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
 
             if (result != null) {
-                try (WriteBuffer writeBuffer = WriteBuffer.create()) {
+                try (DataBuffer writeBuffer = DataBuffer.create()) {
                     map.getValueType().write(writeBuffer, result);
                     ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
                     transfer.writeByteBuffer(buffer);

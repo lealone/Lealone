@@ -34,7 +34,7 @@ import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * Adaptive optimization storage
@@ -64,7 +64,7 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
-    public <K, V> StorageMap<K, V> openMap(String name, String mapType, DataType keyType, DataType valueType,
+    public <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters) {
         if (mapType == null || mapType.equalsIgnoreCase("AOMap")) {
             return openAOMap(name, keyType, valueType, parameters);
@@ -81,7 +81,7 @@ public class AOStorage extends StorageBase {
         return openBTreeMap(name, null, null, null);
     }
 
-    public <K, V> BTreeMap<K, V> openBTreeMap(String name, DataType keyType, DataType valueType,
+    public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters) {
         BTreeMap.Builder<K, V> builder = new BTreeMap.Builder<>();
         builder.keyType(keyType);
@@ -89,14 +89,14 @@ public class AOStorage extends StorageBase {
         return openMap(name, builder, parameters);
     }
 
-    public <V> RTreeMap<V> openRTreeMap(String name, DataType valueType, int dimensions) {
+    public <V> RTreeMap<V> openRTreeMap(String name, StorageDataType valueType, int dimensions) {
         RTreeMap.Builder<V> builder = new RTreeMap.Builder<>();
         builder.dimensions(dimensions);
         builder.valueType(valueType);
         return openMap(name, builder, null);
     }
 
-    public <K, V> AOMap<K, V> openAOMap(String name, DataType keyType, DataType valueType,
+    public <K, V> AOMap<K, V> openAOMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters) {
         BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, parameters);
         AOMap<K, V> map = new AOMap<>(btreeMap);
@@ -104,7 +104,7 @@ public class AOStorage extends StorageBase {
         return map;
     }
 
-    public <K, V> BufferedMap<K, V> openBufferedMap(String name, DataType keyType, DataType valueType,
+    public <K, V> BufferedMap<K, V> openBufferedMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters) {
         BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, parameters);
         BufferedMap<K, V> map = new BufferedMap<>(btreeMap);

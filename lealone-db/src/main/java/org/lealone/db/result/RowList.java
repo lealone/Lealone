@@ -10,7 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
-import org.lealone.db.Data;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.value.Value;
@@ -27,7 +27,7 @@ public class RowList {
     private int size;
     private int index, listIndex;
     private FileStorage file;
-    private Data rowBuff;
+    private DataBuffer rowBuff;
     private ArrayList<Value> lobs;
     private final int maxMemory;
     private int memory;
@@ -48,22 +48,22 @@ public class RowList {
         }
     }
 
-    private void writeRow(Data buff, Row r) {
-        buff.checkCapacity(1 + Data.LENGTH_INT * 8);
-        buff.writeByte((byte) 1);
-        buff.writeInt(r.getMemory());
+    private void writeRow(DataBuffer buff, Row r) {
+        buff.checkCapacity(1 + DataBuffer.LENGTH_INT * 8);
+        buff.put((byte) 1);
+        buff.putInt(r.getMemory());
         int columnCount = r.getColumnCount();
-        buff.writeInt(columnCount);
-        buff.writeLong(r.getKey());
-        buff.writeInt(r.getVersion());
-        buff.writeInt(r.isDeleted() ? 1 : 0);
+        buff.putInt(columnCount);
+        buff.putLong(r.getKey());
+        buff.putInt(r.getVersion());
+        buff.putInt(r.isDeleted() ? 1 : 0);
         for (int i = 0; i < columnCount; i++) {
             Value v = r.getValue(i);
             buff.checkCapacity(1);
             if (v == null) {
-                buff.writeByte((byte) 0);
+                buff.put((byte) 0);
             } else {
-                buff.writeByte((byte) 1);
+                buff.put((byte) 1);
                 if (v.getType() == Value.CLOB || v.getType() == Value.BLOB) {
                     // need to keep a reference to temporary lobs,
                     // otherwise the temp file is deleted
@@ -78,7 +78,6 @@ public class RowList {
                         lobs.add(v);
                     }
                 }
-                buff.checkCapacity(buff.getValueLen(v));
                 buff.writeValue(v);
             }
         }
@@ -91,10 +90,10 @@ public class RowList {
             file = db.openFile(fileName, "rw", false);
             file.setCheckedWriting(false);
             file.seek(FileStorage.HEADER_LENGTH);
-            rowBuff = Data.create(db, Constants.DEFAULT_PAGE_SIZE);
+            rowBuff = DataBuffer.create(db, Constants.DEFAULT_PAGE_SIZE);
             file.seek(FileStorage.HEADER_LENGTH);
         }
-        Data buff = rowBuff;
+        DataBuffer buff = rowBuff;
         initBuffer(buff);
         for (int i = 0, size = list.size(); i < size; i++) {
             if (i > 0 && buff.length() > Constants.IO_BUFFER_SIZE) {
@@ -110,16 +109,16 @@ public class RowList {
         memory = 0;
     }
 
-    private static void initBuffer(Data buff) {
+    private static void initBuffer(DataBuffer buff) {
         buff.reset();
-        buff.writeInt(0);
+        buff.putInt(0);
     }
 
-    private void flushBuffer(Data buff) {
+    private void flushBuffer(DataBuffer buff) {
         buff.checkCapacity(1);
-        buff.writeByte((byte) 0);
+        buff.put((byte) 0);
         buff.fillAligned();
-        buff.setInt(0, buff.length() / Constants.FILE_BLOCK_SIZE);
+        buff.putInt(0, buff.length() / Constants.FILE_BLOCK_SIZE);
         file.write(buff.getBytes(), 0, buff.length());
     }
 
@@ -162,18 +161,18 @@ public class RowList {
         return index < size;
     }
 
-    private Row readRow(Data buff) {
+    private Row readRow(DataBuffer buff) {
         if (buff.readByte() == 0) {
             return null;
         }
-        int mem = buff.readInt();
-        int columnCount = buff.readInt();
-        long key = buff.readLong();
-        int version = buff.readInt();
+        int mem = buff.getInt();
+        int columnCount = buff.getInt();
+        long key = buff.getLong();
+        int version = buff.getInt();
         if (readUncached) {
             key = 0;
         }
-        boolean deleted = buff.readInt() == 1;
+        boolean deleted = buff.getInt() == 1;
         Value[] values = new Value[columnCount];
         for (int i = 0; i < columnCount; i++) {
             Value v;
@@ -211,11 +210,11 @@ public class RowList {
             if (listIndex >= list.size()) {
                 list.clear();
                 listIndex = 0;
-                Data buff = rowBuff;
+                DataBuffer buff = rowBuff;
                 buff.reset();
                 int min = Constants.FILE_BLOCK_SIZE;
                 file.readFully(buff.getBytes(), 0, min);
-                int len = buff.readInt() * Constants.FILE_BLOCK_SIZE;
+                int len = buff.getInt() * Constants.FILE_BLOCK_SIZE;
                 buff.checkCapacity(len);
                 if (len - min > 0) {
                     file.readFully(buff.getBytes(), min, len - min);

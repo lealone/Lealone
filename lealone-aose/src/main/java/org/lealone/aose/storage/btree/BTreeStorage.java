@@ -30,12 +30,12 @@ import org.lealone.common.util.BitField;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
+import org.lealone.db.DataBuffer;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.type.WriteBuffer;
 
 /**
  * A persistent storage for map.
@@ -96,7 +96,7 @@ public class BTreeStorage {
 
     private boolean closed;
     private IllegalStateException panicException;
-    private WriteBuffer writeBuffer;
+    private DataBuffer writeBuffer;
 
     private volatile boolean hasUnsavedChanges;
 
@@ -570,7 +570,7 @@ public class BTreeStorage {
     }
 
     private TreeSet<Long> executeSave(boolean force) {
-        WriteBuffer buff = getWriteBuffer();
+        DataBuffer buff = getDataBuffer();
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
         BTreeChunk c = new BTreeChunk(id);
@@ -615,7 +615,7 @@ public class BTreeStorage {
         removedPages.addAll(readRemovedPages());
         writeChunkMetaData(c.id, removedPages);
 
-        releaseWriteBuffer(buff);
+        releaseDataBuffer(buff);
         lastChunk = c;
         return removedPages;
     }
@@ -626,13 +626,13 @@ public class BTreeStorage {
      * 
      * @return the buffer
      */
-    private WriteBuffer getWriteBuffer() {
-        WriteBuffer buff;
+    private DataBuffer getDataBuffer() {
+        DataBuffer buff;
         if (writeBuffer != null) {
             buff = writeBuffer;
             buff.clear();
         } else {
-            buff = new WriteBuffer();
+            buff = DataBuffer.create();
         }
         return buff;
     }
@@ -643,7 +643,7 @@ public class BTreeStorage {
      * 
      * @param buff the buffer than can be re-used
      */
-    private void releaseWriteBuffer(WriteBuffer buff) {
+    private void releaseDataBuffer(DataBuffer buff) {
         if (buff.capacity() <= 4 * 1024 * 1024) {
             writeBuffer = buff;
         }

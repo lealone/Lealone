@@ -6,15 +6,19 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the DATE data type.
@@ -76,36 +80,44 @@ public class ValueDate extends Value {
         return dateValue;
     }
 
+    @Override
     public Date getDate() {
         return DateTimeUtils.convertDateValueToDate(dateValue);
     }
 
+    @Override
     public int getType() {
         return Value.DATE;
     }
 
+    @Override
     public String getString() {
         StringBuilder buff = new StringBuilder(DISPLAY_SIZE);
         appendDate(buff, dateValue);
         return buff.toString();
     }
 
+    @Override
     public String getSQL() {
         return "DATE '" + getString() + "'";
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         return MathUtils.compareLong(dateValue, ((ValueDate) o).dateValue);
     }
 
+    @Override
     public boolean equals(Object other) {
         if (this == other) {
             return true;
@@ -113,14 +125,17 @@ public class ValueDate extends Value {
         return other instanceof ValueDate && dateValue == (((ValueDate) other).dateValue);
     }
 
+    @Override
     public int hashCode() {
         return (int) (dateValue ^ (dateValue >>> 32));
     }
 
+    @Override
     public Object getObject() {
         return getDate();
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setDate(parameterIndex, getDate());
     }
@@ -145,5 +160,47 @@ public class ValueDate extends Value {
         buff.append('-');
         StringUtils.appendZeroPadded(buff, 2, d);
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return DATE;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            Date a = (Date) aObj;
+            Date b = (Date) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 40;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            Date d = (Date) obj;
+            write0(buff, d.getTime());
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            long d = ((ValueDate) v).getDateValue();
+            write0(buff, d);
+        }
+
+        private void write0(DataBuffer buff, long v) {
+            buff.put((byte) Value.DATE).putVarLong(v);
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff) {
+            return ValueDate.fromDateValue(DataUtils.readVarLong(buff));
+        }
+
+    };
 
 }

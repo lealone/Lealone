@@ -6,12 +6,16 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the INT data type.
@@ -65,6 +69,7 @@ public class ValueInt extends Value {
         return v;
     }
 
+    @Override
     public Value add(Value v) {
         ValueInt other = (ValueInt) v;
         return checkRange((long) value + (long) other.value);
@@ -77,24 +82,29 @@ public class ValueInt extends Value {
         return ValueInt.get((int) x);
     }
 
+    @Override
     public int getSignum() {
         return Integer.signum(value);
     }
 
+    @Override
     public Value negate() {
         return checkRange(-(long) value);
     }
 
+    @Override
     public Value subtract(Value v) {
         ValueInt other = (ValueInt) v;
         return checkRange((long) value - (long) other.value);
     }
 
+    @Override
     public Value multiply(Value v) {
         ValueInt other = (ValueInt) v;
         return checkRange((long) value * (long) other.value);
     }
 
+    @Override
     public Value divide(Value v) {
         ValueInt other = (ValueInt) v;
         if (other.value == 0) {
@@ -103,6 +113,7 @@ public class ValueInt extends Value {
         return ValueInt.get(value / other.value);
     }
 
+    @Override
     public Value modulus(Value v) {
         ValueInt other = (ValueInt) v;
         if (other.value == 0) {
@@ -111,53 +122,128 @@ public class ValueInt extends Value {
         return ValueInt.get(value % other.value);
     }
 
+    @Override
     public String getSQL() {
         return getString();
     }
 
+    @Override
     public int getType() {
         return Value.INT;
     }
 
+    @Override
     public int getInt() {
         return value;
     }
 
+    @Override
     public long getLong() {
         return value;
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         ValueInt v = (ValueInt) o;
         return MathUtils.compareInt(value, v.value);
     }
 
+    @Override
     public String getString() {
         return String.valueOf(value);
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
 
+    @Override
     public int hashCode() {
         return value;
     }
 
+    @Override
     public Object getObject() {
         return value;
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setInt(parameterIndex, value);
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
 
+    @Override
     public boolean equals(Object other) {
         return other instanceof ValueInt && value == ((ValueInt) other).value;
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return INT;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            Integer a = (Integer) aObj;
+            Integer b = (Integer) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 24;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            int x = (Integer) obj;
+            write0(buff, x);
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            int x = v.getInt();
+            write0(buff, x);
+        }
+
+        private void write0(DataBuffer buff, int x) {
+            if (x < 0) {
+                // -Integer.MIN_VALUE is smaller than 0
+                if (-x < 0 || -x > DataUtils.COMPRESSED_VAR_INT_MAX) {
+                    buff.put((byte) TAG_INTEGER_FIXED).putInt(x);
+                } else {
+                    buff.put((byte) TAG_INTEGER_NEGATIVE).putVarInt(-x);
+                }
+            } else if (x <= 15) {
+                buff.put((byte) (TAG_INTEGER_0_15 + x));
+            } else if (x <= DataUtils.COMPRESSED_VAR_INT_MAX) {
+                buff.put((byte) INT).putVarInt(x);
+            } else {
+                buff.put((byte) TAG_INTEGER_FIXED).putInt(x);
+            }
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff, int tag) {
+            switch (tag) {
+            case INT:
+                return ValueInt.get(DataUtils.readVarInt(buff));
+            case TAG_INTEGER_NEGATIVE:
+                return ValueInt.get(-DataUtils.readVarInt(buff));
+            case TAG_INTEGER_FIXED:
+                return ValueInt.get(buff.getInt());
+            }
+            return ValueInt.get(tag - TAG_INTEGER_0_15);
+        }
+
+    };
 
 }

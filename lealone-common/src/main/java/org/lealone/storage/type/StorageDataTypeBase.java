@@ -15,36 +15,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvcc.log;
+package org.lealone.storage.type;
 
 import java.nio.ByteBuffer;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.storage.type.StorageDataType;
+import org.lealone.db.value.Value;
 
-public class RedoLogKeyType implements StorageDataType {
+public abstract class StorageDataTypeBase implements StorageDataType {
 
-    @Override
-    public int compare(Object a, Object b) {
-        Long a1 = (Long) a;
-        Long b1 = (Long) b;
-        return a1.compareTo(b1);
-    }
+    public abstract int getType();
 
-    @Override
-    public int getMemory(Object obj) {
-        return 30;
-    }
-
-    @Override
-    public void write(DataBuffer buff, Object obj) {
-        buff.putVarLong((Long) obj);
-    }
+    public abstract void writeValue(DataBuffer buff, Value v);
 
     @Override
     public Object read(ByteBuffer buff) {
-        return DataUtils.readVarLong(buff);
+        int tag = buff.get();
+        return readValue(buff, tag).getObject();
+    }
+
+    public Object read(ByteBuffer buff, int tag) {
+        throw newInternalError();
+    }
+
+    public Value readValue(ByteBuffer buff) {
+        throw newInternalError();
+    }
+
+    public Value readValue(ByteBuffer buff, int tag) {
+        return readValue(buff);
+    }
+
+    protected IllegalStateException newInternalError() {
+        return DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Internal error");
     }
 
 }

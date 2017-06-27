@@ -30,7 +30,7 @@ import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.type.DataType;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * A write optimization buffered map.
@@ -318,7 +318,7 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
     private static class Cursor<K, V> implements StorageMapCursor<K, V> {
         private final Iterator<Entry<Object, Object>> bufferIterator;
         private final StorageMapCursor<K, V> mapCursor;
-        private final DataType keyType;
+        private final StorageDataType keyType;
 
         private boolean bufferIteratorEnd;
         private boolean mapCursorEnd;

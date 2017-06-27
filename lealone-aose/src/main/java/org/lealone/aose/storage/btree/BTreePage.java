@@ -14,12 +14,12 @@ import java.util.List;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueNull;
+import org.lealone.db.value.ValueString;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.fs.FileStorage;
-import org.lealone.storage.type.DataType;
-import org.lealone.storage.type.StringDataType;
-import org.lealone.storage.type.WriteBuffer;
+import org.lealone.storage.type.StorageDataType;
 
 /**
  * A page (a node or a leaf).
@@ -181,7 +181,7 @@ public class BTreePage {
             x = high >>> 1;
         }
         Object[] k = keys;
-        DataType keyType = map.getKeyType();
+        StorageDataType keyType = map.getKeyType();
         while (low <= high) {
             int compare = keyType.compare(key, k[x]);
             if (compare > 0) {
@@ -310,7 +310,7 @@ public class BTreePage {
         // keys = Arrays.copyOf(keys, keys.length);
         keys = keys.clone();
         Object old = keys[index];
-        DataType keyType = map.getKeyType();
+        StorageDataType keyType = map.getKeyType();
         int mem = keyType.getMemory(key);
         if (old != null) {
             mem -= keyType.getMemory(old);
@@ -331,7 +331,7 @@ public class BTreePage {
         // this is slightly slower:
         // values = Arrays.copyOf(values, values.length);
         values = values.clone();
-        DataType valueType = map.getValueType();
+        StorageDataType valueType = map.getValueType();
         addMemory(valueType.getMemory(value) - valueType.getMemory(old));
         values[index] = value;
         return old;
@@ -502,22 +502,22 @@ public class BTreePage {
             buff = ByteBuffer.allocate(l);
             compressor.expand(comp, 0, compLen, buff.array(), buff.arrayOffset(), l);
         }
-        map.getKeyType().read(buff, keys, keyLength, true);
+        map.getKeyType().read(buff, keys, keyLength);
         if (!node) {
             values = new Object[keyLength];
-            map.getValueType().read(buff, values, keyLength, false);
+            map.getValueType().read(buff, values, keyLength);
             totalCount = keyLength;
             replicationHostIds = readReplicationHostIds(buff);
         }
         recalculateMemory();
     }
 
-    void writeLeaf(WriteBuffer buff, boolean remote) {
+    void writeLeaf(DataBuffer buff, boolean remote) {
         writeReplicationHostIds(buff);
         buff.put((byte) (remote ? 1 : 0));
         if (!remote) {
-            DataType kt = map.getKeyType();
-            DataType vt = map.getValueType();
+            StorageDataType kt = map.getKeyType();
+            StorageDataType vt = map.getValueType();
             buff.putInt(keys.length);
             for (int i = 0; i < keys.length; i++) {
                 kt.write(buff, keys[i]);
@@ -534,8 +534,8 @@ public class BTreePage {
         if (remote) {
             p = BTreePage.createEmpty(map);
         } else {
-            DataType kt = map.getKeyType();
-            DataType vt = map.getValueType();
+            StorageDataType kt = map.getKeyType();
+            StorageDataType vt = map.getValueType();
             int length = page.getInt();
             Object[] keys = new Object[length];
             Object[] values = new Object[length];
@@ -550,13 +550,13 @@ public class BTreePage {
         return p;
     }
 
-    private void writeReplicationHostIds(WriteBuffer buff) {
+    private void writeReplicationHostIds(DataBuffer buff) {
         if (replicationHostIds == null || replicationHostIds.isEmpty())
             buff.putInt(0);
         else {
             buff.putInt(replicationHostIds.size());
             for (String id : replicationHostIds) {
-                StringDataType.INSTANCE.write(buff, id);
+                ValueString.type.write(buff, id);
             }
         }
     }
@@ -565,7 +565,7 @@ public class BTreePage {
         int length = buff.getInt();
         List<String> replicationHostIds = new ArrayList<>(length);
         for (int i = 0; i < length; i++)
-            replicationHostIds.add(StringDataType.INSTANCE.read(buff));
+            replicationHostIds.add(ValueString.type.read(buff));
 
         if (replicationHostIds.isEmpty())
             replicationHostIds = null;
@@ -580,7 +580,7 @@ public class BTreePage {
      * @param buff the target buffer
      * @return the position of the buffer just after the type
      */
-    private int write(BTreeChunk chunk, WriteBuffer buff) {
+    private int write(BTreeChunk chunk, DataBuffer buff) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = children != null ? DataUtils.PAGE_TYPE_NODE : DataUtils.PAGE_TYPE_LEAF;
@@ -603,9 +603,9 @@ public class BTreePage {
             }
         }
         int compressStart = buff.position();
-        map.getKeyType().write(buff, keys, keyLength, true); // TODO 第4个参数目前未使用，考虑删除
+        map.getKeyType().write(buff, keys, keyLength);
         if (type == DataUtils.PAGE_TYPE_LEAF) {
-            map.getValueType().write(buff, values, keyLength, false);
+            map.getValueType().write(buff, values, keyLength);
             writeReplicationHostIds(buff);
         }
         BTreeStorage storage = map.getBTreeStorage();
@@ -665,7 +665,7 @@ public class BTreePage {
         return typePos + 1;
     }
 
-    private void writeChildrenPositions(WriteBuffer buff) {
+    private void writeChildrenPositions(DataBuffer buff) {
         int len = keys.length;
         for (int i = 0; i <= len; i++) {
             buff.putLong(children[i].pos); // pos通常是个很大的long，所以不值得用VarLong
@@ -679,7 +679,7 @@ public class BTreePage {
      * @param chunk the chunk
      * @param buff the target buffer
      */
-    void writeUnsavedRecursive(BTreeChunk chunk, WriteBuffer buff) {
+    void writeUnsavedRecursive(BTreeChunk chunk, DataBuffer buff) {
         if (pos != 0) {
             // already stored before
             return;
@@ -742,12 +742,12 @@ public class BTreePage {
 
     protected void recalculateMemory() {
         int mem = DataUtils.PAGE_MEMORY;
-        DataType keyType = map.getKeyType();
+        StorageDataType keyType = map.getKeyType();
         for (int i = 0; i < keys.length; i++) {
             mem += keyType.getMemory(keys[i]);
         }
         if (this.isLeaf()) {
-            DataType valueType = map.getValueType();
+            StorageDataType valueType = map.getValueType();
             for (int i = 0; i < keys.length; i++) {
                 mem += valueType.getMemory(values[i]);
             }

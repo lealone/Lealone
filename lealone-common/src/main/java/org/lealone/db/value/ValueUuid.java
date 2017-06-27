@@ -6,6 +6,7 @@
  */
 package org.lealone.db.value;
 
+import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.UUID;
@@ -15,6 +16,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.db.DataBuffer;
+import org.lealone.storage.type.StorageDataTypeBase;
 
 /**
  * Implementation of the UUID data type.
@@ -39,6 +42,7 @@ public class ValueUuid extends Value {
         this.low = low;
     }
 
+    @Override
     public int hashCode() {
         return (int) ((high >>> 32) ^ high ^ (low >>> 32) ^ low);
     }
@@ -115,14 +119,17 @@ public class ValueUuid extends Value {
         return (ValueUuid) Value.cache(new ValueUuid(high, low));
     }
 
+    @Override
     public String getSQL() {
         return StringUtils.quoteStringSQL(getString());
     }
 
+    @Override
     public int getType() {
         return Value.UUID;
     }
 
+    @Override
     public long getPrecision() {
         return PRECISION;
     }
@@ -134,6 +141,7 @@ public class ValueUuid extends Value {
         }
     }
 
+    @Override
     public String getString() {
         StringBuilder buff = new StringBuilder(36);
         appendHex(buff, high >> 32, 4);
@@ -148,6 +156,7 @@ public class ValueUuid extends Value {
         return buff.toString();
     }
 
+    @Override
     protected int compareSecure(Value o, CompareMode mode) {
         if (o == this) {
             return 0;
@@ -159,14 +168,17 @@ public class ValueUuid extends Value {
         return high > v.high ? 1 : -1;
     }
 
+    @Override
     public boolean equals(Object other) {
         return other instanceof ValueUuid && compareSecure((Value) other, null) == 0;
     }
 
+    @Override
     public Object getObject() {
         return new UUID(high, low);
     }
 
+    @Override
     public byte[] getBytes() {
         byte[] buff = new byte[16];
         for (int i = 0; i < 8; i++) {
@@ -176,6 +188,7 @@ public class ValueUuid extends Value {
         return buff;
     }
 
+    @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
         prep.setBytes(parameterIndex, getBytes());
     }
@@ -198,8 +211,51 @@ public class ValueUuid extends Value {
         return low;
     }
 
+    @Override
     public int getDisplaySize() {
         return DISPLAY_SIZE;
     }
+
+    public static final StorageDataTypeBase type = new StorageDataTypeBase() {
+
+        @Override
+        public int getType() {
+            return UUID;
+        }
+
+        @Override
+        public int compare(Object aObj, Object bObj) {
+            UUID a = (UUID) aObj;
+            UUID b = (UUID) bObj;
+            return a.compareTo(b);
+        }
+
+        @Override
+        public int getMemory(Object obj) {
+            return 40;
+        }
+
+        @Override
+        public void write(DataBuffer buff, Object obj) {
+            UUID a = (UUID) obj;
+            write0(buff, a.getMostSignificantBits(), a.getLeastSignificantBits());
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, Value v) {
+            ValueUuid uuid = (ValueUuid) v;
+            write0(buff, uuid.getHigh(), uuid.getLow());
+        }
+
+        private void write0(DataBuffer buff, long high, long low) {
+            buff.put((byte) UUID).putLong(high).putLong(low);
+        }
+
+        @Override
+        public Value readValue(ByteBuffer buff) {
+            return ValueUuid.get(buff.getLong(), buff.getLong());
+        }
+
+    };
 
 }
