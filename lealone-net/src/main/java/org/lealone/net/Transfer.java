@@ -85,20 +85,15 @@ public class Transfer implements NetSerializer {
         this.session = session;
     }
 
-    public Transfer(AsyncConnection conn, NetSocket socket, Buffer buffer) {
+    public Transfer(AsyncConnection conn, NetSocket socket, Buffer inBuffer) {
         this.conn = conn;
         this.socket = socket;
 
         resettableOutputStream = new ResettableBufferOutputStream(BUFFER_SIZE);
         out = new DataOutputStream(resettableOutputStream);
 
-        try {
-            out.writeInt(0);
-        } catch (IOException e) {
-            throw new AssertionError();
-        }
-        if (buffer != null) {
-            BufferInputStream bufferInputStream = new BufferInputStream(buffer);
+        if (inBuffer != null) {
+            BufferInputStream bufferInputStream = new BufferInputStream(inBuffer);
             in = new DataInputStream(bufferInputStream);
         }
     }
@@ -146,7 +141,6 @@ public class Transfer implements NetSerializer {
      */
     public void reset() throws IOException {
         resettableOutputStream.reset();
-        out.writeInt(0);
     }
 
     public void setSession(Session session) {
@@ -169,10 +163,8 @@ public class Transfer implements NetSerializer {
      */
     public void flush() throws IOException {
         resettableOutputStream.writePacketLength();
-        out.flush();
         socket.write(resettableOutputStream.buffer);
         resettableOutputStream.reset();
-        out.writeInt(0); // write packet header for next
     }
 
     /**
@@ -813,7 +805,7 @@ public class Transfer implements NetSerializer {
 
     private static class BufferInputStream extends InputStream {
         final Buffer buffer;
-        int size;
+        final int size;
         int pos;
 
         BufferInputStream(Buffer buffer) {
@@ -842,12 +834,18 @@ public class Transfer implements NetSerializer {
         }
 
         @Override
-        public void write(int b) throws IOException {
+        public void write(int b) {
             buffer.appendByte((byte) b);
+        }
+
+        @Override
+        public void write(byte b[], int off, int len) {
+            buffer.appendBytes(b, off, len);
         }
 
         void reset() {
             buffer = Buffer.buffer(initialSizeHint);
+            buffer.appendInt(0); // write packet header for next
         }
 
         void writePacketLength() {

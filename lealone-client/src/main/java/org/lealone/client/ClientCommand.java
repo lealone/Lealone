@@ -398,7 +398,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         }
         session.traceOperation("COMMAND_CLOSE", id);
         try {
-            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
+            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).writeInt(session.getSessionId()).flush();
         } catch (IOException e) {
             trace.error(e, "close");
         }
