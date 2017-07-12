@@ -79,7 +79,6 @@ public class Transfer implements NetSerializer {
     private DataInputStream in;
     private final DataOutputStream out;
     private final ResettableBufferOutputStream resettableOutputStream;
-    private byte[] lobMacSalt;
 
     public Transfer(AsyncConnection conn, NetSocket socket, Session session) {
         this(conn, socket, (Buffer) null);
@@ -118,13 +117,11 @@ public class Transfer implements NetSerializer {
     }
 
     public Transfer writeRequestHeader(int id, int packetType) throws IOException {
-        // writeInt(id << 1).writeInt(packetType);
         writeByte(REQUEST).writeInt(id).writeInt(packetType);
         return this;
     }
 
     public Transfer writeResponseHeader(int id, int status) throws IOException {
-        // writeInt((id << 1) | 1).writeInt(status);
         writeByte(RESPONSE).writeInt(id).writeInt(status);
         return this;
     }
@@ -712,13 +709,21 @@ public class Transfer implements NetSerializer {
     public void verifyLobMac(byte[] hmac, long lobId) {
         byte[] result = calculateLobMac(lobId);
         if (!Utils.compareSecure(hmac, result)) {
-            throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
+            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1,
+                    "Invalid lob hmac; possibly the connection was re-opened internally");
         }
     }
 
     private byte[] calculateLobMac(long lobId) {
+        byte[] lobMacSalt = null;
+        if (session != null) {
+            lobMacSalt = session.getLobMacSalt();
+        }
         if (lobMacSalt == null) {
             lobMacSalt = MathUtils.secureRandomBytes(LOB_MAC_SALT_LENGTH);
+            if (session != null) {
+                session.setLobMacSalt(lobMacSalt);
+            }
         }
         byte[] data = new byte[8];
         Utils.writeLong(data, 0, lobId);

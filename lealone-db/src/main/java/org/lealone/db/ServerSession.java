@@ -1404,4 +1404,15 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         lastIndex = null;
     }
 
+    private byte[] lobMacSalt;
+
+    @Override
+    public void setLobMacSalt(byte[] lobMacSalt) {
+        this.lobMacSalt = lobMacSalt;
+    }
+
+    @Override
+    public byte[] getLobMacSalt() {
+        return lobMacSalt;
+    }
 }

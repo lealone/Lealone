@@ -25,12 +25,12 @@ import java.sql.Statement;
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcBlob;
 import org.lealone.common.trace.TraceSystem;
-import org.lealone.test.UnitTestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcBlobTest extends UnitTestBase {
+public class JdbcBlobTest extends SqlTestBase { // UnitTestBase {
     @Test
     public void run() throws Exception {
-        setEmbedded(true).enableTrace(TraceSystem.DEBUG);
+        setEmbedded(false).enableTrace(TraceSystem.DEBUG);
         Connection conn = getConnection();
         Statement stmt = conn.createStatement();
 

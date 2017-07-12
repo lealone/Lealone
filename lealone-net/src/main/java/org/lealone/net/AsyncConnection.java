@@ -527,6 +527,14 @@ public class AsyncConnection implements Handler<Buffer> {
     }
 
     protected void processRequest(Transfer transfer, int id, int operation) throws IOException {
+        int sessionId;
+        if (operation > Session.SESSION_CLOSE) {
+            sessionId = transfer.readInt();
+            transfer.setSession(sessions.get(sessionId));
+        } else {
+            sessionId = id;
+        }
+
         switch (operation) {
         case Session.SESSION_INIT: {
             readInitPacket(transfer, id);
@@ -534,7 +542,6 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.COMMAND_PREPARE_READ_PARAMS:
         case Session.COMMAND_PREPARE: {
-            int sessionId = transfer.readInt();
             String sql = transfer.readString();
             Session session = getSession(sessionId);
             PreparedStatement command = session.prepareStatement(sql, -1);
@@ -554,7 +561,6 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY:
         case Session.COMMAND_QUERY: {
-            int sessionId = transfer.readInt();
             String sql = transfer.readString();
             int objectId = transfer.readInt();
             int maxRows = transfer.readInt();
@@ -572,7 +578,6 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
         case Session.COMMAND_PREPARED_QUERY: {
-            int sessionId = transfer.readInt();
             int objectId = transfer.readInt();
             int maxRows = transfer.readInt();
             int fetchSize = transfer.readInt();
@@ -590,7 +595,6 @@ public class AsyncConnection implements Handler<Buffer> {
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
         case Session.COMMAND_UPDATE:
         case Session.COMMAND_REPLICATION_UPDATE: {
-            int sessionId = transfer.readInt();
             String sql = transfer.readString();
             Session session = getSession(sessionId);
             if (operation == Session.COMMAND_REPLICATION_UPDATE) {
@@ -609,7 +613,6 @@ public class AsyncConnection implements Handler<Buffer> {
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             if (operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE)
                 session.setReplicationName(transfer.readString());
@@ -623,7 +626,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_REPLICATION_COMMIT: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             long validKey = transfer.readLong();
             boolean autoCommit = transfer.readBoolean();
@@ -631,7 +633,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_REPLICATION_ROLLBACK: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             session.rollback();
             break;
@@ -639,7 +640,6 @@ public class AsyncConnection implements Handler<Buffer> {
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT:
         case Session.COMMAND_STORAGE_PUT:
         case Session.COMMAND_STORAGE_REPLICATION_PUT: {
-            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             byte[] key = transfer.readBytes();
             byte[] value = transfer.readBytes();
@@ -680,7 +680,6 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.COMMAND_STORAGE_APPEND:
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND: {
-            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             byte[] value = transfer.readBytes();
             Session session = getSession(sessionId);
@@ -702,7 +701,6 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET:
         case Session.COMMAND_STORAGE_GET: {
-            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             byte[] key = transfer.readBytes();
             Session session = getSession(sessionId);
@@ -731,7 +729,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE: {
-            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(transfer);
             Session session = getSession(sessionId);
@@ -744,7 +741,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_STORAGE_MOVE_LEAF_PAGE: {
-            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             ByteBuffer splitKey = transfer.readByteBuffer();
             ByteBuffer page = transfer.readByteBuffer();
@@ -757,7 +753,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE: {
-            int sessionId = transfer.readInt();
             String mapName = transfer.readString();
             ByteBuffer key = transfer.readByteBuffer();
             Session session = getSession(sessionId);
@@ -783,7 +778,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             session.commit(transfer.readString());
             // writeResponseHeader(transfer, session, id); //不需要发回响应
@@ -791,7 +785,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             session.rollback();
             // writeResponseHeader(transfer, session, id); //不需要发回响应
@@ -800,7 +793,6 @@ public class AsyncConnection implements Handler<Buffer> {
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT:
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             String name = transfer.readString();
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT)
@@ -812,7 +804,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             boolean isValid = session.validateTransaction(transfer.readString());
             writeResponseHeader(transfer, session, id);
@@ -821,7 +812,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_UPDATE: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             int size = transfer.readInt();
             int[] result = new int[size];
@@ -838,7 +828,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
-            int sessionId = transfer.readInt();
             int size = transfer.readInt();
             PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
             List<? extends CommandParameter> params = command.getParameters();
@@ -897,7 +886,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.SESSION_SET_AUTO_COMMIT: {
-            int sessionId = transfer.readInt();
             boolean autoCommit = transfer.readBoolean();
             Session session = getSession(sessionId);
             session.setAutoCommit(autoCommit);
@@ -925,7 +913,6 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_READ_LOB: {
-            int sessionId = transfer.readInt();
             Session session = getSession(sessionId);
             if (lobs == null) {
                 lobs = SmallLRUCache.newInstance(
@@ -1068,8 +1055,6 @@ public class AsyncConnection implements Handler<Buffer> {
     private void parsePacket(Transfer transfer) throws IOException {
         boolean isRequest = transfer.readByte() == Transfer.REQUEST;
         int id = transfer.readInt();
-        // boolean isRequest = (id & 1) == 0;
-        // id = id >>> 1;
         if (isRequest) {
             try {
                 int operation = transfer.readInt();
@@ -1090,4 +1075,5 @@ public class AsyncConnection implements Handler<Buffer> {
     public void setHostAndPort(String hostAndPort) {
         this.hostAndPort = hostAndPort;
     }
+
 }

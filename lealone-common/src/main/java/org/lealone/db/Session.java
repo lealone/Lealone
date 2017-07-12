@@ -211,4 +211,11 @@ public interface Session extends Closeable, Transaction.Participant {
     long getLastRowKey();
 
     void replicationCommit(long validKey, boolean autoCommit);
+
+    default void setLobMacSalt(byte[] lobMacSalt) {
+    }
+
+    default byte[] getLobMacSalt() {
+        return null;
+    }
 }
