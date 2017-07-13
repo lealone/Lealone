@@ -80,7 +80,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 s.traceOperation("COMMAND_PREPARE", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_PREPARE);
             }
-            transfer.writeInt(session.getSessionId()).writeString(sql);
+            transfer.writeString(sql);
             AsyncCallback<Void> ac = new AsyncCallback<Void>() {
                 @Override
                 public void runInternal() {
@@ -137,7 +137,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         try {
             session.traceOperation("COMMAND_GET_META_DATA", id);
             transfer.writeRequestHeader(id, Session.COMMAND_GET_META_DATA);
-            transfer.writeInt(session.getSessionId()).writeInt(objectId);
+            transfer.writeInt(objectId);
             AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
                 @Override
                 public void runInternal() {
@@ -199,7 +199,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                     session.traceOperation("COMMAND_PREPARED_QUERY", id);
                     transfer.writeRequestHeader(id, Session.COMMAND_PREPARED_QUERY);
                 }
-                transfer.writeInt(session.getSessionId()).writeInt(resultId).writeInt(maxRows);
+                transfer.writeInt(resultId).writeInt(maxRows);
             } else {
                 if (isDistributedQuery) {
                     session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_QUERY", id);
@@ -208,7 +208,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                     session.traceOperation("COMMAND_QUERY", id);
                     transfer.writeRequestHeader(id, Session.COMMAND_QUERY);
                 }
-                transfer.writeInt(session.getSessionId()).writeString(sql).writeInt(resultId).writeInt(maxRows);
+                transfer.writeString(sql).writeInt(resultId).writeInt(maxRows);
             }
             int fetch;
             if (scrollable) {
@@ -319,7 +319,6 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                     transfer.writeRequestHeader(id, Session.COMMAND_UPDATE);
                 }
             }
-            transfer.writeInt(session.getSessionId());
             if (!prepared)
                 transfer.writeString(sql);
             if (replicationName != null)
@@ -398,7 +397,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         }
         session.traceOperation("COMMAND_CLOSE", id);
         try {
-            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).writeInt(session.getSessionId()).flush();
+            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
         } catch (IOException e) {
             trace.error(e, "close");
         }
@@ -459,7 +458,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 session.traceOperation("COMMAND_STORAGE_PUT", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_PUT);
             }
-            transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
+            transfer.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
             transfer.writeString(replicationName).writeBoolean(raw);
 
             AtomicReference<byte[]> resultRef = new AtomicReference<>();
@@ -499,7 +498,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 session.traceOperation("COMMAND_STORAGE_GET", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_GET);
             }
-            transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key);
+            transfer.writeString(mapName).writeByteBuffer(key);
             AtomicReference<byte[]> resultRef = new AtomicReference<>();
             AsyncCallback<Void> ac = new AsyncCallback<Void>() {
                 @Override
@@ -529,7 +528,6 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         try {
             session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
-            transfer.writeInt(session.getSessionId());
             transfer.writeString(mapName).writeByteBuffer(splitKey).writeByteBuffer(page);
             transfer.flush();
         } catch (Exception e) {
@@ -543,7 +541,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         try {
             session.traceOperation("COMMAND_STORAGE_REMOVE_LEAF_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
-            transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(key);
+            transfer.writeString(mapName).writeByteBuffer(key);
             transfer.flush();
         } catch (Exception e) {
             session.handleException(e);
@@ -565,7 +563,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
                 session.traceOperation("COMMAND_STORAGE_APPEND", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_APPEND);
             }
-            transfer.writeInt(session.getSessionId()).writeString(mapName).writeByteBuffer(value);
+            transfer.writeString(mapName).writeByteBuffer(value);
             transfer.writeString(replicationName);
 
             AsyncCallback<Void> ac = new AsyncCallback<Void>() {
@@ -680,7 +678,6 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         session.traceOperation("COMMAND_REPLICATION_COMMIT", id);
         try {
             transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_COMMIT);
-            transfer.writeInt(session.getSessionId());
             transfer.writeLong(validKey).writeBoolean(autoCommit).flush();
         } catch (IOException e) {
             trace.error(e, "replicationCommit");
@@ -691,8 +688,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
     public void replicationRollback() {
         session.traceOperation("COMMAND_REPLICATION_ROLLBACK", id);
         try {
-            transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_ROLLBACK);
-            transfer.writeInt(session.getSessionId()).flush();
+            transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_ROLLBACK).flush();
         } catch (IOException e) {
             trace.error(e, "replicationRollback");
         }
@@ -704,7 +700,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         try {
             session.traceOperation("COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE);
-            transfer.writeInt(session.getSessionId()).writeString(mapName);
+            transfer.writeString(mapName);
             leafPageMovePlan.serialize(transfer);
 
             AsyncCallback<LeafPageMovePlan> ac = new AsyncCallback<LeafPageMovePlan>() {

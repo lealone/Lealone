@@ -218,4 +218,6 @@ public interface Session extends Closeable, Transaction.Participant {
     default byte[] getLobMacSalt() {
         return null;
     }
+
+    int getSessionId();
 }

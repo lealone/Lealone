@@ -632,6 +632,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
+    public int getSessionId() {
+        return id;
+    }
+
+    @Override
     public void cancel() {
         cancelAt = System.currentTimeMillis();
     }

@@ -99,7 +99,6 @@ public class ClientBatchCommand extends CommandBase {
             if (batchCommands != null) {
                 session.traceOperation("COMMAND_BATCH_STATEMENT_UPDATE", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_UPDATE);
-                transfer.writeInt(session.getSessionId());
                 int size = batchCommands.size();
                 result = new int[size];
                 transfer.writeInt(size);
@@ -110,7 +109,6 @@ public class ClientBatchCommand extends CommandBase {
             } else {
                 session.traceOperation("COMMAND_BATCH_STATEMENT_PREPARED_UPDATE", id);
                 transfer.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE);
-                transfer.writeInt(session.getSessionId());
                 int size = batchParameters.size();
                 result = new int[size];
                 transfer.writeInt(size);
@@ -155,7 +153,7 @@ public class ClientBatchCommand extends CommandBase {
         }
         session.traceOperation("COMMAND_CLOSE", id);
         try {
-            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).writeInt(session.getSessionId()).flush();
+            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
         } catch (IOException e) {
             trace.error(e, "close");
         }

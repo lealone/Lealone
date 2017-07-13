@@ -111,9 +111,22 @@ public class Transfer implements NetSerializer {
         conn.addAsyncCallback(id, ac);
     }
 
+    public Transfer writeRequestHeader(int packetType) throws IOException {
+        checkSession();
+        int id = session.getNextId();
+        return writeRequestHeader(id, packetType);
+    }
+
     public Transfer writeRequestHeader(int id, int packetType) throws IOException {
-        writeByte(REQUEST).writeInt(id).writeInt(packetType);
+        checkSession();
+        writeByte(REQUEST).writeInt(id).writeInt(packetType).writeInt(session.getSessionId());
         return this;
+    }
+
+    private void checkSession() {
+        if (session == null) {
+            throw DbException.throwInternalError("session is null");
+        }
     }
 
     public Transfer writeResponseHeader(int id, int status) throws IOException {
