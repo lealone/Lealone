@@ -249,15 +249,6 @@ public class AsyncConnection implements Handler<Buffer> {
         }
     }
 
-    private Session getSession(int sessionId, int operation) {
-        Session session = sessions.get(sessionId);
-        // 初始化时，肯定是不存在session的
-        if (session == null && operation != Session.SESSION_INIT) {
-            throw DbException.convert(new RuntimeException("session not found: " + sessionId));
-        }
-        return session;
-    }
-
     private void closeSession(Session session) {
         if (session != null) {
             try {
@@ -529,8 +520,12 @@ public class AsyncConnection implements Handler<Buffer> {
     }
 
     protected void processRequest(Transfer transfer, int id, int operation) throws IOException {
-        int sessionId = transfer.readInt();
-        Session session = getSession(sessionId, operation);
+        int sessionId = transfer.readInt(); 
+        Session session = sessions.get(sessionId);
+        // 初始化时，肯定是不存在session的
+        if (session == null && operation != Session.SESSION_INIT) {
+            throw DbException.convert(new RuntimeException("session not found: " + sessionId));
+        }
         transfer.setSession(session);
 
         switch (operation) {

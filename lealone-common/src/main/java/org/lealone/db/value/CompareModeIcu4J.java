@@ -26,6 +26,7 @@ public class CompareModeIcu4J extends CompareMode {
         collator = getIcu4jCollator(name, strength);
     }
 
+    @Override
     public int compareString(String a, String b, boolean ignoreCase) {
         if (ignoreCase) {
             a = a.toUpperCase();
@@ -34,6 +35,7 @@ public class CompareModeIcu4J extends CompareMode {
         return collator.compare(a, b);
     }
 
+    @Override
     public boolean equalsChars(String a, int ai, String b, int bi, boolean ignoreCase) {
         return compareString(a.substring(ai, ai + 1), b.substring(bi, bi + 1), ignoreCase) == 0;
     }
