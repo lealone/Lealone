@@ -265,4 +265,9 @@ public class ReplicationSession extends SessionBase {
             commands[i] = sessions[i].createStorageCommand();
         return new ReplicationCommand(this, commands);
     }
+
+    @Override
+    public int getSessionId() {
+        return sessions[0].getSessionId();
+    }
 }
