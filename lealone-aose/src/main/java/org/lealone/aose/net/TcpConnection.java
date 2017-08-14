@@ -115,7 +115,7 @@ public class TcpConnection extends AsyncConnection {
     }
 
     private void writeInitPacket(Transfer transfer, int sessionId, int version, String hostAndPort) throws Exception {
-        transfer.writeRequestHeader(sessionId, Session.SESSION_INIT);
+        transfer.writeRequestHeaderWithoutSessionId(sessionId, Session.SESSION_INIT);
         transfer.writeInt(MessagingService.PROTOCOL_MAGIC);
         transfer.writeInt(version);
         transfer.writeString(hostAndPort);
@@ -192,7 +192,7 @@ public class TcpConnection extends AsyncConnection {
     }
 
     private synchronized void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
-        transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MESSAGE);
+        transfer.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_STORAGE_MESSAGE);
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
 
         // int cast cuts off the high-order half of the timestamp, which we can assume remains

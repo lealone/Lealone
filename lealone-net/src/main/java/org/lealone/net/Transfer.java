@@ -123,6 +123,11 @@ public class Transfer implements NetSerializer {
         return this;
     }
 
+    public Transfer writeRequestHeaderWithoutSessionId(int id, int packetType) throws IOException {
+        writeByte(REQUEST).writeInt(id).writeInt(packetType);
+        return this;
+    }
+
     private void checkSession() {
         if (session == null) {
             throw DbException.throwInternalError("session is null");
