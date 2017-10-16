@@ -177,10 +177,11 @@ public class P2pRouter implements Router {
         }
 
         String[] hostIds = new String[needNodes];
+        int j = 0;
         for (int i : indexSet) {
             String hostId = P2pServer.instance.getTopologyMetaData().getHostId(list.get(i));
             if (hostId != null)
-                hostIds[i] = hostId;
+                hostIds[j++] = hostId;
         }
 
         return hostIds;

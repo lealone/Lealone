@@ -443,7 +443,12 @@ public class DataBuffer implements AutoCloseable {
 
     public ByteBuffer write(StorageDataType type, Object obj) {
         type.write(this, obj);
-        return getAndFlipBuffer();
+        ByteBuffer buff = getAndFlipBuffer();
+
+        ByteBuffer v = ByteBuffer.allocateDirect(buff.limit());
+        v.put(buff);
+        v.flip();
+        return v;
     }
 
     /**

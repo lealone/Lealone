@@ -48,8 +48,6 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
 
     public BufferedMap(StorageMap<K, V> map) {
         super(map);
-        this.map = map;
-
         if (map instanceof StorageMapBase) {
             lastKey.set(((StorageMapBase<K, V>) map).getLastKey());
         }
