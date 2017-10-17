@@ -92,6 +92,8 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
             if (newDB.getHostIds().length <= 1) {
                 // 如果可用节点只有1个，那就退化到CLIENT_SERVER模式
                 newDB.setRunMode(RunMode.CLIENT_SERVER);
+                // 忽略复制参数
+                newDB.setReplicationProperties(null);
             }
             lealoneDB.addDatabaseObject(session, newDB);
         }
