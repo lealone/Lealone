@@ -21,7 +21,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.aose.storage.AOStorage;
-import org.lealone.aose.storage.PageReader;
+import org.lealone.aose.storage.AOStorageService;
 import org.lealone.common.compress.CompressDeflate;
 import org.lealone.common.compress.CompressLZF;
 import org.lealone.common.compress.Compressor;
@@ -364,7 +364,7 @@ public class BTreeStorage {
 
             if (sqlStatementExecutor != null && (Thread.currentThread() == sqlStatementExecutor)) {
                 if (!taskInQueue) {
-                    PageReader.readPageTaskQueue.add(task);
+                    AOStorageService.addTask(task);
                     taskInQueue = true;
                 }
                 sqlStatementExecutor.executeNextStatement();

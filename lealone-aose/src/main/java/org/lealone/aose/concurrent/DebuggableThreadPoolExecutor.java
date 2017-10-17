@@ -96,6 +96,12 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
         this.setRejectedExecutionHandler(blockingExecutionHandler);
     }
 
+    public DebuggableThreadPoolExecutor(String threadPoolName, int corePoolSize, int maximumPoolSize,
+            long keepAliveTime, TimeUnit unit) {
+        this(corePoolSize, maximumPoolSize, keepAliveTime, unit, new LinkedBlockingQueue<Runnable>(),
+                new NamedThreadFactory(threadPoolName));
+    }
+
     /**
      * Creates a thread pool that creates new threads as needed, but
      * will reuse previously constructed threads when they are

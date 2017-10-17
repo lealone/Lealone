@@ -29,9 +29,6 @@ public class AOStorageEngine extends StorageEngineBase {
 
     public static final String NAME = "AOSE";
 
-    private PageReader pageReader;
-    private AOBalancer aoBalancer;
-
     public AOStorageEngine() {
         super(NAME);
     }
@@ -44,14 +41,7 @@ public class AOStorageEngine extends StorageEngineBase {
     @Override
     public void init(Map<String, String> config) {
         super.init(config);
-
         AOStorageService.getInstance().start();
-
-        pageReader = new PageReader();
-        pageReader.start();
-
-        aoBalancer = new AOBalancer();
-        aoBalancer.start();
     }
 
     @Override

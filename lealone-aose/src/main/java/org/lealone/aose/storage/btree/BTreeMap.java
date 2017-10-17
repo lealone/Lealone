@@ -23,8 +23,8 @@ import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.locator.TopologyMetaData;
 import org.lealone.aose.router.P2pRouter;
 import org.lealone.aose.server.P2pServer;
-import org.lealone.aose.storage.AOBalancer;
 import org.lealone.aose.storage.AOStorage;
+import org.lealone.aose.storage.AOStorageService;
 import org.lealone.aose.storage.StorageMapBuilder;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
@@ -305,7 +305,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private void moveLeafPage(final Object splitKey, final BTreePage oldRightChildPage) {
-        AOBalancer.addTask(() -> {
+        AOStorageService.addTask(() -> {
             Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
             List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(oldRightChildPage);
             List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(db,
@@ -325,7 +325,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             }
 
             if (leafPageMovePlan == null)
-                return;
+                return null;
 
             // 重新按splitKey找到rightChildPage，因为经过前面的操作后，
             // 可能rightChildPage已经有新数据了，如果只移动老的，会丢失数据
@@ -333,7 +333,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
             if (!leafPageMovePlan.moverHostId.equals(P2pServer.instance.getLocalHostId())) {
                 rightChildPage.replicationHostIds = leafPageMovePlan.getReplicationEndpoints();
-                return;
+                return null;
             }
 
             Set<NetEndpoint> otherEndpoints = new HashSet<>(candidateEndpoints);
@@ -355,6 +355,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 ReplicationSession rs = P2pRouter.createReplicationSession(session, otherEndpoints, true);
                 moveLeafPage(leafPageMovePlan, rightChildPage, rs, true);
             }
+
+            return null;
         });
     }
 
