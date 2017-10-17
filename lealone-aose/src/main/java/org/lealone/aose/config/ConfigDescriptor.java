@@ -65,6 +65,12 @@ public class ConfigDescriptor {
 
     public static void applyConfig(Config config) throws ConfigException {
         ConfigDescriptor.config = config;
+
+        // 单机模式下不需要加载集群相关的配置，
+        // 避免创建不必要的资源，例如实例化DynamicEndpointSnitch时需要开启ScheduledTasks线程
+        if (!isP2pServerEnabled())
+            return;
+
         // phi convict threshold for FailureDetector
         if (config.cluster_config.phi_convict_threshold < 5 || config.cluster_config.phi_convict_threshold > 16) {
             throw new ConfigException("phi_convict_threshold must be between 5 and 16");
@@ -90,6 +96,16 @@ public class ConfigDescriptor {
         seedProvider = createSeedProvider(config.cluster_config);
         internodeAuthenticator = createInternodeAuthenticator(config.cluster_config);
         defaultReplicationStrategy = createDefaultReplicationStrategy(config.cluster_config);
+    }
+
+    private static boolean isP2pServerEnabled() {
+        boolean p2pServerEnabled = false;
+        for (PluggableEngineDef e : config.protocol_server_engines) {
+            if (P2pServerEngine.NAME.equalsIgnoreCase(e.name)) {
+                p2pServerEnabled = e.enabled;
+            }
+        }
+        return p2pServerEnabled;
     }
 
     private static NetEndpoint createLocalEndpoint(Config config) throws ConfigException {
