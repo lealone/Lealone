@@ -304,6 +304,10 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
         }
     }
 
+    public boolean needMerge() {
+        return !buffer.isEmpty();
+    }
+
     @Override
     public K append(V value) {
         K key = (K) ValueLong.get(lastKey.incrementAndGet());

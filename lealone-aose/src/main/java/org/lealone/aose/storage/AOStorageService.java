@@ -20,7 +20,6 @@ package org.lealone.aose.storage;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.aose.concurrent.DebuggableThreadPoolExecutor;
@@ -34,8 +33,6 @@ public class AOStorageService extends Thread {
     private static final ExecutorService executorService = new DebuggableThreadPoolExecutor("AOStorageServiceThread", 0,
             Utils.getAvailableProcessors(), 6000, TimeUnit.MILLISECONDS);
 
-    private static final LinkedBlockingQueue<Callable<?>> taskQueue = new LinkedBlockingQueue<>();
-
     private static final AOStorageService INSTANCE = new AOStorageService();
 
     static AOStorageService getInstance() {
@@ -43,7 +40,7 @@ public class AOStorageService extends Thread {
     }
 
     public static void addTask(Callable<?> task) {
-        taskQueue.add(task);
+        executorService.submit(task);
     }
 
     public static void addBufferedMap(BufferedMap<?, ?> map) {
@@ -62,12 +59,12 @@ public class AOStorageService extends Thread {
         aoMaps.remove(map);
     }
 
-    private final int sleep;
+    private final int sleepMillis;
     private boolean running;
 
     private AOStorageService() {
         super("AOStorageService");
-        this.sleep = 3000;
+        this.sleepMillis = 3000;
         setDaemon(true);
     }
 
@@ -85,30 +82,17 @@ public class AOStorageService extends Thread {
 
     @Override
     public void run() {
-        long lastTime = System.currentTimeMillis();
         while (running) {
             try {
-                Callable<?> task = taskQueue.poll(sleep, TimeUnit.MILLISECONDS);
-                if (task != null) {
-                    executorService.submit(task);
-                    continue;
-                }
-
-                if (System.currentTimeMillis() - lastTime > sleep) {
-                    AOStorageService.addTask(mergeTask);
-                    lastTime = System.currentTimeMillis();
-                }
+                sleep(sleepMillis);
             } catch (InterruptedException e) {
                 continue;
             }
+
+            adaptiveOptimization();
+            merge();
         }
     }
-
-    private static final Callable<?> mergeTask = () -> {
-        adaptiveOptimization();
-        merge();
-        return null;
-    };
 
     private static void adaptiveOptimization() {
         for (AOMap<?, ?> map : aoMaps) {
@@ -121,7 +105,8 @@ public class AOStorageService extends Thread {
 
     private static void merge() {
         for (BufferedMap<?, ?> map : bufferedMaps) {
-            executorService.submit(map);
+            if (map.needMerge())
+                addTask(map);
         }
     }
 }
