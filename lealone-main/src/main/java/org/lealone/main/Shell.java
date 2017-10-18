@@ -403,22 +403,53 @@ public class Shell {
             }
             columnSizes[i] = max;
         }
+        StringBuilder buffHorizontal = new StringBuilder();
+        for (int i = 0; i < len; i++) {
+            if (i == 0) {
+                buffHorizontal.append('+').append('-');
+            }
+            if (i > 0) {
+                buffHorizontal.append('-').append('+').append('-');
+            }
+            for (int j = 0, size = columnSizes[i]; j < size; j++) {
+                buffHorizontal.append('-');
+            }
+
+            if (i == len - 1) {
+                buffHorizontal.append('-').append('+');
+            }
+        }
+
+        boolean first = true;
         for (String[] row : rows) {
+            if (first) {
+                println(buffHorizontal.toString());
+            }
             StringBuilder buff = new StringBuilder();
             for (int i = 0; i < len; i++) {
+                if (i == 0) {
+                    buff.append(BOX_VERTICAL).append(' ');
+                }
                 if (i > 0) {
                     buff.append(' ').append(BOX_VERTICAL).append(' ');
                 }
                 String s = row[i];
                 buff.append(s);
-                if (i < len - 1) {
-                    for (int j = s.length(); j < columnSizes[i]; j++) {
-                        buff.append(' ');
-                    }
+                for (int j = s.length(); j < columnSizes[i]; j++) {
+                    buff.append(' ');
+                }
+
+                if (i == len - 1) {
+                    buff.append(' ').append(BOX_VERTICAL);
                 }
             }
             println(buff.toString());
+            if (first) {
+                println(buffHorizontal.toString());
+                first = false;
+            }
         }
+        println(buffHorizontal.toString());
         return columnSizes;
     }
 
