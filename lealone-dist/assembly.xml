@@ -23,7 +23,7 @@
         <format>tar.gz</format>
     </formats>
 
-    <baseDirectory>/lealone-${project.version}</baseDirectory>
+    <baseDirectory>/</baseDirectory>
     <fileSets>
         <fileSet>
             <directory>lealone-dist/bin</directory>
