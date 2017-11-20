@@ -28,7 +28,7 @@ import org.lealone.aose.config.Config;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
-import org.lealone.mvcc.log.LogStorage;
+import org.lealone.mvcc.log.RedoLog;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
@@ -72,7 +72,7 @@ public class TestBase extends Assert {
             Map<String, String> config = new HashMap<>();
             config.put("base_dir", TEST_DIR);
             config.put("transaction_log_dir", "tlog");
-            config.put("log_sync_type", LogStorage.LOG_SYNC_TYPE_PERIODIC);
+            config.put("log_sync_type", RedoLog.LOG_SYNC_TYPE_PERIODIC);
             te.init(config);
         }
     }

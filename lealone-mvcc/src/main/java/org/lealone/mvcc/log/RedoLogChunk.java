@@ -37,7 +37,7 @@ import org.lealone.storage.type.StorageDataType;
  */
 class RedoLogChunk implements Comparable<RedoLogChunk> {
 
-    private static final String CHUNK_FILE_NAME_PREFIX = "redoLog" + LogStorage.NAME_ID_SEPARATOR;
+    private static final String CHUNK_FILE_NAME_PREFIX = "redoLog" + RedoLog.NAME_ID_SEPARATOR;
 
     private static String getChunkFileName(Map<String, String> config, int id) {
         String storageName = config.get("storageName");

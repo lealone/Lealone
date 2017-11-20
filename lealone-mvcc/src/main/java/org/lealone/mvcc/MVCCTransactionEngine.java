@@ -36,7 +36,6 @@ import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
-import org.lealone.mvcc.log.LogStorage;
 import org.lealone.mvcc.log.LogSyncService;
 import org.lealone.mvcc.log.RedoLog;
 import org.lealone.mvcc.log.RedoLogValue;
@@ -66,7 +65,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     // key: mapName
     private final ConcurrentHashMap<String, TransactionMap<?, ?>> tmaps = new ConcurrentHashMap<>();
 
-    private LogStorage logStorage;
     private RedoLog redoLog;
     private LogSyncService logSyncService;
 
@@ -181,9 +179,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (mapSavePeriod < sleep)
             sleep = mapSavePeriod;
 
-        logStorage = new LogStorage(config);
-        redoLog = logStorage.getRedoLog();
-        logSyncService = logStorage.getLogSyncService();
+        redoLog = new RedoLog(config);
+        logSyncService = redoLog.getLogSyncService();
         initPendingRedoLog();
 
         Long key = redoLog.lastKey();
@@ -270,7 +267,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     @Override
     public void close() {
-        logStorage.close();
+        redoLog.close();
         if (storageMapSaveService != null) {
             storageMapSaveService.close();
             try {

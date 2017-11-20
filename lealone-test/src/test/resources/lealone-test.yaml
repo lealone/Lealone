@@ -30,7 +30,8 @@ transaction_engines:
   - name: AOTE
     enabled: true
     parameters: {
-        transaction_log_dir: transaction_log, # ${base_dir} + "/"+ ${transaction_log_dir}
+        transaction_log_dir: transaction_log, # ${base_dir} + "/"+ ${transaction_log_dir},
+        log_sync_type: batch
     }
 
 sql_engines:

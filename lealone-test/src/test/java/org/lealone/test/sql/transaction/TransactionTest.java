@@ -17,7 +17,10 @@
  */
 package org.lealone.test.sql.transaction;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Savepoint;
+import java.sql.Statement;
 
 import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
@@ -27,12 +30,52 @@ public class TransactionTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         create();
+
+        MyThread t = new MyThread();
+        t.start();
         insert();
+        t.close();
         // select();
 
         // testCommit();
         // testRollback();
         // testSavepoint();
+    }
+
+    class MyThread extends Thread {
+        Connection connection;
+        Statement statement;
+
+        public MyThread() {
+            try {
+                connection = TransactionTest.this.getConnection();
+                statement = connection.createStatement();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void run() {
+            try {
+                insert();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+
+        public void close() throws SQLException {
+            statement.close();
+            connection.close();
+        }
+
+        void insert() throws Exception {
+            connection.setAutoCommit(false);
+            statement.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(400, 10, 'a')");
+            statement.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(500, 20, 'b')");
+            statement.executeUpdate("INSERT INTO TransactionTest(f1, f2, f3) VALUES(600, 30, 'c')");
+            connection.commit();
+        }
     }
 
     void create() throws Exception {
