@@ -128,10 +128,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         @Override
         public void run() {
             Long checkpoint = null;
-            while (true) {
-                if (isClosed)
-                    break;
-
+            while (!isClosed) {
                 try {
                     semaphore.tryAcquire(sleep, TimeUnit.MILLISECONDS);
                     semaphore.drainPermits();
@@ -158,9 +155,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     redoLog.put(checkpoint, new RedoLogValue(checkpoint));
                     logSyncService.maybeWaitForSync(redoLog, redoLog.getLastSyncKey());
                 }
-
-                if (isClosed)
-                    break;
             }
         }
     }

@@ -31,6 +31,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
+import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
@@ -77,10 +78,11 @@ public class StandardPrimaryIndex extends IndexBase {
         }
 
         // session.isShardingMode()是针对当前session的，如果是SystemSession，就算数据库是ShardingMode，也不管它
-        dataMap = transactionEngine.beginTransaction(false, session.isShardingMode()).openMap(mapName,
-                table.getMapType(), keyType, vvType, storage, session.getDatabase().isShardingMode(),
-                initReplicationEndpoints);
+        Transaction t = transactionEngine.beginTransaction(false, session.isShardingMode());
+        dataMap = t.openMap(mapName, table.getMapType(), keyType, vvType, storage,
+                session.getDatabase().isShardingMode(), initReplicationEndpoints);
         transactionEngine.addTransactionMap(dataMap);
+        t.commit(); // 避免产生内部未提交的事务
     }
 
     @Override

@@ -541,7 +541,7 @@ public class StandardTable extends Table {
         Transaction t = session.getTransaction();
         int savepointId = t.getSavepointId();
         try {
-            // 如果rowKey是必需内部生成的，那么第一个必需是PrimaryIndex
+            // 第一个是PrimaryIndex
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
                 index.add(session, row);

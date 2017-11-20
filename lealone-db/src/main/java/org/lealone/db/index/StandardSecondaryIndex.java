@@ -29,6 +29,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
+import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
@@ -81,10 +82,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             }
         }
 
-        TransactionMap<Value, Value> map = transactionEngine.beginTransaction(false, session.isShardingMode()).openMap(
-                mapName, table.getMapType(), keyType, valueType, storage, session.getDatabase().isShardingMode(),
-                initReplicationEndpoints);
+        Transaction t = transactionEngine.beginTransaction(false, session.isShardingMode());
+        TransactionMap<Value, Value> map = t.openMap(mapName, table.getMapType(), keyType, valueType, storage,
+                session.getDatabase().isShardingMode(), initReplicationEndpoints);
         transactionEngine.addTransactionMap(map);
+        t.commit(); // 避免产生内部未提交的事务
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }
