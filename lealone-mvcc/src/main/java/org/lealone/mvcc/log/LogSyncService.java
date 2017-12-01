@@ -42,7 +42,7 @@ public abstract class LogSyncService extends Thread {
         setDaemon(true);
     }
 
-    public abstract void maybeWaitForSync(RedoLog redoLog, Long lastOperationId);
+    public abstract void maybeWaitForSync(RedoLogValue redoLogValue);
 
     public void setRedoLog(RedoLog redoLog) {
         this.redoLog = redoLog;

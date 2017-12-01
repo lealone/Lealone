@@ -94,8 +94,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         estimatedMemory.remove(mapName);
         maps.remove(mapName);
         long tid = nextEvenTransactionId();
-        redoLog.put(tid, new RedoLogValue(mapName));
-        logSyncService.maybeWaitForSync(redoLog, tid);
+        RedoLogValue rlv = new RedoLogValue(mapName);
+        redoLog.put(tid, rlv);
+        logSyncService.maybeWaitForSync(rlv);
     }
 
     private class StorageMapSaveService extends Thread {
@@ -150,8 +151,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                     lastSavedAt = now;
 
                 if (writeCheckpoint && checkpoint != null) {
-                    redoLog.put(checkpoint, new RedoLogValue(checkpoint));
-                    logSyncService.maybeWaitForSync(redoLog, redoLog.getLastSyncKey());
+                    RedoLogValue rlv = new RedoLogValue(checkpoint);
+                    redoLog.put(checkpoint, rlv);
+                    logSyncService.maybeWaitForSync(rlv);
                 }
             }
         }
@@ -334,7 +336,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         if (v != null) { // 事务没有进行任何操作时不用同步日志
             // 先写redoLog
             redoLog.put(t.transactionId, v);
-            logSyncService.maybeWaitForSync(redoLog, t.transactionId);
+            logSyncService.maybeWaitForSync(v);
         }
         // 分布式事务推迟提交
         if (t.isLocal()) {

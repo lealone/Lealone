@@ -60,8 +60,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     private final int id;
     private final StorageDataType keyType;
     private final StorageDataType valueType;
-    private final ConcurrentSkipListMap<Long, RedoLogValue> skipListMap;
-    private ConcurrentSkipListMap<Long, RedoLogValue> newSkipListMap;
+    private ConcurrentSkipListMap<Long, RedoLogValue> skipListMap;
     private final FileStorage fileStorage;
 
     private long pos;
@@ -73,7 +72,6 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         this.keyType = new RedoLogKeyType();
         this.valueType = new RedoLogValueType();
         skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<Long>(keyType));
-        newSkipListMap = new ConcurrentSkipListMap<>(new KeyComparator<Long>(keyType));
         String chunkFileName = getChunkFileName(config, id);
         fileStorage = new FileStorage();
         fileStorage.open(chunkFileName, config);
@@ -96,10 +94,8 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         return id;
     }
 
-    RedoLogValue put(Long key, RedoLogValue value) {
-        // TODO 如果先开始的事务后提交了，不用新的SkipListMap要如何优化？
-        newSkipListMap.put(key, value);
-        return skipListMap.put(key, value);
+    void put(Long key, RedoLogValue value) {
+        skipListMap.put(key, value);
     }
 
     Iterator<Entry<Long, RedoLogValue>> cursor(Long from) {
@@ -116,11 +112,9 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     }
 
     synchronized void save() {
-        ConcurrentSkipListMap<Long, RedoLogValue> newSkipListMap = this.newSkipListMap;
-        this.newSkipListMap = new ConcurrentSkipListMap<>(new KeyComparator<Long>(keyType));
+        ConcurrentSkipListMap<Long, RedoLogValue> newSkipListMap = this.skipListMap;
+        this.skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<Long>(keyType));
         Long lastKey = this.lastSyncKey;
-        // Set<Entry<Long, RedoLogValue>> entrySet = lastKey == null ? skipListMap.entrySet()
-        // : skipListMap.tailMap(lastKey, false).entrySet();
         Set<Entry<Long, RedoLogValue>> entrySet = newSkipListMap.entrySet();
         if (!entrySet.isEmpty()) {
             try (DataBuffer buff = DataBuffer.create()) {
@@ -138,6 +132,9 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
                     fileStorage.sync();
                 }
                 this.lastSyncKey = lastKey;
+                for (Entry<Long, RedoLogValue> e : entrySet) {
+                    e.getValue().synced = true;
+                }
             }
         }
     }

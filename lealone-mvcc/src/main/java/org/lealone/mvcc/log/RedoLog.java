@@ -91,8 +91,8 @@ public class RedoLog {
         logSyncService.start();
     }
 
-    public RedoLogValue put(Long key, RedoLogValue value) {
-        return current.put(key, value);
+    public void put(long key, RedoLogValue value) {
+        current.put(key, value);
     }
 
     public Iterator<Entry<Long, RedoLogValue>> cursor(Long from) {

@@ -34,15 +34,12 @@ class BatchLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void maybeWaitForSync(RedoLog redoLog, Long lastOperationId) {
+    public void maybeWaitForSync(RedoLogValue redoLogValue) {
         haveWork.release();
-        Long lastSyncKey = redoLog.getLastSyncKey();
-
-        if (lastSyncKey == null || lastSyncKey < lastOperationId) {
+        if (!redoLogValue.synced) {
             while (true) {
                 WaitQueue.Signal signal = syncComplete.register();
-                lastSyncKey = redoLog.getLastSyncKey();
-                if (lastSyncKey != null && lastSyncKey >= lastOperationId) {
+                if (redoLogValue.synced) {
                     signal.cancel();
                     return;
                 } else

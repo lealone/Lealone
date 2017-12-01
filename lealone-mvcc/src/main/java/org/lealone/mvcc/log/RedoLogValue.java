@@ -35,6 +35,8 @@ public class RedoLogValue {
     // 4. 已经被删除的map
     public String droppedMap;
 
+    volatile boolean synced;
+
     public RedoLogValue() {
     }
 
