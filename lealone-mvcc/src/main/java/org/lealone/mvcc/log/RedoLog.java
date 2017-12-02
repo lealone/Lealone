@@ -82,17 +82,17 @@ public class RedoLog {
             logSyncService = new NoLogSyncService();
         else
             throw new IllegalArgumentException("Unknow log_sync_type: " + logSyncType);
+        logSyncService.setRedoLog(this);
 
         current = new RedoLogChunk(lastId, config);
-        logSyncService.setRedoLog(this);
     }
 
-    public void addRedoLogValue(RedoLogValue value) {
-        current.addRedoLogValue(value);
+    public void addRedoLogRecord(RedoLogRecord r) {
+        current.addRedoLogRecord(r);
     }
 
-    public Queue<RedoLogValue> getAndResetRedoLogValues() {
-        return current.getAndResetRedoLogValues();
+    public Queue<RedoLogRecord> getAndResetRedoLogRecords() {
+        return current.getAndResetRedoLogRecords();
     }
 
     public void close() {
@@ -119,9 +119,9 @@ public class RedoLog {
     }
 
     public void writeCheckpoint() {
-        RedoLogValue rlv = new RedoLogValue(true);
-        addRedoLogValue(rlv);
-        logSyncService.maybeWaitForSync(rlv);
+        RedoLogRecord r = new RedoLogRecord(true);
+        addRedoLogRecord(r);
+        logSyncService.maybeWaitForSync(r);
     }
 
 }

@@ -42,7 +42,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     private final int id;
     private final FileStorage fileStorage;
 
-    private LinkedTransferQueue<RedoLogValue> queue;
+    private LinkedTransferQueue<RedoLogRecord> queue;
     private long pos;
 
     RedoLogChunk(int id, Map<String, String> config) {
@@ -59,11 +59,11 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     private void read() {
         ByteBuffer buffer = fileStorage.readFully(0, (int) pos);
         while (buffer.remaining() > 0) {
-            RedoLogValue v = RedoLogValue.read(buffer);
-            if (v.checkpoint)
+            RedoLogRecord r = RedoLogRecord.read(buffer);
+            if (r.checkpoint)
                 queue = new LinkedTransferQueue<>();
             else
-                queue.add(v);
+                queue.add(r);
         }
     }
 
@@ -71,12 +71,12 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         return id;
     }
 
-    void addRedoLogValue(RedoLogValue value) {
-        queue.add(value);
+    void addRedoLogRecord(RedoLogRecord r) {
+        queue.add(r);
     }
 
-    LinkedTransferQueue<RedoLogValue> getAndResetRedoLogValues() {
-        LinkedTransferQueue<RedoLogValue> oldQueue = this.queue;
+    LinkedTransferQueue<RedoLogRecord> getAndResetRedoLogRecords() {
+        LinkedTransferQueue<RedoLogRecord> oldQueue = this.queue;
         this.queue = new LinkedTransferQueue<>();
         return oldQueue;
     }
@@ -87,11 +87,11 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     }
 
     synchronized void save() {
-        LinkedTransferQueue<RedoLogValue> oldQueue = getAndResetRedoLogValues();
+        LinkedTransferQueue<RedoLogRecord> oldQueue = getAndResetRedoLogRecords();
         if (!oldQueue.isEmpty()) {
             try (DataBuffer buff = DataBuffer.create()) {
-                for (RedoLogValue v : oldQueue) {
-                    v.write(buff);
+                for (RedoLogRecord r : oldQueue) {
+                    r.write(buff);
                 }
                 int chunkLength = buff.position();
                 if (chunkLength > 0) {
@@ -101,8 +101,8 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
                     pos += chunkLength;
                     fileStorage.sync();
                 }
-                for (RedoLogValue v : oldQueue) {
-                    v.synced = true;
+                for (RedoLogRecord r : oldQueue) {
+                    r.synced = true;
                 }
             }
         }

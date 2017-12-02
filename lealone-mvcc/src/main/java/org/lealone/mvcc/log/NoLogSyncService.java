@@ -34,7 +34,7 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void maybeWaitForSync(RedoLogValue redoLogValue) {
+    public void maybeWaitForSync(RedoLogRecord r) {
     }
 
     @Override

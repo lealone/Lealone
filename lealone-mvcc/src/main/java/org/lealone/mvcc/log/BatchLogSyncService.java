@@ -22,6 +22,7 @@ import java.util.Map;
 import org.lealone.common.concurrent.WaitQueue;
 
 class BatchLogSyncService extends LogSyncService {
+
     private static final long DEFAULT_LOG_SYNC_BATCH_WINDOW = 5;
 
     public BatchLogSyncService(Map<String, String> config) {
@@ -34,12 +35,12 @@ class BatchLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void maybeWaitForSync(RedoLogValue redoLogValue) {
+    public void maybeWaitForSync(RedoLogRecord r) {
         haveWork.release();
-        if (!redoLogValue.synced) {
+        if (!r.synced) {
             while (true) {
                 WaitQueue.Signal signal = syncComplete.register();
-                if (redoLogValue.synced) {
+                if (r.synced) {
                     signal.cancel();
                     return;
                 } else

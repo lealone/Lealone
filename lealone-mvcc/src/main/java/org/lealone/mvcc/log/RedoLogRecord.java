@@ -23,8 +23,8 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 
-//RedoLog文件中会有三种类型的日志条目
-public class RedoLogValue {
+//RedoLog文件中会有三种类型的日志记录
+public class RedoLogRecord {
 
     private static ByteBuffer EMPTY_BUFFER = ByteBuffer.allocate(0);
 
@@ -46,19 +46,19 @@ public class RedoLogValue {
 
     public Long transactionId;
 
-    public RedoLogValue() {
+    public RedoLogRecord() {
     }
 
-    public RedoLogValue(Long transactionId, ByteBuffer values) {
+    public RedoLogRecord(Long transactionId, ByteBuffer values) {
         this.transactionId = transactionId;
         this.values = values;
     }
 
-    public RedoLogValue(boolean checkpoint) {
+    public RedoLogRecord(boolean checkpoint) {
         this.checkpoint = checkpoint;
     }
 
-    public RedoLogValue(String droppedMap) {
+    public RedoLogRecord(String droppedMap) {
         this.droppedMap = droppedMap;
     }
 
@@ -87,34 +87,34 @@ public class RedoLogValue {
         }
     }
 
-    static RedoLogValue read(ByteBuffer buff) {
+    static RedoLogRecord read(ByteBuffer buff) {
         int type = buff.get();
         if (type == 0)
-            return new RedoLogValue(true);
+            return new RedoLogRecord(true);
         else if (type == 3) {
             String droppedMap = ValueString.type.read(buff);
-            return new RedoLogValue(droppedMap);
+            return new RedoLogRecord(droppedMap);
         }
 
-        RedoLogValue v = new RedoLogValue();
+        RedoLogRecord r = new RedoLogRecord();
         if (type == 2) {
-            v.transactionName = ValueString.type.read(buff);
-            v.allLocalTransactionNames = ValueString.type.read(buff);
-            v.commitTimestamp = DataUtils.readVarLong(buff);
+            r.transactionName = ValueString.type.read(buff);
+            r.allLocalTransactionNames = ValueString.type.read(buff);
+            r.commitTimestamp = DataUtils.readVarLong(buff);
         }
 
         int len = DataUtils.readVarInt(buff);
         if (len > 0) {
             byte[] value = new byte[len];
             buff.get(value);
-            v.values = ByteBuffer.wrap(value);
+            r.values = ByteBuffer.wrap(value);
         } else {
-            v.values = EMPTY_BUFFER;
+            r.values = EMPTY_BUFFER;
         }
 
         long transactionId = DataUtils.readVarLong(buff);
         if (transactionId != -1)
-            v.transactionId = transactionId;
-        return v;
+            r.transactionId = transactionId;
+        return r;
     }
 }

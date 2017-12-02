@@ -37,7 +37,7 @@ import org.lealone.db.value.ValueString;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
 import org.lealone.mvcc.log.LogSyncService;
 import org.lealone.mvcc.log.RedoLog;
-import org.lealone.mvcc.log.RedoLogValue;
+import org.lealone.mvcc.log.RedoLogRecord;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.TransactionEngineBase;
@@ -92,9 +92,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     void removeMap(String mapName) {
         estimatedMemory.remove(mapName);
         maps.remove(mapName);
-        RedoLogValue rlv = new RedoLogValue(mapName);
-        redoLog.addRedoLogValue(rlv);
-        logSyncService.maybeWaitForSync(rlv);
+        RedoLogRecord r = new RedoLogRecord(mapName);
+        redoLog.addRedoLogRecord(r);
+        logSyncService.maybeWaitForSync(r);
     }
 
     private class StorageMapSaveService extends Thread {
@@ -184,18 +184,18 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     private void initPendingRedoLog() {
         long lastTransactionId = 0;
-        for (RedoLogValue v : redoLog.getAndResetRedoLogValues()) {
-            if (v.transactionId != null && v.transactionId > lastTransactionId) {
-                lastTransactionId = v.transactionId;
+        for (RedoLogRecord r : redoLog.getAndResetRedoLogRecords()) {
+            if (r.transactionId != null && r.transactionId > lastTransactionId) {
+                lastTransactionId = r.transactionId;
             }
-            if (v.droppedMap != null) {
-                ArrayList<ByteBuffer> logs = pendingRedoLog.get(v.droppedMap);
+            if (r.droppedMap != null) {
+                ArrayList<ByteBuffer> logs = pendingRedoLog.get(r.droppedMap);
                 if (logs != null) {
                     logs = new ArrayList<>();
-                    pendingRedoLog.put(v.droppedMap, logs);
+                    pendingRedoLog.put(r.droppedMap, logs);
                 }
             } else {
-                ByteBuffer buff = v.values;
+                ByteBuffer buff = r.values;
                 if (buff == null)
                     continue; // TODO 消除为NULL的可能
                 while (buff.hasRemaining()) {
@@ -297,11 +297,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         return last;
     }
 
-    void prepareCommit(MVCCTransaction t, RedoLogValue v) {
+    void prepareCommit(MVCCTransaction t, RedoLogRecord r) {
         // 事务没有进行任何操作时不用同步日志
-        if (v != null) {
+        if (r != null) {
             // 先写redoLog
-            redoLog.addRedoLogValue(v);
+            redoLog.addRedoLogRecord(r);
         }
         logSyncService.prepareCommit(t);
     }
@@ -317,11 +317,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         }
     }
 
-    public void commit(MVCCTransaction t, RedoLogValue v) {
-        if (v != null) { // 事务没有进行任何操作时不用同步日志
+    public void commit(MVCCTransaction t, RedoLogRecord r) {
+        if (r != null) { // 事务没有进行任何操作时不用同步日志
             // 先写redoLog
-            redoLog.addRedoLogValue(v);
-            logSyncService.maybeWaitForSync(v);
+            redoLog.addRedoLogRecord(r);
+            logSyncService.maybeWaitForSync(r);
         }
         // 分布式事务推迟提交
         if (t.isLocal()) {
@@ -356,7 +356,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         t.endTransaction();
     }
 
-    public RedoLogValue getRedoLog(MVCCTransaction t) {
+    public RedoLogRecord createRedoLogRecord(MVCCTransaction t) {
         if (t.logRecords.isEmpty())
             return null;
         try (DataBuffer writeBuffer = DataBuffer.create()) {
@@ -393,7 +393,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             ByteBuffer values = ByteBuffer.allocateDirect(buffer.limit());
             values.put(buffer);
             values.flip();
-            return new RedoLogValue(t.transactionId, values);
+            return new RedoLogRecord(t.transactionId, values);
         }
     }
 

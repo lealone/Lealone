@@ -27,11 +27,11 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.mvcc.MVCCTransactionMap.MVCCReplicationMap;
-import org.lealone.mvcc.log.RedoLogValue;
+import org.lealone.mvcc.log.RedoLogRecord;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.StorageDataType;
 import org.lealone.storage.type.ObjectDataType;
+import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 
 public class MVCCTransaction implements Transaction {
@@ -142,14 +142,15 @@ public class MVCCTransaction implements Transaction {
     }
 
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType, Storage storage) {
+    public <K, V> MVCCTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
+            Storage storage) {
         return openMap(name, null, keyType, valueType, storage, false, null);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
-            Storage storage, boolean isShardingMode, String initReplicationEndpoints) {
+    public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
+            StorageDataType valueType, Storage storage, boolean isShardingMode, String initReplicationEndpoints) {
         if (keyType == null)
             keyType = new ObjectDataType();
         if (valueType == null)
@@ -196,8 +197,8 @@ public class MVCCTransaction implements Transaction {
     public void prepareCommit() {
         checkNotClosed();
         prepared = true;
-        RedoLogValue v = transactionEngine.getRedoLog(this);
-        transactionEngine.prepareCommit(this, v);
+        RedoLogRecord r = transactionEngine.createRedoLogRecord(this);
+        transactionEngine.prepareCommit(this, r);
     }
 
     @Override
@@ -228,8 +229,8 @@ public class MVCCTransaction implements Transaction {
         if (prepared) {
             transactionEngine.commit(this);
         } else {
-            RedoLogValue v = transactionEngine.getRedoLog(this);
-            transactionEngine.commit(this, v);
+            RedoLogRecord r = transactionEngine.createRedoLogRecord(this);
+            transactionEngine.commit(this, r);
         }
     }
 
