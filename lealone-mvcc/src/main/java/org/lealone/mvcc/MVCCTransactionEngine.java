@@ -20,7 +20,6 @@ package org.lealone.mvcc;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -93,9 +92,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     void removeMap(String mapName) {
         estimatedMemory.remove(mapName);
         maps.remove(mapName);
-        long tid = nextEvenTransactionId();
         RedoLogValue rlv = new RedoLogValue(mapName);
-        redoLog.put(tid, rlv);
+        redoLog.addRedoLogValue(rlv);
         logSyncService.maybeWaitForSync(rlv);
     }
 
@@ -126,7 +124,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
         @Override
         public void run() {
-            Long checkpoint = null;
             while (!isClosed) {
                 try {
                     semaphore.tryAcquire(sleep, TimeUnit.MILLISECONDS);
@@ -136,10 +133,6 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 }
 
                 long now = System.currentTimeMillis();
-
-                if (redoLog.getLastSyncKey() != null)
-                    checkpoint = redoLog.getLastSyncKey();
-
                 boolean writeCheckpoint = false;
                 for (Entry<String, Integer> e : estimatedMemory.entrySet()) {
                     if (isClosed || e.getValue() > mapCacheSize || lastSavedAt + mapSavePeriod > now) {
@@ -150,10 +143,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 if (lastSavedAt + mapSavePeriod > now)
                     lastSavedAt = now;
 
-                if (writeCheckpoint && checkpoint != null) {
-                    RedoLogValue rlv = new RedoLogValue(checkpoint);
-                    redoLog.put(checkpoint, rlv);
-                    logSyncService.maybeWaitForSync(rlv);
+                if (writeCheckpoint) {
+                    redoLog.writeCheckpoint();
                 }
             }
         }
@@ -185,25 +176,18 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         logSyncService = redoLog.getLogSyncService();
         initPendingRedoLog();
 
-        Long key = redoLog.lastKey();
-        if (key != null)
-            lastTransactionId.set(key);
-
+        // 调用完initPendingRedoLog后再启动logSyncService
+        logSyncService.start();
         storageMapSaveService = new StorageMapSaveService(sleep);
         storageMapSaveService.start();
     }
 
     private void initPendingRedoLog() {
-        Long checkpoint = null;
-        for (Entry<Long, RedoLogValue> e : redoLog.entrySet()) {
-            if (e.getValue().checkpoint != null)
-                checkpoint = e.getValue().checkpoint;
-        }
-
-        Iterator<Entry<Long, RedoLogValue>> cursor = redoLog.cursor(checkpoint);
-        while (cursor.hasNext()) {
-            Entry<Long, RedoLogValue> e = cursor.next();
-            RedoLogValue v = e.getValue();
+        long lastTransactionId = 0;
+        for (RedoLogValue v : redoLog.getAndResetRedoLogValues()) {
+            if (v.transactionId != null && v.transactionId > lastTransactionId) {
+                lastTransactionId = v.transactionId;
+            }
             if (v.droppedMap != null) {
                 ArrayList<ByteBuffer> logs = pendingRedoLog.get(v.droppedMap);
                 if (logs != null) {
@@ -229,6 +213,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 }
             }
         }
+        this.lastTransactionId.set(lastTransactionId);
     }
 
     @SuppressWarnings("unchecked")
@@ -316,7 +301,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         // 事务没有进行任何操作时不用同步日志
         if (v != null) {
             // 先写redoLog
-            redoLog.put(t.transactionId, v);
+            redoLog.addRedoLogValue(v);
         }
         logSyncService.prepareCommit(t);
     }
@@ -335,7 +320,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     public void commit(MVCCTransaction t, RedoLogValue v) {
         if (v != null) { // 事务没有进行任何操作时不用同步日志
             // 先写redoLog
-            redoLog.put(t.transactionId, v);
+            redoLog.addRedoLogValue(v);
             logSyncService.maybeWaitForSync(v);
         }
         // 分布式事务推迟提交
@@ -408,7 +393,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             ByteBuffer values = ByteBuffer.allocateDirect(buffer.limit());
             values.put(buffer);
             values.flip();
-            return new RedoLogValue(values);
+            return new RedoLogValue(t.transactionId, values);
         }
     }
 

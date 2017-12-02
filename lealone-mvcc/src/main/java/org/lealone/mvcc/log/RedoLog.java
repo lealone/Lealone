@@ -18,10 +18,8 @@
 package org.lealone.mvcc.log;
 
 import java.io.File;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
+import java.util.Queue;
 
 import org.lealone.db.Constants;
 import org.lealone.storage.fs.FilePath;
@@ -86,21 +84,15 @@ public class RedoLog {
             throw new IllegalArgumentException("Unknow log_sync_type: " + logSyncType);
 
         current = new RedoLogChunk(lastId, config);
-
         logSyncService.setRedoLog(this);
-        logSyncService.start();
     }
 
-    public void put(long key, RedoLogValue value) {
-        current.put(key, value);
+    public void addRedoLogValue(RedoLogValue value) {
+        current.addRedoLogValue(value);
     }
 
-    public Iterator<Entry<Long, RedoLogValue>> cursor(Long from) {
-        return current.cursor(from);
-    }
-
-    public Set<Entry<Long, RedoLogValue>> entrySet() {
-        return current.entrySet();
+    public Queue<RedoLogValue> getAndResetRedoLogValues() {
+        return current.getAndResetRedoLogValues();
     }
 
     public void close() {
@@ -122,16 +114,14 @@ public class RedoLog {
         }
     }
 
-    public Long lastKey() {
-        return current.lastKey();
-    }
-
-    public Long getLastSyncKey() {
-        return current.getLastSyncKey();
-    }
-
     public LogSyncService getLogSyncService() {
         return logSyncService;
+    }
+
+    public void writeCheckpoint() {
+        RedoLogValue rlv = new RedoLogValue(true);
+        addRedoLogValue(rlv);
+        logSyncService.maybeWaitForSync(rlv);
     }
 
 }

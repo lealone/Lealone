@@ -19,19 +19,14 @@ package org.lealone.mvcc.log;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.LinkedTransferQueue;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.fs.FileStorage;
-import org.lealone.storage.type.StorageDataType;
 
 /**
- * A skipList-based redo log chunk
+ * A queue-based redo log chunk
  *  
  * @author zhh
  */
@@ -44,37 +39,18 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         return storageName + File.separator + CHUNK_FILE_NAME_PREFIX + id;
     }
 
-    private static class KeyComparator<K> implements java.util.Comparator<K> {
-        StorageDataType keyType;
-
-        public KeyComparator(StorageDataType keyType) {
-            this.keyType = keyType;
-        }
-
-        @Override
-        public int compare(K k1, K k2) {
-            return keyType.compare(k1, k2);
-        }
-    }
-
     private final int id;
-    private final StorageDataType keyType;
-    private final StorageDataType valueType;
-    private ConcurrentSkipListMap<Long, RedoLogValue> skipListMap;
     private final FileStorage fileStorage;
 
+    private LinkedTransferQueue<RedoLogValue> queue;
     private long pos;
-    private volatile Long lastSyncKey;
 
     RedoLogChunk(int id, Map<String, String> config) {
         this.id = id;
-        // 不使用ObjectDataType，因为ObjectDataType需要自动侦测，会有一些开销
-        this.keyType = new RedoLogKeyType();
-        this.valueType = new RedoLogValueType();
-        skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<Long>(keyType));
         String chunkFileName = getChunkFileName(config, id);
         fileStorage = new FileStorage();
         fileStorage.open(chunkFileName, config);
+        queue = new LinkedTransferQueue<>();
         pos = fileStorage.size();
         if (pos > 0)
             read();
@@ -83,10 +59,11 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     private void read() {
         ByteBuffer buffer = fileStorage.readFully(0, (int) pos);
         while (buffer.remaining() > 0) {
-            Long k = (Long) keyType.read(buffer);
-            RedoLogValue v = (RedoLogValue) valueType.read(buffer);
-            skipListMap.put(k, v);
-            lastSyncKey = k;
+            RedoLogValue v = RedoLogValue.read(buffer);
+            if (v.checkpoint)
+                queue = new LinkedTransferQueue<>();
+            else
+                queue.add(v);
         }
     }
 
@@ -94,16 +71,14 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         return id;
     }
 
-    void put(Long key, RedoLogValue value) {
-        skipListMap.put(key, value);
+    void addRedoLogValue(RedoLogValue value) {
+        queue.add(value);
     }
 
-    Iterator<Entry<Long, RedoLogValue>> cursor(Long from) {
-        return from == null ? skipListMap.entrySet().iterator() : skipListMap.tailMap(from).entrySet().iterator();
-    }
-
-    Set<Entry<Long, RedoLogValue>> entrySet() {
-        return skipListMap.entrySet();
+    LinkedTransferQueue<RedoLogValue> getAndResetRedoLogValues() {
+        LinkedTransferQueue<RedoLogValue> oldQueue = this.queue;
+        this.queue = new LinkedTransferQueue<>();
+        return oldQueue;
     }
 
     void close() {
@@ -112,16 +87,11 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     }
 
     synchronized void save() {
-        ConcurrentSkipListMap<Long, RedoLogValue> newSkipListMap = this.skipListMap;
-        this.skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<Long>(keyType));
-        Long lastKey = this.lastSyncKey;
-        Set<Entry<Long, RedoLogValue>> entrySet = newSkipListMap.entrySet();
-        if (!entrySet.isEmpty()) {
+        LinkedTransferQueue<RedoLogValue> oldQueue = getAndResetRedoLogValues();
+        if (!oldQueue.isEmpty()) {
             try (DataBuffer buff = DataBuffer.create()) {
-                for (Entry<Long, RedoLogValue> e : entrySet) {
-                    lastKey = e.getKey();
-                    keyType.write(buff, lastKey);
-                    valueType.write(buff, e.getValue());
+                for (RedoLogValue v : oldQueue) {
+                    v.write(buff);
                 }
                 int chunkLength = buff.position();
                 if (chunkLength > 0) {
@@ -131,9 +101,8 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
                     pos += chunkLength;
                     fileStorage.sync();
                 }
-                this.lastSyncKey = lastKey;
-                for (Entry<Long, RedoLogValue> e : entrySet) {
-                    e.getValue().synced = true;
+                for (RedoLogValue v : oldQueue) {
+                    v.synced = true;
                 }
             }
         }
@@ -141,18 +110,6 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
 
     long logChunkSize() {
         return pos;
-    }
-
-    Long lastKey() {
-        try {
-            return skipListMap.lastKey();
-        } catch (NoSuchElementException e) {
-            return null;
-        }
-    }
-
-    Long getLastSyncKey() {
-        return lastSyncKey;
     }
 
     @Override
