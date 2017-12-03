@@ -54,7 +54,7 @@ public class RedoLog {
             logChunkSize = DEFAULT_LOG_CHUNK_SIZE;
 
         String baseDir = config.get("base_dir");
-        String logDir = config.get("transaction_log_dir");
+        String logDir = config.get("redo_log_dir");
         String storageName = baseDir + File.separator + logDir;
         config.put("storageName", storageName);
 

@@ -30,7 +30,7 @@ transaction_engines:
   - name: AOTE
     enabled: true
     parameters: {
-        transaction_log_dir: tlog
+        redo_log_dir: redo_log
     }
 
 sql_engines:
