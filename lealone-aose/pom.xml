@@ -22,6 +22,7 @@
         <groupId>org.lealone</groupId>
         <artifactId>lealone</artifactId>
         <version>4.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>lealone-aose</artifactId>

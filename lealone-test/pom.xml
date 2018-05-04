@@ -22,6 +22,7 @@
         <groupId>org.lealone</groupId>
         <artifactId>lealone</artifactId>
         <version>4.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>lealone-test</artifactId>
@@ -32,11 +33,6 @@
         <dependency>
             <groupId>org.lealone</groupId>
             <artifactId>lealone-main</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-orm</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

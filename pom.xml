@@ -35,6 +35,7 @@
         <module>lealone-db</module>
         <module>lealone-mvcc</module>
         <module>lealone-aose</module>
+        <module>lealone-vertx</module>
         <module>lealone-main</module>
         <module>lealone-test</module>
         <module>lealone-dist</module>
@@ -122,7 +123,7 @@
             <dependency>
                 <groupId>io.vertx</groupId>
                 <artifactId>vertx-core</artifactId>
-                <version>3.2.1</version>
+                <version>3.5.1</version>
                 <exclusions>
                     <exclusion>
                         <groupId>com.fasterxml.jackson.core</groupId>
@@ -141,7 +142,7 @@
             <dependency>
                 <groupId>io.vertx</groupId>
                 <artifactId>vertx-unit</artifactId>
-                <version>3.2.1</version>
+                <version>3.5.1</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
