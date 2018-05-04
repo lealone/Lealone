@@ -1,0 +1,266 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.lealone.orm;
+
+import java.util.Collection;
+
+import org.lealone.db.value.ValueString;
+import org.lealone.sql.expression.CompareLike;
+import org.lealone.sql.expression.Comparison;
+import org.lealone.sql.expression.ConditionAndOr;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.expression.ValueExpression;
+
+public class DefaultExpressionList<T> implements ExpressionList<T> {
+
+    org.lealone.db.table.Table dbTable;
+    Table table;
+    org.lealone.sql.expression.Expression expression;
+
+    public DefaultExpressionList(Table table) {
+        this.table = table;
+        this.dbTable = table.getDbTable();
+    }
+
+    private ExpressionColumn getExpressionColumn(String propertyName) {
+        return new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(), dbTable.getName(),
+                propertyName);
+        // return new ExpressionColumn(dbTable.getDatabase(), dbTable.getColumn(propertyName));
+    }
+
+    private Comparison createComparison(String propertyName, Object value, int compareType) {
+        ExpressionColumn ec = getExpressionColumn(propertyName);
+        ValueExpression v = ValueExpression.get(ValueString.get(value.toString()));
+        return new Comparison(table.getSession(), compareType, ec, v);
+    }
+
+    private ConditionAndOr createConditionAnd(Expression left, Expression right) {
+        return new ConditionAndOr(ConditionAndOr.AND, left, right);
+    }
+
+    private void setRootExpression(Expression e) {
+        if (expression == null) {
+            expression = e;
+        } else {
+            expression = createConditionAnd(expression, e);
+        }
+    }
+
+    private void setRootExpression(String propertyName, Object value, int compareType) {
+        Comparison c = createComparison(propertyName, value, compareType);
+        setRootExpression(c);
+    }
+
+    @Override
+    public ExpressionList<T> eq(String propertyName, Object value) {
+        setRootExpression(propertyName, value, Comparison.EQUAL);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> ne(String propertyName, Object value) {
+        setRootExpression(propertyName, value, Comparison.NOT_EQUAL);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> ieq(String propertyName, String value) {
+        setRootExpression(propertyName, value, Comparison.EQUAL);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> between(String propertyName, Object value1, Object value2) {
+        setRootExpression(propertyName, value1, Comparison.BIGGER_EQUAL);
+        setRootExpression(propertyName, value2, Comparison.SMALLER_EQUAL);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> betweenProperties(String lowProperty, String highProperty, Object value) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> gt(String propertyName, Object value) {
+        setRootExpression(propertyName, value, Comparison.BIGGER);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> ge(String propertyName, Object value) {
+        setRootExpression(propertyName, value, Comparison.BIGGER_EQUAL);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> lt(String propertyName, Object value) {
+        setRootExpression(propertyName, value, Comparison.SMALLER);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> le(String propertyName, Object value) {
+        setRootExpression(propertyName, value, Comparison.SMALLER_EQUAL);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> isNull(String propertyName) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> isNotNull(String propertyName) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> arrayContains(String propertyName, Object... values) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> arrayNotContains(String propertyName, Object... values) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> arrayIsEmpty(String propertyName) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> arrayIsNotEmpty(String propertyName) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> in(String propertyName, Object... values) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> in(String propertyName, Collection<?> values) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> notIn(String propertyName, Object... values) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> notIn(String propertyName, Collection<?> values) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> like(String propertyName, String value) {
+        ExpressionColumn ec = getExpressionColumn(propertyName);
+        ValueExpression v = ValueExpression.get(ValueString.get(value));
+        CompareLike like = new CompareLike(dbTable.getDatabase(), ec, v, null, false);
+        setRootExpression(like);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> ilike(String propertyName, String value) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> startsWith(String propertyName, String value) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> istartsWith(String propertyName, String value) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> endsWith(String propertyName, String value) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> iendsWith(String propertyName, String value) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> contains(String propertyName, String value) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> icontains(String propertyName, String value) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> match(String propertyName, String search) {
+        // TODO Auto-generated method stub
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> and() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public ExpressionList<T> or() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public ExpressionList<T> not() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public OrderBy<?, ?> orderBy() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+}

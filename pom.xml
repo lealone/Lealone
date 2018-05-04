@@ -31,6 +31,7 @@
         <module>lealone-client</module>
         <module>lealone-server</module>
         <module>lealone-sql</module>
+        <module>lealone-orm</module>
         <module>lealone-db</module>
         <module>lealone-mvcc</module>
         <module>lealone-aose</module>
