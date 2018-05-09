@@ -44,6 +44,7 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
+import org.lealone.db.table.DummyTable;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.RangeTable;
 import org.lealone.db.table.Table;
@@ -86,6 +87,7 @@ import org.lealone.sql.ddl.CreateIndex;
 import org.lealone.sql.ddl.CreateRole;
 import org.lealone.sql.ddl.CreateSchema;
 import org.lealone.sql.ddl.CreateSequence;
+import org.lealone.sql.ddl.CreateService;
 import org.lealone.sql.ddl.CreateTable;
 import org.lealone.sql.ddl.CreateTrigger;
 import org.lealone.sql.ddl.CreateUser;
@@ -3827,7 +3829,19 @@ public class Parser implements SQLParser {
         } else {
             dataType = DataType.getTypeByName(original);
             if (dataType == null) {
-                throw DbException.get(ErrorCode.UNKNOWN_DATA_TYPE_1, currentToken);
+                Table table;
+                if (original.equalsIgnoreCase("void")) {
+                    table = new DummyTable(getSchema(), "void");
+                } else {
+                    // 列的类型是POJO(对应Table)
+                    table = getSchema().getTableOrView(session, original);
+                    if (table == null)
+                        throw DbException.get(ErrorCode.UNKNOWN_DATA_TYPE_1, currentToken);
+                }
+                Column c = new Column(columnName, Value.JAVA_OBJECT);
+                c.setTable(table, -1);
+                read();
+                return c;
             }
         }
         if (database.getIgnoreCase() && dataType.type == Value.STRING
@@ -3948,6 +3962,8 @@ public class Parser implements SQLParser {
             return parseCreateDatabase();
         } else if (readIf("TENANT")) {
             return parseCreateDatabase();
+        } else if (readIf("SERVICE")) {
+            return parseCreateService();
         }
         // table or index
         boolean memory = false, cached = false;
@@ -4231,6 +4247,66 @@ public class Parser implements SQLParser {
         // parameters);
 
         return new CreateDatabase(session, dbName, ifNotExists, runMode, replicationProperties, parameters);
+    }
+
+    private CreateService parseCreateService() {
+        boolean ifNotExists = readIfNotExists();
+        String serviceName = readIdentifierWithSchema();
+        if (equalsToken("SESSION", schemaName)) {
+            // support weird syntax: declare global temporary table session.xy
+            // (...) not logged
+            schemaName = session.getCurrentSchemaName();
+        }
+        Schema schema = getSchema();
+        CreateService command = new CreateService(session, schema);
+        command.setIfNotExists(ifNotExists);
+        command.setServiceName(serviceName);
+        command.setComment(readCommentIf());
+        if (readIf("(")) {
+            do {
+                CreateTable serviceMethod = parseCreateServiceMethod(schema);
+                command.addServiceMethod(serviceMethod);
+            } while (readIfMore());
+        }
+        if (readIf("ENGINE")) {
+            readIf("=");
+            command.setStorageEngineName(readUniqueIdentifier());
+        } else if (database.getSettings().defaultStorageEngine != null) {
+            command.setStorageEngineName(database.getSettings().defaultStorageEngine);
+        }
+        if (readIf("PACKAGE")) {
+            String packageName = readString();
+            command.setPackageName(packageName);
+        }
+        if (readIf("IMPLEMENT")) {
+            readIf("BY");
+            String implementBy = readString();
+            command.setImplementBy(implementBy);
+        }
+        if (readIf("HIDDEN")) {
+            command.setHidden(true);
+        }
+        return command;
+    }
+
+    private CreateTable parseCreateServiceMethod(Schema schema) {
+        boolean ifNotExists = readIfNotExists();
+        String tableName = readColumnIdentifier();
+        CreateTable command = new CreateTable(session, schema);
+        command.setIfNotExists(ifNotExists);
+        command.setTableName(tableName);
+        command.setComment(readCommentIf());
+        if (readIf("(")) {
+            if (!readIf(")")) {
+                parseTableDefinition(schema, command, tableName);
+            }
+        }
+        if (readIf("HIDDEN")) {
+            command.setHidden(true);
+        }
+        Column column = parseColumnForTable("R", true);
+        command.addColumn(column);
+        return command;
     }
 
     private RunMode parseRunMode() {

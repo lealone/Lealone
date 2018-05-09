@@ -32,6 +32,5 @@ public interface HelloWorldService {
                 e.printStackTrace();
             }
         }
-
     }
 }

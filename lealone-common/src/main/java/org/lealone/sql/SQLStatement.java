@@ -459,4 +459,5 @@ public interface SQLStatement extends Command {
 
     int ADMIN = 88;
 
+    int CREATE_SERVICE = 89;
 }

@@ -103,7 +103,14 @@ public enum DbObjectType {
     /**
      * This object is a constant.
      */
-    CONSTANT(27, 7);
+    CONSTANT(27, 7),
+
+    /**
+     * This object is a service.
+     */
+    SERVICE(28, 100),
+
+    __LAST__(29, 1000);
 
     public final int value; // 值被存入SYS表中，不能随意改动
 
@@ -117,7 +124,7 @@ public enum DbObjectType {
         this.createOrder = createOrder;
     }
 
-    public static final DbObjectType[] TYPES = new DbObjectType[28];
+    public static final DbObjectType[] TYPES = new DbObjectType[__LAST__.value + 1];
     static {
         for (DbObjectType t : DbObjectType.values())
             TYPES[t.value] = t;

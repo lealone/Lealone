@@ -69,19 +69,21 @@ public class ServicesTest extends UnitTestBase {
             // 创建表: user
             stmt.executeUpdate("create table user(id long, name char(10), notes varchar, phone int)");
 
-            // // 创建服务: user_service
-            // stmt.executeUpdate("create service user_service(" //
-            // + " add(user user) user," // 第一个user是参数名，第二个user是参数类型，第三个user是返回值类型
-            // + " find(id long) user," //
-            // + " update(user user) boolean," //
-            // + " delete(id long) boolean," //
-            // + " ) package 'org.lealone.test.vertx.generated' implement by
-            // 'org.lealone.test.vertx.impl.UserServiceImpl'");
-            //
-            // // 创建服务: hello_world_service
-            // stmt.executeUpdate("create service hello_world_service(" //
-            // + " say_hello() void" //
-            // + " ) package 'org.lealone.test.vertx.generated'");
+            // 创建服务: user_service
+            stmt.executeUpdate("create service if not exists user_service (" //
+                    + "             add(user user) user," // 第一个user是参数名，第二个user是参数类型，第三个user是返回值类型
+                    + "             find(id long) user," //
+                    + "             update(user user) boolean," //
+                    + "             delete(id long) boolean," //
+                    + "         ) package 'org.lealone.test.vertx.generated'" //
+                    + "           implement by 'org.lealone.test.vertx.impl.UserServiceImpl'");
+
+            // 创建服务: hello_service
+            stmt.executeUpdate("create service hello_service (" //
+                    + "             say_hello(name varchar) void" //
+                    + "         ) package 'org.lealone.test.vertx.generated'" //
+                    + "           implement by 'org.lealone.test.vertx.impl.HelloServiceImpl'");
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
