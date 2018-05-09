@@ -32,7 +32,10 @@ import org.lealone.mvcc.log.RedoLog;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
+import io.netty.util.internal.logging.InternalLoggerFactory;
+import io.netty.util.internal.logging.JdkLoggerFactory;
 import io.vertx.core.impl.FileResolver;
+import io.vertx.core.spi.resolver.ResolverProvider;
 
 public class TestBase extends Assert {
     public static String url;
@@ -51,14 +54,22 @@ public class TestBase extends Assert {
         System.setProperty("java.io.tmpdir", TEST_DIR + File.separatorChar + "tmp");
         System.setProperty("lealone.lob.client.max.size.memory", "2048");
 
-        System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
-        System.setProperty("vertx.cacheDirBase", "./" + TEST_DIR + "/.vertx");
-
         Config.setProperty("client.trace.directory", joinDirs("client_trace"));
         SysProperties.setBaseDir(TEST_DIR);
 
         if (Config.getProperty("default.storage.engine") == null)
             Config.setProperty("default.storage.engine", getDefaultStorageEngineName());
+
+        setVertxProperties();
+    }
+
+    private static void setVertxProperties() {
+        InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE);
+        System.setProperty(ResolverProvider.DISABLE_DNS_RESOLVER_PROP_NAME, "true");
+
+        System.setProperty(FileResolver.DISABLE_FILE_CACHING_PROP_NAME, "true");
+        System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
+        System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "./" + TEST_DIR + "/.vertx");
     }
 
     public static String getDefaultStorageEngineName() {
