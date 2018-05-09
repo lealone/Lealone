@@ -25,9 +25,6 @@ import java.sql.Statement;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.vertx.impl.HelloWorldServiceExecuter;
 import org.lealone.test.vertx.impl.UserServiceExecuter;
-import org.lealone.test.vertx.services.HelloWorldService;
-import org.lealone.test.vertx.services.User;
-import org.lealone.test.vertx.services.UserService;
 import org.lealone.vertx.ServiceExecuterManager;
 import org.lealone.vertx.SockJSSocketServiceHandler;
 
@@ -69,20 +66,7 @@ public class ServicesTest extends UnitTestBase {
             // 创建表: user
             stmt.executeUpdate("create table user(id long, name char(10), notes varchar, phone int)");
 
-            // 创建服务: user_service
-            stmt.executeUpdate("create service if not exists user_service (" //
-                    + "             add(user user) user," // 第一个user是参数名，第二个user是参数类型，第三个user是返回值类型
-                    + "             find(id long) user," //
-                    + "             update(user user) boolean," //
-                    + "             delete(id long) boolean," //
-                    + "         ) package 'org.lealone.test.vertx.generated'" //
-                    + "           implement by 'org.lealone.test.vertx.impl.UserServiceImpl'");
-
-            // 创建服务: hello_service
-            stmt.executeUpdate("create service hello_service (" //
-                    + "             say_hello(name varchar) void" //
-                    + "         ) package 'org.lealone.test.vertx.generated'" //
-                    + "           implement by 'org.lealone.test.vertx.impl.HelloServiceImpl'");
+            ServiceProvider.execute(stmt);
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -94,14 +78,7 @@ public class ServicesTest extends UnitTestBase {
 
     private void testBackendRpcServices() {
         System.out.println("test backend rpc services");
-        HelloWorldService helloWorldService = HelloWorldService.create(url);
-        helloWorldService.sayHello();
-
-        UserService userService = UserService.create(url);
-        User user = new User().setName("rob");
-        user = userService.add(user);
-        System.out.println("user.id=" + user.getId());
-        user = userService.find(user.getId());
+        ServiceConsumer.execute(url);
 
         // user.setPhone(12345678);
         // userService.update(user);

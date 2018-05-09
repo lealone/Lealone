@@ -15,34 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.vertx.impl;
+package org.lealone.test.vertx;
 
+import org.lealone.test.vertx.services.HelloWorldService;
 import org.lealone.test.vertx.services.User;
 import org.lealone.test.vertx.services.UserService;
 
-public class UserServiceImpl implements UserService {
+public class ServiceConsumer {
 
-    @Override
-    public User add(User user) {
-        return user.setId(1000L);
-    }
+    public static void execute(String url) {
+        HelloWorldService helloWorldService = HelloWorldService.create(url);
+        helloWorldService.sayHello();
 
-    @Override
-    public User find(long id) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public boolean update(User user) {
-        // TODO Auto-generated method stub
-        return false;
-    }
-
-    @Override
-    public boolean delete(long id) {
-        // TODO Auto-generated method stub
-        return false;
+        UserService userService = UserService.create(url);
+        User user = new User().setName("rob");
+        user = userService.add(user);
+        System.out.println("user.id=" + user.getId());
+        user = userService.find(user.getId());
     }
 
 }
