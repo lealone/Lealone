@@ -13,12 +13,18 @@ import org.lealone.orm.typequery.PString;
  * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.
  */
 public class QCustomer extends Query<Customer, QCustomer> {
+
+    public static QCustomer create(String url) {
+        Table t = new Table(url, "CUSTOMER");
+        return new QCustomer(t);
+    }
+
     public final PLong<QCustomer> id;
     public final PString<QCustomer> name;
     public final PString<QCustomer> notes;
     public final PInteger<QCustomer> phone;
 
-    public QCustomer(Table t) {
+    private QCustomer(Table t) {
         super(t);
         setRoot(this);
 

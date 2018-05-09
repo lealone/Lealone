@@ -103,13 +103,23 @@ public class Table {
         int queryTypePackageNameLength = queryTypePackageName.length();
 
         buff.append("package ").append(packageName).append(";\r\n\r\n");
+        buff.append("\r\n");
+        buff.append("import org.lealone.orm.Table;\r\n");
+        buff.append("\r\n");
         buff.append("/**\r\n");
         buff.append(" * Model bean for table '").append(dbTable.getName()).append("'.\r\n");
         buff.append(" *\r\n");
         buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         buff.append(" */\r\n");
         buff.append("public class ").append(className).append(" {\r\n");
-
+        buff.append("\r\n");
+        buff.append("    public static ").append(className).append(" create(String url) {\r\n");
+        buff.append("        Table t = new Table(url, \"").append(dbTable.getName()).append("\");\r\n");
+        buff.append("        return new ").append(className).append("(t);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    private Table _t_;\r\n");
+        buff.append("\r\n");
         for (Column c : dbTable.getColumns()) {
             int type = c.getType();
             String typeClassName = DataType.getTypeClassName(type);
@@ -150,7 +160,19 @@ public class Table {
         buff.append("\r\n");
         buff.append("    public ").append(className).append("() {\r\n");
         buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    private ").append(className).append("(Table t) {\r\n");
+        buff.append("        this._t_ = t;\r\n");
+        buff.append("    }\r\n");
         buff.append(methods);
+        buff.append("\r\n");
+        buff.append("    public void save() {\r\n");
+        buff.append("        _t_.save(this);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    public boolean delete() {\r\n");
+        buff.append("       return _t_.delete(this);\r\n");
+        buff.append("    }\r\n");
         buff.append("}\r\n");
         // System.out.println(buff);
 
@@ -170,9 +192,15 @@ public class Table {
         // 例如: public class QCustomer extends Query<Customer, QCustomer> {
         qbuff.append("public class ").append(qclassName).append(" extends Query<").append(className).append(", ")
                 .append(qclassName).append("> {\r\n");
+        qbuff.append("\r\n");
+        qbuff.append("    public static ").append(qclassName).append(" create(String url) {\r\n");
+        qbuff.append("        Table t = new Table(url, \"").append(dbTable.getName()).append("\");\r\n");
+        qbuff.append("        return new ").append(qclassName).append("(t);\r\n");
+        qbuff.append("    }\r\n");
+        qbuff.append("\r\n");
         qbuff.append(qfields);
         qbuff.append("\r\n");
-        qbuff.append("    public ").append(qclassName).append("(Table t) {\r\n");
+        qbuff.append("    private ").append(qclassName).append("(Table t) {\r\n");
         qbuff.append("        super(t);\r\n");
         qbuff.append("        setRoot(this);\r\n");
         qbuff.append("\r\n");

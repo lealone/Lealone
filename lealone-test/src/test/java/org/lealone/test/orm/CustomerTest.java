@@ -33,15 +33,18 @@ public class CustomerTest extends UnitTestBase {
         new CustomerTest().run();
     }
 
+    private Database db;
+
     public void run() {
         createTable();
         crud();
+        db.close();
     }
 
     private void createTable() {
         System.out.println("create table");
         // 先建表
-        Database db = new Database(url);
+        db = new Database(url);
         db.executeUpdate("create table customer(id long, name char(10), notes varchar, phone int)");
 
         System.out.println("gen java jode");
@@ -53,21 +56,18 @@ public class CustomerTest extends UnitTestBase {
     private void crud() {
         System.out.println("crud test");
 
-        Table t = new Table(url, "customer");
-
         // 增加两条记录
-        Customer rob1 = new Customer().setName("Rob1");
-        Customer rob2 = new Customer().setName("Rob2");
-        t.save(rob1, rob2);
+        Customer.create(url).setName("Rob1").save();
+        Customer.create(url).setName("Rob2").save();
 
         // 构建一个查询器
-        QCustomer qCustomer = new QCustomer(t);
+        QCustomer qCustomer = QCustomer.create(url);
 
         // 以下出现的where()都不是必须的，加上之后更像SQL
 
         // 查找单条记录
         // select * from customer where id = 1;
-        Customer rob = qCustomer.where().id.eq(1L).findOne();
+        // Customer rob = qCustomer.where().id.eq(1L).findOne();
 
         // 查找多条记录(取回所有字段)
         // select * from customer where name like 'Rob%';
@@ -85,7 +85,7 @@ public class CustomerTest extends UnitTestBase {
         // 更新单条记录
         // update customer set notes = 'Doing an update' where id = 1;
         // rob.setNotes("Doing an update");
-        t.save(rob);
+        // rob.save();
 
         // 批量更新记录
         // update customer set phone = 12345678, notes = 'Doing an batch update' where name like 'Rob%';
@@ -93,12 +93,10 @@ public class CustomerTest extends UnitTestBase {
 
         // 删除单条记录
         // delete from customer where id = 1;
-        t.delete(rob);
+        // rob.delete();
 
         // 批量删除记录
         // delete from customer where name like 'Rob%';
         qCustomer.where().name.like("Rob%").delete();
-
-        t.getDatabase().close();
     }
 }
