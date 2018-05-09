@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm;
+package org.lealone.common.util;
 
-class CamelCaseHelper {
+public class CamelCaseHelper {
 
     /**
      * To underscore from camel case using digits compressed true and force upper case false.

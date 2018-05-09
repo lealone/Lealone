@@ -25,6 +25,7 @@ import java.nio.charset.Charset;
 import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.db.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.DataType;
