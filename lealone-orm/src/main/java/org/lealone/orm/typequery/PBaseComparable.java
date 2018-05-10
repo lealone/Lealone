@@ -7,7 +7,7 @@ package org.lealone.orm.typequery;
  * @param <T> the type of the scalar property
  */
 @SuppressWarnings("rawtypes")
-public class PBaseCompareable<R, T extends Comparable> extends PBaseValueEqual<R, T> {
+public class PBaseComparable<R, T extends Comparable> extends PBaseValueEqual<R, T> {
 
     /**
      * Construct with a property name and root instance.
@@ -15,14 +15,14 @@ public class PBaseCompareable<R, T extends Comparable> extends PBaseValueEqual<R
      * @param name property name
      * @param root the root query bean instance
      */
-    public PBaseCompareable(String name, R root) {
+    public PBaseComparable(String name, R root) {
         super(name, root);
     }
 
     /**
      * Construct with additional path prefix.
      */
-    public PBaseCompareable(String name, R root, String prefix) {
+    public PBaseComparable(String name, R root, String prefix) {
         super(name, root, prefix);
     }
 

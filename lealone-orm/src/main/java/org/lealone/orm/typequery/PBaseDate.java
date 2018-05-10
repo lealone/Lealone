@@ -7,7 +7,7 @@ package org.lealone.orm.typequery;
  * @param <D> the date time type
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseDate<R, D extends Comparable> extends PBaseCompareable<R, D> {
+public abstract class PBaseDate<R, D extends Comparable> extends PBaseComparable<R, D> {
 
     /**
      * Construct with a property name and root instance.

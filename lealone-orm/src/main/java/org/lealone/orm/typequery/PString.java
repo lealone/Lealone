@@ -5,7 +5,7 @@ package org.lealone.orm.typequery;
  *
  * @param <R> the root query bean type
  */
-public class PString<R> extends PBaseCompareable<R, String> {
+public class PString<R> extends PBaseComparable<R, String> {
 
     /**
      * Construct with a property name and root instance.

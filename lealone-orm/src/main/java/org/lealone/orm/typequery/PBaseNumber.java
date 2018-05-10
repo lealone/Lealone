@@ -7,7 +7,7 @@ package org.lealone.orm.typequery;
  * @param <T> the number type
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseNumber<R, T extends Comparable> extends PBaseCompareable<R, T> {
+public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparable<R, T> {
 
     /**
      * Construct with a property name and root instance.
