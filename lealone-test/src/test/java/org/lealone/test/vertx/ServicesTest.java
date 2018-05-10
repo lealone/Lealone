@@ -22,6 +22,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.lealone.orm.Table;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.vertx.impl.HelloWorldServiceExecuter;
 import org.lealone.test.vertx.impl.UserServiceExecuter;
@@ -63,11 +64,14 @@ public class ServicesTest extends UnitTestBase {
                     + "\"org.lealone.vertx.ServiceExecuterManager.executeServiceWithReturnValue\"");
 
             System.out.println("create table");
+            String packageName = "org.lealone.test.vertx.generated";
             // 创建表: user
-            stmt.executeUpdate("create table user(id long, name char(10), notes varchar, phone int)");
+            stmt.executeUpdate("create table user(id long, name char(10), notes varchar, phone int)" //
+                    + " package '" + packageName + "'");
+            Table t = new Table(url, "user");
+            t.genJavaCode("./src/test/java", packageName);
 
             ServiceProvider.execute(stmt);
-
         } catch (SQLException e) {
             e.printStackTrace();
         }

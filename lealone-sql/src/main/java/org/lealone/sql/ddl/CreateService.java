@@ -6,8 +6,14 @@
  */
 package org.lealone.sql.ddl;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.TreeSet;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -24,6 +30,7 @@ import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.CaseInsensitiveMap;
+import org.lealone.db.value.DataType;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -45,6 +52,8 @@ public class CreateService extends SchemaStatement {
     private String packageName;
     private String implementBy;
     private final ArrayList<CreateTable> serviceMethods = New.arrayList();
+    private boolean genCode;
+    private String codePath;
 
     public CreateService(ServerSession session, Schema schema) {
         super(session, schema);
@@ -104,7 +113,8 @@ public class CreateService extends SchemaStatement {
     @Override
     public int update() {
         // ServiceCodeGenerator.genCode(this);
-        genCode();
+        if (genCode)
+            genCode();
         // TODO
         // update0();
         return 0;
@@ -261,10 +271,17 @@ public class CreateService extends SchemaStatement {
         this.implementBy = implementBy;
     }
 
+    public void setGenCode(boolean genCode) {
+        this.genCode = genCode;
+    }
+
+    public void setCodePath(String codePath) {
+        this.codePath = codePath;
+    }
+
     private static String toClassName(String n) {
-        String serviceName = CamelCaseHelper.toCamelFromUnderscore(n);
-        String serviceNameFirstUpperCase = Character.toUpperCase(serviceName.charAt(0)) + serviceName.substring(1);
-        return serviceNameFirstUpperCase;
+        n = CamelCaseHelper.toCamelFromUnderscore(n);
+        return Character.toUpperCase(n.charAt(0)) + n.substring(1);
     }
 
     private static String toMethodName(String n) {
@@ -277,44 +294,39 @@ public class CreateService extends SchemaStatement {
 
     void genCode() {
         StringBuilder buff = new StringBuilder();
-        buff.append("package ").append(packageName).append(";\r\n");
-        buff.append("\r\n");
-        buff.append("import java.sql.CallableStatement;\r\n");
-        buff.append("import java.sql.Connection;\r\n");
-        buff.append("import java.sql.DriverManager;\r\n");
-        buff.append("import java.sql.SQLException;\r\n");
-        buff.append("\r\n");
-        buff.append("import io.vertx.core.json.JsonArray;\r\n");
-        buff.append("import io.vertx.core.json.JsonObject;\r\n");
-        buff.append("\r\n");
-
-        String serviceName = toClassName(data.tableName);
-
-        buff.append("public interface ").append(serviceName).append(" {;\r\n");
-        buff.append("\r\n");
-        buff.append("    static ").append(serviceName).append(" create(String url) {\r\n");
-        buff.append("        return new Proxy(url);\r\n");
-        buff.append("    }\r\n");
+        StringBuilder ibuff = new StringBuilder();
+        StringBuilder proxyMethodsBuff = new StringBuilder();
 
         boolean hasNoReturnValueMethods = false;
         boolean hasWithReturnValueMethods = false;
 
-        StringBuilder proxyMethodsBuff = new StringBuilder();
+        TreeSet<String> importSet = new TreeSet<>();
+        importSet.add("java.sql.CallableStatement");
+        importSet.add("java.sql.Connection");
+        importSet.add("java.sql.DriverManager");
+        importSet.add("java.sql.SQLException");
+        importSet.add("io.vertx.core.json.JsonArray");
+
+        String serviceName = toClassName(data.tableName);
+
+        buff.append("public interface ").append(serviceName).append(" {\r\n");
+        buff.append("\r\n");
+        buff.append("    static ").append(serviceName).append(" create(String url) {\r\n");
+        buff.append("        return new Proxy(url);\r\n");
+        buff.append("    }\r\n");
 
         for (CreateTable m : serviceMethods) {
             buff.append("\r\n");
             proxyMethodsBuff.append("\r\n");
             CreateTableData data = m.data;
             Column returnColumn = data.columns.get(data.columns.size() - 1);
-            String returnType = returnColumn.getTable() != null ? returnColumn.getTable().getName()
-                    : returnColumn.getOriginalSQL();
-            returnType = toClassName(returnType);
-            String methodName = toMethodName(data.tableName);
+            String returnType = getTypeName(returnColumn, importSet);
             if (returnType.equalsIgnoreCase("void")) {
                 hasNoReturnValueMethods = true;
             } else {
                 hasWithReturnValueMethods = true;
             }
+            String methodName = toMethodName(data.tableName);
             buff.append("    ").append(returnType).append(" ").append(methodName).append("(");
 
             proxyMethodsBuff.append("        @Override\r\n");
@@ -328,12 +340,12 @@ public class CreateService extends SchemaStatement {
                     proxyMethodsBuff.append(", ");
                 }
                 Column c = data.columns.get(i);
-                String cType = c.getTable() != null ? c.getTable().getName() : c.getOriginalSQL();
-                cType = toClassName(cType);
+                String cType = getTypeName(c, importSet);
                 String cName = toFieldName(c.getName());
                 buff.append(cType).append(" ").append(cName);
                 proxyMethodsBuff.append(cType).append(" ").append(cName);
                 if (c.getTable() != null) {
+                    importSet.add("io.vertx.core.json.JsonObject");
                     argsBuff.append("            ja.add(JsonObject.mapFrom(").append(cName).append("));\r\n");
                 } else {
                     argsBuff.append("            ja.add(").append(cName).append(");\r\n");
@@ -350,6 +362,7 @@ public class CreateService extends SchemaStatement {
                         .append(this.data.tableName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
                 proxyMethodsBuff.append("            if (result != null) {\r\n");
                 if (returnColumn.getTable() != null) {
+                    importSet.add("io.vertx.core.json.JsonObject");
                     proxyMethodsBuff.append("                JsonObject jo = new JsonObject(result);\r\n");
                     proxyMethodsBuff.append("                return jo.mapTo(").append(returnType)
                             .append(".class);\r\n");
@@ -366,6 +379,7 @@ public class CreateService extends SchemaStatement {
         // 生成Proxy类
         buff.append("\r\n");
         buff.append("    static class Proxy implements ").append(serviceName).append(" {\r\n");
+        buff.append("\r\n");
         buff.append("        private final String url;\r\n");
         if (hasNoReturnValueMethods)
             buff.append("        private static final String sqlNoReturnValue "
@@ -377,7 +391,6 @@ public class CreateService extends SchemaStatement {
         buff.append("        private Proxy(String url) {\r\n");
         buff.append("            this.url = url;\r\n");
         buff.append("        }\r\n");
-        buff.append("\r\n");
         buff.append(proxyMethodsBuff);
 
         if (hasWithReturnValueMethods) {
@@ -413,14 +426,75 @@ public class CreateService extends SchemaStatement {
         }
         buff.append("    }\r\n");
         buff.append("}\r\n");
-        System.out.println(buff);
-        System.out.println();
+
+        ibuff.append("package ").append(packageName).append(";\r\n");
+        ibuff.append("\r\n");
+        for (String i : importSet) {
+            ibuff.append("import ").append(i).append(";\r\n");
+        }
+        ibuff.append("\r\n");
+
+        ibuff.append("/**\r\n");
+        ibuff.append(" * Service interface for '").append(data.tableName.toLowerCase()).append("'.\r\n");
+        ibuff.append(" *\r\n");
+        ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
+        ibuff.append(" */\r\n");
+        // System.out.println(ibuff);
+        // System.out.println(buff);
+        // System.out.println();
+
+        String path = codePath;
+        if (!path.endsWith(File.separator))
+            path = path + File.separator;
+        path = path.replace('/', File.separatorChar);
+        path = path + packageName.replace('.', File.separatorChar) + File.separatorChar;
+        try {
+            if (!new File(path).exists()) {
+                new File(path).mkdirs();
+            }
+            Charset utf8 = Charset.forName("UTF-8");
+            BufferedOutputStream modelFile = new BufferedOutputStream(
+                    new FileOutputStream(path + serviceName + ".java"));
+            modelFile.write(ibuff.toString().getBytes(utf8));
+            modelFile.write(buff.toString().getBytes(utf8));
+            modelFile.close();
+        } catch (IOException e) {
+            throw DbException.convertIOException(e, "Failed to genJavaCode, path = " + path);
+        }
     }
 
     // private static class ServiceCodeGenerator {
     // static void genCode(CreateService s) {
     // }
     // }
+
+    private static String getTypeName(Column c, TreeSet<String> importSet) {
+        String cType;
+        if (c.getTable() != null) {
+            cType = c.getTable().getName();
+            cType = toClassName(cType);
+            String packageName = c.getTable().getPackageName();
+            if (packageName != null)
+                cType = packageName + "." + cType;
+        } else {
+            // cType = c.getOriginalSQL();
+            cType = DataType.getTypeClassName(c.getType());
+        }
+        int lastDotPos = cType.lastIndexOf('.');
+        if (lastDotPos > 0) {
+            if (cType.startsWith("java.lang.")) {
+                cType = cType.substring(10);
+            } else {
+                importSet.add(cType);
+                cType = cType.substring(lastDotPos + 1);
+            }
+        }
+        // 把java.lang.Void转成void，这样就不用加return语句
+        if (cType.equalsIgnoreCase("void")) {
+            cType = "void";
+        }
+        return cType;
+    }
 
     private static String getResultMethodName(String type) {
         type = type.toUpperCase();

@@ -88,6 +88,12 @@ public class TestBase extends Assert {
         }
     }
 
+    public static synchronized void closeTransactionEngine() {
+        if (te != null) {
+            te.close();
+        }
+    }
+
     protected String dbName = DEFAULT_DB_NAME;
     protected String user = DEFAULT_USER;
     protected String password = DEFAULT_PASSWORD;

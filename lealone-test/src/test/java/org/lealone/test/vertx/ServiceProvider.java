@@ -27,16 +27,20 @@ public class ServiceProvider {
         stmt.executeUpdate("create service if not exists user_service (" //
                 + "             add(user user) user," // 第一个user是参数名，第二个user是参数类型，第三个user是返回值类型
                 + "             find(id long) user," //
+                + "             find_by_date(d date) user," //
                 + "             update(user user) boolean," //
                 + "             delete(id long) boolean," //
                 + "         ) package 'org.lealone.test.vertx.generated'" //
-                + "           implement by 'org.lealone.test.vertx.impl.UserServiceImpl'");
+                + "           implement by 'org.lealone.test.vertx.impl.UserServiceImpl'" //
+                + "           gencode codepath './src/test/java'");
 
         // 创建服务: hello_service
         stmt.executeUpdate("create service hello_world_service (" //
-                + "             say_hello() void" //
+                + "             say_hello() void," //
+                + "             say_goodbye_to(name varchar) varchar" //
                 + "         ) package 'org.lealone.test.vertx.generated'" //
-                + "           implement by 'org.lealone.test.vertx.impl.HelloServiceImpl'");
+                + "           implement by 'org.lealone.test.vertx.impl.HelloServiceImpl'" //
+                + "           gencode codepath './src/test/java'");
     }
 
 }

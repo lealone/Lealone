@@ -102,7 +102,7 @@ public class Table {
         String queryTypePackageName = PInteger.class.getPackage().getName();
         int queryTypePackageNameLength = queryTypePackageName.length();
 
-        buff.append("package ").append(packageName).append(";\r\n\r\n");
+        buff.append("package ").append(packageName).append(";\r\n");
         buff.append("\r\n");
         buff.append("import org.lealone.orm.Table;\r\n");
         buff.append("\r\n");

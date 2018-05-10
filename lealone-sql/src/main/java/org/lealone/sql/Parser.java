@@ -4283,6 +4283,12 @@ public class Parser implements SQLParser {
             String implementBy = readString();
             command.setImplementBy(implementBy);
         }
+        if (readIf("GENCODE")) {
+            command.setGenCode(true);
+        }
+        if (readIf("CODEPATH")) {
+            command.setCodePath(readString());
+        }
         if (readIf("HIDDEN")) {
             command.setHidden(true);
         }
@@ -5757,8 +5763,18 @@ public class Parser implements SQLParser {
             read("PERSISTENT");
             command.setPersistData(false);
         }
+        if (readIf("PACKAGE")) {
+            String packageName = readString();
+            command.setPackageName(packageName);
+        }
         if (readIf("HIDDEN")) {
             command.setHidden(true);
+        }
+        if (readIf("GENCODE")) {
+            command.setGenCode(true);
+        }
+        if (readIf("CODEPATH")) {
+            command.setCodePath(readString());
         }
         if (readIf("AS")) {
             command.setQuery(parseSelect());

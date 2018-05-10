@@ -46,6 +46,9 @@ public class CreateTable extends SchemaStatement {
     private boolean onCommitTruncate;
     private Query asQuery;
     private String comment;
+    private String packageName;
+    private boolean genCode;
+    private String codePath;
 
     public CreateTable(ServerSession session, Schema schema) {
         super(session, schema);
@@ -156,6 +159,7 @@ public class CreateTable extends SchemaStatement {
                 }
             }
             table.setComment(comment);
+            table.setPackageName(packageName);
             if (isSessionTemporary) {
                 if (onCommitDrop) {
                     table.setOnCommitDrop(true);
@@ -300,6 +304,30 @@ public class CreateTable extends SchemaStatement {
     @Override
     public boolean isReplicationStatement() {
         return true;
+    }
+
+    public String getPackageName() {
+        return packageName;
+    }
+
+    public void setPackageName(String packageName) {
+        this.packageName = packageName;
+    }
+
+    public void setGenCode(boolean genCode) {
+        this.genCode = genCode;
+    }
+
+    public void setCodePath(String codePath) {
+        this.codePath = codePath;
+    }
+
+    public boolean isGenCode() {
+        return genCode;
+    }
+
+    public String getCodePath() {
+        return codePath;
     }
 
 }

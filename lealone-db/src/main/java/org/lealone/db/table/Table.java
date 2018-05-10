@@ -88,6 +88,7 @@ public abstract class Table extends SchemaObjectBase {
     private Row nullRow;
 
     private int version = -1;
+    private String packageName;
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         super(schema, id, name, Trace.TABLE);
@@ -1121,5 +1122,13 @@ public abstract class Table extends SchemaObjectBase {
 
     public List<StorageMap<? extends Object, ? extends Object>> getAllStorageMaps() {
         return new ArrayList<>(0);
+    }
+
+    public String getPackageName() {
+        return packageName;
+    }
+
+    public void setPackageName(String packageName) {
+        this.packageName = packageName;
     }
 }
