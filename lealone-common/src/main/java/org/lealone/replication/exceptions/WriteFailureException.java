@@ -21,7 +21,6 @@ import org.lealone.common.exceptions.ExceptionCode;
 import org.lealone.replication.ConsistencyLevel;
 
 public class WriteFailureException extends RequestFailureException {
-
     public WriteFailureException(ConsistencyLevel consistency, int received, int failures, int blockFor) {
         super(ExceptionCode.WRITE_FAILURE, consistency, received, failures, blockFor);
     }

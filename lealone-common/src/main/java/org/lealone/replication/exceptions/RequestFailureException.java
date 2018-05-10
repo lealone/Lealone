@@ -18,6 +18,7 @@
 package org.lealone.replication.exceptions;
 
 import org.lealone.common.exceptions.ExceptionCode;
+import org.lealone.common.exceptions.RequestExecutionException;
 import org.lealone.replication.ConsistencyLevel;
 
 public class RequestFailureException extends RequestExecutionException {
