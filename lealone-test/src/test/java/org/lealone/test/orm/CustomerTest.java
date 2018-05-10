@@ -19,42 +19,37 @@ package org.lealone.test.orm;
 
 import java.util.List;
 
-import org.lealone.orm.Database;
-import org.lealone.orm.Table;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.Customer;
 import org.lealone.test.orm.generated.QCustomer;
 
 public class CustomerTest extends UnitTestBase {
 
-    private static final String url = "jdbc:lealone:embed:test;user=root;password=root;persistent=false";
-
     public static void main(String[] args) {
-        new CustomerTest().run();
+        CustomerTest t = new CustomerTest();
+        t.setEmbedded(true);
+        t.setInMemory(true);
+        t.runTest();
     }
 
-    private Database db;
-
-    public void run() {
+    @Override
+    public void test() {
         createTable();
         crud();
-        db.close();
     }
 
     private void createTable() {
-        System.out.println("create table");
-        // 先建表
-        db = new Database(url);
-        db.executeUpdate("create table customer(id long, name char(10), notes varchar, phone int)");
+        System.out.println("create table: customer");
 
-        System.out.println("gen java jode");
-        Table t = db.getTable("customer");
-        // 生成领域模型类和查询器类的代码
-        t.genJavaCode("./src/test/java", "org.lealone.test.orm.generated");
+        execute("create table customer(id long, name char(10), notes varchar, phone int)" //
+                + " package 'org.lealone.test.orm.generated'" //
+                + " generate code './src/test/java'"); // 生成领域模型类和查询器类的代码
     }
 
     private void crud() {
         System.out.println("crud test");
+        String url = getURL();
+        System.out.println("jdbc url: " + url);
 
         // 增加两条记录
         Customer.create(url).setName("Rob1").save();

@@ -7,10 +7,12 @@
 package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
@@ -23,6 +25,7 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.CaseInsensitiveMap;
 import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Query;
@@ -195,6 +198,9 @@ public class CreateTable extends SchemaStatement {
                 db.removeSchemaObject(session, table);
                 throw e;
             }
+
+            if (genCode)
+                genCode();
         }
         return 0;
     }
@@ -330,4 +336,188 @@ public class CreateTable extends SchemaStatement {
         return codePath;
     }
 
+    private void genCode() {
+        StringBuilder buff = new StringBuilder();
+        StringBuilder methods = new StringBuilder();
+        String className = CamelCaseHelper.toCamelFromUnderscore(data.tableName);
+        className = Character.toUpperCase(className.charAt(0)) + className.substring(1);
+
+        String qclassName = 'Q' + className;
+        StringBuilder qbuff = new StringBuilder();
+        StringBuilder qfields = new StringBuilder();
+        StringBuilder qinit = new StringBuilder();
+        HashSet<String> qimportSet = new HashSet<>();
+
+        String queryTypePackageName = TQ;
+        int queryTypePackageNameLength = queryTypePackageName.length();
+
+        buff.append("package ").append(packageName).append(";\r\n");
+        buff.append("\r\n");
+        buff.append("import org.lealone.orm.Table;\r\n");
+        buff.append("\r\n");
+        buff.append("/**\r\n");
+        buff.append(" * Model bean for table '").append(data.tableName).append("'.\r\n");
+        buff.append(" *\r\n");
+        buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
+        buff.append(" */\r\n");
+        buff.append("public class ").append(className).append(" {\r\n");
+        buff.append("\r\n");
+        buff.append("    public static ").append(className).append(" create(String url) {\r\n");
+        buff.append("        Table t = new Table(url, \"").append(data.tableName).append("\");\r\n");
+        buff.append("        return new ").append(className).append("(t);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    private Table _t_;\r\n");
+        buff.append("\r\n");
+        for (Column c : data.columns) {
+            int type = c.getType();
+            String typeClassName = DataType.getTypeClassName(type);
+            if (typeClassName.startsWith("java.lang.")) {
+                typeClassName = typeClassName.substring(10);
+            }
+
+            String queryTypeClassName = getQueryTypeClassName(type);
+            queryTypeClassName = queryTypeClassName.substring(queryTypePackageNameLength + 1);
+            qimportSet.add(queryTypeClassName);
+            String columnName = CamelCaseHelper.toCamelFromUnderscore(c.getName());
+            String columnNameFirstUpperCase = Character.toUpperCase(columnName.charAt(0)) + columnName.substring(1);
+            buff.append("    private ").append(typeClassName).append(" ").append(columnName).append(";\r\n");
+
+            qfields.append("    public final ").append(queryTypeClassName).append('<').append(qclassName).append("> ")
+                    .append(columnName).append(";\r\n");
+
+            // 例如: this.id = new PLong<>("id", this);
+            qinit.append("        this.").append(columnName).append(" = new ").append(queryTypeClassName)
+                    .append("<>(\"").append(columnName).append("\", this);\r\n");
+
+            // setter
+            methods.append("\r\n");
+            methods.append("    public ").append(className).append(" set").append(columnNameFirstUpperCase).append('(')
+                    .append(typeClassName);
+            methods.append(' ').append(columnName).append(") {\r\n");
+            methods.append("        this.").append(columnName).append(" = ").append(columnName).append("; \r\n");
+            methods.append("        return this;\r\n");
+            methods.append("    }\r\n");
+
+            // getter
+            methods.append("\r\n");
+            methods.append("    public ").append(typeClassName).append(" get").append(columnNameFirstUpperCase)
+                    .append("() { \r\n");
+            methods.append("        return ").append(columnName).append("; \r\n");
+            methods.append("    }\r\n");
+        }
+        buff.append("\r\n");
+        buff.append("    public ").append(className).append("() {\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    private ").append(className).append("(Table t) {\r\n");
+        buff.append("        this._t_ = t;\r\n");
+        buff.append("    }\r\n");
+        buff.append(methods);
+        buff.append("\r\n");
+        buff.append("    public void save() {\r\n");
+        buff.append("        _t_.save(this);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    public boolean delete() {\r\n");
+        buff.append("       return _t_.delete(this);\r\n");
+        buff.append("    }\r\n");
+        buff.append("}\r\n");
+        // System.out.println(buff);
+
+        // 查询器类
+        qbuff.append("package ").append(packageName).append(";\r\n\r\n");
+        qbuff.append("import org.lealone.orm.Query;\r\n");
+        qbuff.append("import org.lealone.orm.Table;\r\n\r\n");
+        for (String i : qimportSet) {
+            qbuff.append("import ").append(queryTypePackageName).append('.').append(i).append(";\r\n");
+        }
+        qbuff.append("\r\n");
+        qbuff.append("/**\r\n");
+        qbuff.append(" * Query bean for model '").append(className).append("'.\r\n");
+        qbuff.append(" *\r\n");
+        qbuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
+        qbuff.append(" */\r\n");
+        // 例如: public class QCustomer extends Query<Customer, QCustomer> {
+        qbuff.append("public class ").append(qclassName).append(" extends Query<").append(className).append(", ")
+                .append(qclassName).append("> {\r\n");
+        qbuff.append("\r\n");
+        qbuff.append("    public static ").append(qclassName).append(" create(String url) {\r\n");
+        qbuff.append("        Table t = new Table(url, \"").append(data.tableName).append("\");\r\n");
+        qbuff.append("        return new ").append(qclassName).append("(t);\r\n");
+        qbuff.append("    }\r\n");
+        qbuff.append("\r\n");
+        qbuff.append(qfields);
+        qbuff.append("\r\n");
+        qbuff.append("    private ").append(qclassName).append("(Table t) {\r\n");
+        qbuff.append("        super(t);\r\n");
+        qbuff.append("        setRoot(this);\r\n");
+        qbuff.append("\r\n");
+        qbuff.append(qinit);
+        qbuff.append("    }\r\n");
+        qbuff.append("}\r\n");
+        // System.out.println(qbuff);
+
+        CreateService.writeFile(codePath, packageName, className, buff);
+        CreateService.writeFile(codePath, packageName, qclassName, qbuff);
+    }
+
+    private static final String TQ = "org.lealone.orm.typequery";
+
+    private static String getQueryTypeClassName(int type) {
+        String TQ = CreateTable.TQ + ".";
+        switch (type) {
+        case Value.BOOLEAN:
+            return TQ + "PBoolean";
+        case Value.BYTE:
+            return TQ + "PByte";
+        case Value.SHORT:
+            return TQ + "PShort";
+        case Value.INT:
+            return TQ + "PInteger";
+        case Value.LONG:
+            return TQ + "PLong";
+        case Value.DECIMAL:
+            return TQ + "PBigDecimal";
+        case Value.TIME:
+            return TQ + "PTime";
+        case Value.DATE:
+            return TQ + "PSqlDate";
+        case Value.TIMESTAMP:
+            return TQ + "PTimestamp";
+        case Value.BYTES:
+            // "[B", not "byte[]";
+            return byte[].class.getName(); // TODO
+        case Value.UUID:
+            return TQ + "PUuid";
+        case Value.STRING:
+        case Value.STRING_IGNORECASE:
+        case Value.STRING_FIXED:
+            return TQ + "PString";
+        case Value.BLOB:
+            // "java.sql.Blob";
+            throw DbException.throwInternalError("type=" + type); // return java.sql.Blob.class.getName(); // TODO
+        case Value.CLOB:
+            // "java.sql.Clob";
+            throw DbException.throwInternalError("type=" + type); // return java.sql.Clob.class.getName(); // TODO
+        case Value.DOUBLE:
+            return TQ + "PDouble";
+        case Value.FLOAT:
+            return TQ + "PFloat";
+        case Value.NULL:
+            return null;
+        case Value.JAVA_OBJECT:
+            // "java.lang.Object";
+            throw DbException.throwInternalError("type=" + type); // return Object.class.getName(); // TODO
+        case Value.UNKNOWN:
+            // anything
+            return Object.class.getName();
+        case Value.ARRAY:
+            return TQ + "PArray";
+        case Value.RESULT_SET:
+            throw DbException.throwInternalError("type=" + type); // return ResultSet.class.getName(); // TODO
+        default:
+            throw DbException.throwInternalError("type=" + type);
+        }
+    }
 }

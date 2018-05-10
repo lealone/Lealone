@@ -17,14 +17,11 @@
  */
 package org.lealone.test.service;
 
-import java.sql.SQLException;
-import java.sql.Statement;
-
 public class ServiceProvider {
 
-    public static void execute(Statement stmt) throws SQLException {
+    public static void execute(ServiceTest test) {
         // 创建服务: user_service
-        stmt.executeUpdate("create service if not exists user_service (" //
+        test.execute("create service if not exists user_service (" //
                 + "             add(user user) user," // 第一个user是参数名，第二个user是参数类型，第三个user是返回值类型
                 + "             find(id long) user," //
                 + "             find_by_date(d date) user," //
@@ -35,7 +32,7 @@ public class ServiceProvider {
                 + "           generate code './src/test/java'");
 
         // 创建服务: hello_world_service
-        stmt.executeUpdate("create service hello_world_service (" //
+        test.execute("create service hello_world_service (" //
                 + "             say_hello() void," //
                 + "             say_goodbye_to(name varchar) varchar" //
                 + "         ) package '" + ServiceTest.packageName + ".generated'" //

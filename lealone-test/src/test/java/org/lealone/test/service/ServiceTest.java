@@ -17,12 +17,6 @@
  */
 package org.lealone.test.service;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import org.lealone.orm.Table;
 import org.lealone.test.UnitTestBase;
 import org.lealone.vertx.SockJSSocketServiceHandler;
 
@@ -38,39 +32,40 @@ public class ServiceTest extends UnitTestBase {
 
     public static final String packageName = ServiceTest.class.getPackage().getName();
 
-    private static final String url = "jdbc:lealone:embed:test;" //
-            + "user=root;password=root;" //
-            + "persistent=false;"; //
-
     public static void main(String[] args) {
-        new ServiceTest().run();
+        ServiceTest t = new ServiceTest();
+        t.setEmbedded(true);
+        t.setInMemory(true);
+        t.runTest();
     }
 
-    public void run() {
+    @Override
+    public void test() {
+        createTable();
         createServices();
         testBackendRpcServices(); // 在后端执行RPC
         testFrontendRpcServices(); // 在前端执行RPC
     }
 
-    private void createServices() {
-        try (Connection conn = DriverManager.getConnection(url); Statement stmt = conn.createStatement()) {
-            System.out.println("create table");
-            String packageName = ServiceTest.packageName + ".generated";
-            // 创建表: user
-            stmt.executeUpdate("create table user(id long, name char(10), notes varchar, phone int)" //
-                    + " package '" + packageName + "'");
-            Table t = new Table(url, "user");
-            t.genJavaCode("./src/test/java", packageName);
+    private void createTable() {
+        System.out.println("create table: user");
+        String packageName = ServiceTest.packageName + ".generated";
 
-            System.out.println("create services");
-            ServiceProvider.execute(stmt);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        execute("create table user(id long, name char(10), notes varchar, phone int)" //
+                + " package '" + packageName + "'" //
+                + " generate code './src/test/java'"); // 生成领域模型类和查询器类的代码
+    }
+
+    private void createServices() {
+        System.out.println("create services");
+        ServiceProvider.execute(this);
     }
 
     private void testBackendRpcServices() {
         System.out.println("test backend rpc services");
+        String url = getURL();
+        System.out.println("jdbc url: " + url);
+
         ServiceConsumer.execute(url);
     }
 

@@ -453,7 +453,7 @@ public class CreateService extends SchemaStatement {
         // System.out.println(buff);
         // System.out.println();
 
-        writeFile(packageName, serviceName, ibuff, buff);
+        writeFile(codePath, packageName, serviceName, ibuff, buff);
     }
 
     private void genServiceExecuterCode() {
@@ -573,7 +573,7 @@ public class CreateService extends SchemaStatement {
         ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         ibuff.append(" */\r\n");
 
-        writeFile(getExecuterPackageName(), className, ibuff, buff);
+        writeFile(codePath, getExecuterPackageName(), className, ibuff, buff);
         registerServiceExecuter(className);
     }
 
@@ -586,7 +586,7 @@ public class CreateService extends SchemaStatement {
         return packageName + ".executer";
     }
 
-    private void writeFile(String packageName, String className, StringBuilder... buffArray) {
+    public static void writeFile(String codePath, String packageName, String className, StringBuilder... buffArray) {
         String path = codePath;
         if (!path.endsWith(File.separator))
             path = path + File.separator;

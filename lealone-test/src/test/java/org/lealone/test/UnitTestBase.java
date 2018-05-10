@@ -17,6 +17,11 @@
  */
 package org.lealone.test;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 //一个标记类，标识它的子类是进行单元测试的
 public class UnitTestBase extends TestBase {
 
@@ -24,4 +29,25 @@ public class UnitTestBase extends TestBase {
         initTransactionEngine();
     }
 
+    public void execute(String sql) {
+        try (Connection conn = DriverManager.getConnection(getURL()); Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void runTest() {
+        try {
+            test();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            closeTransactionEngine();
+        }
+    }
+
+    protected void test() throws Exception {
+        // do nothing
+    }
 }
