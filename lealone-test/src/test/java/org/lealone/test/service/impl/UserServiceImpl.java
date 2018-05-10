@@ -31,26 +31,22 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User find(Long id) {
-        // TODO Auto-generated method stub
-        return null;
+        return new User().setId(id);
     }
 
     @Override
     public User findByDate(Date d) {
-        // TODO Auto-generated method stub
-        return null;
+        return new User().setNotes("date: " + d.toString());
     }
 
     @Override
     public Boolean update(User user) {
-        // TODO Auto-generated method stub
-        return null;
+        return true;
     }
 
     @Override
     public Boolean delete(Long id) {
-        // TODO Auto-generated method stub
-        return null;
+        return true;
     }
 
 }

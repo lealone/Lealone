@@ -28,14 +28,17 @@ public class ServiceExecuterManager {
     private static final HashMap<String, String> serviceExecuterClassNames = new HashMap<>();
 
     public synchronized static void registerServiceExecuter(String name, ServiceExecuter serviceExecuter) {
+        name = name.toUpperCase();
         serviceExecuters.put(name, serviceExecuter);
     }
 
     public synchronized static void registerServiceExecuter(String name, String serviceExecuterClassName) {
+        name = name.toUpperCase();
         serviceExecuterClassNames.put(name, serviceExecuterClassName);
     }
 
     public synchronized void deregisterServiceExecuter(String name) {
+        name = name.toUpperCase();
         serviceExecuters.remove(name);
     }
 
@@ -48,22 +51,24 @@ public class ServiceExecuterManager {
     }
 
     private static String executeService(String serviceName, String json) {
-        // System.out.println("serviceName=" + serviceName + ", json=" + json);
+        serviceName = serviceName.toUpperCase();
         int dotPos = serviceName.indexOf('.');
         String methodName = serviceName.substring(dotPos + 1);
         serviceName = serviceName.substring(0, dotPos);
-        // serviceName = "org.lealone.test.vertx.impl." + toClassName(serviceName);
 
         ServiceExecuter serviceExecuter = serviceExecuters.get(serviceName);
         if (serviceExecuter == null) {
             String serviceExecuterClassName = serviceExecuterClassNames.get(serviceName);
             if (serviceExecuterClassName != null) {
                 synchronized (serviceExecuterClassNames) {
-                    try {
-                        serviceExecuter = (ServiceExecuter) Class.forName(serviceExecuterClassName).newInstance();
-                        serviceExecuters.put(serviceName, serviceExecuter);
-                    } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-                        throw new RuntimeException("newInstance exception: " + serviceExecuterClassName);
+                    serviceExecuter = serviceExecuters.get(serviceName);
+                    if (serviceExecuter == null) {
+                        try {
+                            serviceExecuter = (ServiceExecuter) Class.forName(serviceExecuterClassName).newInstance();
+                            serviceExecuters.put(serviceName, serviceExecuter);
+                        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                            throw new RuntimeException("newInstance exception: " + serviceExecuterClassName);
+                        }
                     }
                 }
             } else {

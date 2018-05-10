@@ -54,12 +54,6 @@ public class ServiceTest extends UnitTestBase {
 
     private void createServices() {
         try (Connection conn = DriverManager.getConnection(url); Statement stmt = conn.createStatement()) {
-            System.out.println("create ALIAS");
-            stmt.executeUpdate("CREATE ALIAS executeServiceNoReturnValue for " //
-                    + "\"org.lealone.db.service.ServiceExecuterManager.executeServiceNoReturnValue\"");
-            stmt.executeUpdate("CREATE ALIAS executeServiceWithReturnValue for " //
-                    + "\"org.lealone.db.service.ServiceExecuterManager.executeServiceWithReturnValue\"");
-
             System.out.println("create table");
             String packageName = ServiceTest.packageName + ".generated";
             // 创建表: user
@@ -78,11 +72,6 @@ public class ServiceTest extends UnitTestBase {
     private void testBackendRpcServices() {
         System.out.println("test backend rpc services");
         ServiceConsumer.execute(url);
-
-        // user.setPhone(12345678);
-        // userService.update(user);
-        //
-        // userService.delete(1);
     }
 
     private void testFrontendRpcServices() {

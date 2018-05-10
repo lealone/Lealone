@@ -24,8 +24,8 @@ public interface HelloWorldService {
     static class Proxy implements HelloWorldService {
 
         private final String url;
-        private static final String sqlNoReturnValue = "{call executeServiceNoReturnValue(?,?)}";
-        private static final String sqlWithReturnValue = "{? = call executeServiceWithReturnValue(?,?)}";
+        private static final String sqlNoReturnValue = "{call EXECUTE_SERVICE_NO_RETURN_VALUE(?,?)}";
+        private static final String sqlWithReturnValue = "{? = call EXECUTE_SERVICE_WITH_RETURN_VALUE(?,?)}";
 
         private Proxy(String url) {
             this.url = url;
@@ -58,7 +58,7 @@ public interface HelloWorldService {
                     return stmt.getString(1);
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                throw new RuntimeException("Failted to execute service: " + serviceName);
             }
 
             return null;
@@ -71,7 +71,7 @@ public interface HelloWorldService {
                 stmt.setString(2, json);
                 stmt.execute();
             } catch (SQLException e) {
-                e.printStackTrace();
+                throw new RuntimeException("Failted to execute service: " + serviceName);
             }
         }
     }

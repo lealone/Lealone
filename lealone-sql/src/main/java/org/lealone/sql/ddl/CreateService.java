@@ -391,10 +391,10 @@ public class CreateService extends SchemaStatement {
         buff.append("        private final String url;\r\n");
         if (hasNoReturnValueMethods)
             buff.append("        private static final String sqlNoReturnValue "
-                    + "= \"{call executeServiceNoReturnValue(?,?)}\";\r\n");
+                    + "= \"{call EXECUTE_SERVICE_NO_RETURN_VALUE(?,?)}\";\r\n");
         if (hasWithReturnValueMethods)
             buff.append("        private static final String sqlWithReturnValue "
-                    + "= \"{? = call executeServiceWithReturnValue(?,?)}\";\r\n");
+                    + "= \"{? = call EXECUTE_SERVICE_WITH_RETURN_VALUE(?,?)}\";\r\n");
         buff.append("\r\n");
         buff.append("        private Proxy(String url) {\r\n");
         buff.append("            this.url = url;\r\n");
@@ -413,7 +413,8 @@ public class CreateService extends SchemaStatement {
             buff.append("                    return stmt.getString(1);\r\n");
             buff.append("                }\r\n");
             buff.append("            } catch (SQLException e) {\r\n");
-            buff.append("                e.printStackTrace();\r\n");
+            buff.append(
+                    "                throw new RuntimeException(\"Failted to execute service: \" + serviceName);\r\n");
             buff.append("            }\r\n");
             buff.append("\r\n");
             buff.append("            return null;\r\n");
@@ -428,7 +429,8 @@ public class CreateService extends SchemaStatement {
             buff.append("                stmt.setString(2, json);\r\n");
             buff.append("                stmt.execute();\r\n");
             buff.append("            } catch (SQLException e) {\r\n");
-            buff.append("                e.printStackTrace();\r\n");
+            buff.append(
+                    "                throw new RuntimeException(\"Failted to execute service: \" + serviceName);\r\n");
             buff.append("            }\r\n");
             buff.append("        }\r\n");
         }

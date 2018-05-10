@@ -34,6 +34,11 @@ public class ServiceConsumer {
         user = userService.add(user);
         System.out.println("user.id=" + user.getId());
         user = userService.find(user.getId());
+
+        user.setPhone(12345678);
+        userService.update(user);
+
+        userService.delete(user.getId());
     }
 
 }

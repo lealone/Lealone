@@ -47,6 +47,7 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
+import org.lealone.db.service.ServiceExecuterManager;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.Table;
@@ -80,10 +81,10 @@ import org.lealone.storage.fs.FileUtils;
  */
 public class Function extends Expression implements FunctionCall {
     public static final int ABS = 0, ACOS = 1, ASIN = 2, ATAN = 3, ATAN2 = 4, BITAND = 5, BITOR = 6, BITXOR = 7,
-            CEILING = 8, COS = 9, COT = 10, DEGREES = 11, EXP = 12, FLOOR = 13, LOG = 14, LOG10 = 15, MOD = 16,
-            PI = 17, POWER = 18, RADIANS = 19, RAND = 20, ROUND = 21, ROUNDMAGIC = 22, SIGN = 23, SIN = 24, SQRT = 25,
-            TAN = 26, TRUNCATE = 27, SECURE_RAND = 28, HASH = 29, ENCRYPT = 30, DECRYPT = 31, COMPRESS = 32,
-            EXPAND = 33, ZERO = 34, RANDOM_UUID = 35, COSH = 36, SINH = 37, TANH = 38, LN = 39;
+            CEILING = 8, COS = 9, COT = 10, DEGREES = 11, EXP = 12, FLOOR = 13, LOG = 14, LOG10 = 15, MOD = 16, PI = 17,
+            POWER = 18, RADIANS = 19, RAND = 20, ROUND = 21, ROUNDMAGIC = 22, SIGN = 23, SIN = 24, SQRT = 25, TAN = 26,
+            TRUNCATE = 27, SECURE_RAND = 28, HASH = 29, ENCRYPT = 30, DECRYPT = 31, COMPRESS = 32, EXPAND = 33,
+            ZERO = 34, RANDOM_UUID = 35, COSH = 36, SINH = 37, TANH = 38, LN = 39;
 
     public static final int ASCII = 50, BIT_LENGTH = 51, CHAR = 52, CHAR_LENGTH = 53, CONCAT = 54, DIFFERENCE = 55,
             HEXTORAW = 56, INSERT = 57, INSTR = 58, LCASE = 59, LEFT = 60, LENGTH = 61, LOCATE = 62, LTRIM = 63,
@@ -103,11 +104,12 @@ public class Function extends Expression implements FunctionCall {
             AUTOCOMMIT = 155, READONLY = 156, DATABASE_PATH = 157, LOCK_TIMEOUT = 158, DISK_SPACE_USED = 159;
 
     public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204, NULLIF = 205,
-            CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210, CSVWRITE = 211,
-            MEMORY_FREE = 212, MEMORY_USED = 213, LOCK_MODE = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217,
-            LINK_SCHEMA = 218, GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, TABLE = 223,
-            TABLE_DISTINCT = 224, FILE_READ = 225, TRANSACTION_ID = 226, TRUNCATE_VALUE = 227, NVL2 = 228,
-            DECODE = 229, ARRAY_CONTAINS = 230;
+            CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210, CSVWRITE = 211, MEMORY_FREE = 212,
+            MEMORY_USED = 213, LOCK_MODE = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217, LINK_SCHEMA = 218,
+            GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, TABLE = 223, TABLE_DISTINCT = 224,
+            FILE_READ = 225, TRANSACTION_ID = 226, TRUNCATE_VALUE = 227, NVL2 = 228, DECODE = 229, ARRAY_CONTAINS = 230;
+
+    public static final int EXECUTE_SERVICE_NO_RETURN_VALUE = 500, EXECUTE_SERVICE_WITH_RETURN_VALUE = 501;
 
     /**
      * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
@@ -372,6 +374,11 @@ public class Function extends Expression implements FunctionCall {
 
         // pseudo function
         addFunctionWithNull("ROW_NUMBER", ROW_NUMBER, 0, Value.LONG);
+
+        // service function
+        addFunctionNotDeterministic("EXECUTE_SERVICE_NO_RETURN_VALUE", EXECUTE_SERVICE_NO_RETURN_VALUE, 2, Value.NULL);
+        addFunctionNotDeterministic("EXECUTE_SERVICE_WITH_RETURN_VALUE", EXECUTE_SERVICE_WITH_RETURN_VALUE, 2,
+                Value.STRING);
     }
 
     protected Function(Database database, FunctionInfo info) {
@@ -941,6 +948,18 @@ public class Function extends Expression implements FunctionCall {
             result = session.getTransactionId();
             break;
         }
+        case EXECUTE_SERVICE_NO_RETURN_VALUE: {
+            Value v1 = getNullOrValue(session, args, values, 1);
+            ServiceExecuterManager.executeServiceNoReturnValue(v0.getString(), v1.getString());
+            result = ValueNull.INSTANCE;
+            break;
+        }
+        case EXECUTE_SERVICE_WITH_RETURN_VALUE: {
+            Value v1 = getNullOrValue(session, args, values, 1);
+            String r = ServiceExecuterManager.executeServiceWithReturnValue(v0.getString(), v1.getString());
+            result = ValueString.get(r);
+            break;
+        }
         default:
             result = null;
         }
@@ -1151,12 +1170,12 @@ public class Function extends Expression implements FunctionCall {
             break;
         }
         case RPAD:
-            result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(),
-                    true));
+            result = ValueString
+                    .get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(), true));
             break;
         case LPAD:
-            result = ValueString.get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(),
-                    false));
+            result = ValueString
+                    .get(StringUtils.pad(v0.getString(), v1.getInt(), v2 == null ? null : v2.getString(), false));
             break;
         case LEALONE_VERSION:
             result = ValueString.get(Constants.getVersion());

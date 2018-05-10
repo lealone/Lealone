@@ -17,6 +17,7 @@
  */
 package org.lealone.vertx;
 
+import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.db.service.ServiceExecuterManager;
 
 import io.vertx.core.Handler;
@@ -31,7 +32,7 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
         sockJSSocket.handler(buffer -> {
             String a[] = buffer.getString(0, buffer.length()).split(";");
             int type = Integer.parseInt(a[0]);
-            String serviceName = a[1];
+            String serviceName = CamelCaseHelper.toUnderscoreFromCamel(a[1]);
             String json = null;
             if (a.length >= 3) {
                 json = a[2];

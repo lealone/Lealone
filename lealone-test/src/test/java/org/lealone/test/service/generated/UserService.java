@@ -33,7 +33,7 @@ public interface UserService {
     static class Proxy implements UserService {
 
         private final String url;
-        private static final String sqlWithReturnValue = "{? = call executeServiceWithReturnValue(?,?)}";
+        private static final String sqlWithReturnValue = "{? = call EXECUTE_SERVICE_WITH_RETURN_VALUE(?,?)}";
 
         private Proxy(String url) {
             this.url = url;
@@ -107,7 +107,7 @@ public interface UserService {
                     return stmt.getString(1);
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                throw new RuntimeException("Failted to execute service: " + serviceName);
             }
 
             return null;
