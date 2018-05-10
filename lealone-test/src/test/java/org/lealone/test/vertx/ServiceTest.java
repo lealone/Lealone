@@ -24,9 +24,6 @@ import java.sql.Statement;
 
 import org.lealone.orm.Table;
 import org.lealone.test.UnitTestBase;
-import org.lealone.test.vertx.impl.HelloWorldServiceExecuter;
-import org.lealone.test.vertx.impl.UserServiceExecuter;
-import org.lealone.vertx.ServiceExecuterManager;
 import org.lealone.vertx.SockJSSocketServiceHandler;
 
 import io.vertx.core.Vertx;
@@ -37,15 +34,14 @@ import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandlerOptions;
 
-public class ServicesTest extends UnitTestBase {
+public class ServiceTest extends UnitTestBase {
 
     private static final String url = "jdbc:lealone:embed:test;" //
             + "user=root;password=root;" //
-            // + "genServiceCode=true;serviceCodePath=./src/test/java"//
             + "persistent=false;"; //
 
     public static void main(String[] args) {
-        new ServicesTest().run();
+        new ServiceTest().run();
     }
 
     public void run() {
@@ -55,13 +51,12 @@ public class ServicesTest extends UnitTestBase {
     }
 
     private void createServices() {
-        System.out.println("create services");
         try (Connection conn = DriverManager.getConnection(url); Statement stmt = conn.createStatement()) {
             System.out.println("create ALIAS");
             stmt.executeUpdate("CREATE ALIAS executeServiceNoReturnValue for " //
-                    + "\"org.lealone.vertx.ServiceExecuterManager.executeServiceNoReturnValue\"");
+                    + "\"org.lealone.db.service.ServiceExecuterManager.executeServiceNoReturnValue\"");
             stmt.executeUpdate("CREATE ALIAS executeServiceWithReturnValue for " //
-                    + "\"org.lealone.vertx.ServiceExecuterManager.executeServiceWithReturnValue\"");
+                    + "\"org.lealone.db.service.ServiceExecuterManager.executeServiceWithReturnValue\"");
 
             System.out.println("create table");
             String packageName = "org.lealone.test.vertx.generated";
@@ -71,13 +66,11 @@ public class ServicesTest extends UnitTestBase {
             Table t = new Table(url, "user");
             t.genJavaCode("./src/test/java", packageName);
 
+            System.out.println("create services");
             ServiceProvider.execute(stmt);
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
-        ServiceExecuterManager.registerServiceExecuter("hello_world_service", new HelloWorldServiceExecuter());
-        ServiceExecuterManager.registerServiceExecuter("user_service", new UserServiceExecuter());
     }
 
     private void testBackendRpcServices() {

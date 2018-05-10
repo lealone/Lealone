@@ -33,7 +33,7 @@ public interface UserService {
     static class Proxy implements UserService {
 
         private final String url;
-        private static final String sqlWithReturnValue = "{? = call executeServiceNoReturnValue(?,?)}";
+        private static final String sqlWithReturnValue = "{? = call executeServiceWithReturnValue(?,?)}";
 
         private Proxy(String url) {
             this.url = url;

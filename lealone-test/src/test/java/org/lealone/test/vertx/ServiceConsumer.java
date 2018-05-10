@@ -17,15 +17,17 @@
  */
 package org.lealone.test.vertx;
 
-import org.lealone.test.vertx.services.HelloWorldService;
-import org.lealone.test.vertx.services.User;
-import org.lealone.test.vertx.services.UserService;
+import org.lealone.test.vertx.generated.HelloWorldService;
+import org.lealone.test.vertx.generated.User;
+import org.lealone.test.vertx.generated.UserService;
 
 public class ServiceConsumer {
 
     public static void execute(String url) {
         HelloWorldService helloWorldService = HelloWorldService.create(url);
         helloWorldService.sayHello();
+        String r = helloWorldService.sayGoodbyeTo("zhh");
+        System.out.println(r);
 
         UserService userService = UserService.create(url);
         User user = new User().setName("rob");

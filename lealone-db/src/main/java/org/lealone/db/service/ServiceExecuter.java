@@ -15,50 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.vertx.services;
+package org.lealone.db.service;
 
-public class User {
-    private Long id;
-    private String name;
-    private String notes;
-    private Integer phone;
+public interface ServiceExecuter {
 
-    public User() {
-    }
+    final String NO_RETURN_VALUE = "__NO_RETURN_VALUE__";
 
-    public User setId(Long id) {
-        this.id = id;
-        return this;
-    }
+    String executeService(String serviceName, String json);
 
-    public Long getId() {
-        return id;
-    }
-
-    public User setName(String name) {
-        this.name = name;
-        return this;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public User setNotes(String notes) {
-        this.notes = notes;
-        return this;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public User setPhone(Integer phone) {
-        this.phone = phone;
-        return this;
-    }
-
-    public Integer getPhone() {
-        return phone;
-    }
 }

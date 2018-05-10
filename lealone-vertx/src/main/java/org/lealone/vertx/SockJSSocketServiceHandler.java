@@ -17,6 +17,8 @@
  */
 package org.lealone.vertx;
 
+import org.lealone.db.service.ServiceExecuterManager;
+
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;

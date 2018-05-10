@@ -25,6 +25,8 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.Service;
+import org.lealone.db.service.ServiceExecuter;
+import org.lealone.db.service.ServiceExecuterManager;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;
@@ -117,6 +119,7 @@ public class CreateService extends SchemaStatement {
             genCode();
         // TODO
         // update0();
+
         return 0;
     }
 
@@ -292,7 +295,12 @@ public class CreateService extends SchemaStatement {
         return CamelCaseHelper.toCamelFromUnderscore(n);
     }
 
-    void genCode() {
+    private void genCode() {
+        genServiceInterfaceCode();
+        genServiceExecuterCode();
+    }
+
+    private void genServiceInterfaceCode() {
         StringBuilder buff = new StringBuilder();
         StringBuilder ibuff = new StringBuilder();
         StringBuilder proxyMethodsBuff = new StringBuilder();
@@ -386,7 +394,7 @@ public class CreateService extends SchemaStatement {
                     + "= \"{call executeServiceNoReturnValue(?,?)}\";\r\n");
         if (hasWithReturnValueMethods)
             buff.append("        private static final String sqlWithReturnValue "
-                    + "= \"{? = call executeServiceNoReturnValue(?,?)}\";\r\n");
+                    + "= \"{? = call executeServiceWithReturnValue(?,?)}\";\r\n");
         buff.append("\r\n");
         buff.append("        private Proxy(String url) {\r\n");
         buff.append("            this.url = url;\r\n");
@@ -443,6 +451,140 @@ public class CreateService extends SchemaStatement {
         // System.out.println(buff);
         // System.out.println();
 
+        writeFile(packageName, serviceName, ibuff, buff);
+    }
+
+    private void genServiceExecuterCode() {
+        StringBuilder buff = new StringBuilder();
+        StringBuilder ibuff = new StringBuilder();
+
+        TreeSet<String> importSet = new TreeSet<>();
+        importSet.add(ServiceExecuter.class.getName());
+        String serviceImplementClassName = implementBy;
+        if (implementBy != null) {
+            if (implementBy.startsWith(packageName)) {
+                serviceImplementClassName = implementBy.substring(packageName.length() + 1);
+            } else {
+                int lastDotPos = implementBy.lastIndexOf('.');
+                if (lastDotPos > 0) {
+                    serviceImplementClassName = implementBy.substring(lastDotPos + 1);
+                    importSet.add(implementBy);
+                }
+            }
+        }
+        String serviceName = toClassName(data.tableName);
+        String className = serviceName + "Executer";
+
+        buff.append("public class ").append(className).append(" implements ServiceExecuter {\r\n");
+        buff.append("\r\n");
+        buff.append("    private final ").append(serviceImplementClassName).append(" s = new ")
+                .append(serviceImplementClassName).append("();\r\n");
+        buff.append("\r\n");
+        buff.append("    public ").append(className).append("() {\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    @Override\r\n");
+        buff.append("    public String executeService(String methodName, String json) {\r\n");
+        // 提前看一下是否用到JsonArray
+        for (CreateTable m : serviceMethods) {
+            if (m.data.columns.size() - 1 > 0) {
+                buff.append("        JsonArray ja = null;\r\n");
+                break;
+            }
+        }
+        buff.append("        switch (methodName) {\r\n");
+
+        boolean hasNoReturnValueMethods = false;
+        int index = 0;
+        for (CreateTable m : serviceMethods) {
+            index++;
+            // switch语句不同case代码块的本地变量名不能相同
+            String resultVarName = "result" + index;
+            CreateTableData data = m.data;
+
+            Column returnColumn = data.columns.get(data.columns.size() - 1);
+            String returnType = getTypeName(returnColumn, importSet);
+            if (returnType.equalsIgnoreCase("void")) {
+                hasNoReturnValueMethods = true;
+            }
+            StringBuilder argsBuff = new StringBuilder();
+            String methodName = toMethodName(data.tableName);
+            buff.append("        case \"").append(data.tableName).append("\":\r\n");
+            // 有参数，参数放在一个json数组中
+            int size = data.columns.size() - 1;
+            if (size > 0) {
+                importSet.add("io.vertx.core.json.JsonArray");
+                buff.append("            ja = new JsonArray(json);\r\n");
+                for (int i = 0; i < size; i++) {
+                    if (i != 0) {
+                        buff.append(", ");
+                        argsBuff.append(", ");
+                    }
+                    Column c = data.columns.get(i);
+                    String cType = getTypeName(c, importSet);
+                    String cName = "p_" + toFieldName(c.getName()) + index;
+                    buff.append("            ").append(cType).append(" ").append(cName).append(" = ")
+                            .append(getJsonArrayMethodName(cType, i)).append(";\r\n");
+                    argsBuff.append(cName);
+                }
+            }
+            boolean isVoid = returnType.equalsIgnoreCase("void");
+            buff.append("            ");
+            if (!isVoid) {
+                buff.append(returnType).append(" ").append(resultVarName).append(" = ");
+            }
+            buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
+
+            if (!isVoid) {
+                if (returnColumn.getTable() != null) {
+                    importSet.add("io.vertx.core.json.JsonObject");
+                    buff.append("            return JsonObject.mapFrom(").append(resultVarName)
+                            .append(").encode();\r\n");
+                } else if (!returnType.equalsIgnoreCase("string")) {
+                    buff.append("            return ").append(resultVarName).append(".toString();\r\n");
+                } else {
+                    buff.append("            return ").append(resultVarName).append(";\r\n");
+                }
+            } else {
+                buff.append("            break;\r\n");
+            }
+        }
+        buff.append("        default:\r\n");
+        buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
+        buff.append("        }\r\n");
+        if (hasNoReturnValueMethods)
+            buff.append("        return NO_RETURN_VALUE;\r\n");
+
+        buff.append("    }\r\n");
+        buff.append("}\r\n");
+
+        ibuff.append("package ").append(getExecuterPackageName()).append(";\r\n");
+        ibuff.append("\r\n");
+        for (String i : importSet) {
+            ibuff.append("import ").append(i).append(";\r\n");
+        }
+        ibuff.append("\r\n");
+
+        ibuff.append("/**\r\n");
+        ibuff.append(" * Service executer for '").append(data.tableName.toLowerCase()).append("'.\r\n");
+        ibuff.append(" *\r\n");
+        ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
+        ibuff.append(" */\r\n");
+
+        writeFile(getExecuterPackageName(), className, ibuff, buff);
+        registerServiceExecuter(className);
+    }
+
+    private void registerServiceExecuter(String executerName) {
+        String fullName = getExecuterPackageName() + "." + executerName;
+        ServiceExecuterManager.registerServiceExecuter(data.tableName, fullName);
+    }
+
+    private String getExecuterPackageName() {
+        return packageName + ".executer";
+    }
+
+    private void writeFile(String packageName, String className, StringBuilder... buffArray) {
         String path = codePath;
         if (!path.endsWith(File.separator))
             path = path + File.separator;
@@ -453,11 +595,11 @@ public class CreateService extends SchemaStatement {
                 new File(path).mkdirs();
             }
             Charset utf8 = Charset.forName("UTF-8");
-            BufferedOutputStream modelFile = new BufferedOutputStream(
-                    new FileOutputStream(path + serviceName + ".java"));
-            modelFile.write(ibuff.toString().getBytes(utf8));
-            modelFile.write(buff.toString().getBytes(utf8));
-            modelFile.close();
+            BufferedOutputStream file = new BufferedOutputStream(new FileOutputStream(path + className + ".java"));
+            for (StringBuilder buff : buffArray) {
+                file.write(buff.toString().getBytes(utf8));
+            }
+            file.close();
         } catch (IOException e) {
             throw DbException.convertIOException(e, "Failed to genJavaCode, path = " + path);
         }
@@ -550,6 +692,69 @@ public class CreateService extends SchemaStatement {
             throw DbException.throwInternalError("type=" + type); // return ResultSet.class.getName(); // TODO
         default:
             throw DbException.throwInternalError("type=" + type);
+        }
+    }
+
+    private static String m(String str, int i) {
+        return str + "(ja.getValue(" + i + ").toString())";
+    }
+
+    // TODO 判断具体类型调用合适的JsonArray方法
+    private static String getJsonArrayMethodName(String type0, int i) {
+        String type = type0.toUpperCase();
+        switch (type) {
+        case "BOOLEAN":
+            return m("Boolean.valueOf", i);
+        case "BYTE":
+            return m("Byte.valueOf", i);
+        case "SHORT":
+            return m("Short.valueOf", i);
+        case "INT":
+            return m("Integer.valueOf", i);
+        case "LONG":
+            return m("Long.valueOf", i);
+        case "DECIMAL":
+            return m("new java.math.BigDecimal", i);
+        case "TIME":
+            return m("java.sql.Time.valueOf", i);
+        case "DATE":
+            return m("java.sql.Date.valueOf", i);
+        case "TIMESTAMP":
+            return m("java.sql.Timestamp.valueOf", i);
+        case "BYTES":
+            // "[B", not "byte[]";
+            return "ja.getString(" + i + ").getBytes()";
+        case "UUID":
+            return m("java.util.UUID.fromString", i);
+        case "STRING":
+        case "STRING_IGNORECASE":
+        case "STRING_FIXED":
+            return "ja.getString(" + i + ")";
+        case "BLOB":
+            // "java.sql.Blob";
+            throw DbException.throwInternalError("type=" + type); // return java.sql.Blob.class.getName(); // TODO
+        case "CLOB":
+            // "java.sql.Clob";
+            throw DbException.throwInternalError("type=" + type); // return java.sql.Clob.class.getName(); // TODO
+        case "DOUBLE":
+            return m("Double.valueOf", i);
+        case "FLOAT":
+            return m("Float.valueOf", i);
+        case "NULL":
+            return null;
+        case "JAVA_OBJECT":
+            // "java.lang.Object";
+            throw DbException.throwInternalError("type=" + type); // return Object.class.getName(); // TODO
+        case "UNKNOWN":
+            // anything
+            throw DbException.throwInternalError("type=" + type);
+        case "ARRAY":
+            throw DbException.throwInternalError("type=" + type);
+        case "RESULT_SET":
+            throw DbException.throwInternalError("type=" + type); // return ResultSet.class.getName(); // TODO
+        default:
+            return "ja.getJsonObject(" + i + ").mapTo(" + type0 + ".class)";
+        // throw DbException.throwInternalError("type=" + type);
         }
     }
 }

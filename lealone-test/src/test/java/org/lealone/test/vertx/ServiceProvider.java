@@ -39,7 +39,7 @@ public class ServiceProvider {
                 + "             say_hello() void," //
                 + "             say_goodbye_to(name varchar) varchar" //
                 + "         ) package 'org.lealone.test.vertx.generated'" //
-                + "           implement by 'org.lealone.test.vertx.impl.HelloServiceImpl'" //
+                + "           implement by 'org.lealone.test.vertx.impl.HelloWorldServiceImpl'" //
                 + "           gencode codepath './src/test/java'");
     }
 

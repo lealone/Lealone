@@ -25,7 +25,7 @@ public interface HelloWorldService {
 
         private final String url;
         private static final String sqlNoReturnValue = "{call executeServiceNoReturnValue(?,?)}";
-        private static final String sqlWithReturnValue = "{? = call executeServiceNoReturnValue(?,?)}";
+        private static final String sqlWithReturnValue = "{? = call executeServiceWithReturnValue(?,?)}";
 
         private Proxy(String url) {
             this.url = url;
