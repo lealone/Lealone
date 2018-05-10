@@ -1,6 +1,5 @@
 package org.lealone.test.orm.generated;
 
-
 import org.lealone.orm.Table;
 
 /**

@@ -1,4 +1,4 @@
-package org.lealone.test.vertx.generated;
+package org.lealone.test.service.generated;
 
 import io.vertx.core.json.JsonArray;
 import java.sql.CallableStatement;

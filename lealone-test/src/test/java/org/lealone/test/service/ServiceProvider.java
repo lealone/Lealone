@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.vertx;
+package org.lealone.test.service;
 
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -30,17 +30,17 @@ public class ServiceProvider {
                 + "             find_by_date(d date) user," //
                 + "             update(user user) boolean," //
                 + "             delete(id long) boolean," //
-                + "         ) package 'org.lealone.test.vertx.generated'" //
-                + "           implement by 'org.lealone.test.vertx.impl.UserServiceImpl'" //
-                + "           gencode codepath './src/test/java'");
+                + "         ) package '" + ServiceTest.packageName + ".generated'" //
+                + "           implement by '" + ServiceTest.packageName + ".impl.UserServiceImpl'" //
+                + "           generate code './src/test/java'");
 
-        // 创建服务: hello_service
+        // 创建服务: hello_world_service
         stmt.executeUpdate("create service hello_world_service (" //
                 + "             say_hello() void," //
                 + "             say_goodbye_to(name varchar) varchar" //
-                + "         ) package 'org.lealone.test.vertx.generated'" //
-                + "           implement by 'org.lealone.test.vertx.impl.HelloWorldServiceImpl'" //
-                + "           gencode codepath './src/test/java'");
+                + "         ) package '" + ServiceTest.packageName + ".generated'" //
+                + "           implement by '" + ServiceTest.packageName + ".impl.HelloWorldServiceImpl'" //
+                + "           generate code './src/test/java'");
     }
 
 }

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.vertx;
+package org.lealone.test.service;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -35,6 +35,8 @@ import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandlerOptions;
 
 public class ServiceTest extends UnitTestBase {
+
+    public static final String packageName = ServiceTest.class.getPackage().getName();
 
     private static final String url = "jdbc:lealone:embed:test;" //
             + "user=root;password=root;" //
@@ -59,7 +61,7 @@ public class ServiceTest extends UnitTestBase {
                     + "\"org.lealone.db.service.ServiceExecuterManager.executeServiceWithReturnValue\"");
 
             System.out.println("create table");
-            String packageName = "org.lealone.test.vertx.generated";
+            String packageName = ServiceTest.packageName + ".generated";
             // 创建表: user
             stmt.executeUpdate("create table user(id long, name char(10), notes varchar, phone int)" //
                     + " package '" + packageName + "'");

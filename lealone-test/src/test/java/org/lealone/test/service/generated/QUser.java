@@ -1,4 +1,4 @@
-package org.lealone.test.vertx.generated;
+package org.lealone.test.service.generated;
 
 import org.lealone.orm.Query;
 import org.lealone.orm.Table;

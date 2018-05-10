@@ -1,4 +1,4 @@
-package org.lealone.test.vertx.generated;
+package org.lealone.test.service.generated;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -7,7 +7,7 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import org.lealone.test.vertx.generated.User;
+import org.lealone.test.service.generated.User;
 
 /**
  * Service interface for 'user_service'.

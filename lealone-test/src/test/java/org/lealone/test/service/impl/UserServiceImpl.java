@@ -15,12 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.vertx.impl;
+package org.lealone.test.service.impl;
 
 import java.sql.Date;
 
-import org.lealone.test.vertx.generated.User;
-import org.lealone.test.vertx.generated.UserService;
+import org.lealone.test.service.generated.User;
+import org.lealone.test.service.generated.UserService;
 
 public class UserServiceImpl implements UserService {
 

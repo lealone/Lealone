@@ -1,11 +1,11 @@
-package org.lealone.test.vertx.generated.executer;
+package org.lealone.test.service.generated.executer;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import java.sql.Date;
 import org.lealone.db.service.ServiceExecuter;
-import org.lealone.test.vertx.generated.User;
-import org.lealone.test.vertx.impl.UserServiceImpl;
+import org.lealone.test.service.generated.User;
+import org.lealone.test.service.impl.UserServiceImpl;
 
 /**
  * Service executer for 'user_service'.

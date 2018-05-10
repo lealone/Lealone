@@ -15,11 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.vertx;
+package org.lealone.test.service;
 
-import org.lealone.test.vertx.generated.HelloWorldService;
-import org.lealone.test.vertx.generated.User;
-import org.lealone.test.vertx.generated.UserService;
+import org.lealone.test.service.generated.HelloWorldService;
+import org.lealone.test.service.generated.User;
+import org.lealone.test.service.generated.UserService;
 
 public class ServiceConsumer {
 

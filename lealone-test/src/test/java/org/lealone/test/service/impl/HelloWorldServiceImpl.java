@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.vertx.impl;
+package org.lealone.test.service.impl;
 
-import org.lealone.test.vertx.generated.HelloWorldService;
+import org.lealone.test.service.generated.HelloWorldService;
 
 public class HelloWorldServiceImpl implements HelloWorldService {
 

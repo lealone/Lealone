@@ -4283,10 +4283,9 @@ public class Parser implements SQLParser {
             String implementBy = readString();
             command.setImplementBy(implementBy);
         }
-        if (readIf("GENCODE")) {
+        if (readIf("GENERATE")) {
+            read("CODE");
             command.setGenCode(true);
-        }
-        if (readIf("CODEPATH")) {
             command.setCodePath(readString());
         }
         if (readIf("HIDDEN")) {
@@ -5770,10 +5769,9 @@ public class Parser implements SQLParser {
         if (readIf("HIDDEN")) {
             command.setHidden(true);
         }
-        if (readIf("GENCODE")) {
+        if (readIf("GENERATE")) {
+            read("CODE");
             command.setGenCode(true);
-        }
-        if (readIf("CODEPATH")) {
             command.setCodePath(readString());
         }
         if (readIf("AS")) {
