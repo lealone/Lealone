@@ -7,8 +7,9 @@
 package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Map;
+import java.util.TreeSet;
+import java.util.UUID;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -338,7 +339,9 @@ public class CreateTable extends SchemaStatement {
 
     private void genCode() {
         StringBuilder buff = new StringBuilder();
+        StringBuilder ibuff = new StringBuilder();
         StringBuilder methods = new StringBuilder();
+        TreeSet<String> importSet = new TreeSet<>();
         String className = CamelCaseHelper.toCamelFromUnderscore(data.tableName);
         className = Character.toUpperCase(className.charAt(0)) + className.substring(1);
 
@@ -346,15 +349,13 @@ public class CreateTable extends SchemaStatement {
         StringBuilder qbuff = new StringBuilder();
         StringBuilder qfields = new StringBuilder();
         StringBuilder qinit = new StringBuilder();
-        HashSet<String> qimportSet = new HashSet<>();
+        TreeSet<String> qimportSet = new TreeSet<>();
 
         String queryTypePackageName = TQ;
         int queryTypePackageNameLength = queryTypePackageName.length();
 
-        buff.append("package ").append(packageName).append(";\r\n");
-        buff.append("\r\n");
-        buff.append("import org.lealone.orm.Table;\r\n");
-        buff.append("\r\n");
+        importSet.add("org.lealone.orm.Table");
+
         buff.append("/**\r\n");
         buff.append(" * Model bean for table '").append(data.tableName).append("'.\r\n");
         buff.append(" *\r\n");
@@ -371,12 +372,12 @@ public class CreateTable extends SchemaStatement {
         buff.append("\r\n");
         for (Column c : data.columns) {
             int type = c.getType();
-            String typeClassName = DataType.getTypeClassName(type);
+            String typeClassName = getTypeClassName(type, importSet);
             if (typeClassName.startsWith("java.lang.")) {
                 typeClassName = typeClassName.substring(10);
             }
 
-            String queryTypeClassName = getQueryTypeClassName(type);
+            String queryTypeClassName = getTypeQueryClassName(type);
             queryTypeClassName = queryTypeClassName.substring(queryTypePackageNameLength + 1);
             qimportSet.add(queryTypeClassName);
             String columnName = CamelCaseHelper.toCamelFromUnderscore(c.getName());
@@ -456,68 +457,51 @@ public class CreateTable extends SchemaStatement {
         qbuff.append(qinit);
         qbuff.append("    }\r\n");
         qbuff.append("}\r\n");
-        // System.out.println(qbuff);
 
-        CreateService.writeFile(codePath, packageName, className, buff);
+        ibuff.append("package ").append(packageName).append(";\r\n");
+        ibuff.append("\r\n");
+        for (String i : importSet) {
+            ibuff.append("import ").append(i).append(";\r\n");
+        }
+        ibuff.append("\r\n");
+
+        CreateService.writeFile(codePath, packageName, className, ibuff, buff);
         CreateService.writeFile(codePath, packageName, qclassName, qbuff);
     }
 
     private static final String TQ = "org.lealone.orm.typequery";
 
-    private static String getQueryTypeClassName(int type) {
-        String TQ = CreateTable.TQ + ".";
+    private static String getTypeQueryClassName(int type) {
+        String prefix = TQ + ".P";
         switch (type) {
-        case Value.BOOLEAN:
-            return TQ + "PBoolean";
-        case Value.BYTE:
-            return TQ + "PByte";
-        case Value.SHORT:
-            return TQ + "PShort";
-        case Value.INT:
-            return TQ + "PInteger";
-        case Value.LONG:
-            return TQ + "PLong";
-        case Value.DECIMAL:
-            return TQ + "PBigDecimal";
-        case Value.TIME:
-            return TQ + "PTime";
-        case Value.DATE:
-            return TQ + "PSqlDate";
-        case Value.TIMESTAMP:
-            return TQ + "PTimestamp";
         case Value.BYTES:
-            // "[B", not "byte[]";
-            return byte[].class.getName(); // TODO
+            return prefix + "Bytes";
         case Value.UUID:
-            return TQ + "PUuid";
-        case Value.STRING:
-        case Value.STRING_IGNORECASE:
-        case Value.STRING_FIXED:
-            return TQ + "PString";
-        case Value.BLOB:
-            // "java.sql.Blob";
-            throw DbException.throwInternalError("type=" + type); // return java.sql.Blob.class.getName(); // TODO
-        case Value.CLOB:
-            // "java.sql.Clob";
-            throw DbException.throwInternalError("type=" + type); // return java.sql.Clob.class.getName(); // TODO
-        case Value.DOUBLE:
-            return TQ + "PDouble";
-        case Value.FLOAT:
-            return TQ + "PFloat";
+            return prefix + "Uuid";
         case Value.NULL:
-            return null;
-        case Value.JAVA_OBJECT:
-            // "java.lang.Object";
-            throw DbException.throwInternalError("type=" + type); // return Object.class.getName(); // TODO
-        case Value.UNKNOWN:
-            // anything
-            return Object.class.getName();
-        case Value.ARRAY:
-            return TQ + "PArray";
-        case Value.RESULT_SET:
-            throw DbException.throwInternalError("type=" + type); // return ResultSet.class.getName(); // TODO
+            return prefix + "Null";
         default:
-            throw DbException.throwInternalError("type=" + type);
+            String name = DataType.getTypeClassName(type);
+            int pos = name.lastIndexOf('.');
+            return prefix + name.substring(pos + 1);
+        }
+    }
+
+    private static String getTypeClassName(int type, TreeSet<String> importSet) {
+        switch (type) {
+        case Value.BYTES:
+            return "byte[]";
+        case Value.UUID:
+            importSet.add(UUID.class.getName());
+            return UUID.class.getSimpleName();
+        case Value.NULL:
+            throw DbException.throwInternalError("type=null");
+        default:
+            String name = DataType.getTypeClassName(type);
+            if (!name.startsWith("java.lang.")) {
+                importSet.add(name);
+            }
+            return name.substring(name.lastIndexOf('.') + 1);
         }
     }
 }
