@@ -46,7 +46,7 @@ public class TQProperty<R> {
      */
     public TQProperty(String name, R root, String prefix) {
         this.root = root;
-        name = TQPath.add(prefix, name);
+        name = fullPath(prefix, name);
 
         if (((Query<?, ?>) root).databaseToUpper()) {
             name = name.toUpperCase();
@@ -105,4 +105,10 @@ public class TQProperty<R> {
         return name;
     }
 
+    /**
+     * Return the full path by adding the prefix to the property name (null safe).
+     */
+    public static String fullPath(String prefix, String name) {
+        return (prefix == null) ? name : prefix + "." + name;
+    }
 }

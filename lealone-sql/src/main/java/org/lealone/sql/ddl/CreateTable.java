@@ -351,9 +351,6 @@ public class CreateTable extends SchemaStatement {
         StringBuilder qinit = new StringBuilder();
         TreeSet<String> qimportSet = new TreeSet<>();
 
-        String queryTypePackageName = TQ;
-        int queryTypePackageNameLength = queryTypePackageName.length();
-
         importSet.add("org.lealone.orm.Table");
 
         buff.append("/**\r\n");
@@ -373,22 +370,16 @@ public class CreateTable extends SchemaStatement {
         for (Column c : data.columns) {
             int type = c.getType();
             String typeClassName = getTypeClassName(type, importSet);
-            if (typeClassName.startsWith("java.lang.")) {
-                typeClassName = typeClassName.substring(10);
-            }
-
-            String queryTypeClassName = getTypeQueryClassName(type);
-            queryTypeClassName = queryTypeClassName.substring(queryTypePackageNameLength + 1);
-            qimportSet.add(queryTypeClassName);
+            String typeQueryClassName = getTypeQueryClassName(type, qimportSet);
             String columnName = CamelCaseHelper.toCamelFromUnderscore(c.getName());
             String columnNameFirstUpperCase = Character.toUpperCase(columnName.charAt(0)) + columnName.substring(1);
             buff.append("    private ").append(typeClassName).append(" ").append(columnName).append(";\r\n");
 
-            qfields.append("    public final ").append(queryTypeClassName).append('<').append(qclassName).append("> ")
+            qfields.append("    public final ").append(typeQueryClassName).append('<').append(qclassName).append("> ")
                     .append(columnName).append(";\r\n");
 
             // 例如: this.id = new PLong<>("id", this);
-            qinit.append("        this.").append(columnName).append(" = new ").append(queryTypeClassName)
+            qinit.append("        this.").append(columnName).append(" = new ").append(typeQueryClassName)
                     .append("<>(\"").append(columnName).append("\", this);\r\n");
 
             // setter
@@ -430,8 +421,8 @@ public class CreateTable extends SchemaStatement {
         qbuff.append("package ").append(packageName).append(";\r\n\r\n");
         qbuff.append("import org.lealone.orm.Query;\r\n");
         qbuff.append("import org.lealone.orm.Table;\r\n\r\n");
-        for (String i : qimportSet) {
-            qbuff.append("import ").append(queryTypePackageName).append('.').append(i).append(";\r\n");
+        for (String p : qimportSet) {
+            qbuff.append("import ").append(p).append(";\r\n");
         }
         qbuff.append("\r\n");
         qbuff.append("/**\r\n");
@@ -469,22 +460,27 @@ public class CreateTable extends SchemaStatement {
         CreateService.writeFile(codePath, packageName, qclassName, qbuff);
     }
 
-    private static final String TQ = "org.lealone.orm.typequery";
+    private static final String TYPE_QUERY_PACKAGE_NAME = "org.lealone.orm.typequery";
 
-    private static String getTypeQueryClassName(int type) {
-        String prefix = TQ + ".P";
+    private static String getTypeQueryClassName(int type, TreeSet<String> importSet) {
+        String name;
         switch (type) {
         case Value.BYTES:
-            return prefix + "Bytes";
+            name = "Bytes";
+            break;
         case Value.UUID:
-            return prefix + "Uuid";
+            name = "Uuid";
+            break;
         case Value.NULL:
-            return prefix + "Null";
+            throw DbException.throwInternalError("type = null");
         default:
-            String name = DataType.getTypeClassName(type);
+            name = DataType.getTypeClassName(type);
             int pos = name.lastIndexOf('.');
-            return prefix + name.substring(pos + 1);
+            name = name.substring(pos + 1);
         }
+        name = "P" + name;
+        importSet.add(TYPE_QUERY_PACKAGE_NAME + "." + name);
+        return name;
     }
 
     private static String getTypeClassName(int type, TreeSet<String> importSet) {
@@ -495,7 +491,7 @@ public class CreateTable extends SchemaStatement {
             importSet.add(UUID.class.getName());
             return UUID.class.getSimpleName();
         case Value.NULL:
-            throw DbException.throwInternalError("type=null");
+            throw DbException.throwInternalError("type = null");
         default:
             String name = DataType.getTypeClassName(type);
             if (!name.startsWith("java.lang.")) {
