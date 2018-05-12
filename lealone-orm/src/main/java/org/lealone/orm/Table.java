@@ -35,20 +35,6 @@ public class Table {
         this.dbTable = dbTable;
     }
 
-    public void save(Object bean) {
-        dbTable.getColumns();
-    }
-
-    public void save(Object... beans) {
-        for (Object o : beans) {
-            save(o);
-        }
-    }
-
-    public boolean delete(Object bean) {
-        return false;
-    }
-
     org.lealone.db.table.Table getDbTable() {
         return dbTable;
     }

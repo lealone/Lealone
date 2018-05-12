@@ -17,7 +17,7 @@
  */
 package org.lealone.orm.typequery;
 
-public class PBlob<R> extends PObject<R> {
+public class PBlob<R> extends TQProperty<R> {
 
     public PBlob(String name, R root) {
         super(name, root);

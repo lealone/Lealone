@@ -17,7 +17,7 @@
  */
 package org.lealone.orm.typequery;
 
-public class PResultSet<R> extends PObject<R> {
+public class PResultSet<R> extends TQProperty<R> {
 
     public PResultSet(String name, R root) {
         super(name, root);

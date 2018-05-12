@@ -72,11 +72,11 @@ public class CustomerTest extends UnitTestBase {
         Customer c = Customer.create(url);
 
         // 增加两条记录
-        rowId1 = c.id.set(1000).name.set("Rob1").insert();
+        rowId1 = c.id.set(1000).name.set("Rob1").notes.set("notes1").insert();
 
         assertTrue((rowId1 == 1) && (rowId1 == c._rowid_.get()));
 
-        rowId2 = c.id.set(2000).name.set("Rob2").insert();
+        rowId2 = c.id.set(2000).name.set("Rob2").notes.set("notes2").insert();
 
         assertTrue((rowId2 == 2) && (rowId2 == c._rowid_.get()));
 
@@ -93,7 +93,7 @@ public class CustomerTest extends UnitTestBase {
         List<Customer> customers = c.where().name.like("Rob%").findList();
 
         assertEquals(2, customers.size());
-        assertNotNull(customers.get(0).name.get());
+        assertNotNull(customers.get(0).notes.get());
 
         // 查找多条记录(只取回name字段)
         // select name from customer where name like 'Rob%';

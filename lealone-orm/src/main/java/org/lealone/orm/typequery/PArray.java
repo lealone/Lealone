@@ -22,7 +22,7 @@ package org.lealone.orm.typequery;
  *
  * @param <R> the root query bean type
  */
-public class PArray<R> extends PObject<R> {
+public class PArray<R> extends TQProperty<R> {
 
     /**
      * Construct with a property name and root instance.
