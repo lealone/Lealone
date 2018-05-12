@@ -22,10 +22,7 @@ import org.lealone.test.UnitTestBase;
 public class TypeTest extends UnitTestBase {
 
     public static void main(String[] args) {
-        TypeTest t = new TypeTest();
-        t.setEmbedded(true);
-        t.setInMemory(true);
-        t.runTest();
+        new TypeTest().runTest();
     }
 
     @Override

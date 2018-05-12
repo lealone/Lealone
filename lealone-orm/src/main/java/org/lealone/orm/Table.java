@@ -27,7 +27,6 @@ public class Table {
     public Table(String url, String tableName) {
         db = new Database(url);
         dbTable = db.getDbTable(tableName);
-        dbTable.getTemplateRow();
     }
 
     Table(Database db, org.lealone.db.table.Table dbTable) {

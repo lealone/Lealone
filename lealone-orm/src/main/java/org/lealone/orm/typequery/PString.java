@@ -179,9 +179,9 @@ public class PString<R> extends PBaseComparable<R, String> {
         if (!areEqual(this.value, value)) {
             this.value = value;
             changed = true;
-            if (isReady()) {
-                expr().set(name, ValueString.get(value));
-            }
+            // if (isReady()) {
+            expr().set(name, ValueString.get(value));
+            // }
         }
         return root;
     }
@@ -198,7 +198,11 @@ public class PString<R> extends PBaseComparable<R, String> {
 
     @Override
     public R deserialize(JsonNode node) {
-        value = node.get(propertyName()).asText();
+        node = getJsonNode(node);
+        if (node == null) {
+            return root;
+        }
+        set(node.asText());
         return root;
     }
 

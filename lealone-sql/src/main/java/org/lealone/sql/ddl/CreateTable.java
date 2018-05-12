@@ -400,7 +400,7 @@ public class CreateTable extends SchemaStatement {
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    public ").append(className).append("(Table t) {\r\n");
-        buff.append("        super(t);\r\n");
+        buff.append("        super(t, \"").append(data.tableName).append("\");\r\n");
         buff.append("        super.setRoot(this);\r\n");
         buff.append("\r\n");
         buff.append(init);

@@ -58,7 +58,7 @@ public interface HelloWorldService {
                     return stmt.getString(1);
                 }
             } catch (SQLException e) {
-                throw new RuntimeException("Failted to execute service: " + serviceName);
+                throw new RuntimeException("Failted to execute service: " + serviceName, e);
             }
 
             return null;
@@ -71,7 +71,7 @@ public interface HelloWorldService {
                 stmt.setString(2, json);
                 stmt.execute();
             } catch (SQLException e) {
-                throw new RuntimeException("Failted to execute service: " + serviceName);
+                throw new RuntimeException("Failted to execute service: " + serviceName, e);
             }
         }
     }

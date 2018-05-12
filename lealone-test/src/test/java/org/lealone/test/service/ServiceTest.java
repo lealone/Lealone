@@ -18,25 +18,14 @@
 package org.lealone.test.service;
 
 import org.lealone.test.UnitTestBase;
-import org.lealone.vertx.SockJSSocketServiceHandler;
-
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import io.vertx.core.http.HttpServer;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.handler.StaticHandler;
-import io.vertx.ext.web.handler.sockjs.SockJSHandler;
-import io.vertx.ext.web.handler.sockjs.SockJSHandlerOptions;
+import org.lealone.vertx.LealoneHttpServer;
 
 public class ServiceTest extends UnitTestBase {
 
     public static final String packageName = ServiceTest.class.getPackage().getName();
 
     public static void main(String[] args) {
-        ServiceTest t = new ServiceTest();
-        t.setEmbedded(true);
-        t.setInMemory(true);
-        t.runTest();
+        new ServiceTest().runTest();
     }
 
     @Override
@@ -69,43 +58,9 @@ public class ServiceTest extends UnitTestBase {
         ServiceConsumer.execute(url);
     }
 
-    private void testFrontendRpcServices() {
-        startHttpServer();
-    }
-
     // http://localhost:8080/index.html
-    private static void startHttpServer() {
-        VertxOptions opt = new VertxOptions();
-        opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
-        Vertx vertx = Vertx.vertx(opt);
-        HttpServer server = vertx.createHttpServer();
-        Router router = Router.router(vertx);
-
-        // router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
-        setSockJSHandler(vertx, router);
-        // 放在最后
-        setStaticHandler(vertx, router);
-
-        server.requestHandler(router::accept).listen(8080, res -> {
-            if (res.succeeded()) {
-                System.out.println("Server is now listening on actual port: " + server.actualPort());
-            } else {
-                System.out.println("Failed to bind!");
-            }
-        });
-    }
-
-    private static void setStaticHandler(Vertx vertx, Router router) {
-        StaticHandler sh = StaticHandler.create("./src/test/resources/webroot/");
-        sh.setCachingEnabled(false);
-        router.route("/*").handler(sh);
-    }
-
-    private static void setSockJSHandler(Vertx vertx, Router router) {
-        SockJSHandlerOptions options = new SockJSHandlerOptions().setHeartbeatInterval(2000);
-        SockJSHandler sockJSHandler = SockJSHandler.create(vertx, options);
-        sockJSHandler.socketHandler(new SockJSSocketServiceHandler());
-        router.route("/api/*").handler(sockJSHandler);
+    private void testFrontendRpcServices() {
+        LealoneHttpServer.start(8080, "./src/test/resources/webroot/", "/api/*");
     }
 
 }

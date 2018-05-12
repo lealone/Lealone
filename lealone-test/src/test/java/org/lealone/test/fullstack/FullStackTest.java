@@ -17,60 +17,95 @@
  */
 package org.lealone.test.fullstack;
 
-import org.lealone.test.TestBase;
+import org.lealone.test.UnitTestBase;
+import org.lealone.test.fullstack.generated.User;
+import org.lealone.test.fullstack.generated.UserService;
+import org.lealone.vertx.LealoneHttpServer;
 
-import io.netty.util.internal.logging.InternalLoggerFactory;
-import io.netty.util.internal.logging.JdkLoggerFactory;
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServer;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.handler.CorsHandler;
-import io.vertx.ext.web.handler.StaticHandler;
-
-public class FullStackTest extends TestBase {
+public class FullStackTest extends UnitTestBase {
 
     public static void main(String[] args) {
-        InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE);
-        // System.setProperty(ResolverProvider.DISABLE_DNS_RESOLVER_PROP_NAME, "true");
-
-        // TestBase.initTransactionEngine();
-        FullStackTest t = new FullStackTest();
-        t.setEmbedded(true).setInMemory(true);
-        // t.printURL();
-        t.run();
+        new FullStackTest().runTest(true, false);
     }
 
-    private void run() {
-        startHttpServer();
+    @Override
+    public void test() {
+        init();
+
+        // 从后端调用服务
+        callService();
+
+        // 启动HttpServer
+        // 在浏览器中打开下面这个URL，测试从前端发起服务调用，在console里面看结果:
+        // http://localhost:8080/FullStackTest.html
+        LealoneHttpServer.start(8080, "./src/test/resources/webroot/", "/api/*");
     }
 
-    private void startHttpServer() {
-        final long s1 = System.currentTimeMillis();
-        VertxOptions opt = new VertxOptions();
-        opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
-        Vertx vertx = Vertx.vertx(opt);
-        long s2 = System.currentTimeMillis();
-        System.out.println("Total time init vertx: " + (s2 - s1) + "ms");
+    void setJdbcUrl() {
+        String url = getURL();
+        System.setProperty("lealone.jdbc.url", url);
+        System.out.println("jdbc url: " + url);
+    }
 
-        HttpServer server = vertx.createHttpServer();
-        Router router = Router.router(vertx);
+    void init() {
+        setJdbcUrl();
+        String packageName = FullStackTest.class.getPackage().getName();
 
-        router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
-        StaticHandler sh = StaticHandler.create().setWebRoot("./src/test/resources/webroot");
-        sh.setCachingEnabled(false);
-        router.route("/static/*").handler(sh);
+        // 创建表: user
+        execute("create table user(name char(10) primary key, notes varchar, phone int)" //
+                + " package '" + packageName + ".generated'" //
+                + " generate code './src/test/java'");
 
-        // setSockJSHandler(vertx, router);
+        System.out.println("create table: user");
 
-        server.requestHandler(router::accept).listen(8080, rs -> {
-            if (rs.succeeded()) {
-                System.out.println("SockJS listen 8000");
-                long s22 = System.currentTimeMillis();
-                System.out.println("Total time: " + (s22 - s1) + "ms");
-            }
-        });
+        // 创建服务: user_service
+        execute("create service if not exists user_service (" //
+                + " add(user user) long," // 第一个user是参数名，第二个user是参数类型
+                + " find(name varchar) user," //
+                + " update(user user) int," //
+                + " delete(name varchar) int)" //
+                + " package '" + packageName + ".generated'" //
+                + " implement by '" + UserServiceImpl.class.getCanonicalName() + "'" // 不能用getClassName()，会包含$字符
+                + " generate code './src/test/java'");
+
+        System.out.println("create service: user_service");
+    }
+
+    void callService() {
+        String url = getURL();
+        UserService userService = UserService.create(url);
+
+        User user = new User().name.set("zhh").phone.set(123);
+        userService.add(user);
+
+        user = userService.find("zhh");
+
+        user.notes.set("call remote service");
+        userService.update(user);
+
+        userService.delete("zhh");
+    }
+
+    public static class UserServiceImpl implements UserService {
+        @Override
+        public Long add(User user) {
+            return user.insert();
+        }
+
+        @Override
+        public User find(String name) {
+            return new User().where().name.eq(name).findOne();
+        }
+
+        @Override
+        public Integer update(User user) {
+            return user.where().name.eq(user.name.get()).update();
+        }
+
+        @Override
+        public Integer delete(String name) {
+            return new User().where().name.eq(name).delete();
+        }
     }
 
 }

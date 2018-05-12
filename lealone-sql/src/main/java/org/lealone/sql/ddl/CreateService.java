@@ -414,7 +414,7 @@ public class CreateService extends SchemaStatement {
             buff.append("                }\r\n");
             buff.append("            } catch (SQLException e) {\r\n");
             buff.append(
-                    "                throw new RuntimeException(\"Failted to execute service: \" + serviceName);\r\n");
+                    "                throw new RuntimeException(\"Failted to execute service: \" + serviceName, e);\r\n");
             buff.append("            }\r\n");
             buff.append("\r\n");
             buff.append("            return null;\r\n");
@@ -430,7 +430,7 @@ public class CreateService extends SchemaStatement {
             buff.append("                stmt.execute();\r\n");
             buff.append("            } catch (SQLException e) {\r\n");
             buff.append(
-                    "                throw new RuntimeException(\"Failted to execute service: \" + serviceName);\r\n");
+                    "                throw new RuntimeException(\"Failted to execute service: \" + serviceName, e);\r\n");
             buff.append("            }\r\n");
             buff.append("        }\r\n");
         }
@@ -536,8 +536,9 @@ public class CreateService extends SchemaStatement {
                 buff.append(returnType).append(" ").append(resultVarName).append(" = ");
             }
             buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
-
             if (!isVoid) {
+                buff.append("            if (").append(resultVarName).append(" == null)\r\n");
+                buff.append("                return null;\r\n");
                 if (returnColumn.getTable() != null) {
                     importSet.add("io.vertx.core.json.JsonObject");
                     buff.append("            return JsonObject.mapFrom(").append(resultVarName)
@@ -649,7 +650,7 @@ public class CreateService extends SchemaStatement {
             return "Byte.valueOf(result)";
         case "SHORT":
             return "Short.valueOf(result)";
-        case "INT":
+        case "INTEGER":
             return "Integer.valueOf(result)";
         case "LONG":
             return "Long.valueOf(result)";

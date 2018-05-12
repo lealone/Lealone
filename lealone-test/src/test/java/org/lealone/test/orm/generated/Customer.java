@@ -36,7 +36,7 @@ public class Customer extends Query<Customer> {
     }
 
     public Customer(Table t) {
-        super(t);
+        super(t, "CUSTOMER");
         super.setRoot(this);
 
         this.id = new PLong<>("ID", this);

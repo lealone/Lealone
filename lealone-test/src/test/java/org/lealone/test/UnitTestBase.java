@@ -38,12 +38,22 @@ public class UnitTestBase extends TestBase {
     }
 
     public void runTest() {
+        runTest(true, true);
+    }
+
+    public void runTest(boolean isEmbeddedMemoryMode, boolean closeTransactionEngine) {
+        if (isEmbeddedMemoryMode) {
+            setEmbedded(true);
+            setInMemory(true);
+        }
+
         try {
             test();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            closeTransactionEngine();
+            if (closeTransactionEngine)
+                closeTransactionEngine();
         }
     }
 

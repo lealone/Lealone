@@ -68,7 +68,7 @@ public class AllType extends Query<AllType> {
     }
 
     public AllType(Table t) {
-        super(t);
+        super(t, "ALL_TYPE");
         super.setRoot(this);
 
         this.f1 = new PInteger<>("F1", this);

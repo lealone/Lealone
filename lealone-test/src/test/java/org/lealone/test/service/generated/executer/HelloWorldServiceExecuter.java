@@ -27,6 +27,8 @@ public class HelloWorldServiceExecuter implements ServiceExecuter {
             ja = new JsonArray(json);
             String p_name2 = ja.getString(0);
             String result2 = this.s.sayGoodbyeTo(p_name2);
+            if (result2 == null)
+                return null;
             return result2;
         default:
             throw new RuntimeException("no method: " + methodName);

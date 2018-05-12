@@ -42,7 +42,14 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
         this.query = query;
     }
 
+    Table getTable() {
+        table = query.getTable();
+        dbTable = table.getDbTable();
+        return table;
+    }
+
     private ExpressionColumn getExpressionColumn(String propertyName) {
+        getTable();
         return new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(), dbTable.getName(),
                 propertyName);
         // return new ExpressionColumn(dbTable.getDatabase(), dbTable.getColumn(propertyName));

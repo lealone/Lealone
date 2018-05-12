@@ -1,13 +1,12 @@
-package org.lealone.test.service.generated;
+package org.lealone.test.fullstack.generated;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import java.sql.CallableStatement;
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import org.lealone.test.service.generated.User;
+import org.lealone.test.fullstack.generated.User;
 
 /**
  * Service interface for 'user_service'.
@@ -20,15 +19,13 @@ public interface UserService {
         return new Proxy(url);
     }
 
-    User add(User user);
+    Long add(User user);
 
-    User find(Long id);
+    User find(String name);
 
-    User findByDate(Date d);
+    Integer update(User user);
 
-    Boolean update(User user);
-
-    Boolean delete(Long id);
+    Integer delete(String name);
 
     static class Proxy implements UserService {
 
@@ -40,21 +37,20 @@ public interface UserService {
         }
 
         @Override
-        public User add(User user) {
+        public Long add(User user) {
             JsonArray ja = new JsonArray();
             ja.add(JsonObject.mapFrom(user));
             String result = executeWithReturnValue("USER_SERVICE.ADD", ja.encode());
             if (result != null) {
-                JsonObject jo = new JsonObject(result);
-                return jo.mapTo(User.class);
+                return Long.valueOf(result);
             }
             return null;
         }
 
         @Override
-        public User find(Long id) {
+        public User find(String name) {
             JsonArray ja = new JsonArray();
-            ja.add(id);
+            ja.add(name);
             String result = executeWithReturnValue("USER_SERVICE.FIND", ja.encode());
             if (result != null) {
                 JsonObject jo = new JsonObject(result);
@@ -64,35 +60,23 @@ public interface UserService {
         }
 
         @Override
-        public User findByDate(Date d) {
-            JsonArray ja = new JsonArray();
-            ja.add(d);
-            String result = executeWithReturnValue("USER_SERVICE.FIND_BY_DATE", ja.encode());
-            if (result != null) {
-                JsonObject jo = new JsonObject(result);
-                return jo.mapTo(User.class);
-            }
-            return null;
-        }
-
-        @Override
-        public Boolean update(User user) {
+        public Integer update(User user) {
             JsonArray ja = new JsonArray();
             ja.add(JsonObject.mapFrom(user));
             String result = executeWithReturnValue("USER_SERVICE.UPDATE", ja.encode());
             if (result != null) {
-                return Boolean.valueOf(result);
+                return Integer.valueOf(result);
             }
             return null;
         }
 
         @Override
-        public Boolean delete(Long id) {
+        public Integer delete(String name) {
             JsonArray ja = new JsonArray();
-            ja.add(id);
+            ja.add(name);
             String result = executeWithReturnValue("USER_SERVICE.DELETE", ja.encode());
             if (result != null) {
-                return Boolean.valueOf(result);
+                return Integer.valueOf(result);
             }
             return null;
         }

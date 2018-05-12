@@ -957,7 +957,10 @@ public class Function extends Expression implements FunctionCall {
         case EXECUTE_SERVICE_WITH_RETURN_VALUE: {
             Value v1 = getNullOrValue(session, args, values, 1);
             String r = ServiceExecuterManager.executeServiceWithReturnValue(v0.getString(), v1.getString());
-            result = ValueString.get(r);
+            if (r == null)
+                result = ValueNull.INSTANCE;
+            else
+                result = ValueString.get(r);
             break;
         }
         default:

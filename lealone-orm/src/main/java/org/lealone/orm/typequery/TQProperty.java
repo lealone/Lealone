@@ -132,6 +132,14 @@ public class TQProperty<R> {
         return root;
     }
 
+    protected JsonNode getJsonNode(JsonNode node) {
+        JsonNode n = node.get(name);
+        if (n == null) {
+            n = node.get(name.toLowerCase());
+        }
+        return n;
+    }
+
     /**
      * Helper method to check if two objects are equal.
      */

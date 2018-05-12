@@ -1,11 +1,10 @@
-package org.lealone.test.service.generated.executer;
+package org.lealone.test.fullstack.generated.executer;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import java.sql.Date;
 import org.lealone.db.service.ServiceExecuter;
-import org.lealone.test.service.generated.User;
-import org.lealone.test.service.impl.UserServiceImpl;
+import org.lealone.test.fullstack.FullStackTest.UserServiceImpl;
+import org.lealone.test.fullstack.generated.User;
 
 /**
  * Service executer for 'user_service'.
@@ -26,38 +25,31 @@ public class UserServiceExecuter implements ServiceExecuter {
         case "ADD":
             ja = new JsonArray(json);
             User p_user1 = ja.getJsonObject(0).mapTo(User.class);
-            User result1 = this.s.add(p_user1);
+            Long result1 = this.s.add(p_user1);
             if (result1 == null)
                 return null;
-            return JsonObject.mapFrom(result1).encode();
+            return result1.toString();
         case "FIND":
             ja = new JsonArray(json);
-            Long p_id2 = Long.valueOf(ja.getValue(0).toString());
-            User result2 = this.s.find(p_id2);
+            String p_name2 = ja.getString(0);
+            User result2 = this.s.find(p_name2);
             if (result2 == null)
                 return null;
             return JsonObject.mapFrom(result2).encode();
-        case "FIND_BY_DATE":
-            ja = new JsonArray(json);
-            Date p_d3 = java.sql.Date.valueOf(ja.getValue(0).toString());
-            User result3 = this.s.findByDate(p_d3);
-            if (result3 == null)
-                return null;
-            return JsonObject.mapFrom(result3).encode();
         case "UPDATE":
             ja = new JsonArray(json);
-            User p_user4 = ja.getJsonObject(0).mapTo(User.class);
-            Boolean result4 = this.s.update(p_user4);
+            User p_user3 = ja.getJsonObject(0).mapTo(User.class);
+            Integer result3 = this.s.update(p_user3);
+            if (result3 == null)
+                return null;
+            return result3.toString();
+        case "DELETE":
+            ja = new JsonArray(json);
+            String p_name4 = ja.getString(0);
+            Integer result4 = this.s.delete(p_name4);
             if (result4 == null)
                 return null;
             return result4.toString();
-        case "DELETE":
-            ja = new JsonArray(json);
-            Long p_id5 = Long.valueOf(ja.getValue(0).toString());
-            Boolean result5 = this.s.delete(p_id5);
-            if (result5 == null)
-                return null;
-            return result5.toString();
         default:
             throw new RuntimeException("no method: " + methodName);
         }

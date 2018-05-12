@@ -57,9 +57,9 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
         if (!areEqual(this.value, value)) {
             this.value = value;
             changed = true;
-            if (isReady()) {
-                expr().set(name, ValueInt.get(value));
-            }
+            // if (isReady()) {
+            expr().set(name, ValueInt.get(value));
+            // }
         }
         return root;
     }
@@ -76,7 +76,11 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
 
     @Override
     public R deserialize(JsonNode node) {
-        value = ((NumericNode) node.get(propertyName())).asInt();
+        node = getJsonNode(node);
+        if (node == null) {
+            return root;
+        }
+        set(((NumericNode) node).asInt());
         return root;
     }
 

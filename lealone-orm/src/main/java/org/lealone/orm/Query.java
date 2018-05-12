@@ -46,6 +46,8 @@ import org.lealone.transaction.Transaction;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import io.vertx.core.json.JsonObject;
+
 /**
  * Base root query bean.
  * <p>
@@ -196,7 +198,8 @@ public abstract class Query<T> {
 
     private final HashSet<NVPair> nvPairs = new HashSet<>();
 
-    protected final Table table;
+    protected Table table;
+    protected final String tableName;
 
     private final ArrayList<Expression> selectExpressions = new ArrayList<>();
 
@@ -211,8 +214,9 @@ public abstract class Query<T> {
     */
     private ArrayStack<ExpressionList<T>> whereStack;
 
-    public Query(Table table) {
+    public Query(Table table, String tableName) {
         this.table = table;
+        this.tableName = tableName;
         reset();
     }
 
@@ -514,6 +518,7 @@ public abstract class Query<T> {
      * }</pre>
      */
     public T findOne() {
+        getTable();
         Select select = new Select(table.getSession());
         TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
         select.addTableFilter(tableFilter, true);
@@ -526,6 +531,7 @@ public abstract class Query<T> {
         select.setLimit(ValueExpression.get(ValueInt.get(1)));
         select.init();
         select.prepare();
+        logger.info("execute sql: " + select.getPlanSQL());
         Result result = select.executeQuery(1);
         result.next();
         reset();
@@ -587,6 +593,7 @@ public abstract class Query<T> {
      * @see EbeanServer#findList(Query, Transaction)
      */
     public List<T> findList() {
+        getTable();
         Select select = new Select(table.getSession());
         TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
         select.addTableFilter(tableFilter, true);
@@ -615,6 +622,7 @@ public abstract class Query<T> {
      * </p>
      */
     public int findCount() {
+        getTable();
         Select select = new Select(table.getSession());
         select.setGroupQuery();
         TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
@@ -644,6 +652,7 @@ public abstract class Query<T> {
      * @return the number of beans/rows that were deleted.
      */
     public int delete() {
+        getTable();
         org.lealone.db.table.Table dbTable = table.getDbTable();
         Delete delete = new Delete(table.getSession());
         TableFilter tableFilter = new TableFilter(table.getSession(), dbTable, null, true, null);
@@ -655,10 +664,13 @@ public abstract class Query<T> {
         delete.prepare();
         reset();
         logger.info("execute sql: " + delete.getPlanSQL());
-        return delete.executeUpdate();
+        int count = delete.executeUpdate();
+        commit();
+        return count;
     }
 
     public int update() {
+        getTable();
         org.lealone.db.table.Table dbTable = table.getDbTable();
         Update update = new Update(table.getSession());
         TableFilter tableFilter = new TableFilter(table.getSession(), dbTable, null, true, null);
@@ -673,10 +685,29 @@ public abstract class Query<T> {
         update.prepare();
         reset();
         logger.info("execute sql: " + update.getPlanSQL());
-        return update.executeUpdate();
+        int count = update.executeUpdate();
+        commit();
+        return count;
+    }
+
+    // 可能是延迟关联到Table
+    Table getTable() {
+        if (table == null) {
+            String url = System.getProperty("lealone.jdbc.url");
+            if (url == null) {
+                throw new RuntimeException("'lealone.jdbc.url' must be set");
+            }
+            table = new Table(url, tableName);
+        }
+        return table;
+    }
+
+    private void commit() {
+        table.getSession().commit();
     }
 
     public long insert() {
+        getTable();
         org.lealone.db.table.Table dbTable = table.getDbTable();
         Insert insert = new Insert(table.getSession());
         int size = nvPairs.size();
@@ -696,6 +727,7 @@ public abstract class Query<T> {
         insert.executeUpdate();
         long rowId = table.getSession().getLastRowKey();
         _rowid_.set(rowId);
+        commit();
         reset();
         return rowId;
     }
@@ -727,6 +759,12 @@ public abstract class Query<T> {
 
     public boolean isReady() {
         return table != null;
+    }
+
+    @Override
+    public String toString() {
+        JsonObject json = JsonObject.mapFrom(this);
+        return json.encode();
     }
 
     /**

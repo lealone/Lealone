@@ -27,10 +27,7 @@ import io.vertx.core.json.JsonObject;
 public class CustomerTest extends UnitTestBase {
 
     public static void main(String[] args) {
-        CustomerTest t = new CustomerTest();
-        t.setEmbedded(true);
-        t.setInMemory(true);
-        t.runTest();
+        new CustomerTest().runTest();
     }
 
     @Override

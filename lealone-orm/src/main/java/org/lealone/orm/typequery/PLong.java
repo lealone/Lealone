@@ -57,9 +57,9 @@ public class PLong<R> extends PBaseNumber<R, Long> {
         if (!areEqual(this.value, value)) {
             this.value = value;
             changed = true;
-            if (isReady()) {
-                expr().set(name, ValueLong.get(value));
-            }
+            // if (isReady()) {
+            expr().set(name, ValueLong.get(value));
+            // }
         }
         return root;
     }
@@ -76,7 +76,11 @@ public class PLong<R> extends PBaseNumber<R, Long> {
 
     @Override
     public R deserialize(JsonNode node) {
-        value = ((NumericNode) node.get(propertyName())).asLong();
+        node = getJsonNode(node);
+        if (node == null) {
+            return root;
+        }
+        set(((NumericNode) node).asLong());
         return root;
     }
 

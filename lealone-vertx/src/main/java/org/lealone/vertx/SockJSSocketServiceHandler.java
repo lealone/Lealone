@@ -17,6 +17,8 @@
  */
 package org.lealone.vertx;
 
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.db.service.ServiceExecuterManager;
 
@@ -26,6 +28,8 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.ext.web.handler.sockjs.SockJSSocket;
 
 public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
+
+    private static final Logger logger = LoggerFactory.getLogger(SockJSSocketServiceHandler.class);
 
     @Override
     public void handle(SockJSSocket sockJSSocket) {
@@ -47,11 +51,13 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
                 } catch (Exception e) {
                     ja.add(3);
                     result = "failed to execute service: " + serviceName + ", cause: " + e.getMessage();
+                    logger.error(result, e);
                 }
                 break;
             default:
                 ja.add(3);
                 result = "unknown request type: " + type + ", serviceName: " + serviceName;
+                logger.error(result);
             }
             ja.add(serviceName);
             ja.add(result);
