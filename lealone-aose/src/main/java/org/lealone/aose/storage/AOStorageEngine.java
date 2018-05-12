@@ -34,11 +34,6 @@ public class AOStorageEngine extends StorageEngineBase {
     }
 
     @Override
-    public StorageBuilder getStorageBuilder() {
-        return new AOStorageBuilder(config);
-    }
-
-    @Override
     public void init(Map<String, String> config) {
         super.init(config);
         AOStorageService.getInstance().start();
@@ -47,6 +42,11 @@ public class AOStorageEngine extends StorageEngineBase {
     @Override
     public void close() {
         AOStorageService.getInstance().close();
+    }
+
+    @Override
+    public StorageBuilder getStorageBuilder() {
+        return new AOStorageBuilder(config);
     }
 
     @Override

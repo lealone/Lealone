@@ -30,6 +30,7 @@ import org.lealone.aose.storage.rtree.RTreeMap;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.IOUtils;
+import org.lealone.db.RunMode;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
@@ -64,8 +65,8 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
-    public <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
-            Map<String, String> parameters) {
+    public <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
+            StorageDataType valueType, Map<String, String> parameters) {
         if (mapType == null || mapType.equalsIgnoreCase("AOMap")) {
             return openAOMap(name, keyType, valueType, parameters);
         } else if (mapType.equalsIgnoreCase("BTreeMap")) {
@@ -164,6 +165,16 @@ public class AOStorage extends StorageBase {
         out.putNextEntry(new ZipEntry(entryName));
         IOUtils.copyAndCloseInput(in, out);
         out.closeEntry();
+    }
+
+    @Override
+    public void move(String[] targetEndpoints, RunMode runMode) {
+        for (StorageMap<?, ?> map : maps.values()) {
+            map = map.getRawMap();
+            if (map instanceof BTreeMap) {
+                ((BTreeMap<?, ?>) map).move(targetEndpoints, runMode);
+            }
+        }
     }
 
 }

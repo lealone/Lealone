@@ -96,6 +96,12 @@ public class ServerCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
+    public void movePage(String mapName, ByteBuffer page) {
+        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        map.addLeafPage(null, page);
+    }
+
+    @Override
     public void removeLeafPage(String mapName, ByteBuffer key) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         map.removeLeafPage(key);

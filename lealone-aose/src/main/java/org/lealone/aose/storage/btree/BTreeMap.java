@@ -26,11 +26,14 @@ import org.lealone.aose.server.P2pServer;
 import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.AOStorageService;
 import org.lealone.aose.storage.StorageMapBuilder;
+import org.lealone.aose.storage.btree.BTreePage.PageReference;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.Database;
+import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
@@ -110,6 +113,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             if (isShardingMode && initReplicationEndpoints != null) {
                 String[] replicationEndpoints = StringUtils.arraySplit(initReplicationEndpoints, '&');
                 root.replicationHostIds = Arrays.asList(replicationEndpoints);
+                storage.addHostIds(replicationEndpoints);
                 // 强制把replicationHostIds持久化
                 storage.forceSave();
             } else {
@@ -733,6 +737,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public synchronized void addLeafPage(ByteBuffer splitKey, ByteBuffer page) {
+        if (splitKey == null) {
+            root = BTreePage.readLeafPage(this, page);
+            return;
+        }
+
         BTreePage p = root;
         Object k = keyType.read(splitKey);
         if (p.isLeaf()) {
@@ -847,11 +856,19 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private List<NetEndpoint> getReplicationEndpoints(BTreePage p) {
-        int size = p.replicationHostIds.size();
+        return getReplicationEndpoints(p.replicationHostIds);
+    }
+
+    private List<NetEndpoint> getReplicationEndpoints(String[] replicationHostIds) {
+        return getReplicationEndpoints(Arrays.asList(replicationHostIds));
+    }
+
+    private List<NetEndpoint> getReplicationEndpoints(List<String> replicationHostIds) {
+        int size = replicationHostIds.size();
         List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             replicationEndpoints
-                    .add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(p.replicationHostIds.get(i)));
+                    .add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(replicationHostIds.get(i)));
         }
         return replicationEndpoints;
     }
@@ -921,5 +938,70 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             return p.leafPageMovePlan;
         }
         return null;
+    }
+
+    public void move(String[] targetEndpoints, RunMode runMode) {
+        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(targetEndpoints);
+        Session session = db.getLastSession();
+        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
+        try (DataBuffer p = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+            root.movePage(p, getLocalEndpoint());
+            ByteBuffer pageBuffer = p.getAndFlipBuffer();
+            c.movePage(getName(), pageBuffer);
+        }
+    }
+
+    @Override
+    public synchronized ByteBuffer readPage(ByteBuffer key, boolean last) {
+        BTreePage p = root;
+        Object k = keyType.read(key);
+        if (p.isLeaf()) {
+            throw DbException.throwInternalError("readPage: key=" + key + ", last=" + last);
+        }
+        BTreePage parent = p;
+        int index = 0;
+        while (!p.isLeaf()) {
+            index = p.binarySearch(k);
+            if (index < 0) {
+                index = -index - 1;
+                parent = p;
+                p = p.getChildPage(index);
+            } else {
+                if (last)
+                    index++;
+                return movePage(parent.getChildPage(index));
+            }
+        }
+        return null;
+    }
+
+    private ByteBuffer movePage(BTreePage p) {
+        try (DataBuffer buff = DataBuffer.create()) {
+            p.movePage(buff, getLocalEndpoint());
+            ByteBuffer pageBuffer = buff.getAndFlipBuffer();
+            return pageBuffer.slice();
+        }
+    }
+
+    // private void movePage2(BTreePage p, String targetEndpoint) {
+    // List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(new String[] { targetEndpoint });
+    // Session session = db.getLastSession();
+    // ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
+    // try (DataBuffer buff = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+    // p.movePage(buff, getLocalEndpoint());
+    // ByteBuffer pageBuffer = buff.getAndFlipBuffer();
+    // c.movePage(getName(), pageBuffer);
+    // }
+    // }
+
+    BTreePage readRemotePage(PageReference ref, final String hostId) {
+        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(new String[] { hostId });
+        Session session = db.getLastSession();
+        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
+        try (DataBuffer buff = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = buff.write(keyType, ref.key);
+            ByteBuffer page = c.readRemotePage(getName(), keyBuffer, ref.last);
+            return BTreePage.readPage(this, page);
+        }
     }
 }

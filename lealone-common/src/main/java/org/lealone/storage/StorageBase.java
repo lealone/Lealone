@@ -25,7 +25,7 @@ import org.lealone.db.Constants;
 
 public abstract class StorageBase implements Storage {
 
-    protected static final String TEMP_NAME_PREFIX = "_temp_" + Constants.NAME_SEPARATOR;
+    protected static final String TEMP_NAME_PREFIX = Constants.NAME_SEPARATOR + "temp" + Constants.NAME_SEPARATOR;
 
     protected final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
 

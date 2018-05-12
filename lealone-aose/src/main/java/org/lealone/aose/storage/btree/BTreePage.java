@@ -15,8 +15,8 @@ import java.util.List;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
+import org.lealone.net.NetEndpoint;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.type.StorageDataType;
@@ -95,6 +95,7 @@ public class BTreePage {
      */
     private volatile boolean removedInMemory;
 
+    String remoteHostId;
     List<String> replicationHostIds;
     LeafPageMovePlan leafPageMovePlan;
 
@@ -148,7 +149,7 @@ public class BTreePage {
      */
     public BTreePage getChildPage(int index) {
         PageReference ref = children[index];
-        return ref.page != null ? ref.page : map.storage.readPage(ref.pos);
+        return ref.page != null ? ref.page : map.storage.readPage(ref, ref.pos);
     }
 
     /**
@@ -227,7 +228,7 @@ public class BTreePage {
         return isLeaf() ? splitLeaf(at) : splitNode(at);
     }
 
-    private BTreePage splitLeaf(int at) {
+    private BTreePage splitLeaf(int at) { // 小于split key的放在左边，大于等于split key放在右边
         int a = at, b = keys.length - a;
         Object[] aKeys = new Object[a];
         Object[] bKeys = new Object[b];
@@ -459,8 +460,12 @@ public class BTreePage {
                     pageLength);
         }
         buff.limit(start + pageLength);
-        if (isLeaf)
-            map.getKeyType().read(buff); // read first key
+        if (isLeaf) {
+            int keyLength = buff.getInt();
+            if (keyLength != 0) {
+                map.getKeyType().read(buff); // read first key
+            }
+        }
         short check = buff.getShort();
         int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
                 ^ DataUtils.getCheckValue(pageLength);
@@ -586,14 +591,19 @@ public class BTreePage {
         int type = children != null ? DataUtils.PAGE_TYPE_NODE : DataUtils.PAGE_TYPE_LEAF;
         buff.putInt(0);
         if (type == DataUtils.PAGE_TYPE_LEAF) { // write first key
-            if (keyLength == 0) {
-                map.getKeyType().write(buff, ValueNull.INSTANCE);
-            } else {
+            buff.putInt(keyLength);
+            if (keyLength != 0) {
                 map.getKeyType().write(buff, keys[0]);
             }
+            // 不能这样，ValueNull.INSTANCE不会自动转成其他类型
+            // if (keyLength == 0) {
+            // map.getKeyType().write(buff, ValueNull.INSTANCE);
+            // } else {
+            // map.getKeyType().write(buff, keys[0]);
+            // }
         }
         int checkPos = buff.position();
-        buff.putShort((byte) 0).putVarInt(keyLength);
+        buff.putShort((short) 0).putVarInt(keyLength);
         int typePos = buff.position();
         buff.put((byte) type);
         if (type == DataUtils.PAGE_TYPE_NODE) {
@@ -1036,6 +1046,9 @@ public class BTreePage {
          */
         final long count;
 
+        Object key;
+        boolean last;
+
         public PageReference(BTreePage page, long pos, long count) {
             this.page = page;
             this.pos = pos;
@@ -1121,5 +1134,165 @@ public class BTreePage {
             pos += pageLength;
             buff.position(pos);
         }
+    }
+
+    void movePage2(DataBuffer buff, NetEndpoint localEndpoint) {
+        String hostAndPort = localEndpoint.getHostAndPort();
+        buff.putStringData(hostAndPort, hostAndPort.length());
+        writeReplicationHostIds(buff);
+        StorageDataType kt = map.getKeyType();
+        StorageDataType vt = map.getValueType();
+        buff.putInt(keys.length);
+        for (int i = 0; i < keys.length; i++) {
+            kt.write(buff, keys[i]);
+            vt.write(buff, values[i]);
+        }
+    }
+
+    int movePage(DataBuffer buff, NetEndpoint localEndpoint) {
+        int start = buff.position();
+        int keyLength = keys.length;
+        int type = children != null ? DataUtils.PAGE_TYPE_NODE : DataUtils.PAGE_TYPE_LEAF;
+        buff.putInt(0);
+        int checkPos = buff.position();
+        buff.putShort((short) 0).putVarInt(keyLength);
+        int typePos = buff.position();
+        buff.put((byte) type);
+        String hostAndPort = localEndpoint.getHostAndPort();
+        map.storage.addHostIds(hostAndPort);
+        ValueString.type.write(buff, hostAndPort);
+        if (type == DataUtils.PAGE_TYPE_NODE) {
+            writeChildrenPositions(buff);
+            for (int i = 0; i <= keyLength; i++) {
+                buff.putVarLong(children[i].count); // count可能不大，所以用VarLong能节省一些空间
+            }
+        }
+        int compressStart = buff.position();
+        map.getKeyType().write(buff, keys, keyLength);
+        if (type == DataUtils.PAGE_TYPE_LEAF) {
+            map.getValueType().write(buff, values, keyLength);
+            writeReplicationHostIds(buff);
+        }
+        BTreeStorage storage = map.getBTreeStorage();
+        int expLen = buff.position() - compressStart;
+        if (expLen > 16) {
+            int compressionLevel = storage.getCompressionLevel();
+            if (compressionLevel > 0) {
+                Compressor compressor;
+                int compressType;
+                if (compressionLevel == 1) {
+                    compressor = storage.getCompressorFast();
+                    compressType = DataUtils.PAGE_COMPRESSED;
+                } else {
+                    compressor = storage.getCompressorHigh();
+                    compressType = DataUtils.PAGE_COMPRESSED_HIGH;
+                }
+                byte[] exp = new byte[expLen];
+                buff.position(compressStart).get(exp);
+                byte[] comp = new byte[expLen * 2];
+                int compLen = compressor.compress(exp, expLen, comp, 0);
+                int plus = DataUtils.getVarIntLen(compLen - expLen);
+                if (compLen + plus < expLen) {
+                    buff.position(typePos).put((byte) (type + compressType));
+                    buff.position(compressStart).putVarInt(expLen - compLen).put(comp, 0, compLen);
+                }
+            }
+        }
+        int pageLength = buff.position() - start;
+        int chunkId = 1;
+        int check = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(start)
+                ^ DataUtils.getCheckValue(pageLength);
+        buff.putInt(start, pageLength).putShort(checkPos, (short) check);
+        return typePos + 1;
+    }
+
+    static BTreePage readPage(BTreeMap<?, ?> map, ByteBuffer buff) {
+        Object[] keys = null;
+        Object[] values = null;
+        PageReference[] children = null;
+        long totalCount = 0;
+        List<String> replicationHostIds = null;
+
+        int chunkId = 1;
+        int maxLength = DataUtils.PAGE_LARGE;
+        int offset = 0;
+        int start = buff.position();
+        int pageLength = buff.getInt();
+        if (pageLength > maxLength || pageLength < 4) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "File corrupted in chunk {0}, expected page length 4..{1}, got {2}", chunkId, maxLength,
+                    pageLength);
+        }
+        buff.limit(start + pageLength);
+        short check = buff.getShort();
+        int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
+                ^ DataUtils.getCheckValue(pageLength);
+        if (check != (short) checkTest) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
+                    "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest, check);
+        }
+        int keyLength = DataUtils.readVarInt(buff);
+        keys = new Object[keyLength];
+        int type = buff.get();
+        String remoteHostId = ValueString.type.read(buff);
+        map.storage.addHostIds(remoteHostId);
+
+        long remoteHostIdHashCode = 0;
+        if (remoteHostId != null) {
+            remoteHostIdHashCode = map.storage.getHostIdHashCode(remoteHostId);
+        }
+        boolean node = (type & 1) == DataUtils.PAGE_TYPE_NODE;
+        if (node) {
+            children = new PageReference[keyLength + 1];
+            long[] p = new long[keyLength + 1];
+            for (int i = 0; i <= keyLength; i++) {
+                p[i] = buff.getLong();
+                if (remoteHostId != null) {
+                    p[i] = remoteHostIdHashCode;
+                }
+            }
+            long total = 0;
+            for (int i = 0; i <= keyLength; i++) {
+                long s = DataUtils.readVarLong(buff);
+                total += s;
+                children[i] = new PageReference(null, p[i], s);
+            }
+            totalCount = total;
+        }
+        boolean compressed = (type & DataUtils.PAGE_COMPRESSED) != 0;
+        if (compressed) {
+            Compressor compressor;
+            if ((type & DataUtils.PAGE_COMPRESSED_HIGH) == DataUtils.PAGE_COMPRESSED_HIGH) {
+                compressor = map.getBTreeStorage().getCompressorHigh();
+            } else {
+                compressor = map.getBTreeStorage().getCompressorFast();
+            }
+            int lenAdd = DataUtils.readVarInt(buff);
+            int compLen = pageLength + start - buff.position();
+            byte[] comp = DataUtils.newBytes(compLen);
+            buff.get(comp);
+            int l = compLen + lenAdd;
+            buff = ByteBuffer.allocate(l);
+            compressor.expand(comp, 0, compLen, buff.array(), buff.arrayOffset(), l);
+        }
+        map.getKeyType().read(buff, keys, keyLength);
+        if (!node) {
+            values = new Object[keyLength];
+            map.getValueType().read(buff, values, keyLength);
+            totalCount = keyLength;
+            replicationHostIds = readReplicationHostIds(buff);
+            map.storage.addHostIds(replicationHostIds);
+        } else {
+            for (int i = 0; i < keyLength; i++) {
+                children[i].key = keys[i];
+            }
+            children[keyLength].key = keys[keyLength - 1];
+            children[keyLength].last = true;
+        }
+
+        BTreePage p = BTreePage.create(map, keys, values, children, totalCount, 0);
+        p.replicationHostIds = replicationHostIds;
+        p.remoteHostId = remoteHostId;
+        return p;
     }
 }

@@ -536,6 +536,19 @@ public class ClientCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
+    public void movePage(String mapName, ByteBuffer page) {
+        int id = session.getNextId();
+        try {
+            session.traceOperation("COMMAND_STORAGE_MOVE_PAGE", id);
+            transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_PAGE);
+            transfer.writeString(mapName).writeByteBuffer(page);
+            transfer.flush();
+        } catch (Exception e) {
+            session.handleException(e);
+        }
+    }
+
+    @Override
     public void removeLeafPage(String mapName, ByteBuffer key) {
         int id = session.getNextId();
         try {
@@ -722,4 +735,30 @@ public class ClientCommand extends CommandBase implements StorageCommand {
         return null;
     }
 
+    @Override
+    public ByteBuffer readRemotePage(String mapName, ByteBuffer key, boolean last) {
+        int id = session.getNextId();
+        try {
+            session.traceOperation("COMMAND_STORAGE_READ_PAGE", id);
+            transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_READ_PAGE);
+            transfer.writeString(mapName).writeByteBuffer(key.slice()).writeBoolean(last);
+
+            AsyncCallback<ByteBuffer> ac = new AsyncCallback<ByteBuffer>() {
+                @Override
+                public void runInternal() {
+                    try {
+                        result = transfer.readByteBuffer();
+                    } catch (IOException e) {
+                        throw DbException.convert(e);
+                    }
+                }
+            };
+            transfer.addAsyncCallback(id, ac);
+            transfer.flush();
+            return ac.getResult();
+        } catch (Exception e) {
+            session.handleException(e);
+        }
+        return null;
+    }
 }

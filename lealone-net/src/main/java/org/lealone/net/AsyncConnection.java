@@ -520,7 +520,7 @@ public class AsyncConnection implements Handler<Buffer> {
     }
 
     protected void processRequest(Transfer transfer, int id, int operation) throws IOException {
-        int sessionId = transfer.readInt(); 
+        int sessionId = transfer.readInt();
         Session session = sessions.get(sessionId);
         // 初始化时，肯定是不存在session的
         if (session == null && operation != Session.SESSION_INIT) {
@@ -731,6 +731,29 @@ public class AsyncConnection implements Handler<Buffer> {
             map.addLeafPage(splitKey, page);
             // writeResponseHeader(transfer, session, id);
             // transfer.flush();
+            break;
+        }
+        case Session.COMMAND_STORAGE_MOVE_PAGE: {
+            String mapName = transfer.readString();
+            // ByteBuffer splitKey = transfer.readByteBuffer();
+            ByteBuffer page = transfer.readByteBuffer();
+
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            map.addLeafPage(null, page);
+            // writeResponseHeader(transfer, session, id);
+            // transfer.flush();
+            break;
+        }
+        case Session.COMMAND_STORAGE_READ_PAGE: {
+            String mapName = transfer.readString();
+            ByteBuffer splitKey = transfer.readByteBuffer();
+            boolean last = transfer.readBoolean();
+
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            ByteBuffer page = map.readPage(splitKey, last);
+            writeResponseHeader(transfer, session, id);
+            transfer.writeByteBuffer(page);
+            transfer.flush();
             break;
         }
         case Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE: {

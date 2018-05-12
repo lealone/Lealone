@@ -11,6 +11,7 @@ import java.io.RandomAccessFile;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -22,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.aose.storage.AOStorage;
 import org.lealone.aose.storage.AOStorageService;
+import org.lealone.aose.storage.btree.BTreePage.PageReference;
 import org.lealone.common.compress.CompressDeflate;
 import org.lealone.common.compress.CompressLZF;
 import org.lealone.common.compress.Compressor;
@@ -64,6 +66,7 @@ public class BTreeStorage {
     private final BTreeMap<Object, Object> map;
     private final String btreeStorageName;
 
+    private final ConcurrentHashMap<Long, String> hashCodeToHostIdMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
     private final RandomAccessFile chunkMetaData;
@@ -174,7 +177,16 @@ public class BTreeStorage {
     private synchronized int readLastChunkId() throws IOException {
         if (chunkMetaData.length() <= 0)
             return 0;
-        return chunkMetaData.readInt();
+        int lastChunkId = chunkMetaData.readInt();
+
+        int removedPagesCount = chunkMetaData.readInt();
+        for (int i = 0; i < removedPagesCount; i++)
+            removedPages.add(chunkMetaData.readLong());
+
+        int hashCodeToHostIdMapSize = chunkMetaData.readInt();
+        for (int i = 0; i < hashCodeToHostIdMapSize; i++)
+            addHostIds(chunkMetaData.readUTF());
+        return lastChunkId;
     }
 
     private synchronized TreeSet<Long> readRemovedPages() {
@@ -197,12 +209,17 @@ public class BTreeStorage {
 
     private synchronized void writeChunkMetaData(int lastChunkId, TreeSet<Long> removedPages) {
         try {
+            chunkMetaData.setLength(0);
             chunkMetaData.seek(0);
             chunkMetaData.writeInt(lastChunkId);
             chunkMetaData.writeInt(removedPages.size());
-            for (long pos : removedPages)
+            for (long pos : removedPages) {
                 chunkMetaData.writeLong(pos);
-            chunkMetaData.setLength(4 + 4 + removedPages.size() * 8);
+            }
+            for (String hostId : hashCodeToHostIdMap.values()) {
+                chunkMetaData.writeUTF(hostId);
+            }
+            // chunkMetaData.setLength(4 + 4 + removedPages.size() * 8);
             chunkMetaData.getFD().sync();
         } catch (IOException e) {
             throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
@@ -325,9 +342,17 @@ public class BTreeStorage {
      * @return the page
      */
     BTreePage readPage(final long pos) {
+        return readPage(null, pos);
+    }
+
+    BTreePage readPage(PageReference ref, final long pos) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
+        } else if (ref != null && pos < 0) {
+            String hostId = findHostId(pos);
+            return readRemotePage(ref, hostId);
         }
+
         // BTreePage p = cache == null ? null : cache.get(pos);
         // if (p == null) {
         // BTreeChunk c = getChunk(pos);
@@ -797,5 +822,36 @@ public class BTreeStorage {
                 c.pageLengths.add(buffer.getInt());
             }
         }
+    }
+
+    void addHostIds(Collection<String> hostIds) {
+        addHostIds(hostIds.toArray(new String[0]));
+    }
+
+    void addHostIds(String... hostIds) {
+        if (hostIds != null) {
+            for (String hostId : hostIds) {
+                if (hostId != null) {
+                    hashCodeToHostIdMap.put(Long.valueOf(getHostIdHashCode(hostId)), hostId);
+                }
+            }
+        }
+    }
+
+    String findHostId(long hashCode) {
+        return hashCodeToHostIdMap.get(hashCode);
+    }
+
+    long getHostIdHashCode(String hostId) {
+        int hashCode = hostId.hashCode();
+        // 统一取负值，这样可以区分是不是真实的pos
+        if (hashCode > 0) {
+            hashCode = -hashCode;
+        }
+        return hashCode;
+    }
+
+    BTreePage readRemotePage(PageReference ref, final String hostId) {
+        return map.readRemotePage(ref, hostId);
     }
 }

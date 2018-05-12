@@ -19,6 +19,8 @@ package org.lealone.storage;
 
 import java.util.Map;
 
+import org.lealone.common.exceptions.DbException;
+import org.lealone.db.RunMode;
 import org.lealone.storage.type.StorageDataType;
 
 public interface Storage {
@@ -39,5 +41,9 @@ public interface Storage {
     void closeImmediately();
 
     boolean isClosed();
+
+    public default void move(String[] targetEndpoints, RunMode runMode) {
+        throw DbException.getUnsupportedException("move");
+    }
 
 }

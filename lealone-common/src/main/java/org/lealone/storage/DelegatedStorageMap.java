@@ -225,4 +225,8 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
         return map.getRawMap();
     }
 
+    @Override
+    public ByteBuffer readPage(ByteBuffer key, boolean last) {
+        return map.readPage(key, last);
+    }
 }

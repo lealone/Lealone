@@ -307,6 +307,29 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
+    public void movePage(final String mapName, final ByteBuffer page) {
+        int n = session.n;
+        ArrayList<Future<?>> futures = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            final StorageCommand c = (StorageCommand) this.commands[i];
+            Runnable command = new Runnable() {
+                @Override
+                public void run() {
+                    c.movePage(mapName, page.slice());
+                }
+            };
+            futures.add(ThreadPool.executor.submit(command));
+        }
+        for (Future<?> f : futures) {
+            try {
+                f.get();
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+    }
+
+    @Override
     public void removeLeafPage(final String mapName, final ByteBuffer key) {
         int n = session.n;
         ArrayList<Future<?>> futures = new ArrayList<>(n);

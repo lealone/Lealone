@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.replication.ReplicationMap;
 import org.lealone.storage.type.StorageDataType;
 
@@ -231,4 +232,8 @@ public interface StorageMap<K, V> extends ReplicationMap {
     LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan);
 
     StorageMap<Object, Object> getRawMap();
+
+    public default ByteBuffer readPage(ByteBuffer key, boolean last) {
+        throw DbException.getUnsupportedException("readPage");
+    }
 }
