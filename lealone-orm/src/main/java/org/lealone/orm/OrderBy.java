@@ -17,8 +17,8 @@
  */
 package org.lealone.orm;
 
-public class OrderBy<T, R> {
-    Query<T, R> query;
+public class OrderBy<T> {
+    Query<T> query;
 
     public OrderBy() {
 
@@ -27,14 +27,14 @@ public class OrderBy<T, R> {
     /**
      * Add a property with ascending order to this OrderBy.
      */
-    public Query<T, R> asc(String propertyName) {
+    public Query<T> asc(String propertyName) {
         return query;
     }
 
     /**
      * Add a property with descending order to this OrderBy.
      */
-    public Query<T, R> desc(String propertyName) {
+    public Query<T> desc(String propertyName) {
         return query;
     }
 }

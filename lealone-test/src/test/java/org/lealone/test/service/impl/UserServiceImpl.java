@@ -26,17 +26,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User add(User user) {
-        return user.setId(1000L);
+        return user.id.set(1000);
     }
 
     @Override
     public User find(Long id) {
-        return new User().setId(id);
+        return new User().id.set(id);
     }
 
     @Override
     public User findByDate(Date d) {
-        return new User().setNotes("date: " + d.toString());
+        return new User().notes.set("date: " + d.toString());
     }
 
     @Override

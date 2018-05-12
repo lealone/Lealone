@@ -631,6 +631,9 @@ public abstract class Table extends SchemaObjectBase {
     public Column getColumn(String columnName) {
         Column column = columnMap.get(columnName);
         if (column == null) {
+            if (database.equalsIdentifiers(Column.ROWID, columnName)) {
+                return getRowIdColumn();
+            }
             throw DbException.get(ErrorCode.COLUMN_NOT_FOUND_1, columnName);
         }
         return column;

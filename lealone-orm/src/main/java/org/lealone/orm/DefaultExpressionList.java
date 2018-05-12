@@ -19,6 +19,7 @@ package org.lealone.orm;
 
 import java.util.Collection;
 
+import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.CompareLike;
 import org.lealone.sql.expression.Comparison;
@@ -32,10 +33,13 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
     org.lealone.db.table.Table dbTable;
     Table table;
     org.lealone.sql.expression.Expression expression;
+    Query<?> query;
 
-    public DefaultExpressionList(Table table) {
+    public DefaultExpressionList(Query<?> query, Table table) {
         this.table = table;
-        this.dbTable = table.getDbTable();
+        if (table != null)
+            this.dbTable = table.getDbTable();
+        this.query = query;
     }
 
     private ExpressionColumn getExpressionColumn(String propertyName) {
@@ -65,6 +69,23 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
     private void setRootExpression(String propertyName, Object value, int compareType) {
         Comparison c = createComparison(propertyName, value, compareType);
         setRootExpression(c);
+    }
+
+    // private Comparison createComparison(String propertyName, Value value, int compareType) {
+    // ExpressionColumn ec = getExpressionColumn(propertyName);
+    // ValueExpression v = ValueExpression.get(value);
+    // return new Comparison(table.getSession(), compareType, ec, v);
+    // }
+    //
+    // private void setRootExpression(String propertyName, Value value, int compareType) {
+    // Comparison c = createComparison(propertyName, value, compareType);
+    // setRootExpression(c);
+    // }
+
+    @Override
+    public ExpressionList<T> set(String propertyName, Value value) {
+        query.addNVPair(propertyName, value);
+        return this;
     }
 
     @Override
@@ -258,7 +279,7 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
     }
 
     @Override
-    public OrderBy<?, ?> orderBy() {
+    public OrderBy<?> orderBy() {
         // TODO Auto-generated method stub
         return null;
     }

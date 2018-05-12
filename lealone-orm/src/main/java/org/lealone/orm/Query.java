@@ -19,12 +19,22 @@ package org.lealone.orm;
 
 import java.util.ArrayList;
 import java.util.EmptyStackException;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.result.Result;
+import org.lealone.db.table.Column;
 import org.lealone.db.table.TableFilter;
+import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueLong;
+import org.lealone.orm.typequery.PBaseNumber;
 import org.lealone.orm.typequery.TQProperty;
 import org.lealone.sql.dml.Delete;
+import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Select;
 import org.lealone.sql.dml.Update;
 import org.lealone.sql.expression.Expression;
@@ -33,6 +43,8 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Wildcard;
 import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.transaction.Transaction;
+
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * Base root query bean.
@@ -86,19 +98,112 @@ import org.lealone.transaction.Transaction;
  *     --bind(rob,GOOD,Mon Jul 27 12:05:37 NZST 2015,%@foo.com)
  * }</pre>
  *
- * @param <T> the entity bean type (normal entity bean type e.g. Customer)
- * @param <R> the specific root query bean type (e.g. QCustomer)
+ * @param <T> the entity bean type (normal entity bean type e.g. Customer) 
  */
-public abstract class Query<T, R> {
+@SuppressWarnings("rawtypes")
+public abstract class Query<T> {
 
-    private final Table table;
+    private static final Logger logger = LoggerFactory.getLogger(Query.class);
+
+    TQProperty[] tqProperties;
+
+    @SuppressWarnings("unchecked")
+    public final PRowId _rowid_ = new PRowId(Column.ROWID, (T) this);
+
+    public class PRowId extends PBaseNumber<T, Long> {
+
+        private long value;
+
+        /**
+         * Construct with a property name and root instance.
+         *
+         * @param name property name
+         * @param root the root query bean instance
+         */
+        public PRowId(String name, T root) {
+            super(name, root);
+        }
+
+        /**
+         * Construct with additional path prefix.
+         */
+        public PRowId(String name, T root, String prefix) {
+            super(name, root, prefix);
+        }
+
+        // 不需要通过外部设置
+        T set(long value) {
+            if (!areEqual(this.value, value)) {
+                this.value = value;
+                changed = true;
+                if (isReady()) {
+                    expr().set(name, ValueLong.get(value));
+                }
+            }
+            return root;
+        }
+
+        @Override
+        public final T deserialize(HashMap<String, Value> map) {
+            Value v = map.get(name);
+            if (v != null) {
+                value = v.getLong();
+            }
+            return root;
+        }
+
+        public final long get() {
+            return value;
+        }
+
+    }
+
+    public static class NVPair {
+        public final String name;
+        public final Value value;
+
+        public NVPair(String name, Value value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((name == null) ? 0 : name.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            NVPair other = (NVPair) obj;
+            if (name == null) {
+                if (other.name != null)
+                    return false;
+            } else if (!name.equals(other.name))
+                return false;
+            return true;
+        }
+
+    }
+
+    private final HashSet<NVPair> nvPairs = new HashSet<>();
+
+    protected final Table table;
 
     private final ArrayList<Expression> selectExpressions = new ArrayList<>();
 
     /**
      * The root query bean instance. Used to provide fluid query construction.
      */
-    private R root;
+    private T root;
     private DefaultExpressionList<T> whereExpression;
 
     /**
@@ -111,17 +216,26 @@ public abstract class Query<T, R> {
         reset();
     }
 
+    protected void setTQProperties(TQProperty[] tqProperties) {
+        this.tqProperties = tqProperties;
+    }
+
+    void addNVPair(String name, Value value) {
+        nvPairs.add(new NVPair(name, value));
+    }
+
     /**
      * Sets the root query bean instance. Used to provide fluid query construction.
      */
-    protected void setRoot(R root) {
+    protected void setRoot(T root) {
         this.root = root;
     }
 
     private void reset() {
         whereStack = null;
         selectExpressions.clear();
-        whereExpression = new DefaultExpressionList<T>(table);
+        whereExpression = new DefaultExpressionList<T>(this, table);
+        nvPairs.clear();
     }
 
     /**
@@ -150,9 +264,9 @@ public abstract class Query<T, R> {
      * @param properties the list of properties to fetch
      */
     @SafeVarargs
-    public final R select(TQProperty<R>... properties) {
+    public final T select(TQProperty<T>... properties) {
         org.lealone.db.table.Table dbTable = table.getDbTable();
-        for (TQProperty<R> p : properties) {
+        for (TQProperty<T> p : properties) {
             ExpressionColumn c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(),
                     dbTable.getName(), p.propertyName());
             // c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getColumn(p.propertyName()));
@@ -179,7 +293,7 @@ public abstract class Query<T, R> {
      *
      * }</pre>
      */
-    public R orderBy() {
+    public T orderBy() {
         // Yes this does not actually do anything! We include it because style wise it makes
         // the query nicer to read and suggests that order by definitions are added after this
         return root;
@@ -203,7 +317,7 @@ public abstract class Query<T, R> {
      *
      * }</pre>
      */
-    public R order() {
+    public T order() {
         // Yes this does not actually do anything! We include it because style wise it makes
         // the query nicer to read and suggests that order by definitions are added after this
         return root;
@@ -245,7 +359,7 @@ public abstract class Query<T, R> {
      *
      * }</pre>
      */
-    public R or() {
+    public T or() {
         pushExprList(peekExprList().or());
         return root;
     }
@@ -289,7 +403,7 @@ public abstract class Query<T, R> {
      *
      * }</pre>
      */
-    public R and() {
+    public T and() {
         pushExprList(peekExprList().and());
         return root;
     }
@@ -300,7 +414,7 @@ public abstract class Query<T, R> {
      * Use endNot() or endJunction() to stop added to NOT and 'pop' to the parent expression list.
      * </p>
      */
-    public R not() {
+    public T not() {
         pushExprList(peekExprList().not());
         return root;
     }
@@ -308,7 +422,7 @@ public abstract class Query<T, R> {
     /**
      * End a list of expressions added by 'OR'.
      */
-    public R endJunction() {
+    public T endJunction() {
         whereStack.pop();
         return root;
     }
@@ -316,28 +430,28 @@ public abstract class Query<T, R> {
     /**
      * End OR junction - synonym for endJunction().
      */
-    public R endOr() {
+    public T endOr() {
         return endJunction();
     }
 
     /**
      * End AND junction - synonym for endJunction().
      */
-    public R endAnd() {
+    public T endAnd() {
         return endJunction();
     }
 
     /**
      * End NOT junction - synonym for endJunction().
      */
-    public R endNot() {
+    public T endNot() {
         return endJunction();
     }
 
     /**
      * Push the expression list onto the appropriate stack.
      */
-    private R pushExprList(ExpressionList<T> list) {
+    private T pushExprList(ExpressionList<T> list) {
         whereStack.push(list);
         return root;
     }
@@ -354,7 +468,7 @@ public abstract class Query<T, R> {
      * "filter" section which means that they don't add to the relevance and are also cache-able.
      * </p>
      */
-    public R where() {
+    public T where() {
         return root;
     }
 
@@ -406,15 +520,53 @@ public abstract class Query<T, R> {
         if (selectExpressions.isEmpty()) {
             selectExpressions.add(new Wildcard(null, null));
         }
+        selectExpressions.add(createRowIdExpressionColumn(table.getDbTable())); // 总是获取rowid
         select.setExpressions(selectExpressions);
         select.addCondition(whereExpression.expression);
         select.setLimit(ValueExpression.get(ValueInt.get(1)));
         select.init();
         select.prepare();
-        select.executeQuery(1);
+        Result result = select.executeQuery(1);
+        result.next();
         reset();
-        return null; // TODO
-        // return query.findOne();
+        return deserialize(result);
+    }
+
+    private ExpressionColumn createRowIdExpressionColumn(org.lealone.db.table.Table dbTable) {
+        return new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(), dbTable.getName(),
+                Column.ROWID);
+    }
+
+    @SuppressWarnings("unchecked")
+    private T deserialize(Result result) {
+        Value[] row = result.currentRow();
+        if (row == null)
+            return null;
+
+        int len = row.length;
+        HashMap<String, Value> map = new HashMap<>(len);
+        for (int i = 0; i < len; i++) {
+            map.put(result.getColumnName(i), row[i]);
+        }
+
+        Query q = newInstance(table);
+        if (q != null) {
+            for (TQProperty p : q.tqProperties) {
+                p.deserialize(map);
+            }
+            q._rowid_.deserialize(map);
+        }
+        return (T) q;
+    }
+
+    protected Query newInstance(Table t) {
+        return null;
+    }
+
+    protected void deserialize(JsonNode node) {
+        for (TQProperty p : tqProperties) {
+            p.deserialize(node);
+        }
     }
 
     /**
@@ -441,13 +593,19 @@ public abstract class Query<T, R> {
         if (selectExpressions.isEmpty()) {
             selectExpressions.add(new Wildcard(null, null));
         }
+        selectExpressions.add(createRowIdExpressionColumn(table.getDbTable())); // 总是获取rowid
         select.setExpressions(selectExpressions);
         select.addCondition(whereExpression.expression);
         select.init();
         select.prepare();
-        select.executeQuery(-1);
+        logger.info("execute sql: " + select.getPlanSQL());
+        Result result = select.executeQuery(-1);
         reset();
-        return new ArrayList<>(); // TODO
+        ArrayList<T> list = new ArrayList<>(result.getRowCount());
+        while (result.next()) {
+            list.add(deserialize(result));
+        }
+        return list;
     }
 
     /**
@@ -468,6 +626,7 @@ public abstract class Query<T, R> {
         select.addCondition(whereExpression.expression);
         select.init();
         select.prepare();
+        logger.info("execute sql: " + select.getPlanSQL());
         org.lealone.db.result.Result result = select.executeQuery(-1);
         reset();
         result.next();
@@ -485,23 +644,60 @@ public abstract class Query<T, R> {
      * @return the number of beans/rows that were deleted.
      */
     public int delete() {
+        org.lealone.db.table.Table dbTable = table.getDbTable();
         Delete delete = new Delete(table.getSession());
-        TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
+        TableFilter tableFilter = new TableFilter(table.getSession(), dbTable, null, true, null);
         delete.setTableFilter(tableFilter);
+        if (whereExpression.expression == null) {
+            peekExprList().eq(Column.ROWID, _rowid_.get());
+        }
         delete.setCondition(whereExpression.expression);
         delete.prepare();
         reset();
+        logger.info("execute sql: " + delete.getPlanSQL());
         return delete.executeUpdate();
     }
 
     public int update() {
+        org.lealone.db.table.Table dbTable = table.getDbTable();
         Update update = new Update(table.getSession());
-        TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
+        TableFilter tableFilter = new TableFilter(table.getSession(), dbTable, null, true, null);
         update.setTableFilter(tableFilter);
+        if (whereExpression.expression == null) {
+            peekExprList().eq(Column.ROWID, _rowid_.get());
+        }
         update.setCondition(whereExpression.expression);
+        for (NVPair p : nvPairs) {
+            update.setAssignment(dbTable.getColumn(p.name), ValueExpression.get(p.value));
+        }
         update.prepare();
         reset();
+        logger.info("execute sql: " + update.getPlanSQL());
         return update.executeUpdate();
+    }
+
+    public long insert() {
+        org.lealone.db.table.Table dbTable = table.getDbTable();
+        Insert insert = new Insert(table.getSession());
+        int size = nvPairs.size();
+        Column[] columns = new Column[size];
+        Expression[] expressions = new Expression[size];
+        int i = 0;
+        for (NVPair p : nvPairs) {
+            columns[i] = dbTable.getColumn(p.name);
+            expressions[i] = ValueExpression.get(p.value);
+            i++;
+        }
+        insert.setColumns(columns);
+        insert.addRow(expressions);
+        insert.setTable(dbTable);
+        insert.prepare();
+        logger.info("execute sql: " + insert.getPlanSQL());
+        insert.executeUpdate();
+        long rowId = table.getSession().getLastRowKey();
+        _rowid_.set(rowId);
+        reset();
+        return rowId;
     }
 
     /**
@@ -524,7 +720,13 @@ public abstract class Query<T, R> {
     }
 
     public boolean databaseToUpper() {
+        if (table == null)
+            return false;
         return table.getSession().getDatabase().getSettings().databaseToUpper;
+    }
+
+    public boolean isReady() {
+        return table != null;
     }
 
     /**

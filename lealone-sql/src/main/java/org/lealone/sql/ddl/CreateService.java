@@ -282,7 +282,7 @@ public class CreateService extends SchemaStatement {
         this.codePath = codePath;
     }
 
-    private static String toClassName(String n) {
+    public static String toClassName(String n) {
         n = CamelCaseHelper.toCamelFromUnderscore(n);
         return Character.toUpperCase(n.charAt(0)) + n.substring(1);
     }

@@ -17,12 +17,24 @@
  */
 package org.lealone.orm.typequery;
 
+import java.io.IOException;
+import java.util.HashMap;
+
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueLong;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.NumericNode;
+
 /**
  * Long property.
  *
  * @param <R> the root query bean type
  */
 public class PLong<R> extends PBaseNumber<R, Long> {
+
+    private long value;
 
     /**
      * Construct with a property name and root instance.
@@ -39,6 +51,42 @@ public class PLong<R> extends PBaseNumber<R, Long> {
      */
     public PLong(String name, R root, String prefix) {
         super(name, root, prefix);
+    }
+
+    public R set(long value) {
+        if (!areEqual(this.value, value)) {
+            this.value = value;
+            changed = true;
+            if (isReady()) {
+                expr().set(name, ValueLong.get(value));
+            }
+        }
+        return root;
+    }
+
+    public final long get() {
+        return value;
+    }
+
+    @Override
+    public R serialize(JsonGenerator jgen) throws IOException {
+        jgen.writeNumberField(propertyName(), value);
+        return root;
+    }
+
+    @Override
+    public R deserialize(JsonNode node) {
+        value = ((NumericNode) node.get(propertyName())).asLong();
+        return root;
+    }
+
+    @Override
+    public R deserialize(HashMap<String, Value> map) {
+        Value v = map.get(name);
+        if (v != null) {
+            value = v.getLong();
+        }
+        return root;
     }
 
 }

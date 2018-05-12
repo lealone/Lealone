@@ -1,74 +1,60 @@
 package org.lealone.test.orm.generated;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import org.lealone.orm.Query;
+import org.lealone.orm.QueryDeserializer;
+import org.lealone.orm.QuerySerializer;
 import org.lealone.orm.Table;
+import org.lealone.orm.typequery.PInteger;
+import org.lealone.orm.typequery.PLong;
+import org.lealone.orm.typequery.PString;
+import org.lealone.orm.typequery.TQProperty;
+import org.lealone.test.orm.generated.Customer.CustomerDeserializer;
 
 /**
- * Model bean for table 'CUSTOMER'.
+ * Model for table 'CUSTOMER'.
  *
  * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.
  */
-public class Customer {
+@JsonSerialize(using = QuerySerializer.class)
+@JsonDeserialize(using = CustomerDeserializer.class)
+public class Customer extends Query<Customer> {
 
     public static Customer create(String url) {
         Table t = new Table(url, "CUSTOMER");
         return new Customer(t);
     }
 
-    private Table _t_;
-
-    private Long id;
-    private String name;
-    private String notes;
-    private Integer phone;
+    public final PLong<Customer> id;
+    public final PString<Customer> name;
+    public final PString<Customer> notes;
+    public final PInteger<Customer> phone;
 
     public Customer() {
+        this(null);
     }
 
-    private Customer(Table t) {
-        this._t_ = t;
+    public Customer(Table t) {
+        super(t);
+        super.setRoot(this);
+
+        this.id = new PLong<>("ID", this);
+        this.name = new PString<>("NAME", this);
+        this.notes = new PString<>("NOTES", this);
+        this.phone = new PInteger<>("PHONE", this);
+        super.setTQProperties(new TQProperty[] { this.id, this.name, this.notes, this.phone });
     }
 
-    public Customer setId(Long id) {
-        this.id = id; 
-        return this;
+    @Override
+    protected Customer newInstance(Table t) {
+        return new Customer(t);
     }
 
-    public Long getId() { 
-        return id; 
-    }
-
-    public Customer setName(String name) {
-        this.name = name; 
-        return this;
-    }
-
-    public String getName() { 
-        return name; 
-    }
-
-    public Customer setNotes(String notes) {
-        this.notes = notes; 
-        return this;
-    }
-
-    public String getNotes() { 
-        return notes; 
-    }
-
-    public Customer setPhone(Integer phone) {
-        this.phone = phone; 
-        return this;
-    }
-
-    public Integer getPhone() { 
-        return phone; 
-    }
-
-    public void save() {
-        _t_.save(this);
-    }
-
-    public boolean delete() {
-       return _t_.delete(this);
+    static class CustomerDeserializer extends QueryDeserializer<Customer> {
+        @Override
+        protected Query<Customer> newQueryInstance() {
+            return new Customer();
+        }
     }
 }

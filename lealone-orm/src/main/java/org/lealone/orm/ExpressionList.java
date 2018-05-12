@@ -19,7 +19,14 @@ package org.lealone.orm;
 
 import java.util.Collection;
 
+import org.lealone.db.value.Value;
+
 public interface ExpressionList<T> {
+
+    /**
+     * Equal To - property is equal to a given value.
+     */
+    ExpressionList<T> set(String propertyName, Value value);
 
     /**
      * Equal To - property is equal to a given value.
@@ -292,5 +299,5 @@ public interface ExpressionList<T> {
      * OrderBy object is returned.
      * </p>
      */
-    OrderBy<?, ?> orderBy();
+    OrderBy<?> orderBy();
 }

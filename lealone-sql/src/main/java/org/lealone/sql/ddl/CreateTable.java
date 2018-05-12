@@ -338,6 +338,94 @@ public class CreateTable extends SchemaStatement {
     }
 
     private void genCode() {
+        boolean databaseToUpper = session.getDatabase().getSettings().databaseToUpper;
+        String className = CreateService.toClassName(data.tableName);
+        StringBuilder buff = new StringBuilder();
+        StringBuilder fields = new StringBuilder();
+        StringBuilder fieldNames = new StringBuilder();
+        StringBuilder init = new StringBuilder();
+        TreeSet<String> importSet = new TreeSet<>();
+
+        importSet.add("org.lealone.orm.Table");
+        importSet.add("org.lealone.orm.Query");
+        importSet.add("org.lealone.orm.QueryDeserializer");
+        importSet.add("org.lealone.orm.QuerySerializer");
+        importSet.add("org.lealone.orm.typequery.TQProperty");
+        importSet.add("com.fasterxml.jackson.databind.annotation.JsonDeserialize");
+        importSet.add("com.fasterxml.jackson.databind.annotation.JsonSerialize");
+        importSet.add(packageName + "." + className + "." + className + "Deserializer");
+
+        for (Column c : data.columns) {
+            int type = c.getType();
+            String typeQueryClassName = getTypeQueryClassName(type, importSet);
+            String columnName = CamelCaseHelper.toCamelFromUnderscore(c.getName());
+
+            fields.append("    public final ").append(typeQueryClassName).append('<').append(className).append("> ")
+                    .append(columnName).append(";\r\n");
+
+            // 例如: this.id = new PLong<>("id", this);
+            init.append("        this.").append(columnName).append(" = new ").append(typeQueryClassName).append("<>(\"")
+                    .append(databaseToUpper ? columnName.toUpperCase() : columnName).append("\", this);\r\n");
+
+            if (fieldNames.length() > 0) {
+                fieldNames.append(", ");
+            }
+            fieldNames.append("this.").append(columnName);
+        }
+
+        buff.append("package ").append(packageName).append(";\r\n\r\n");
+        for (String p : importSet) {
+            buff.append("import ").append(p).append(";\r\n");
+        }
+        buff.append("\r\n");
+        buff.append("/**\r\n");
+        buff.append(" * Model for table '").append(data.tableName).append("'.\r\n");
+        buff.append(" *\r\n");
+        buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
+        buff.append(" */\r\n");
+        buff.append("@JsonSerialize(using = QuerySerializer.class)\r\n");
+        buff.append("@JsonDeserialize(using = ").append(className).append("Deserializer.class)\r\n");
+        // 例如: public class Customer extends Query<Customer> {
+        buff.append("public class ").append(className).append(" extends Query<").append(className).append("> {\r\n");
+        buff.append("\r\n");
+        buff.append("    public static ").append(className).append(" create(String url) {\r\n");
+        buff.append("        Table t = new Table(url, \"").append(data.tableName).append("\");\r\n");
+        buff.append("        return new ").append(className).append("(t);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append(fields);
+        buff.append("\r\n");
+        buff.append("    public ").append(className).append("() {\r\n");
+        buff.append("        this(null);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    public ").append(className).append("(Table t) {\r\n");
+        buff.append("        super(t);\r\n");
+        buff.append("        super.setRoot(this);\r\n");
+        buff.append("\r\n");
+        buff.append(init);
+        buff.append("        super.setTQProperties(new TQProperty[] { ").append(fieldNames).append(" });\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    @Override\r\n");
+        buff.append("    protected ").append(className).append(" newInstance(Table t) {\r\n");
+        buff.append("        return new ").append(className).append("(t);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    static class ").append(className).append("Deserializer extends QueryDeserializer<")
+                .append(className).append("> {\r\n");
+        buff.append("        @Override\r\n");
+        buff.append("        protected Query<").append(className).append("> newQueryInstance() {\r\n");
+        buff.append("            return new ").append(className).append("();\r\n");
+        buff.append("        }\r\n");
+        buff.append("    }\r\n");
+        buff.append("}\r\n");
+        // System.out.println(buff);
+
+        CreateService.writeFile(codePath, packageName, className, buff);
+    }
+
+    void genCodeOld() {
         StringBuilder buff = new StringBuilder();
         StringBuilder ibuff = new StringBuilder();
         StringBuilder methods = new StringBuilder();
@@ -366,6 +454,8 @@ public class CreateTable extends SchemaStatement {
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    private Table _t_;\r\n");
+        buff.append("    private ").append(qclassName).append(" _q_;\r\n");
+        // buff.append(" private final ").append(qclassName).append(" _q_ = new ").append(qclassName).append("();\r\n");
         buff.append("\r\n");
         for (Column c : data.columns) {
             int type = c.getType();
@@ -388,6 +478,7 @@ public class CreateTable extends SchemaStatement {
                     .append(typeClassName);
             methods.append(' ').append(columnName).append(") {\r\n");
             methods.append("        this.").append(columnName).append(" = ").append(columnName).append("; \r\n");
+            methods.append("        _q_.").append(columnName).append(".set(").append(columnName).append("); \r\n");
             methods.append("        return this;\r\n");
             methods.append("    }\r\n");
 
@@ -400,9 +491,11 @@ public class CreateTable extends SchemaStatement {
         }
         buff.append("\r\n");
         buff.append("    public ").append(className).append("() {\r\n");
+        buff.append("        _q_ = new ").append(qclassName).append("();\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    private ").append(className).append("(Table t) {\r\n");
+        buff.append("        _q_ = new ").append(qclassName).append("(t);\r\n");
         buff.append("        this._t_ = t;\r\n");
         buff.append("    }\r\n");
         buff.append(methods);
@@ -441,7 +534,11 @@ public class CreateTable extends SchemaStatement {
         qbuff.append("\r\n");
         qbuff.append(qfields);
         qbuff.append("\r\n");
-        qbuff.append("    private ").append(qclassName).append("(Table t) {\r\n");
+        qbuff.append("    public ").append(qclassName).append("() {\r\n");
+        qbuff.append("        this(null);\r\n");
+        qbuff.append("    }\r\n");
+        qbuff.append("\r\n");
+        qbuff.append("    public ").append(qclassName).append("(Table t) {\r\n");
         qbuff.append("        super(t);\r\n");
         qbuff.append("        setRoot(this);\r\n");
         qbuff.append("\r\n");

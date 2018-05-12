@@ -17,12 +17,23 @@
  */
 package org.lealone.orm.typequery;
 
+import java.io.IOException;
+import java.util.HashMap;
+
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueString;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+
 /**
  * String property.
  *
  * @param <R> the root query bean type
  */
 public class PString<R> extends PBaseComparable<R, String> {
+
+    private String value;
 
     /**
      * Construct with a property name and root instance.
@@ -163,4 +174,41 @@ public class PString<R> extends PBaseComparable<R, String> {
         expr().match(name, value);
         return root;
     }
+
+    public final R set(String value) {
+        if (!areEqual(this.value, value)) {
+            this.value = value;
+            changed = true;
+            if (isReady()) {
+                expr().set(name, ValueString.get(value));
+            }
+        }
+        return root;
+    }
+
+    public final String get() {
+        return value;
+    }
+
+    @Override
+    public R serialize(JsonGenerator jgen) throws IOException {
+        jgen.writeStringField(propertyName(), value);
+        return root;
+    }
+
+    @Override
+    public R deserialize(JsonNode node) {
+        value = node.get(propertyName()).asText();
+        return root;
+    }
+
+    @Override
+    public R deserialize(HashMap<String, Value> map) {
+        Value v = map.get(name);
+        if (v != null) {
+            value = v.getString();
+        }
+        return root;
+    }
+
 }

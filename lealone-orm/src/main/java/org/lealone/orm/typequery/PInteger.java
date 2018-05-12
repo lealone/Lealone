@@ -17,12 +17,24 @@
  */
 package org.lealone.orm.typequery;
 
+import java.io.IOException;
+import java.util.HashMap;
+
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueInt;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.NumericNode;
+
 /**
  * Integer property.
  *
  * @param <R> the root query bean type
  */
 public class PInteger<R> extends PBaseNumber<R, Integer> {
+
+    private int value;
 
     /**
      * Construct with a property name and root instance.
@@ -41,4 +53,39 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
         super(name, root, prefix);
     }
 
+    public final R set(int value) {
+        if (!areEqual(this.value, value)) {
+            this.value = value;
+            changed = true;
+            if (isReady()) {
+                expr().set(name, ValueInt.get(value));
+            }
+        }
+        return root;
+    }
+
+    public final int get() {
+        return value;
+    }
+
+    @Override
+    public R serialize(JsonGenerator jgen) throws IOException {
+        jgen.writeNumberField(propertyName(), value);
+        return root;
+    }
+
+    @Override
+    public R deserialize(JsonNode node) {
+        value = ((NumericNode) node.get(propertyName())).asInt();
+        return root;
+    }
+
+    @Override
+    public R deserialize(HashMap<String, Value> map) {
+        Value v = map.get(name);
+        if (v != null) {
+            value = v.getInt();
+        }
+        return root;
+    }
 }

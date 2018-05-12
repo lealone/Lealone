@@ -30,15 +30,15 @@ public class ServiceConsumer {
         System.out.println(r);
 
         UserService userService = UserService.create(url);
-        User user = new User().setName("rob");
+        User user = new User().name.set("rob");
         user = userService.add(user);
-        System.out.println("user.id=" + user.getId());
-        user = userService.find(user.getId());
+        System.out.println("user.id=" + user.id.get());
+        user = userService.find(user.id.get());
 
-        user.setPhone(12345678);
+        user.phone.set(12345678);
         userService.update(user);
 
-        userService.delete(user.getId());
+        userService.delete(user.id.get());
     }
 
 }

@@ -17,7 +17,11 @@
  */
 package org.lealone.orm.typequery;
 
+import org.lealone.db.value.ValueJavaObject;
+
 public class PObject<R> extends TQProperty<R> {
+
+    private Object value;
 
     public PObject(String name, R root) {
         super(name, root);
@@ -27,8 +31,19 @@ public class PObject<R> extends TQProperty<R> {
         super(name, root, prefix);
     }
 
-    public final R set(Object value) {
-        expr().ne(name, value);
+    public R set(Object value) {
+        if (!areEqual(this.value, value)) {
+            this.value = value;
+            changed = true;
+            if (isReady()) {
+                expr().set(name, ValueJavaObject.getNoCopy(value, null));
+            }
+        }
         return root;
     }
+
+    public final Object get() {
+        return value;
+    }
+
 }

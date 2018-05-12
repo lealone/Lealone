@@ -328,8 +328,8 @@ public class Column {
                 if (s.length() > 127) {
                     s = s.substring(0, 128) + "...";
                 }
-                throw DbException
-                        .get(ErrorCode.VALUE_TOO_LONG_2, getCreateSQL(), s + " (" + value.getPrecision() + ")");
+                throw DbException.get(ErrorCode.VALUE_TOO_LONG_2, getCreateSQL(),
+                        s + " (" + value.getPrecision() + ")");
             }
         }
         updateSequenceIfRequired(session, value);
@@ -578,8 +578,8 @@ public class Column {
         if (checkConstraint == null) {
             checkConstraint = expr;
         } else {
-            checkConstraint = (Expression) session.getDatabase().getSQLEngine()
-                    .createConditionAndOr(true, checkConstraint, expr);
+            checkConstraint = (Expression) session.getDatabase().getSQLEngine().createConditionAndOr(true,
+                    checkConstraint, expr);
         }
         checkConstraintSQL = getCheckConstraintSQL(session, name);
     }

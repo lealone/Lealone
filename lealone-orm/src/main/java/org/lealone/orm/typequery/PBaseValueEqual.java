@@ -25,7 +25,7 @@ import java.util.Collection;
  * @param <R> the root query bean type
  * @param <T> the number type
  */
-public abstract class PBaseValueEqual<R, T> extends PObject<R> {
+public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
 
     /**
      * Construct with a property name and root instance.

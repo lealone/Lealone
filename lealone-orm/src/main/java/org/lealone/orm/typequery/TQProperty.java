@@ -17,8 +17,17 @@
  */
 package org.lealone.orm.typequery;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URL;
+import java.util.HashMap;
+
+import org.lealone.db.value.Value;
 import org.lealone.orm.ExpressionList;
 import org.lealone.orm.Query;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * A property used in type query.
@@ -30,6 +39,8 @@ public class TQProperty<R> {
     protected final String name;
 
     protected final R root;
+
+    protected boolean changed;
 
     /**
      * Construct with a property name and root instance.
@@ -48,7 +59,7 @@ public class TQProperty<R> {
         this.root = root;
         name = fullPath(prefix, name);
 
-        if (((Query<?, ?>) root).databaseToUpper()) {
+        if (((Query<?>) root).databaseToUpper()) {
             name = name.toUpperCase();
         }
         this.name = name;
@@ -63,7 +74,11 @@ public class TQProperty<R> {
      * Internal method to return the underlying expression list.
      */
     protected ExpressionList<?> expr() {
-        return ((Query<?, ?>) root).peekExprList();
+        return ((Query<?>) root).peekExprList();
+    }
+
+    protected boolean isReady() {
+        return ((Query<?>) root).isReady();
     }
 
     /**
@@ -103,6 +118,49 @@ public class TQProperty<R> {
      */
     public String propertyName() {
         return name;
+    }
+
+    public R serialize(JsonGenerator jgen) throws IOException {
+        return root;
+    }
+
+    public R deserialize(JsonNode node) {
+        return root;
+    }
+
+    public R deserialize(HashMap<String, Value> map) {
+        return root;
+    }
+
+    /**
+     * Helper method to check if two objects are equal.
+     */
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected boolean areEqual(Object obj1, Object obj2) {
+        if (obj1 == null) {
+            return (obj2 == null);
+        }
+        if (obj2 == null) {
+            return false;
+        }
+        if (obj1 == obj2) {
+            return true;
+        }
+        if (obj1 instanceof BigDecimal) {
+            // Use comparable for BigDecimal as equals
+            // uses scale in comparison...
+            if (obj2 instanceof BigDecimal) {
+                Comparable com1 = (Comparable) obj1;
+                return (com1.compareTo(obj2) == 0);
+            } else {
+                return false;
+            }
+        }
+        if (obj1 instanceof URL) {
+            // use the string format to determine if dirty
+            return obj1.toString().equals(obj2.toString());
+        }
+        return obj1.equals(obj2);
     }
 
     /**
