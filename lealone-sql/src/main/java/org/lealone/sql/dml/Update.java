@@ -151,6 +151,7 @@ public class Update extends ManipulateStatement {
                 if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
                     Row oldRow = tableFilter.get();
                     Row newRow = table.getTemplateRow();
+                    newRow.setKey(oldRow.getKey()); // 复用原来的行号
                     // newRow.setTransactionId(session.getTransaction().getTransactionId());
                     for (int i = 0; i < columnCount; i++) {
                         Expression newExpr = expressionMap.get(columns[i]);
