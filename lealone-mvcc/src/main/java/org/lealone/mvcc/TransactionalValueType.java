@@ -76,12 +76,19 @@ public class TransactionalValueType implements StorageDataType {
         if (buff.get() == 1) {
             value = valueType.read(buff);
         }
+        TransactionalValue transactionalValue = null;
         if (buff.get() == 1) {
             long version = DataUtils.readVarLong(buff);
             String globalTransactionName = ValueString.type.read(buff);
-            new TransactionalValue(tid, logId, value, version, globalTransactionName);
+            transactionalValue = new TransactionalValue(tid, logId, value, version, globalTransactionName);
+        } else {
+            transactionalValue = new TransactionalValue(tid, logId, value);
         }
-        return new TransactionalValue(tid, logId, value);
+
+        if (buff.get() == 1) {
+            transactionalValue.hostAndPort = ValueString.type.read(buff);
+        }
+        return transactionalValue;
     }
 
     @Override
@@ -126,6 +133,12 @@ public class TransactionalValueType implements StorageDataType {
             buff.put((byte) 1);
             buff.putVarLong(v.version);
             ValueString.type.write(buff, v.globalReplicationName);
+        }
+        if (v.hostAndPort == null) {
+            buff.put((byte) 0);
+        } else {
+            buff.put((byte) 1);
+            ValueString.type.write(buff, v.hostAndPort);
         }
     }
 }

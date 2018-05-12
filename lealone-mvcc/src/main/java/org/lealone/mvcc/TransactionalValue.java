@@ -17,6 +17,8 @@
  */
 package org.lealone.mvcc;
 
+import org.lealone.net.NetEndpoint;
+
 public class TransactionalValue {
 
     // 每次修改记录的事务名要全局唯一，
@@ -28,6 +30,7 @@ public class TransactionalValue {
 
     public long version; // 每次更新时自动加1
     public boolean replicated;
+    public String hostAndPort;
 
     public TransactionalValue(Object value) {
         this(0, 0, value);
@@ -45,6 +48,7 @@ public class TransactionalValue {
         this.logId = transaction.logId;
         this.globalReplicationName = transaction.globalTransactionName;
         this.value = value;
+        this.hostAndPort = NetEndpoint.getLocalTcpHostAndPort();
     }
 
     public TransactionalValue(long tid, int logId, Object value, long version, String globalTransactionName) {

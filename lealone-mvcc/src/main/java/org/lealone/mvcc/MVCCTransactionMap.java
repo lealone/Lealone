@@ -12,12 +12,13 @@ import java.util.Map.Entry;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.mvcc.MVCCTransaction.LogRecord;
+import org.lealone.net.NetEndpoint;
 import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
-import org.lealone.storage.type.StorageDataType;
 import org.lealone.storage.type.ObjectDataType;
+import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 
@@ -116,6 +117,14 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                 // it is committed
                 return data;
             }
+
+            // 数据从节点A迁移到节点B的过程中，如果把A中未提交的值也移到B中，
+            // 那么在节点B中会读到不一致的数据，此时需要从节点A读出正确的值
+            // TODO 如何更高效的判断，不用比较字符串
+            if (data.hostAndPort != null && !data.hostAndPort.equals(NetEndpoint.getLocalTcpHostAndPort())) {
+                return getRemoteTransactionalValue(data.hostAndPort, key);
+            }
+
             if (tid == transaction.transactionId) {
                 return data;
             }
@@ -148,6 +157,10 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     }
 
     protected TransactionalValue getValue(K key, TransactionalValue data, long tid) {
+        return null;
+    }
+
+    protected TransactionalValue getRemoteTransactionalValue(String hostAndPort, K key) {
         return null;
     }
 
