@@ -25,6 +25,7 @@ import java.util.List;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.TableFilter;
@@ -658,7 +659,7 @@ public abstract class Query<T> {
         TableFilter tableFilter = new TableFilter(table.getSession(), dbTable, null, true, null);
         delete.setTableFilter(tableFilter);
         if (whereExpression.expression == null) {
-            peekExprList().eq(Column.ROWID, _rowid_.get());
+            maybeCreateWhereExpression(dbTable);
         }
         delete.setCondition(whereExpression.expression);
         delete.prepare();
@@ -676,7 +677,7 @@ public abstract class Query<T> {
         TableFilter tableFilter = new TableFilter(table.getSession(), dbTable, null, true, null);
         update.setTableFilter(tableFilter);
         if (whereExpression.expression == null) {
-            peekExprList().eq(Column.ROWID, _rowid_.get());
+            maybeCreateWhereExpression(dbTable);
         }
         update.setCondition(whereExpression.expression);
         for (NVPair p : nvPairs) {
@@ -688,6 +689,30 @@ public abstract class Query<T> {
         int count = update.executeUpdate();
         commit();
         return count;
+    }
+
+    private void maybeCreateWhereExpression(org.lealone.db.table.Table dbTable) {
+        // 没有指定where条件时，如果存在ROWID，则用ROWID当where条件
+        if (_rowid_.get() != 0) {
+            peekExprList().eq(Column.ROWID, _rowid_.get());
+        } else {
+            Index primaryKey = dbTable.findPrimaryKey();
+            if (primaryKey != null) {
+                for (Column c : primaryKey.getColumns()) {
+                    // 如果主键由多个字段组成，当前面的字段没有指定时就算后面的指定了也不用它们来生成where条件
+                    boolean found = false;
+                    for (NVPair p : nvPairs) {
+                        if (dbTable.getDatabase().equalsIdentifiers(p.name, c.getName())) {
+                            peekExprList().eq(p.name, p.value);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                        break;
+                }
+            }
+        }
     }
 
     // 可能是延迟关联到Table

@@ -57,7 +57,12 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
 
     private Comparison createComparison(String propertyName, Object value, int compareType) {
         ExpressionColumn ec = getExpressionColumn(propertyName);
-        ValueExpression v = ValueExpression.get(ValueString.get(value.toString()));
+        ValueExpression v;
+        if (value instanceof Value) {
+            v = ValueExpression.get((Value) value);
+        } else {
+            v = ValueExpression.get(ValueString.get(value.toString()));
+        }
         return new Comparison(table.getSession(), compareType, ec, v);
     }
 

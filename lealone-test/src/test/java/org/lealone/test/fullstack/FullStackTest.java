@@ -99,7 +99,7 @@ public class FullStackTest extends UnitTestBase {
 
         @Override
         public Integer update(User user) {
-            return user.where().name.eq(user.name.get()).update();
+            return user.update();
         }
 
         @Override
