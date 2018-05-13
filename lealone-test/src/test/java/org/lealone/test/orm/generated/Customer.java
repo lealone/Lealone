@@ -21,7 +21,7 @@ import org.lealone.test.orm.generated.Customer.CustomerDeserializer;
 @JsonDeserialize(using = CustomerDeserializer.class)
 public class Customer extends Query<Customer> {
 
-    public static final Customer dao = new Customer();
+    public static final Customer dao = new Customer(null, true);
 
     public static Customer create(String url) {
         Table t = new Table(url, "CUSTOMER");
@@ -34,11 +34,15 @@ public class Customer extends Query<Customer> {
     public final PInteger<Customer> phone;
 
     public Customer() {
-        this(null);
+        this(null, false);
     }
 
     public Customer(Table t) {
-        super(t, "CUSTOMER");
+        this(t, false);
+    }
+
+    private Customer(Table t, boolean isDao) {
+        super(t, "CUSTOMER", isDao);
         super.setRoot(this);
 
         this.id = new PLong<>("ID", this);

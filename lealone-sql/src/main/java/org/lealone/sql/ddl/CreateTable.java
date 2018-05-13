@@ -390,7 +390,7 @@ public class CreateTable extends SchemaStatement {
         buff.append("\r\n");
 
         buff.append("    public static final ").append(className).append(" dao = new ").append(className)
-                .append("();\r\n");
+                .append("(null, true);\r\n");
         buff.append("\r\n");
         buff.append("    public static ").append(className).append(" create(String url) {\r\n");
         buff.append("        Table t = new Table(url, \"").append(data.tableName).append("\");\r\n");
@@ -400,11 +400,15 @@ public class CreateTable extends SchemaStatement {
         buff.append(fields);
         buff.append("\r\n");
         buff.append("    public ").append(className).append("() {\r\n");
-        buff.append("        this(null);\r\n");
+        buff.append("        this(null, false);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    public ").append(className).append("(Table t) {\r\n");
-        buff.append("        super(t, \"").append(data.tableName).append("\");\r\n");
+        buff.append("        this(t, false);\r\n");
+        buff.append("    }\r\n");
+        buff.append("\r\n");
+        buff.append("    private ").append(className).append("(Table t, boolean isDao) {\r\n");
+        buff.append("        super(t, \"").append(data.tableName).append("\", isDao);\r\n");
         buff.append("        super.setRoot(this);\r\n");
         buff.append("\r\n");
         buff.append(init);

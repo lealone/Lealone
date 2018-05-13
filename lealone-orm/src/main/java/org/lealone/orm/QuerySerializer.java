@@ -35,6 +35,7 @@ public class QuerySerializer<T extends Query> extends JsonSerializer<T> {
         for (TQProperty p : ((Query) value).tqProperties) {
             p.serialize(jgen);
         }
+        jgen.writeBooleanField("isDao", ((Query) value).isDao);
         jgen.writeEndObject();
     }
 }

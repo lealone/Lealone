@@ -201,6 +201,11 @@ public abstract class Query<T> {
 
     protected Table table;
     protected final String tableName;
+    boolean isDao;
+
+    public boolean isDao() {
+        return isDao;
+    }
 
     private final ArrayList<Expression> selectExpressions = new ArrayList<>();
 
@@ -215,9 +220,10 @@ public abstract class Query<T> {
     */
     private ArrayStack<ExpressionList<T>> whereStack;
 
-    public Query(Table table, String tableName) {
+    public Query(Table table, String tableName, boolean isDao) {
         this.table = table;
         this.tableName = tableName;
+        this.isDao = isDao;
         reset();
     }
 
@@ -461,6 +467,13 @@ public abstract class Query<T> {
         return root;
     }
 
+    private void checkDao(String methodName) {
+        if (!isDao) {
+            throw new UnsupportedOperationException("The " + methodName + " operation is not allowed, please use "
+                    + this.getClass().getSimpleName() + ".dao." + methodName + "() instead.");
+        }
+    }
+
     /**
      * Add expression after this to the WHERE expression list.
      * <p>
@@ -519,6 +532,7 @@ public abstract class Query<T> {
      * }</pre>
      */
     public T findOne() {
+        checkDao("findOne");
         getTable();
         Select select = new Select(table.getSession());
         TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
@@ -594,6 +608,7 @@ public abstract class Query<T> {
      * @see EbeanServer#findList(Query, Transaction)
      */
     public List<T> findList() {
+        checkDao("findList");
         getTable();
         Select select = new Select(table.getSession());
         TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
@@ -623,6 +638,7 @@ public abstract class Query<T> {
      * </p>
      */
     public int findCount() {
+        checkDao("findCount");
         getTable();
         Select select = new Select(table.getSession());
         select.setGroupQuery();
@@ -660,6 +676,11 @@ public abstract class Query<T> {
         delete.setTableFilter(tableFilter);
         if (whereExpression.expression == null) {
             maybeCreateWhereExpression(dbTable);
+            if (whereExpression.expression == null) {
+                checkDao("delete");
+            }
+        } else {
+            checkDao("delete");
         }
         delete.setCondition(whereExpression.expression);
         delete.prepare();
@@ -678,6 +699,11 @@ public abstract class Query<T> {
         update.setTableFilter(tableFilter);
         if (whereExpression.expression == null) {
             maybeCreateWhereExpression(dbTable);
+            if (whereExpression.expression == null) {
+                checkDao("update");
+            }
+        } else {
+            checkDao("update");
         }
         update.setCondition(whereExpression.expression);
         for (NVPair p : nvPairs) {
@@ -732,6 +758,12 @@ public abstract class Query<T> {
     }
 
     public long insert() {
+        // TODO 是否允许通过 XXX.dao来insert记录?
+        if (isDao) {
+            String name = this.getClass().getSimpleName();
+            throw new UnsupportedOperationException("The insert operation is not allowed for " + name
+                    + ".dao,  please use new " + name + "().insert() instead.");
+        }
         getTable();
         org.lealone.db.table.Table dbTable = table.getDbTable();
         Insert insert = new Insert(table.getSession());

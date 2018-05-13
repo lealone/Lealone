@@ -46,7 +46,7 @@ public class UnitTestBase extends TestBase {
             setEmbedded(true);
             setInMemory(true);
         }
-
+        System.setProperty("lealone.jdbc.url", getURL());
         try {
             test();
         } catch (Exception e) {

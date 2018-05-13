@@ -36,7 +36,7 @@ import org.lealone.test.orm.generated.AllType.AllTypeDeserializer;
 @JsonDeserialize(using = AllTypeDeserializer.class)
 public class AllType extends Query<AllType> {
 
-    public static final AllType dao = new AllType();
+    public static final AllType dao = new AllType(null, true);
 
     public static AllType create(String url) {
         Table t = new Table(url, "ALL_TYPE");
@@ -66,11 +66,15 @@ public class AllType extends Query<AllType> {
     public final PArray<AllType> f21;
 
     public AllType() {
-        this(null);
+        this(null, false);
     }
 
     public AllType(Table t) {
-        super(t, "ALL_TYPE");
+        this(t, false);
+    }
+
+    private AllType(Table t, boolean isDao) {
+        super(t, "ALL_TYPE", isDao);
         super.setRoot(this);
 
         this.f1 = new PInteger<>("F1", this);

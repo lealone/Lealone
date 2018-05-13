@@ -66,6 +66,8 @@ public class CustomerTest extends UnitTestBase {
         long rowId1;
         long rowId2;
 
+        Customer dao = Customer.dao;
+
         Customer c = Customer.create(url);
 
         // 增加两条记录
@@ -81,27 +83,27 @@ public class CustomerTest extends UnitTestBase {
 
         // 查找单条记录
         // select * from customer where id = 1000;
-        c = c.where().id.eq(1000L).findOne();
+        c = dao.where().id.eq(1000L).findOne();
 
         assertTrue((c.id.get() == 1000) && (1 == c._rowid_.get()));
 
         // 查找多条记录(取回所有字段)
         // select * from customer where name like 'Rob%';
-        List<Customer> customers = c.where().name.like("Rob%").findList();
+        List<Customer> customers = dao.where().name.like("Rob%").findList();
 
         assertEquals(2, customers.size());
         assertNotNull(customers.get(0).notes.get());
 
         // 查找多条记录(只取回name字段)
         // select name from customer where name like 'Rob%';
-        customers = c.select(c.name).where().name.like("Rob%").findList();
+        customers = dao.select(dao.name).where().name.like("Rob%").findList();
 
         assertEquals(2, customers.size());
         assertNull(customers.get(0).notes.get());
 
         // 统计行数
         // select count(*) from customer where name like 'Rob%';
-        int count = c.where().name.like("Rob%").findCount();
+        int count = dao.where().name.like("Rob%").findCount();
 
         assertEquals(2, count);
 
@@ -116,7 +118,7 @@ public class CustomerTest extends UnitTestBase {
 
         // 批量更新记录
         // update customer set phone = 12345678, notes = 'Doing a batch update' where name like 'Rob%';
-        count = c.phone.set(12345678).notes.set("Doing a batch update").where().name.like("Rob%").update();
+        count = dao.phone.set(12345678).notes.set("Doing a batch update").where().name.like("Rob%").update();
 
         assertEquals(2, count);
 
@@ -128,7 +130,7 @@ public class CustomerTest extends UnitTestBase {
 
         // 批量删除记录
         // delete from customer where name like 'Rob%';
-        count = c.where().name.like("Rob%").delete();
+        count = dao.where().name.like("Rob%").delete();
 
         assertEquals(1, count);
     }

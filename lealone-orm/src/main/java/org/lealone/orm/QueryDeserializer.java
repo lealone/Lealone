@@ -32,6 +32,15 @@ public abstract class QueryDeserializer<T> extends JsonDeserializer<T> {
         JsonNode node = p.getCodec().readTree(p);
         Query<T> q = newQueryInstance();
         q.deserialize(node);
+
+        JsonNode n = node.get("isDao");
+        if (n == null) {
+            q.isDao = false;
+            // 如果不通过JsonSerializer得到的json串不一定包含isDao字段(比如前端直接传来的json串)，所以不抛异常
+            // DbException.throwInternalError("The isDao field is missing");
+        } else {
+            q.isDao = n.booleanValue();
+        }
         return (T) q;
     }
 

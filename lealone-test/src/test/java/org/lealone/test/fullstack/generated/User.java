@@ -20,7 +20,7 @@ import org.lealone.test.fullstack.generated.User.UserDeserializer;
 @JsonDeserialize(using = UserDeserializer.class)
 public class User extends Query<User> {
 
-    public static final User dao = new User();
+    public static final User dao = new User(null, true);
 
     public static User create(String url) {
         Table t = new Table(url, "USER");
@@ -32,11 +32,15 @@ public class User extends Query<User> {
     public final PInteger<User> phone;
 
     public User() {
-        this(null);
+        this(null, false);
     }
 
     public User(Table t) {
-        super(t, "USER");
+        this(t, false);
+    }
+
+    private User(Table t, boolean isDao) {
+        super(t, "USER", isDao);
         super.setRoot(this);
 
         this.name = new PString<>("NAME", this);
