@@ -21,6 +21,8 @@ import org.lealone.test.service.generated.User.UserDeserializer;
 @JsonDeserialize(using = UserDeserializer.class)
 public class User extends Query<User> {
 
+    public static final User dao = new User();
+
     public static User create(String url) {
         Table t = new Table(url, "USER");
         return new User(t);

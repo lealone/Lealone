@@ -388,6 +388,10 @@ public class CreateTable extends SchemaStatement {
         // 例如: public class Customer extends Query<Customer> {
         buff.append("public class ").append(className).append(" extends Query<").append(className).append("> {\r\n");
         buff.append("\r\n");
+
+        buff.append("    public static final ").append(className).append(" dao = new ").append(className)
+                .append("();\r\n");
+        buff.append("\r\n");
         buff.append("    public static ").append(className).append(" create(String url) {\r\n");
         buff.append("        Table t = new Table(url, \"").append(data.tableName).append("\");\r\n");
         buff.append("        return new ").append(className).append("(t);\r\n");

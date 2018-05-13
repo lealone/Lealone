@@ -36,6 +36,8 @@ import org.lealone.test.orm.generated.AllType.AllTypeDeserializer;
 @JsonDeserialize(using = AllTypeDeserializer.class)
 public class AllType extends Query<AllType> {
 
+    public static final AllType dao = new AllType();
+
     public static AllType create(String url) {
         Table t = new Table(url, "ALL_TYPE");
         return new AllType(t);

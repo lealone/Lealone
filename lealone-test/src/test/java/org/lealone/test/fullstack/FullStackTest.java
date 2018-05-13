@@ -94,7 +94,7 @@ public class FullStackTest extends UnitTestBase {
 
         @Override
         public User find(String name) {
-            return new User().where().name.eq(name).findOne();
+            return User.dao.where().name.eq(name).findOne();
         }
 
         @Override
@@ -104,7 +104,7 @@ public class FullStackTest extends UnitTestBase {
 
         @Override
         public Integer delete(String name) {
-            return new User().where().name.eq(name).delete();
+            return User.dao.where().name.eq(name).delete();
         }
     }
 

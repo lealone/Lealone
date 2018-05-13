@@ -21,6 +21,8 @@ import org.lealone.test.orm.generated.Customer.CustomerDeserializer;
 @JsonDeserialize(using = CustomerDeserializer.class)
 public class Customer extends Query<Customer> {
 
+    public static final Customer dao = new Customer();
+
     public static Customer create(String url) {
         Table t = new Table(url, "CUSTOMER");
         return new Customer(t);
