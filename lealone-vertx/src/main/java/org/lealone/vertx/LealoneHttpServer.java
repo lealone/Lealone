@@ -33,7 +33,6 @@ public class LealoneHttpServer {
     private static final Logger logger = LoggerFactory.getLogger(LealoneHttpServer.class);
 
     public static void start(int port, String webRoot, String apiPath) {
-
         VertxOptions opt = new VertxOptions();
         opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
         Vertx vertx = Vertx.vertx(opt);

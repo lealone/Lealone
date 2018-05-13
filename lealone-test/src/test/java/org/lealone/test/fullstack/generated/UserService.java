@@ -91,7 +91,7 @@ public interface UserService {
                     return stmt.getString(1);
                 }
             } catch (SQLException e) {
-                throw new RuntimeException("Failted to execute service: " + serviceName, e);
+                throw new RuntimeException("Failed to execute service: " + serviceName, e);
             }
 
             return null;

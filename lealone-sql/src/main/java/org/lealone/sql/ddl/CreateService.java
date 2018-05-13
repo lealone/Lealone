@@ -414,7 +414,7 @@ public class CreateService extends SchemaStatement {
             buff.append("                }\r\n");
             buff.append("            } catch (SQLException e) {\r\n");
             buff.append(
-                    "                throw new RuntimeException(\"Failted to execute service: \" + serviceName, e);\r\n");
+                    "                throw new RuntimeException(\"Failed to execute service: \" + serviceName, e);\r\n");
             buff.append("            }\r\n");
             buff.append("\r\n");
             buff.append("            return null;\r\n");
@@ -430,7 +430,7 @@ public class CreateService extends SchemaStatement {
             buff.append("                stmt.execute();\r\n");
             buff.append("            } catch (SQLException e) {\r\n");
             buff.append(
-                    "                throw new RuntimeException(\"Failted to execute service: \" + serviceName, e);\r\n");
+                    "                throw new RuntimeException(\"Failed to execute service: \" + serviceName, e);\r\n");
             buff.append("            }\r\n");
             buff.append("        }\r\n");
         }
