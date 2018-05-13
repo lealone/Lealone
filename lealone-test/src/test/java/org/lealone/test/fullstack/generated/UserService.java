@@ -2,10 +2,7 @@ package org.lealone.test.fullstack.generated;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import java.sql.CallableStatement;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import org.lealone.client.ClientServiceProxy;
 import org.lealone.test.fullstack.generated.User;
 
 /**
@@ -30,7 +27,6 @@ public interface UserService {
     static class Proxy implements UserService {
 
         private final String url;
-        private static final String sqlWithReturnValue = "{? = call EXECUTE_SERVICE_WITH_RETURN_VALUE(?,?)}";
 
         private Proxy(String url) {
             this.url = url;
@@ -40,7 +36,7 @@ public interface UserService {
         public Long add(User user) {
             JsonArray ja = new JsonArray();
             ja.add(JsonObject.mapFrom(user));
-            String result = executeWithReturnValue("USER_SERVICE.ADD", ja.encode());
+            String result = ClientServiceProxy.executeWithReturnValue(url, "USER_SERVICE.ADD", ja.encode());
             if (result != null) {
                 return Long.valueOf(result);
             }
@@ -51,7 +47,7 @@ public interface UserService {
         public User find(String name) {
             JsonArray ja = new JsonArray();
             ja.add(name);
-            String result = executeWithReturnValue("USER_SERVICE.FIND", ja.encode());
+            String result = ClientServiceProxy.executeWithReturnValue(url, "USER_SERVICE.FIND", ja.encode());
             if (result != null) {
                 JsonObject jo = new JsonObject(result);
                 return jo.mapTo(User.class);
@@ -63,7 +59,7 @@ public interface UserService {
         public Integer update(User user) {
             JsonArray ja = new JsonArray();
             ja.add(JsonObject.mapFrom(user));
-            String result = executeWithReturnValue("USER_SERVICE.UPDATE", ja.encode());
+            String result = ClientServiceProxy.executeWithReturnValue(url, "USER_SERVICE.UPDATE", ja.encode());
             if (result != null) {
                 return Integer.valueOf(result);
             }
@@ -74,26 +70,10 @@ public interface UserService {
         public Integer delete(String name) {
             JsonArray ja = new JsonArray();
             ja.add(name);
-            String result = executeWithReturnValue("USER_SERVICE.DELETE", ja.encode());
+            String result = ClientServiceProxy.executeWithReturnValue(url, "USER_SERVICE.DELETE", ja.encode());
             if (result != null) {
                 return Integer.valueOf(result);
             }
-            return null;
-        }
-
-        private String executeWithReturnValue(String serviceName, String json) {
-            try (Connection conn = DriverManager.getConnection(url);
-                    CallableStatement stmt = conn.prepareCall(sqlWithReturnValue)) {
-                stmt.setString(2, serviceName);
-                stmt.setString(3, json);
-                stmt.registerOutParameter(1, java.sql.Types.VARCHAR);
-                if (stmt.execute()) {
-                    return stmt.getString(1);
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("Failed to execute service: " + serviceName, e);
-            }
-
             return null;
         }
     }

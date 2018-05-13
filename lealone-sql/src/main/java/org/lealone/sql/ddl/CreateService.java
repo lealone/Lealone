@@ -305,15 +305,9 @@ public class CreateService extends SchemaStatement {
         StringBuilder ibuff = new StringBuilder();
         StringBuilder proxyMethodsBuff = new StringBuilder();
 
-        boolean hasNoReturnValueMethods = false;
-        boolean hasWithReturnValueMethods = false;
-
         TreeSet<String> importSet = new TreeSet<>();
-        importSet.add("java.sql.CallableStatement");
-        importSet.add("java.sql.Connection");
-        importSet.add("java.sql.DriverManager");
-        importSet.add("java.sql.SQLException");
         importSet.add("io.vertx.core.json.JsonArray");
+        importSet.add("org.lealone.client.ClientServiceProxy");
 
         String serviceName = toClassName(data.tableName);
 
@@ -329,11 +323,6 @@ public class CreateService extends SchemaStatement {
             CreateTableData data = m.data;
             Column returnColumn = data.columns.get(data.columns.size() - 1);
             String returnType = getTypeName(returnColumn, importSet);
-            if (returnType.equalsIgnoreCase("void")) {
-                hasNoReturnValueMethods = true;
-            } else {
-                hasWithReturnValueMethods = true;
-            }
             String methodName = toMethodName(data.tableName);
             buff.append("    ").append(returnType).append(" ").append(methodName).append("(");
 
@@ -363,10 +352,10 @@ public class CreateService extends SchemaStatement {
             proxyMethodsBuff.append(") {\r\n");
             proxyMethodsBuff.append(argsBuff);
             if (returnType.equalsIgnoreCase("void")) {
-                proxyMethodsBuff.append("            executeNoReturnValue(\"").append(this.data.tableName).append('.')
-                        .append(data.tableName).append("\", ja.encode());\r\n");
+                proxyMethodsBuff.append("            ClientServiceProxy.executeNoReturnValue(url, \"")
+                        .append(this.data.tableName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
             } else {
-                proxyMethodsBuff.append("            String result = executeWithReturnValue(\"")
+                proxyMethodsBuff.append("            String result = ClientServiceProxy.executeWithReturnValue(url, \"")
                         .append(this.data.tableName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
                 proxyMethodsBuff.append("            if (result != null) {\r\n");
                 if (returnColumn.getTable() != null) {
@@ -389,51 +378,11 @@ public class CreateService extends SchemaStatement {
         buff.append("    static class Proxy implements ").append(serviceName).append(" {\r\n");
         buff.append("\r\n");
         buff.append("        private final String url;\r\n");
-        if (hasNoReturnValueMethods)
-            buff.append("        private static final String sqlNoReturnValue "
-                    + "= \"{call EXECUTE_SERVICE_NO_RETURN_VALUE(?,?)}\";\r\n");
-        if (hasWithReturnValueMethods)
-            buff.append("        private static final String sqlWithReturnValue "
-                    + "= \"{? = call EXECUTE_SERVICE_WITH_RETURN_VALUE(?,?)}\";\r\n");
         buff.append("\r\n");
         buff.append("        private Proxy(String url) {\r\n");
         buff.append("            this.url = url;\r\n");
         buff.append("        }\r\n");
         buff.append(proxyMethodsBuff);
-
-        if (hasWithReturnValueMethods) {
-            buff.append("\r\n");
-            buff.append("        private String executeWithReturnValue(String serviceName, String json) {\r\n");
-            buff.append("            try (Connection conn = DriverManager.getConnection(url);\r\n");
-            buff.append("                    CallableStatement stmt = conn.prepareCall(sqlWithReturnValue)) {\r\n");
-            buff.append("                stmt.setString(2, serviceName);\r\n");
-            buff.append("                stmt.setString(3, json);\r\n");
-            buff.append("                stmt.registerOutParameter(1, java.sql.Types.VARCHAR);\r\n");
-            buff.append("                if (stmt.execute()) {\r\n");
-            buff.append("                    return stmt.getString(1);\r\n");
-            buff.append("                }\r\n");
-            buff.append("            } catch (SQLException e) {\r\n");
-            buff.append(
-                    "                throw new RuntimeException(\"Failed to execute service: \" + serviceName, e);\r\n");
-            buff.append("            }\r\n");
-            buff.append("\r\n");
-            buff.append("            return null;\r\n");
-            buff.append("        }\r\n");
-        }
-        if (hasNoReturnValueMethods) {
-            buff.append("\r\n");
-            buff.append("        private void executeNoReturnValue(String serviceName, String json) {\r\n");
-            buff.append("            try (Connection conn = DriverManager.getConnection(url);\r\n");
-            buff.append("                    CallableStatement stmt = conn.prepareCall(sqlNoReturnValue)) {\r\n");
-            buff.append("                stmt.setString(1, serviceName);\r\n");
-            buff.append("                stmt.setString(2, json);\r\n");
-            buff.append("                stmt.execute();\r\n");
-            buff.append("            } catch (SQLException e) {\r\n");
-            buff.append(
-                    "                throw new RuntimeException(\"Failed to execute service: \" + serviceName, e);\r\n");
-            buff.append("            }\r\n");
-            buff.append("        }\r\n");
-        }
         buff.append("    }\r\n");
         buff.append("}\r\n");
 
