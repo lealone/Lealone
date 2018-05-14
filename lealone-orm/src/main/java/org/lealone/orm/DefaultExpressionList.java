@@ -17,8 +17,11 @@
  */
 package org.lealone.orm;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
+import org.lealone.common.util.New;
+import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.CompareLike;
@@ -34,6 +37,19 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
     Table table;
     org.lealone.sql.expression.Expression expression;
     Query<?> query;
+
+    boolean isAnd = true;
+
+    ArrayList<SelectOrderBy> orderList = New.arrayList();
+
+    void setAnd(boolean isAnd) {
+        this.isAnd = isAnd;
+    }
+
+    @Override
+    public org.lealone.sql.expression.Expression getExpression() {
+        return expression;
+    }
 
     public DefaultExpressionList(Query<?> query, Table table) {
         this.table = table;
@@ -67,7 +83,7 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
     }
 
     private ConditionAndOr createConditionAnd(Expression left, Expression right) {
-        return new ConditionAndOr(ConditionAndOr.AND, left, right);
+        return new ConditionAndOr(isAnd ? ConditionAndOr.AND : ConditionAndOr.OR, left, right);
     }
 
     private void setRootExpression(Expression e) {
@@ -274,14 +290,14 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
 
     @Override
     public ExpressionList<T> and() {
-        // TODO Auto-generated method stub
-        return null;
+        isAnd = true;
+        return this;
     }
 
     @Override
     public ExpressionList<T> or() {
-        // TODO Auto-generated method stub
-        return null;
+        isAnd = false;
+        return this;
     }
 
     @Override
@@ -291,9 +307,23 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
     }
 
     @Override
-    public OrderBy<?> orderBy() {
-        // TODO Auto-generated method stub
-        return null;
+    public ExpressionList<T> orderBy(String propertyName, boolean isDesc) {
+        SelectOrderBy order = new SelectOrderBy();
+        order.expression = getExpressionColumn(propertyName);
+        order.descending = isDesc;
+        orderList.add(order);
+        return this;
+    }
+
+    @Override
+    public ExpressionList<T> junction(ExpressionList<T> e) {
+        setRootExpression(e.getExpression());
+        return this;
+    }
+
+    @Override
+    public ArrayList<SelectOrderBy> getOrderList() {
+        return orderList;
     }
 
 }

@@ -34,7 +34,6 @@ public class PObject<R> extends TQProperty<R> {
     public R set(Object value) {
         if (!areEqual(this.value, value)) {
             this.value = value;
-            changed = true;
             if (isReady()) {
                 expr().set(name, ValueJavaObject.getNoCopy(value, null));
             }

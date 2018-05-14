@@ -17,8 +17,10 @@
  */
 package org.lealone.orm;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
+import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.value.Value;
 
 public interface ExpressionList<T> {
@@ -291,13 +293,11 @@ public interface ExpressionList<T> {
      */
     ExpressionList<T> not();
 
-    /**
-     * Return the OrderBy so that you can append an ascending or descending
-     * property to the order by clause.
-     * <p>
-     * This will never return a null. If no order by clause exists then an 'empty'
-     * OrderBy object is returned.
-     * </p>
-     */
-    OrderBy<?> orderBy();
+    ExpressionList<T> orderBy(String propertyName, boolean isAsc);
+
+    ArrayList<SelectOrderBy> getOrderList();
+
+    ExpressionList<T> junction(ExpressionList<T> right);
+
+    org.lealone.sql.expression.Expression getExpression();
 }

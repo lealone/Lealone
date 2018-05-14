@@ -56,12 +56,16 @@ public class PLong<R> extends PBaseNumber<R, Long> {
     public R set(long value) {
         if (!areEqual(this.value, value)) {
             this.value = value;
-            changed = true;
             // if (isReady()) {
             expr().set(name, ValueLong.get(value));
             // }
         }
         return root;
+    }
+
+    @Override
+    public R set(Object value) {
+        return set(Long.valueOf(value.toString()).longValue());
     }
 
     public final long get() {
@@ -70,7 +74,7 @@ public class PLong<R> extends PBaseNumber<R, Long> {
 
     @Override
     public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeNumberField(propertyName(), value);
+        jgen.writeNumberField(getName(), value);
         return root;
     }
 

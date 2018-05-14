@@ -34,13 +34,10 @@ import com.fasterxml.jackson.databind.JsonNode;
  *
  * @param <R> The type of the owning root bean
  */
-public class TQProperty<R> {
+public abstract class TQProperty<R> {
 
     protected final String name;
-
     protected final R root;
-
-    protected boolean changed;
 
     /**
      * Construct with a property name and root instance.
@@ -57,12 +54,7 @@ public class TQProperty<R> {
      */
     public TQProperty(String name, R root, String prefix) {
         this.root = root;
-        name = fullPath(prefix, name);
-
-        if (((Query<?>) root).databaseToUpper()) {
-            name = name.toUpperCase();
-        }
-        this.name = name;
+        this.name = fullPath(prefix, name);
     }
 
     @Override
@@ -101,7 +93,7 @@ public class TQProperty<R> {
      * Order by ascending on this property.
      */
     public R asc() {
-        expr().orderBy().asc(name);
+        expr().orderBy(name, false);
         return root;
     }
 
@@ -109,15 +101,21 @@ public class TQProperty<R> {
      * Order by descending on this property.
      */
     public R desc() {
-        expr().orderBy().desc(name);
+        expr().orderBy(name, true);
         return root;
     }
 
     /**
      * Return the property name.
      */
-    public String propertyName() {
+    public String getName() {
         return name;
+    }
+
+    // public abstract R set(Object value);
+
+    public R set(Object value) {
+        return root;
     }
 
     public R serialize(JsonGenerator jgen) throws IOException {
@@ -144,7 +142,7 @@ public class TQProperty<R> {
      * Helper method to check if two objects are equal.
      */
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    protected boolean areEqual(Object obj1, Object obj2) {
+    protected static boolean areEqual(Object obj1, Object obj2) {
         if (obj1 == null) {
             return (obj2 == null);
         }
@@ -174,7 +172,7 @@ public class TQProperty<R> {
     /**
      * Return the full path by adding the prefix to the property name (null safe).
      */
-    public static String fullPath(String prefix, String name) {
+    protected static String fullPath(String prefix, String name) {
         return (prefix == null) ? name : prefix + "." + name;
     }
 }

@@ -56,12 +56,16 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
     public final R set(int value) {
         if (!areEqual(this.value, value)) {
             this.value = value;
-            changed = true;
             // if (isReady()) {
             expr().set(name, ValueInt.get(value));
             // }
         }
         return root;
+    }
+
+    @Override
+    public R set(Object value) {
+        return set(Integer.valueOf(value.toString()).intValue());
     }
 
     public final int get() {
@@ -70,7 +74,7 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
 
     @Override
     public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeNumberField(propertyName(), value);
+        jgen.writeNumberField(getName(), value);
         return root;
     }
 

@@ -138,7 +138,6 @@ public abstract class Query<T> {
         T set(long value) {
             if (!areEqual(this.value, value)) {
                 this.value = value;
-                changed = true;
                 if (isReady()) {
                     expr().set(name, ValueLong.get(value));
                 }
@@ -279,7 +278,7 @@ public abstract class Query<T> {
         org.lealone.db.table.Table dbTable = table.getDbTable();
         for (TQProperty<T> p : properties) {
             ExpressionColumn c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(),
-                    dbTable.getName(), p.propertyName());
+                    dbTable.getName(), p.getName());
             // c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getColumn(p.propertyName()));
             selectExpressions.add(c);
         }
@@ -307,30 +306,32 @@ public abstract class Query<T> {
     public T orderBy() {
         // Yes this does not actually do anything! We include it because style wise it makes
         // the query nicer to read and suggests that order by definitions are added after this
+
+        whereStack.pop();
+        pushExprList(whereExpression);
         return root;
     }
 
-    /**
-     * Marker that can be used to indicate that the order by clause is defined after this.
-     * <p>
-     * order() and orderBy() are synonyms and both exist for historic reasons.
-     * </p>
-     * <p>
-     * <h2>Example: order by customer name, order date</h2>
-     * <pre>{@code
-     *   List<Order> orders =
-     *          new QOrder()
-     *            .customer.name.ilike("rob")
-     *            .order()
-     *              .customer.name.asc()
-     *              .orderDate.asc()
-     *            .findList();
-     *
-     * }</pre>
-     */
-    public T order() {
-        // Yes this does not actually do anything! We include it because style wise it makes
-        // the query nicer to read and suggests that order by definitions are added after this
+    private ArrayList<Expression> groupExpressions;
+    DefaultExpressionList<T> having;
+
+    @SafeVarargs
+    public final T groupBy(TQProperty<T>... properties) {
+        groupExpressions = new ArrayList<>();
+        org.lealone.db.table.Table dbTable = table.getDbTable();
+        for (TQProperty<T> p : properties) {
+            ExpressionColumn c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(),
+                    dbTable.getName(), p.getName());
+            groupExpressions.add(c);
+        }
+
+        return root;
+    }
+
+    public T having() {
+        whereStack.pop();
+        having = new DefaultExpressionList<>(this, table);
+        pushExprList(having);
         return root;
     }
 
@@ -371,7 +372,7 @@ public abstract class Query<T> {
      * }</pre>
      */
     public T or() {
-        pushExprList(peekExprList().or());
+        peekExprList().or();
         return root;
     }
 
@@ -415,8 +416,28 @@ public abstract class Query<T> {
      * }</pre>
      */
     public T and() {
-        pushExprList(peekExprList().and());
+        peekExprList().and();
         return root;
+    }
+
+    public void printSQL() {
+        String str = whereExpression.getExpression().getSQL();
+        if (groupExpressions != null) {
+            str += " GROUP BY (" + groupExpressions.get(0);
+            for (int i = 1, size = groupExpressions.size(); i < size; i++)
+                str += ", " + groupExpressions.get(i);
+            str += ")";
+            if (having != null) {
+                str += " HAVING " + having.getExpression().getSQL();
+            }
+        }
+        if (!whereExpression.getOrderList().isEmpty()) {
+            str += " ORDER BY " + whereExpression.getOrderList().get(0).getSQL();
+            for (int i = 1, size = whereExpression.getOrderList().size(); i < size; i++)
+                str += ", " + whereExpression.getOrderList().get(i).getSQL();
+        }
+        // reset();
+        System.out.println(str);
     }
 
     /**
@@ -428,35 +449,6 @@ public abstract class Query<T> {
     public T not() {
         pushExprList(peekExprList().not());
         return root;
-    }
-
-    /**
-     * End a list of expressions added by 'OR'.
-     */
-    public T endJunction() {
-        whereStack.pop();
-        return root;
-    }
-
-    /**
-     * End OR junction - synonym for endJunction().
-     */
-    public T endOr() {
-        return endJunction();
-    }
-
-    /**
-     * End AND junction - synonym for endJunction().
-     */
-    public T endAnd() {
-        return endJunction();
-    }
-
-    /**
-     * End NOT junction - synonym for endJunction().
-     */
-    public T endNot() {
-        return endJunction();
     }
 
     /**
@@ -619,6 +611,12 @@ public abstract class Query<T> {
         selectExpressions.add(createRowIdExpressionColumn(table.getDbTable())); // 总是获取rowid
         select.setExpressions(selectExpressions);
         select.addCondition(whereExpression.expression);
+        if (groupExpressions != null) {
+            select.setGroupQuery();
+            select.setGroupBy(groupExpressions);
+            select.setHaving(having.getExpression());
+        }
+        select.setOrder(whereExpression.getOrderList());
         select.init();
         select.prepare();
         logger.info("execute sql: " + select.getPlanSQL());
@@ -822,6 +820,27 @@ public abstract class Query<T> {
     public String toString() {
         JsonObject json = JsonObject.mapFrom(this);
         return json.encode();
+    }
+
+    public T leftParenthesis() {
+        DefaultExpressionList<T> e = new DefaultExpressionList<>(this, table);
+        pushExprList(e);
+        return root;
+    }
+
+    public T lp() {
+        return leftParenthesis();
+    }
+
+    public T rightParenthesis() {
+        return root;
+    }
+
+    public T rp() {
+        ExpressionList<T> right = whereStack.pop();
+        ExpressionList<T> left = peekExprList();
+        left.junction(right);
+        return root;
     }
 
     /**

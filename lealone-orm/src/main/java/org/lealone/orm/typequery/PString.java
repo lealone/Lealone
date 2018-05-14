@@ -178,12 +178,16 @@ public class PString<R> extends PBaseComparable<R, String> {
     public final R set(String value) {
         if (!areEqual(this.value, value)) {
             this.value = value;
-            changed = true;
             // if (isReady()) {
             expr().set(name, ValueString.get(value));
             // }
         }
         return root;
+    }
+
+    @Override
+    public R set(Object value) {
+        return set(value.toString());
     }
 
     public final String get() {
@@ -192,7 +196,7 @@ public class PString<R> extends PBaseComparable<R, String> {
 
     @Override
     public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeStringField(propertyName(), value);
+        jgen.writeStringField(getName(), value);
         return root;
     }
 

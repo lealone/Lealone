@@ -92,6 +92,23 @@ public class DaoTest extends UnitTestBase {
         } catch (RuntimeException e) {
         }
 
+        // 没有指定主键
+        try {
+            new User().delete();
+            fail();
+        } catch (RuntimeException e) {
+        }
+
+        // 没有指定主键
+        try {
+            new User().phone.set(123).delete();
+            fail();
+        } catch (RuntimeException e) {
+        }
+
+        // OK
+        new User().name.set("zhh").delete();
+
         // dao对象序列化后包含isDao字段，并且是true
         JsonObject json = JsonObject.mapFrom(User.dao);
         assertTrue(json.getBoolean("isDao"));
