@@ -1,4 +1,4 @@
-package org.lealone.test.orm.generated;
+package org.lealone.test.generated.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -10,7 +10,7 @@ import org.lealone.orm.typequery.PInteger;
 import org.lealone.orm.typequery.PLong;
 import org.lealone.orm.typequery.PString;
 import org.lealone.orm.typequery.TQProperty;
-import org.lealone.test.orm.generated.Customer.CustomerDeserializer;
+import org.lealone.test.generated.model.Customer.CustomerDeserializer;
 
 /**
  * Model for table 'CUSTOMER'.

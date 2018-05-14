@@ -17,7 +17,7 @@
  */
 package org.lealone.test.service.impl;
 
-import org.lealone.test.service.generated.HelloWorldService;
+import org.lealone.test.generated.service.HelloWorldService;
 
 public class HelloWorldServiceImpl implements HelloWorldService {
 

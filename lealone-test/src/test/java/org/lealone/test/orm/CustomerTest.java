@@ -19,8 +19,9 @@ package org.lealone.test.orm;
 
 import java.util.List;
 
+import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
-import org.lealone.test.orm.generated.Customer;
+import org.lealone.test.generated.model.Customer;
 
 import io.vertx.core.json.JsonObject;
 
@@ -32,7 +33,7 @@ public class CustomerTest extends UnitTestBase {
 
     @Override
     public void test() {
-        createTable();
+        SqlScript.createCustomerTable(this);
         crud();
         json();
     }
@@ -47,15 +48,6 @@ public class CustomerTest extends UnitTestBase {
 
         c = new JsonObject(str).mapTo(Customer.class);
         assertEquals("Rob", c.name.get());
-    }
-
-    void createTable() {
-        System.out.println("create table: customer");
-
-        execute("create table customer(id long, name char(10), notes varchar, phone int)" //
-                + " package 'org.lealone.test.orm.generated'" //
-                + " generate code './src/test/java'" // 生成领域模型类和查询器类的代码
-        );
     }
 
     void crud() {

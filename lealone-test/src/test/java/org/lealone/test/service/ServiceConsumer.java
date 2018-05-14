@@ -17,28 +17,29 @@
  */
 package org.lealone.test.service;
 
-import org.lealone.test.service.generated.HelloWorldService;
-import org.lealone.test.service.generated.User;
-import org.lealone.test.service.generated.UserService;
+import org.lealone.test.generated.model.User;
+import org.lealone.test.generated.service.HelloWorldService;
+import org.lealone.test.generated.service.UserService;
 
 public class ServiceConsumer {
 
-    public static void execute(String url) {
+    public static void callService(String url) {
         HelloWorldService helloWorldService = HelloWorldService.create(url);
         helloWorldService.sayHello();
         String r = helloWorldService.sayGoodbyeTo("zhh");
         System.out.println(r);
 
         UserService userService = UserService.create(url);
-        User user = new User().name.set("rob");
-        user = userService.add(user);
-        System.out.println("user.id=" + user.id.get());
-        user = userService.find(user.id.get());
 
-        user.phone.set(12345678);
+        User user = new User().name.set("zhh").phone.set(123);
+        userService.add(user);
+
+        user = userService.find("zhh");
+
+        user.notes.set("call remote service");
         userService.update(user);
 
-        userService.delete(user.id.get());
+        userService.delete("zhh");
     }
 
 }

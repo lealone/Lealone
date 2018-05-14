@@ -1,4 +1,4 @@
-package org.lealone.test.service.generated;
+package org.lealone.test.generated.service;
 
 import io.vertx.core.json.JsonArray;
 import org.lealone.client.ClientServiceProxy;

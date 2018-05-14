@@ -17,36 +17,29 @@
  */
 package org.lealone.test.service.impl;
 
-import java.sql.Date;
-
-import org.lealone.test.service.generated.User;
-import org.lealone.test.service.generated.UserService;
+import org.lealone.test.generated.model.User;
+import org.lealone.test.generated.service.UserService;
 
 public class UserServiceImpl implements UserService {
 
     @Override
-    public User add(User user) {
-        return user.id.set(1000);
+    public Long add(User user) {
+        return user.insert();
     }
 
     @Override
-    public User find(Long id) {
-        return new User().id.set(id);
+    public User find(String name) {
+        return User.dao.where().name.eq(name).findOne();
     }
 
     @Override
-    public User findByDate(Date d) {
-        return new User().notes.set("date: " + d.toString());
+    public Integer update(User user) {
+        return user.update();
     }
 
     @Override
-    public Boolean update(User user) {
-        return true;
-    }
-
-    @Override
-    public Boolean delete(Long id) {
-        return true;
+    public Integer delete(String name) {
+        return User.dao.where().name.eq(name).delete();
     }
 
 }

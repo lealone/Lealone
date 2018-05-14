@@ -17,8 +17,9 @@
  */
 package org.lealone.test.orm;
 
+import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
-import org.lealone.test.orm.generated.User;
+import org.lealone.test.generated.model.User;
 
 import io.vertx.core.json.JsonObject;
 
@@ -30,10 +31,7 @@ public class DaoTest extends UnitTestBase {
 
     @Override
     public void test() {
-        // 创建表: user
-        execute("create table user(name char(10) primary key, notes varchar, phone int)" //
-                + " package '" + DaoTest.class.getPackage().getName() + ".generated'" //
-                + " generate code './src/test/java'");
+        SqlScript.createUserTable(this);
         crud();
     }
 

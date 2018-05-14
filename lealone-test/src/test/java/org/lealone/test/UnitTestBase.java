@@ -23,12 +23,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 //一个标记类，标识它的子类是进行单元测试的
-public class UnitTestBase extends TestBase {
+public class UnitTestBase extends TestBase implements SqlScript.SqlExecuter {
 
     public UnitTestBase() {
         initTransactionEngine();
     }
 
+    @Override
     public void execute(String sql) {
         try (Connection conn = DriverManager.getConnection(getURL()); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate(sql);

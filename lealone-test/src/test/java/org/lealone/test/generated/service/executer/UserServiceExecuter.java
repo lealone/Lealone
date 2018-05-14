@@ -1,10 +1,10 @@
-package org.lealone.test.fullstack.generated.executer;
+package org.lealone.test.generated.service.executer;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.lealone.db.service.ServiceExecuter;
-import org.lealone.test.fullstack.FullStackTest.UserServiceImpl;
-import org.lealone.test.fullstack.generated.User;
+import org.lealone.test.generated.model.User;
+import org.lealone.test.service.impl.UserServiceImpl;
 
 /**
  * Service executer for 'user_service'.

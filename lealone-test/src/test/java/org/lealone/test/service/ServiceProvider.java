@@ -17,27 +17,14 @@
  */
 package org.lealone.test.service;
 
+import org.lealone.test.SqlScript;
+import org.lealone.test.SqlScript.SqlExecuter;
+
 public class ServiceProvider {
 
-    public static void execute(ServiceTest test) {
-        // 创建服务: user_service
-        test.execute("create service if not exists user_service (" //
-                + "             add(user user) user," // 第一个user是参数名，第二个user是参数类型，第三个user是返回值类型
-                + "             find(id long) user," //
-                + "             find_by_date(d date) user," //
-                + "             update(user user) boolean," //
-                + "             delete(id long) boolean," //
-                + "         ) package '" + ServiceTest.packageName + ".generated'" //
-                + "           implement by '" + ServiceTest.packageName + ".impl.UserServiceImpl'" //
-                + "           generate code './src/test/java'");
-
-        // 创建服务: hello_world_service
-        test.execute("create service hello_world_service (" //
-                + "             say_hello() void," //
-                + "             say_goodbye_to(name varchar) varchar" //
-                + "         ) package '" + ServiceTest.packageName + ".generated'" //
-                + "           implement by '" + ServiceTest.packageName + ".impl.HelloWorldServiceImpl'" //
-                + "           generate code './src/test/java'");
+    public static void createService(SqlExecuter executer) {
+        SqlScript.createUserService(executer);
+        SqlScript.createHelloWorldService(executer);
     }
 
 }

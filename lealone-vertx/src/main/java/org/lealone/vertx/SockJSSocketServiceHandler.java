@@ -59,7 +59,7 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
                 result = "unknown request type: " + type + ", serviceName: " + serviceName;
                 logger.error(result);
             }
-            ja.add(serviceName);
+            ja.add(a[1]); // 前端传来的方法名不一定是下划线风格的，所以用最初的
             ja.add(result);
             sockJSSocket.write(Buffer.buffer(ja.toString()));
         });

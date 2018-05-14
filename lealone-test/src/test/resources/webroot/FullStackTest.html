@@ -7,7 +7,15 @@
 <body lang="en">
     <h1>FullStackTest, see console log</h1>
 	<script >
-	var s = lealone.getService("http://localhost:8080/api", "user_service");
+	var sockjsUrl = "http://localhost:8080/api";
+
+	var s = lealone.getService(sockjsUrl, "hello_world_service");
+	s.sayHello();
+	s.sayGoodbyeTo("zhh", function(message) {
+	    console.log(message);
+	});
+	
+	s = lealone.getService(sockjsUrl, "user_service");
 	 
 	var user = { name: "zhh", phone: 123 }
 	s.add(user, function(rowId) {

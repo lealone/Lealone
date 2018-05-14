@@ -17,6 +17,7 @@
  */
 package org.lealone.test.orm;
 
+import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
 
 public class TypeTest extends UnitTestBase {
@@ -27,54 +28,6 @@ public class TypeTest extends UnitTestBase {
 
     @Override
     public void test() {
-        // 21种类型，目前不支持GEOMETRY类型
-        // INT
-        // BOOLEAN
-        // TINYINT
-        // SMALLINT
-        // BIGINT
-        // IDENTITY
-        // DECIMAL
-        // DOUBLE
-        // REAL
-        // TIME
-        // DATE
-        // TIMESTAMP
-        // BINARY
-        // OTHER
-        // VARCHAR
-        // VARCHAR_IGNORECASE
-        // CHAR
-        // BLOB
-        // CLOB
-        // UUID
-        // ARRAY
-        execute("CREATE TABLE all_type (" //
-                + " f1  INT," //
-                + " f2  BOOLEAN," //
-                + " f3  TINYINT," //
-                + " f4  SMALLINT," //
-                + " f5  BIGINT," //
-                + " f6  IDENTITY," //
-                + " f7  DECIMAL," //
-                + " f8  DOUBLE," //
-                + " f9  REAL," //
-                + " f10 TIME," //
-                + " f11 DATE," //
-                + " f12 TIMESTAMP," //
-                + " f13 BINARY," //
-                + " f14 OTHER," //
-                + " f15 VARCHAR," //
-                + " f16 VARCHAR_IGNORECASE," //
-                + " f17 CHAR," //
-                + " f18 BLOB," //
-                + " f19 CLOB," //
-                + " f20 UUID," //
-                + " f21 ARRAY" //
-                + ")" //
-                + " PACKAGE 'org.lealone.test.orm.generated'" //
-                + " GENERATE CODE './src/test/java'");
-
-        System.out.println("create table: all_type");
+        SqlScript.createAllTypeTable(this);
     }
 }

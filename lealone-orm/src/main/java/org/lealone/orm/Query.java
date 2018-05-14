@@ -275,6 +275,7 @@ public abstract class Query<T> {
      */
     @SafeVarargs
     public final T select(TQProperty<T>... properties) {
+        getTable();
         org.lealone.db.table.Table dbTable = table.getDbTable();
         for (TQProperty<T> p : properties) {
             ExpressionColumn c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(),
@@ -317,6 +318,7 @@ public abstract class Query<T> {
 
     @SafeVarargs
     public final T groupBy(TQProperty<T>... properties) {
+        getTable();
         groupExpressions = new ArrayList<>();
         org.lealone.db.table.Table dbTable = table.getDbTable();
         for (TQProperty<T> p : properties) {

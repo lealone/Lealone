@@ -1,4 +1,4 @@
-package org.lealone.test.service.generated.executer;
+package org.lealone.test.generated.service.executer;
 
 import io.vertx.core.json.JsonArray;
 import org.lealone.db.service.ServiceExecuter;

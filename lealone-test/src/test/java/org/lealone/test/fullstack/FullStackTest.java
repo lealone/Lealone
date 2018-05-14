@@ -17,9 +17,10 @@
  */
 package org.lealone.test.fullstack;
 
+import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
-import org.lealone.test.fullstack.generated.User;
-import org.lealone.test.fullstack.generated.UserService;
+import org.lealone.test.service.ServiceConsumer;
+import org.lealone.test.service.ServiceProvider;
 import org.lealone.vertx.LealoneHttpServer;
 
 public class FullStackTest extends UnitTestBase {
@@ -30,10 +31,17 @@ public class FullStackTest extends UnitTestBase {
 
     @Override
     public void test() {
-        init();
+        // 设置jdbc url(可选)
+        setJdbcUrl();
+
+        // 创建user表
+        SqlScript.createUserTable(this);
+
+        // 创建服务
+        ServiceProvider.createService(this);
 
         // 从后端调用服务
-        callService();
+        ServiceConsumer.callService(getURL());
 
         // 启动HttpServer
         // 在浏览器中打开下面这个URL，测试从前端发起服务调用，在console里面看结果:
@@ -41,71 +49,10 @@ public class FullStackTest extends UnitTestBase {
         LealoneHttpServer.start(8080, "./src/test/resources/webroot/", "/api/*");
     }
 
-    void setJdbcUrl() {
+    private void setJdbcUrl() {
         String url = getURL();
         System.setProperty("lealone.jdbc.url", url);
         System.out.println("jdbc url: " + url);
-    }
-
-    void init() {
-        setJdbcUrl();
-        String packageName = FullStackTest.class.getPackage().getName();
-
-        // 创建表: user
-        execute("create table user(name char(10) primary key, notes varchar, phone int)" //
-                + " package '" + packageName + ".generated'" //
-                + " generate code './src/test/java'");
-
-        System.out.println("create table: user");
-
-        // 创建服务: user_service
-        execute("create service if not exists user_service (" //
-                + " add(user user) long," // 第一个user是参数名，第二个user是参数类型
-                + " find(name varchar) user," //
-                + " update(user user) int," //
-                + " delete(name varchar) int)" //
-                + " package '" + packageName + ".generated'" //
-                + " implement by '" + UserServiceImpl.class.getCanonicalName() + "'" // 不能用getClassName()，会包含$字符
-                + " generate code './src/test/java'");
-
-        System.out.println("create service: user_service");
-    }
-
-    void callService() {
-        String url = getURL();
-        UserService userService = UserService.create(url);
-
-        User user = new User().name.set("zhh").phone.set(123);
-        userService.add(user);
-
-        user = userService.find("zhh");
-
-        user.notes.set("call remote service");
-        userService.update(user);
-
-        userService.delete("zhh");
-    }
-
-    public static class UserServiceImpl implements UserService {
-        @Override
-        public Long add(User user) {
-            return user.insert();
-        }
-
-        @Override
-        public User find(String name) {
-            return User.dao.where().name.eq(name).findOne();
-        }
-
-        @Override
-        public Integer update(User user) {
-            return user.update();
-        }
-
-        @Override
-        public Integer delete(String name) {
-            return User.dao.where().name.eq(name).delete();
-        }
     }
 
 }

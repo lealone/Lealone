@@ -17,8 +17,9 @@
  */
 package org.lealone.test.orm;
 
+import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
-import org.lealone.test.orm.generated.User;
+import org.lealone.test.generated.model.User;
 
 public class ExpressionTest extends UnitTestBase {
 
@@ -28,8 +29,7 @@ public class ExpressionTest extends UnitTestBase {
 
     @Override
     public void test() {
-        // 创建表: user
-        execute("create table user(name char(10) primary key, notes varchar, phone int)");
+        SqlScript.createUserTable(this);
 
         User d = User.dao;
         // select name, phone from user where name = 'zhh' and (notes = 'notes1' or notes = 'notes2')

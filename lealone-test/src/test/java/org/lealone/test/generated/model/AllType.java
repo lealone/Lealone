@@ -1,4 +1,4 @@
-package org.lealone.test.orm.generated;
+package org.lealone.test.generated.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -25,7 +25,7 @@ import org.lealone.orm.typequery.PTime;
 import org.lealone.orm.typequery.PTimestamp;
 import org.lealone.orm.typequery.PUuid;
 import org.lealone.orm.typequery.TQProperty;
-import org.lealone.test.orm.generated.AllType.AllTypeDeserializer;
+import org.lealone.test.generated.model.AllType.AllTypeDeserializer;
 
 /**
  * Model for table 'ALL_TYPE'.
