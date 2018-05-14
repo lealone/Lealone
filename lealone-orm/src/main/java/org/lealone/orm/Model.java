@@ -28,6 +28,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
@@ -154,8 +155,7 @@ public abstract class Model<T> {
 
     private final HashSet<NVPair> nvPairs = new HashSet<>();
 
-    protected Table table;
-    protected final String tableName;
+    protected final ModelTable modelTable;
     boolean isDao;
 
     public boolean isDao() {
@@ -175,9 +175,8 @@ public abstract class Model<T> {
     */
     private ArrayStack<ExpressionList<T>> whereStack;
 
-    public Model(Table table, String tableName, boolean isDao) {
-        this.table = table;
-        this.tableName = tableName;
+    public Model(ModelTable table, boolean isDao) {
+        this.modelTable = table;
         this.isDao = isDao;
         reset();
     }
@@ -200,7 +199,7 @@ public abstract class Model<T> {
     private void reset() {
         whereStack = null;
         selectExpressions.clear();
-        whereExpression = new DefaultExpressionList<T>(this, table);
+        whereExpression = new DefaultExpressionList<T>(this, modelTable);
         nvPairs.clear();
     }
 
@@ -231,12 +230,8 @@ public abstract class Model<T> {
      */
     @SafeVarargs
     public final T select(TQProperty<T>... properties) {
-        getTable();
-        org.lealone.db.table.Table dbTable = table.getDbTable();
         for (TQProperty<T> p : properties) {
-            ExpressionColumn c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(),
-                    dbTable.getName(), p.getName());
-            // c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getColumn(p.propertyName()));
+            ExpressionColumn c = getExpressionColumn(p.getName());
             selectExpressions.add(c);
         }
         return root;
@@ -274,21 +269,23 @@ public abstract class Model<T> {
 
     @SafeVarargs
     public final T groupBy(TQProperty<T>... properties) {
-        getTable();
         groupExpressions = new ArrayList<>();
-        org.lealone.db.table.Table dbTable = table.getDbTable();
         for (TQProperty<T> p : properties) {
-            ExpressionColumn c = new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(),
-                    dbTable.getName(), p.getName());
+            ExpressionColumn c = getExpressionColumn(p.getName());
             groupExpressions.add(c);
         }
 
         return root;
     }
 
+    private ExpressionColumn getExpressionColumn(String propertyName) {
+        return new ExpressionColumn(modelTable.getDatabase(), modelTable.getSchemaName(), modelTable.getTableName(),
+                propertyName);
+    }
+
     public T having() {
         whereStack.pop();
-        having = new DefaultExpressionList<>(this, table);
+        having = new DefaultExpressionList<>(this, modelTable);
         pushExprList(having);
         return root;
     }
@@ -483,14 +480,13 @@ public abstract class Model<T> {
      */
     public T findOne() {
         checkDao("findOne");
-        getTable();
-        Select select = new Select(table.getSession());
-        TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
+        Select select = new Select(modelTable.getSession());
+        TableFilter tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
         select.addTableFilter(tableFilter, true);
         if (selectExpressions.isEmpty()) {
             selectExpressions.add(new Wildcard(null, null));
         }
-        selectExpressions.add(createRowIdExpressionColumn(table.getDbTable())); // 总是获取rowid
+        selectExpressions.add(getExpressionColumn(Column.ROWID)); // 总是获取rowid
         select.setExpressions(selectExpressions);
         select.addCondition(whereExpression.expression);
         select.setLimit(ValueExpression.get(ValueInt.get(1)));
@@ -501,11 +497,6 @@ public abstract class Model<T> {
         result.next();
         reset();
         return deserialize(result);
-    }
-
-    private ExpressionColumn createRowIdExpressionColumn(org.lealone.db.table.Table dbTable) {
-        return new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(), dbTable.getName(),
-                Column.ROWID);
     }
 
     @SuppressWarnings("unchecked")
@@ -520,7 +511,7 @@ public abstract class Model<T> {
             map.put(result.getColumnName(i), row[i]);
         }
 
-        Model q = newInstance(table);
+        Model q = newInstance(modelTable);
         if (q != null) {
             for (TQProperty p : q.tqProperties) {
                 p.deserialize(map);
@@ -530,7 +521,7 @@ public abstract class Model<T> {
         return (T) q;
     }
 
-    protected Model newInstance(Table t) {
+    protected Model newInstance(ModelTable t) {
         return null;
     }
 
@@ -559,14 +550,13 @@ public abstract class Model<T> {
      */
     public List<T> findList() {
         checkDao("findList");
-        getTable();
-        Select select = new Select(table.getSession());
-        TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
+        Select select = new Select(modelTable.getSession());
+        TableFilter tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
         select.addTableFilter(tableFilter, true);
         if (selectExpressions.isEmpty()) {
             selectExpressions.add(new Wildcard(null, null));
         }
-        selectExpressions.add(createRowIdExpressionColumn(table.getDbTable())); // 总是获取rowid
+        selectExpressions.add(getExpressionColumn(Column.ROWID)); // 总是获取rowid
         select.setExpressions(selectExpressions);
         select.addCondition(whereExpression.expression);
         if (groupExpressions != null) {
@@ -595,10 +585,9 @@ public abstract class Model<T> {
      */
     public int findCount() {
         checkDao("findCount");
-        getTable();
-        Select select = new Select(table.getSession());
+        Select select = new Select(modelTable.getSession());
         select.setGroupQuery();
-        TableFilter tableFilter = new TableFilter(table.getSession(), table.getDbTable(), null, true, null);
+        TableFilter tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
         select.addTableFilter(tableFilter, true);
         selectExpressions.clear();
         Aggregate a = new Aggregate(Aggregate.COUNT_ALL, null, select, false);
@@ -625,10 +614,9 @@ public abstract class Model<T> {
      * @return the number of beans/rows that were deleted.
      */
     public int delete() {
-        getTable();
-        org.lealone.db.table.Table dbTable = table.getDbTable();
-        Delete delete = new Delete(table.getSession());
-        TableFilter tableFilter = new TableFilter(table.getSession(), dbTable, null, true, null);
+        Table dbTable = modelTable.getTable();
+        Delete delete = new Delete(modelTable.getSession());
+        TableFilter tableFilter = new TableFilter(modelTable.getSession(), dbTable, null, true, null);
         delete.setTableFilter(tableFilter);
         if (whereExpression.expression == null) {
             maybeCreateWhereExpression(dbTable);
@@ -648,10 +636,9 @@ public abstract class Model<T> {
     }
 
     public int update() {
-        getTable();
-        org.lealone.db.table.Table dbTable = table.getDbTable();
-        Update update = new Update(table.getSession());
-        TableFilter tableFilter = new TableFilter(table.getSession(), dbTable, null, true, null);
+        Table dbTable = modelTable.getTable();
+        Update update = new Update(modelTable.getSession());
+        TableFilter tableFilter = new TableFilter(modelTable.getSession(), dbTable, null, true, null);
         update.setTableFilter(tableFilter);
         if (whereExpression.expression == null) {
             maybeCreateWhereExpression(dbTable);
@@ -673,7 +660,7 @@ public abstract class Model<T> {
         return count;
     }
 
-    private void maybeCreateWhereExpression(org.lealone.db.table.Table dbTable) {
+    private void maybeCreateWhereExpression(Table dbTable) {
         // 没有指定where条件时，如果存在ROWID，则用ROWID当where条件
         if (_rowid_.get() != 0) {
             peekExprList().eq(Column.ROWID, _rowid_.get());
@@ -697,20 +684,8 @@ public abstract class Model<T> {
         }
     }
 
-    // 可能是延迟关联到Table
-    Table getTable() {
-        if (table == null) {
-            String url = System.getProperty("lealone.jdbc.url");
-            if (url == null) {
-                throw new RuntimeException("'lealone.jdbc.url' must be set");
-            }
-            table = new Table(url, tableName);
-        }
-        return table;
-    }
-
     private void commit() {
-        table.getSession().commit();
+        modelTable.getSession().commit();
     }
 
     public long insert() {
@@ -720,9 +695,8 @@ public abstract class Model<T> {
             throw new UnsupportedOperationException("The insert operation is not allowed for " + name
                     + ".dao,  please use new " + name + "().insert() instead.");
         }
-        getTable();
-        org.lealone.db.table.Table dbTable = table.getDbTable();
-        Insert insert = new Insert(table.getSession());
+        Table dbTable = modelTable.getTable();
+        Insert insert = new Insert(modelTable.getSession());
         int size = nvPairs.size();
         Column[] columns = new Column[size];
         Expression[] expressions = new Expression[size];
@@ -738,7 +712,7 @@ public abstract class Model<T> {
         insert.prepare();
         logger.info("execute sql: " + insert.getPlanSQL());
         insert.executeUpdate();
-        long rowId = table.getSession().getLastRowKey();
+        long rowId = modelTable.getSession().getLastRowKey();
         _rowid_.set(rowId);
         commit();
         reset();
@@ -765,13 +739,13 @@ public abstract class Model<T> {
     }
 
     public boolean databaseToUpper() {
-        if (table == null)
+        if (modelTable == null)
             return false;
-        return table.getSession().getDatabase().getSettings().databaseToUpper;
+        return modelTable.getSession().getDatabase().getSettings().databaseToUpper;
     }
 
     public boolean isReady() {
-        return table != null;
+        return modelTable != null;
     }
 
     @Override
@@ -781,7 +755,7 @@ public abstract class Model<T> {
     }
 
     public T leftParenthesis() {
-        DefaultExpressionList<T> e = new DefaultExpressionList<>(this, table);
+        DefaultExpressionList<T> e = new DefaultExpressionList<>(this, modelTable);
         pushExprList(e);
         return root;
     }

@@ -33,10 +33,9 @@ import org.lealone.sql.expression.ValueExpression;
 
 public class DefaultExpressionList<T> implements ExpressionList<T> {
 
-    org.lealone.db.table.Table dbTable;
-    Table table;
     org.lealone.sql.expression.Expression expression;
     Model<?> model;
+    ModelTable table;
 
     boolean isAnd = true;
 
@@ -51,24 +50,13 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
         return expression;
     }
 
-    public DefaultExpressionList(Model<?> model, Table table) {
+    public DefaultExpressionList(Model<?> model, ModelTable table) {
         this.table = table;
-        if (table != null)
-            this.dbTable = table.getDbTable();
         this.model = model;
     }
 
-    Table getTable() {
-        table = model.getTable();
-        dbTable = table.getDbTable();
-        return table;
-    }
-
     private ExpressionColumn getExpressionColumn(String propertyName) {
-        getTable();
-        return new ExpressionColumn(dbTable.getDatabase(), dbTable.getSchema().getName(), dbTable.getName(),
-                propertyName);
-        // return new ExpressionColumn(dbTable.getDatabase(), dbTable.getColumn(propertyName));
+        return new ExpressionColumn(table.getDatabase(), table.getSchemaName(), table.getTableName(), propertyName);
     }
 
     private Comparison createComparison(String propertyName, Object value, int compareType) {
@@ -235,7 +223,7 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
     public ExpressionList<T> like(String propertyName, String value) {
         ExpressionColumn ec = getExpressionColumn(propertyName);
         ValueExpression v = ValueExpression.get(ValueString.get(value));
-        CompareLike like = new CompareLike(dbTable.getDatabase(), ec, v, null, false);
+        CompareLike like = new CompareLike(table.getDatabase(), ec, v, null, false);
         setRootExpression(like);
         return this;
     }

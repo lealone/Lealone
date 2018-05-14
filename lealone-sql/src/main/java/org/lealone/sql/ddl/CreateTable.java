@@ -345,10 +345,10 @@ public class CreateTable extends SchemaStatement {
         StringBuilder init = new StringBuilder();
         TreeSet<String> importSet = new TreeSet<>();
 
-        importSet.add("org.lealone.orm.Table");
         importSet.add("org.lealone.orm.Model");
         importSet.add("org.lealone.orm.ModelDeserializer");
         importSet.add("org.lealone.orm.ModelSerializer");
+        importSet.add("org.lealone.orm.ModelTable");
         importSet.add(TYPE_QUERY_PACKAGE_NAME + ".TQProperty");
         importSet.add("com.fasterxml.jackson.databind.annotation.JsonDeserialize");
         importSet.add("com.fasterxml.jackson.databind.annotation.JsonSerialize");
@@ -392,22 +392,23 @@ public class CreateTable extends SchemaStatement {
                 .append("(null, true);\r\n");
         buff.append("\r\n");
         buff.append("    public static ").append(className).append(" create(String url) {\r\n");
-        buff.append("        Table t = new Table(url, \"").append(data.tableName).append("\");\r\n");
+        buff.append("        ModelTable t = new ModelTable(url, \"").append(data.tableName).append("\");\r\n");
         buff.append("        return new ").append(className).append("(t);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append(fields);
         buff.append("\r\n");
         buff.append("    public ").append(className).append("() {\r\n");
-        buff.append("        this(null, false);\r\n");
+        buff.append("        this(null);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
-        buff.append("    public ").append(className).append("(Table t) {\r\n");
+        buff.append("    private ").append(className).append("(ModelTable t) {\r\n");
         buff.append("        this(t, false);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
-        buff.append("    private ").append(className).append("(Table t, boolean isDao) {\r\n");
-        buff.append("        super(t, \"").append(data.tableName).append("\", isDao);\r\n");
+        buff.append("    private ").append(className).append("(ModelTable t, boolean isDao) {\r\n");
+        buff.append("        super(t == null ? new ModelTable(\"").append(data.tableName)
+                .append("\") : t, isDao);\r\n");
         buff.append("        super.setRoot(this);\r\n");
         buff.append("\r\n");
         buff.append(init);
@@ -415,7 +416,7 @@ public class CreateTable extends SchemaStatement {
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    @Override\r\n");
-        buff.append("    protected ").append(className).append(" newInstance(Table t) {\r\n");
+        buff.append("    protected ").append(className).append(" newInstance(ModelTable t) {\r\n");
         buff.append("        return new ").append(className).append("(t);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");

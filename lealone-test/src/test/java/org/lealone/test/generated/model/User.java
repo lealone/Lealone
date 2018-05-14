@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelDeserializer;
 import org.lealone.orm.ModelSerializer;
-import org.lealone.orm.Table;
+import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PInteger;
 import org.lealone.orm.property.PLong;
 import org.lealone.orm.property.PString;
@@ -24,7 +24,7 @@ public class User extends Model<User> {
     public static final User dao = new User(null, true);
 
     public static User create(String url) {
-        Table t = new Table(url, "USER");
+        ModelTable t = new ModelTable(url, "USER");
         return new User(t);
     }
 
@@ -34,15 +34,15 @@ public class User extends Model<User> {
     public final PLong<User> id;
 
     public User() {
-        this(null, false);
+        this(null);
     }
 
-    public User(Table t) {
+    private User(ModelTable t) {
         this(t, false);
     }
 
-    private User(Table t, boolean isDao) {
-        super(t, "USER", isDao);
+    private User(ModelTable t, boolean isDao) {
+        super(t == null ? new ModelTable("USER") : t, isDao);
         super.setRoot(this);
 
         this.name = new PString<>("NAME", this);
@@ -53,7 +53,7 @@ public class User extends Model<User> {
     }
 
     @Override
-    protected User newInstance(Table t) {
+    protected User newInstance(ModelTable t) {
         return new User(t);
     }
 

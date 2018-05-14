@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelDeserializer;
 import org.lealone.orm.ModelSerializer;
-import org.lealone.orm.Table;
+import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PArray;
 import org.lealone.orm.property.PBigDecimal;
 import org.lealone.orm.property.PBlob;
@@ -39,7 +39,7 @@ public class AllType extends Model<AllType> {
     public static final AllType dao = new AllType(null, true);
 
     public static AllType create(String url) {
-        Table t = new Table(url, "ALL_TYPE");
+        ModelTable t = new ModelTable(url, "ALL_TYPE");
         return new AllType(t);
     }
 
@@ -66,15 +66,15 @@ public class AllType extends Model<AllType> {
     public final PArray<AllType> f21;
 
     public AllType() {
-        this(null, false);
+        this(null);
     }
 
-    public AllType(Table t) {
+    private AllType(ModelTable t) {
         this(t, false);
     }
 
-    private AllType(Table t, boolean isDao) {
-        super(t, "ALL_TYPE", isDao);
+    private AllType(ModelTable t, boolean isDao) {
+        super(t == null ? new ModelTable("ALL_TYPE") : t, isDao);
         super.setRoot(this);
 
         this.f1 = new PInteger<>("F1", this);
@@ -102,7 +102,7 @@ public class AllType extends Model<AllType> {
     }
 
     @Override
-    protected AllType newInstance(Table t) {
+    protected AllType newInstance(ModelTable t) {
         return new AllType(t);
     }
 

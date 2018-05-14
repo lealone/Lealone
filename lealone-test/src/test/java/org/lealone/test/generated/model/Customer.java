@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelDeserializer;
 import org.lealone.orm.ModelSerializer;
-import org.lealone.orm.Table;
+import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PInteger;
 import org.lealone.orm.property.PLong;
 import org.lealone.orm.property.PString;
@@ -24,7 +24,7 @@ public class Customer extends Model<Customer> {
     public static final Customer dao = new Customer(null, true);
 
     public static Customer create(String url) {
-        Table t = new Table(url, "CUSTOMER");
+        ModelTable t = new ModelTable(url, "CUSTOMER");
         return new Customer(t);
     }
 
@@ -34,15 +34,15 @@ public class Customer extends Model<Customer> {
     public final PInteger<Customer> phone;
 
     public Customer() {
-        this(null, false);
+        this(null);
     }
 
-    public Customer(Table t) {
+    private Customer(ModelTable t) {
         this(t, false);
     }
 
-    private Customer(Table t, boolean isDao) {
-        super(t, "CUSTOMER", isDao);
+    private Customer(ModelTable t, boolean isDao) {
+        super(t == null ? new ModelTable("CUSTOMER") : t, isDao);
         super.setRoot(this);
 
         this.id = new PLong<>("ID", this);
@@ -53,7 +53,7 @@ public class Customer extends Model<Customer> {
     }
 
     @Override
-    protected Customer newInstance(Table t) {
+    protected Customer newInstance(ModelTable t) {
         return new Customer(t);
     }
 
