@@ -15,32 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
-import java.util.UUID;
+import java.sql.Timestamp;
 
 /**
- * UUID property.
+ * Property for java sql Timestamp.
  *
- * @param <R> the root query bean type
+ * @param <R> the root model bean type
  */
-public class PUuid<R> extends PBaseValueEqual<R, UUID> {
+public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
 
     /**
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
-    public PUuid(String name, R root) {
+    public PTimestamp(String name, R root) {
         super(name, root);
     }
 
     /**
      * Construct with additional path prefix.
      */
-    public PUuid(String name, R root, String prefix) {
+    public PTimestamp(String name, R root, String prefix) {
         super(name, root, prefix);
     }
-
 }

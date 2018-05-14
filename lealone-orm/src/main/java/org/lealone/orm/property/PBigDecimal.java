@@ -15,29 +15,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
+
+import java.math.BigDecimal;
 
 /**
- * Byte property.
- *
- * @param <R> the root query bean type
+ * BigDecimal property.
+ * @param <R> the root model bean type
  */
-public class PByte<R> extends PBaseNumber<R, Byte> {
+public class PBigDecimal<R> extends PBaseNumber<R, BigDecimal> {
 
     /**
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
-    public PByte(String name, R root) {
+    public PBigDecimal(String name, R root) {
         super(name, root);
     }
 
     /**
      * Construct with additional path prefix.
      */
-    public PByte(String name, R root, String prefix) {
+    public PBigDecimal(String name, R root, String prefix) {
         super(name, root, prefix);
     }
 

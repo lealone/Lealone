@@ -15,49 +15,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
 import java.io.IOException;
 import java.util.HashMap;
 
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueInt;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.NumericNode;
 
 /**
- * Long property.
+ * Integer property.
  *
- * @param <R> the root query bean type
+ * @param <R> the root model bean type
  */
-public class PLong<R> extends PBaseNumber<R, Long> {
+public class PInteger<R> extends PBaseNumber<R, Integer> {
 
-    private long value;
+    private int value;
 
     /**
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
-    public PLong(String name, R root) {
+    public PInteger(String name, R root) {
         super(name, root);
     }
 
     /**
      * Construct with additional path prefix.
      */
-    public PLong(String name, R root, String prefix) {
+    public PInteger(String name, R root, String prefix) {
         super(name, root, prefix);
     }
 
-    public R set(long value) {
+    public final R set(int value) {
         if (!areEqual(this.value, value)) {
             this.value = value;
             // if (isReady()) {
-            expr().set(name, ValueLong.get(value));
+            expr().set(name, ValueInt.get(value));
             // }
         }
         return root;
@@ -65,10 +65,10 @@ public class PLong<R> extends PBaseNumber<R, Long> {
 
     @Override
     public R set(Object value) {
-        return set(Long.valueOf(value.toString()).longValue());
+        return set(Integer.valueOf(value.toString()).intValue());
     }
 
-    public final long get() {
+    public final int get() {
         return value;
     }
 
@@ -84,7 +84,7 @@ public class PLong<R> extends PBaseNumber<R, Long> {
         if (node == null) {
             return root;
         }
-        set(((NumericNode) node).asLong());
+        set(((NumericNode) node).asInt());
         return root;
     }
 
@@ -92,9 +92,8 @@ public class PLong<R> extends PBaseNumber<R, Long> {
     public R deserialize(HashMap<String, Value> map) {
         Value v = map.get(name);
         if (v != null) {
-            value = v.getLong();
+            value = v.getInt();
         }
         return root;
     }
-
 }

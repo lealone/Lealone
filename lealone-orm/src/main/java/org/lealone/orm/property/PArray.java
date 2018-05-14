@@ -15,12 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
 /**
  * Array property with E as the element type.
  *
- * @param <R> the root query bean type
+ * @param <R> the root model bean type
  */
 public class PArray<R> extends TQProperty<R> {
 
@@ -28,7 +28,7 @@ public class PArray<R> extends TQProperty<R> {
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
     public PArray(String name, R root) {
         super(name, root);

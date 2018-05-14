@@ -25,24 +25,24 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 
-public abstract class QueryDeserializer<T> extends JsonDeserializer<T> {
+public abstract class ModelDeserializer<T> extends JsonDeserializer<T> {
     @SuppressWarnings("unchecked")
     @Override
     public T deserialize(JsonParser p, DeserializationContext ctxt) throws IOException, JsonProcessingException {
         JsonNode node = p.getCodec().readTree(p);
-        Query<T> q = newQueryInstance();
-        q.deserialize(node);
+        Model<T> m = newModelInstance();
+        m.deserialize(node);
 
         JsonNode n = node.get("isDao");
         if (n == null) {
-            q.isDao = false;
+            m.isDao = false;
             // 如果不通过JsonSerializer得到的json串不一定包含isDao字段(比如前端直接传来的json串)，所以不抛异常
             // DbException.throwInternalError("The isDao field is missing");
         } else {
-            q.isDao = n.booleanValue();
+            m.isDao = n.booleanValue();
         }
-        return (T) q;
+        return (T) m;
     }
 
-    protected abstract Query<T> newQueryInstance();
+    protected abstract Model<T> newModelInstance();
 }

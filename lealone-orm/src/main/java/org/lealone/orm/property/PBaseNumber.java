@@ -15,12 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
 /**
  * Base property for number types.
  *
- * @param <R> the root query bean type
+ * @param <R> the root model bean type
  * @param <T> the number type
  */
 @SuppressWarnings("rawtypes")
@@ -30,7 +30,7 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
     public PBaseNumber(String name, R root) {
         super(name, root);
@@ -49,7 +49,7 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * Is equal to.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R equalTo(int value) {
         expr().eq(name, value);
@@ -60,7 +60,7 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * Greater than.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R greaterThan(int value) {
         expr().gt(name, value);
@@ -71,7 +71,7 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * Less than.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R lessThan(int value) {
         expr().lt(name, value);
@@ -82,7 +82,7 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * Is equal to.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R eq(int value) {
         expr().eq(name, value);
@@ -93,7 +93,7 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * Greater than.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R gt(int value) {
         expr().gt(name, value);
@@ -104,7 +104,7 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * Less than.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R lt(int value) {
         expr().lt(name, value);
@@ -116,7 +116,7 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      *
      * @param lower the lower bind value
      * @param upper the upper bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R between(int lower, int upper) {
         expr().between(name, lower, upper);

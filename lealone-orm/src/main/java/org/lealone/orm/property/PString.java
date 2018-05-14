@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -29,7 +29,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 /**
  * String property.
  *
- * @param <R> the root query bean type
+ * @param <R> the root model bean type
  */
 public class PString<R> extends PBaseComparable<R, String> {
 
@@ -39,7 +39,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
     public PString(String name, R root) {
         super(name, root);
@@ -56,7 +56,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Case insensitive is equal to.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R ieq(String value) {
         expr().ieq(name, value);
@@ -67,7 +67,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Case insensitive is equal to.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R iequalTo(String value) {
         expr().ieq(name, value);
@@ -78,7 +78,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Like - include '%' and '_' placeholders as necessary.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R like(String value) {
         expr().like(name, value);
@@ -89,7 +89,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Starts with - uses a like with '%' wildcard added to the end.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R startsWith(String value) {
         expr().startsWith(name, value);
@@ -100,7 +100,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Ends with - uses a like with '%' wildcard added to the beginning.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R endsWith(String value) {
         expr().endsWith(name, value);
@@ -111,7 +111,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Contains - uses a like with '%' wildcard added to the beginning and end.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R contains(String value) {
         expr().contains(name, value);
@@ -122,7 +122,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Case insensitive like.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R ilike(String value) {
         expr().ilike(name, value);
@@ -133,7 +133,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Case insensitive starts with.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R istartsWith(String value) {
         expr().istartsWith(name, value);
@@ -144,7 +144,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Case insensitive ends with.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R iendsWith(String value) {
         expr().iendsWith(name, value);
@@ -155,7 +155,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * Case insensitive contains.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public R icontains(String value) {
         expr().icontains(name, value);

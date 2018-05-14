@@ -15,34 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
-import org.lealone.db.value.ValueJavaObject;
+import java.util.UUID;
 
-public class PObject<R> extends TQProperty<R> {
+/**
+ * UUID property.
+ *
+ * @param <R> the root model bean type
+ */
+public class PUuid<R> extends PBaseValueEqual<R, UUID> {
 
-    private Object value;
-
-    public PObject(String name, R root) {
+    /**
+     * Construct with a property name and root instance.
+     *
+     * @param name property name
+     * @param root the root model bean instance
+     */
+    public PUuid(String name, R root) {
         super(name, root);
     }
 
-    public PObject(String name, R root, String prefix) {
+    /**
+     * Construct with additional path prefix.
+     */
+    public PUuid(String name, R root, String prefix) {
         super(name, root, prefix);
-    }
-
-    public R set(Object value) {
-        if (!areEqual(this.value, value)) {
-            this.value = value;
-            if (isReady()) {
-                expr().set(name, ValueJavaObject.getNoCopy(value, null));
-            }
-        }
-        return root;
-    }
-
-    public final Object get() {
-        return value;
     }
 
 }

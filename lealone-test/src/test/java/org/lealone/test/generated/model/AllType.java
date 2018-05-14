@@ -2,29 +2,29 @@ package org.lealone.test.generated.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.lealone.orm.Query;
-import org.lealone.orm.QueryDeserializer;
-import org.lealone.orm.QuerySerializer;
+import org.lealone.orm.Model;
+import org.lealone.orm.ModelDeserializer;
+import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.Table;
-import org.lealone.orm.typequery.PArray;
-import org.lealone.orm.typequery.PBigDecimal;
-import org.lealone.orm.typequery.PBlob;
-import org.lealone.orm.typequery.PBoolean;
-import org.lealone.orm.typequery.PByte;
-import org.lealone.orm.typequery.PBytes;
-import org.lealone.orm.typequery.PClob;
-import org.lealone.orm.typequery.PDate;
-import org.lealone.orm.typequery.PDouble;
-import org.lealone.orm.typequery.PFloat;
-import org.lealone.orm.typequery.PInteger;
-import org.lealone.orm.typequery.PLong;
-import org.lealone.orm.typequery.PObject;
-import org.lealone.orm.typequery.PShort;
-import org.lealone.orm.typequery.PString;
-import org.lealone.orm.typequery.PTime;
-import org.lealone.orm.typequery.PTimestamp;
-import org.lealone.orm.typequery.PUuid;
-import org.lealone.orm.typequery.TQProperty;
+import org.lealone.orm.property.PArray;
+import org.lealone.orm.property.PBigDecimal;
+import org.lealone.orm.property.PBlob;
+import org.lealone.orm.property.PBoolean;
+import org.lealone.orm.property.PByte;
+import org.lealone.orm.property.PBytes;
+import org.lealone.orm.property.PClob;
+import org.lealone.orm.property.PDate;
+import org.lealone.orm.property.PDouble;
+import org.lealone.orm.property.PFloat;
+import org.lealone.orm.property.PInteger;
+import org.lealone.orm.property.PLong;
+import org.lealone.orm.property.PObject;
+import org.lealone.orm.property.PShort;
+import org.lealone.orm.property.PString;
+import org.lealone.orm.property.PTime;
+import org.lealone.orm.property.PTimestamp;
+import org.lealone.orm.property.PUuid;
+import org.lealone.orm.property.TQProperty;
 import org.lealone.test.generated.model.AllType.AllTypeDeserializer;
 
 /**
@@ -32,9 +32,9 @@ import org.lealone.test.generated.model.AllType.AllTypeDeserializer;
  *
  * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.
  */
-@JsonSerialize(using = QuerySerializer.class)
+@JsonSerialize(using = ModelSerializer.class)
 @JsonDeserialize(using = AllTypeDeserializer.class)
-public class AllType extends Query<AllType> {
+public class AllType extends Model<AllType> {
 
     public static final AllType dao = new AllType(null, true);
 
@@ -106,9 +106,9 @@ public class AllType extends Query<AllType> {
         return new AllType(t);
     }
 
-    static class AllTypeDeserializer extends QueryDeserializer<AllType> {
+    static class AllTypeDeserializer extends ModelDeserializer<AllType> {
         @Override
-        protected Query<AllType> newQueryInstance() {
+        protected Model<AllType> newModelInstance() {
             return new AllType();
         }
     }

@@ -36,7 +36,7 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
     org.lealone.db.table.Table dbTable;
     Table table;
     org.lealone.sql.expression.Expression expression;
-    Query<?> query;
+    Model<?> model;
 
     boolean isAnd = true;
 
@@ -51,15 +51,15 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
         return expression;
     }
 
-    public DefaultExpressionList(Query<?> query, Table table) {
+    public DefaultExpressionList(Model<?> model, Table table) {
         this.table = table;
         if (table != null)
             this.dbTable = table.getDbTable();
-        this.query = query;
+        this.model = model;
     }
 
     Table getTable() {
-        table = query.getTable();
+        table = model.getTable();
         dbTable = table.getDbTable();
         return table;
     }
@@ -112,7 +112,7 @@ public class DefaultExpressionList<T> implements ExpressionList<T> {
 
     @Override
     public ExpressionList<T> set(String propertyName, Value value) {
-        query.addNVPair(propertyName, value);
+        model.addNVPair(propertyName, value);
         return this;
     }
 

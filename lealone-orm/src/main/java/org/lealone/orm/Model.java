@@ -32,8 +32,8 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
-import org.lealone.orm.typequery.PBaseNumber;
-import org.lealone.orm.typequery.TQProperty;
+import org.lealone.orm.property.PBaseNumber;
+import org.lealone.orm.property.TQProperty;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Select;
@@ -50,63 +50,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.vertx.core.json.JsonObject;
 
 /**
- * Base root query bean.
+ * Base root model bean.
  * <p>
- * With code generation for each entity bean type a query bean is created that extends this.
+ * With code generation for each table a model bean is created that extends this.
  * <p>
- * Provides common features for all root query beans
+ * Provides common features for all root model beans
  * </p>
- * <p>
- * <h2>Example - QCustomer extends Query</h2>
- * <p>
- * These 'query beans' like QCustomer are generated using the <code>avaje-ebeanorm-typequery-generator</code>.
- * </p>
- * <pre>{@code
  *
- *   public class QCustomer extends Query<Customer,QCustomer> {
- *
- *     // properties
- *     public PLong<QCustomer> id;
- *
- *     public PString<QCustomer> name;
- *     ...
- *
- * }</pre>
- * <p>
- * <h2>Example - usage of QCustomer</h2>
- * <pre>{@code
- *
- *    Date fiveDaysAgo = ...
- *
- *    List<Customer> customers =
- *        new QCustomer()
- *          .name.ilike("rob")
- *          .status.equalTo(Customer.Status.GOOD)
- *          .registered.after(fiveDaysAgo)
- *          .contacts.email.endsWith("@foo.com")
- *          .orderBy()
- *            .name.asc()
- *            .registered.desc()
- *          .findList();
- *
- * }</pre>
- * <p>
- * <h2>Resulting SQL where</h2>
- * <p>
- * <pre>{@code sql
- *
- *     where lower(t0.name) like ?  and t0.status = ?  and t0.registered > ?  and u1.email like ?
- *     order by t0.name, t0.registered desc;
- *
- *     --bind(rob,GOOD,Mon Jul 27 12:05:37 NZST 2015,%@foo.com)
- * }</pre>
- *
- * @param <T> the entity bean type (normal entity bean type e.g. Customer) 
+ * @param <T> the model bean type 
  */
 @SuppressWarnings("rawtypes")
-public abstract class Query<T> {
+public abstract class Model<T> {
 
-    private static final Logger logger = LoggerFactory.getLogger(Query.class);
+    private static final Logger logger = LoggerFactory.getLogger(Model.class);
 
     TQProperty[] tqProperties;
 
@@ -121,7 +77,7 @@ public abstract class Query<T> {
          * Construct with a property name and root instance.
          *
          * @param name property name
-         * @param root the root query bean instance
+         * @param root the root model bean instance
          */
         public PRowId(String name, T root) {
             super(name, root);
@@ -209,7 +165,7 @@ public abstract class Query<T> {
     private final ArrayList<Expression> selectExpressions = new ArrayList<>();
 
     /**
-     * The root query bean instance. Used to provide fluid query construction.
+     * The root model bean instance. Used to provide fluid query construction.
      */
     private T root;
     private DefaultExpressionList<T> whereExpression;
@@ -219,7 +175,7 @@ public abstract class Query<T> {
     */
     private ArrayStack<ExpressionList<T>> whereStack;
 
-    public Query(Table table, String tableName, boolean isDao) {
+    public Model(Table table, String tableName, boolean isDao) {
         this.table = table;
         this.tableName = tableName;
         this.isDao = isDao;
@@ -235,7 +191,7 @@ public abstract class Query<T> {
     }
 
     /**
-     * Sets the root query bean instance. Used to provide fluid query construction.
+     * Sets the root model bean instance. Used to provide fluid query construction.
      */
     protected void setRoot(T root) {
         this.root = root;
@@ -564,7 +520,7 @@ public abstract class Query<T> {
             map.put(result.getColumnName(i), row[i]);
         }
 
-        Query q = newInstance(table);
+        Model q = newInstance(table);
         if (q != null) {
             for (TQProperty p : q.tqProperties) {
                 p.deserialize(map);
@@ -574,7 +530,7 @@ public abstract class Query<T> {
         return (T) q;
     }
 
-    protected Query newInstance(Table t) {
+    protected Model newInstance(Table t) {
         return null;
     }
 
@@ -599,7 +555,7 @@ public abstract class Query<T> {
      *
      * }</pre>
      *
-     * @see EbeanServer#findList(Query, Transaction)
+     * @see EbeanServer#findList(Model, Transaction)
      */
     public List<T> findList() {
         checkDao("findList");

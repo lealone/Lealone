@@ -2,14 +2,14 @@ package org.lealone.test.generated.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.lealone.orm.Query;
-import org.lealone.orm.QueryDeserializer;
-import org.lealone.orm.QuerySerializer;
+import org.lealone.orm.Model;
+import org.lealone.orm.ModelDeserializer;
+import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.Table;
-import org.lealone.orm.typequery.PInteger;
-import org.lealone.orm.typequery.PLong;
-import org.lealone.orm.typequery.PString;
-import org.lealone.orm.typequery.TQProperty;
+import org.lealone.orm.property.PInteger;
+import org.lealone.orm.property.PLong;
+import org.lealone.orm.property.PString;
+import org.lealone.orm.property.TQProperty;
 import org.lealone.test.generated.model.User.UserDeserializer;
 
 /**
@@ -17,9 +17,9 @@ import org.lealone.test.generated.model.User.UserDeserializer;
  *
  * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.
  */
-@JsonSerialize(using = QuerySerializer.class)
+@JsonSerialize(using = ModelSerializer.class)
 @JsonDeserialize(using = UserDeserializer.class)
-public class User extends Query<User> {
+public class User extends Model<User> {
 
     public static final User dao = new User(null, true);
 
@@ -57,9 +57,9 @@ public class User extends Query<User> {
         return new User(t);
     }
 
-    static class UserDeserializer extends QueryDeserializer<User> {
+    static class UserDeserializer extends ModelDeserializer<User> {
         @Override
-        protected Query<User> newQueryInstance() {
+        protected Model<User> newModelInstance() {
             return new User();
         }
     }

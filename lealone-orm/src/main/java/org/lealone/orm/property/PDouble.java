@@ -15,31 +15,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
-
-import java.sql.Date;
+package org.lealone.orm.property;
 
 /**
- * Java sql date property.
+ * Double property.
  *
- * @param <R> the root query bean type
+ * @param <R> the root model bean type
  */
-public class PDate<R> extends PBaseDate<R, Date> {
+public class PDouble<R> extends PBaseNumber<R, Double> {
 
     /**
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
-    public PDate(String name, R root) {
+    public PDouble(String name, R root) {
         super(name, root);
     }
 
     /**
      * Construct with additional path prefix.
      */
-    public PDate(String name, R root, String prefix) {
+    public PDouble(String name, R root, String prefix) {
         super(name, root, prefix);
     }
+
 }

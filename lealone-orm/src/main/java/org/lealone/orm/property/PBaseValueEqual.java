@@ -15,14 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
 import java.util.Collection;
 
 /**
  * Base property for types that primarily have equal to.
  *
- * @param <R> the root query bean type
+ * @param <R> the root model bean type
  * @param <T> the number type
  */
 public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
@@ -31,7 +31,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
     public PBaseValueEqual(String name, R root) {
         super(name, root);
@@ -48,7 +48,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is equal to.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public final R equalTo(T value) {
         expr().eq(name, value);
@@ -59,7 +59,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is equal to.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public final R eq(T value) {
         expr().eq(name, value);
@@ -70,7 +70,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is not equal to.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public final R notEqualTo(T value) {
         expr().ne(name, value);
@@ -81,7 +81,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is not equal to.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public final R ne(T value) {
         expr().ne(name, value);
@@ -92,7 +92,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     @SafeVarargs
     public final R in(T... values) {
@@ -104,7 +104,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is NOT in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     @SafeVarargs
     public final R notIn(T... values) {
@@ -116,7 +116,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is in a list of values. Synonym for in().
      *
      * @param values the list of values for the predicate
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     @SafeVarargs
     public final R isIn(T... values) {
@@ -128,7 +128,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public final R in(Collection<T> values) {
         expr().in(name, values);
@@ -139,7 +139,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is NOT in a list of values.
      *
      * @param values the list of values for the predicate
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public final R notIn(Collection<T> values) {
         expr().notIn(name, values);
@@ -150,7 +150,7 @@ public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
      * Is in a list of values. Synonym for in().
      *
      * @param values the list of values for the predicate
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
     public final R isIn(Collection<T> values) {
         expr().in(name, values);

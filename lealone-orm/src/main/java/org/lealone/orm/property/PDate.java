@@ -15,27 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm;
+package org.lealone.orm.property;
 
-import java.io.IOException;
+import java.sql.Date;
 
-import org.lealone.orm.typequery.TQProperty;
+/**
+ * Java sql date property.
+ *
+ * @param <R> the root model bean type
+ */
+public class PDate<R> extends PBaseDate<R, Date> {
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
+    /**
+     * Construct with a property name and root instance.
+     *
+     * @param name property name
+     * @param root the root model bean instance
+     */
+    public PDate(String name, R root) {
+        super(name, root);
+    }
 
-@SuppressWarnings("rawtypes")
-public class QuerySerializer<T extends Query> extends JsonSerializer<T> {
-    @Override
-    public void serialize(T value, JsonGenerator jgen, SerializerProvider provider)
-            throws IOException, JsonProcessingException {
-        jgen.writeStartObject();
-        for (TQProperty p : ((Query) value).tqProperties) {
-            p.serialize(jgen);
-        }
-        jgen.writeBooleanField("isDao", ((Query) value).isDao);
-        jgen.writeEndObject();
+    /**
+     * Construct with additional path prefix.
+     */
+    public PDate(String name, R root, String prefix) {
+        super(name, root, prefix);
     }
 }

@@ -15,49 +15,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
 import java.io.IOException;
 import java.util.HashMap;
 
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueLong;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.NumericNode;
 
 /**
- * Integer property.
+ * Long property.
  *
- * @param <R> the root query bean type
+ * @param <R> the root model bean type
  */
-public class PInteger<R> extends PBaseNumber<R, Integer> {
+public class PLong<R> extends PBaseNumber<R, Long> {
 
-    private int value;
+    private long value;
 
     /**
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
-    public PInteger(String name, R root) {
+    public PLong(String name, R root) {
         super(name, root);
     }
 
     /**
      * Construct with additional path prefix.
      */
-    public PInteger(String name, R root, String prefix) {
+    public PLong(String name, R root, String prefix) {
         super(name, root, prefix);
     }
 
-    public final R set(int value) {
+    public R set(long value) {
         if (!areEqual(this.value, value)) {
             this.value = value;
             // if (isReady()) {
-            expr().set(name, ValueInt.get(value));
+            expr().set(name, ValueLong.get(value));
             // }
         }
         return root;
@@ -65,10 +65,10 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
 
     @Override
     public R set(Object value) {
-        return set(Integer.valueOf(value.toString()).intValue());
+        return set(Long.valueOf(value.toString()).longValue());
     }
 
-    public final int get() {
+    public final long get() {
         return value;
     }
 
@@ -84,7 +84,7 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
         if (node == null) {
             return root;
         }
-        set(((NumericNode) node).asInt());
+        set(((NumericNode) node).asLong());
         return root;
     }
 
@@ -92,8 +92,9 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
     public R deserialize(HashMap<String, Value> map) {
         Value v = map.get(name);
         if (v != null) {
-            value = v.getInt();
+            value = v.getLong();
         }
         return root;
     }
+
 }

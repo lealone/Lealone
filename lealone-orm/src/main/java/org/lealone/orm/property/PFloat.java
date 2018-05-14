@@ -15,15 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
-public class PClob<R> extends TQProperty<R> {
+/**
+ * Float property.
+ *
+ * @param <R> the root model bean type
+ */
+public class PFloat<R> extends PBaseNumber<R, Float> {
 
-    public PClob(String name, R root) {
+    /**
+     * Construct with a property name and root instance.
+     *
+     * @param name property name
+     * @param root the root model bean instance
+     */
+    public PFloat(String name, R root) {
         super(name, root);
     }
 
-    public PClob(String name, R root, String prefix) {
+    /**
+     * Construct with additional path prefix.
+     */
+    public PFloat(String name, R root, String prefix) {
         super(name, root, prefix);
     }
 

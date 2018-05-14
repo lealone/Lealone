@@ -9,7 +9,6 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.UUID;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
@@ -347,10 +346,10 @@ public class CreateTable extends SchemaStatement {
         TreeSet<String> importSet = new TreeSet<>();
 
         importSet.add("org.lealone.orm.Table");
-        importSet.add("org.lealone.orm.Query");
-        importSet.add("org.lealone.orm.QueryDeserializer");
-        importSet.add("org.lealone.orm.QuerySerializer");
-        importSet.add("org.lealone.orm.typequery.TQProperty");
+        importSet.add("org.lealone.orm.Model");
+        importSet.add("org.lealone.orm.ModelDeserializer");
+        importSet.add("org.lealone.orm.ModelSerializer");
+        importSet.add(TYPE_QUERY_PACKAGE_NAME + ".TQProperty");
         importSet.add("com.fasterxml.jackson.databind.annotation.JsonDeserialize");
         importSet.add("com.fasterxml.jackson.databind.annotation.JsonSerialize");
         importSet.add(packageName + "." + className + "." + className + "Deserializer");
@@ -383,10 +382,10 @@ public class CreateTable extends SchemaStatement {
         buff.append(" *\r\n");
         buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         buff.append(" */\r\n");
-        buff.append("@JsonSerialize(using = QuerySerializer.class)\r\n");
+        buff.append("@JsonSerialize(using = ModelSerializer.class)\r\n");
         buff.append("@JsonDeserialize(using = ").append(className).append("Deserializer.class)\r\n");
-        // 例如: public class Customer extends Query<Customer> {
-        buff.append("public class ").append(className).append(" extends Query<").append(className).append("> {\r\n");
+        // 例如: public class Customer extends Model<Customer> {
+        buff.append("public class ").append(className).append(" extends Model<").append(className).append("> {\r\n");
         buff.append("\r\n");
 
         buff.append("    public static final ").append(className).append(" dao = new ").append(className)
@@ -420,10 +419,10 @@ public class CreateTable extends SchemaStatement {
         buff.append("        return new ").append(className).append("(t);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
-        buff.append("    static class ").append(className).append("Deserializer extends QueryDeserializer<")
+        buff.append("    static class ").append(className).append("Deserializer extends ModelDeserializer<")
                 .append(className).append("> {\r\n");
         buff.append("        @Override\r\n");
-        buff.append("        protected Query<").append(className).append("> newQueryInstance() {\r\n");
+        buff.append("        protected Model<").append(className).append("> newModelInstance() {\r\n");
         buff.append("            return new ").append(className).append("();\r\n");
         buff.append("        }\r\n");
         buff.append("    }\r\n");
@@ -433,139 +432,7 @@ public class CreateTable extends SchemaStatement {
         CreateService.writeFile(codePath, packageName, className, buff);
     }
 
-    void genCodeOld() {
-        StringBuilder buff = new StringBuilder();
-        StringBuilder ibuff = new StringBuilder();
-        StringBuilder methods = new StringBuilder();
-        TreeSet<String> importSet = new TreeSet<>();
-        String className = CamelCaseHelper.toCamelFromUnderscore(data.tableName);
-        className = Character.toUpperCase(className.charAt(0)) + className.substring(1);
-
-        String qclassName = 'Q' + className;
-        StringBuilder qbuff = new StringBuilder();
-        StringBuilder qfields = new StringBuilder();
-        StringBuilder qinit = new StringBuilder();
-        TreeSet<String> qimportSet = new TreeSet<>();
-
-        importSet.add("org.lealone.orm.Table");
-
-        buff.append("/**\r\n");
-        buff.append(" * Model bean for table '").append(data.tableName).append("'.\r\n");
-        buff.append(" *\r\n");
-        buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
-        buff.append(" */\r\n");
-        buff.append("public class ").append(className).append(" {\r\n");
-        buff.append("\r\n");
-        buff.append("    public static ").append(className).append(" create(String url) {\r\n");
-        buff.append("        Table t = new Table(url, \"").append(data.tableName).append("\");\r\n");
-        buff.append("        return new ").append(className).append("(t);\r\n");
-        buff.append("    }\r\n");
-        buff.append("\r\n");
-        buff.append("    private Table _t_;\r\n");
-        buff.append("    private ").append(qclassName).append(" _q_;\r\n");
-        // buff.append(" private final ").append(qclassName).append(" _q_ = new ").append(qclassName).append("();\r\n");
-        buff.append("\r\n");
-        for (Column c : data.columns) {
-            int type = c.getType();
-            String typeClassName = getTypeClassName(type, importSet);
-            String typeQueryClassName = getTypeQueryClassName(type, qimportSet);
-            String columnName = CamelCaseHelper.toCamelFromUnderscore(c.getName());
-            String columnNameFirstUpperCase = Character.toUpperCase(columnName.charAt(0)) + columnName.substring(1);
-            buff.append("    private ").append(typeClassName).append(" ").append(columnName).append(";\r\n");
-
-            qfields.append("    public final ").append(typeQueryClassName).append('<').append(qclassName).append("> ")
-                    .append(columnName).append(";\r\n");
-
-            // 例如: this.id = new PLong<>("id", this);
-            qinit.append("        this.").append(columnName).append(" = new ").append(typeQueryClassName)
-                    .append("<>(\"").append(columnName).append("\", this);\r\n");
-
-            // setter
-            methods.append("\r\n");
-            methods.append("    public ").append(className).append(" set").append(columnNameFirstUpperCase).append('(')
-                    .append(typeClassName);
-            methods.append(' ').append(columnName).append(") {\r\n");
-            methods.append("        this.").append(columnName).append(" = ").append(columnName).append("; \r\n");
-            methods.append("        _q_.").append(columnName).append(".set(").append(columnName).append("); \r\n");
-            methods.append("        return this;\r\n");
-            methods.append("    }\r\n");
-
-            // getter
-            methods.append("\r\n");
-            methods.append("    public ").append(typeClassName).append(" get").append(columnNameFirstUpperCase)
-                    .append("() { \r\n");
-            methods.append("        return ").append(columnName).append("; \r\n");
-            methods.append("    }\r\n");
-        }
-        buff.append("\r\n");
-        buff.append("    public ").append(className).append("() {\r\n");
-        buff.append("        _q_ = new ").append(qclassName).append("();\r\n");
-        buff.append("    }\r\n");
-        buff.append("\r\n");
-        buff.append("    private ").append(className).append("(Table t) {\r\n");
-        buff.append("        _q_ = new ").append(qclassName).append("(t);\r\n");
-        buff.append("        this._t_ = t;\r\n");
-        buff.append("    }\r\n");
-        buff.append(methods);
-        buff.append("\r\n");
-        buff.append("    public void save() {\r\n");
-        buff.append("        _t_.save(this);\r\n");
-        buff.append("    }\r\n");
-        buff.append("\r\n");
-        buff.append("    public boolean delete() {\r\n");
-        buff.append("       return _t_.delete(this);\r\n");
-        buff.append("    }\r\n");
-        buff.append("}\r\n");
-        // System.out.println(buff);
-
-        // 查询器类
-        qbuff.append("package ").append(packageName).append(";\r\n\r\n");
-        qbuff.append("import org.lealone.orm.Query;\r\n");
-        qbuff.append("import org.lealone.orm.Table;\r\n\r\n");
-        for (String p : qimportSet) {
-            qbuff.append("import ").append(p).append(";\r\n");
-        }
-        qbuff.append("\r\n");
-        qbuff.append("/**\r\n");
-        qbuff.append(" * Query bean for model '").append(className).append("'.\r\n");
-        qbuff.append(" *\r\n");
-        qbuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
-        qbuff.append(" */\r\n");
-        // 例如: public class QCustomer extends Query<Customer, QCustomer> {
-        qbuff.append("public class ").append(qclassName).append(" extends Query<").append(className).append(", ")
-                .append(qclassName).append("> {\r\n");
-        qbuff.append("\r\n");
-        qbuff.append("    public static ").append(qclassName).append(" create(String url) {\r\n");
-        qbuff.append("        Table t = new Table(url, \"").append(data.tableName).append("\");\r\n");
-        qbuff.append("        return new ").append(qclassName).append("(t);\r\n");
-        qbuff.append("    }\r\n");
-        qbuff.append("\r\n");
-        qbuff.append(qfields);
-        qbuff.append("\r\n");
-        qbuff.append("    public ").append(qclassName).append("() {\r\n");
-        qbuff.append("        this(null);\r\n");
-        qbuff.append("    }\r\n");
-        qbuff.append("\r\n");
-        qbuff.append("    public ").append(qclassName).append("(Table t) {\r\n");
-        qbuff.append("        super(t);\r\n");
-        qbuff.append("        setRoot(this);\r\n");
-        qbuff.append("\r\n");
-        qbuff.append(qinit);
-        qbuff.append("    }\r\n");
-        qbuff.append("}\r\n");
-
-        ibuff.append("package ").append(packageName).append(";\r\n");
-        ibuff.append("\r\n");
-        for (String i : importSet) {
-            ibuff.append("import ").append(i).append(";\r\n");
-        }
-        ibuff.append("\r\n");
-
-        CreateService.writeFile(codePath, packageName, className, ibuff, buff);
-        CreateService.writeFile(codePath, packageName, qclassName, qbuff);
-    }
-
-    private static final String TYPE_QUERY_PACKAGE_NAME = "org.lealone.orm.typequery";
+    private static final String TYPE_QUERY_PACKAGE_NAME = "org.lealone.orm.property";
 
     private static String getTypeQueryClassName(int type, TreeSet<String> importSet) {
         String name;
@@ -588,21 +455,21 @@ public class CreateTable extends SchemaStatement {
         return name;
     }
 
-    private static String getTypeClassName(int type, TreeSet<String> importSet) {
-        switch (type) {
-        case Value.BYTES:
-            return "byte[]";
-        case Value.UUID:
-            importSet.add(UUID.class.getName());
-            return UUID.class.getSimpleName();
-        case Value.NULL:
-            throw DbException.throwInternalError("type = null");
-        default:
-            String name = DataType.getTypeClassName(type);
-            if (!name.startsWith("java.lang.")) {
-                importSet.add(name);
-            }
-            return name.substring(name.lastIndexOf('.') + 1);
-        }
-    }
+    // private static String getTypeClassName(int type, TreeSet<String> importSet) {
+    // switch (type) {
+    // case Value.BYTES:
+    // return "byte[]";
+    // case Value.UUID:
+    // importSet.add(UUID.class.getName());
+    // return UUID.class.getSimpleName();
+    // case Value.NULL:
+    // throw DbException.throwInternalError("type = null");
+    // default:
+    // String name = DataType.getTypeClassName(type);
+    // if (!name.startsWith("java.lang.")) {
+    // importSet.add(name);
+    // }
+    // return name.substring(name.lastIndexOf('.') + 1);
+    // }
+    // }
 }

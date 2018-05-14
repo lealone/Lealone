@@ -15,31 +15,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm;
 
-import java.sql.Timestamp;
+import java.io.IOException;
 
-/**
- * Property for java sql Timestamp.
- *
- * @param <R> the root query bean type
- */
-public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
+import org.lealone.orm.property.TQProperty;
 
-    /**
-     * Construct with a property name and root instance.
-     *
-     * @param name property name
-     * @param root the root query bean instance
-     */
-    public PTimestamp(String name, R root) {
-        super(name, root);
-    }
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PTimestamp(String name, R root, String prefix) {
-        super(name, root, prefix);
+@SuppressWarnings("rawtypes")
+public class ModelSerializer<T extends Model> extends JsonSerializer<T> {
+    @Override
+    public void serialize(T value, JsonGenerator jgen, SerializerProvider provider)
+            throws IOException, JsonProcessingException {
+        jgen.writeStartObject();
+        for (TQProperty p : ((Model) value).tqProperties) {
+            p.serialize(jgen);
+        }
+        jgen.writeBooleanField("isDao", ((Model) value).isDao);
+        jgen.writeEndObject();
     }
 }

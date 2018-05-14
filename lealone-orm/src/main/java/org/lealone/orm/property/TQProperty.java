@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -24,7 +24,7 @@ import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.orm.ExpressionList;
-import org.lealone.orm.Query;
+import org.lealone.orm.Model;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -43,7 +43,7 @@ public abstract class TQProperty<R> {
      * Construct with a property name and root instance.
      *
      * @param name the name of the property
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
     public TQProperty(String name, R root) {
         this(name, root, null);
@@ -66,11 +66,11 @@ public abstract class TQProperty<R> {
      * Internal method to return the underlying expression list.
      */
     protected ExpressionList<?> expr() {
-        return ((Query<?>) root).peekExprList();
+        return ((Model<?>) root).peekExprList();
     }
 
     protected boolean isReady() {
-        return ((Query<?>) root).isReady();
+        return ((Model<?>) root).isReady();
     }
 
     /**

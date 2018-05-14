@@ -15,53 +15,73 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.typequery;
+package org.lealone.orm.property;
 
 /**
- * Base property for date and date time types.
+ * Boolean property.
  *
- * @param <R> the root query bean type
- * @param <D> the date time type
+ * @param <R> the root model bean type
  */
-@SuppressWarnings("rawtypes")
-public abstract class PBaseDate<R, D extends Comparable> extends PBaseComparable<R, D> {
+public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
 
     /**
      * Construct with a property name and root instance.
      *
      * @param name property name
-     * @param root the root query bean instance
+     * @param root the root model bean instance
      */
-    public PBaseDate(String name, R root) {
+    public PBoolean(String name, R root) {
         super(name, root);
     }
 
     /**
      * Construct with additional path prefix.
      */
-    public PBaseDate(String name, R root, String prefix) {
+    public PBoolean(String name, R root, String prefix) {
         super(name, root, prefix);
     }
 
     /**
-     * Same as greater than.
+     * Is true.
      *
-     * @param value the equal to bind value
-     * @return the root query bean instance
+     * @return the root model bean instance
      */
-    public R after(D value) {
-        expr().gt(name, value);
+    public R isTrue() {
+        expr().eq(name, Boolean.TRUE);
         return root;
     }
 
     /**
-     * Same as less than.
+     * Is false.
+     *
+     * @return the root model bean instance
+     */
+    public R isFalse() {
+        expr().eq(name, Boolean.FALSE);
+        return root;
+    }
+
+    /**
+     * Is true or false based on the bind value.
      *
      * @param value the equal to bind value
-     * @return the root query bean instance
+     *
+     * @return the root model bean instance
      */
-    public R before(D value) {
-        expr().lt(name, value);
+    public R is(boolean value) {
+        expr().eq(name, value);
+        return root;
+    }
+
+    /**
+     * Is true or false based on the bind value.
+     *
+     * @param value the equal to bind value
+     *
+     * @return the root model bean instance
+     */
+    public R eq(boolean value) {
+        expr().eq(name, value);
         return root;
     }
 }
