@@ -11,6 +11,7 @@ import java.util.HashMap;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.IndexCondition;
@@ -30,7 +31,8 @@ import org.lealone.sql.dml.Select;
  */
 public class ExpressionColumn extends Expression implements org.lealone.db.expression.ExpressionColumn {
 
-    private final Database database;
+    private Database database;
+    private String databaseName;
     private String schemaName;
     private String tableAlias;
     private String columnName;
@@ -53,10 +55,25 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
         this.columnName = columnName;
     }
 
+    public ExpressionColumn(String databaseName, String schemaName, String tableAlias, String columnName) {
+        this.database = null;
+        this.databaseName = databaseName;
+        this.schemaName = schemaName;
+        this.tableAlias = tableAlias;
+        this.columnName = columnName;
+    }
+
+    private Database getDatabase() {
+        if (database == null) {
+            database = LealoneDatabase.getInstance().getDatabase(databaseName);
+        }
+        return database;
+    }
+
     @Override
     public String getSQL(boolean isDistributed) {
         String sql;
-        boolean quote = database.getSettings().databaseToUpper;
+        boolean quote = getDatabase().getSettings().databaseToUpper;
         if (column != null) {
             sql = column.getSQL();
         } else {
@@ -80,6 +97,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
 
     @Override
     public void mapColumns(ColumnResolver resolver, int level) {
+        getDatabase();
         if (select == null)
             select = (Select) resolver.getSelect();
 
@@ -125,9 +143,10 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
 
     @Override
     public Expression optimize(ServerSession session) {
+        getDatabase();
         if (columnResolver == null) {
-            Schema schema = session.getDatabase().findSchema(
-                    tableAlias == null ? session.getCurrentSchemaName() : tableAlias);
+            Schema schema = session.getDatabase()
+                    .findSchema(tableAlias == null ? session.getCurrentSchemaName() : tableAlias);
             if (schema != null) {
                 Constant constant = schema.findConstant(columnName);
                 if (constant != null) {
@@ -287,7 +306,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
             // if the current value is known (evaluatable set)
             // or if this columns belongs to a 'higher level' query and is
             // therefore just a parameter
-            if (database.getSettings().nestedJoins) {
+            if (getDatabase().getSettings().nestedJoins) {
                 if (visitor.getQueryLevel() < this.queryLevel) {
                     return true;
                 }

@@ -24,6 +24,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
+import org.lealone.orm.property.TQProperty;
 import org.lealone.sql.expression.CompareLike;
 import org.lealone.sql.expression.Comparison;
 import org.lealone.sql.expression.ConditionAndOr;
@@ -93,6 +94,11 @@ public class ExpressionBuilder<T> {
 
     public ExpressionBuilder<T> set(String propertyName, Value value) {
         model.addNVPair(propertyName, value);
+        return this;
+    }
+
+    public ExpressionBuilder<T> eq(String propertyName, TQProperty<?> p) {
+        setRootExpression(propertyName, p, Comparison.EQUAL);
         return this;
     }
 

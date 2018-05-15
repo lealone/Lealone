@@ -226,11 +226,23 @@ public abstract class Model<T> {
         return selectExpressions;
     }
 
+    public String getDatabaseName() {
+        return modelTable.getDatabaseName();
+    }
+
+    public String getSchemaName() {
+        return modelTable.getSchemaName();
+    }
+
+    public String getTableName() {
+        return modelTable.getTableName();
+    }
+
     @SafeVarargs
-    public final T select(TQProperty<T>... properties) {
+    public final T select(TQProperty<?>... properties) {
         selectExpressions = new ArrayList<>();
-        for (TQProperty<T> p : properties) {
-            ExpressionColumn c = getExpressionColumn(p.getName());
+        for (TQProperty<?> p : properties) {
+            ExpressionColumn c = getExpressionColumn(p);
             selectExpressions.add(c);
         }
         return root;
@@ -243,14 +255,18 @@ public abstract class Model<T> {
     }
 
     @SafeVarargs
-    public final T groupBy(TQProperty<T>... properties) {
+    public final T groupBy(TQProperty<?>... properties) {
         groupExpressions = new ArrayList<>();
-        for (TQProperty<T> p : properties) {
-            ExpressionColumn c = getExpressionColumn(p.getName());
+        for (TQProperty<?> p : properties) {
+            ExpressionColumn c = getExpressionColumn(p);
             groupExpressions.add(c);
         }
 
         return root;
+    }
+
+    static ExpressionColumn getExpressionColumn(TQProperty<?> p) {
+        return new ExpressionColumn(p.getDatabaseName(), p.getSchemaName(), p.getTableName(), p.getName());
     }
 
     ExpressionColumn getExpressionColumn(String propertyName) {
@@ -270,9 +286,17 @@ public abstract class Model<T> {
         return root;
     }
 
+    public <M> M or(Model<M> m) {
+        return m.root;
+    }
+
     public T and() {
         peekExprBuilder().and();
         return root;
+    }
+
+    public <M> M and(Model<M> m) {
+        return m.root;
     }
 
     public void printSQL() {
@@ -325,6 +349,10 @@ public abstract class Model<T> {
         return root;
     }
 
+    public <M> M where(Model<M> m) {
+        return m.root;
+    }
+
     /**
      * Execute the query returning either a single bean or null (if no matching bean is found).
      */
@@ -375,14 +403,14 @@ public abstract class Model<T> {
             map.put(result.getColumnName(i), row[i]);
         }
 
-        Model q = newInstance(modelTable);
-        if (q != null) {
-            for (TQProperty p : q.tqProperties) {
+        Model m = newInstance(modelTable);
+        if (m != null) {
+            for (TQProperty p : m.tqProperties) {
                 p.deserialize(map);
             }
-            q._rowid_.deserialize(map);
+            m._rowid_.deserialize(map);
         }
-        return (T) q;
+        return (T) m;
     }
 
     protected Model newInstance(ModelTable t) {
@@ -555,7 +583,7 @@ public abstract class Model<T> {
     }
 
     /**
-     * Return the current expression list that expressions should be added to.
+     * Return the current expression builder that expressions should be added to.
      */
     public ExpressionBuilder<T> peekExprBuilder() {
         return getStack().peek();
@@ -586,6 +614,14 @@ public abstract class Model<T> {
 
     public T rightParenthesis() {
         return rp();
+    }
+
+    public T join(Model<?> m) {
+        return root;
+    }
+
+    public T on() {
+        return root;
     }
 
     /**

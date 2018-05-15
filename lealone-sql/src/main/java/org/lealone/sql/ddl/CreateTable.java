@@ -391,8 +391,14 @@ public class CreateTable extends SchemaStatement {
         buff.append("    public static final ").append(className).append(" dao = new ").append(className)
                 .append("(null, true);\r\n");
         buff.append("\r\n");
+        Database db = data.schema.getDatabase();
+        String tableFullName = "\"" + db.getName() + "\", \"" + data.schema.getName() + "\", \"" + data.tableName
+                + "\"";
+        if (db.getSettings().databaseToUpper) {
+            tableFullName = tableFullName.toUpperCase();
+        }
         buff.append("    public static ").append(className).append(" create(String url) {\r\n");
-        buff.append("        ModelTable t = new ModelTable(url, \"").append(data.tableName).append("\");\r\n");
+        buff.append("        ModelTable t = new ModelTable(url, ").append(tableFullName).append(");\r\n");
         buff.append("        return new ").append(className).append("(t);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
@@ -407,8 +413,7 @@ public class CreateTable extends SchemaStatement {
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    private ").append(className).append("(ModelTable t, boolean isDao) {\r\n");
-        buff.append("        super(t == null ? new ModelTable(\"").append(data.tableName)
-                .append("\") : t, isDao);\r\n");
+        buff.append("        super(t == null ? new ModelTable(").append(tableFullName).append(") : t, isDao);\r\n");
         buff.append("        super.setRoot(this);\r\n");
         buff.append("\r\n");
         buff.append(init);

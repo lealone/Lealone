@@ -39,7 +39,7 @@ public class AllType extends Model<AllType> {
     public static final AllType dao = new AllType(null, true);
 
     public static AllType create(String url) {
-        ModelTable t = new ModelTable(url, "ALL_TYPE");
+        ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "ALL_TYPE");
         return new AllType(t);
     }
 
@@ -74,7 +74,7 @@ public class AllType extends Model<AllType> {
     }
 
     private AllType(ModelTable t, boolean isDao) {
-        super(t == null ? new ModelTable("ALL_TYPE") : t, isDao);
+        super(t == null ? new ModelTable("TEST", "PUBLIC", "ALL_TYPE") : t, isDao);
         super.setRoot(this);
 
         this.f1 = new PInteger<>("F1", this);

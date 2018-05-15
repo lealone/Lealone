@@ -35,6 +35,8 @@ public class SqlScript {
         public void test() {
             createCustomerTable(this);
             createUserTable(this);
+            createProductTable(this);
+            createOrderTable(this);
             createAllTypeTable(this);
             createUserService(this);
             createHelloWorldService(this);
@@ -61,6 +63,26 @@ public class SqlScript {
         executer.execute("create table user(name char(10) primary key, notes varchar, phone int, id long)" //
                 + " package '" + MODEL_PACKAGE_NAME + "'" //
                 + " generate code '" + GENERATED_CODE_PATH + "'");
+    }
+
+    public static void createProductTable(SqlExecuter executer) {
+        System.out.println("create table: product");
+
+        executer.execute("create table product(product_id long  primary key, product_name varchar, "
+                + " category varchar, unit_price double)" //
+                + " package '" + MODEL_PACKAGE_NAME + "'" //
+                + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
+        );
+    }
+
+    public static void createOrderTable(SqlExecuter executer) {
+        System.out.println("create table: order");
+
+        // order是关键字，索引要用特殊方式表式
+        executer.execute("create table `order`(customer_id long, order_id int, order_date date, total double)" //
+                + " package '" + MODEL_PACKAGE_NAME + "'" //
+                + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
+        );
     }
 
     public static void createAllTypeTable(SqlExecuter executer) {

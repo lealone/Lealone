@@ -57,9 +57,25 @@ public abstract class TQProperty<R> {
         this.name = fullPath(prefix, name);
     }
 
+    public String getDatabaseName() {
+        return getModel().getDatabaseName();
+    }
+
+    public String getSchemaName() {
+        return getModel().getSchemaName();
+    }
+
+    public String getTableName() {
+        return getModel().getTableName();
+    }
+
     @Override
     public String toString() {
         return name;
+    }
+
+    private Model<?> getModel() {
+        return ((Model<?>) root);
     }
 
     /**
@@ -106,6 +122,11 @@ public abstract class TQProperty<R> {
      */
     public String getName() {
         return name;
+    }
+
+    public final R eq(TQProperty<?> p) {
+        expr().eq(name, p);
+        return root;
     }
 
     // public abstract R set(Object value);

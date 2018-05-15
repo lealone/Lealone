@@ -24,7 +24,7 @@ public class Customer extends Model<Customer> {
     public static final Customer dao = new Customer(null, true);
 
     public static Customer create(String url) {
-        ModelTable t = new ModelTable(url, "CUSTOMER");
+        ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "CUSTOMER");
         return new Customer(t);
     }
 
@@ -42,7 +42,7 @@ public class Customer extends Model<Customer> {
     }
 
     private Customer(ModelTable t, boolean isDao) {
-        super(t == null ? new ModelTable("CUSTOMER") : t, isDao);
+        super(t == null ? new ModelTable("TEST", "PUBLIC", "CUSTOMER") : t, isDao);
         super.setRoot(this);
 
         this.id = new PLong<>("ID", this);

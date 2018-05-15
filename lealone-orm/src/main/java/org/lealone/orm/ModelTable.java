@@ -18,7 +18,6 @@
 package org.lealone.orm;
 
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DatabaseEngine;
 import org.lealone.db.ServerSession;
@@ -26,18 +25,35 @@ import org.lealone.db.table.Table;
 
 public class ModelTable {
 
-    private String tableName;
+    private final String databaseName;
+    private final String schemaName;
+    private final String tableName;
+
     private Table table;
     private ServerSession session;
 
-    public ModelTable(String tableName) {
-        this(null, tableName);
+    public ModelTable(String databaseName, String schemaName, String tableName) {
+        this(null, databaseName, schemaName, tableName);
     }
 
-    public ModelTable(String url, String tableName) {
+    public ModelTable(String url, String databaseName, String schemaName, String tableName) {
+        this.databaseName = databaseName;
+        this.schemaName = schemaName;
         this.tableName = tableName;
         if (url != null)
             attachToTable();
+    }
+
+    String getDatabaseName() {
+        return databaseName;
+    }
+
+    String getSchemaName() {
+        return schemaName;
+    }
+
+    String getTableName() {
+        return tableName;
     }
 
     Table getTable() {
@@ -55,16 +71,6 @@ public class ModelTable {
         return table.getDatabase();
     }
 
-    String getSchemaName() {
-        attachToTable();
-        return table.getSchema().getName();
-    }
-
-    String getTableName() {
-        attachToTable();
-        return table.getName();
-    }
-
     // 可能是延迟关联到Table
     private void attachToTable() {
         if (table == null) {
@@ -77,15 +83,15 @@ public class ModelTable {
             session = DatabaseEngine.createSession(ci);
             Database db = session.getDatabase();
 
-            if (db.getSettings().databaseToUpper) {
-                tableName = tableName.toUpperCase();
-            }
-            int dotPos = tableName.indexOf('.');
-            String schemaName = Constants.SCHEMA_MAIN;
-            if (dotPos > -1) {
-                schemaName = tableName.substring(0, dotPos);
-                tableName = tableName.substring(dotPos + 1);
-            }
+            // if (db.getSettings().databaseToUpper) {
+            // tableName = tableName.toUpperCase();
+            // }
+            // int dotPos = tableName.indexOf('.');
+            // String schemaName = Constants.SCHEMA_MAIN;
+            // if (dotPos > -1) {
+            // schemaName = tableName.substring(0, dotPos);
+            // tableName = tableName.substring(dotPos + 1);
+            // }
             table = db.getSchema(schemaName).getTableOrView(session, tableName);
         }
     }

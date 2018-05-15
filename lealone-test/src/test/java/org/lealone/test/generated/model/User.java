@@ -24,7 +24,7 @@ public class User extends Model<User> {
     public static final User dao = new User(null, true);
 
     public static User create(String url) {
-        ModelTable t = new ModelTable(url, "USER");
+        ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "USER");
         return new User(t);
     }
 
@@ -42,7 +42,7 @@ public class User extends Model<User> {
     }
 
     private User(ModelTable t, boolean isDao) {
-        super(t == null ? new ModelTable("USER") : t, isDao);
+        super(t == null ? new ModelTable("TEST", "PUBLIC", "USER") : t, isDao);
         super.setRoot(this);
 
         this.name = new PString<>("NAME", this);
