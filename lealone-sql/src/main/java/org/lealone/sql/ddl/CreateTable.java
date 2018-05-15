@@ -364,7 +364,7 @@ public class CreateTable extends SchemaStatement {
 
             // 例如: this.id = new PLong<>("id", this);
             init.append("        this.").append(columnName).append(" = new ").append(typeQueryClassName).append("<>(\"")
-                    .append(databaseToUpper ? columnName.toUpperCase() : columnName).append("\", this);\r\n");
+                    .append(databaseToUpper ? c.getName().toUpperCase() : c.getName()).append("\", this);\r\n");
 
             if (fieldNames.length() > 0) {
                 fieldNames.append(", ");

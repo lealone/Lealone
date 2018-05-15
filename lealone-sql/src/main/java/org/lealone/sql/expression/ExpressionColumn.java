@@ -146,7 +146,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
         getDatabase();
         if (columnResolver == null) {
             Schema schema = session.getDatabase()
-                    .findSchema(tableAlias == null ? session.getCurrentSchemaName() : tableAlias);
+                    .findSchema(tableAlias == null ? session.getCurrentSchemaName() : schemaName);
             if (schema != null) {
                 Constant constant = schema.findConstant(columnName);
                 if (constant != null) {

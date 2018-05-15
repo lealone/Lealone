@@ -169,6 +169,8 @@ public abstract class Model<T> {
     */
     private ArrayStack<ExpressionBuilder<T>> expressionBuilderStack;
 
+    private ArrayStack<TableFilter> tableFilterStack;
+
     boolean isDao;
     TQProperty[] tqProperties;
 
@@ -210,6 +212,7 @@ public abstract class Model<T> {
         having = null;
         whereExpressionBuilder = null;
         expressionBuilderStack = null;
+        tableFilterStack = null;
     }
 
     private ExpressionBuilder<T> getWhereExpressionBuilder() {
@@ -286,7 +289,11 @@ public abstract class Model<T> {
         return root;
     }
 
+    @SuppressWarnings("unchecked")
     public <M> M or(Model<M> m) {
+        or();
+        peekExprBuilder().setModel(m);
+        m.pushExprBuilder((ExpressionBuilder<M>) peekExprBuilder());
         return m.root;
     }
 
@@ -296,6 +303,7 @@ public abstract class Model<T> {
     }
 
     public <M> M and(Model<M> m) {
+        and();
         return m.root;
     }
 
@@ -346,6 +354,12 @@ public abstract class Model<T> {
     }
 
     public T where() {
+        if (tableFilterStack != null) {
+            ExpressionBuilder<T> on = getStack().pop();
+            TableFilter joined = getTableFilterStack().pop();
+            TableFilter top = getTableFilterStack().peek();
+            top.addJoin(joined, false, false, on.getExpression());
+        }
         return root;
     }
 
@@ -371,8 +385,18 @@ public abstract class Model<T> {
 
     private Select createSelect() {
         Select select = new Select(modelTable.getSession());
-        TableFilter tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
-        select.addTableFilter(tableFilter, true);
+        TableFilter tableFilter;
+        if (tableFilterStack != null && !tableFilterStack.isEmpty()) {
+            tableFilter = tableFilterStack.peek();
+            select.addTableFilter(tableFilter, true);
+            while (tableFilter.getJoin() != null) {
+                select.addTableFilter(tableFilter.getJoin(), false);
+                tableFilter = tableFilter.getJoin();
+            }
+        } else {
+            tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
+            select.addTableFilter(tableFilter, true);
+        }
         if (selectExpressions == null) {
             getSelectExpressions().add(new Wildcard(null, null));
         }
@@ -439,6 +463,10 @@ public abstract class Model<T> {
             list.add(deserialize(result));
         }
         return list;
+    }
+
+    public <M> List<M> findList(Model<M> m) {
+        return m.findList();
     }
 
     /**
@@ -574,6 +602,19 @@ public abstract class Model<T> {
         return expressionBuilderStack;
     }
 
+    TableFilter createTableFilter() {
+        return new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
+    }
+
+    private ArrayStack<TableFilter> getTableFilterStack() {
+        if (tableFilterStack == null) {
+            TableFilter tableFilter = createTableFilter();
+            tableFilterStack = new ArrayStack<>();
+            tableFilterStack.push(tableFilter);
+        }
+        return tableFilterStack;
+    }
+
     /**
      * Push the expression builder onto the appropriate stack.
      */
@@ -617,10 +658,13 @@ public abstract class Model<T> {
     }
 
     public T join(Model<?> m) {
+        getTableFilterStack().push(m.createTableFilter());
         return root;
     }
 
     public T on() {
+        ExpressionBuilder<T> e = new ExpressionBuilder<>(this);
+        pushExprBuilder(e);
         return root;
     }
 

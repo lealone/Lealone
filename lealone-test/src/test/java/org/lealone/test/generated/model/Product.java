@@ -45,10 +45,10 @@ public class Product extends Model<Product> {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "PRODUCT") : t, isDao);
         super.setRoot(this);
 
-        this.productId = new PLong<>("PRODUCTID", this);
-        this.productName = new PString<>("PRODUCTNAME", this);
+        this.productId = new PLong<>("PRODUCT_ID", this);
+        this.productName = new PString<>("PRODUCT_NAME", this);
         this.category = new PString<>("CATEGORY", this);
-        this.unitPrice = new PDouble<>("UNITPRICE", this);
+        this.unitPrice = new PDouble<>("UNIT_PRICE", this);
         super.setTQProperties(new TQProperty[] { this.productId, this.productName, this.category, this.unitPrice });
     }
 

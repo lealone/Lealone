@@ -46,9 +46,9 @@ public class Order extends Model<Order> {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "ORDER") : t, isDao);
         super.setRoot(this);
 
-        this.customerId = new PLong<>("CUSTOMERID", this);
-        this.orderId = new PInteger<>("ORDERID", this);
-        this.orderDate = new PDate<>("ORDERDATE", this);
+        this.customerId = new PLong<>("CUSTOMER_ID", this);
+        this.orderId = new PInteger<>("ORDER_ID", this);
+        this.orderDate = new PDate<>("ORDER_DATE", this);
         this.total = new PDouble<>("TOTAL", this);
         super.setTQProperties(new TQProperty[] { this.customerId, this.orderId, this.orderDate, this.total });
     }

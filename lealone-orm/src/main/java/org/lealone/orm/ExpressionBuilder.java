@@ -34,7 +34,7 @@ import org.lealone.sql.expression.ValueExpression;
 
 public class ExpressionBuilder<T> {
 
-    private final Model<?> model;
+    private Model<?> model;
     private Expression expression;
     private ArrayList<SelectOrderBy> orderList;
     private boolean isAnd = true;
@@ -45,6 +45,11 @@ public class ExpressionBuilder<T> {
 
     void setAnd(boolean isAnd) {
         this.isAnd = isAnd;
+    }
+
+    // 用于join时切换
+    void setModel(Model<?> model) {
+        this.model = model;
     }
 
     Expression getExpression() {
@@ -98,7 +103,10 @@ public class ExpressionBuilder<T> {
     }
 
     public ExpressionBuilder<T> eq(String propertyName, TQProperty<?> p) {
-        setRootExpression(propertyName, p, Comparison.EQUAL);
+        ExpressionColumn left = model.getExpressionColumn(propertyName);
+        ExpressionColumn right = Model.getExpressionColumn(p);
+        Comparison c = new Comparison(getTable().getSession(), Comparison.EQUAL, left, right);
+        setRootExpression(c);
         return this;
     }
 
