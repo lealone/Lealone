@@ -22,10 +22,12 @@ import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.New;
+import org.lealone.db.ServerSession;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SelectOrderBy;
@@ -35,9 +37,6 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
-import org.lealone.orm.Model.ArrayStack;
-import org.lealone.orm.Model.NVPair;
-import org.lealone.orm.Model.PRowId;
 import org.lealone.orm.property.PBaseNumber;
 import org.lealone.orm.property.TQProperty;
 import org.lealone.sql.dml.Delete;
@@ -49,6 +48,7 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Wildcard;
 import org.lealone.sql.expression.aggregate.Aggregate;
+import org.lealone.transaction.Transaction;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -68,6 +68,8 @@ import io.vertx.core.json.JsonObject;
 public abstract class Model<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(Model.class);
+
+    private static final ConcurrentSkipListMap<Long, ServerSession> currentSessions = new ConcurrentSkipListMap<>();
 
     public class PRowId extends PBaseNumber<T, Long> {
 
@@ -479,14 +481,32 @@ public abstract class Model<T> {
     }
 
     public long insert() {
+        return insert(null);
+    }
+
+    public long insert(Long tid) {
         // TODO 是否允许通过 XXX.dao来insert记录?
         if (isDao) {
             String name = this.getClass().getSimpleName();
             throw new UnsupportedOperationException("The insert operation is not allowed for " + name
                     + ".dao,  please use new " + name + "().insert() instead.");
         }
+
+        boolean autoCommit = false;
+        ServerSession session;
+        if (tid != null) {
+            session = currentSessions.get(tid);
+        } else {
+            session = peekSession();
+        }
+        if (session == null) {
+            session = modelTable.getSession();
+            autoCommit = true;
+        } else {
+            autoCommit = false;
+        }
         Table dbTable = modelTable.getTable();
-        Insert insert = new Insert(modelTable.getSession());
+        Insert insert = new Insert(session);
         int size = nvPairs.size();
         Column[] columns = new Column[size];
         Expression[] expressions = new Expression[size];
@@ -504,7 +524,10 @@ public abstract class Model<T> {
         insert.executeUpdate();
         long rowId = modelTable.getSession().getLastRowKey();
         _rowid_.set(rowId);
-        commit();
+
+        if (autoCommit) {
+            session.commit();
+        }
         reset();
         return rowId;
     }
@@ -655,6 +678,57 @@ public abstract class Model<T> {
         ExpressionBuilder<T> e = new ExpressionBuilder<>(this);
         pushExprBuilder(e);
         return root;
+    }
+
+    public long beginTransaction() {
+        checkDao("beginTransaction");
+        Table dbTable = modelTable.getTable();
+        ServerSession session = dbTable.getDatabase().createSession(modelTable.getSession().getUser());
+        Transaction t = session.getTransaction();
+        session.setAutoCommit(false);
+        long tid = t.getTransactionId();
+        currentSessions.put(tid, session);
+        return tid;
+    }
+
+    public void commitTransaction() {
+        checkDao("commitTransaction");
+        ConcurrentSkipListMap.Entry<Long, ServerSession> e = currentSessions.pollLastEntry();
+        if (e != null) {
+            e.getValue().commit();
+        }
+    }
+
+    public void commitTransaction(long tid) {
+        checkDao("commitTransaction");
+        ServerSession s = currentSessions.remove(tid);
+        if (s != null) {
+            s.commit();
+        }
+    }
+
+    public void rollbackTransaction() {
+        checkDao("rollbackTransaction");
+        ConcurrentSkipListMap.Entry<Long, ServerSession> e = currentSessions.pollLastEntry();
+        if (e != null) {
+            e.getValue().rollback();
+        }
+    }
+
+    public void rollbackTransaction(long tid) {
+        checkDao("rollbackTransaction");
+        ServerSession s = currentSessions.remove(tid);
+        if (s != null) {
+            s.rollback();
+        }
+    }
+
+    private ServerSession peekSession() {
+        ConcurrentSkipListMap.Entry<Long, ServerSession> e = currentSessions.firstEntry();
+        if (e != null)
+            return e.getValue();
+        else
+            return null;
     }
 
     /**
