@@ -35,6 +35,9 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
+import org.lealone.orm.Model.ArrayStack;
+import org.lealone.orm.Model.NVPair;
+import org.lealone.orm.Model.PRowId;
 import org.lealone.orm.property.PBaseNumber;
 import org.lealone.orm.property.TQProperty;
 import org.lealone.sql.dml.Delete;
@@ -289,22 +292,9 @@ public abstract class Model<T> {
         return root;
     }
 
-    @SuppressWarnings("unchecked")
-    public <M> M or(Model<M> m) {
-        or();
-        peekExprBuilder().setModel(m);
-        m.pushExprBuilder((ExpressionBuilder<M>) peekExprBuilder());
-        return m.root;
-    }
-
     public T and() {
         peekExprBuilder().and();
         return root;
-    }
-
-    public <M> M and(Model<M> m) {
-        and();
-        return m.root;
     }
 
     public void printSQL() {
@@ -361,10 +351,6 @@ public abstract class Model<T> {
             top.addJoin(joined, false, false, on.getExpression());
         }
         return root;
-    }
-
-    public <M> M where(Model<M> m) {
-        return m.root;
     }
 
     /**
@@ -465,8 +451,11 @@ public abstract class Model<T> {
         return list;
     }
 
-    public <M> List<M> findList(Model<M> m) {
-        return m.findList();
+    @SuppressWarnings("unchecked")
+    public <M> M m(Model<M> m) {
+        peekExprBuilder().setModel(m);
+        m.pushExprBuilder((ExpressionBuilder<M>) peekExprBuilder());
+        return m.root;
     }
 
     /**
