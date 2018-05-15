@@ -25,8 +25,10 @@ import java.util.List;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.New;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
+import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
@@ -44,7 +46,6 @@ import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Wildcard;
 import org.lealone.sql.expression.aggregate.Aggregate;
-import org.lealone.transaction.Transaction;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -64,11 +65,6 @@ import io.vertx.core.json.JsonObject;
 public abstract class Model<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(Model.class);
-
-    TQProperty[] tqProperties;
-
-    @SuppressWarnings("unchecked")
-    public final PRowId _rowid_ = new PRowId(Column.ROWID, (T) this);
 
     public class PRowId extends PBaseNumber<T, Long> {
 
@@ -95,9 +91,7 @@ public abstract class Model<T> {
         T set(long value) {
             if (!areEqual(this.value, value)) {
                 this.value = value;
-                if (isReady()) {
-                    expr().set(name, ValueLong.get(value));
-                }
+                expr().set(name, ValueLong.get(value));
             }
             return root;
         }
@@ -153,40 +147,46 @@ public abstract class Model<T> {
 
     }
 
-    private final HashSet<NVPair> nvPairs = new HashSet<>();
+    @SuppressWarnings("unchecked")
+    public final PRowId _rowid_ = new PRowId(Column.ROWID, (T) this);
 
-    protected final ModelTable modelTable;
-    boolean isDao;
-
-    public boolean isDao() {
-        return isDao;
-    }
-
-    private final ArrayList<Expression> selectExpressions = new ArrayList<>();
+    private final ModelTable modelTable;
 
     /**
      * The root model bean instance. Used to provide fluid query construction.
      */
     private T root;
-    private DefaultExpressionList<T> whereExpression;
+
+    // 以下字段不是必须的，所以延迟初始化，避免浪费不必要的内存
+    private HashSet<NVPair> nvPairs;
+    private ArrayList<Expression> selectExpressions;
+    private ArrayList<Expression> groupExpressions;
+    private ExpressionBuilder<T> having;
+    private ExpressionBuilder<T> whereExpressionBuilder;
 
     /**
-    * The underlying expression lists held as a stack. Pushed and popped based on and/or (conjunction/disjunction).
+    * The underlying expression builders held as a stack. Pushed and popped based on and/or (conjunction/disjunction).
     */
-    private ArrayStack<ExpressionList<T>> whereStack;
+    private ArrayStack<ExpressionBuilder<T>> expressionBuilderStack;
+
+    boolean isDao;
+    TQProperty[] tqProperties;
 
     public Model(ModelTable table, boolean isDao) {
         this.modelTable = table;
         this.isDao = isDao;
-        reset();
+    }
+
+    ModelTable getTable() {
+        return modelTable;
+    }
+
+    public boolean isDao() {
+        return isDao;
     }
 
     protected void setTQProperties(TQProperty[] tqProperties) {
         this.tqProperties = tqProperties;
-    }
-
-    void addNVPair(String name, Value value) {
-        nvPairs.add(new NVPair(name, value));
     }
 
     /**
@@ -196,40 +196,39 @@ public abstract class Model<T> {
         this.root = root;
     }
 
-    private void reset() {
-        whereStack = null;
-        selectExpressions.clear();
-        whereExpression = new DefaultExpressionList<T>(this, modelTable);
-        nvPairs.clear();
+    void addNVPair(String name, Value value) {
+        if (nvPairs == null) {
+            nvPairs = new HashSet<>();
+        }
+        nvPairs.add(new NVPair(name, value));
     }
 
-    /**
-     * Tune the query by specifying the properties to be loaded on the
-     * 'main' root level entity bean (aka partial object).
-     * <pre>{@code
-     *
-     *   // alias for the customer properties in select()
-     *   QCustomer cust = QCustomer.alias();
-     *
-     *   // alias for the contact properties in contacts.fetch()
-     *   QContact contact = QContact.alias();
-     *
-     *   List<Customer> customers =
-     *     new QCustomer()
-     *       // tune query
-     *       .select(cust.id, cust.name)
-     *       .contacts.fetch(contact.firstName, contact.lastName, contact.email)
-     *
-     *       // predicates
-     *       .id.greaterThan(1)
-     *       .findList();
-     *
-     * }</pre>
-     *
-     * @param properties the list of properties to fetch
-     */
+    private void reset() {
+        nvPairs = null;
+        selectExpressions = null;
+        groupExpressions = null;
+        having = null;
+        whereExpressionBuilder = null;
+        expressionBuilderStack = null;
+    }
+
+    private ExpressionBuilder<T> getWhereExpressionBuilder() {
+        if (whereExpressionBuilder == null) {
+            whereExpressionBuilder = new ExpressionBuilder<T>(this);
+        }
+        return whereExpressionBuilder;
+    }
+
+    private ArrayList<Expression> getSelectExpressions() {
+        if (selectExpressions == null) {
+            selectExpressions = New.arrayList();
+        }
+        return selectExpressions;
+    }
+
     @SafeVarargs
     public final T select(TQProperty<T>... properties) {
+        selectExpressions = new ArrayList<>();
         for (TQProperty<T> p : properties) {
             ExpressionColumn c = getExpressionColumn(p.getName());
             selectExpressions.add(c);
@@ -237,35 +236,11 @@ public abstract class Model<T> {
         return root;
     }
 
-    /**
-     * Marker that can be used to indicate that the order by clause is defined after this.
-     * <p>
-     * order() and orderBy() are synonyms and both exist for historic reasons.
-     * </p>
-     * <p>
-     * <h2>Example: order by customer name, order date</h2>
-     * <pre>{@code
-     *   List<Order> orders =
-     *          new QOrder()
-     *            .customer.name.ilike("rob")
-     *            .orderBy()
-     *              .customer.name.asc()
-     *              .orderDate.asc()
-     *            .findList();
-     *
-     * }</pre>
-     */
     public T orderBy() {
-        // Yes this does not actually do anything! We include it because style wise it makes
-        // the query nicer to read and suggests that order by definitions are added after this
-
-        whereStack.pop();
-        pushExprList(whereExpression);
+        getStack().pop();
+        pushExprBuilder(getWhereExpressionBuilder());
         return root;
     }
-
-    private ArrayList<Expression> groupExpressions;
-    DefaultExpressionList<T> having;
 
     @SafeVarargs
     public final T groupBy(TQProperty<T>... properties) {
@@ -278,139 +253,64 @@ public abstract class Model<T> {
         return root;
     }
 
-    private ExpressionColumn getExpressionColumn(String propertyName) {
+    ExpressionColumn getExpressionColumn(String propertyName) {
         return new ExpressionColumn(modelTable.getDatabase(), modelTable.getSchemaName(), modelTable.getTableName(),
                 propertyName);
     }
 
     public T having() {
-        whereStack.pop();
-        having = new DefaultExpressionList<>(this, modelTable);
-        pushExprList(having);
+        getStack().pop();
+        having = new ExpressionBuilder<>(this);
+        pushExprBuilder(having);
         return root;
     }
 
-    /**
-     * Begin a list of expressions added by 'OR'.
-     * <p>
-     * Use endOr() or endJunction() to stop added to OR and 'pop' to the parent expression list.
-     * </p>
-     * <p>
-     * <h2>Example</h2>
-     * <p>
-     * This example uses an 'OR' expression list with an inner 'AND' expression list.
-     * </p>
-     * <pre>{@code
-     *
-     *    List<Customer> customers =
-     *          new QCustomer()
-     *            .status.equalTo(Customer.Status.GOOD)
-     *            .or()
-     *              .id.greaterThan(1000)
-     *              .and()
-     *                .name.startsWith("super")
-     *                .registered.after(fiveDaysAgo)
-     *              .endAnd()
-     *            .endOr()
-     *            .orderBy().id.desc()
-     *            .findList();
-     *
-     * }</pre>
-     * <h2>Resulting SQL where clause</h2>
-     * <pre>{@code sql
-     *
-     *    where t0.status = ?  and (t0.id > ?  or (t0.name like ?  and t0.registered > ? ) )
-     *    order by t0.id desc;
-     *
-     *    --bind(GOOD,1000,super%,Wed Jul 22 00:00:00 NZST 2015)
-     *
-     * }</pre>
-     */
     public T or() {
-        peekExprList().or();
+        peekExprBuilder().or();
         return root;
     }
 
-    /**
-     * Begin a list of expressions added by 'AND'.
-     * <p>
-     * Use endAnd() or endJunction() to stop added to AND and 'pop' to the parent expression list.
-     * </p>
-     * <p>
-     * Note that typically the AND expression is only used inside an outer 'OR' expression.
-     * This is because the top level expression list defaults to an 'AND' expression list.
-     * </p>
-     * <h2>Example</h2>
-     * <p>
-     * This example uses an 'OR' expression list with an inner 'AND' expression list.
-     * </p>
-     * <pre>{@code
-     *
-     *    List<Customer> customers =
-     *          new QCustomer()
-     *            .status.equalTo(Customer.Status.GOOD)
-     *            .or() // OUTER 'OR'
-     *              .id.greaterThan(1000)
-     *              .and()  // NESTED 'AND' expression list
-     *                .name.startsWith("super")
-     *                .registered.after(fiveDaysAgo)
-     *                .endAnd()
-     *              .endOr()
-     *            .orderBy().id.desc()
-     *            .findList();
-     *
-     * }</pre>
-     * <h2>Resulting SQL where clause</h2>
-     * <pre>{@code sql
-     *
-     *    where t0.status = ?  and (t0.id > ?  or (t0.name like ?  and t0.registered > ? ) )
-     *    order by t0.id desc;
-     *
-     *    --bind(GOOD,1000,super%,Wed Jul 22 00:00:00 NZST 2015)
-     *
-     * }</pre>
-     */
     public T and() {
-        peekExprList().and();
+        peekExprBuilder().and();
         return root;
     }
 
     public void printSQL() {
-        String str = whereExpression.getExpression().getSQL();
+        StringBuilder sql = new StringBuilder();
+        if (selectExpressions != null) {
+            sql.append("SELECT (").append(selectExpressions.get(0).getSQL());
+            for (int i = 1, size = selectExpressions.size(); i < size; i++)
+                sql.append(", ").append(selectExpressions.get(i).getSQL());
+            sql.append(") FROM ").append(modelTable.getTableName());
+        }
+        if (whereExpressionBuilder != null) {
+            sql.append("\r\n  WHERE ").append(whereExpressionBuilder.getExpression().getSQL());
+        }
         if (groupExpressions != null) {
-            str += " GROUP BY (" + groupExpressions.get(0);
+            sql.append("\r\n  GROUP BY (").append(groupExpressions.get(0).getSQL());
             for (int i = 1, size = groupExpressions.size(); i < size; i++)
-                str += ", " + groupExpressions.get(i);
-            str += ")";
+                sql.append(", ").append(groupExpressions.get(i).getSQL());
+            sql.append(")");
             if (having != null) {
-                str += " HAVING " + having.getExpression().getSQL();
+                sql.append(" HAVING ").append(having.getExpression().getSQL());
             }
         }
-        if (!whereExpression.getOrderList().isEmpty()) {
-            str += " ORDER BY " + whereExpression.getOrderList().get(0).getSQL();
-            for (int i = 1, size = whereExpression.getOrderList().size(); i < size; i++)
-                str += ", " + whereExpression.getOrderList().get(i).getSQL();
+        if (whereExpressionBuilder != null) {
+            ArrayList<SelectOrderBy> list = whereExpressionBuilder.getOrderList();
+            if (list != null && !list.isEmpty()) {
+                sql.append("\r\n  ORDER BY (").append(list.get(0).getSQL());
+                for (int i = 1, size = list.size(); i < size; i++)
+                    sql.append(", ").append(list.get(i).getSQL());
+                sql.append(")");
+            }
         }
         // reset();
-        System.out.println(str);
+        System.out.println(sql);
     }
 
-    /**
-     * Begin a list of expressions added by NOT.
-     * <p>
-     * Use endNot() or endJunction() to stop added to NOT and 'pop' to the parent expression list.
-     * </p>
-     */
+    // TODO
     public T not() {
-        pushExprList(peekExprList().not());
-        return root;
-    }
-
-    /**
-     * Push the expression list onto the appropriate stack.
-     */
-    private T pushExprList(ExpressionList<T> list) {
-        whereStack.push(list);
+        pushExprBuilder(peekExprBuilder().not());
         return root;
     }
 
@@ -421,74 +321,16 @@ public abstract class Model<T> {
         }
     }
 
-    /**
-     * Add expression after this to the WHERE expression list.
-     * <p>
-     * For queries against the normal database (not the doc store) this has no effect.
-     * </p>
-     * <p>
-     * This is intended for use with Document Store / ElasticSearch where expressions can be put into either
-     * the "query" section or the "filter" section of the query. Full text expressions like MATCH are in the
-     * "query" section but many expression can be in either - expressions after the where() are put into the
-     * "filter" section which means that they don't add to the relevance and are also cache-able.
-     * </p>
-     */
     public T where() {
         return root;
     }
 
     /**
-     * Execute the query returning either a single bean or null (if no matching
-     * bean is found).
-     * <p>
-     * If more than 1 row is found for this query then a PersistenceException is
-     * thrown.
-     * </p>
-     * <p>
-     * This is useful when your predicates dictate that your query should only
-     * return 0 or 1 results.
-     * </p>
-     * <p>
-     * <pre>{@code
-     *
-     * // assuming the sku of products is unique...
-     * Product product =
-     *     new QProduct()
-     *         .sku.equalTo("aa113")
-     *         .findUnique();
-     * ...
-     * }</pre>
-     * <p>
-     * <p>
-     * It is also useful with finding objects by their id when you want to specify
-     * further join information to optimise the query.
-     * </p>
-     * <p>
-     * <pre>{@code
-     *
-     * // Fetch order 42 and additionally fetch join its order details...
-     * Order order =
-     *     new QOrder()
-     *         .fetch("details") // eagerly load the order details
-     *         .id.equalTo(42)
-     *         .findOne();
-     *
-     * // the order details were eagerly loaded
-     * List<OrderDetail> details = order.getDetails();
-     * ...
-     * }</pre>
+     * Execute the query returning either a single bean or null (if no matching bean is found).
      */
     public T findOne() {
         checkDao("findOne");
-        Select select = new Select(modelTable.getSession());
-        TableFilter tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
-        select.addTableFilter(tableFilter, true);
-        if (selectExpressions.isEmpty()) {
-            selectExpressions.add(new Wildcard(null, null));
-        }
-        selectExpressions.add(getExpressionColumn(Column.ROWID)); // 总是获取rowid
-        select.setExpressions(selectExpressions);
-        select.addCondition(whereExpression.expression);
+        Select select = createSelect();
         select.setLimit(ValueExpression.get(ValueInt.get(1)));
         select.init();
         select.prepare();
@@ -497,6 +339,28 @@ public abstract class Model<T> {
         result.next();
         reset();
         return deserialize(result);
+    }
+
+    private Select createSelect() {
+        Select select = new Select(modelTable.getSession());
+        TableFilter tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
+        select.addTableFilter(tableFilter, true);
+        if (selectExpressions == null) {
+            getSelectExpressions().add(new Wildcard(null, null));
+        }
+        selectExpressions.add(getExpressionColumn(Column.ROWID)); // 总是获取rowid
+        select.setExpressions(selectExpressions);
+        if (whereExpressionBuilder != null)
+            select.addCondition(whereExpressionBuilder.getExpression());
+        if (groupExpressions != null) {
+            select.setGroupQuery();
+            select.setGroupBy(groupExpressions);
+            select.setHaving(having.getExpression());
+        }
+        if (whereExpressionBuilder != null)
+            select.setOrder(whereExpressionBuilder.getOrderList());
+
+        return select;
     }
 
     @SuppressWarnings("unchecked")
@@ -533,38 +397,10 @@ public abstract class Model<T> {
 
     /**
      * Execute the query returning the list of objects.
-     * <p>
-     * This query will execute against the EbeanServer that was used to create it.
-     * </p>
-     * <p>
-     * <pre>{@code
-     *
-     * List<Customer> customers =
-     *     new QCustomer()
-     *       .name.ilike("rob%")
-     *       .findList();
-     *
-     * }</pre>
-     *
-     * @see EbeanServer#findList(Model, Transaction)
      */
     public List<T> findList() {
         checkDao("findList");
-        Select select = new Select(modelTable.getSession());
-        TableFilter tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
-        select.addTableFilter(tableFilter, true);
-        if (selectExpressions.isEmpty()) {
-            selectExpressions.add(new Wildcard(null, null));
-        }
-        selectExpressions.add(getExpressionColumn(Column.ROWID)); // 总是获取rowid
-        select.setExpressions(selectExpressions);
-        select.addCondition(whereExpression.expression);
-        if (groupExpressions != null) {
-            select.setGroupQuery();
-            select.setGroupBy(groupExpressions);
-            select.setHaving(having.getExpression());
-        }
-        select.setOrder(whereExpression.getOrderList());
+        Select select = createSelect();
         select.init();
         select.prepare();
         logger.info("execute sql: " + select.getPlanSQL());
@@ -579,113 +415,22 @@ public abstract class Model<T> {
 
     /**
      * Return the count of entities this query should return.
-     * <p>
-     * This is the number of 'top level' or 'root level' entities.
-     * </p>
      */
     public int findCount() {
         checkDao("findCount");
-        Select select = new Select(modelTable.getSession());
+        Select select = createSelect();
         select.setGroupQuery();
-        TableFilter tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
-        select.addTableFilter(tableFilter, true);
-        selectExpressions.clear();
+        getSelectExpressions().clear();
         Aggregate a = new Aggregate(Aggregate.COUNT_ALL, null, select, false);
-        selectExpressions.add(a);
-        select.setExpressions(selectExpressions);
-        select.addCondition(whereExpression.expression);
+        getSelectExpressions().add(a);
+        select.setExpressions(getSelectExpressions());
         select.init();
         select.prepare();
         logger.info("execute sql: " + select.getPlanSQL());
-        org.lealone.db.result.Result result = select.executeQuery(-1);
+        Result result = select.executeQuery(-1);
         reset();
         result.next();
         return result.currentRow()[0].getInt();
-    }
-
-    /**
-     * Execute as a delete query deleting the 'root level' beans that match the predicates
-     * in the query.
-     * <p>
-     * Note that if the query includes joins then the generated delete statement may not be
-     * optimal depending on the database platform.
-     * </p>
-     *
-     * @return the number of beans/rows that were deleted.
-     */
-    public int delete() {
-        Table dbTable = modelTable.getTable();
-        Delete delete = new Delete(modelTable.getSession());
-        TableFilter tableFilter = new TableFilter(modelTable.getSession(), dbTable, null, true, null);
-        delete.setTableFilter(tableFilter);
-        if (whereExpression.expression == null) {
-            maybeCreateWhereExpression(dbTable);
-            if (whereExpression.expression == null) {
-                checkDao("delete");
-            }
-        } else {
-            checkDao("delete");
-        }
-        delete.setCondition(whereExpression.expression);
-        delete.prepare();
-        reset();
-        logger.info("execute sql: " + delete.getPlanSQL());
-        int count = delete.executeUpdate();
-        commit();
-        return count;
-    }
-
-    public int update() {
-        Table dbTable = modelTable.getTable();
-        Update update = new Update(modelTable.getSession());
-        TableFilter tableFilter = new TableFilter(modelTable.getSession(), dbTable, null, true, null);
-        update.setTableFilter(tableFilter);
-        if (whereExpression.expression == null) {
-            maybeCreateWhereExpression(dbTable);
-            if (whereExpression.expression == null) {
-                checkDao("update");
-            }
-        } else {
-            checkDao("update");
-        }
-        update.setCondition(whereExpression.expression);
-        for (NVPair p : nvPairs) {
-            update.setAssignment(dbTable.getColumn(p.name), ValueExpression.get(p.value));
-        }
-        update.prepare();
-        reset();
-        logger.info("execute sql: " + update.getPlanSQL());
-        int count = update.executeUpdate();
-        commit();
-        return count;
-    }
-
-    private void maybeCreateWhereExpression(Table dbTable) {
-        // 没有指定where条件时，如果存在ROWID，则用ROWID当where条件
-        if (_rowid_.get() != 0) {
-            peekExprList().eq(Column.ROWID, _rowid_.get());
-        } else {
-            Index primaryKey = dbTable.findPrimaryKey();
-            if (primaryKey != null) {
-                for (Column c : primaryKey.getColumns()) {
-                    // 如果主键由多个字段组成，当前面的字段没有指定时就算后面的指定了也不用它们来生成where条件
-                    boolean found = false;
-                    for (NVPair p : nvPairs) {
-                        if (dbTable.getDatabase().equalsIdentifiers(p.name, c.getName())) {
-                            peekExprList().eq(p.name, p.value);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found)
-                        break;
-                }
-            }
-        }
-    }
-
-    private void commit() {
-        modelTable.getSession().commit();
     }
 
     public long insert() {
@@ -719,33 +464,101 @@ public abstract class Model<T> {
         return rowId;
     }
 
+    public int update() {
+        Table dbTable = modelTable.getTable();
+        Update update = new Update(modelTable.getSession());
+        TableFilter tableFilter = new TableFilter(modelTable.getSession(), dbTable, null, true, null);
+        update.setTableFilter(tableFilter);
+        checkWhereExpression(dbTable, "update");
+        if (whereExpressionBuilder != null)
+            update.setCondition(whereExpressionBuilder.getExpression());
+        for (NVPair p : nvPairs) {
+            update.setAssignment(dbTable.getColumn(p.name), ValueExpression.get(p.value));
+        }
+        update.prepare();
+        reset();
+        logger.info("execute sql: " + update.getPlanSQL());
+        int count = update.executeUpdate();
+        commit();
+        return count;
+    }
+
+    public int delete() {
+        Table dbTable = modelTable.getTable();
+        Delete delete = new Delete(modelTable.getSession());
+        TableFilter tableFilter = new TableFilter(modelTable.getSession(), dbTable, null, true, null);
+        delete.setTableFilter(tableFilter);
+        checkWhereExpression(dbTable, "delete");
+        if (whereExpressionBuilder != null)
+            delete.setCondition(whereExpressionBuilder.getExpression());
+        delete.prepare();
+        reset();
+        logger.info("execute sql: " + delete.getPlanSQL());
+        int count = delete.executeUpdate();
+        commit();
+        return count;
+    }
+
+    private void checkWhereExpression(Table dbTable, String methodName) {
+        if (whereExpressionBuilder == null || whereExpressionBuilder.getExpression() == null) {
+            maybeCreateWhereExpression(dbTable);
+            if (whereExpressionBuilder == null || whereExpressionBuilder.getExpression() == null) {
+                checkDao(methodName);
+            }
+        } else {
+            checkDao(methodName);
+        }
+    }
+
+    private void maybeCreateWhereExpression(Table dbTable) {
+        // 没有指定where条件时，如果存在ROWID，则用ROWID当where条件
+        if (_rowid_.get() != 0) {
+            peekExprBuilder().eq(Column.ROWID, _rowid_.get());
+        } else {
+            Index primaryKey = dbTable.findPrimaryKey();
+            if (primaryKey != null) {
+                for (Column c : primaryKey.getColumns()) {
+                    // 如果主键由多个字段组成，当前面的字段没有指定时就算后面的指定了也不用它们来生成where条件
+                    boolean found = false;
+                    for (NVPair p : nvPairs) {
+                        if (dbTable.getDatabase().equalsIdentifiers(p.name, c.getName())) {
+                            peekExprBuilder().eq(p.name, p.value);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                        break;
+                }
+            }
+        }
+    }
+
+    private void commit() {
+        modelTable.getSession().commit();
+    }
+
+    private ArrayStack<ExpressionBuilder<T>> getStack() {
+        if (expressionBuilderStack == null) {
+            expressionBuilderStack = new ArrayStack<ExpressionBuilder<T>>();
+            expressionBuilderStack.push(getWhereExpressionBuilder());
+        }
+        return expressionBuilderStack;
+    }
+
     /**
-    * Return the expression list that has been built for this query.
-    */
-    public ExpressionList<T> getExpressionList() {
-        return whereExpression;
+     * Push the expression builder onto the appropriate stack.
+     */
+    private T pushExprBuilder(ExpressionBuilder<T> builder) {
+        getStack().push(builder);
+        return root;
     }
 
     /**
      * Return the current expression list that expressions should be added to.
      */
-    public ExpressionList<T> peekExprList() {
-        if (whereStack == null) {
-            whereStack = new ArrayStack<ExpressionList<T>>();
-            whereStack.push(whereExpression);
-        }
-        // return the current expression list
-        return whereStack.peek();
-    }
-
-    public boolean databaseToUpper() {
-        if (modelTable == null)
-            return false;
-        return modelTable.getSession().getDatabase().getSettings().databaseToUpper;
-    }
-
-    public boolean isReady() {
-        return modelTable != null;
+    public ExpressionBuilder<T> peekExprBuilder() {
+        return getStack().peek();
     }
 
     @Override
@@ -754,25 +567,25 @@ public abstract class Model<T> {
         return json.encode();
     }
 
-    public T leftParenthesis() {
-        DefaultExpressionList<T> e = new DefaultExpressionList<>(this, modelTable);
-        pushExprList(e);
-        return root;
-    }
-
     public T lp() {
-        return leftParenthesis();
+        ExpressionBuilder<T> e = new ExpressionBuilder<>(this);
+        pushExprBuilder(e);
+        return root;
     }
 
-    public T rightParenthesis() {
-        return root;
+    public T leftParenthesis() {
+        return lp();
     }
 
     public T rp() {
-        ExpressionList<T> right = whereStack.pop();
-        ExpressionList<T> left = peekExprList();
+        ExpressionBuilder<T> right = getStack().pop();
+        ExpressionBuilder<T> left = peekExprBuilder();
         left.junction(right);
         return root;
+    }
+
+    public T rightParenthesis() {
+        return rp();
     }
 
     /**

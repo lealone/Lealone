@@ -23,7 +23,7 @@ import java.net.URL;
 import java.util.HashMap;
 
 import org.lealone.db.value.Value;
-import org.lealone.orm.ExpressionList;
+import org.lealone.orm.ExpressionBuilder;
 import org.lealone.orm.Model;
 
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -63,14 +63,10 @@ public abstract class TQProperty<R> {
     }
 
     /**
-     * Internal method to return the underlying expression list.
+     * Internal method to return the underlying expression builder.
      */
-    protected ExpressionList<?> expr() {
-        return ((Model<?>) root).peekExprList();
-    }
-
-    protected boolean isReady() {
-        return ((Model<?>) root).isReady();
+    protected ExpressionBuilder<?> expr() {
+        return ((Model<?>) root).peekExprBuilder();
     }
 
     /**

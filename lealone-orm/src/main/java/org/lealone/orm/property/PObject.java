@@ -31,12 +31,11 @@ public class PObject<R> extends TQProperty<R> {
         super(name, root, prefix);
     }
 
+    @Override
     public R set(Object value) {
         if (!areEqual(this.value, value)) {
             this.value = value;
-            if (isReady()) {
-                expr().set(name, ValueJavaObject.getNoCopy(value, null));
-            }
+            expr().set(name, ValueJavaObject.getNoCopy(value, null));
         }
         return root;
     }
