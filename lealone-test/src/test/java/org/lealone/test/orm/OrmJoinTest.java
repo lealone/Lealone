@@ -41,7 +41,7 @@ public class OrmJoinTest extends UnitTestBase {
         Customer c = Customer.dao;
         Order o = Order.dao;
 
-        // SELECT c.name, c.phone, o.order_date, o.total FROM customer c JION order o ON c.id = o.customer_id
+        // SELECT c.name, c.phone, o.order_date, o.total FROM customer c JOIN order o ON c.id = o.customer_id
         // WHERE c.id = 1 or o.customer_id = 2
         c.select(c.name, c.phone, o.orderDate, o.total).join(o).on().id.eq(o.customerId).where().id.eq(1)
                 .or(o).customerId.eq(2).findList();
