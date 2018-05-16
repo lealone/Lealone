@@ -25,10 +25,10 @@ import org.lealone.test.generated.model.Customer;
 
 import io.vertx.core.json.JsonObject;
 
-public class CustomerTest extends UnitTestBase {
+public class OrmCrudTest extends UnitTestBase {
 
     public static void main(String[] args) {
-        new CustomerTest().runTest();
+        new OrmCrudTest().runTest();
     }
 
     @Override
