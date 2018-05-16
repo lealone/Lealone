@@ -19,8 +19,6 @@ package org.lealone.orm;
 
 import java.io.IOException;
 
-import org.lealone.orm.property.TQProperty;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonSerializer;
@@ -32,7 +30,7 @@ public class ModelSerializer<T extends Model> extends JsonSerializer<T> {
     public void serialize(T value, JsonGenerator jgen, SerializerProvider provider)
             throws IOException, JsonProcessingException {
         jgen.writeStartObject();
-        for (TQProperty p : ((Model) value).tqProperties) {
+        for (ModelProperty p : ((Model) value).modelProperties) {
             p.serialize(jgen);
         }
         jgen.writeBooleanField("isDao", ((Model) value).isDao);

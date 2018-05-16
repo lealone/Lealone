@@ -24,7 +24,6 @@ import org.lealone.common.util.New;
 import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
-import org.lealone.orm.property.TQProperty;
 import org.lealone.sql.expression.CompareLike;
 import org.lealone.sql.expression.Comparison;
 import org.lealone.sql.expression.ConditionAndOr;
@@ -102,7 +101,7 @@ public class ExpressionBuilder<T> {
         return this;
     }
 
-    public ExpressionBuilder<T> eq(String propertyName, TQProperty<?> p) {
+    public ExpressionBuilder<T> eq(String propertyName, ModelProperty<?> p) {
         ExpressionColumn left = model.getExpressionColumn(propertyName);
         ExpressionColumn right = Model.getExpressionColumn(p);
         Comparison c = new Comparison(getTable().getSession(), Comparison.EQUAL, left, right);

@@ -17,12 +17,14 @@
  */
 package org.lealone.orm.property;
 
+import org.lealone.orm.ModelProperty;
+
 /**
  * byte[] property.
  *
  * @param <R> the root model bean type
  */
-public class PBytes<R> extends TQProperty<R> {
+public class PBytes<R> extends ModelProperty<R> {
 
     /**
      * Construct with a property name and root instance.

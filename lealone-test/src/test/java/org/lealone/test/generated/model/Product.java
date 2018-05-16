@@ -4,12 +4,12 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelDeserializer;
+import org.lealone.orm.ModelProperty;
 import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PDouble;
 import org.lealone.orm.property.PLong;
 import org.lealone.orm.property.PString;
-import org.lealone.orm.property.TQProperty;
 import org.lealone.test.generated.model.Product.ProductDeserializer;
 
 /**
@@ -49,7 +49,7 @@ public class Product extends Model<Product> {
         this.productName = new PString<>("PRODUCT_NAME", this);
         this.category = new PString<>("CATEGORY", this);
         this.unitPrice = new PDouble<>("UNIT_PRICE", this);
-        super.setTQProperties(new TQProperty[] { this.productId, this.productName, this.category, this.unitPrice });
+        super.setModelProperties(new ModelProperty[] { this.productId, this.productName, this.category, this.unitPrice });
     }
 
     @Override

@@ -17,7 +17,9 @@
  */
 package org.lealone.orm.property;
 
-public class PClob<R> extends TQProperty<R> {
+import org.lealone.orm.ModelProperty;
+
+public class PClob<R> extends ModelProperty<R> {
 
     public PClob(String name, R root) {
         super(name, root);

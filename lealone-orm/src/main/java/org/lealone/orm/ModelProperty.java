@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.orm.property;
+package org.lealone.orm;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -23,8 +23,6 @@ import java.net.URL;
 import java.util.HashMap;
 
 import org.lealone.db.value.Value;
-import org.lealone.orm.ExpressionBuilder;
-import org.lealone.orm.Model;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -34,7 +32,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  *
  * @param <R> The type of the owning root bean
  */
-public abstract class TQProperty<R> {
+public abstract class ModelProperty<R> {
 
     protected final String name;
     protected final R root;
@@ -45,14 +43,14 @@ public abstract class TQProperty<R> {
      * @param name the name of the property
      * @param root the root model bean instance
      */
-    public TQProperty(String name, R root) {
+    public ModelProperty(String name, R root) {
         this(name, root, null);
     }
 
     /**
      * Construct with additional path prefix.
      */
-    public TQProperty(String name, R root, String prefix) {
+    public ModelProperty(String name, R root, String prefix) {
         this.root = root;
         this.name = fullPath(prefix, name);
     }
@@ -124,7 +122,7 @@ public abstract class TQProperty<R> {
         return name;
     }
 
-    public final R eq(TQProperty<?> p) {
+    public final R eq(ModelProperty<?> p) {
         expr().eq(name, p);
         return root;
     }

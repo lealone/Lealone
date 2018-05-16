@@ -19,13 +19,15 @@ package org.lealone.orm.property;
 
 import java.util.Collection;
 
+import org.lealone.orm.ModelProperty;
+
 /**
  * Base property for types that primarily have equal to.
  *
  * @param <R> the root model bean type
  * @param <T> the number type
  */
-public abstract class PBaseValueEqual<R, T> extends TQProperty<R> {
+public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
 
     /**
      * Construct with a property name and root instance.

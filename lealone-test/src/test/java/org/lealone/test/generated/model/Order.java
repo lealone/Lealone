@@ -4,13 +4,13 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelDeserializer;
+import org.lealone.orm.ModelProperty;
 import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PDate;
 import org.lealone.orm.property.PDouble;
 import org.lealone.orm.property.PInteger;
 import org.lealone.orm.property.PLong;
-import org.lealone.orm.property.TQProperty;
 import org.lealone.test.generated.model.Order.OrderDeserializer;
 
 /**
@@ -50,7 +50,7 @@ public class Order extends Model<Order> {
         this.orderId = new PInteger<>("ORDER_ID", this);
         this.orderDate = new PDate<>("ORDER_DATE", this);
         this.total = new PDouble<>("TOTAL", this);
-        super.setTQProperties(new TQProperty[] { this.customerId, this.orderId, this.orderDate, this.total });
+        super.setModelProperties(new ModelProperty[] { this.customerId, this.orderId, this.orderDate, this.total });
     }
 
     @Override

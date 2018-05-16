@@ -4,12 +4,12 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelDeserializer;
+import org.lealone.orm.ModelProperty;
 import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.ModelTable;
 import org.lealone.orm.property.PInteger;
 import org.lealone.orm.property.PLong;
 import org.lealone.orm.property.PString;
-import org.lealone.orm.property.TQProperty;
 import org.lealone.test.generated.model.Customer.CustomerDeserializer;
 
 /**
@@ -49,7 +49,7 @@ public class Customer extends Model<Customer> {
         this.name = new PString<>("NAME", this);
         this.notes = new PString<>("NOTES", this);
         this.phone = new PInteger<>("PHONE", this);
-        super.setTQProperties(new TQProperty[] { this.id, this.name, this.notes, this.phone });
+        super.setModelProperties(new ModelProperty[] { this.id, this.name, this.notes, this.phone });
     }
 
     @Override

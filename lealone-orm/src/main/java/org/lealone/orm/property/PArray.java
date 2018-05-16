@@ -17,12 +17,14 @@
  */
 package org.lealone.orm.property;
 
+import org.lealone.orm.ModelProperty;
+
 /**
  * Array property with E as the element type.
  *
  * @param <R> the root model bean type
  */
-public class PArray<R> extends TQProperty<R> {
+public class PArray<R> extends ModelProperty<R> {
 
     /**
      * Construct with a property name and root instance.

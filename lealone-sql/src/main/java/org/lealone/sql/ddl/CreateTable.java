@@ -349,22 +349,23 @@ public class CreateTable extends SchemaStatement {
         importSet.add("org.lealone.orm.ModelDeserializer");
         importSet.add("org.lealone.orm.ModelSerializer");
         importSet.add("org.lealone.orm.ModelTable");
-        importSet.add(TYPE_QUERY_PACKAGE_NAME + ".TQProperty");
+        importSet.add("org.lealone.orm.ModelProperty");
         importSet.add("com.fasterxml.jackson.databind.annotation.JsonDeserialize");
         importSet.add("com.fasterxml.jackson.databind.annotation.JsonSerialize");
         importSet.add(packageName + "." + className + "." + className + "Deserializer");
 
         for (Column c : data.columns) {
             int type = c.getType();
-            String typeQueryClassName = getTypeQueryClassName(type, importSet);
+            String modelPropertyClassName = getModelPropertyClassName(type, importSet);
             String columnName = CamelCaseHelper.toCamelFromUnderscore(c.getName());
 
-            fields.append("    public final ").append(typeQueryClassName).append('<').append(className).append("> ")
+            fields.append("    public final ").append(modelPropertyClassName).append('<').append(className).append("> ")
                     .append(columnName).append(";\r\n");
 
             // 例如: this.id = new PLong<>("id", this);
-            init.append("        this.").append(columnName).append(" = new ").append(typeQueryClassName).append("<>(\"")
-                    .append(databaseToUpper ? c.getName().toUpperCase() : c.getName()).append("\", this);\r\n");
+            init.append("        this.").append(columnName).append(" = new ").append(modelPropertyClassName)
+                    .append("<>(\"").append(databaseToUpper ? c.getName().toUpperCase() : c.getName())
+                    .append("\", this);\r\n");
 
             if (fieldNames.length() > 0) {
                 fieldNames.append(", ");
@@ -417,7 +418,7 @@ public class CreateTable extends SchemaStatement {
         buff.append("        super.setRoot(this);\r\n");
         buff.append("\r\n");
         buff.append(init);
-        buff.append("        super.setTQProperties(new TQProperty[] { ").append(fieldNames).append(" });\r\n");
+        buff.append("        super.setModelProperties(new ModelProperty[] { ").append(fieldNames).append(" });\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    @Override\r\n");
@@ -440,7 +441,7 @@ public class CreateTable extends SchemaStatement {
 
     private static final String TYPE_QUERY_PACKAGE_NAME = "org.lealone.orm.property";
 
-    private static String getTypeQueryClassName(int type, TreeSet<String> importSet) {
+    private static String getModelPropertyClassName(int type, TreeSet<String> importSet) {
         String name;
         switch (type) {
         case Value.BYTES:

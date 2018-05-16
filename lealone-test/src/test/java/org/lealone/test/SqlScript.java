@@ -37,7 +37,7 @@ public class SqlScript {
             createUserTable(this);
             createProductTable(this);
             createOrderTable(this);
-            createAllTypeTable(this);
+            createAllModelPropertyTable(this);
             createUserService(this);
             createHelloWorldService(this);
         }
@@ -85,8 +85,8 @@ public class SqlScript {
         );
     }
 
-    public static void createAllTypeTable(SqlExecuter executer) {
-        // 21种类型，目前不支持GEOMETRY类型
+    public static void createAllModelPropertyTable(SqlExecuter executer) {
+        // 21种模型属性类型，目前不支持GEOMETRY类型
         // INT
         // BOOLEAN
         // TINYINT
@@ -108,7 +108,7 @@ public class SqlScript {
         // CLOB
         // UUID
         // ARRAY
-        executer.execute("CREATE TABLE all_type (" //
+        executer.execute("CREATE TABLE all_model_property (" //
                 + " f1  INT," //
                 + " f2  BOOLEAN," //
                 + " f3  TINYINT," //
@@ -134,7 +134,7 @@ public class SqlScript {
                 + " PACKAGE '" + MODEL_PACKAGE_NAME + "'" //
                 + " GENERATE CODE '" + GENERATED_CODE_PATH + "'");
 
-        System.out.println("create table: all_type");
+        System.out.println("create table: all_model_property");
     }
 
     public static void createUserService(SqlExecuter executer) {

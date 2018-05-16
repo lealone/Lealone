@@ -19,26 +19,15 @@ package org.lealone.test.orm;
 
 import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
-import org.lealone.test.generated.model.User;
 
-public class ExpressionTest extends UnitTestBase {
+public class AllModelPropertyTest extends UnitTestBase {
 
     public static void main(String[] args) {
-        new ExpressionTest().runTest();
+        new AllModelPropertyTest().runTest();
     }
 
     @Override
     public void test() {
-        SqlScript.createUserTable(this);
-
-        User d = User.dao;
-        // select name, phone from user where name = 'zhh' and (notes = 'notes1' or notes = 'notes2')
-        // group by name, phone having name = 'zhh' order by name asc, phone desc;
-        d = d.select(d.name, d.phone).where().name.eq("zhh").and().lp().notes.eq("notes1").or().notes.eq("notes2").rp()
-                .groupBy(d.name, d.phone).having().name.eq("zhh").orderBy().name.asc().phone.desc();
-
-        d.printSQL();
-        d.findList();
+        SqlScript.createAllModelPropertyTable(this);
     }
-
 }

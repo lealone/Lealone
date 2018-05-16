@@ -38,7 +38,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.orm.property.PBaseNumber;
-import org.lealone.orm.property.TQProperty;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Select;
@@ -177,9 +176,9 @@ public abstract class Model<T> {
     private ArrayStack<TableFilter> tableFilterStack;
 
     boolean isDao;
-    TQProperty[] tqProperties;
+    ModelProperty[] modelProperties;
 
-    public Model(ModelTable table, boolean isDao) {
+    protected Model(ModelTable table, boolean isDao) {
         this.modelTable = table;
         this.isDao = isDao;
     }
@@ -192,8 +191,8 @@ public abstract class Model<T> {
         return isDao;
     }
 
-    protected void setTQProperties(TQProperty[] tqProperties) {
-        this.tqProperties = tqProperties;
+    protected void setModelProperties(ModelProperty[] modelProperties) {
+        this.modelProperties = modelProperties;
     }
 
     /**
@@ -247,9 +246,9 @@ public abstract class Model<T> {
     }
 
     @SafeVarargs
-    public final T select(TQProperty<?>... properties) {
+    public final T select(ModelProperty<?>... properties) {
         selectExpressions = new ArrayList<>();
-        for (TQProperty<?> p : properties) {
+        for (ModelProperty<?> p : properties) {
             ExpressionColumn c = getExpressionColumn(p);
             selectExpressions.add(c);
         }
@@ -263,17 +262,16 @@ public abstract class Model<T> {
     }
 
     @SafeVarargs
-    public final T groupBy(TQProperty<?>... properties) {
+    public final T groupBy(ModelProperty<?>... properties) {
         groupExpressions = new ArrayList<>();
-        for (TQProperty<?> p : properties) {
+        for (ModelProperty<?> p : properties) {
             ExpressionColumn c = getExpressionColumn(p);
             groupExpressions.add(c);
         }
-
         return root;
     }
 
-    static ExpressionColumn getExpressionColumn(TQProperty<?> p) {
+    static ExpressionColumn getExpressionColumn(ModelProperty<?> p) {
         return new ExpressionColumn(p.getDatabaseName(), p.getSchemaName(), p.getTableName(), p.getName());
     }
 
@@ -417,7 +415,7 @@ public abstract class Model<T> {
 
         Model m = newInstance(modelTable);
         if (m != null) {
-            for (TQProperty p : m.tqProperties) {
+            for (ModelProperty p : m.modelProperties) {
                 p.deserialize(map);
             }
             m._rowid_.deserialize(map);
@@ -430,7 +428,7 @@ public abstract class Model<T> {
     }
 
     protected void deserialize(JsonNode node) {
-        for (TQProperty p : tqProperties) {
+        for (ModelProperty p : modelProperties) {
             p.deserialize(node);
         }
     }
@@ -638,7 +636,7 @@ public abstract class Model<T> {
     /**
      * Return the current expression builder that expressions should be added to.
      */
-    public ExpressionBuilder<T> peekExprBuilder() {
+    ExpressionBuilder<T> peekExprBuilder() {
         return getStack().peek();
     }
 
@@ -648,25 +646,23 @@ public abstract class Model<T> {
         return json.encode();
     }
 
+    /**
+     * left parenthesis
+     */
     public T lp() {
         ExpressionBuilder<T> e = new ExpressionBuilder<>(this);
         pushExprBuilder(e);
         return root;
     }
 
-    public T leftParenthesis() {
-        return lp();
-    }
-
+    /**
+     * right parenthesis
+     */
     public T rp() {
         ExpressionBuilder<T> right = getStack().pop();
         ExpressionBuilder<T> left = peekExprBuilder();
         left.junction(right);
         return root;
-    }
-
-    public T rightParenthesis() {
-        return rp();
     }
 
     public T join(Model<?> m) {
