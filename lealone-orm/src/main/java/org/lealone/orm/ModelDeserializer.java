@@ -33,13 +33,13 @@ public abstract class ModelDeserializer<T> extends JsonDeserializer<T> {
         Model<T> m = newModelInstance();
         m.deserialize(node);
 
-        JsonNode n = node.get("isDao");
+        JsonNode n = node.get("modelType");
         if (n == null) {
-            m.isDao = false;
+            m.modelType = Model.REGULAR_MODEL;
             // 如果不通过JsonSerializer得到的json串不一定包含isDao字段(比如前端直接传来的json串)，所以不抛异常
             // DbException.throwInternalError("The isDao field is missing");
         } else {
-            m.isDao = n.booleanValue();
+            m.modelType = n.shortValue();
         }
         return (T) m;
     }

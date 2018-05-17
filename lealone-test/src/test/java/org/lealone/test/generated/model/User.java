@@ -21,11 +21,11 @@ import org.lealone.test.generated.model.User.UserDeserializer;
 @JsonDeserialize(using = UserDeserializer.class)
 public class User extends Model<User> {
 
-    public static final User dao = new User(null, true);
+    public static final User dao = new User(null, ROOT_DAO);
 
     public static User create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "USER");
-        return new User(t);
+        return new User(t, REGULAR_MODEL);
     }
 
     public final PString<User> name;
@@ -34,15 +34,12 @@ public class User extends Model<User> {
     public final PLong<User> id;
 
     public User() {
-        this(null);
+        this(null, REGULAR_MODEL);
     }
 
-    private User(ModelTable t) {
-        this(t, false);
-    }
 
-    private User(ModelTable t, boolean isDao) {
-        super(t == null ? new ModelTable("TEST", "PUBLIC", "USER") : t, isDao);
+    private User(ModelTable t, short modelType) {
+        super(t == null ? new ModelTable("TEST", "PUBLIC", "USER") : t, modelType);
         super.setRoot(this);
 
         this.name = new PString<>("NAME", this);
@@ -53,8 +50,8 @@ public class User extends Model<User> {
     }
 
     @Override
-    protected User newInstance(ModelTable t) {
-        return new User(t);
+    protected User newInstance(ModelTable t, short modelType) {
+        return new User(t, modelType);
     }
 
     static class UserDeserializer extends ModelDeserializer<User> {

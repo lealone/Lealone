@@ -22,11 +22,11 @@ import org.lealone.test.generated.model.Order.OrderDeserializer;
 @JsonDeserialize(using = OrderDeserializer.class)
 public class Order extends Model<Order> {
 
-    public static final Order dao = new Order(null, true);
+    public static final Order dao = new Order(null, ROOT_DAO);
 
     public static Order create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "ORDER");
-        return new Order(t);
+        return new Order(t, REGULAR_MODEL);
     }
 
     public final PLong<Order> customerId;
@@ -35,15 +35,12 @@ public class Order extends Model<Order> {
     public final PDouble<Order> total;
 
     public Order() {
-        this(null);
+        this(null, REGULAR_MODEL);
     }
 
-    private Order(ModelTable t) {
-        this(t, false);
-    }
 
-    private Order(ModelTable t, boolean isDao) {
-        super(t == null ? new ModelTable("TEST", "PUBLIC", "ORDER") : t, isDao);
+    private Order(ModelTable t, short modelType) {
+        super(t == null ? new ModelTable("TEST", "PUBLIC", "ORDER") : t, modelType);
         super.setRoot(this);
 
         this.customerId = new PLong<>("CUSTOMER_ID", this);
@@ -54,8 +51,8 @@ public class Order extends Model<Order> {
     }
 
     @Override
-    protected Order newInstance(ModelTable t) {
-        return new Order(t);
+    protected Order newInstance(ModelTable t, short modelType) {
+        return new Order(t, modelType);
     }
 
     static class OrderDeserializer extends ModelDeserializer<Order> {

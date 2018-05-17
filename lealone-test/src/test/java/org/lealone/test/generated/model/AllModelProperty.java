@@ -36,11 +36,11 @@ import org.lealone.test.generated.model.AllModelProperty.AllModelPropertyDeseria
 @JsonDeserialize(using = AllModelPropertyDeserializer.class)
 public class AllModelProperty extends Model<AllModelProperty> {
 
-    public static final AllModelProperty dao = new AllModelProperty(null, true);
+    public static final AllModelProperty dao = new AllModelProperty(null, ROOT_DAO);
 
     public static AllModelProperty create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "ALL_MODEL_PROPERTY");
-        return new AllModelProperty(t);
+        return new AllModelProperty(t, REGULAR_MODEL);
     }
 
     public final PInteger<AllModelProperty> f1;
@@ -66,15 +66,12 @@ public class AllModelProperty extends Model<AllModelProperty> {
     public final PArray<AllModelProperty> f21;
 
     public AllModelProperty() {
-        this(null);
+        this(null, REGULAR_MODEL);
     }
 
-    private AllModelProperty(ModelTable t) {
-        this(t, false);
-    }
 
-    private AllModelProperty(ModelTable t, boolean isDao) {
-        super(t == null ? new ModelTable("TEST", "PUBLIC", "ALL_MODEL_PROPERTY") : t, isDao);
+    private AllModelProperty(ModelTable t, short modelType) {
+        super(t == null ? new ModelTable("TEST", "PUBLIC", "ALL_MODEL_PROPERTY") : t, modelType);
         super.setRoot(this);
 
         this.f1 = new PInteger<>("F1", this);
@@ -102,8 +99,8 @@ public class AllModelProperty extends Model<AllModelProperty> {
     }
 
     @Override
-    protected AllModelProperty newInstance(ModelTable t) {
-        return new AllModelProperty(t);
+    protected AllModelProperty newInstance(ModelTable t, short modelType) {
+        return new AllModelProperty(t, modelType);
     }
 
     static class AllModelPropertyDeserializer extends ModelDeserializer<AllModelProperty> {

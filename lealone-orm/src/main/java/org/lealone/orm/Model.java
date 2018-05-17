@@ -66,6 +66,10 @@ import io.vertx.core.json.JsonObject;
 @SuppressWarnings("rawtypes")
 public abstract class Model<T> {
 
+    public static final short REGULAR_MODEL = 0;
+    public static final short ROOT_DAO = 1;
+    public static final short CHILD_DAO = 2;
+
     private static final Logger logger = LoggerFactory.getLogger(Model.class);
 
     private static final ConcurrentSkipListMap<Long, ServerSession> currentSessions = new ConcurrentSkipListMap<>();
@@ -175,12 +179,13 @@ public abstract class Model<T> {
 
     private ArrayStack<TableFilter> tableFilterStack;
 
-    boolean isDao;
     ModelProperty[] modelProperties;
+    // 0: regular model; 1: root dao; 2: child dao
+    short modelType;
 
-    protected Model(ModelTable table, boolean isDao) {
+    protected Model(ModelTable table, short modelType) {
         this.modelTable = table;
-        this.isDao = isDao;
+        this.modelType = modelType;
     }
 
     ModelTable getTable() {
@@ -188,7 +193,7 @@ public abstract class Model<T> {
     }
 
     public boolean isDao() {
-        return isDao;
+        return modelType > 0;
     }
 
     protected void setModelProperties(ModelProperty[] modelProperties) {
@@ -247,6 +252,10 @@ public abstract class Model<T> {
 
     @SafeVarargs
     public final T select(ModelProperty<?>... properties) {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.select(properties);
+        }
         selectExpressions = new ArrayList<>();
         for (ModelProperty<?> p : properties) {
             ExpressionColumn c = getExpressionColumn(p);
@@ -256,6 +265,10 @@ public abstract class Model<T> {
     }
 
     public T orderBy() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.orderBy();
+        }
         getStack().pop();
         pushExprBuilder(getWhereExpressionBuilder());
         return root;
@@ -263,6 +276,10 @@ public abstract class Model<T> {
 
     @SafeVarargs
     public final T groupBy(ModelProperty<?>... properties) {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.groupBy(properties);
+        }
         groupExpressions = new ArrayList<>();
         for (ModelProperty<?> p : properties) {
             ExpressionColumn c = getExpressionColumn(p);
@@ -281,6 +298,10 @@ public abstract class Model<T> {
     }
 
     public T having() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.having();
+        }
         getStack().pop();
         having = new ExpressionBuilder<>(this);
         pushExprBuilder(having);
@@ -288,11 +309,19 @@ public abstract class Model<T> {
     }
 
     public T or() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.or();
+        }
         peekExprBuilder().or();
         return root;
     }
 
     public T and() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.and();
+        }
         peekExprBuilder().and();
         return root;
     }
@@ -332,18 +361,26 @@ public abstract class Model<T> {
 
     // TODO
     public T not() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.not();
+        }
         pushExprBuilder(peekExprBuilder().not());
         return root;
     }
 
     private void checkDao(String methodName) {
-        if (!isDao) {
+        if (!isDao()) {
             throw new UnsupportedOperationException("The " + methodName + " operation is not allowed, please use "
                     + this.getClass().getSimpleName() + ".dao." + methodName + "() instead.");
         }
     }
 
     public T where() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.where();
+        }
         if (tableFilterStack != null) {
             ExpressionBuilder<T> on = getStack().pop();
             TableFilter joined = getTableFilterStack().pop();
@@ -413,7 +450,7 @@ public abstract class Model<T> {
             map.put(result.getColumnName(i), row[i]);
         }
 
-        Model m = newInstance(modelTable);
+        Model m = newInstance(modelTable, REGULAR_MODEL);
         if (m != null) {
             for (ModelProperty p : m.modelProperties) {
                 p.deserialize(map);
@@ -423,7 +460,7 @@ public abstract class Model<T> {
         return (T) m;
     }
 
-    protected Model newInstance(ModelTable t) {
+    protected Model newInstance(ModelTable t, short modelType) {
         return null;
     }
 
@@ -453,6 +490,10 @@ public abstract class Model<T> {
 
     @SuppressWarnings("unchecked")
     public <M> M m(Model<M> m) {
+        Model<T> m2 = maybeCopy();
+        if (m2 != this) {
+            return m2.m(m);
+        }
         peekExprBuilder().setModel(m);
         m.pushExprBuilder((ExpressionBuilder<M>) peekExprBuilder());
         return m.root;
@@ -484,7 +525,7 @@ public abstract class Model<T> {
 
     public long insert(Long tid) {
         // TODO 是否允许通过 XXX.dao来insert记录?
-        if (isDao) {
+        if (isDao()) {
             String name = this.getClass().getSimpleName();
             throw new UnsupportedOperationException("The insert operation is not allowed for " + name
                     + ".dao,  please use new " + name + "().insert() instead.");
@@ -576,6 +617,26 @@ public abstract class Model<T> {
         }
     }
 
+    private boolean isRootDao() {
+        return modelType == ROOT_DAO;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Model<T> maybeCopy() {
+        if (isRootDao()) {
+            Model m = newInstance(modelTable.copy(), CHILD_DAO);
+            return m;
+        } else {
+            return this;
+        }
+    }
+
+    // 支持并发
+    public T fork() {
+        checkDao("for");
+        return maybeCopy().root;
+    }
+
     private void maybeCreateWhereExpression(Table dbTable) {
         // 没有指定where条件时，如果存在ROWID，则用ROWID当where条件
         if (_rowid_.get() != 0) {
@@ -650,6 +711,10 @@ public abstract class Model<T> {
      * left parenthesis
      */
     public T lp() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.lp();
+        }
         ExpressionBuilder<T> e = new ExpressionBuilder<>(this);
         pushExprBuilder(e);
         return root;
@@ -659,6 +724,10 @@ public abstract class Model<T> {
      * right parenthesis
      */
     public T rp() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.rp();
+        }
         ExpressionBuilder<T> right = getStack().pop();
         ExpressionBuilder<T> left = peekExprBuilder();
         left.junction(right);
@@ -666,11 +735,19 @@ public abstract class Model<T> {
     }
 
     public T join(Model<?> m) {
+        Model<T> m2 = maybeCopy();
+        if (m2 != this) {
+            return m2.join(m);
+        }
         getTableFilterStack().push(m.createTableFilter());
         return root;
     }
 
     public T on() {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.on();
+        }
         ExpressionBuilder<T> e = new ExpressionBuilder<>(this);
         pushExprBuilder(e);
         return root;

@@ -21,11 +21,11 @@ import org.lealone.test.generated.model.Product.ProductDeserializer;
 @JsonDeserialize(using = ProductDeserializer.class)
 public class Product extends Model<Product> {
 
-    public static final Product dao = new Product(null, true);
+    public static final Product dao = new Product(null, ROOT_DAO);
 
     public static Product create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "PRODUCT");
-        return new Product(t);
+        return new Product(t, REGULAR_MODEL);
     }
 
     public final PLong<Product> productId;
@@ -34,15 +34,12 @@ public class Product extends Model<Product> {
     public final PDouble<Product> unitPrice;
 
     public Product() {
-        this(null);
+        this(null, REGULAR_MODEL);
     }
 
-    private Product(ModelTable t) {
-        this(t, false);
-    }
 
-    private Product(ModelTable t, boolean isDao) {
-        super(t == null ? new ModelTable("TEST", "PUBLIC", "PRODUCT") : t, isDao);
+    private Product(ModelTable t, short modelType) {
+        super(t == null ? new ModelTable("TEST", "PUBLIC", "PRODUCT") : t, modelType);
         super.setRoot(this);
 
         this.productId = new PLong<>("PRODUCT_ID", this);
@@ -53,8 +50,8 @@ public class Product extends Model<Product> {
     }
 
     @Override
-    protected Product newInstance(ModelTable t) {
-        return new Product(t);
+    protected Product newInstance(ModelTable t, short modelType) {
+        return new Product(t, modelType);
     }
 
     static class ProductDeserializer extends ModelDeserializer<Product> {

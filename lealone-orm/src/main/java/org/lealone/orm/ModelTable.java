@@ -25,6 +25,7 @@ import org.lealone.db.table.Table;
 
 public class ModelTable {
 
+    private final String url;
     private final String databaseName;
     private final String schemaName;
     private final String tableName;
@@ -37,6 +38,7 @@ public class ModelTable {
     }
 
     public ModelTable(String url, String databaseName, String schemaName, String tableName) {
+        this.url = url;
         this.databaseName = databaseName;
         this.schemaName = schemaName;
         this.tableName = tableName;
@@ -69,6 +71,10 @@ public class ModelTable {
     Database getDatabase() {
         attachToTable();
         return table.getDatabase();
+    }
+
+    public ModelTable copy() {
+        return new ModelTable(url, databaseName, schemaName, tableName);
     }
 
     // 可能是延迟关联到Table

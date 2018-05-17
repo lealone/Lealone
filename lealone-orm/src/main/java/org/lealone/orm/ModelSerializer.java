@@ -33,7 +33,7 @@ public class ModelSerializer<T extends Model> extends JsonSerializer<T> {
         for (ModelProperty p : ((Model) value).modelProperties) {
             p.serialize(jgen);
         }
-        jgen.writeBooleanField("isDao", ((Model) value).isDao);
+        jgen.writeNumberField("modelType", ((Model) value).modelType);
         jgen.writeEndObject();
     }
 }

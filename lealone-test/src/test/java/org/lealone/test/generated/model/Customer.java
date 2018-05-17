@@ -21,11 +21,11 @@ import org.lealone.test.generated.model.Customer.CustomerDeserializer;
 @JsonDeserialize(using = CustomerDeserializer.class)
 public class Customer extends Model<Customer> {
 
-    public static final Customer dao = new Customer(null, true);
+    public static final Customer dao = new Customer(null, ROOT_DAO);
 
     public static Customer create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "CUSTOMER");
-        return new Customer(t);
+        return new Customer(t, REGULAR_MODEL);
     }
 
     public final PLong<Customer> id;
@@ -34,15 +34,12 @@ public class Customer extends Model<Customer> {
     public final PInteger<Customer> phone;
 
     public Customer() {
-        this(null);
+        this(null, REGULAR_MODEL);
     }
 
-    private Customer(ModelTable t) {
-        this(t, false);
-    }
 
-    private Customer(ModelTable t, boolean isDao) {
-        super(t == null ? new ModelTable("TEST", "PUBLIC", "CUSTOMER") : t, isDao);
+    private Customer(ModelTable t, short modelType) {
+        super(t == null ? new ModelTable("TEST", "PUBLIC", "CUSTOMER") : t, modelType);
         super.setRoot(this);
 
         this.id = new PLong<>("ID", this);
@@ -53,8 +50,8 @@ public class Customer extends Model<Customer> {
     }
 
     @Override
-    protected Customer newInstance(ModelTable t) {
-        return new Customer(t);
+    protected Customer newInstance(ModelTable t, short modelType) {
+        return new Customer(t, modelType);
     }
 
     static class CustomerDeserializer extends ModelDeserializer<Customer> {

@@ -390,7 +390,7 @@ public class CreateTable extends SchemaStatement {
         buff.append("\r\n");
 
         buff.append("    public static final ").append(className).append(" dao = new ").append(className)
-                .append("(null, true);\r\n");
+                .append("(null, ROOT_DAO);\r\n");
         buff.append("\r\n");
         Database db = data.schema.getDatabase();
         String tableFullName = "\"" + db.getName() + "\", \"" + data.schema.getName() + "\", \"" + data.tableName
@@ -400,21 +400,18 @@ public class CreateTable extends SchemaStatement {
         }
         buff.append("    public static ").append(className).append(" create(String url) {\r\n");
         buff.append("        ModelTable t = new ModelTable(url, ").append(tableFullName).append(");\r\n");
-        buff.append("        return new ").append(className).append("(t);\r\n");
+        buff.append("        return new ").append(className).append("(t, REGULAR_MODEL);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append(fields);
         buff.append("\r\n");
         buff.append("    public ").append(className).append("() {\r\n");
-        buff.append("        this(null);\r\n");
+        buff.append("        this(null, REGULAR_MODEL);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
-        buff.append("    private ").append(className).append("(ModelTable t) {\r\n");
-        buff.append("        this(t, false);\r\n");
-        buff.append("    }\r\n");
         buff.append("\r\n");
-        buff.append("    private ").append(className).append("(ModelTable t, boolean isDao) {\r\n");
-        buff.append("        super(t == null ? new ModelTable(").append(tableFullName).append(") : t, isDao);\r\n");
+        buff.append("    private ").append(className).append("(ModelTable t, short modelType) {\r\n");
+        buff.append("        super(t == null ? new ModelTable(").append(tableFullName).append(") : t, modelType);\r\n");
         buff.append("        super.setRoot(this);\r\n");
         buff.append("\r\n");
         buff.append(init);
@@ -422,8 +419,8 @@ public class CreateTable extends SchemaStatement {
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    @Override\r\n");
-        buff.append("    protected ").append(className).append(" newInstance(ModelTable t) {\r\n");
-        buff.append("        return new ").append(className).append("(t);\r\n");
+        buff.append("    protected ").append(className).append(" newInstance(ModelTable t, short modelType) {\r\n");
+        buff.append("        return new ").append(className).append("(t, modelType);\r\n");
         buff.append("    }\r\n");
         buff.append("\r\n");
         buff.append("    static class ").append(className).append("Deserializer extends ModelDeserializer<")

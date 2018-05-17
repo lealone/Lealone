@@ -17,6 +17,8 @@
  */
 package org.lealone.test.orm;
 
+import java.util.concurrent.CountDownLatch;
+
 import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.generated.model.User;
@@ -32,7 +34,34 @@ public class DaoTest extends UnitTestBase {
     @Override
     public void test() {
         SqlScript.createUserTable(this);
+        testMultiThreads();
         crud();
+    }
+
+    // 测试多个线程同时使用User.dao是否产生混乱
+    void testMultiThreads() {
+        final CountDownLatch latch = new CountDownLatch(2);
+
+        new User().name.set("zhh1").insert();
+        new User().name.set("zhh2").insert();
+        new Thread(() -> {
+            User.dao.where().name.eq("zhh1").delete();
+            latch.countDown();
+        }).start();
+
+        new Thread(() -> {
+            User.dao.where().name.eq("zhh2").delete();
+            latch.countDown();
+        }).start();
+
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        int count = User.dao.findCount();
+        assertEquals(0, count);
     }
 
     void crud() {
@@ -107,18 +136,18 @@ public class DaoTest extends UnitTestBase {
         // OK
         new User().name.set("zhh").delete();
 
-        // dao对象序列化后包含isDao字段，并且是true
+        // dao对象序列化后包含modelType字段，并且是ROOT_DAO
         JsonObject json = JsonObject.mapFrom(User.dao);
-        assertTrue(json.getBoolean("isDao"));
+        assertTrue(json.getInteger("modelType") == User.ROOT_DAO);
 
         // 反序列化
         String str = json.encode();
         User u = new JsonObject(str).mapTo(User.class);
         assertTrue(u.isDao());
 
-        // 普通User对象序列化后也包含isDao字段，但为false
+        // 普通User对象序列化后也包含modelType字段，但为REGULAR_MODEL
         json = JsonObject.mapFrom(new User());
-        assertFalse(json.getBoolean("isDao"));
+        assertTrue(json.getInteger("modelType") == User.REGULAR_MODEL);
     }
 
 }
