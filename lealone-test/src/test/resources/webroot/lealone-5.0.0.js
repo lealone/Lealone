@@ -109,7 +109,7 @@ L.executeSql = function(type, sql, args, callback) {
 	id++;
 	if(!L.sockjs) {
 		L.sqls = {};
-		initSockJS(sockjsUrl);
+		initSockJS(L.sockjsUrl);
 	}
     var msg = type + ";" + id + ";" + sql; 
 	if(typeof callback == 'function') {
@@ -135,8 +135,12 @@ L.executeSql = function(type, sql, args, callback) {
 		L.penddingMsgs.push(msg);
 	}
 };
-
-return { getService : L.getService, executeSql : L.executeSql};
+L.sockjsUrl = "/_lealone_sockjs_";
+return {
+	setSockjsUrl: function(url) { L.sockjsUrl = url },
+	getService: L.getService, 
+	executeSql: L.executeSql
+};
 })();
 
 const REGULAR_MODEL = 0;

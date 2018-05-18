@@ -32,6 +32,10 @@ public class LealoneHttpServer {
 
     private static final Logger logger = LoggerFactory.getLogger(LealoneHttpServer.class);
 
+    public static void start(int port, String webRoot) {
+        start(port, webRoot, null);
+    }
+
     public static void start(int port, String webRoot, String apiPath) {
         VertxOptions opt = new VertxOptions();
         opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
@@ -62,6 +66,8 @@ public class LealoneHttpServer {
     }
 
     private static void setSockJSHandler(Vertx vertx, Router router, String apiPath) {
+        if (apiPath == null)
+            apiPath = "/_lealone_sockjs_/*";
         SockJSHandlerOptions options = new SockJSHandlerOptions().setHeartbeatInterval(2000);
         SockJSHandler sockJSHandler = SockJSHandler.create(vertx, options);
         sockJSHandler.socketHandler(new SockJSSocketServiceHandler());
