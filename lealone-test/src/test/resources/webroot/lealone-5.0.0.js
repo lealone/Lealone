@@ -182,9 +182,9 @@ class Model {
     
     addNVPair(name, value) {
         if (this.nvPairs == null) {
-        	this.nvPairs = new Array();
+        	this.nvPairs = new Map();
         }
-        this.nvPairs.push({name: name, value: value});
+        this.nvPairs.set(name, value);
     }
     
     setModelProperties(modelProperties) {
@@ -228,26 +228,20 @@ class Model {
         }
         
         var sql = "insert into " + this.modelTable.tableName + " ("; 
+        var sqlValues = ") values (";
         var i = 0;
-        var len = this.nvPairs.length;
-        for(; i < len; i++) {
-        	if(i != 0) {
-        		sql += ", ";
-        	}
-        	sql += this.nvPairs[i].name;
-        }
         var args = [];
-        i = 0;
-        sql += ") values (";
-        for(; i < len; i++) {
+        this.nvPairs.forEach(function(value, key) {
         	if(i != 0) {
         		sql += ", ";
+        		sqlValues += ", ";
         	}
-        	//sql += this.nvPairs[i].value;
-        	sql += "?";
-        	args.push(this.nvPairs[i].value);
-        }
-        sql += ")";
+        	sql += key;
+        	sqlValues += "?";
+        	args.push(value);
+        	i++;
+        })
+        sql += sqlValues + ")";
         console.log("execute sql: " + sql);
         this.reset();
         lealone.executeSql(500, sql, args, cb)
@@ -258,14 +252,14 @@ class Model {
     	var sql = "update " + this.modelTable.tableName + " set "; 
         var i = 0;
         var args = [];
-        var len = this.nvPairs.length;
-        for(; i < len; i++) {
+        this.nvPairs.forEach(function(value, key) {
         	if(i != 0) {
         		sql += ", ";
         	}
-        	sql += this.nvPairs[i].name + " = ?";
-        	args.push(this.nvPairs[i].value);
-        }
+        	sql += key + " = ?";
+        	args.push(value);
+        	i++;
+        })
         if (this.whereExpressionBuilder != null) {
     		sql += " where " + this.whereExpressionBuilder.getExpression();
     		args = args.concat(this.whereExpressionBuilder.values);

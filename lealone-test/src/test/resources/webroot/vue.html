@@ -3,32 +3,33 @@
 <head>
 <script src="sockjs-1.1.2.js"></script>
 <script src="lealone-5.0.0.js"></script>
-<script src="vue.min-2.3.3.js"></script>
+<!-- <script src="vue.min-2.3.3.js"></script> -->
+<script src="vue.js"></script>
 <script src="generated/model/User.js"></script>
 </head>
 <body lang="en">
-	<h1>vue form test</h1>
-	<div id="form1">
-		name: <input v-model="user.p_name" placeholder="edit me"><br>
-		phone: <input v-model="user.p_phone" placeholder="edit me"><br>
-		notes: <input v-model="user.p_notes" placeholder="edit me"><br>
-		<button v-on:click="insert(user)">提交</button>
-	</div>
+    <h1>vue form test</h1>
+    <div id="form1">
+        name: <input v-model="user.p_name" placeholder="edit me"><br>
+        phone: <input v-model="user.p_phone" placeholder="edit me"><br>
+        notes: <input v-model="user.p_notes" placeholder="edit me"><br>
+        <button v-on:click="insert(user)">提交</button>
+    </div>
 
     <script>
     var sockjsUrl = "http://localhost:8080/api";
     
-	new Vue({
-	  el: '#form1',
-	  data: {
-		user: new User()
-	  },
-	  methods: {
-		insert:function(user) {
-			user.insert();
-		}
-	  }
-	})
+    new Vue({
+        el: '#form1',
+        data: {
+            user: new User()
+        },
+        methods: {
+            insert:function(user) {
+                user.insert();
+            }
+        }
+    })
     </script>
 </body>
 </html>
