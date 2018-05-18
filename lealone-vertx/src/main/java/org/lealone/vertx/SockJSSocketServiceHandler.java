@@ -17,14 +17,26 @@
  */
 package org.lealone.vertx;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+
+import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CamelCaseHelper;
+import org.lealone.db.ServerSession;
 import org.lealone.db.service.ServiceExecuterManager;
 
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.handler.sockjs.SockJSSocket;
 
 public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
@@ -36,6 +48,10 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
         sockJSSocket.handler(buffer -> {
             String a[] = buffer.getString(0, buffer.length()).split(";");
             int type = Integer.parseInt(a[0]);
+            if (type >= 500) {
+                executeSql(sockJSSocket, a, type);
+                return;
+            }
             String serviceName = CamelCaseHelper.toUnderscoreFromCamel(a[1]);
             String json = null;
             if (a.length >= 3) {
@@ -63,6 +79,69 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
             ja.add(result);
             sockJSSocket.write(Buffer.buffer(ja.toString()));
         });
+    }
+
+    private static final ConcurrentSkipListMap<Integer, Connection> currentConnections = new ConcurrentSkipListMap<>();
+
+    void executeSql(SockJSSocket sockJSSocket, String a[], int type) {
+        try {
+            Connection conn;
+            synchronized (sockJSSocket) {
+                conn = currentConnections.get(sockJSSocket.hashCode());
+                if (conn == null) {
+                    String url = System.getProperty("lealone.jdbc.url");
+                    if (url == null) {
+                        throw new RuntimeException("'lealone.jdbc.url' must be set");
+                    }
+
+                    conn = DriverManager.getConnection(url);
+                    currentConnections.put(sockJSSocket.hashCode(), conn);
+                }
+            }
+            PreparedStatement ps = conn.prepareStatement(a[2]);
+            JsonArray parms = new JsonArray(a[3]);
+            for (int i = 0, size = parms.size(); i < size; i++) {
+                ps.setObject(i + 1, parms.getValue(i));
+            }
+            JsonArray ja = new JsonArray();
+            String result = "ok";
+            ja.add(type);
+            ja.add(a[1]);
+            switch (type) {
+            case 500: {
+                ps.executeUpdate();
+                long rowId = ((ServerSession) ((JdbcConnection) conn).getSession()).getLastIdentity().getLong();
+                ja.add(rowId);
+                break;
+            }
+            case 501:
+            case 502:
+                int count = ps.executeUpdate();
+                ja.add(count);
+                break;
+            case 503: {
+                ResultSet rs = ps.executeQuery();
+                HashMap<String, Object> map = new HashMap<>();
+                if (rs.next()) {
+                    ResultSetMetaData md = rs.getMetaData();
+                    for (int i = 1, len = md.getColumnCount(); i <= len; i++) {
+                        map.put(md.getColumnName(i), rs.getString(i));
+                    }
+                }
+                JsonObject jo = new JsonObject(map);
+                ja.add(jo);
+                break;
+            }
+            default:
+                ja.add(3);
+                result = "unknown request type: " + type + ", sql: " + a[2];
+                logger.error(result);
+            }
+            sockJSSocket.write(Buffer.buffer(ja.toString()));
+        } catch (SQLException e) {
+            logger.error(e);
+        }
+
     }
 
 }
