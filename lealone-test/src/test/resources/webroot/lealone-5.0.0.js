@@ -172,13 +172,11 @@ class Model {
     constructor(modelTable, modelType) {
     	this.modelTable = modelTable;
     	this.modelType = modelType;
-    	this.modelProperties = [];
-    	this.expressionBuilderStack = null;
-    	this.whereExpressionBuilder = null;
-    	this.nvPairs = null;
+    	this.reset();
     }
     
     reset() {
+    	this.modelProperties = [];
     	this.expressionBuilderStack = null;
     	this.whereExpressionBuilder = null;
     	this.nvPairs = null;
@@ -230,7 +228,9 @@ class Model {
             throw new TypeError("The insert operation is not allowed for " + name
                     + ".dao,  please use new " + name + "().insert() instead.");
         }
-        
+        if(this.nvPairs == null) {
+        	return 0;
+        }
         var sql = "insert into " + this.modelTable.tableName + " ("; 
         var sqlValues = ") values (";
         var i = 0;

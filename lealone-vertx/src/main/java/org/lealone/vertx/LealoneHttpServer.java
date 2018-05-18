@@ -37,6 +37,9 @@ public class LealoneHttpServer {
     }
 
     public static void start(int port, String webRoot, String apiPath) {
+        if (apiPath == null)
+            apiPath = "/_lealone_sockjs_/*";
+        final String path = apiPath;
         VertxOptions opt = new VertxOptions();
         opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
         Vertx vertx = Vertx.vertx(opt);
@@ -51,7 +54,7 @@ public class LealoneHttpServer {
         server.requestHandler(router::accept).listen(port, res -> {
             if (res.succeeded()) {
                 logger.info("web root: " + webRoot);
-                logger.info("api path: " + apiPath);
+                logger.info("sockjs path: " + path);
                 logger.info("http server is now listening on port: " + server.actualPort());
             } else {
                 logger.error("failed to bind " + port + " port!", res.cause());
@@ -66,8 +69,6 @@ public class LealoneHttpServer {
     }
 
     private static void setSockJSHandler(Vertx vertx, Router router, String apiPath) {
-        if (apiPath == null)
-            apiPath = "/_lealone_sockjs_/*";
         SockJSHandlerOptions options = new SockJSHandlerOptions().setHeartbeatInterval(2000);
         SockJSHandler sockJSHandler = SockJSHandler.create(vertx, options);
         sockJSHandler.socketHandler(new SockJSSocketServiceHandler());
