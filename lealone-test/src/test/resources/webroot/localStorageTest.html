@@ -17,7 +17,14 @@
     User.dao.where().name.eq("zhh").findOne();
     
     User.dao.where().name.eq("zhh").delete();
-
+    
+    var user = new User().name.set("zhh").phone.set(123);
+    var jsonText = user.stringify();
+    console.log(jsonText);
+    user = User.parse(jsonText);
+    jsonText = user.stringify();
+    console.log(jsonText);
+    console.log(JSON.stringify(user));
 	</script>
 </body>
 </html>

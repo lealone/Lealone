@@ -201,6 +201,22 @@ class Model {
         this.modelProperties = modelProperties;
     }
 
+    stringify() {
+        var json = "{";
+        for(var i = 0, len = this.modelProperties.length; i < len; i++ ) {
+            if(i != 0) {
+                json += ",";
+            }
+            json += JSON.stringify(this.modelProperties[i].name) + ":" + JSON.stringify(this.modelProperties[i].value);
+        }
+        json += "}";
+        return json;
+    }
+
+    toJSON() {
+        return this.stringify();
+    }
+
     where() {
         return this;
     }
@@ -260,7 +276,7 @@ class Model {
         }
         if(lealone.useLocalStorage) {
             var key = this.getLocalStorageKey();
-            window.localStorage.setItem(key, JSON.stringify(this));
+            window.localStorage.setItem(key, this.stringify());
             console.log(window.localStorage.getItem(key));
             return;
         }

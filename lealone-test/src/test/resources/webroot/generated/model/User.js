@@ -33,3 +33,27 @@ class User extends Model {
 }
 
 User.dao = new User(null, ROOT_DAO);
+
+User.parse = function(jsonText) {
+    var user = new User();
+    JSON.parse(jsonText, function(key, value) {
+        switch(key){
+        case "NAME":
+            return user.name.set(value);
+        case "NOTES":
+            return user.notes.set(value);
+        case "PHONE":
+            return user.phone.set(value);
+        case "ID":
+            return user.id.set(value);
+        default:
+            return value;
+        }
+    });
+    return user;
+}
+
+
+
+
+
