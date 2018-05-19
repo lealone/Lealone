@@ -173,6 +173,12 @@ class Model {
     	this.modelTable = modelTable;
     	this.modelType = modelType;
     	this.reset();
+    	Object.defineProperty(this, "modelTable", { enumerable: false, configurable: false });
+    	Object.defineProperty(this, "modelType", { enumerable: false, configurable: false });
+    	Object.defineProperty(this, "modelProperties", { enumerable: false, configurable: false });
+    	Object.defineProperty(this, "expressionBuilderStack", { enumerable: false, configurable: false });
+    	Object.defineProperty(this, "whereExpressionBuilder", { enumerable: false, configurable: false });
+    	Object.defineProperty(this, "nvPairs", { enumerable: false, configurable: false });
     }
     
     reset() {
@@ -318,11 +324,19 @@ class ModelTable {
 class ModelProperty {
     constructor(name, model) {
     	this.name = name;
-    	this.value = null;
+    	this.value = "";
     	this.model = model;
+    	
+    	Object.defineProperty(this, "name", { enumerable: false, configurable: false });
+    	Object.defineProperty(this, "value", { enumerable: false, configurable: false });
+    	Object.defineProperty(this, "model", { enumerable: false, configurable: false });
     }
     
     get() {
+        return this.value;
+    }
+    
+    toString() {
         return this.value;
     }
 

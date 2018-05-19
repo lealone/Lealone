@@ -10,45 +10,26 @@ class User extends Model {
        this.phone = new PInteger("PHONE", this);
        this.id = new PLong("ID", this);
        super.setModelProperties([ this.name, this.notes, this.phone, this.id ]);
+       
+       this.defineProperty(this.name, "name");
+       this.defineProperty(this.notes, "notes");
+       this.defineProperty(this.phone, "phone");
+       this.defineProperty(this.id, "id");
+    }
+    
+    defineProperty(p, name) { 
+        Object.defineProperty(this, name, {
+            enumerable: true,
+            configurable: true,
+            get: function(){
+                return p; // 如果返回 p.get()，那么不能再使用流式化风格，只能返回 p，然后在 ModelProperty类中添加 toString()方法
+            },
+            set: function(newValue){
+                p.set(newValue);
+            }
+        });
     }
 
 }
 
 User.dao = new User(null, ROOT_DAO);
-
-User.getFormInstance = function(){
-    var user = new User();
-    var userProxy = {
-    }
-    userProxy.insert = function(cb) { user.insert(cb) }
-    userProxy.delete = function(cb) { user.delete(cb) }
-    userProxy.update = function(cb) { user.update(cb) }
-    userProxy.findOne = function(cb) { user.findOne(cb) }
-    
-    Object.defineProperty(userProxy, "name", {
-        get: function(){
-            return user.name.get();
-        },
-        set: function(newValue){
-            user.name.set(newValue);
-        }
-    });
-    Object.defineProperty(userProxy, "notes", {
-        get: function(){
-            return user.notes.get();
-        },
-        set: function(newValue){
-            user.notes.set(newValue);
-        }
-    });
-    Object.defineProperty(userProxy, "phone", {
-        get: function(){
-            return user.phone.get();
-        },
-        set: function(newValue){
-            user.phone.set(newValue);
-        }
-    });
-    
-    return userProxy;
-}
