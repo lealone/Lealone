@@ -38,6 +38,7 @@
         <module>lealone-vertx</module>
         <module>lealone-main</module>
         <module>lealone-test</module>
+        <module>lealone-js</module>
         <module>lealone-dist</module>
     </modules>
 
