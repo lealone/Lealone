@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<script src="sockjs-1.1.2.js"></script>
+<script src="lealone-5.0.0.js"></script>
+</head>
+<body lang="en">
+    <h1>FullStackTest, see console log</h1>
+	<script >
+
+	var s = lealone.getService("hello_world_service");
+	s.sayHello();
+	s.sayGoodbyeTo("zhh", function(message) {
+	    console.log(message);
+	});
+	
+	s = lealone.getService("user_service");
+	 
+	var user = { name: "zhh", phone: 123 }
+	s.add(user, function(rowId) {
+	    console.log("rowId: " + rowId);
+	});
+	
+	s.find("zhh", function(user) {
+	    console.log("user: " + user);
+	});
+	
+	user.notes = "call service from frontend";
+	s.update(user, function(updateCount) {
+	    console.log("updateCount: " + updateCount);
+	});
+	
+	s.find("zhh", function(user) {
+	    console.log("user: " + user);
+	});
+	
+	s.delete("zhh", function(deleteCount) {
+	    console.log("deleteCount: " + deleteCount);
+	});
+	</script>
+</body>
+</html>

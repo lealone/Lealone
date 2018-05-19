@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+<script src="sockjs-1.1.2.js"></script>
+<script src="lealone-5.0.0.js"></script>
+<script src="generated/model/User.js"></script>
+</head>
+<body lang="en">
+    <h1>LocalStorageTest, see console log</h1>
+	<script >
+
+	lealone.useLocalStorage = true;
+
+	// insert
+    new User().name.set("zhh").phone.set(123).insert();
+	
+    User.dao.where().name.eq("zhh").findOne();
+    
+    User.dao.where().name.eq("zhh").delete();
+    
+    var user = new User().name.set("zhh").phone.set(123);
+    var jsonText = user.stringify();
+    console.log(jsonText);
+    user = User.parse(jsonText);
+    jsonText = user.stringify();
+    console.log(jsonText);
+    console.log(JSON.stringify(user));
+	</script>
+</body>
+</html>
