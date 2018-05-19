@@ -143,6 +143,8 @@ return {
 };
 })();
 
+lealone.useLocalStorage = false;
+
 const REGULAR_MODEL = 0;
 const ROOT_DAO = 1;
 const CHILD_DAO = 2;
@@ -216,6 +218,15 @@ class Model {
     
     findOne(cb) {
     	this.checkDao("findOne");
+        if(lealone.useLocalStorage) {
+            var prefix = this.modelTable.getFullName() + ".";
+            for(var i = 0, len = window.localStorage.length; i < len; i++) {
+                var key = window.localStorage.key(i);
+                if(key.startsWith(prefix))
+                    console.log(key);
+            }
+            return;
+        }
     	var args = [];
         var sql = "select * from " + this.modelTable.tableName; 
         if (this.whereExpressionBuilder != null) {
@@ -227,6 +238,16 @@ class Model {
         lealone.executeSql(503, sql, args, cb)
     }
     
+    getLocalStorageKey() {
+        var lastId = window.localStorage.getItem("lastId");
+        if(!lastId) {
+            lastId = 0;
+        }
+        lastId++;
+        window.localStorage.setItem("lastId", lastId);
+        return this.modelTable.getFullName() + "." + lastId;
+    }
+    
     insert(cb) {
     	// TODO 是否允许通过 XXX.dao来insert记录?
         if (this.isDao()) {
@@ -236,6 +257,12 @@ class Model {
         }
         if(this.nvPairs == null) {
         	return 0;
+        }
+        if(lealone.useLocalStorage) {
+            var key = this.getLocalStorageKey();
+            window.localStorage.setItem(key, JSON.stringify(this));
+            console.log(window.localStorage.getItem(key));
+            return;
         }
         var sql = "insert into " + this.modelTable.tableName + " ("; 
         var sqlValues = ") values (";
@@ -281,6 +308,21 @@ class Model {
     }
     
     delete(cb) {
+        if(lealone.useLocalStorage) {
+            var prefix = this.modelTable.getFullName() + ".";
+            var deleteKeys = [];
+            for(var i = 0, len = window.localStorage.length; i < len; i++) {
+                var key = window.localStorage.key(i);
+                if(key != null && key.startsWith(prefix)) {
+                    deleteKeys.push(key);
+                }
+            }
+            deleteKeys.every(function(item, index, array){
+                window.localStorage.removeItem(item);
+                return true;
+            });
+            return;
+        }
     	var sql = "delete from " + this.modelTable.tableName + " "; 
     	var args = [];
     	if (this.whereExpressionBuilder != null) {
@@ -318,6 +360,10 @@ class ModelTable {
     	this.databaseName = databaseName;
     	this.schemaName = schemaName;
     	this.tableName = tableName;
+    }
+    
+    getFullName() {
+       return this.databaseName + "." + this.schemaName + "." + this.tableName;
     }
 }
 
