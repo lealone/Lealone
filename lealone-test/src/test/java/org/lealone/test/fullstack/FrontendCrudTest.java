@@ -34,7 +34,7 @@ public class FrontendCrudTest extends UnitTestBase {
         // 启动HttpServer
         // 在浏览器中打开下面这个URL，测试在前端直接执行crud，在console里面看结果:
         // http://localhost:8080/crud.html
-        LealoneHttpServer.start(8080, "./src/test/resources/webroot/");
+        LealoneHttpServer.start(8080, "../lealone-js/src/main/js,../lealone-js/src/test/js");
     }
 
 }

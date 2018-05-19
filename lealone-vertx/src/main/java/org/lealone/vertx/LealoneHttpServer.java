@@ -63,9 +63,14 @@ public class LealoneHttpServer {
     }
 
     private static void setStaticHandler(Vertx vertx, Router router, String webRoot) {
-        StaticHandler sh = StaticHandler.create(webRoot);
-        sh.setCachingEnabled(false);
-        router.route("/*").handler(sh);
+        for (String root : webRoot.split(",", -1)) {
+            root = root.trim();
+            if (root.isEmpty())
+                continue;
+            StaticHandler sh = StaticHandler.create(root);
+            sh.setCachingEnabled(false);
+            router.route("/*").handler(sh);
+        }
     }
 
     private static void setSockJSHandler(Vertx vertx, Router router, String apiPath) {
