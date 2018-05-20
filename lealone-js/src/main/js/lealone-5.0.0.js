@@ -1,151 +1,152 @@
 var lealone = (function() {
 var L = {};
 L.call = function(object, apiName) {
-	if(!L.sockjs) {
-		L.services = {};
-		initSockJS(object.sockjsUrl);
-	}
-	var serviceName = object.serviceName + "." + apiName;
-	//格式: type;serviceName;[arg1,arg2,...argn]
+    if(!L.sockjs) {
+        L.services = {};
+        initSockJS(object.sockjsUrl);
+    }
+    var serviceName = object.serviceName + "." + apiName;
+    //格式: type;serviceName;[arg1,arg2,...argn]
     var msg = "1;" + serviceName;
-	var length = arguments.length;
-	if(typeof arguments[length - 1] == 'function') {
-		L.services[serviceName] = function() {};
+    var length = arguments.length;
+    if(typeof arguments[length - 1] == 'function') {
+        L.services[serviceName] = function() {};
         L.services[serviceName]["callback"] = arguments[length - 1];
         length--;
-	}
-	if(length > 2) {
-		msg += ";[";
-		for(var j = 2; j < length; j++) {
-			if(j != 2) {
-				msg += ",";
-			}
-			msg += JSON.stringify(arguments[j]);
-		}
-		msg += "]";
-	}
-	if(L.sockjsReady)
-	    L.sockjs.send(msg);
-	else {
-		if(!L.penddingMsgs) {
-			L.penddingMsgs = [];
-		} 
-		L.penddingMsgs.push(msg);
-	}
+    }
+    if(length > 2) {
+        msg += ";[";
+        for(var j = 2; j < length; j++) {
+            if(j != 2) {
+                msg += ",";
+            }
+            msg += JSON.stringify(arguments[j]);
+        }
+        msg += "]";
+    }
+    if(L.sockjsReady)
+        L.sockjs.send(msg);
+    else {
+        if(!L.penddingMsgs) {
+            L.penddingMsgs = [];
+        } 
+        L.penddingMsgs.push(msg);
+    }
 };
 
 var proxyObject = function (object, missingMethod) {
-	  const proxyObject = new Proxy(object, {
-	    get(object, property) {
-	      if (Reflect.has(object, property)) {
-	        return Reflect.get(object, property);
-	      } else {
-	        return (...args) => Reflect.apply(missingMethod, proxyObject, [object, property, ...args]);
-	      }
-	    }
-	  });
-	  return proxyObject;
+      const proxyObject = new Proxy(object, {
+        get(object, property) {
+          if (Reflect.has(object, property)) {
+            return Reflect.get(object, property);
+          } else {
+            return (...args) => Reflect.apply(missingMethod, proxyObject, [object, property, ...args]);
+          }
+        }
+      });
+      return proxyObject;
 };
 
 var missingMethod  = function(object, method, ...args) {
-	L.call(object, method, ...args);
+    L.call(object, method, ...args);
 };
 
 L.getService = function(serviceName) {
-	var object = {
-		sockjsUrl: L.sockjsUrl,
-		serviceName: serviceName
-	}
-	return proxyObject(object, missingMethod);
+    var object = {
+        sockjsUrl: L.sockjsUrl,
+        serviceName: serviceName
+    }
+    return proxyObject(object, missingMethod);
 };
 
 function initSockJS(sockjsUrl) {
     //var sockjs = new SockJS(sockjsUrl, {"transports":"xhr_streaming"});
     var sockjs = new SockJS(sockjsUrl);
-	L.sockjs = sockjs;
+    L.sockjs = sockjs;
     sockjs.onopen = function() {
-		L.sockjsReady = true; 
-		if(L.penddingMsgs) {
-			for(var i = 0; i < L.penddingMsgs.length; i++) {
-				sockjs.send(L.penddingMsgs[i]);
-			}
-			L.penddingMsgs = [];
-		}
+        L.sockjsReady = true; 
+        if(L.penddingMsgs) {
+            for(var i = 0; i < L.penddingMsgs.length; i++) {
+                sockjs.send(L.penddingMsgs[i]);
+            }
+            L.penddingMsgs = [];
+        }
     };
     sockjs.onmessage = function(e) {
-		var a = JSON.parse(e.data);
-    	var type = a[0];
-    	var serviceName = a[1]; 
-    	var result = a[2];
-    	switch(type) {
-		case 2: // 正常返回
-			//如果有回调就执行它
-			if(L.services[serviceName] && L.services[serviceName]["callback"]) { 
-			    L.services[serviceName]["callback"](result);
-			}
-    		break;
-		case 3: // error info
-			console.log("failed to call service: " + serviceName + ", backend error: " + result)
-    		break;
-		case 500:
-		case 501:
-		case 502:
-		case 503:
-		case 504:
-        case 505:
-        case 506:
-			if(L.sqls[a[1]] && L.sqls[a[1]]["callback"]) { 
-			    L.sqls[a[1]]["callback"](result);
-			}
-			break;
-    	default:
-    		console.log("unknown response type: " + type + ", serviceName: " + serviceName + ", data: " + e.data)
-    	}
+        var a = JSON.parse(e.data);
+        var type = a[0];
+        var serviceName = a[1]; 
+        var result = a[2];
+        switch(type) {
+        case 2: // 正常返回
+            //如果有回调就执行它
+            if(L.services[serviceName] && L.services[serviceName]["callback"]) { 
+                L.services[serviceName]["callback"](result);
+            }
+            break;
+        case 3: // error info
+            console.log("failed to call service: " + serviceName + ", backend error: " + result)
+            break;
+        case 500:
+        case 501:
+        case 502:
+        case 503:
+        case 504:
+        case 601:
+        case 602:
+        case 603:
+            if(L.sqls[a[1]] && L.sqls[a[1]]["callback"]) { 
+                L.sqls[a[1]]["callback"](result);
+            }
+            break;
+        default:
+            console.log("unknown response type: " + type + ", serviceName: " + serviceName + ", data: " + e.data)
+        }
     };
     sockjs.onclose = function() {
-    	console.log("SockJS close");
+        console.log("SockJS close");
     };
 }
 
 var id = 0;
 L.executeSql = function(type, sql, args, callback) {
-	id++;
-	if(!L.sockjs) {
-		L.sqls = {};
-		initSockJS(L.sockjsUrl);
-	}
+    id++;
+    if(!L.sockjs) {
+        L.sqls = {};
+        initSockJS(L.sockjsUrl);
+    }
     var msg = type + ";" + id;
     if(sql != null && sql != undefined) {
         msg += ";" + sql; 
     }
-	if(typeof callback == 'function') {
-		L.sqls[id] = function() {};
+    if(typeof callback == 'function') {
+        L.sqls[id] = function() {};
         L.sqls[id]["callback"] = callback; 
-	}
-	if(args) {
-		msg += ";[";
-		for(var j = 0; j < args.length; j++) {
-			if(j != 0) {
-				msg += ",";
-			}
-			msg += JSON.stringify(args[j]);
-		}
-		msg += "]";
-	}
-	if(L.sockjsReady)
-	    L.sockjs.send(msg);
-	else {
-		if(!L.penddingMsgs) {
-			L.penddingMsgs = [];
-		} 
-		L.penddingMsgs.push(msg);
-	}
+    }
+    if(args) {
+        msg += ";[";
+        for(var j = 0; j < args.length; j++) {
+            if(j != 0) {
+                msg += ",";
+            }
+            msg += JSON.stringify(args[j]);
+        }
+        msg += "]";
+    }
+    if(L.sockjsReady)
+        L.sockjs.send(msg);
+    else {
+        if(!L.penddingMsgs) {
+            L.penddingMsgs = [];
+        } 
+        L.penddingMsgs.push(msg);
+    }
 };
 L.sockjsUrl = "/_lealone_sockjs_";
 return {
-	setSockjsUrl: function(url) { L.sockjsUrl = url },
-	getService: L.getService, 
-	executeSql: L.executeSql
+    setSockjsUrl: function(url) { L.sockjsUrl = url },
+    getService: L.getService, 
+    executeSql: L.executeSql
 };
 })();
 
@@ -156,11 +157,11 @@ const ROOT_DAO = 1;
 const CHILD_DAO = 2;
 
 class ArrayStack  {
-	constructor() {
-		this.list = new Array();
-	} 
+    constructor() {
+        this.list = new Array();
+    } 
     push(item) {
-    	this.list.push(item);
+        this.list.push(item);
     }
  
     pop() {
@@ -168,37 +169,46 @@ class ArrayStack  {
     }
 
     peek() {
-    	var len = this.list.length;
+        var len = this.list.length;
         if (len == 0) {
-        	throw new RangeError("Array stack is empty");
+            throw new RangeError("Array stack is empty");
         }
         return this.list[len - 1];
     }
 }
+function setPrivateProperties(object, properties) {
+    properties.every(function(item, index, array){
+        Object.defineProperty(object, item, { enumerable: false, configurable: false });
+        return true;
+    });
+}
 
 class Model {
     constructor(modelTable, modelType) {
-    	this.modelTable = modelTable;
-    	this.modelType = modelType;
-    	this.reset();
-    	Object.defineProperty(this, "modelTable", { enumerable: false, configurable: false });
-    	Object.defineProperty(this, "modelType", { enumerable: false, configurable: false });
-    	Object.defineProperty(this, "modelProperties", { enumerable: false, configurable: false });
-    	Object.defineProperty(this, "expressionBuilderStack", { enumerable: false, configurable: false });
-    	Object.defineProperty(this, "whereExpressionBuilder", { enumerable: false, configurable: false });
-    	Object.defineProperty(this, "nvPairs", { enumerable: false, configurable: false });
+        this.modelTable = modelTable;
+        this.modelType = modelType;
+        this.reset();
+
+        // 避免第三方框架监控这些字段
+        var properties = ["modelTable", "modelType", "modelProperties", "expressionBuilderStack",
+                "whereExpressionBuilder", "nvPairs", "selectExpressions", "groupExpressions", "having"];
+        setPrivateProperties(this, properties);
     }
     
     reset() {
-    	this.modelProperties = [];
-    	this.expressionBuilderStack = null;
-    	this.whereExpressionBuilder = null;
-    	this.nvPairs = null;
+        this.modelProperties = [];
+        this.expressionBuilderStack = null;
+        this.whereExpressionBuilder = null;
+        this.nvPairs = null;
+
+        this.selectExpressions = null;
+        this.groupExpressions = null;
+        this.having = null;
     }
     
     addNVPair(name, value) {
         if (this.nvPairs == null) {
-        	this.nvPairs = new Map();
+            this.nvPairs = new Map();
         }
         this.nvPairs.set(name, value);
     }
@@ -238,8 +248,16 @@ class Model {
         return this.modelType > 0;
     }
     
+    select() {
+        this.selectExpressions = arguments;
+    }
+
+    groupBy() {
+        this.groupExpressions = arguments;
+    }
+    
     findOne(cb) {
-    	this.checkDao("findOne");
+        this.checkDao("findOne");
         if(lealone.useLocalStorage) {
             var prefix = this.modelTable.getFullName() + ".";
             for(var i = 0, len = window.localStorage.length; i < len; i++) {
@@ -249,8 +267,53 @@ class Model {
             }
             return;
         }
-    	var args = [];
-        var sql = "select * from " + this.modelTable.tableName; 
+        var select = this.createSelect();
+        var sql = select[0];
+        var args = select[1];
+        sql += " limit 1";
+        console.log("execute sql: " + sql);
+        this.reset();
+        lealone.executeSql(503, sql, args, cb)
+    }
+
+    createSelect() {
+        var args = [];
+        var sql = "select "; 
+        if (this.selectExpressions == null) {
+            this.selectExpressions = ["*"];
+        }
+        this.selectExpressions.push("_ROWID_"); // 总是获取rowid
+        for(var i = 0, len = this.selectExpressions.length; i < len; i++) {
+            if(i != 0) {
+                sql += ", ";
+            }
+            if(this.selectExpressions[i] instanceof ModelProperty)
+                sql += this.selectExpressions[i].getFullName();
+            else
+                sql += this.selectExpressions[i];
+        }
+        sql += " from " + this.modelTable.tableName; 
+        if (this.whereExpressionBuilder != null) {
+            sql += " where " + this.whereExpressionBuilder.getExpression();
+            args = this.whereExpressionBuilder.values;
+        }
+        return [sql, args];
+    }
+
+    findList() {
+        this.checkDao("findList");
+        var select = this.createSelect();
+        var sql = select[0];
+        var args = select[1];
+        console.log("execute sql: " + sql);
+        this.reset();
+        lealone.executeSql(504, sql, args, cb)
+    }
+
+    findCount() {
+        this.checkDao("findCount");
+        var args = [];
+        var sql = "select count(*) from " + this.modelTable.tableName; 
         if (this.whereExpressionBuilder != null) {
             sql += " where " + this.whereExpressionBuilder.getExpression();
             args = this.whereExpressionBuilder.values;
@@ -271,14 +334,14 @@ class Model {
     }
     
     insert(cb) {
-    	// TODO 是否允许通过 XXX.dao来insert记录?
+        // TODO 是否允许通过 XXX.dao来insert记录?
         if (this.isDao()) {
             var name = this.constructor.name;
             throw new TypeError("The insert operation is not allowed for " + name
                     + ".dao,  please use new " + name + "().insert() instead.");
         }
         if(this.nvPairs == null) {
-        	return 0;
+            return 0;
         }
         if(lealone.useLocalStorage) {
             var key = this.getLocalStorageKey();
@@ -291,14 +354,14 @@ class Model {
         var i = 0;
         var args = [];
         this.nvPairs.forEach(function(value, key) {
-        	if(i != 0) {
-        		sql += ", ";
-        		sqlValues += ", ";
-        	}
-        	sql += key;
-        	sqlValues += "?";
-        	args.push(value);
-        	i++;
+            if(i != 0) {
+                sql += ", ";
+                sqlValues += ", ";
+            }
+            sql += key;
+            sqlValues += "?";
+            args.push(value);
+            i++;
         })
         sql += sqlValues + ")";
         console.log("execute sql: " + sql);
@@ -308,24 +371,24 @@ class Model {
     }
     
     update(cb) {
-    	var sql = "update " + this.modelTable.tableName + " set "; 
+        var sql = "update " + this.modelTable.tableName + " set "; 
         var i = 0;
         var args = [];
         this.nvPairs.forEach(function(value, key) {
-        	if(i != 0) {
-        		sql += ", ";
-        	}
-        	sql += key + " = ?";
-        	args.push(value);
-        	i++;
+            if(i != 0) {
+                sql += ", ";
+            }
+            sql += key + " = ?";
+            args.push(value);
+            i++;
         })
         if (this.whereExpressionBuilder != null) {
-    		sql += " where " + this.whereExpressionBuilder.getExpression();
-    		args = args.concat(this.whereExpressionBuilder.values);
+            sql += " where " + this.whereExpressionBuilder.getExpression();
+            args = args.concat(this.whereExpressionBuilder.values);
         }
-    	console.log("execute sql: " + sql);
-    	this.reset();
-    	lealone.executeSql(501, sql, args, cb)
+        console.log("execute sql: " + sql);
+        this.reset();
+        lealone.executeSql(501, sql, args, cb)
         return 0;
     }
     
@@ -345,55 +408,55 @@ class Model {
             });
             return;
         }
-    	var sql = "delete from " + this.modelTable.tableName; 
-    	var args = [];
-    	if (this.whereExpressionBuilder != null) {
-    		sql += " where " + this.whereExpressionBuilder.getExpression();
-    		args = this.whereExpressionBuilder.values;
-    	}
-    	console.log("execute sql: " + sql);
-    	this.reset();
-    	lealone.executeSql(502, sql, args, cb)
+        var sql = "delete from " + this.modelTable.tableName; 
+        var args = [];
+        if (this.whereExpressionBuilder != null) {
+            sql += " where " + this.whereExpressionBuilder.getExpression();
+            args = this.whereExpressionBuilder.values;
+        }
+        console.log("execute sql: " + sql);
+        this.reset();
+        lealone.executeSql(502, sql, args, cb)
         return 0;
     }
     
     peekExprBuilder() {
-    	return this.getStack().peek();
+        return this.getStack().peek();
     }
     
     getStack() {
         if (this.expressionBuilderStack == null) {
-        	this.expressionBuilderStack = new ArrayStack();
-        	this.expressionBuilderStack.push(this.getWhereExpressionBuilder());
+            this.expressionBuilderStack = new ArrayStack();
+            this.expressionBuilderStack.push(this.getWhereExpressionBuilder());
         }
         return this.expressionBuilderStack;
     }
     
     getWhereExpressionBuilder() {
         if (this.whereExpressionBuilder == null) {
-        	this.whereExpressionBuilder = new ExpressionBuilder(this);
+            this.whereExpressionBuilder = new ExpressionBuilder(this);
         }
         return this.whereExpressionBuilder;
     }
 
     beginTransaction(cb) {
-        lealone.executeSql(504, null, null, cb);
+        lealone.executeSql(601, null, null, cb);
     }
 
     commitTransaction(cb) {
-        lealone.executeSql(505, null, null, cb);
+        lealone.executeSql(602, null, null, cb);
     }
 
     rollbackTransaction(cb) {
-        lealone.executeSql(506, null, null, cb);
+        lealone.executeSql(603, null, null, cb);
     }
 }
 
 class ModelTable {
     constructor(databaseName, schemaName, tableName) {
-    	this.databaseName = databaseName;
-    	this.schemaName = schemaName;
-    	this.tableName = tableName;
+        this.databaseName = databaseName;
+        this.schemaName = schemaName;
+        this.tableName = tableName;
     }
     
     getFullName() {
@@ -403,13 +466,10 @@ class ModelTable {
 
 class ModelProperty {
     constructor(name, model) {
-    	this.name = name;
-    	this.value = "";
-    	this.model = model;
-    	
-    	Object.defineProperty(this, "name", { enumerable: false, configurable: false });
-    	Object.defineProperty(this, "value", { enumerable: false, configurable: false });
-    	Object.defineProperty(this, "model", { enumerable: false, configurable: false });
+        this.name = name;
+        this.value = "";
+        this.model = model;
+        setPrivateProperties(this, ["name", "value", "model"]);
     }
     
     get() {
@@ -421,7 +481,7 @@ class ModelProperty {
     }
 
     set(newValue) {
-    	if (this.value != newValue) {
+        if (this.value != newValue) {
             this.value = newValue;
             this.expr().set(this.name, newValue); 
         }
@@ -429,12 +489,12 @@ class ModelProperty {
     }
     
     eq(value) {
-    	this.expr().eq(this.name, value);
+        this.expr().eq(this.name, value);
         return this.model;
     }
     
     getFullName() {
-    	return this.name;
+        return this.name;
     }
     
     expr() {
@@ -443,7 +503,7 @@ class ModelProperty {
 }
 class PString extends ModelProperty {
     constructor(name, model) {
-    	super(name, model);
+        super(name, model);
     }
 
     like(value) {
@@ -451,7 +511,7 @@ class PString extends ModelProperty {
         return this.model;
     }
 //    set(newValue) {
-//    	if (this.value != newValue) {
+//        if (this.value != newValue) {
 //            this.value = newValue;
 //            this.expr().set(this.name, "'" + newValue + "'"); 
 //        }
@@ -460,22 +520,22 @@ class PString extends ModelProperty {
 }
 class PInteger extends ModelProperty {
     constructor(name, model) {
-    	super(name, model);
+        super(name, model);
     }
 }
 class PLong extends ModelProperty {
     constructor(name, model) {
-    	super(name, model);
+        super(name, model);
     }
 }
 
 class ExpressionBuilder {
     constructor(model) {
-    	this.model = model;
-    	this.isAnd = true;
-    	this.expression = null;
-    	this.orderList = [];
-    	this.values = [];
+        this.model = model;
+        this.isAnd = true;
+        this.expression = null;
+        this.orderList = [];
+        this.values = [];
     }
     setAnd(isAnd) {
         this.isAnd = isAnd;
@@ -491,7 +551,7 @@ class ExpressionBuilder {
     }
 
     junction(expressionBuilder) {
-    	this.setRootExpression(this.expressionBuilder.getExpression());
+        this.setRootExpression(this.expressionBuilder.getExpression());
         return this;
     }
 
@@ -505,38 +565,38 @@ class ExpressionBuilder {
 
     setRootExpression(e) {
         if (this.expression == null) {
-        	this.expression = e;
+            this.expression = e;
         } else {
-        	if(this.isAnd) {
-        		this.expression = this.expression + " and " + e;
-        	} else {
-        		this.expression = this.expression + " or " + e;
-        	}
+            if(this.isAnd) {
+                this.expression = this.expression + " and " + e;
+            } else {
+                this.expression = this.expression + " or " + e;
+            }
         }
     }
 
     addExpression(propertyName, value, compareType) {
-    	var e = propertyName + " " + compareType + " ?"; 
+        var e = propertyName + " " + compareType + " ?"; 
         this.setRootExpression(e);
         this.values.push(value);
     }
 
     set(propertyName, value) {
-    	this.model.addNVPair(propertyName, value);
+        this.model.addNVPair(propertyName, value);
         return this;
     }
 
     eq(propertyName, value) {
-    	if(value instanceof ModelProperty) {
-    		this.setRootExpression(propertyName + " = " + modelProperty.getFullName());
-    	} else {
-    		this.addExpression(propertyName, value, "=");
-    	}
+        if(value instanceof ModelProperty) {
+            this.setRootExpression(propertyName + " = " + modelProperty.getFullName());
+        } else {
+            this.addExpression(propertyName, value, "=");
+        }
         return this;
     }
 
     ne(propertyName, value) {
-    	this.addExpression(propertyName, value, "!=");
+        this.addExpression(propertyName, value, "!=");
         return this;
     }
 
@@ -546,7 +606,7 @@ class ExpressionBuilder {
     }
 
     between(propertyName, value1, value2) {
-    	var e = "(" + propertyName + " between ? and ?)"; 
+        var e = "(" + propertyName + " between ? and ?)"; 
         this.setRootExpression(e);
         this.values.push(value1);
         this.values.push(value2);
@@ -554,33 +614,33 @@ class ExpressionBuilder {
     }
 
     gt(propertyName, value) {
-    	this.addExpression(propertyName, value, ">");;
+        this.addExpression(propertyName, value, ">");;
         return this;
     }
 
     ge(propertyName, value) {
-    	this.addExpression(propertyName, value, ">=");;
+        this.addExpression(propertyName, value, ">=");;
         return this;
     }
 
     lt(propertyName, value) {
-    	this.addExpression(propertyName, value, "<");;
+        this.addExpression(propertyName, value, "<");;
         return this;
     }
 
     le(propertyName, value) {
-    	this.addExpression(propertyName, value, "<=");;
+        this.addExpression(propertyName, value, "<=");;
         return this;
     }
 
     isNull(propertyName) {
-    	var e = "(" + propertyName + " is null)"; 
+        var e = "(" + propertyName + " is null)"; 
         this.setRootExpression(e);
         return this;
     }
 
     isNotNull(propertyName) {
-    	var e = "(" + propertyName + " is not null)"; 
+        var e = "(" + propertyName + " is not null)"; 
         this.setRootExpression(e);
         return this;
     }
@@ -616,8 +676,8 @@ class ExpressionBuilder {
     }
 
     like(propertyName, value) {
-    	var e = "(" + propertyName + " like ?)"; 
-    	this.setRootExpression(e);
+        var e = "(" + propertyName + " like ?)"; 
+        this.setRootExpression(e);
         this.values.push(value);
         return this;
     }
@@ -663,12 +723,12 @@ class ExpressionBuilder {
     }
 
     and() {
-    	this.isAnd = true;
+        this.isAnd = true;
         return this;
     }
 
     or() {
-    	this.isAnd = false;
+        this.isAnd = false;
         return this;
     }
 

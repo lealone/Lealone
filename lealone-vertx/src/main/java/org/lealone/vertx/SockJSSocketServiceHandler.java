@@ -135,16 +135,31 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
                 ja.add(jo);
                 break;
             }
-            case 504:
+            case 504: {
+                ResultSet rs = ps.executeQuery();
+                ResultSetMetaData md = rs.getMetaData();
+                JsonArray records = new JsonArray();
+                while (rs.next()) {
+                    HashMap<String, Object> map = new HashMap<>();
+                    for (int i = 1, len = md.getColumnCount(); i <= len; i++) {
+                        map.put(md.getColumnName(i), rs.getString(i));
+                    }
+                    JsonObject jo = new JsonObject(map);
+                    records.add(jo);
+                }
+                ja.add(records);
+                break;
+            }
+            case 601:
                 conn.setAutoCommit(false);
                 ja.add(result);
                 break;
-            case 505:
+            case 602:
                 conn.commit();
                 conn.setAutoCommit(true);
                 ja.add(result);
                 break;
-            case 506:
+            case 603:
                 conn.rollback();
                 conn.setAutoCommit(true);
                 ja.add(result);

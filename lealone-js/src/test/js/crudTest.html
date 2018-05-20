@@ -12,6 +12,8 @@
     var cb = function(message) {
         console.log(message);
     }
+    User.dao.delete(cb);
+    
     // insert
     new User().name.set("zhh").phone.set(123).insert(cb);
     // find one record
@@ -20,6 +22,12 @@
     User.dao.notes.set("a notes").phone.set(123).where().name.eq("zhh").update(cb);
     // delete
     User.dao.where().name.eq("zhh").delete(cb);
+
+    new User().name.set("u1").phone.set(123).insert(cb);
+    new User().name.set("u2").phone.set(123).insert(cb);
+    User.dao.findCount(cb);
+
+    User.dao.where().name.like("u%").findList(cb);
 
     </script>
 </body>
