@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+<script src="sockjs-1.1.2.js"></script>
+<script src="lealone-5.0.0.js"></script>
+<script src="generated/model/User.js"></script>
+</head>
+<body lang="en">
+    <h1>Transaction test, see console log</h1>
+    <script>
+
+    var cb = function(message) {
+        console.log(message);
+    }
+    User.dao.where().name.like("user%").delete(cb);
+
+    User.dao.beginTransaction();
+    new User().name.set("user1").phone.set(1001).insert(cb);
+    new User().name.set("user2").phone.set(1002).insert(cb);
+    User.dao.commitTransaction();
+    
+    User.dao.beginTransaction();
+    new User().name.set("user3").phone.set(1003).insert(cb);
+    new User().name.set("user4").phone.set(1004).insert(cb);
+    User.dao.rollbackTransaction();
+    
+    User.dao.where().name.eq("user1").findOne(cb);
+    User.dao.where().name.eq("user4").findOne(cb);
+
+    </script>
+</body>
+</html>

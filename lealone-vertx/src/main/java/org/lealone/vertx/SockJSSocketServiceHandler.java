@@ -83,7 +83,7 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
 
     private static final ConcurrentSkipListMap<Integer, Connection> currentConnections = new ConcurrentSkipListMap<>();
 
-    void executeSql(SockJSSocket sockJSSocket, String a[], int type) {
+    private void executeSql(SockJSSocket sockJSSocket, String a[], int type) {
         try {
             Connection conn;
             synchronized (sockJSSocket) {
@@ -98,10 +98,13 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
                     currentConnections.put(sockJSSocket.hashCode(), conn);
                 }
             }
-            PreparedStatement ps = conn.prepareStatement(a[2]);
-            JsonArray parms = new JsonArray(a[3]);
-            for (int i = 0, size = parms.size(); i < size; i++) {
-                ps.setObject(i + 1, parms.getValue(i));
+            PreparedStatement ps = null;
+            if (a.length > 2) {
+                ps = conn.prepareStatement(a[2]);
+                JsonArray parms = new JsonArray(a[3]);
+                for (int i = 0, size = parms.size(); i < size; i++) {
+                    ps.setObject(i + 1, parms.getValue(i));
+                }
             }
             JsonArray ja = new JsonArray();
             String result = "ok";
@@ -132,6 +135,20 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
                 ja.add(jo);
                 break;
             }
+            case 504:
+                conn.setAutoCommit(false);
+                ja.add(result);
+                break;
+            case 505:
+                conn.commit();
+                conn.setAutoCommit(true);
+                ja.add(result);
+                break;
+            case 506:
+                conn.rollback();
+                conn.setAutoCommit(true);
+                ja.add(result);
+                break;
             default:
                 ja.add(3);
                 result = "unknown request type: " + type + ", sql: " + a[2];
@@ -141,7 +158,6 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
         } catch (SQLException e) {
             logger.error(e);
         }
-
     }
 
 }

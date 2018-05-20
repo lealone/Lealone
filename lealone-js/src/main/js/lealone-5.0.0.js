@@ -91,6 +91,9 @@ function initSockJS(sockjsUrl) {
 		case 501:
 		case 502:
 		case 503:
+		case 504:
+        case 505:
+        case 506:
 			if(L.sqls[a[1]] && L.sqls[a[1]]["callback"]) { 
 			    L.sqls[a[1]]["callback"](result);
 			}
@@ -111,7 +114,10 @@ L.executeSql = function(type, sql, args, callback) {
 		L.sqls = {};
 		initSockJS(L.sockjsUrl);
 	}
-    var msg = type + ";" + id + ";" + sql; 
+    var msg = type + ";" + id;
+    if(sql != null && sql != undefined) {
+        msg += ";" + sql; 
+    }
 	if(typeof callback == 'function') {
 		L.sqls[id] = function() {};
         L.sqls[id]["callback"] = callback; 
@@ -339,7 +345,7 @@ class Model {
             });
             return;
         }
-    	var sql = "delete from " + this.modelTable.tableName + " "; 
+    	var sql = "delete from " + this.modelTable.tableName; 
     	var args = [];
     	if (this.whereExpressionBuilder != null) {
     		sql += " where " + this.whereExpressionBuilder.getExpression();
@@ -368,6 +374,18 @@ class Model {
         	this.whereExpressionBuilder = new ExpressionBuilder(this);
         }
         return this.whereExpressionBuilder;
+    }
+
+    beginTransaction(cb) {
+        lealone.executeSql(504, null, null, cb);
+    }
+
+    commitTransaction(cb) {
+        lealone.executeSql(505, null, null, cb);
+    }
+
+    rollbackTransaction(cb) {
+        lealone.executeSql(506, null, null, cb);
     }
 }
 
@@ -428,6 +446,10 @@ class PString extends ModelProperty {
     	super(name, model);
     }
 
+    like(value) {
+        this.expr().like(this.name, value);
+        return this.model;
+    }
 //    set(newValue) {
 //    	if (this.value != newValue) {
 //            this.value = newValue;
@@ -595,6 +617,7 @@ class ExpressionBuilder {
 
     like(propertyName, value) {
     	var e = "(" + propertyName + " like ?)"; 
+    	this.setRootExpression(e);
         this.values.push(value);
         return this;
     }

@@ -21,10 +21,10 @@ import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
 import org.lealone.vertx.LealoneHttpServer;
 
-public class FrontendCrudTest extends UnitTestBase {
+public class FrontendOrmTest extends UnitTestBase {
 
     public static void main(String[] args) {
-        new FrontendCrudTest().runTest(true, false);
+        new FrontendOrmTest().runTest(true, false);
     }
 
     @Override
