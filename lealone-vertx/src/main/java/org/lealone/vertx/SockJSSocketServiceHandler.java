@@ -42,9 +42,17 @@ import io.vertx.ext.web.handler.sockjs.SockJSSocket;
 public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
 
     private static final Logger logger = LoggerFactory.getLogger(SockJSSocketServiceHandler.class);
+    private static final ConcurrentSkipListMap<Integer, Connection> currentConnections = new ConcurrentSkipListMap<>();
 
     @Override
     public void handle(SockJSSocket sockJSSocket) {
+        sockJSSocket.endHandler(v -> {
+            currentConnections.remove(sockJSSocket.hashCode());
+        });
+        sockJSSocket.exceptionHandler(t -> {
+            currentConnections.remove(sockJSSocket.hashCode());
+            logger.error("sockJSSocket exception", t);
+        });
         sockJSSocket.handler(buffer -> {
             String a[] = buffer.getString(0, buffer.length()).split(";");
             int type = Integer.parseInt(a[0]);
@@ -80,8 +88,6 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
             sockJSSocket.write(Buffer.buffer(ja.toString()));
         });
     }
-
-    private static final ConcurrentSkipListMap<Integer, Connection> currentConnections = new ConcurrentSkipListMap<>();
 
     private void executeSql(SockJSSocket sockJSSocket, String a[], int type) {
         try {
