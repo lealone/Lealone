@@ -58,7 +58,7 @@ public class OrmCrudTest extends UnitTestBase {
         long rowId1;
         long rowId2;
 
-        Customer dao = Customer.dao.fork();
+        Customer dao = Customer.dao();
 
         Customer c = Customer.create(url);
 

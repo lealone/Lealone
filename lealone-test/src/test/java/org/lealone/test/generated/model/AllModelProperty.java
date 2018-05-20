@@ -38,6 +38,10 @@ public class AllModelProperty extends Model<AllModelProperty> {
 
     public static final AllModelProperty dao = new AllModelProperty(null, ROOT_DAO);
 
+    public static AllModelProperty dao() {
+        return new AllModelProperty(null, CHILD_DAO);
+    }
+
     public static AllModelProperty create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "ALL_MODEL_PROPERTY");
         return new AllModelProperty(t, REGULAR_MODEL);
