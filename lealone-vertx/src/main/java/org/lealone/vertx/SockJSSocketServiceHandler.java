@@ -53,40 +53,45 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
             currentConnections.remove(sockJSSocket.hashCode());
             logger.error("sockJSSocket exception", t);
         });
+
         sockJSSocket.handler(buffer -> {
             String a[] = buffer.getString(0, buffer.length()).split(";");
             int type = Integer.parseInt(a[0]);
-            if (type >= 500) {
+            if (type < 500) {
+                executeService(sockJSSocket, a, type);
+            } else {
                 executeSql(sockJSSocket, a, type);
-                return;
             }
-            String serviceName = CamelCaseHelper.toUnderscoreFromCamel(a[1]);
-            String json = null;
-            if (a.length >= 3) {
-                json = a[2];
-            }
-            JsonArray ja = new JsonArray();
-            String result = null;
-            switch (type) {
-            case 1:
-                try {
-                    result = ServiceExecuterManager.executeServiceWithReturnValue(serviceName, json);
-                    ja.add(2);
-                } catch (Exception e) {
-                    ja.add(3);
-                    result = "failed to execute service: " + serviceName + ", cause: " + e.getMessage();
-                    logger.error(result, e);
-                }
-                break;
-            default:
-                ja.add(3);
-                result = "unknown request type: " + type + ", serviceName: " + serviceName;
-                logger.error(result);
-            }
-            ja.add(a[1]); // 前端传来的方法名不一定是下划线风格的，所以用最初的
-            ja.add(result);
-            sockJSSocket.write(Buffer.buffer(ja.toString()));
         });
+    }
+
+    private void executeService(SockJSSocket sockJSSocket, String a[], int type) {
+        String serviceName = CamelCaseHelper.toUnderscoreFromCamel(a[1]);
+        String json = null;
+        if (a.length >= 3) {
+            json = a[2];
+        }
+        JsonArray ja = new JsonArray();
+        String result = null;
+        switch (type) {
+        case 1:
+            try {
+                result = ServiceExecuterManager.executeServiceWithReturnValue(serviceName, json);
+                ja.add(2);
+            } catch (Exception e) {
+                ja.add(3);
+                result = "failed to execute service: " + serviceName + ", cause: " + e.getMessage();
+                logger.error(result, e);
+            }
+            break;
+        default:
+            ja.add(3);
+            result = "unknown request type: " + type + ", serviceName: " + serviceName;
+            logger.error(result);
+        }
+        ja.add(a[1]); // 前端传来的方法名不一定是下划线风格的，所以用最初的
+        ja.add(result);
+        sockJSSocket.write(Buffer.buffer(ja.toString()));
     }
 
     private void executeSql(SockJSSocket sockJSSocket, String a[], int type) {
