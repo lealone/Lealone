@@ -24,7 +24,7 @@ import org.lealone.orm.ModelProperty;
  *
  * @param <R> the root model bean type
  */
-public class PBytes<R> extends ModelProperty<R> {
+public class PBytes<R> extends ModelProperty<R, PBytes<R>> {
 
     /**
      * Construct with a property name and root instance.

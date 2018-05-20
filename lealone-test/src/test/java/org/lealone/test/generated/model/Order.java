@@ -24,10 +24,6 @@ public class Order extends Model<Order> {
 
     public static final Order dao = new Order(null, ROOT_DAO);
 
-    public static Order dao() {
-        return new Order(null, CHILD_DAO);
-    }
-
     public static Order create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "ORDER");
         return new Order(t, REGULAR_MODEL);

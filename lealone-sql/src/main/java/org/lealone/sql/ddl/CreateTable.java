@@ -392,10 +392,6 @@ public class CreateTable extends SchemaStatement {
         buff.append("    public static final ").append(className).append(" dao = new ").append(className)
                 .append("(null, ROOT_DAO);\r\n");
         buff.append("\r\n");
-        buff.append("    public static ").append(className).append(" dao() {\r\n");
-        buff.append("        return new ").append(className).append("(null, CHILD_DAO);\r\n");
-        buff.append("    }\r\n");
-        buff.append("\r\n");
         Database db = data.schema.getDatabase();
         String tableFullName = "\"" + db.getName() + "\", \"" + data.schema.getName() + "\", \"" + data.tableName
                 + "\"";

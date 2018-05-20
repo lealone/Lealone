@@ -24,7 +24,7 @@ import org.lealone.orm.ModelProperty;
  *
  * @param <R> the root model bean type
  */
-public class PArray<R> extends ModelProperty<R> {
+public class PArray<R> extends ModelProperty<R, PArray<R>> {
 
     /**
      * Construct with a property name and root instance.

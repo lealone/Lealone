@@ -24,7 +24,7 @@ import java.sql.Time;
  *
  * @param <R> the root model bean type
  */
-public class PTime<R> extends PBaseNumber<R, Time> {
+public class PTime<R> extends PBaseNumber<R, Time, PTime<R>> {
 
     /**
      * Construct with a property name and root instance.

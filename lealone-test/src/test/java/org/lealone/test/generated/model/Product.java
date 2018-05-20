@@ -23,10 +23,6 @@ public class Product extends Model<Product> {
 
     public static final Product dao = new Product(null, ROOT_DAO);
 
-    public static Product dao() {
-        return new Product(null, CHILD_DAO);
-    }
-
     public static Product create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "PRODUCT");
         return new Product(t, REGULAR_MODEL);

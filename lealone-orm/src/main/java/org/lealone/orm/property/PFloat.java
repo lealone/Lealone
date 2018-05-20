@@ -22,7 +22,7 @@ package org.lealone.orm.property;
  *
  * @param <R> the root model bean type
  */
-public class PFloat<R> extends PBaseNumber<R, Float> {
+public class PFloat<R> extends PBaseNumber<R, Float, PFloat<R>> {
 
     /**
      * Construct with a property name and root instance.

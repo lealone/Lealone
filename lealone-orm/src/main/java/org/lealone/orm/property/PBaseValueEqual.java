@@ -27,7 +27,7 @@ import org.lealone.orm.ModelProperty;
  * @param <R> the root model bean type
  * @param <T> the number type
  */
-public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
+public abstract class PBaseValueEqual<R, T, P> extends ModelProperty<R, P> {
 
     /**
      * Construct with a property name and root instance.

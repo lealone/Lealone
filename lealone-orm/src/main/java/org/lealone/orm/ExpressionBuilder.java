@@ -101,7 +101,7 @@ public class ExpressionBuilder<T> {
         return this;
     }
 
-    public ExpressionBuilder<T> eq(String propertyName, ModelProperty<?> p) {
+    public ExpressionBuilder<T> eq(String propertyName, ModelProperty<?, ?> p) {
         ExpressionColumn left = model.getExpressionColumn(propertyName);
         ExpressionColumn right = Model.getExpressionColumn(p);
         Comparison c = new Comparison(getTable().getSession(), Comparison.EQUAL, left, right);

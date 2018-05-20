@@ -24,7 +24,7 @@ package org.lealone.orm.property;
  * @param <T> the number type
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparable<R, T> {
+public abstract class PBaseNumber<R, T extends Comparable, P> extends PBaseComparable<R, T, P> {
 
     /**
      * Construct with a property name and root instance.

@@ -22,7 +22,7 @@ package org.lealone.orm.property;
  *
  * @param <R> the root model bean type
  */
-public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
+public class PBoolean<R> extends PBaseValueEqual<R, Boolean, PBoolean<R>> {
 
     /**
      * Construct with a property name and root instance.

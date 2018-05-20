@@ -19,7 +19,7 @@ package org.lealone.orm.property;
 
 import org.lealone.orm.ModelProperty;
 
-public class PClob<R> extends ModelProperty<R> {
+public class PClob<R> extends ModelProperty<R, PClob<R>> {
 
     public PClob(String name, R root) {
         super(name, root);

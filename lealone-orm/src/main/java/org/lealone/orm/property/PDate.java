@@ -24,7 +24,7 @@ import java.sql.Date;
  *
  * @param <R> the root model bean type
  */
-public class PDate<R> extends PBaseDate<R, Date> {
+public class PDate<R> extends PBaseDate<R, Date, PDate<R>> {
 
     /**
      * Construct with a property name and root instance.

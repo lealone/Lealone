@@ -24,7 +24,7 @@ package org.lealone.orm.property;
  * @param <T> the type of the scalar property
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseComparable<R, T extends Comparable> extends PBaseValueEqual<R, T> {
+public abstract class PBaseComparable<R, T extends Comparable, P> extends PBaseValueEqual<R, T, P> {
 
     /**
      * Construct with a property name and root instance.

@@ -23,10 +23,6 @@ public class Customer extends Model<Customer> {
 
     public static final Customer dao = new Customer(null, ROOT_DAO);
 
-    public static Customer dao() {
-        return new Customer(null, CHILD_DAO);
-    }
-
     public static Customer create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "CUSTOMER");
         return new Customer(t, REGULAR_MODEL);

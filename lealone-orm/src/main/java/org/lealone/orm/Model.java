@@ -74,7 +74,7 @@ public abstract class Model<T> {
 
     private static final ConcurrentSkipListMap<Long, ServerSession> currentSessions = new ConcurrentSkipListMap<>();
 
-    public class PRowId extends PBaseNumber<T, Long> {
+    public class PRowId extends PBaseNumber<T, Long, PRowId> {
 
         private long value;
 
@@ -178,6 +178,7 @@ public abstract class Model<T> {
     private ArrayStack<ExpressionBuilder<T>> expressionBuilderStack;
 
     private ArrayStack<TableFilter> tableFilterStack;
+    private HashMap<String, ModelProperty> modelPropertiesMap;
 
     ModelProperty[] modelProperties;
     // 0: regular model; 1: root dao; 2: child dao
@@ -198,6 +199,14 @@ public abstract class Model<T> {
 
     protected void setModelProperties(ModelProperty[] modelProperties) {
         this.modelProperties = modelProperties;
+        modelPropertiesMap = new HashMap<>(modelProperties.length);
+        for (ModelProperty p : modelProperties) {
+            modelPropertiesMap.put(p.getName(), p);
+        }
+    }
+
+    ModelProperty getModelProperty(String name) {
+        return modelPropertiesMap.get(name);
     }
 
     /**
@@ -251,13 +260,13 @@ public abstract class Model<T> {
     }
 
     @SafeVarargs
-    public final T select(ModelProperty<?>... properties) {
+    public final T select(ModelProperty<?, ?>... properties) {
         Model<T> m = maybeCopy();
         if (m != this) {
             return m.select(properties);
         }
         selectExpressions = new ArrayList<>();
-        for (ModelProperty<?> p : properties) {
+        for (ModelProperty<?, ?> p : properties) {
             ExpressionColumn c = getExpressionColumn(p);
             selectExpressions.add(c);
         }
@@ -275,20 +284,20 @@ public abstract class Model<T> {
     }
 
     @SafeVarargs
-    public final T groupBy(ModelProperty<?>... properties) {
+    public final T groupBy(ModelProperty<?, ?>... properties) {
         Model<T> m = maybeCopy();
         if (m != this) {
             return m.groupBy(properties);
         }
         groupExpressions = new ArrayList<>();
-        for (ModelProperty<?> p : properties) {
+        for (ModelProperty<?, ?> p : properties) {
             ExpressionColumn c = getExpressionColumn(p);
             groupExpressions.add(c);
         }
         return root;
     }
 
-    static ExpressionColumn getExpressionColumn(ModelProperty<?> p) {
+    static ExpressionColumn getExpressionColumn(ModelProperty<?, ?> p) {
         return new ExpressionColumn(p.getDatabaseName(), p.getSchemaName(), p.getTableName(), p.getName());
     }
 
@@ -622,19 +631,12 @@ public abstract class Model<T> {
     }
 
     @SuppressWarnings("unchecked")
-    private Model<T> maybeCopy() {
+    Model<T> maybeCopy() {
         if (isRootDao()) {
-            Model m = newInstance(modelTable.copy(), CHILD_DAO);
-            return m;
+            return newInstance(modelTable.copy(), CHILD_DAO);
         } else {
             return this;
         }
-    }
-
-    // 支持并发
-    public T fork() {
-        checkDao("for");
-        return maybeCopy().root;
     }
 
     private void maybeCreateWhereExpression(Table dbTable) {

@@ -22,6 +22,7 @@ import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
+import org.lealone.orm.Model;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,7 +32,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  *
  * @param <R> the root model bean type
  */
-public class PString<R> extends PBaseComparable<R, String> {
+public class PString<R> extends PBaseComparable<R, String, PString<R>> {
 
     private String value;
 
@@ -176,11 +177,13 @@ public class PString<R> extends PBaseComparable<R, String> {
     }
 
     public final R set(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return getModelProperty(model).set(value);
+        }
         if (!areEqual(this.value, value)) {
             this.value = value;
-            // if (isReady()) {
             expr().set(name, ValueString.get(value));
-            // }
         }
         return root;
     }
@@ -191,6 +194,10 @@ public class PString<R> extends PBaseComparable<R, String> {
     }
 
     public final String get() {
+        Model<?> model = getModel();
+        if (model != root) {
+            return getModelProperty(model).get();
+        }
         return value;
     }
 

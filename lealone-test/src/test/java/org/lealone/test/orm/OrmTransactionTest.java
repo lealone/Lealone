@@ -37,7 +37,7 @@ public class OrmTransactionTest extends UnitTestBase {
 
         // 测试在同一个线程中的多表事务
         try {
-            Customer.dao().beginTransaction();
+            Customer.dao.beginTransaction();
 
             new Customer().name.set("c1").phone.set(8001).insert();
             new Customer().name.set("c2").phone.set(8002).insert();
@@ -45,15 +45,15 @@ public class OrmTransactionTest extends UnitTestBase {
             new Product().productId.set(1001).productName.set("p1").insert();
             new Product().productId.set(1002).productName.set("p2").insert();
 
-            Customer.dao().commitTransaction();
+            Customer.dao.commitTransaction();
         } catch (Exception e) {
-            Customer.dao().rollbackTransaction();
+            Customer.dao.rollbackTransaction();
             e.printStackTrace();
         }
 
         // 测试在不同线程中的多表事务
         final CountDownLatch latch = new CountDownLatch(1);
-        final long tid = Customer.dao().beginTransaction();
+        final long tid = Customer.dao.beginTransaction();
 
         try {
             new Customer().name.set("c3").phone.set(8003).insert();
@@ -67,25 +67,25 @@ public class OrmTransactionTest extends UnitTestBase {
             }).start();
 
             latch.await();
-            Customer.dao().commitTransaction(tid);
+            Customer.dao.commitTransaction(tid);
         } catch (Exception e) {
-            Customer.dao().rollbackTransaction(tid);
+            Customer.dao.rollbackTransaction(tid);
             e.printStackTrace();
         }
 
         // 撤销事务
         try {
-            Customer.dao().beginTransaction();
+            Customer.dao.beginTransaction();
             new Customer().name.set("c5").phone.set(8005).insert();
             new Product().productId.set(1005).productName.set("p5").insert();
         } finally {
-            Customer.dao().rollbackTransaction();
+            Customer.dao.rollbackTransaction();
         }
 
-        int count = Customer.dao().findCount();
+        int count = Customer.dao.findCount();
         assertEquals(4, count);
 
-        count = Product.dao().findCount();
+        count = Product.dao.findCount();
         assertEquals(4, count);
     }
 

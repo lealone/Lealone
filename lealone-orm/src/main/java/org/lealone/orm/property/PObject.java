@@ -20,7 +20,7 @@ package org.lealone.orm.property;
 import org.lealone.db.value.ValueJavaObject;
 import org.lealone.orm.ModelProperty;
 
-public class PObject<R> extends ModelProperty<R> {
+public class PObject<R> extends ModelProperty<R, PObject<R>> {
 
     private Object value;
 

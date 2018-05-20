@@ -23,10 +23,6 @@ public class User extends Model<User> {
 
     public static final User dao = new User(null, ROOT_DAO);
 
-    public static User dao() {
-        return new User(null, CHILD_DAO);
-    }
-
     public static User create(String url) {
         ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "USER");
         return new User(t, REGULAR_MODEL);

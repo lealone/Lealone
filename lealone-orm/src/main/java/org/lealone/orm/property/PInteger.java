@@ -22,6 +22,7 @@ import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
+import org.lealone.orm.Model;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -32,7 +33,7 @@ import com.fasterxml.jackson.databind.node.NumericNode;
  *
  * @param <R> the root model bean type
  */
-public class PInteger<R> extends PBaseNumber<R, Integer> {
+public class PInteger<R> extends PBaseNumber<R, Integer, PInteger<R>> {
 
     private int value;
 
@@ -54,11 +55,13 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
     }
 
     public final R set(int value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return getModelProperty(model).set(value);
+        }
         if (!areEqual(this.value, value)) {
             this.value = value;
-            // if (isReady()) {
             expr().set(name, ValueInt.get(value));
-            // }
         }
         return root;
     }
@@ -69,6 +72,10 @@ public class PInteger<R> extends PBaseNumber<R, Integer> {
     }
 
     public final int get() {
+        Model<?> model = getModel();
+        if (model != root) {
+            return getModelProperty(model).get();
+        }
         return value;
     }
 

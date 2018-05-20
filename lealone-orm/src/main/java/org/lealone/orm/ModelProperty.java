@@ -32,7 +32,8 @@ import com.fasterxml.jackson.databind.JsonNode;
  *
  * @param <R> The type of the owning root bean
  */
-public abstract class ModelProperty<R> {
+@SuppressWarnings("unchecked")
+public abstract class ModelProperty<R, P> {
 
     protected final String name;
     protected final R root;
@@ -72,8 +73,12 @@ public abstract class ModelProperty<R> {
         return name;
     }
 
-    private Model<?> getModel() {
-        return ((Model<?>) root);
+    protected Model<?> getModel() {
+        return ((Model<?>) root).maybeCopy();
+    }
+
+    protected P getModelProperty(Model<?> model) {
+        return (P) model.getModelProperty(name);
     }
 
     /**
@@ -87,6 +92,10 @@ public abstract class ModelProperty<R> {
      * Is null.
      */
     public R isNull() {
+        Model<?> model = getModel();
+        if (model != root) {
+            return ((ModelProperty<R, P>) getModelProperty(model)).isNull();
+        }
         expr().isNull(name);
         return root;
     }
@@ -95,6 +104,10 @@ public abstract class ModelProperty<R> {
      * Is not null.
      */
     public R isNotNull() {
+        Model<?> model = getModel();
+        if (model != root) {
+            return ((ModelProperty<R, P>) getModelProperty(model)).isNotNull();
+        }
         expr().isNotNull(name);
         return root;
     }
@@ -103,6 +116,10 @@ public abstract class ModelProperty<R> {
      * Order by ascending on this property.
      */
     public R asc() {
+        Model<?> model = getModel();
+        if (model != root) {
+            return ((ModelProperty<R, P>) getModelProperty(model)).asc();
+        }
         expr().orderBy(name, false);
         return root;
     }
@@ -111,6 +128,10 @@ public abstract class ModelProperty<R> {
      * Order by descending on this property.
      */
     public R desc() {
+        Model<?> model = getModel();
+        if (model != root) {
+            return ((ModelProperty<R, P>) getModelProperty(model)).desc();
+        }
         expr().orderBy(name, true);
         return root;
     }
@@ -122,14 +143,20 @@ public abstract class ModelProperty<R> {
         return name;
     }
 
-    public final R eq(ModelProperty<?> p) {
+    public final R eq(ModelProperty<?, ?> p) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return ((ModelProperty<R, P>) getModelProperty(model)).eq(p);
+        }
         expr().eq(name, p);
         return root;
     }
 
-    // public abstract R set(Object value);
-
     public R set(Object value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return ((ModelProperty<R, P>) getModelProperty(model)).set(value);
+        }
         return root;
     }
 
@@ -156,7 +183,7 @@ public abstract class ModelProperty<R> {
     /**
      * Helper method to check if two objects are equal.
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({ "rawtypes" })
     protected static boolean areEqual(Object obj1, Object obj2) {
         if (obj1 == null) {
             return (obj2 == null);

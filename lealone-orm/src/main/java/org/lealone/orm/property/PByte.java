@@ -22,7 +22,7 @@ package org.lealone.orm.property;
  *
  * @param <R> the root model bean type
  */
-public class PByte<R> extends PBaseNumber<R, Byte> {
+public class PByte<R> extends PBaseNumber<R, Byte, PByte<R>> {
 
     /**
      * Construct with a property name and root instance.
