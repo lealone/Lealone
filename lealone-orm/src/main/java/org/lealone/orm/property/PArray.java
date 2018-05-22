@@ -37,13 +37,6 @@ public class PArray<R> extends ModelProperty<R, PArray<R>> {
     }
 
     /**
-     * Construct with additional path prefix.
-     */
-    public PArray(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
-    /**
      * ARRAY contains the values.
      * <p>
      * <pre>{@code

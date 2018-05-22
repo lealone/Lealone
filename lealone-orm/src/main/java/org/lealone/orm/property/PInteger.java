@@ -47,13 +47,6 @@ public class PInteger<R> extends PBaseNumber<R, Integer, PInteger<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PInteger(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
     public final R set(int value) {
         Model<?> model = getModel();
         if (model != root) {

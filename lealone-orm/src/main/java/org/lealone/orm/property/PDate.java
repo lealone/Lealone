@@ -48,13 +48,6 @@ public class PDate<R> extends PBaseDate<R, Date, PDate<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PDate(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
     public final R set(Date value) {
         Model<?> model = getModel();
         if (model != root) {

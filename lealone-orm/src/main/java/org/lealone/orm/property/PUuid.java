@@ -36,11 +36,4 @@ public class PUuid<R> extends PBaseValueEqual<R, UUID, PUuid<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PUuid(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

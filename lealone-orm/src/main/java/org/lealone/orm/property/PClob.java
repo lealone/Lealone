@@ -25,8 +25,4 @@ public class PClob<R> extends ModelProperty<R, PClob<R>> {
         super(name, root);
     }
 
-    public PClob(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

@@ -47,13 +47,6 @@ public class PString<R> extends PBaseComparable<R, String, PString<R>> {
     }
 
     /**
-     * Construct with additional path prefix.
-     */
-    public PString(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
-    /**
      * Case insensitive is equal to.
      *
      * @param value the equal to bind value

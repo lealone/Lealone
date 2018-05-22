@@ -34,11 +34,4 @@ public class PShort<R> extends PBaseNumber<R, Short, PShort<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PShort(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

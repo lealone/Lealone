@@ -37,13 +37,6 @@ public abstract class PBaseDate<R, D extends Comparable, P> extends PBaseCompara
     }
 
     /**
-     * Construct with additional path prefix.
-     */
-    public PBaseDate(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
-    /**
      * Same as greater than.
      *
      * @param value the equal to bind value

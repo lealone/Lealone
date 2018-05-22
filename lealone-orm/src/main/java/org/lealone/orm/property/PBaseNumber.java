@@ -36,13 +36,6 @@ public abstract class PBaseNumber<R, T extends Comparable, P> extends PBaseCompa
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PBaseNumber(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
     // Additional int versions -- seems the right thing to do
 
     /**

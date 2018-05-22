@@ -35,13 +35,6 @@ public class PBoolean<R> extends PBaseValueEqual<R, Boolean, PBoolean<R>> {
     }
 
     /**
-     * Construct with additional path prefix.
-     */
-    public PBoolean(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
-    /**
      * Is true.
      *
      * @return the root model bean instance

@@ -88,13 +88,6 @@ public abstract class Model<T> {
             super(name, root);
         }
 
-        /**
-         * Construct with additional path prefix.
-         */
-        public PRowId(String name, T root, String prefix) {
-            super(name, root, prefix);
-        }
-
         // 不需要通过外部设置
         T set(long value) {
             if (!areEqual(this.value, value)) {

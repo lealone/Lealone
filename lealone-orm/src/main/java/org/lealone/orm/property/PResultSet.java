@@ -25,8 +25,4 @@ public class PResultSet<R> extends ModelProperty<R, PResultSet<R>> {
         super(name, root);
     }
 
-    public PResultSet(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

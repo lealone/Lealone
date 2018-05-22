@@ -47,13 +47,6 @@ public class PLong<R> extends PBaseNumber<R, Long, PLong<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PLong(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
     public R set(long value) {
         Model<?> model = getModel();
         if (model != root) {

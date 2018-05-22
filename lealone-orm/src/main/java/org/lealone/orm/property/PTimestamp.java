@@ -36,10 +36,4 @@ public class PTimestamp<R> extends PBaseDate<R, Timestamp, PTimestamp<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PTimestamp(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
 }

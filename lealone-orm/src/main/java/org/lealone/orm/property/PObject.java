@@ -28,10 +28,6 @@ public class PObject<R> extends ModelProperty<R, PObject<R>> {
         super(name, root);
     }
 
-    public PObject(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
     @Override
     public R set(Object value) {
         if (!areEqual(this.value, value)) {

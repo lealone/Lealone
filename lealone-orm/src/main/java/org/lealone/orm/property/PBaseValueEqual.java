@@ -40,13 +40,6 @@ public abstract class PBaseValueEqual<R, T, P> extends ModelProperty<R, P> {
     }
 
     /**
-     * Construct with additional path prefix.
-     */
-    public PBaseValueEqual(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
-    /**
      * Is equal to.
      *
      * @param value the equal to bind value

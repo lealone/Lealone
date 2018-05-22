@@ -36,13 +36,6 @@ public abstract class PBaseComparable<R, T extends Comparable, P> extends PBaseV
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PBaseComparable(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
     // ---- range comparisons -------
     /**
      * Greater than.

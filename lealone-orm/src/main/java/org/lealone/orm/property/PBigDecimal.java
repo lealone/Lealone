@@ -35,11 +35,4 @@ public class PBigDecimal<R> extends PBaseNumber<R, BigDecimal, PBigDecimal<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PBigDecimal(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

@@ -34,11 +34,4 @@ public class PDouble<R> extends PBaseNumber<R, Double, PDouble<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PDouble(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

@@ -34,11 +34,4 @@ public class PFloat<R> extends PBaseNumber<R, Float, PFloat<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PFloat(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

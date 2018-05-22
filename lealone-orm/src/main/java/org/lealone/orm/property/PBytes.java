@@ -36,11 +36,4 @@ public class PBytes<R> extends ModelProperty<R, PBytes<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PBytes(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

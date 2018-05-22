@@ -36,11 +36,4 @@ public class PTime<R> extends PBaseNumber<R, Time, PTime<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PTime(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }

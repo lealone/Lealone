@@ -47,15 +47,8 @@ public abstract class ModelProperty<R, P> {
      * @param root the root model bean instance
      */
     public ModelProperty(String name, R root) {
-        this(name, root, null);
-    }
-
-    /**
-     * Construct with additional path prefix.
-     */
-    public ModelProperty(String name, R root, String prefix) {
+        this.name = name;
         this.root = root;
-        this.name = fullPath(prefix, name);
     }
 
     public String getDatabaseName() {
@@ -218,12 +211,5 @@ public abstract class ModelProperty<R, P> {
             return obj1.toString().equals(obj2.toString());
         }
         return obj1.equals(obj2);
-    }
-
-    /**
-     * Return the full path by adding the prefix to the property name (null safe).
-     */
-    protected static String fullPath(String prefix, String name) {
-        return (prefix == null) ? name : prefix + "." + name;
     }
 }

@@ -34,11 +34,4 @@ public class PByte<R> extends PBaseNumber<R, Byte, PByte<R>> {
         super(name, root);
     }
 
-    /**
-     * Construct with additional path prefix.
-     */
-    public PByte(String name, R root, String prefix) {
-        super(name, root, prefix);
-    }
-
 }
