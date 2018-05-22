@@ -226,6 +226,14 @@ public abstract class Model<T> {
         return root;
     }
 
+    @SuppressWarnings("unchecked")
+    protected <M> List<M> getModelList() {
+        if (modelList == null) {
+            modelList = new ArrayList<>();
+        }
+        return (List<M>) modelList;
+    }
+
     void addNVPair(String name, Value value) {
         if (nvPairs == null) {
             nvPairs = new HashSet<>();

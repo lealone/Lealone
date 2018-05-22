@@ -7,6 +7,7 @@
 package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
@@ -378,7 +379,7 @@ public class CreateTable extends SchemaStatement {
                     if (!packageName.equals(pn)) {
                         importSet.add(pn + "." + CreateService.toClassName(owner.getName()));
                     }
-                    // importSet.add(ArrayList.class.getName());
+                    importSet.add(List.class.getName());
                 } else {
                     String pn = refTable.getPackageName();
                     if (!packageName.equals(pn)) {
@@ -449,9 +450,6 @@ public class CreateTable extends SchemaStatement {
                 String refTableClassName = CreateService.toClassName(refTable.getName());
                 if (refTable == table) {
                     String ownerClassName = CreateService.toClassName(owner.getName());
-                    // String ownerVar = CamelCaseHelper.toCamelFromUnderscore(owner.getName()) + "List";
-                    // buff.append(" public final ArrayList<").append(ownerClassName).append("> ").append(ownerVar)
-                    // .append(" = new ArrayList<>();\r\n");
 
                     listBuff.append("    public ").append(className).append(" add").append(ownerClassName).append("(")
                             .append(ownerClassName).append(" m) {\r\n");
@@ -467,6 +465,11 @@ public class CreateTable extends SchemaStatement {
                     listBuff.append("        return this;\r\n");
                     listBuff.append("    }\r\n");
                     listBuff.append("\r\n");
+                    listBuff.append("    public List<").append(ownerClassName).append("> get").append(ownerClassName)
+                            .append("List() {\r\n");
+                    listBuff.append("        return super.getModelList();\r\n");
+                    listBuff.append("    }\r\n");
+                    listBuff.append("\r\n");
                     newAssociateInstanceBuff.append("    @Override\r\n");
                     newAssociateInstanceBuff.append("    protected ").append(ownerClassName)
                             .append(" newAssociateInstance() {\r\n");
@@ -478,8 +481,6 @@ public class CreateTable extends SchemaStatement {
                     newAssociateInstanceBuff.append("\r\n");
                 } else {
                     String refTableVar = CamelCaseHelper.toCamelFromUnderscore(refTable.getName());
-                    // buff.append(" public final ").append(refTableClassName).append(" ").append(refTableVar)
-                    // .append(" = new ").append(refTableClassName).append("();\r\n");
 
                     buff.append("    private ").append(refTableClassName).append(" ").append(refTableVar)
                             .append(";\r\n");
