@@ -97,7 +97,7 @@ public class PInteger<R> extends PBaseNumber<R, Integer, PInteger<R>> {
 
     @Override
     public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(name);
+        Value v = map.get(getFullName());
         if (v != null) {
             value = v.getInt();
         }

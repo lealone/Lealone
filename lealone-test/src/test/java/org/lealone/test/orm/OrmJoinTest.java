@@ -17,6 +17,8 @@
  */
 package org.lealone.test.orm;
 
+import java.util.List;
+
 import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.generated.model.Customer;
@@ -33,17 +35,35 @@ public class OrmJoinTest extends UnitTestBase {
         SqlScript.createCustomerTable(this);
         SqlScript.createProductTable(this);
         SqlScript.createOrderTable(this);
+        SqlScript.createOrderItemTable(this);
 
         join();
     }
 
     void join() {
+        Customer customer = new Customer().id.set(100).name.set("c1");
+        Order o1 = new Order().orderId.set(2001);
+        Order o2 = new Order().orderId.set(2002);
+        // customer.addOrder(o1).addOrder(o2);
+        customer.addOrder(o1, o2).insert();
+        // customer.orderList2.add(o1).add(o2);
+        // customer.orderList2.add(o1, o2);
+
         Customer c = Customer.dao;
         Order o = Order.dao;
 
+        // customer = c.join(o).on().id.eq(o.customerId).where().id.eq(100).findOne();
+
+        customer = c.select(c.name, c.phone, o.orderId, o.orderDate).join(o).on().id.eq(o.customerId).where().id.eq(100)
+                .findOne();
+
+        List<Customer> customerList = c.select(c.name, c.phone, o.orderId, o.orderDate).join(o).on().id.eq(o.customerId)
+                .where().id.eq(100).findList();
+        customer = customerList.get(0);
+
         // SELECT c.name, c.phone, o.order_date, o.total FROM customer c JOIN order o ON c.id = o.customer_id
-        // WHERE c.id = 1 or o.customer_id = 2
-        c.select(c.name, c.phone, o.orderDate, o.total).join(o).on().id.eq(o.customerId).where().id.eq(1).or()
-                .m(o).customerId.eq(2).m(c).findList();
+        // WHERE c.id = 100 or o.customer_id = 2
+        // c.select(c.name, c.phone, o.orderDate, o.orderId).join(o).on().id.eq(o.customerId).where().id.eq(100).or()
+        // .m(o).customerId.eq(2).m(c).findList();
     }
 }

@@ -33,11 +33,11 @@ public class Order extends Model<Order> {
     public final PInteger<Order> orderId;
     public final PDate<Order> orderDate;
     public final PDouble<Order> total;
+    private Customer customer;
 
     public Order() {
         this(null, REGULAR_MODEL);
     }
-
 
     private Order(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "ORDER") : t, modelType);
@@ -50,9 +50,38 @@ public class Order extends Model<Order> {
         super.setModelProperties(new ModelProperty[] { this.customerId, this.orderId, this.orderDate, this.total });
     }
 
+    public Customer getCustomer() {
+        return customer;
+    }
+
+    public Order setCustomer(Customer customer) {
+        this.customer = customer;
+        this.customerId.set(customer.id.get());
+        return this;
+    }
+
+    public Order addOrderItem(OrderItem m) {
+        m.setOrder(this);
+        super.addModel(m);;
+        return this;
+    }
+
+    public Order addOrderItem(OrderItem... mArray) {
+        for (OrderItem m : mArray)
+            addOrderItem(m);
+        return this;
+    }
+
     @Override
     protected Order newInstance(ModelTable t, short modelType) {
         return new Order(t, modelType);
+    }
+
+    @Override
+    protected OrderItem newAssociateInstance() {
+        OrderItem m = new OrderItem();
+        addOrderItem(m);
+        return m;
     }
 
     static class OrderDeserializer extends ModelDeserializer<Order> {

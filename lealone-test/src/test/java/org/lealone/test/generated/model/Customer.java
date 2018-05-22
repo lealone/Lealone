@@ -37,7 +37,6 @@ public class Customer extends Model<Customer> {
         this(null, REGULAR_MODEL);
     }
 
-
     private Customer(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "CUSTOMER") : t, modelType);
         super.setRoot(this);
@@ -49,9 +48,28 @@ public class Customer extends Model<Customer> {
         super.setModelProperties(new ModelProperty[] { this.id, this.name, this.notes, this.phone });
     }
 
+    public Customer addOrder(Order m) {
+        m.setCustomer(this);
+        super.addModel(m);;
+        return this;
+    }
+
+    public Customer addOrder(Order... mArray) {
+        for (Order m : mArray)
+            addOrder(m);
+        return this;
+    }
+
     @Override
     protected Customer newInstance(ModelTable t, short modelType) {
         return new Customer(t, modelType);
+    }
+
+    @Override
+    protected Order newAssociateInstance() {
+        Order m = new Order();
+        addOrder(m);
+        return m;
     }
 
     static class CustomerDeserializer extends ModelDeserializer<Customer> {

@@ -21,7 +21,7 @@ import java.util.List;
 
 import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
-import org.lealone.test.generated.model.Customer;
+import org.lealone.test.generated.model.User;
 
 import io.vertx.core.json.JsonObject;
 
@@ -33,21 +33,21 @@ public class OrmCrudTest extends UnitTestBase {
 
     @Override
     public void test() {
-        SqlScript.createCustomerTable(this);
+        SqlScript.createUserTable(this);
         crud();
         json();
     }
 
     void json() {
-        Customer c = new Customer();
-        c.name.set("Rob");
+        User u = new User();
+        u.name.set("Rob");
 
-        JsonObject json = JsonObject.mapFrom(c);
+        JsonObject json = JsonObject.mapFrom(u);
         String str = json.encode();
         System.out.println("json: " + str);
 
-        c = new JsonObject(str).mapTo(Customer.class);
-        assertEquals("Rob", c.name.get());
+        u = new JsonObject(str).mapTo(User.class);
+        assertEquals("Rob", u.name.get());
     }
 
     void crud() {
@@ -58,70 +58,70 @@ public class OrmCrudTest extends UnitTestBase {
         long rowId1;
         long rowId2;
 
-        Customer dao = Customer.dao;
+        User dao = User.dao;
 
-        Customer c = Customer.create(url);
+        User u = User.create(url);
 
         // 增加两条记录
-        rowId1 = c.id.set(1000).name.set("Rob1").notes.set("notes1").insert();
+        rowId1 = u.id.set(1000).name.set("Rob1").notes.set("notes1").insert();
 
-        assertTrue((rowId1 == 1) && (rowId1 == c._rowid_.get()));
+        assertTrue((rowId1 == 1) && (rowId1 == u._rowid_.get()));
 
-        rowId2 = c.id.set(2000).name.set("Rob2").notes.set("notes2").insert();
+        rowId2 = u.id.set(2000).name.set("Rob2").notes.set("notes2").insert();
 
-        assertTrue((rowId2 == 2) && (rowId2 == c._rowid_.get()));
+        assertTrue((rowId2 == 2) && (rowId2 == u._rowid_.get()));
 
         // 以下出现的where()都不是必须的，加上之后更像SQL
 
         // 查找单条记录
-        // select * from customer where id = 1000;
-        c = dao.where().id.eq(1000L).findOne();
+        // select * from user where id = 1000;
+        u = dao.where().id.eq(1000L).findOne();
 
-        assertTrue((c.id.get() == 1000) && (1 == c._rowid_.get()));
+        assertTrue((u.id.get() == 1000) && (1 == u._rowid_.get()));
 
         // 查找多条记录(取回所有字段)
-        // select * from customer where name like 'Rob%';
-        List<Customer> customers = dao.where().name.like("Rob%").findList();
+        // select * from user where name like 'Rob%';
+        List<User> customers = dao.where().name.like("Rob%").findList();
 
         assertEquals(2, customers.size());
         assertNotNull(customers.get(0).notes.get());
 
         // 查找多条记录(只取回name字段)
-        // select name from customer where name like 'Rob%';
+        // select name from user where name like 'Rob%';
         customers = dao.select(dao.name).where().name.like("Rob%").findList();
 
         assertEquals(2, customers.size());
         assertNull(customers.get(0).notes.get());
 
         // 统计行数
-        // select count(*) from customer where name like 'Rob%';
+        // select count(*) from user where name like 'Rob%';
         int count = dao.where().name.like("Rob%").findCount();
 
         assertEquals(2, count);
 
-        assertEquals(1, c._rowid_.get());
+        assertEquals(1, u._rowid_.get());
 
         // 更新单条记录
-        // update customer set notes = 'Doing an update' where _rowid_ = 1;
-        c.notes.set("Doing an update");
-        count = c.update();
+        // update user set notes = 'Doing an update' where _rowid_ = 1;
+        u.notes.set("Doing an update");
+        count = u.update();
 
         assertEquals(1, count);
 
         // 批量更新记录
-        // update customer set phone = 12345678, notes = 'Doing a batch update' where name like 'Rob%';
+        // update user set phone = 12345678, notes = 'Doing a batch update' where name like 'Rob%';
         count = dao.phone.set(12345678).notes.set("Doing a batch update").where().name.like("Rob%").update();
 
         assertEquals(2, count);
 
         // 删除单条记录
-        // delete from customer where _rowid_ = 1;
-        count = c.delete();
+        // delete from user where _rowid_ = 1;
+        count = u.delete();
 
         assertEquals(1, count);
 
         // 批量删除记录
-        // delete from customer where name like 'Rob%';
+        // delete from user where name like 'Rob%';
         count = dao.where().name.like("Rob%").delete();
 
         assertEquals(1, count);

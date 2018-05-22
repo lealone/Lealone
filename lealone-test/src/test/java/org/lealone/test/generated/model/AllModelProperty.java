@@ -69,7 +69,6 @@ public class AllModelProperty extends Model<AllModelProperty> {
         this(null, REGULAR_MODEL);
     }
 
-
     private AllModelProperty(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "ALL_MODEL_PROPERTY") : t, modelType);
         super.setRoot(this);

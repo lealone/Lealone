@@ -38,6 +38,8 @@ public abstract class ModelProperty<R, P> {
     protected final String name;
     protected final R root;
 
+    protected String fullName;
+
     /**
      * Construct with a property name and root instance.
      *
@@ -178,6 +180,13 @@ public abstract class ModelProperty<R, P> {
             n = node.get(name.toLowerCase());
         }
         return n;
+    }
+
+    protected String getFullName() {
+        if (fullName == null) {
+            fullName = getSchemaName() + "." + getTableName() + "." + name;
+        }
+        return fullName;
     }
 
     /**

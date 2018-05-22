@@ -97,7 +97,7 @@ public class PLong<R> extends PBaseNumber<R, Long, PLong<R>> {
 
     @Override
     public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(name);
+        Value v = map.get(getFullName());
         if (v != null) {
             value = v.getLong();
         }

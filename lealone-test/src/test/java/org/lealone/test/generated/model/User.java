@@ -37,7 +37,6 @@ public class User extends Model<User> {
         this(null, REGULAR_MODEL);
     }
 
-
     private User(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "USER") : t, modelType);
         super.setRoot(this);

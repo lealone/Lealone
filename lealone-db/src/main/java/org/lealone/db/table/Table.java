@@ -89,6 +89,7 @@ public abstract class Table extends SchemaObjectBase {
 
     private int version = -1;
     private String packageName;
+    private String codePath;
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         super(schema, id, name, Trace.TABLE);
@@ -1133,5 +1134,13 @@ public abstract class Table extends SchemaObjectBase {
 
     public void setPackageName(String packageName) {
         this.packageName = packageName;
+    }
+
+    public String getCodePath() {
+        return codePath;
+    }
+
+    public void setCodePath(String codePath) {
+        this.codePath = codePath;
     }
 }

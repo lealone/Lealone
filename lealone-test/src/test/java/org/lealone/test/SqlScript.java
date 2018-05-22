@@ -37,6 +37,7 @@ public class SqlScript {
             createUserTable(this);
             createProductTable(this);
             createOrderTable(this);
+            createOrderItemTable(this);
             createAllModelPropertyTable(this);
             createUserService(this);
             createHelloWorldService(this);
@@ -47,15 +48,6 @@ public class SqlScript {
     private static final String SERVICE_PACKAGE_NAME = "org.lealone.test.generated.service";
     private static final String GENERATED_CODE_PATH = "./src/test/java";
 
-    public static void createCustomerTable(SqlExecuter executer) {
-        System.out.println("create table: customer");
-
-        executer.execute("create table customer(id long, name char(10), notes varchar, phone int)" //
-                + " package '" + MODEL_PACKAGE_NAME + "'" //
-                + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
-        );
-    }
-
     public static void createUserTable(SqlExecuter executer) {
         System.out.println("create table: user");
 
@@ -65,10 +57,19 @@ public class SqlScript {
                 + " generate code '" + GENERATED_CODE_PATH + "'");
     }
 
+    public static void createCustomerTable(SqlExecuter executer) {
+        System.out.println("create table: customer");
+
+        executer.execute("create table customer(id long primary key, name char(10), notes varchar, phone int)" //
+                + " package '" + MODEL_PACKAGE_NAME + "'" //
+                + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
+        );
+    }
+
     public static void createProductTable(SqlExecuter executer) {
         System.out.println("create table: product");
 
-        executer.execute("create table product(product_id long  primary key, product_name varchar, "
+        executer.execute("create table product(product_id long primary key, product_name varchar, "
                 + " category varchar, unit_price double)" //
                 + " package '" + MODEL_PACKAGE_NAME + "'" //
                 + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
@@ -79,7 +80,21 @@ public class SqlScript {
         System.out.println("create table: order");
 
         // order是关键字，索引要用特殊方式表式
-        executer.execute("create table `order`(customer_id long, order_id int, order_date date, total double)" //
+        executer.execute(
+                "create table `order`(customer_id long, order_id int primary key, order_date date, total double,"
+                        + " FOREIGN KEY(customer_id) REFERENCES customer(id))" //
+                        + " package '" + MODEL_PACKAGE_NAME + "'" //
+                        + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
+        );
+    }
+
+    public static void createOrderItemTable(SqlExecuter executer) {
+        System.out.println("create table: order_item");
+
+        // order是关键字，索引要用特殊方式表式
+        executer.execute("create table order_item(order_id int, product_id long, product_count int, "
+                + " FOREIGN KEY(order_id) REFERENCES `order`(order_id)," //
+                + " FOREIGN KEY(product_id) REFERENCES product(product_id))" //
                 + " package '" + MODEL_PACKAGE_NAME + "'" //
                 + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
         );

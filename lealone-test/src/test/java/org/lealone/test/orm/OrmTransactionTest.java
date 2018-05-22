@@ -21,8 +21,8 @@ import java.util.concurrent.CountDownLatch;
 
 import org.lealone.test.SqlScript;
 import org.lealone.test.UnitTestBase;
-import org.lealone.test.generated.model.Customer;
 import org.lealone.test.generated.model.Product;
+import org.lealone.test.generated.model.User;
 
 public class OrmTransactionTest extends UnitTestBase {
 
@@ -32,32 +32,32 @@ public class OrmTransactionTest extends UnitTestBase {
 
     @Override
     public void test() {
-        SqlScript.createCustomerTable(this);
+        SqlScript.createUserTable(this);
         SqlScript.createProductTable(this);
 
         // 测试在同一个线程中的多表事务
         try {
-            Customer.dao.beginTransaction();
+            User.dao.beginTransaction();
 
-            new Customer().name.set("c1").phone.set(8001).insert();
-            new Customer().name.set("c2").phone.set(8002).insert();
+            new User().name.set("u1").phone.set(8001).insert();
+            new User().name.set("u2").phone.set(8002).insert();
 
             new Product().productId.set(1001).productName.set("p1").insert();
             new Product().productId.set(1002).productName.set("p2").insert();
 
-            Customer.dao.commitTransaction();
+            User.dao.commitTransaction();
         } catch (Exception e) {
-            Customer.dao.rollbackTransaction();
+            User.dao.rollbackTransaction();
             e.printStackTrace();
         }
 
         // 测试在不同线程中的多表事务
         final CountDownLatch latch = new CountDownLatch(1);
-        final long tid = Customer.dao.beginTransaction();
+        final long tid = User.dao.beginTransaction();
 
         try {
-            new Customer().name.set("c3").phone.set(8003).insert();
-            new Customer().name.set("c4").phone.set(8004).insert();
+            new User().name.set("u3").phone.set(8003).insert();
+            new User().name.set("u4").phone.set(8004).insert();
 
             new Thread(() -> {
                 new Product().productId.set(1003).productName.set("p3").insert(tid); // 传递事务ID
@@ -67,22 +67,22 @@ public class OrmTransactionTest extends UnitTestBase {
             }).start();
 
             latch.await();
-            Customer.dao.commitTransaction(tid);
+            User.dao.commitTransaction(tid);
         } catch (Exception e) {
-            Customer.dao.rollbackTransaction(tid);
+            User.dao.rollbackTransaction(tid);
             e.printStackTrace();
         }
 
         // 撤销事务
         try {
-            Customer.dao.beginTransaction();
-            new Customer().name.set("c5").phone.set(8005).insert();
+            User.dao.beginTransaction();
+            new User().name.set("u5").phone.set(8005).insert();
             new Product().productId.set(1005).productName.set("p5").insert();
         } finally {
-            Customer.dao.rollbackTransaction();
+            User.dao.rollbackTransaction();
         }
 
-        int count = Customer.dao.findCount();
+        int count = User.dao.findCount();
         assertEquals(4, count);
 
         count = Product.dao.findCount();

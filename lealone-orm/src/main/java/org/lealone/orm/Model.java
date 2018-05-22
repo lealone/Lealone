@@ -106,7 +106,7 @@ public abstract class Model<T> {
 
         @Override
         public final T deserialize(HashMap<String, Value> map) {
-            Value v = map.get(name);
+            Value v = map.get(getFullName());
             if (v != null) {
                 value = v.getLong();
             }
@@ -184,6 +184,8 @@ public abstract class Model<T> {
     // 0: regular model; 1: root dao; 2: child dao
     short modelType;
 
+    private ArrayList<Model<?>> modelList;
+
     protected Model(ModelTable table, short modelType) {
         this.modelTable = table;
         this.modelType = modelType;
@@ -214,6 +216,14 @@ public abstract class Model<T> {
      */
     protected void setRoot(T root) {
         this.root = root;
+    }
+
+    protected T addModel(Model<?> m) {
+        if (modelList == null) {
+            modelList = new ArrayList<>();
+        }
+        modelList.add(m);
+        return root;
     }
 
     void addNVPair(String name, Value value) {
@@ -299,6 +309,11 @@ public abstract class Model<T> {
 
     static ExpressionColumn getExpressionColumn(ModelProperty<?, ?> p) {
         return new ExpressionColumn(p.getDatabaseName(), p.getSchemaName(), p.getTableName(), p.getName());
+    }
+
+    static ExpressionColumn getExpressionColumn(TableFilter tableFilter, String propertyName) {
+        return new ExpressionColumn(tableFilter.getTable().getDatabase(), tableFilter.getSchemaName(),
+                tableFilter.getTableAlias(), propertyName);
     }
 
     ExpressionColumn getExpressionColumn(String propertyName) {
@@ -404,6 +419,15 @@ public abstract class Model<T> {
      */
     public T findOne() {
         checkDao("findOne");
+        // 进行关联查询时，主表取一条记录，但引用表要取多条
+        if (tableFilterStack != null && !tableFilterStack.isEmpty()) {
+            List<T> list = findList();
+            if (!list.isEmpty()) {
+                return list.get(0);
+            } else {
+                return null;
+            }
+        }
         Select select = createSelect();
         select.setLimit(ValueExpression.get(ValueInt.get(1)));
         select.init();
@@ -412,7 +436,7 @@ public abstract class Model<T> {
         Result result = select.executeQuery(1);
         result.next();
         reset();
-        return deserialize(result);
+        return deserialize(result, new HashMap<>(1), new ArrayList<>(1));
     }
 
     private Select createSelect() {
@@ -421,18 +445,27 @@ public abstract class Model<T> {
         if (tableFilterStack != null && !tableFilterStack.isEmpty()) {
             tableFilter = tableFilterStack.peek();
             select.addTableFilter(tableFilter, true);
+            boolean selectExpressionsIsNull = false;
+            if (selectExpressions == null) {
+                selectExpressionsIsNull = true;
+                getSelectExpressions().add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
+            }
+            selectExpressions.add(getExpressionColumn(tableFilter, Column.ROWID)); // 总是获取rowid
             while (tableFilter.getJoin() != null) {
                 select.addTableFilter(tableFilter.getJoin(), false);
                 tableFilter = tableFilter.getJoin();
+                if (selectExpressionsIsNull)
+                    selectExpressions.add(new Wildcard(tableFilter.getSchemaName(), tableFilter.getTableAlias()));
+                selectExpressions.add(getExpressionColumn(tableFilter, Column.ROWID)); // 总是获取rowid
             }
         } else {
             tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
             select.addTableFilter(tableFilter, true);
+            if (selectExpressions == null) {
+                getSelectExpressions().add(new Wildcard(null, null));
+            }
+            selectExpressions.add(getExpressionColumn(Column.ROWID)); // 总是获取rowid
         }
-        if (selectExpressions == null) {
-            getSelectExpressions().add(new Wildcard(null, null));
-        }
-        selectExpressions.add(getExpressionColumn(Column.ROWID)); // 总是获取rowid
         select.setExpressions(selectExpressions);
         if (whereExpressionBuilder != null)
             select.addCondition(whereExpressionBuilder.getExpression());
@@ -448,7 +481,7 @@ public abstract class Model<T> {
     }
 
     @SuppressWarnings("unchecked")
-    private T deserialize(Result result) {
+    private T deserialize(Result result, HashMap<Long, Model> models, ArrayList<T> list) {
         Value[] row = result.currentRow();
         if (row == null)
             return null;
@@ -456,20 +489,41 @@ public abstract class Model<T> {
         int len = row.length;
         HashMap<String, Value> map = new HashMap<>(len);
         for (int i = 0; i < len; i++) {
-            map.put(result.getColumnName(i), row[i]);
+            String key = result.getSchemaName(i) + "." + result.getTableName(i) + "." + result.getColumnName(i);
+            map.put(key, row[i]);
         }
 
         Model m = newInstance(modelTable, REGULAR_MODEL);
         if (m != null) {
-            for (ModelProperty p : m.modelProperties) {
+            m._rowid_.deserialize(map);
+            Model old = models.get(m._rowid_.get());
+            if (old == null) {
+                models.put(m._rowid_.get(), m);
+                for (ModelProperty p : m.modelProperties) {
+                    p.deserialize(map);
+                }
+                list.add((T) m);
+            } else {
+                m = old;
+            }
+        }
+
+        Model associateModel = m.newAssociateInstance();
+        while (associateModel != null) {
+            for (ModelProperty p : associateModel.modelProperties) {
                 p.deserialize(map);
             }
-            m._rowid_.deserialize(map);
+            associateModel._rowid_.deserialize(map);
+            associateModel = associateModel.newAssociateInstance();
         }
         return (T) m;
     }
 
     protected Model newInstance(ModelTable t, short modelType) {
+        return null;
+    }
+
+    protected Model newAssociateInstance() {
         return null;
     }
 
@@ -491,18 +545,19 @@ public abstract class Model<T> {
         Result result = select.executeQuery(-1);
         reset();
         ArrayList<T> list = new ArrayList<>(result.getRowCount());
+        HashMap<Long, Model> models = new HashMap<>(result.getRowCount());
         while (result.next()) {
-            list.add(deserialize(result));
+            deserialize(result, models, list);
         }
         return list;
     }
 
     @SuppressWarnings("unchecked")
     public <M> M m(Model<M> m) {
-        Model<T> m2 = maybeCopy();
-        if (m2 != this) {
-            return m2.m(m);
-        }
+        // Model<T> m2 = maybeCopy();
+        // if (m2 != this) {
+        // return m2.m(m);
+        // }
         peekExprBuilder().setModel(m);
         m.pushExprBuilder((ExpressionBuilder<M>) peekExprBuilder());
         return m.root;
@@ -575,6 +630,12 @@ public abstract class Model<T> {
 
         if (autoCommit) {
             session.commit();
+        }
+
+        if (modelList != null) {
+            for (Model<?> m : modelList) {
+                m.insert(tid);
+            }
         }
         reset();
         return rowId;

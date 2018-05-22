@@ -37,7 +37,6 @@ public class Product extends Model<Product> {
         this(null, REGULAR_MODEL);
     }
 
-
     private Product(ModelTable t, short modelType) {
         super(t == null ? new ModelTable("TEST", "PUBLIC", "PRODUCT") : t, modelType);
         super.setRoot(this);
