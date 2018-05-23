@@ -34,6 +34,7 @@ public class SqlScript {
         @Override
         public void test() {
             createCustomerTable(this);
+            createCustomerAddressTable(this);
             createUserTable(this);
             createProductTable(this);
             createOrderTable(this);
@@ -63,6 +64,16 @@ public class SqlScript {
         executer.execute("create table customer(id long primary key, name char(10), notes varchar, phone int)" //
                 + " package '" + MODEL_PACKAGE_NAME + "'" //
                 + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
+        );
+    }
+
+    public static void createCustomerAddressTable(SqlExecuter executer) {
+        System.out.println("create table: customer_address");
+
+        executer.execute("create table customer_address(customer_id long, city varchar, street varchar, "
+                + " FOREIGN KEY(customer_id) REFERENCES customer(id))" //
+                + " package '" + MODEL_PACKAGE_NAME + "'" //
+                + " generate code '" + GENERATED_CODE_PATH + "'" //
         );
     }
 

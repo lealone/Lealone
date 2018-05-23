@@ -178,6 +178,7 @@ public abstract class Model<T> {
     short modelType;
 
     private ArrayList<Model<?>> modelList;
+    private HashMap<Class, ArrayList<Model<?>>> modelMap;
 
     protected Model(ModelTable table, short modelType) {
         this.modelTable = table;
@@ -215,16 +216,34 @@ public abstract class Model<T> {
         if (modelList == null) {
             modelList = new ArrayList<>();
         }
+        if (modelMap == null) {
+            modelMap = new HashMap<>();
+        }
+        ArrayList<Model<?>> list = modelMap.get(m.getClass());
+        if (list == null) {
+            list = new ArrayList<>();
+            modelMap.put(m.getClass(), list);
+        }
         modelList.add(m);
+        list.add(m);
         return root;
     }
 
     @SuppressWarnings("unchecked")
-    protected <M> List<M> getModelList() {
-        if (modelList == null) {
-            modelList = new ArrayList<>();
+    protected <M> List<M> getModelList(Class c) {
+        ArrayList<Model<?>> oldList = modelMap.get(c);
+        if (oldList == null) {
+            return null;
         }
-        return (List<M>) modelList;
+        ArrayList<Model<?>> newList = new ArrayList<>(oldList.size());
+        HashMap<Long, Long> map = new HashMap<>(oldList.size());
+        for (Model<?> m : oldList) {
+            Long id = m._rowid_.get();
+            if (map.put(id, id) == null) {
+                newList.add(m);
+            }
+        }
+        return (List<M>) newList;
     }
 
     void addNVPair(String name, Value value) {
@@ -407,10 +426,12 @@ public abstract class Model<T> {
             return m.where();
         }
         if (tableFilterStack != null) {
-            ExpressionBuilder<T> on = getStack().pop();
-            TableFilter joined = getTableFilterStack().pop();
-            TableFilter top = getTableFilterStack().peek();
-            top.addJoin(joined, false, false, on.getExpression());
+            TableFilter first = tableFilterStack.first();
+            while (tableFilterStack.size() > 1) {
+                ExpressionBuilder<T> on = getStack().pop();
+                TableFilter joined = getTableFilterStack().pop();
+                first.addJoin(joined, false, false, on.getExpression());
+            }
         }
         return root;
     }
@@ -437,7 +458,7 @@ public abstract class Model<T> {
         Result result = select.executeQuery(1);
         result.next();
         reset();
-        return deserialize(result, new HashMap<>(1), new ArrayList<>(1));
+        return deserialize(result, new HashMap<>(1), new ArrayList<>(1), new HashMap<>(1));
     }
 
     private Select createSelect() {
@@ -482,7 +503,8 @@ public abstract class Model<T> {
     }
 
     @SuppressWarnings("unchecked")
-    private T deserialize(Result result, HashMap<Long, Model> models, ArrayList<T> list) {
+    private T deserialize(Result result, HashMap<Long, Model> models, ArrayList<T> list,
+            HashMap<Long, List<Model<?>>> associateModelMap) {
         Value[] row = result.currentRow();
         if (row == null)
             return null;
@@ -495,6 +517,7 @@ public abstract class Model<T> {
         }
 
         Model m = newInstance(modelTable, REGULAR_MODEL);
+
         if (m != null) {
             m._rowid_.deserialize(map);
             Model old = models.get(m._rowid_.get());
@@ -508,23 +531,28 @@ public abstract class Model<T> {
                 m = old;
             }
         }
-
-        Model associateModel = m.newAssociateInstance();
-        while (associateModel != null) {
-            for (ModelProperty p : associateModel.modelProperties) {
-                p.deserialize(map);
-            }
-            associateModel._rowid_.deserialize(map);
-            associateModel = associateModel.newAssociateInstance();
-        }
+        deserializeAssociateInstances(map, m.newAssociateInstances());
         return (T) m;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void deserializeAssociateInstances(HashMap<String, Value> map, List<Model<?>> associateModels) {
+        if (associateModels != null) {
+            for (Model associateModel : associateModels) {
+                for (ModelProperty p : associateModel.modelProperties) {
+                    p.deserialize(map);
+                }
+                associateModel._rowid_.deserialize(map);
+                deserializeAssociateInstances(map, associateModel.newAssociateInstances());
+            }
+        }
     }
 
     protected Model newInstance(ModelTable t, short modelType) {
         return null;
     }
 
-    protected Model newAssociateInstance() {
+    protected List<Model<?>> newAssociateInstances() {
         return null;
     }
 
@@ -547,8 +575,9 @@ public abstract class Model<T> {
         reset();
         ArrayList<T> list = new ArrayList<>(result.getRowCount());
         HashMap<Long, Model> models = new HashMap<>(result.getRowCount());
+        HashMap<Long, List<Model<?>>> associateModelMap = new HashMap<>(result.getRowCount());
         while (result.next()) {
-            deserialize(result, models, list);
+            deserialize(result, models, list, associateModelMap);
         }
         return list;
     }
@@ -813,6 +842,7 @@ public abstract class Model<T> {
             return m2.join(m);
         }
         getTableFilterStack().push(m.createTableFilter());
+        m.tableFilterStack = getTableFilterStack();
         return root;
     }
 
@@ -961,8 +991,12 @@ public abstract class Model<T> {
             return list.size();
         }
 
-        public boolean contains(E o) {
-            return list.contains(o);
+        public E first() {
+            int len = list.size();
+            if (len == 0) {
+                throw new EmptyStackException();
+            }
+            return list.get(0);
         }
     }
 }

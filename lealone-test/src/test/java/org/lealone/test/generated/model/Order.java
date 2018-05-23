@@ -2,6 +2,7 @@ package org.lealone.test.generated.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.util.ArrayList;
 import java.util.List;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelDeserializer;
@@ -69,7 +70,7 @@ public class Order extends Model<Order> {
     }
 
     public List<OrderItem> getOrderItemList() {
-        return super.getModelList();
+        return super.getModelList(OrderItem.class);
     }
 
     @Override
@@ -78,10 +79,12 @@ public class Order extends Model<Order> {
     }
 
     @Override
-    protected OrderItem newAssociateInstance() {
-        OrderItem m = new OrderItem();
-        addOrderItem(m);
-        return m;
+    protected List<Model<?>> newAssociateInstances() {
+        ArrayList<Model<?>> list = new ArrayList<>();
+        OrderItem m1 = new OrderItem();
+        addOrderItem(m1);
+        list.add(m1);
+        return list;
     }
 
     static class OrderDeserializer extends ModelDeserializer<Order> {

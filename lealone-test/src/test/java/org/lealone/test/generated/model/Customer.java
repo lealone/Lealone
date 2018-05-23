@@ -2,6 +2,7 @@ package org.lealone.test.generated.model;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import java.util.ArrayList;
 import java.util.List;
 import org.lealone.orm.Model;
 import org.lealone.orm.ModelDeserializer;
@@ -44,6 +45,22 @@ public class Customer extends Model<Customer> {
         super.setModelProperties(new ModelProperty[] { this.id, this.name, this.notes, this.phone });
     }
 
+    public Customer addCustomerAddress(CustomerAddress m) {
+        m.setCustomer(this);
+        super.addModel(m);;
+        return this;
+    }
+
+    public Customer addCustomerAddress(CustomerAddress... mArray) {
+        for (CustomerAddress m : mArray)
+            addCustomerAddress(m);
+        return this;
+    }
+
+    public List<CustomerAddress> getCustomerAddressList() {
+        return super.getModelList(CustomerAddress.class);
+    }
+
     public Customer addOrder(Order m) {
         m.setCustomer(this);
         super.addModel(m);;
@@ -57,7 +74,7 @@ public class Customer extends Model<Customer> {
     }
 
     public List<Order> getOrderList() {
-        return super.getModelList();
+        return super.getModelList(Order.class);
     }
 
     @Override
@@ -66,10 +83,15 @@ public class Customer extends Model<Customer> {
     }
 
     @Override
-    protected Order newAssociateInstance() {
-        Order m = new Order();
-        addOrder(m);
-        return m;
+    protected List<Model<?>> newAssociateInstances() {
+        ArrayList<Model<?>> list = new ArrayList<>();
+        CustomerAddress m1 = new CustomerAddress();
+        addCustomerAddress(m1);
+        list.add(m1);
+        Order m2 = new Order();
+        addOrder(m2);
+        list.add(m2);
+        return list;
     }
 
     static class CustomerDeserializer extends ModelDeserializer<Customer> {
