@@ -555,10 +555,19 @@ public abstract class Model<T> {
 
     @SuppressWarnings("unchecked")
     public <M> M m(Model<M> m) {
-        // Model<T> m2 = maybeCopy();
-        // if (m2 != this) {
-        // return m2.m(m);
-        // }
+        Model<T> m2 = maybeCopy();
+        if (m2 != this) {
+            return m2.m(m);
+        }
+        Model<T> old = (Model<T>) peekExprBuilder().getOldModel();
+        if (!old.isRootDao() && m.getClass() == old.getClass()) {
+            m = (Model<M>) old;
+        } else {
+            Model<M> m3 = m.maybeCopy();
+            if (m3 != m) {
+                m = m3;
+            }
+        }
         peekExprBuilder().setModel(m);
         m.pushExprBuilder((ExpressionBuilder<M>) peekExprBuilder());
         return m.root;

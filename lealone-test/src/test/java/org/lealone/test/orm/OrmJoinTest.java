@@ -60,11 +60,17 @@ public class OrmJoinTest extends UnitTestBase {
                 .where().id.eq(100).findList();
         assertEquals(1, customerList.size());
 
-        // customer = c.join(o).on().id.eq(o.customerId).where().id.eq(100).findOne();
+        customer = c.join(o).on().id.eq(o.customerId).where().id.eq(100).findOne();
 
-        // SELECT c.name, c.phone, o.order_date, o.total FROM customer c JOIN order o ON c.id = o.customer_id
-        // WHERE c.id = 100 or o.customer_id = 2
-        // c.select(c.name, c.phone, o.orderDate, o.orderId).join(o).on().id.eq(o.customerId).where().id.eq(100).or()
-        // .m(o).customerId.eq(2).m(c).findList();
+        Order o3 = new Order().orderId.set(2003).orderDate.set("2018-01-02");
+        new Customer().id.set(200).name.set("c2").phone.set(123).addOrder(o3).insert();
+
+        // SELECT c.name, c.phone, o.order_id, o.order_date FROM customer c JOIN order o ON c.id = o.customer_id
+        // WHERE c.id = 100 or o.customer_id = 200
+        customerList = c.select(c.name, c.phone, o.orderId, o.orderDate).join(o).on().id.eq(o.customerId).where().id
+                .eq(100).or().m(o).customerId.eq(200).m(c).findList();
+        assertEquals(2, customerList.size());
+        assertEquals(2, customerList.get(0).getOrderList().size());
+        assertEquals(1, customerList.get(1).getOrderList().size());
     }
 }

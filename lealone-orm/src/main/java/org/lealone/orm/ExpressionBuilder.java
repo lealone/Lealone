@@ -34,12 +34,13 @@ import org.lealone.sql.expression.ValueExpression;
 public class ExpressionBuilder<T> {
 
     private Model<?> model;
+    private Model<?> oldModel;
     private Expression expression;
     private ArrayList<SelectOrderBy> orderList;
     private boolean isAnd = true;
 
     ExpressionBuilder(Model<?> model) {
-        this.model = model;
+        this.model = this.oldModel = model;
     }
 
     void setAnd(boolean isAnd) {
@@ -48,7 +49,16 @@ public class ExpressionBuilder<T> {
 
     // 用于join时切换
     void setModel(Model<?> model) {
+        this.oldModel = this.model;
         this.model = model;
+    }
+
+    Model<?> getModel() {
+        return model;
+    }
+
+    Model<?> getOldModel() {
+        return oldModel;
     }
 
     Expression getExpression() {

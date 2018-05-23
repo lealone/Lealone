@@ -52,15 +52,15 @@ public abstract class ModelProperty<R, P> {
     }
 
     public String getDatabaseName() {
-        return getModel().getDatabaseName();
+        return ((Model<?>) root).getDatabaseName();
     }
 
     public String getSchemaName() {
-        return getModel().getSchemaName();
+        return ((Model<?>) root).getSchemaName();
     }
 
     public String getTableName() {
-        return getModel().getTableName();
+        return ((Model<?>) root).getTableName();
     }
 
     @Override
