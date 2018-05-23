@@ -23,11 +23,6 @@ public class User extends Model<User> {
 
     public static final User dao = new User(null, ROOT_DAO);
 
-    public static User create(String url) {
-        ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "USER");
-        return new User(t, REGULAR_MODEL);
-    }
-
     public final PString<User> name;
     public final PString<User> notes;
     public final PInteger<User> phone;

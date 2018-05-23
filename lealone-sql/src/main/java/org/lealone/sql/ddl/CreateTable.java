@@ -432,11 +432,11 @@ public class CreateTable extends SchemaStatement {
         if (db.getSettings().databaseToUpper) {
             tableFullName = tableFullName.toUpperCase();
         }
-        buff.append("    public static ").append(className).append(" create(String url) {\r\n");
-        buff.append("        ModelTable t = new ModelTable(url, ").append(tableFullName).append(");\r\n");
-        buff.append("        return new ").append(className).append("(t, REGULAR_MODEL);\r\n");
-        buff.append("    }\r\n");
-        buff.append("\r\n");
+        // buff.append(" public static ").append(className).append(" create(String url) {\r\n");
+        // buff.append(" ModelTable t = new ModelTable(url, ").append(tableFullName).append(");\r\n");
+        // buff.append(" return new ").append(className).append("(t, REGULAR_MODEL);\r\n");
+        // buff.append(" }\r\n");
+        // buff.append("\r\n");
         buff.append(fields);
         // buff.append("\r\n");
 

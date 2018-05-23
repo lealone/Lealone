@@ -60,7 +60,7 @@ public class OrmCrudTest extends UnitTestBase {
 
         User dao = User.dao;
 
-        User u = User.create(url);
+        User u = new User();
 
         // 增加两条记录
         rowId1 = u.id.set(1000).name.set("Rob1").notes.set("notes1").insert();

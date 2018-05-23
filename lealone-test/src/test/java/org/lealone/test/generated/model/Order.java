@@ -25,11 +25,6 @@ public class Order extends Model<Order> {
 
     public static final Order dao = new Order(null, ROOT_DAO);
 
-    public static Order create(String url) {
-        ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "ORDER");
-        return new Order(t, REGULAR_MODEL);
-    }
-
     public final PLong<Order> customerId;
     public final PInteger<Order> orderId;
     public final PDate<Order> orderDate;

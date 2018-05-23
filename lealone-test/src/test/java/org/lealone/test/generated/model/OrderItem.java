@@ -22,11 +22,6 @@ public class OrderItem extends Model<OrderItem> {
 
     public static final OrderItem dao = new OrderItem(null, ROOT_DAO);
 
-    public static OrderItem create(String url) {
-        ModelTable t = new ModelTable(url, "TEST", "PUBLIC", "ORDER_ITEM");
-        return new OrderItem(t, REGULAR_MODEL);
-    }
-
     public final PInteger<OrderItem> orderId;
     public final PLong<OrderItem> productId;
     public final PInteger<OrderItem> productCount;
