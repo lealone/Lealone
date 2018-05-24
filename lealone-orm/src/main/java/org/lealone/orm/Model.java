@@ -441,6 +441,10 @@ public abstract class Model<T> {
      * Execute the query returning either a single bean or null (if no matching bean is found).
      */
     public T findOne() {
+        return findOne(null);
+    }
+
+    public T findOne(Long tid) {
         checkDao("findOne");
         // 进行关联查询时，主表取一条记录，但引用表要取多条
         if (tableFilterStack != null && !tableFilterStack.isEmpty()) {
@@ -451,7 +455,7 @@ public abstract class Model<T> {
                 return null;
             }
         }
-        Select select = createSelect();
+        Select select = createSelect(tid);
         select.setLimit(ValueExpression.get(ValueInt.get(1)));
         select.init();
         select.prepare();
@@ -462,8 +466,9 @@ public abstract class Model<T> {
         return deserialize(result, new HashMap<>(1), new ArrayList<>(1));
     }
 
-    private Select createSelect() {
-        Select select = new Select(modelTable.getSession());
+    private Select createSelect(Long tid) {
+        ServerSession session = getSession(tid);
+        Select select = new Select(session);
         TableFilter tableFilter;
         if (tableFilterStack != null && !tableFilterStack.isEmpty()) {
             tableFilter = tableFilterStack.peek();
@@ -482,7 +487,7 @@ public abstract class Model<T> {
                 selectExpressions.add(getExpressionColumn(tableFilter, Column.ROWID)); // 总是获取rowid
             }
         } else {
-            tableFilter = new TableFilter(modelTable.getSession(), modelTable.getTable(), null, true, null);
+            tableFilter = new TableFilter(session, modelTable.getTable(), null, true, null);
             select.addTableFilter(tableFilter, true);
             if (selectExpressions == null) {
                 getSelectExpressions().add(new Wildcard(null, null));
@@ -566,8 +571,12 @@ public abstract class Model<T> {
      * Execute the query returning the list of objects.
      */
     public List<T> findList() {
+        return findList(null);
+    }
+
+    public List<T> findList(Long tid) {
         checkDao("findList");
-        Select select = createSelect();
+        Select select = createSelect(tid);
         select.init();
         select.prepare();
         logger.info("execute sql: " + select.getPlanSQL());
@@ -605,8 +614,12 @@ public abstract class Model<T> {
      * Return the count of entities this query should return.
      */
     public int findCount() {
+        return findCount(null);
+    }
+
+    public int findCount(Long tid) {
         checkDao("findCount");
-        Select select = createSelect();
+        Select select = createSelect(tid);
         select.setGroupQuery();
         getSelectExpressions().clear();
         Aggregate a = new Aggregate(Aggregate.COUNT_ALL, null, select, false);
@@ -621,18 +634,7 @@ public abstract class Model<T> {
         return result.currentRow()[0].getInt();
     }
 
-    public long insert() {
-        return insert(null);
-    }
-
-    public long insert(Long tid) {
-        // TODO 是否允许通过 XXX.dao来insert记录?
-        if (isDao()) {
-            String name = this.getClass().getSimpleName();
-            throw new UnsupportedOperationException("The insert operation is not allowed for " + name
-                    + ".dao,  please use new " + name + "().insert() instead.");
-        }
-
+    private ServerSession getSession(Long tid) {
         boolean autoCommit = false;
         ServerSession session;
         if (tid != null) {
@@ -646,6 +648,23 @@ public abstract class Model<T> {
         } else {
             autoCommit = false;
         }
+
+        session.setAutoCommit(autoCommit);
+        return session;
+    }
+
+    public long insert() {
+        return insert(null);
+    }
+
+    public long insert(Long tid) {
+        // TODO 是否允许通过 XXX.dao来insert记录?
+        if (isDao()) {
+            String name = this.getClass().getSimpleName();
+            throw new UnsupportedOperationException("The insert operation is not allowed for " + name
+                    + ".dao,  please use new " + name + "().insert() instead.");
+        }
+        ServerSession session = getSession(tid);
         Table dbTable = modelTable.getTable();
         Insert insert = new Insert(session);
         int size = nvPairs.size();
@@ -663,13 +682,12 @@ public abstract class Model<T> {
         insert.prepare();
         logger.info("execute sql: " + insert.getPlanSQL());
         insert.executeUpdate();
-        long rowId = modelTable.getSession().getLastRowKey();
+        long rowId = session.getLastRowKey();
         _rowid_.set(rowId);
 
-        if (autoCommit) {
+        if (session.isAutoCommit()) {
             session.commit();
         }
-
         if (modelList != null) {
             for (Model<?> m : modelList) {
                 m.insert(tid);
@@ -680,9 +698,14 @@ public abstract class Model<T> {
     }
 
     public int update() {
+        return update(null);
+    }
+
+    public int update(Long tid) {
+        ServerSession session = getSession(tid);
         Table dbTable = modelTable.getTable();
-        Update update = new Update(modelTable.getSession());
-        TableFilter tableFilter = new TableFilter(modelTable.getSession(), dbTable, null, true, null);
+        Update update = new Update(session);
+        TableFilter tableFilter = new TableFilter(session, dbTable, null, true, null);
         update.setTableFilter(tableFilter);
         checkWhereExpression(dbTable, "update");
         if (whereExpressionBuilder != null)
@@ -694,14 +717,21 @@ public abstract class Model<T> {
         reset();
         logger.info("execute sql: " + update.getPlanSQL());
         int count = update.executeUpdate();
-        commit();
+        if (session.isAutoCommit()) {
+            session.commit();
+        }
         return count;
     }
 
     public int delete() {
+        return delete(null);
+    }
+
+    public int delete(Long tid) {
+        ServerSession session = getSession(tid);
         Table dbTable = modelTable.getTable();
-        Delete delete = new Delete(modelTable.getSession());
-        TableFilter tableFilter = new TableFilter(modelTable.getSession(), dbTable, null, true, null);
+        Delete delete = new Delete(session);
+        TableFilter tableFilter = new TableFilter(session, dbTable, null, true, null);
         delete.setTableFilter(tableFilter);
         checkWhereExpression(dbTable, "delete");
         if (whereExpressionBuilder != null)
@@ -710,7 +740,9 @@ public abstract class Model<T> {
         reset();
         logger.info("execute sql: " + delete.getPlanSQL());
         int count = delete.executeUpdate();
-        commit();
+        if (session.isAutoCommit()) {
+            session.commit();
+        }
         return count;
     }
 
@@ -762,10 +794,6 @@ public abstract class Model<T> {
                 }
             }
         }
-    }
-
-    private void commit() {
-        modelTable.getSession().commit();
     }
 
     private ArrayStack<ExpressionBuilder<T>> getStack() {
