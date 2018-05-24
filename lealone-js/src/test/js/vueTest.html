@@ -13,20 +13,19 @@
         phone: <input v-model="user.phone" placeholder="edit me"><br>
         notes: <input v-model="user.notes" placeholder="edit me"><br>
         <button v-on:click="user.insert()">提交</button><br><br>
-
-        <!-- 第一种方案最优，但是还不知用 Vue如何 实现，
-                                   实际上是想构造 where name = ? and phone = ? 这样的查询条件
+        
+        <!-- 最优雅的方案 -->
         <div>
-        name: <input v-model="dao.name"><br>
-        phone: <input v-model="dao.phone"><br> 
-        <button v-on:click="find1()">查询</button>
+        name: <eq-input v-model="dao.name"></eq-input><br>
+        phone: <eq-input v-model="dao.phone"></eq-input><br> 
+        <button v-on:click="find1()">查询1</button>
         </div>
-        -->
 
+        <!-- 最糟糕的方案 -->
         <div>
         name: <input v-model="user.name"><br>
         phone: <input v-model="user.phone"><br> 
-        <button v-on:click="find2(user)">查询</button>
+        <button v-on:click="find2(user)">查询2</button>
         </div>
 
         <ul>
@@ -36,7 +35,18 @@
         </ul>
     </div>
 
-    <script>
+    <script> 
+    Vue.component('eq-input', {
+        props: ['value'],
+        template: '<input v-bind:value="value" v-on:input="input($event.target)" >',
+        methods: {
+            input: function(target) {
+                target._value.eq(target.value, true); // 嗯嗯，太黑科技了 :)
+                this.$emit('input', target.value);
+            }
+        }
+    });
+      
     new Vue({
         el: '#form1',
         data: {

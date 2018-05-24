@@ -506,8 +506,8 @@ class ModelProperty {
         return this.model;
     }
     
-    eq(value) {
-        this.expr().eq(this.name, value);
+    eq(value, useLast) {
+        this.expr().eq(this.name, value, useLast);
         return this.model;
     }
     
@@ -554,6 +554,7 @@ class ExpressionBuilder {
         this.expression = null;
         this.orderList = [];
         this.values = [];
+        this.kv = new Map();
     }
     setAnd(isAnd) {
         this.isAnd = isAnd;
@@ -604,11 +605,22 @@ class ExpressionBuilder {
         return this;
     }
 
-    eq(propertyName, value) {
+    eq(propertyName, value, useLast) {
         if(value instanceof ModelProperty) {
             this.setRootExpression(propertyName + " = " + modelProperty.getFullName());
         } else {
-            this.addExpression(propertyName, value, "=");
+            if(useLast) {
+                var v = this.kv.get(propertyName);
+                if(v) {
+                    this.values.pop();
+                    this.values.push(value);
+                } else {
+                    this.addExpression(propertyName, value, "=");
+                    this.kv.set(propertyName, value);
+                }
+            } else {
+                this.addExpression(propertyName, value, "=");
+            }
         }
         return this;
     }
