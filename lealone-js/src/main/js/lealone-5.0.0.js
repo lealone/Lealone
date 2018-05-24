@@ -249,11 +249,19 @@ class Model {
     }
     
     select() {
-        this.selectExpressions = arguments;
+        this.selectExpressions = [];
+        for(var i = 0; i < arguments.length; i++) {
+            this.selectExpressions.push(arguments[i]);
+        }
+        return this;
     }
 
     groupBy() {
-        this.groupExpressions = arguments;
+        this.groupExpressions = [];
+        for(var i = 0; i < arguments.length; i++) {
+            this.groupExpressions.push(arguments[i]);
+        }
+        return this;
     }
     
     findOne(cb) {
@@ -300,7 +308,7 @@ class Model {
         return [sql, args];
     }
 
-    findList() {
+    findList(cb) {
         this.checkDao("findList");
         var select = this.createSelect();
         var sql = select[0];
@@ -310,7 +318,7 @@ class Model {
         lealone.executeSql(504, sql, args, cb)
     }
 
-    findCount() {
+    findCount(cb) {
         this.checkDao("findCount");
         var args = [];
         var sql = "select count(*) from " + this.modelTable.tableName; 
@@ -437,6 +445,16 @@ class Model {
             this.whereExpressionBuilder = new ExpressionBuilder(this);
         }
         return this.whereExpressionBuilder;
+    }
+    
+    and() {
+        this.peekExprBuilder().and();
+        return this;
+    }
+    
+    or() {
+        this.peekExprBuilder().or();
+        return this;
     }
 
     beginTransaction(cb) {

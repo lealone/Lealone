@@ -12,18 +12,50 @@
         name: <input v-model="user.name" placeholder="edit me"><br>
         phone: <input v-model="user.phone" placeholder="edit me"><br>
         notes: <input v-model="user.notes" placeholder="edit me"><br>
-        <button v-on:click="insert(user)">提交</button>
+        <button v-on:click="user.insert()">提交</button><br><br>
+
+        <!-- 第一种方案最优，但是还不知用 Vue如何 实现，
+                                   实际上是想构造 where name = ? and phone = ? 这样的查询条件
+        <div>
+        name: <input v-model="dao.name"><br>
+        phone: <input v-model="dao.phone"><br> 
+        <button v-on:click="find1()">查询</button>
+        </div>
+        -->
+
+        <div>
+        name: <input v-model="user.name"><br>
+        phone: <input v-model="user.phone"><br> 
+        <button v-on:click="find2(user)">查询</button>
+        </div>
+
+        <ul>
+        <li v-for="(user, index) in users">
+            {{ index }} - {{ user }}
+        </li>
+        </ul>
     </div>
 
     <script>
     new Vue({
         el: '#form1',
         data: {
-            user: new User()
+            user: new User(),
+            users: [],
+            dao: User.dao
         },
         methods: {
-            insert: function(user) {
-                user.insert();
+            find1: function() {
+                var that = this;
+                this.dao.findList(function(users) {
+                    that.users = users;
+                });
+            },
+            find2: function(user) {
+                var that = this;
+                User.dao.where().name.eq(user.name.get()).and().phone.eq(user.phone.get()).findList(function(users) {
+                    that.users = users;
+                });
             }
         }
     })
