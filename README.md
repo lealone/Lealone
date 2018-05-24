@@ -27,7 +27,7 @@
 
 * 从[H2数据库](http://www.h2database.com/html/main.html)借鉴了大量成熟的代码和思想
 
-* 支持通过CREATE SERVICE创键可托管的后端服务
+* 支持通过CREATE SERVICE创建可托管的后端服务
 
 * 内置前后端ORM框架
 
