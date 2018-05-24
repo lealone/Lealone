@@ -17,6 +17,8 @@
  */
 package org.lealone.test.orm;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import org.lealone.test.SqlScript;
@@ -50,6 +52,21 @@ public class OrmCrudTest extends UnitTestBase {
         assertEquals("Rob", u.name.get());
     }
 
+    private long getRowId(Object obj) {
+        Field f;
+        try {
+            f = obj.getClass().getSuperclass().getDeclaredField("_rowid_");
+            f.setAccessible(true);
+
+            Object obj2 = f.get(obj);
+            Method m = obj2.getClass().getMethod("get", new Class[0]);
+            m.setAccessible(true);
+            return (long) m.invoke(obj2, new Object[0]);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     void crud() {
         System.out.println("crud test");
         String url = getURL();
@@ -65,11 +82,11 @@ public class OrmCrudTest extends UnitTestBase {
         // 增加两条记录
         rowId1 = u.id.set(1000).name.set("Rob1").notes.set("notes1").insert();
 
-        assertTrue((rowId1 == 1) && (rowId1 == u._rowid_.get()));
+        assertTrue((rowId1 == 1) && (rowId1 == getRowId(u)));
 
         rowId2 = u.id.set(2000).name.set("Rob2").notes.set("notes2").insert();
 
-        assertTrue((rowId2 == 2) && (rowId2 == u._rowid_.get()));
+        assertTrue((rowId2 == 2) && (rowId2 == getRowId(u)));
 
         // 以下出现的where()都不是必须的，加上之后更像SQL
 
@@ -77,7 +94,7 @@ public class OrmCrudTest extends UnitTestBase {
         // select * from user where id = 1000;
         u = dao.where().id.eq(1000L).findOne();
 
-        assertTrue((u.id.get() == 1000) && (1 == u._rowid_.get()));
+        assertTrue((u.id.get() == 1000) && (1 == getRowId(u)));
 
         // 查找多条记录(取回所有字段)
         // select * from user where name like 'Rob%';
@@ -99,7 +116,7 @@ public class OrmCrudTest extends UnitTestBase {
 
         assertEquals(2, count);
 
-        assertEquals(1, u._rowid_.get());
+        assertEquals(1, getRowId(u));
 
         // 更新单条记录
         // update user set notes = 'Doing an update' where _rowid_ = 1;

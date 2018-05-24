@@ -75,7 +75,7 @@ public abstract class Model<T> {
     private static final ConcurrentSkipListMap<Long, ServerSession> currentSessions = new ConcurrentSkipListMap<>();
     private static final ConcurrentSkipListMap<Integer, List<ServerSession>> sessionMap = new ConcurrentSkipListMap<>();
 
-    public class PRowId extends PBaseNumber<T, Long, PRowId> {
+    private class PRowId extends PBaseNumber<T, Long, PRowId> {
 
         private long value;
 
@@ -113,7 +113,7 @@ public abstract class Model<T> {
 
     }
 
-    public static class NVPair {
+    private static class NVPair {
         public final String name;
         public final Value value;
 
@@ -150,7 +150,7 @@ public abstract class Model<T> {
     }
 
     @SuppressWarnings("unchecked")
-    public final PRowId _rowid_ = new PRowId(Column.ROWID, (T) this);
+    private final PRowId _rowid_ = new PRowId(Column.ROWID, (T) this);
 
     private final ModelTable modelTable;
 
