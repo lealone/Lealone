@@ -87,6 +87,31 @@ public class OrmTransactionTest extends UnitTestBase {
 
         count = Product.dao.findCount();
         assertEquals(4, count);
+
+        // 清除所有记录
+        User.dao.delete();
+        Product.dao.delete();
+
+        // 测试穿插事务
+        long tid1 = User.dao.beginTransaction();
+        long tid2 = User.dao.beginTransaction();
+
+        new User().name.set("u1").phone.set(8001).insert(tid1);
+        new User().name.set("u2").phone.set(8002).insert(tid2);
+        new Product().productId.set(1001).productName.set("p1").insert(tid1);
+        new Product().productId.set(1002).productName.set("p2").insert(tid2);
+
+        // 提交事务tid1
+        User.dao.commitTransaction(tid1);
+        // 撤销事务tid2
+        User.dao.rollbackTransaction(tid2);
+
+        // 都只成功写入一条
+        count = User.dao.findCount();
+        assertEquals(1, count);
+
+        count = Product.dao.findCount();
+        assertEquals(1, count);
     }
 
 }

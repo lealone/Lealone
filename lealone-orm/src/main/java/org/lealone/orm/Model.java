@@ -73,6 +73,7 @@ public abstract class Model<T> {
     private static final Logger logger = LoggerFactory.getLogger(Model.class);
 
     private static final ConcurrentSkipListMap<Long, ServerSession> currentSessions = new ConcurrentSkipListMap<>();
+    private static final ConcurrentSkipListMap<Integer, List<ServerSession>> sessionMap = new ConcurrentSkipListMap<>();
 
     public class PRowId extends PBaseNumber<T, Long, PRowId> {
 
@@ -458,7 +459,7 @@ public abstract class Model<T> {
         Result result = select.executeQuery(1);
         result.next();
         reset();
-        return deserialize(result, new HashMap<>(1), new ArrayList<>(1), new HashMap<>(1));
+        return deserialize(result, new HashMap<>(1), new ArrayList<>(1));
     }
 
     private Select createSelect() {
@@ -503,8 +504,7 @@ public abstract class Model<T> {
     }
 
     @SuppressWarnings("unchecked")
-    private T deserialize(Result result, HashMap<Long, Model> models, ArrayList<T> list,
-            HashMap<Long, List<Model<?>>> associateModelMap) {
+    private T deserialize(Result result, HashMap<Long, Model> models, ArrayList<T> list) {
         Value[] row = result.currentRow();
         if (row == null)
             return null;
@@ -575,9 +575,8 @@ public abstract class Model<T> {
         reset();
         ArrayList<T> list = new ArrayList<>(result.getRowCount());
         HashMap<Long, Model> models = new HashMap<>(result.getRowCount());
-        HashMap<Long, List<Model<?>>> associateModelMap = new HashMap<>(result.getRowCount());
         while (result.next()) {
-            deserialize(result, models, list, associateModelMap);
+            deserialize(result, models, list);
         }
         return list;
     }
@@ -744,6 +743,8 @@ public abstract class Model<T> {
         if (_rowid_.get() != 0) {
             peekExprBuilder().eq(Column.ROWID, _rowid_.get());
         } else {
+            if (nvPairs == null)
+                return;
             Index primaryKey = dbTable.findPrimaryKey();
             if (primaryKey != null) {
                 for (Column c : primaryKey.getColumns()) {
@@ -864,14 +865,21 @@ public abstract class Model<T> {
         session.setAutoCommit(false);
         long tid = t.getTransactionId();
         currentSessions.put(tid, session);
+        int hash = getCurrentThreadHashCode();
+        List<ServerSession> sessions = sessionMap.get(hash);
+        if (sessions == null) {
+            sessions = new ArrayList<>();
+            sessionMap.put(hash, sessions);
+        }
+        sessions.add(session);
         return tid;
     }
 
     public void commitTransaction() {
         checkDao("commitTransaction");
-        ConcurrentSkipListMap.Entry<Long, ServerSession> e = currentSessions.pollLastEntry();
-        if (e != null) {
-            e.getValue().commit();
+        Long tid = getAndRemoveLastTransaction();
+        if (tid != null) {
+            commitTransaction(tid.longValue());
         }
     }
 
@@ -879,15 +887,16 @@ public abstract class Model<T> {
         checkDao("commitTransaction");
         ServerSession s = currentSessions.remove(tid);
         if (s != null) {
+            removeSession(tid);
             s.commit();
         }
     }
 
     public void rollbackTransaction() {
         checkDao("rollbackTransaction");
-        ConcurrentSkipListMap.Entry<Long, ServerSession> e = currentSessions.pollLastEntry();
-        if (e != null) {
-            e.getValue().rollback();
+        Long tid = getAndRemoveLastTransaction();
+        if (tid != null) {
+            rollbackTransaction(tid.longValue());
         }
     }
 
@@ -895,16 +904,54 @@ public abstract class Model<T> {
         checkDao("rollbackTransaction");
         ServerSession s = currentSessions.remove(tid);
         if (s != null) {
+            removeSession(tid);
             s.rollback();
         }
     }
 
     private ServerSession peekSession() {
-        ConcurrentSkipListMap.Entry<Long, ServerSession> e = currentSessions.firstEntry();
-        if (e != null)
-            return e.getValue();
-        else
+        int hash = getCurrentThreadHashCode();
+        List<ServerSession> sessions = sessionMap.get(hash);
+        if (sessions != null && !sessions.isEmpty()) {
+            return sessions.get(sessions.size() - 1);
+        } else {
             return null;
+        }
+    }
+
+    private void removeSession(long tid) {
+        int hash = getCurrentThreadHashCode();
+        List<ServerSession> sessions = sessionMap.get(hash);
+        if (sessions != null && !sessions.isEmpty()) {
+            int index = -1;
+            for (ServerSession s : sessions) {
+                index++;
+                if (s.getTransaction().getTransactionId() == tid) {
+                    break;
+                }
+            }
+            if (index > -1) {
+                sessions.remove(index);
+            }
+            if (sessions.isEmpty()) {
+                sessionMap.remove(hash);
+            }
+        }
+    }
+
+    private Long getAndRemoveLastTransaction() {
+        int hash = getCurrentThreadHashCode();
+        List<ServerSession> sessions = sessionMap.remove(hash);
+        Long tid = null;
+        if (sessions != null && !sessions.isEmpty()) {
+            ServerSession session = sessions.remove(sessions.size() - 1);
+            tid = Long.valueOf(session.getTransaction().getTransactionId());
+        }
+        return tid;
+    }
+
+    private int getCurrentThreadHashCode() {
+        return Thread.currentThread().hashCode();
     }
 
     /**
