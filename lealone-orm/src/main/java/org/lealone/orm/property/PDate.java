@@ -34,7 +34,7 @@ import com.fasterxml.jackson.databind.node.NumericNode;
  *
  * @param <R> the root model bean type
  */
-public class PDate<R> extends PBaseDate<R, Date, PDate<R>> {
+public class PDate<R> extends PBaseDate<R, Date> {
 
     private Date value;
 
@@ -48,10 +48,14 @@ public class PDate<R> extends PBaseDate<R, Date, PDate<R>> {
         super(name, root);
     }
 
+    private PDate<R> P(Model<?> model) {
+        return this.<PDate<R>> getModelProperty(model);
+    }
+
     public final R set(Date value) {
         Model<?> model = getModel();
         if (model != root) {
-            return getModelProperty(model).set(value);
+            return P(model).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
@@ -68,7 +72,7 @@ public class PDate<R> extends PBaseDate<R, Date, PDate<R>> {
     public final Date get() {
         Model<?> model = getModel();
         if (model != root) {
-            return getModelProperty(model).get();
+            return P(model).get();
         }
         return value;
     }

@@ -75,7 +75,7 @@ public abstract class Model<T> {
     private static final ConcurrentSkipListMap<Long, ServerSession> currentSessions = new ConcurrentSkipListMap<>();
     private static final ConcurrentSkipListMap<Integer, List<ServerSession>> sessionMap = new ConcurrentSkipListMap<>();
 
-    private class PRowId extends PBaseNumber<T, Long, PRowId> {
+    private class PRowId extends PBaseNumber<T, Long> {
 
         private long value;
 
@@ -291,13 +291,13 @@ public abstract class Model<T> {
     }
 
     @SafeVarargs
-    public final T select(ModelProperty<?, ?>... properties) {
+    public final T select(ModelProperty<?>... properties) {
         Model<T> m = maybeCopy();
         if (m != this) {
             return m.select(properties);
         }
         selectExpressions = new ArrayList<>();
-        for (ModelProperty<?, ?> p : properties) {
+        for (ModelProperty<?> p : properties) {
             ExpressionColumn c = getExpressionColumn(p);
             selectExpressions.add(c);
         }
@@ -315,20 +315,20 @@ public abstract class Model<T> {
     }
 
     @SafeVarargs
-    public final T groupBy(ModelProperty<?, ?>... properties) {
+    public final T groupBy(ModelProperty<?>... properties) {
         Model<T> m = maybeCopy();
         if (m != this) {
             return m.groupBy(properties);
         }
         groupExpressions = new ArrayList<>();
-        for (ModelProperty<?, ?> p : properties) {
+        for (ModelProperty<?> p : properties) {
             ExpressionColumn c = getExpressionColumn(p);
             groupExpressions.add(c);
         }
         return root;
     }
 
-    static ExpressionColumn getExpressionColumn(ModelProperty<?, ?> p) {
+    static ExpressionColumn getExpressionColumn(ModelProperty<?> p) {
         return new ExpressionColumn(p.getDatabaseName(), p.getSchemaName(), p.getTableName(), p.getName());
     }
 

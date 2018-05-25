@@ -24,7 +24,7 @@ import java.sql.Timestamp;
  *
  * @param <R> the root model bean type
  */
-public class PTimestamp<R> extends PBaseDate<R, Timestamp, PTimestamp<R>> {
+public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
 
     /**
      * Construct with a property name and root instance.

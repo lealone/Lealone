@@ -33,7 +33,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  * @param <R> The type of the owning root bean
  */
 @SuppressWarnings("unchecked")
-public abstract class ModelProperty<R, P> {
+public abstract class ModelProperty<R> {
 
     protected final String name;
     protected final R root;
@@ -72,8 +72,12 @@ public abstract class ModelProperty<R, P> {
         return ((Model<?>) root).maybeCopy();
     }
 
-    protected P getModelProperty(Model<?> model) {
+    protected <P> P getModelProperty(Model<?> model) {
         return (P) model.getModelProperty(name);
+    }
+
+    private ModelProperty<R> P(Model<?> model) {
+        return this.<ModelProperty<R>> getModelProperty(model);
     }
 
     /**
@@ -89,7 +93,7 @@ public abstract class ModelProperty<R, P> {
     public R isNull() {
         Model<?> model = getModel();
         if (model != root) {
-            return ((ModelProperty<R, P>) getModelProperty(model)).isNull();
+            return P(model).isNull();
         }
         expr().isNull(name);
         return root;
@@ -101,7 +105,7 @@ public abstract class ModelProperty<R, P> {
     public R isNotNull() {
         Model<?> model = getModel();
         if (model != root) {
-            return ((ModelProperty<R, P>) getModelProperty(model)).isNotNull();
+            return P(model).isNotNull();
         }
         expr().isNotNull(name);
         return root;
@@ -113,7 +117,7 @@ public abstract class ModelProperty<R, P> {
     public R asc() {
         Model<?> model = getModel();
         if (model != root) {
-            return ((ModelProperty<R, P>) getModelProperty(model)).asc();
+            return P(model).asc();
         }
         expr().orderBy(name, false);
         return root;
@@ -125,7 +129,7 @@ public abstract class ModelProperty<R, P> {
     public R desc() {
         Model<?> model = getModel();
         if (model != root) {
-            return ((ModelProperty<R, P>) getModelProperty(model)).desc();
+            return P(model).desc();
         }
         expr().orderBy(name, true);
         return root;
@@ -138,10 +142,17 @@ public abstract class ModelProperty<R, P> {
         return name;
     }
 
-    public final R eq(ModelProperty<?, ?> p) {
+    protected String getFullName() {
+        if (fullName == null) {
+            fullName = getSchemaName() + "." + getTableName() + "." + name;
+        }
+        return fullName;
+    }
+
+    public final R eq(ModelProperty<?> p) {
         Model<?> model = getModel();
         if (model != root) {
-            return ((ModelProperty<R, P>) getModelProperty(model)).eq(p);
+            return P(model).eq(p);
         }
         expr().eq(name, p);
         return root;
@@ -150,7 +161,7 @@ public abstract class ModelProperty<R, P> {
     public R set(Object value) {
         Model<?> model = getModel();
         if (model != root) {
-            return ((ModelProperty<R, P>) getModelProperty(model)).set(value);
+            return P(model).set(value);
         }
         return root;
     }
@@ -173,13 +184,6 @@ public abstract class ModelProperty<R, P> {
             n = node.get(name.toLowerCase());
         }
         return n;
-    }
-
-    protected String getFullName() {
-        if (fullName == null) {
-            fullName = getSchemaName() + "." + getTableName() + "." + name;
-        }
-        return fullName;
     }
 
     /**

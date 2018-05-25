@@ -33,7 +33,7 @@ import com.fasterxml.jackson.databind.node.NumericNode;
  *
  * @param <R> the root model bean type
  */
-public class PLong<R> extends PBaseNumber<R, Long, PLong<R>> {
+public class PLong<R> extends PBaseNumber<R, Long> {
 
     private long value;
 
@@ -47,10 +47,14 @@ public class PLong<R> extends PBaseNumber<R, Long, PLong<R>> {
         super(name, root);
     }
 
+    private PLong<R> P(Model<?> model) {
+        return this.<PLong<R>> getModelProperty(model);
+    }
+
     public R set(long value) {
         Model<?> model = getModel();
         if (model != root) {
-            return getModelProperty(model).set(value);
+            return P(model).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
@@ -67,7 +71,7 @@ public class PLong<R> extends PBaseNumber<R, Long, PLong<R>> {
     public final long get() {
         Model<?> model = getModel();
         if (model != root) {
-            return getModelProperty(model).get();
+            return P(model).get();
         }
         return value;
     }

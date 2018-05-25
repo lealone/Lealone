@@ -19,7 +19,7 @@ package org.lealone.orm.property;
 
 import org.lealone.orm.ModelProperty;
 
-public class PBlob<R> extends ModelProperty<R, PBlob<R>> {
+public class PBlob<R> extends ModelProperty<R> {
 
     public PBlob(String name, R root) {
         super(name, root);

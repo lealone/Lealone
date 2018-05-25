@@ -24,7 +24,7 @@ package org.lealone.orm.property;
  * @param <T> the type of the scalar property
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseComparable<R, T extends Comparable, P> extends PBaseValueEqual<R, T, P> {
+public abstract class PBaseComparable<R, T extends Comparable> extends PBaseValueEqual<R, T> {
 
     /**
      * Construct with a property name and root instance.
@@ -90,50 +90,6 @@ public abstract class PBaseComparable<R, T extends Comparable, P> extends PBaseV
      */
     public final R between(T lower, T upper) {
         expr().between(name, lower, upper);
-        return root;
-    }
-
-    /**
-     * Greater than.
-     *
-     * @param value the bind value
-     * @return the root model bean instance
-     */
-    public final R greaterThan(T value) {
-        expr().gt(name, value);
-        return root;
-    }
-
-    /**
-     * Greater than or Equal to.
-     *
-     * @param value the bind value
-     * @return the root model bean instance
-     */
-    public final R greaterOrEqualTo(T value) {
-        expr().ge(name, value);
-        return root;
-    }
-
-    /**
-     * Less than.
-     *
-     * @param value the bind value
-     * @return the root model bean instance
-     */
-    public final R lessThan(T value) {
-        expr().lt(name, value);
-        return root;
-    }
-
-    /**
-     * Less than or Equal to.
-     *
-     * @param value the bind value
-     * @return the root model bean instance
-     */
-    public final R lessOrEqualTo(T value) {
-        expr().le(name, value);
         return root;
     }
 

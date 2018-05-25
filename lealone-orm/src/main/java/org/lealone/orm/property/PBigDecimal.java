@@ -23,7 +23,7 @@ import java.math.BigDecimal;
  * BigDecimal property.
  * @param <R> the root model bean type
  */
-public class PBigDecimal<R> extends PBaseNumber<R, BigDecimal, PBigDecimal<R>> {
+public class PBigDecimal<R> extends PBaseNumber<R, BigDecimal> {
 
     /**
      * Construct with a property name and root instance.

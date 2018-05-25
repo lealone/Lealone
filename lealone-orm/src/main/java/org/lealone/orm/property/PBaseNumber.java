@@ -24,7 +24,7 @@ package org.lealone.orm.property;
  * @param <T> the number type
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseNumber<R, T extends Comparable, P> extends PBaseComparable<R, T, P> {
+public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparable<R, T> {
 
     /**
      * Construct with a property name and root instance.
@@ -37,39 +37,6 @@ public abstract class PBaseNumber<R, T extends Comparable, P> extends PBaseCompa
     }
 
     // Additional int versions -- seems the right thing to do
-
-    /**
-     * Is equal to.
-     *
-     * @param value the equal to bind value
-     * @return the root model bean instance
-     */
-    public R equalTo(int value) {
-        expr().eq(name, value);
-        return root;
-    }
-
-    /**
-     * Greater than.
-     *
-     * @param value the equal to bind value
-     * @return the root model bean instance
-     */
-    public R greaterThan(int value) {
-        expr().gt(name, value);
-        return root;
-    }
-
-    /**
-     * Less than.
-     *
-     * @param value the equal to bind value
-     * @return the root model bean instance
-     */
-    public R lessThan(int value) {
-        expr().lt(name, value);
-        return root;
-    }
 
     /**
      * Is equal to.

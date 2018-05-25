@@ -24,7 +24,7 @@ package org.lealone.orm.property;
  * @param <D> the date time type
  */
 @SuppressWarnings("rawtypes")
-public abstract class PBaseDate<R, D extends Comparable, P> extends PBaseComparable<R, D, P> {
+public abstract class PBaseDate<R, D extends Comparable> extends PBaseComparable<R, D> {
 
     /**
      * Construct with a property name and root instance.

@@ -32,7 +32,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  *
  * @param <R> the root model bean type
  */
-public class PString<R> extends PBaseComparable<R, String, PString<R>> {
+public class PString<R> extends PBaseComparable<R, String> {
 
     private String value;
 
@@ -44,6 +44,10 @@ public class PString<R> extends PBaseComparable<R, String, PString<R>> {
      */
     public PString(String name, R root) {
         super(name, root);
+    }
+
+    private PString<R> P(Model<?> model) {
+        return this.<PString<R>> getModelProperty(model);
     }
 
     /**
@@ -172,7 +176,7 @@ public class PString<R> extends PBaseComparable<R, String, PString<R>> {
     public final R set(String value) {
         Model<?> model = getModel();
         if (model != root) {
-            return getModelProperty(model).set(value);
+            return P(model).set(value);
         }
         if (!areEqual(this.value, value)) {
             this.value = value;
@@ -189,7 +193,7 @@ public class PString<R> extends PBaseComparable<R, String, PString<R>> {
     public final String get() {
         Model<?> model = getModel();
         if (model != root) {
-            return getModelProperty(model).get();
+            return P(model).get();
         }
         return value;
     }
