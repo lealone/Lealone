@@ -57,6 +57,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R ieq(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).ieq(value);
+        }
         expr().ieq(name, value);
         return root;
     }
@@ -68,6 +72,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R iequalTo(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).iequalTo(value);
+        }
         expr().ieq(name, value);
         return root;
     }
@@ -79,6 +87,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R like(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).like(value);
+        }
         expr().like(name, value);
         return root;
     }
@@ -90,6 +102,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R startsWith(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).startsWith(value);
+        }
         expr().startsWith(name, value);
         return root;
     }
@@ -101,6 +117,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R endsWith(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).endsWith(value);
+        }
         expr().endsWith(name, value);
         return root;
     }
@@ -112,6 +132,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R contains(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).contains(value);
+        }
         expr().contains(name, value);
         return root;
     }
@@ -123,6 +147,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R ilike(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).ilike(value);
+        }
         expr().ilike(name, value);
         return root;
     }
@@ -134,6 +162,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R istartsWith(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).istartsWith(value);
+        }
         expr().istartsWith(name, value);
         return root;
     }
@@ -145,6 +177,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R iendsWith(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).iendsWith(value);
+        }
         expr().iendsWith(name, value);
         return root;
     }
@@ -156,6 +192,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R icontains(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).icontains(value);
+        }
         expr().icontains(name, value);
         return root;
     }
@@ -169,6 +209,10 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @param value the match expression
      */
     public R match(String value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).match(value);
+        }
         expr().match(name, value);
         return root;
     }

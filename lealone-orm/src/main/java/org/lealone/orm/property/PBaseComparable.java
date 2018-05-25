@@ -17,6 +17,8 @@
  */
 package org.lealone.orm.property;
 
+import org.lealone.orm.Model;
+
 /**
  * Base property for all comparable types. 
  *
@@ -36,6 +38,10 @@ public abstract class PBaseComparable<R, T extends Comparable> extends PBaseValu
         super(name, root);
     }
 
+    private PBaseComparable<R, T> P(Model<?> model) {
+        return this.<PBaseComparable<R, T>> getModelProperty(model);
+    }
+
     // ---- range comparisons -------
     /**
      * Greater than.
@@ -44,6 +50,10 @@ public abstract class PBaseComparable<R, T extends Comparable> extends PBaseValu
      * @return the root model bean instance
      */
     public final R gt(T value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).gt(value);
+        }
         expr().gt(name, value);
         return root;
     }
@@ -55,6 +65,10 @@ public abstract class PBaseComparable<R, T extends Comparable> extends PBaseValu
      * @return the root model bean instance
      */
     public final R ge(T value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).ge(value);
+        }
         expr().ge(name, value);
         return root;
     }
@@ -66,6 +80,10 @@ public abstract class PBaseComparable<R, T extends Comparable> extends PBaseValu
      * @return the root model bean instance
      */
     public final R lt(T value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).lt(value);
+        }
         expr().lt(name, value);
         return root;
     }
@@ -77,6 +95,10 @@ public abstract class PBaseComparable<R, T extends Comparable> extends PBaseValu
      * @return the root model bean instance
      */
     public final R le(T value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).le(value);
+        }
         expr().le(name, value);
         return root;
     }
@@ -89,6 +111,10 @@ public abstract class PBaseComparable<R, T extends Comparable> extends PBaseValu
      * @return the root model bean instance
      */
     public final R between(T lower, T upper) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).between(lower, upper);
+        }
         expr().between(name, lower, upper);
         return root;
     }

@@ -26,7 +26,7 @@ import org.lealone.orm.ModelProperty;
  * Base property for types that primarily have equal to.
  *
  * @param <R> the root model bean type
- * @param <T> the number type
+ * @param <T> the property type
  */
 public abstract class PBaseValueEqual<R, T> extends ModelProperty<R> {
 

@@ -17,6 +17,8 @@
  */
 package org.lealone.orm.property;
 
+import org.lealone.orm.Model;
+
 /**
  * Base property for number types.
  *
@@ -36,6 +38,10 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
         super(name, root);
     }
 
+    private PBaseNumber<R, T> P(Model<?> model) {
+        return this.<PBaseNumber<R, T>> getModelProperty(model);
+    }
+
     // Additional int versions -- seems the right thing to do
 
     /**
@@ -45,6 +51,10 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * @return the root model bean instance
      */
     public R eq(int value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).eq(value);
+        }
         expr().eq(name, value);
         return root;
     }
@@ -56,6 +66,10 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * @return the root model bean instance
      */
     public R gt(int value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).gt(value);
+        }
         expr().gt(name, value);
         return root;
     }
@@ -67,6 +81,10 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * @return the root model bean instance
      */
     public R lt(int value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).lt(value);
+        }
         expr().lt(name, value);
         return root;
     }
@@ -79,6 +97,10 @@ public abstract class PBaseNumber<R, T extends Comparable> extends PBaseComparab
      * @return the root model bean instance
      */
     public R between(int lower, int upper) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).between(lower, upper);
+        }
         expr().between(name, lower, upper);
         return root;
     }

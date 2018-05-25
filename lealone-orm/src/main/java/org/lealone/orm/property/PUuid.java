@@ -17,7 +17,16 @@
  */
 package org.lealone.orm.property;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.UUID;
+
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueUuid;
+import org.lealone.orm.Model;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * UUID property.
@@ -25,6 +34,8 @@ import java.util.UUID;
  * @param <R> the root model bean type
  */
 public class PUuid<R> extends PBaseValueEqual<R, UUID> {
+
+    private UUID value;
 
     /**
      * Construct with a property name and root instance.
@@ -36,4 +47,58 @@ public class PUuid<R> extends PBaseValueEqual<R, UUID> {
         super(name, root);
     }
 
+    private PUuid<R> P(Model<?> model) {
+        return this.<PUuid<R>> getModelProperty(model);
+    }
+
+    public R set(UUID value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).set(value);
+        }
+        if (!areEqual(this.value, value)) {
+            this.value = value;
+            expr().set(name, ValueUuid.get(value.getMostSignificantBits(), value.getLeastSignificantBits()));
+        }
+        return root;
+    }
+
+    @Override
+    public R set(Object value) {
+        return set(UUID.fromString(value.toString()));
+    }
+
+    public final UUID get() {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).get();
+        }
+        return value;
+    }
+
+    @Override
+    public R serialize(JsonGenerator jgen) throws IOException {
+        jgen.writeStringField(getName(), value.toString());
+        return root;
+    }
+
+    @Override
+    public R deserialize(JsonNode node) {
+        node = getJsonNode(node);
+        if (node == null) {
+            return root;
+        }
+        String text = node.asText();
+        set(UUID.fromString(text));
+        return root;
+    }
+
+    @Override
+    public R deserialize(HashMap<String, Value> map) {
+        Value v = map.get(getFullName());
+        if (v != null) {
+            value = (UUID) ValueUuid.get(v.getBytesNoCopy()).getObject();
+        }
+        return root;
+    }
 }

@@ -17,7 +17,17 @@
  */
 package org.lealone.orm.property;
 
+import java.io.IOException;
 import java.sql.Timestamp;
+import java.util.HashMap;
+
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueTimestamp;
+import org.lealone.orm.Model;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.NumericNode;
 
 /**
  * Property for java sql Timestamp.
@@ -25,6 +35,8 @@ import java.sql.Timestamp;
  * @param <R> the root model bean type
  */
 public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
+
+    private Timestamp value;
 
     /**
      * Construct with a property name and root instance.
@@ -36,4 +48,58 @@ public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
         super(name, root);
     }
 
+    private PTimestamp<R> P(Model<?> model) {
+        return this.<PTimestamp<R>> getModelProperty(model);
+    }
+
+    public final R set(Timestamp value) {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).set(value);
+        }
+        if (!areEqual(this.value, value)) {
+            this.value = value;
+            expr().set(name, ValueTimestamp.get(value));
+        }
+        return root;
+    }
+
+    @Override
+    public R set(Object value) {
+        return set(Timestamp.valueOf(value.toString()));
+    }
+
+    public final Timestamp get() {
+        Model<?> model = getModel();
+        if (model != root) {
+            return P(model).get();
+        }
+        return value;
+    }
+
+    @Override
+    public R serialize(JsonGenerator jgen) throws IOException {
+        jgen.writeNumberField(getName(), value.getTime());
+        return root;
+    }
+
+    @Override
+    public R deserialize(JsonNode node) {
+        node = getJsonNode(node);
+        if (node == null) {
+            return root;
+        }
+        Timestamp t = new Timestamp(((NumericNode) node).asLong());
+        set(t);
+        return root;
+    }
+
+    @Override
+    public R deserialize(HashMap<String, Value> map) {
+        Value v = map.get(getFullName());
+        if (v != null) {
+            value = v.getTimestamp();
+        }
+        return root;
+    }
 }
