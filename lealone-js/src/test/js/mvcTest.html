@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+<script src="sockjs-1.1.2.js"></script>
+<script src="lealone-5.0.0.js"></script>
+<script src="generated/model/User.js"></script>
+</head>
+<body lang="en">
+    <h1>MVC Test, see console log</h1>
+
+    <div id="AddUserView">
+        <!-- 分别绑定到user.name、user.phone、user.notes三个字段 -->
+        name: <input id="name" placeholder="edit me"><br>
+        phone: <input id="phone" placeholder="edit me"><br>
+        notes: <input id="notes" placeholder="edit me"><br>
+        <!-- 绑定到user.insert()方法 -->
+        <button id="insert()">提交</button><br><br>
+    </div>
+
+    <div id="FindUserView">
+        <!-- 分别绑定到dao.name、dao.phone两个查询字段 -->
+        name: <input id="name"><br>
+        phone: <input id="phone"><br> 
+        <!-- 绑定到dao.findList()()方法 -->
+        <button id="findList()">查询</button>
+    </div>
+
+    <script>
+        var user = new User();
+        //将视图绑定到对应的模型
+        User.bind({"AddUserView": user, "FindUserView": User.dao});
+    </script>
+</body>
+</html>

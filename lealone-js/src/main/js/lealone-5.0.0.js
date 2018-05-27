@@ -193,6 +193,24 @@ class Model {
         var properties = ["modelTable", "modelType", "modelProperties", "expressionBuilderStack",
                 "whereExpressionBuilder", "nvPairs", "selectExpressions", "groupExpressions", "having"];
         setPrivateProperties(this, properties);
+        
+        this["insert()"] = this.insert;
+        this["findList()"] = this.findList;
+
+        var cb = function(message) {
+            console.log(message);
+        }
+
+        this.insert.bindNode = function(node, model) {
+            node.addEventListener("click", function(){
+                model.insert(cb);
+            }, false);
+        }
+        this.findList.bindNode = function(node, model) {
+            node.addEventListener("click", function(){
+                model.findList(cb);
+            }, false);
+        }
     }
     
     reset() {
@@ -517,6 +535,20 @@ class ModelProperty {
     
     expr() {
         return this.model.peekExprBuilder();
+    }
+    
+    bindNode(node, model) {
+        this.node = node;
+        if(node.nodeType == 1) {
+            var that = this;
+            node.addEventListener("keyup", function(){
+                if(model.isDao()) {
+                    that.eq(this.value, true);
+                } else {
+                    that.set(this.value);
+                }
+            }, false);
+        }
     }
 }
 class PString extends ModelProperty {

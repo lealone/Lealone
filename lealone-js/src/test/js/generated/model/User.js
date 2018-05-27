@@ -53,6 +53,41 @@ User.parse = function(jsonText) {
     return user;
 }
 
+User.bind = function(viewModelPairs) {
+    
+    var createNodeIterator = function(node) {
+        return document.createNodeIterator(node, NodeFilter.SHOW_ALL, null, false);;
+    }
+    
+    var subIterator = function(topIterator, node, model) {
+        var iterator = createNodeIterator(node);
+        var node = iterator.nextNode();
+        var topNode = null;
+        while (node !== null) {
+            if(model[node.id]) {
+                model[node.id].bindNode(node, model);
+            }
+            node = iterator.nextNode();
+            topNode = topIterator.nextNode();
+        }
+        return topNode;
+    }
+
+    //var views = Object.keys(viewModelPairs);
+    //console.log(views);
+    var iterator = createNodeIterator(document.body);
+    var node = iterator.nextNode();
+    while (node !== null) {
+        //console.log(node.id);
+        if(viewModelPairs[node.id]) {
+            var model = viewModelPairs[node.id];
+            node = subIterator(iterator, node, model);
+            continue;
+        }
+        node = iterator.nextNode();
+    }
+}
+
 
 
 
