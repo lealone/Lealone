@@ -186,7 +186,7 @@ function setPrivateProperties(object, properties) {
 class Model {
     constructor(modelTable, modelType) {
         this.modelTable = modelTable;
-        this.modelType = modelType;
+        this.modelType = modelType || REGULAR_MODEL;
         this.reset();
 
         // 避免第三方框架监控这些字段
@@ -215,6 +215,7 @@ class Model {
     
     reset() {
         this.modelProperties = [];
+        this.modelPropertyMap = new Map();
         this.expressionBuilderStack = null;
         this.whereExpressionBuilder = null;
         this.nvPairs = null;
@@ -233,6 +234,11 @@ class Model {
     
     setModelProperties(modelProperties) {
         this.modelProperties = modelProperties;
+    }
+    
+    addModelProperty(p) {
+        this.modelProperties.push(p);
+        this.modelPropertyMap.set(p.name, p);
     }
 
     stringify() {
@@ -486,6 +492,42 @@ class Model {
     rollbackTransaction(cb) {
         lealone.executeSql(603, null, null, cb);
     }
+
+    defineProperty(p, name) { 
+        Object.defineProperty(this, name, {
+            enumerable: true,
+            configurable: true,
+            get: function(){
+                return p; // 如果返回 p.get()，那么不能再使用流式化风格，只能返回 p，然后在 ModelProperty类中添加 toString()方法
+            },
+            set: function(newValue){
+                p.set(newValue);
+            }
+        });
+    }
+    parse(jsonText) {
+        var model = this;
+        JSON.parse(jsonText, function(key, value) {
+            var p = model.modelPropertyMap.get(key);
+            if(p) {
+                return p.set(value);
+            }
+            return value;
+    //        switch(key){
+    //        case "NAME":
+    //            return user.name.set(value);
+    //        case "NOTES":
+    //            return user.notes.set(value);
+    //        case "PHONE":
+    //            return user.phone.set(value);
+    //        case "ID":
+    //            return user.id.set(value);
+    //        default:
+    //            return value;
+    //        }
+        });
+        return model;
+    }
 }
 
 class ModelTable {
@@ -506,6 +548,8 @@ class ModelProperty {
         this.value = "";
         this.model = model;
         setPrivateProperties(this, ["name", "value", "model"]);
+        model.addModelProperty(this);
+        model.defineProperty(this, name.toLowerCase());
     }
     
     get() {
@@ -536,7 +580,7 @@ class ModelProperty {
     expr() {
         return this.model.peekExprBuilder();
     }
-    
+
     bindNode(node, model) {
         this.node = node;
         if(node.nodeType == 1) {
@@ -805,3 +849,37 @@ class ExpressionBuilder {
 
 }
 
+lealone.bind = function(viewModelPairs) {
+    
+    var createNodeIterator = function(node) {
+        return document.createNodeIterator(node, NodeFilter.SHOW_ALL, null, false);;
+    }
+    
+    var subIterator = function(topIterator, node, model) {
+        var iterator = createNodeIterator(node);
+        var node = iterator.nextNode();
+        var topNode = null;
+        while (node !== null) {
+            if(model[node.id]) {
+                model[node.id].bindNode(node, model);
+            }
+            node = iterator.nextNode();
+            topNode = topIterator.nextNode();
+        }
+        return topNode;
+    }
+
+    //var views = Object.keys(viewModelPairs);
+    //console.log(views);
+    var iterator = createNodeIterator(document.body);
+    var node = iterator.nextNode();
+    while (node !== null) {
+        //console.log(node.id);
+        if(viewModelPairs[node.id]) {
+            var model = viewModelPairs[node.id];
+            node = subIterator(iterator, node, model);
+            continue;
+        }
+        node = iterator.nextNode();
+    }
+}

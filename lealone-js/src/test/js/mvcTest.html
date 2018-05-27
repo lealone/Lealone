@@ -21,14 +21,14 @@
         <!-- 分别绑定到dao.name、dao.phone两个查询字段 -->
         name: <input id="name"><br>
         phone: <input id="phone"><br> 
-        <!-- 绑定到dao.findList()()方法 -->
+        <!-- 绑定到dao.findList()方法 -->
         <button id="findList()">查询</button>
     </div>
 
     <script>
         var user = new User();
         //将视图绑定到对应的模型
-        User.bind({"AddUserView": user, "FindUserView": User.dao});
+        lealone.bind({"AddUserView": user, "FindUserView": User.dao});
     </script>
 </body>
 </html>
