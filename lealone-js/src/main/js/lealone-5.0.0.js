@@ -505,6 +505,7 @@ class Model {
             }
         });
     }
+
     parse(jsonText) {
         var model = this;
         JSON.parse(jsonText, function(key, value) {
@@ -513,20 +514,20 @@ class Model {
                 return p.set(value);
             }
             return value;
-    //        switch(key){
-    //        case "NAME":
-    //            return user.name.set(value);
-    //        case "NOTES":
-    //            return user.notes.set(value);
-    //        case "PHONE":
-    //            return user.phone.set(value);
-    //        case "ID":
-    //            return user.id.set(value);
-    //        default:
-    //            return value;
-    //        }
         });
         return model;
+    }
+
+    bind(view) {
+        var node = document.querySelector("#" + view);
+        var iterator = document.createNodeIterator(node, NodeFilter.SHOW_ALL, null, false);
+        var node = iterator.nextNode();
+        while (node !== null) {
+            if(this[node.id]) {
+                this[node.id].bindNode(node, this);
+            }
+            node = iterator.nextNode();
+        }
     }
 }
 

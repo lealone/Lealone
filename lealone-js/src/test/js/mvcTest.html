@@ -28,7 +28,10 @@
     <script>
         var user = new User();
         //将视图绑定到对应的模型
-        lealone.bind({"AddUserView": user, "FindUserView": User.dao});
+        user.bind("AddUserView");
+        User.dao.bind("FindUserView");
+        //或者使用这种方式，性能更快，只需要遍历一次 DOM
+        //lealone.bind({"AddUserView": user, "FindUserView": User.dao});
     </script>
 </body>
 </html>
