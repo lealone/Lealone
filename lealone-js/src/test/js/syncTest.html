@@ -7,12 +7,12 @@
 <script>
 
 //这里面的代码全是在Web Worker中按顺序同步执行的
-var syncTask = `
-	executeSqlSync('502;1;delete from user;[]');
-	executeSqlSync('500;2;insert into user(name, phone) values(?, ?);["zhh", 123]');
-	var result = executeSqlSync('503;2;select * from user;[]');
-	return result; //这个result就是返回给主线程的结果
-`
+var syncTask = function() {
+    executeSqlSync('502;1;delete from user;[]');
+    executeSqlSync('500;2;insert into user(name, phone) values(?, ?);["zhh", 123]');
+    var result = executeSqlSync('503;3;select * from user;[]');
+    return result; //这个result就是返回给主线程的结果
+}
 asyncEval(syncTask, function (result) {
     alert("async result: " + result);
 });
