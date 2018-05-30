@@ -108,20 +108,58 @@ function initSockJS(sockjsUrl) {
     };
 }
 
+L.syncRequestUrl = "/_lealone_sync_request_";
+
+function executeSqlSync(command) {
+    var xhr = new XMLHttpRequest();
+//    xhr.timeout = 3000;
+//    xhr.ontimeout = function (event) {
+//        console.log("XMLHttpRequest timeout: " + command);
+//    }
+    var formData = new FormData();
+    formData.append('command', command);
+    xhr.open('POST', L.syncRequestUrl, false);
+    xhr.send(formData);
+    
+    var data =  xhr.responseText;
+    var a = JSON.parse(data);
+    var type = a[0];
+    var serviceName = a[1]; 
+    var result = a[2];
+    switch(type) {
+    case 2: // 正常返回
+        //如果有回调就执行它
+        if(L.services && L.services[serviceName] && L.services[serviceName]["callback"]) { 
+            L.services[serviceName]["callback"](result);
+        }
+        break;
+    case 3: // error info
+        console.log("failed to call service: " + serviceName + ", backend error: " + result)
+        break;
+    case 500:
+    case 501:
+    case 502:
+    case 503:
+    case 504:
+    case 601:
+    case 602:
+    case 603:
+        if(L.sqls && L.sqls[a[1]] && L.sqls[a[1]]["callback"]) { 
+            L.sqls[a[1]]["callback"](result);
+        }
+        break;
+    default:
+        console.log("unknown response type: " + type + ", serviceName: " + serviceName + ", data: " + e.data)
+    }
+    return result;
+}
+
 var id = 0;
 L.executeSql = function(type, sql, args, callback) {
     id++;
-    if(!L.sockjs) {
-        L.sqls = {};
-        initSockJS(L.sockjsUrl);
-    }
     var msg = type + ";" + id;
     if(sql != null && sql != undefined) {
         msg += ";" + sql; 
-    }
-    if(typeof callback == 'function') {
-        L.sqls[id] = function() {};
-        L.sqls[id]["callback"] = callback; 
     }
     if(args) {
         msg += ";[";
@@ -133,6 +171,17 @@ L.executeSql = function(type, sql, args, callback) {
         }
         msg += "]";
     }
+    if(!callback) {
+        return executeSqlSync(msg);
+    }
+    if(!L.sockjs) {
+        L.sqls = {};
+        initSockJS(L.sockjsUrl);
+    }
+    if(typeof callback == 'function') {
+        L.sqls[id] = function() {};
+        L.sqls[id]["callback"] = callback; 
+    }
     if(L.sockjsReady)
         L.sockjs.send(msg);
     else {
@@ -141,7 +190,9 @@ L.executeSql = function(type, sql, args, callback) {
         } 
         L.penddingMsgs.push(msg);
     }
+    return null;
 };
+
 L.sockjsUrl = "/_lealone_sockjs_";
 return {
     setSockjsUrl: function(url) { L.sockjsUrl = url },
@@ -305,7 +356,7 @@ class Model {
         sql += " limit 1";
         console.log("execute sql: " + sql);
         this.reset();
-        lealone.executeSql(503, sql, args, cb)
+        return lealone.executeSql(503, sql, args, cb)
     }
 
     createSelect() {
@@ -339,7 +390,7 @@ class Model {
         var args = select[1];
         console.log("execute sql: " + sql);
         this.reset();
-        lealone.executeSql(504, sql, args, cb)
+        return lealone.executeSql(504, sql, args, cb)
     }
 
     findCount(cb) {
@@ -352,7 +403,7 @@ class Model {
         }
         console.log("execute sql: " + sql);
         this.reset();
-        lealone.executeSql(503, sql, args, cb)
+        return lealone.executeSql(503, sql, args, cb)
     }
     
     getLocalStorageKey() {
@@ -398,8 +449,7 @@ class Model {
         sql += sqlValues + ")";
         console.log("execute sql: " + sql);
         this.reset();
-        lealone.executeSql(500, sql, args, cb)
-        return 0;
+        return lealone.executeSql(500, sql, args, cb);
     }
     
     update(cb) {
@@ -420,8 +470,7 @@ class Model {
         }
         console.log("execute sql: " + sql);
         this.reset();
-        lealone.executeSql(501, sql, args, cb)
-        return 0;
+        return lealone.executeSql(501, sql, args, cb);
     }
     
     delete(cb) {
@@ -448,8 +497,7 @@ class Model {
         }
         console.log("execute sql: " + sql);
         this.reset();
-        lealone.executeSql(502, sql, args, cb)
-        return 0;
+        return lealone.executeSql(502, sql, args, cb);
     }
     
     peekExprBuilder() {
