@@ -216,6 +216,7 @@ public class BTreeStorage {
             for (long pos : removedPages) {
                 chunkMetaData.writeLong(pos);
             }
+            chunkMetaData.writeInt(hashCodeToHostIdMap.size());
             for (String hostId : hashCodeToHostIdMap.values()) {
                 chunkMetaData.writeUTF(hostId);
             }
