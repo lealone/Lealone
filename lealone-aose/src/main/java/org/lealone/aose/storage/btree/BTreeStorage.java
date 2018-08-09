@@ -675,7 +675,7 @@ public class BTreeStorage {
         }
     }
 
-    // //////////////////////////////// Compact BEGIN /////////////////////////////////////
+    // //////////////////////////////// Compact BEGIN ///////////////////////////////////
     /**
      * Try to increase the fill rate by re-writing partially full chunks. 
      * Chunks with a low number of live items are re-written.

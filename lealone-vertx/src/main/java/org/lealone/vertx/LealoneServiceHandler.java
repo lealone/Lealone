@@ -39,33 +39,41 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.handler.sockjs.SockJSSocket;
 
-public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
+public class LealoneServiceHandler implements Handler<SockJSSocket> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SockJSSocketServiceHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(LealoneServiceHandler.class);
     private static final ConcurrentSkipListMap<Integer, Connection> currentConnections = new ConcurrentSkipListMap<>();
+
+    private static void removeConnection(Integer key) {
+        currentConnections.remove(key);
+    }
 
     @Override
     public void handle(SockJSSocket sockJSSocket) {
         sockJSSocket.endHandler(v -> {
-            currentConnections.remove(sockJSSocket.hashCode());
+            removeConnection(sockJSSocket.hashCode());
         });
         sockJSSocket.exceptionHandler(t -> {
-            currentConnections.remove(sockJSSocket.hashCode());
+            removeConnection(sockJSSocket.hashCode());
             logger.error("sockJSSocket exception", t);
         });
 
         sockJSSocket.handler(buffer -> {
-            String a[] = buffer.getString(0, buffer.length()).split(";");
-            int type = Integer.parseInt(a[0]);
-            if (type < 500) {
-                executeService(sockJSSocket, a, type);
-            } else {
-                executeSql(sockJSSocket, a, type);
-            }
+            LealoneServiceHandler.handle(sockJSSocket, buffer.getString(0, buffer.length()));
         });
     }
 
-    private void executeService(SockJSSocket sockJSSocket, String a[], int type) {
+    public static Buffer handle(Object lock, String command) {
+        String a[] = command.split(";");
+        int type = Integer.parseInt(a[0]);
+        if (type < 500) {
+            return executeService(a, type);
+        } else {
+            return executeSql(lock, a, type);
+        }
+    }
+
+    private static Buffer executeService(String a[], int type) {
         String serviceName = CamelCaseHelper.toUnderscoreFromCamel(a[1]);
         String json = null;
         if (a.length >= 3) {
@@ -91,14 +99,15 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
         }
         ja.add(a[1]); // 前端传来的方法名不一定是下划线风格的，所以用最初的
         ja.add(result);
-        sockJSSocket.write(Buffer.buffer(ja.toString()));
+        return Buffer.buffer(ja.toString());
     }
 
-    private void executeSql(SockJSSocket sockJSSocket, String a[], int type) {
+    private static Buffer executeSql(Object lock, String a[], int type) {
+        JsonArray ja = new JsonArray();
         try {
             Connection conn;
-            synchronized (sockJSSocket) {
-                conn = currentConnections.get(sockJSSocket.hashCode());
+            synchronized (lock) {
+                conn = currentConnections.get(lock.hashCode());
                 if (conn == null) {
                     String url = System.getProperty("lealone.jdbc.url");
                     if (url == null) {
@@ -106,7 +115,7 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
                     }
 
                     conn = DriverManager.getConnection(url);
-                    currentConnections.put(sockJSSocket.hashCode(), conn);
+                    currentConnections.put(lock.hashCode(), conn);
                 }
             }
             PreparedStatement ps = null;
@@ -117,7 +126,6 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
                     ps.setObject(i + 1, parms.getValue(i));
                 }
             }
-            JsonArray ja = new JsonArray();
             String result = "ok";
             ja.add(type);
             ja.add(a[1]);
@@ -180,10 +188,10 @@ public class SockJSSocketServiceHandler implements Handler<SockJSSocket> {
                 result = "unknown request type: " + type + ", sql: " + a[2];
                 logger.error(result);
             }
-            sockJSSocket.write(Buffer.buffer(ja.toString()));
         } catch (SQLException e) {
+            ja.add(3);
             logger.error(e);
         }
+        return Buffer.buffer(ja.toString());
     }
-
 }

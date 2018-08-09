@@ -22,8 +22,12 @@ import org.lealone.common.logging.LoggerFactory;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.CorsHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandler;
 import io.vertx.ext.web.handler.sockjs.SockJSHandlerOptions;
@@ -46,7 +50,16 @@ public class LealoneHttpServer {
         HttpServer server = vertx.createHttpServer();
         Router router = Router.router(vertx);
 
-        // router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
+        String syncRequestUrl = "/_lealone_sync_request_";
+        router.post(syncRequestUrl).handler(BodyHandler.create());
+        router.post(syncRequestUrl).handler(routingContext -> {
+            String command = routingContext.request().params().get("command");
+            Buffer result = LealoneServiceHandler.handle(routingContext, command);
+            routingContext.request().response().headers().set("Access-Control-Allow-Origin", "*");
+            routingContext.request().response().end(result);
+        });
+
+        router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
         setSockJSHandler(vertx, router, apiPath);
         // 放在最后
         setStaticHandler(vertx, router, webRoot);
@@ -76,7 +89,7 @@ public class LealoneHttpServer {
     private static void setSockJSHandler(Vertx vertx, Router router, String apiPath) {
         SockJSHandlerOptions options = new SockJSHandlerOptions().setHeartbeatInterval(2000);
         SockJSHandler sockJSHandler = SockJSHandler.create(vertx, options);
-        sockJSHandler.socketHandler(new SockJSSocketServiceHandler());
+        sockJSHandler.socketHandler(new LealoneServiceHandler());
         router.route(apiPath).handler(sockJSHandler);
     }
 
