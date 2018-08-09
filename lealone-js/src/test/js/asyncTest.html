@@ -1,0 +1,44 @@
+<!doctype html>
+<html>
+<head>
+</head>
+<body>
+<script>
+
+function executeSqlSync(command) {
+    return new Promise((resolve,reject) => {
+	    var syncRequestUrl = "http://localhost:8080/_lealone_sync_request_";
+	    var xhr = new XMLHttpRequest();
+	    var formData = new FormData();
+	    formData.append('command', command);
+	    xhr.open('POST', syncRequestUrl, true);
+	
+	    xhr.onreadystatechange = function() {
+	        if (xhr.readyState == 4) {  
+                if (xhr.status == 200) {  
+                    try {  
+                        var response = JSON.parse(xhr.responseText);  
+                        resolve(response);  
+                    } catch (e) {  
+                        reject(e);  
+                    }  
+                } else {  
+                    reject(new Error(xhr.statusText));  
+                }  
+            }  
+	    }
+	    xhr.send(formData);
+    });
+}
+async function asyncEval() {
+    await executeSqlSync('502;1;delete from user;[]');
+    await executeSqlSync('500;2;insert into user(name, phone) values(?, ?);["zhh", 123]');
+    var result = await executeSqlSync('503;3;select * from user;[]');
+    return result;
+}
+
+alert(asyncEval());
+
+</script>
+</body>
+</html>
