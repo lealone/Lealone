@@ -18,6 +18,7 @@
 package org.lealone.storage;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.RunMode;
@@ -42,8 +43,12 @@ public interface Storage {
 
     boolean isClosed();
 
+    Set<String> getMapNames();
+
     public default void move(String[] targetEndpoints, RunMode runMode) {
         throw DbException.getUnsupportedException("move");
     }
 
+    public default void drop() {
+    }
 }

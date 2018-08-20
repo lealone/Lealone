@@ -370,6 +370,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 value = r.newValue;
                 map = maps.get(mapName);
 
+                // 有可能在执行DROP DATABASE时删除了
+                if (map == null) {
+                    continue;
+                }
+
                 ValueString.type.write(writeBuffer, mapName);
                 keyValueStart = writeBuffer.position();
                 writeBuffer.putInt(0);
@@ -415,5 +420,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     @Override
     public TransactionMap<?, ?> getTransactionMap(String name) {
         return tmaps.get(name);
+    }
+
+    @Override
+    public void removeTransactionMap(String name) {
+        removeMap(name);
+        tmaps.remove(name);
     }
 }

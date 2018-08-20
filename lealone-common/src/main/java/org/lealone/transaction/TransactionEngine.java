@@ -31,4 +31,5 @@ public interface TransactionEngine extends PluggableEngine {
 
     TransactionMap<?, ?> getTransactionMap(String name);
 
+    void removeTransactionMap(String name);
 }

@@ -17,7 +17,6 @@
  */
 package org.lealone.sql.router;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
@@ -52,6 +51,6 @@ public class LocalRouter implements Router {
 
     @Override
     public int executeDatabaseStatement(Database db, ServerSession currentSession, StatementBase statement) {
-        throw DbException.throwInternalError("executeDatabaseStatement");
+        return 0;
     }
 }

@@ -96,6 +96,10 @@ public class AOStorageService extends Thread {
 
     private static void adaptiveOptimization() {
         for (AOMap<?, ?> map : aoMaps) {
+            if (map.getRawMap().isClosed()) {
+                aoMaps.remove(map);
+                continue;
+            }
             if (map.getReadPercent() > 50)
                 map.switchToNoBufferedMap();
             else if (map.getWritePercent() > 50)
@@ -105,6 +109,10 @@ public class AOStorageService extends Thread {
 
     private static void merge() {
         for (BufferedMap<?, ?> map : bufferedMaps) {
+            if (map.getRawMap().isClosed()) {
+                bufferedMaps.remove(map);
+                continue;
+            }
             if (map.needMerge())
                 addTask(map);
         }

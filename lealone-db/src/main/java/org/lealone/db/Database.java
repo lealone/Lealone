@@ -1039,6 +1039,11 @@ public class Database implements DataHandler, DbObject {
      * @param session the session
      */
     public synchronized void removeSession(ServerSession session) {
+        if (deleteFilesOnDisconnect) {
+            userSessions.clear();
+            drop();
+            return;
+        }
         if (session != null) {
             if (exclusiveSession == session) {
                 exclusiveSession = null;
@@ -2441,4 +2446,16 @@ public class Database implements DataHandler, DbObject {
         return user;
     }
 
+    public void drop() {
+        if (getSessionCount() > 0) {
+            setDeleteFilesOnDisconnect(true);
+            return;
+        }
+        for (Storage storage : getStorages()) {
+            for (String mapName : storage.getMapNames()) {
+                transactionEngine.removeTransactionMap(mapName);
+            }
+            storage.drop();
+        }
+    }
 }

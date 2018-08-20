@@ -177,4 +177,11 @@ public class AOStorage extends StorageBase {
         }
     }
 
+    @Override
+    public void drop() {
+        close();
+        String storageName = (String) config.get("storageName");
+        FileUtils.deleteRecursive(storageName, false);
+    }
+
 }
