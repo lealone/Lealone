@@ -96,13 +96,12 @@ public class TransactionalRouter implements Router {
     }
 
     @Override
-    public String[] getHostIds(Database db) {
-        return nestedRouter.getHostIds(db);
+    public String[] getHostIds(Database db, boolean alterDatabase) {
+        return nestedRouter.getHostIds(db, alterDatabase);
     }
 
     @Override
-    public int createDatabase(Database db, ServerSession currentSession) {
-        return nestedRouter.createDatabase(db, currentSession);
+    public int executeDatabaseStatement(Database db, ServerSession currentSession, StatementBase statement) {
+        return nestedRouter.executeDatabaseStatement(db, currentSession, statement);
     }
-
 }

@@ -1258,25 +1258,11 @@ public class Parser implements SQLParser {
             ifExists = readIfExists(ifExists);
             command.setIfExists(ifExists);
             return command;
-            // } else if (readIf("DATABASE")) {
-            // boolean ifExists = readIfExists(false);
-            // String dbName = readUniqueIdentifier();
-            // DropDatabase command = new DropDatabase(session);
-            // command.setDropAllObjects(true);
-            // if (readIf("DELETE")) {
-            // read("FILES");
-            // command.setDeleteFiles(true);
-            // }
-            // return command;
-        } else if (readIf("ALL")) {
+        } else if (readIf("ALL")) { // TODO 有没有必要再支持DROP ALL OBJECTS？
             read("OBJECTS");
-            DropDatabase command = new DropDatabase(session);
-            command.setDropAllObjects(true);
-            if (readIf("DELETE")) {
-                read("FILES");
-                command.setDeleteFiles(true);
-            }
-            return command;
+            return parseDropDatabase();
+        } else if (readIf("DATABASE")) {
+            return parseDropDatabase();
         } else if (readIf("DOMAIN")) {
             return parseDropUserDataType();
         } else if (readIf("TYPE")) {
@@ -1287,6 +1273,18 @@ public class Parser implements SQLParser {
             return parseDropAggregate();
         }
         throw getSyntaxError();
+    }
+
+    private DropDatabase parseDropDatabase() {
+        boolean ifExists = readIfExists(false);
+        String dbName = readUniqueIdentifier();
+        DropDatabase command = new DropDatabase(session, dbName);
+        command.setIfExists(ifExists);
+        if (readIf("DELETE")) {
+            read("FILES");
+            command.setDeleteFiles(true);
+        }
+        return command;
     }
 
     private DropUserDataType parseDropUserDataType() {

@@ -1171,8 +1171,14 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     public String getURL(String hostId) {
-        if (connectionInfo == null)
-            return null;
+        if (connectionInfo == null) {
+            String dbName = database.getShortName();
+            String url = createURL(dbName, hostId);
+            connectionInfo = new ConnectionInfo(url, dbName);
+            connectionInfo.setUserName(user.getName());
+            connectionInfo.setUserPasswordHash(user.getUserPasswordHash());
+            return url;
+        }
         StringBuilder buff = new StringBuilder();
         String url = connectionInfo.getURL();
         int pos1 = url.indexOf("//") + 2;

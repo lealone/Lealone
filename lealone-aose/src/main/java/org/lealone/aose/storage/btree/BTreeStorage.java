@@ -826,7 +826,8 @@ public class BTreeStorage {
     }
 
     void addHostIds(Collection<String> hostIds) {
-        addHostIds(hostIds.toArray(new String[0]));
+        if (hostIds != null)
+            addHostIds(hostIds.toArray(new String[0]));
     }
 
     void addHostIds(String... hostIds) {

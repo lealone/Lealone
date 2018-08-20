@@ -31,20 +31,17 @@ import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.locator.TopologyMetaData;
 import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.server.P2pServer;
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
 import org.lealone.db.Database;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 import org.lealone.net.NetEndpoint;
 import org.lealone.replication.ReplicationSession;
+import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.ddl.DatabaseStatement;
-import org.lealone.sql.ddl.DefineStatement;
 import org.lealone.sql.router.Router;
 
 public class P2pRouter implements Router {
@@ -59,30 +56,19 @@ public class P2pRouter implements Router {
     protected P2pRouter() {
     }
 
-    private int executeDefineStatement(DefineStatement defineStatement) {
+    private int executeDefineStatement(StatementBase defineStatement) {
         Set<NetEndpoint> liveMembers;
         ServerSession currentSession = defineStatement.getSession();
         Database db = currentSession.getDatabase();
-        if (defineStatement instanceof DatabaseStatement) {
-            // TODO 需要细分哪些DatabaseStatement语句可以让普通用户执行
-            if (db == LealoneDatabase.getInstance()) {
-                liveMembers = Gossiper.instance.getLiveMembers();
-            } else {
-                // 生成合适的错误代码，只有用LealoneDatabase中的用户才能执行create/alter/drop database语句
-                throw DbException.get(ErrorCode.GENERAL_ERROR_1,
-                        "create/alter/drop database only allowed for the super user");
-            }
+        String[] hostIds = db.getHostIds();
+        if (hostIds.length == 0) {
+            throw DbException
+                    .throwInternalError("DB: " + db.getName() + ", Run Mode: " + db.getRunMode() + ", no hostIds");
         } else {
-            String[] hostIds = db.getHostIds();
-            if (hostIds.length == 0) {
-                throw DbException
-                        .throwInternalError("DB: " + db.getName() + ", Run Mode: " + db.getRunMode() + ", no hostIds");
-            } else {
-                liveMembers = new HashSet<>(hostIds.length);
-                TopologyMetaData metaData = P2pServer.instance.getTopologyMetaData();
-                for (String hostId : hostIds) {
-                    liveMembers.add(metaData.getEndpointForHostId(hostId));
-                }
+            liveMembers = new HashSet<>(hostIds.length);
+            TopologyMetaData metaData = P2pServer.instance.getTopologyMetaData();
+            for (String hostId : hostIds) {
+                liveMembers.add(metaData.getEndpointForHostId(hostId));
             }
         }
         List<String> initReplicationEndpoints = null;
@@ -122,8 +108,12 @@ public class P2pRouter implements Router {
 
     @Override
     public int executeUpdate(StatementBase statement) {
-        if ((statement instanceof DefineStatement) && !statement.isLocal()) {
-            return executeDefineStatement((DefineStatement) statement);
+        // CREATE/ALTER/DROP DATABASE语句在执行update时才知道涉及哪些节点
+        if (statement.isDatabaseStatement()) {
+            return statement.executeUpdate();
+        }
+        if (statement.isDDL() && !statement.isLocal()) {
+            return executeDefineStatement(statement);
         }
         return statement.executeUpdate();
     }
@@ -134,7 +124,28 @@ public class P2pRouter implements Router {
     }
 
     @Override
-    public String[] getHostIds(Database db) {
+    public String[] getHostIds(Database db, boolean alterDatabase) {
+        if (alterDatabase) {
+            String[] oldHostIds = db.getHostIds();
+            int size = oldHostIds.length;
+            List<NetEndpoint> oldReplicationEndpoints = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                oldReplicationEndpoints
+                        .add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(oldHostIds[i]));
+            }
+            List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getLiveReplicationEndpoints(db,
+                    new HashSet<>(oldReplicationEndpoints), Gossiper.instance.getLiveMembers());
+
+            size = newReplicationEndpoints.size();
+            String[] hostIds = new String[size];
+            int j = 0;
+            for (NetEndpoint e : newReplicationEndpoints) {
+                String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+                if (hostId != null)
+                    hostIds[j++] = hostId;
+            }
+            return hostIds;
+        }
         RunMode runMode = db.getRunMode();
         Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
         ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
@@ -188,8 +199,10 @@ public class P2pRouter implements Router {
     }
 
     @Override
-    public int createDatabase(Database db, ServerSession currentSession) {
+    public int executeDatabaseStatement(Database db, ServerSession currentSession, StatementBase statement) {
         Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
+        NetEndpoint localEndpoint = NetEndpoint.getLocalP2pEndpoint();
+        liveMembers.remove(localEndpoint);
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
         for (NetEndpoint e : liveMembers) {
@@ -202,10 +215,21 @@ public class P2pRouter implements Router {
             i++;
         }
 
+        String sql = null;
+        switch (statement.getType()) {
+        case SQLStatement.CREATE_DATABASE:
+            sql = db.getCreateSQL();
+            break;
+        case SQLStatement.DROP_DATABASE:
+        case SQLStatement.ALTER_DATABASE:
+            sql = statement.getSQL();
+            break;
+        }
+
         ReplicationSession rs = createReplicationSession(currentSession, sessions);
         Command c = null;
         try {
-            c = rs.createCommand(db.getCreateSQL(), -1);
+            c = rs.createCommand(sql, -1);
             return c.executeUpdate();
         } catch (Exception e) {
             throw DbException.convert(e);

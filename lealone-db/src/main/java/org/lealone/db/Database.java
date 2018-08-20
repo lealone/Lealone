@@ -1012,6 +1012,20 @@ public class Database implements DataHandler, DbObject {
         return session;
     }
 
+    public ServerSession createInternalSession() {
+        User admin = null;
+        for (User user : getAllUsers()) {
+            if (user.isAdmin()) {
+                admin = user;
+                break;
+            }
+        }
+        if (admin == null) {
+            DbException.throwInternalError("no admin");
+        }
+        return createSession(admin);
+    }
+
     public ServerSession getLastSession() {
         if (exclusiveSession != null) {
             return exclusiveSession;
@@ -2304,6 +2318,15 @@ public class Database implements DataHandler, DbObject {
     private java.sql.PreparedStatement psAddTableAlterHistoryRecord;
     private java.sql.PreparedStatement psGetTableAlterHistoryRecord;
     private java.sql.PreparedStatement psDeleteTableAlterHistoryRecord;
+
+    // 执行DROP DATABASE时调用这个方法，避免在删掉table_alter_history后还读它
+    public void cleanPreparedStatements() {
+        psGetVersion = null;
+        psUpdateVersion = null;
+        psAddTableAlterHistoryRecord = null;
+        psGetTableAlterHistoryRecord = null;
+        psDeleteTableAlterHistoryRecord = null;
+    }
 
     private void initDbObjectVersionTable() {
         try {

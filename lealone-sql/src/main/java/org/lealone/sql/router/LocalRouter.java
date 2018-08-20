@@ -17,6 +17,7 @@
  */
 package org.lealone.sql.router;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
@@ -45,13 +46,12 @@ public class LocalRouter implements Router {
     }
 
     @Override
-    public String[] getHostIds(Database db) {
+    public String[] getHostIds(Database db, boolean alterDatabase) {
         return new String[] { NetEndpoint.getLocalTcpHostAndPort() };
     }
 
     @Override
-    public int createDatabase(Database db, ServerSession currentSession) {
-        return 0;
+    public int executeDatabaseStatement(Database db, ServerSession currentSession, StatementBase statement) {
+        throw DbException.throwInternalError("executeDatabaseStatement");
     }
-
 }

@@ -17,7 +17,48 @@
  */
 package org.lealone.sql.ddl;
 
-//只是一个标记接口
-public interface DatabaseStatement {
+import org.lealone.api.ErrorCode;
+import org.lealone.common.exceptions.DbException;
+import org.lealone.db.Database;
+import org.lealone.db.LealoneDatabase;
+import org.lealone.db.ServerSession;
+import org.lealone.net.NetEndpoint;
+import org.lealone.sql.router.RouterHolder;
 
+public abstract class DatabaseStatement extends DefineStatement {
+
+    protected DatabaseStatement(ServerSession session) {
+        super(session);
+    }
+
+    @Override
+    public boolean isDatabaseStatement() {
+        return true;
+    }
+
+    protected void checkRight() {
+        checkRight(null);
+    }
+
+    protected void checkRight(Integer errorCode) {
+        // 只有用管理员连接到LealoneDatabase才能执行CREATE/ALTER/DROP DATABASE语句
+        if (!(LealoneDatabase.getInstance() == session.getDatabase() && session.getUser().isAdmin())) {
+            if (errorCode != null)
+                throw DbException.get(errorCode.intValue());
+            else
+                throw DbException.get(ErrorCode.GENERAL_ERROR_1,
+                        "create/alter/drop database only allowed for the super user");
+        }
+    }
+
+    protected boolean isTargetEndpoint(Database db) {
+        NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
+        return db.isTargetEndpoint(localEndpoint);
+    }
+
+    protected void executeDatabaseStatement(Database db) {
+        if (session.isRoot()) {
+            RouterHolder.getRouter().executeDatabaseStatement(db, session, this);
+        }
+    }
 }

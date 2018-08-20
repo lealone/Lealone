@@ -25,12 +25,14 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.sql.SQLStatement;
+import org.lealone.sql.router.RouterHolder;
+import org.lealone.storage.Storage;
 
 /**
  * This class represents the statement
  * ALTER DATABASE
  */
-public class AlterDatabase extends DefineStatement implements DatabaseStatement {
+public class AlterDatabase extends DatabaseStatement {
 
     private final Database db;
     private final Map<String, String> parameters;
@@ -53,8 +55,9 @@ public class AlterDatabase extends DefineStatement implements DatabaseStatement 
 
     @Override
     public int update() {
-        session.getUser().checkAdmin();
+        checkRight();
         synchronized (LealoneDatabase.getInstance().getLock(DbObjectType.DATABASE)) {
+            RunMode oldRunMode = db.getRunMode();
             if (runMode != null)
                 db.setRunMode(runMode);
             if (parameters != null)
@@ -62,13 +65,20 @@ public class AlterDatabase extends DefineStatement implements DatabaseStatement 
             if (replicationProperties != null)
                 db.setReplicationProperties(replicationProperties);
             LealoneDatabase.getInstance().updateMeta(session, db);
-            db.copy();
+            if (isTargetEndpoint(db)) {
+                db.copy();
+                if ((oldRunMode == RunMode.CLIENT_SERVER)
+                        && (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)) {
+                    new Thread(() -> {
+                        String[] hostIds = RouterHolder.getRouter().getHostIds(db, true);
+                        for (Storage storage : db.getStorages()) {
+                            storage.move(hostIds, runMode);
+                        }
+                    }, "Move Pages").start();
+                }
+            }
         }
+        executeDatabaseStatement(db);
         return 0;
-    }
-
-    @Override
-    public boolean isDatabaseStatement() {
-        return true;
     }
 }

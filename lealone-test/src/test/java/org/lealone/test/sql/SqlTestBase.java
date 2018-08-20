@@ -56,6 +56,16 @@ public class SqlTestBase extends TestBase {
         this.password = password;
     }
 
+    protected Throwable getRootCause(Throwable cause) {
+        Throwable root = cause;
+        while (true) {
+            if (root.getCause() == null)
+                break;
+            root = root.getCause();
+        }
+        return root;
+    }
+
     @Before
     public void setUpBefore() {
         try {
@@ -68,12 +78,7 @@ public class SqlTestBase extends TestBase {
             }
             stmt = conn.createStatement();
         } catch (Exception e) {
-            Throwable cause = e;
-            while (true) {
-                if (cause.getCause() == null)
-                    break;
-                cause = cause.getCause();
-            }
+            Throwable cause = getRootCause(e);
             if (cause instanceof SQLException) {
                 String dbName = this.dbName;
                 if (dbName == null)

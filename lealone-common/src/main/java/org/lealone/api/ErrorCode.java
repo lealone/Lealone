@@ -1926,6 +1926,8 @@ public class ErrorCode {
 
     public static final int CREATE_DATABASE_RIGHTS_REQUIRED = 90143;
 
+    public static final int CANNOT_DROP_LEALONE_DATABASE = 90144;
+
     // next are 90056, 90110, 90122, 90143
 
     private ErrorCode() {

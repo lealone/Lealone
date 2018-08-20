@@ -35,7 +35,7 @@ import org.lealone.sql.router.RouterHolder;
  * This class represents the statement
  * CREATE DATABASE
  */
-public class CreateDatabase extends DefineStatement implements DatabaseStatement {
+public class CreateDatabase extends DatabaseStatement {
 
     private final String dbName;
     private final boolean ifNotExists;
@@ -65,11 +65,8 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
 
     @Override
     public int update() {
+        checkRight(ErrorCode.CREATE_DATABASE_RIGHTS_REQUIRED);
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-        // 只有用管理员连接到LealoneDatabase才能执行CREATE DATABASE语句
-        if (!(lealoneDB == session.getDatabase() && session.getUser().isAdmin())) {
-            throw DbException.get(ErrorCode.CREATE_DATABASE_RIGHTS_REQUIRED);
-        }
         Database newDB;
         synchronized (lealoneDB.getLock(DbObjectType.DATABASE)) {
             if (lealoneDB.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
@@ -83,7 +80,7 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
             newDB.setReplicationProperties(replicationProperties);
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
-                String[] hostIds = RouterHolder.getRouter().getHostIds(newDB);
+                String[] hostIds = RouterHolder.getRouter().getHostIds(newDB, false);
                 if (hostIds != null && hostIds.length > 0)
                     newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
                 else
@@ -100,17 +97,13 @@ public class CreateDatabase extends DefineStatement implements DatabaseStatement
 
         // LealoneDatabase在启动过程中执行CREATE DATABASE时，不对数据库初始化
         if (!lealoneDB.isStarting()) {
-            if (session.isRoot()) {
-                RouterHolder.getRouter().createDatabase(newDB, session);
+            executeDatabaseStatement(newDB);
+            // 只有数据库真实所在的目标节点才需要初始化数据库，其他节点只需要在LealoneDatabase中有一条相应记录即可
+            if (isTargetEndpoint(newDB)) {
+                newDB.init();
+                newDB.createRootUserIfNotExists();
             }
-            newDB.init();
-            newDB.createRootUserIfNotExists();
         }
         return 0;
-    }
-
-    @Override
-    public boolean isDatabaseStatement() {
-        return true;
     }
 }

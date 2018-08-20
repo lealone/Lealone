@@ -8,6 +8,8 @@ package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
 
+import org.lealone.api.ErrorCode;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
@@ -24,27 +26,29 @@ import org.lealone.sql.SQLStatement;
 
 /**
  * This class represents the statement
- * DROP ALL OBJECTS
+ * DROP DATABASE
  * 
  * @author H2 Group
  * @author zhh
  */
-public class DropDatabase extends DefineStatement implements DatabaseStatement {
+public class DropDatabase extends DatabaseStatement {
 
-    private boolean dropAllObjects;
+    private final String dbName;
+    private boolean ifExists;
     private boolean deleteFiles;
 
-    public DropDatabase(ServerSession session) {
+    public DropDatabase(ServerSession session, String dbName) {
         super(session);
+        this.dbName = dbName;
     }
 
     @Override
     public int getType() {
-        return SQLStatement.DROP_ALL_OBJECTS;
+        return SQLStatement.DROP_DATABASE;
     }
 
-    public void setDropAllObjects(boolean b) {
-        this.dropAllObjects = b;
+    public void setIfExists(boolean ifExists) {
+        this.ifExists = ifExists;
     }
 
     public void setDeleteFiles(boolean b) {
@@ -53,21 +57,33 @@ public class DropDatabase extends DefineStatement implements DatabaseStatement {
 
     @Override
     public int update() {
+        checkRight();
+        if (LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
+            throw DbException.get(ErrorCode.CANNOT_DROP_LEALONE_DATABASE);
+        }
+        Database db;
         synchronized (LealoneDatabase.getInstance().getLock(DbObjectType.DATABASE)) {
-            if (dropAllObjects) {
-                dropAllObjects();
-            }
-            if (deleteFiles) {
-                session.getDatabase().setDeleteFilesOnDisconnect(true);
+            db = LealoneDatabase.getInstance().getDatabase(dbName);
+            if (db == null) {
+                if (!ifExists)
+                    throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
+            } else {
+                LealoneDatabase.getInstance().removeDatabaseObject(session, db);
+                if (isTargetEndpoint(db)) {
+                    dropAllObjects(db);
+                    if (deleteFiles) {
+                        session.getDatabase().setDeleteFilesOnDisconnect(true);
+                    }
+                }
             }
         }
+        executeDatabaseStatement(db);
         return 0;
     }
 
-    private void dropAllObjects() {
-        session.getUser().checkAdmin();
-        Database db = session.getDatabase();
+    private void dropAllObjects(Database db) {
         db.lockMeta(session);
+        db.cleanPreparedStatements();
         // TODO local temp tables are not removed
         for (Schema schema : db.getAllSchemas()) {
             if (schema.canDrop()) {
@@ -123,10 +139,5 @@ public class DropDatabase extends DefineStatement implements DatabaseStatement {
                 db.removeDatabaseObject(session, obj);
             }
         }
-    }
-
-    @Override
-    public boolean isDatabaseStatement() {
-        return true;
     }
 }

@@ -28,8 +28,7 @@ public interface Router {
 
     Result executeQuery(StatementBase statement, int maxRows);
 
-    String[] getHostIds(Database db);
+    String[] getHostIds(Database db, boolean alterDatabase);
 
-    int createDatabase(Database db, ServerSession currentSession);
-
+    int executeDatabaseStatement(Database db, ServerSession currentSession, StatementBase statement);
 }

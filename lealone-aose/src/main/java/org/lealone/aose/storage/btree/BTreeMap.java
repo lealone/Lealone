@@ -33,6 +33,7 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.Database;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
@@ -738,7 +739,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public synchronized void addLeafPage(ByteBuffer splitKey, ByteBuffer page) {
         if (splitKey == null) {
-            root = BTreePage.readLeafPage(this, page);
+            root = BTreePage.readPage(this, page);
             return;
         }
 
@@ -942,7 +943,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public void move(String[] targetEndpoints, RunMode runMode) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(targetEndpoints);
-        Session session = db.getLastSession();
+        // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
+        Session session = LealoneDatabase.getInstance().createInternalSession();
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
         try (DataBuffer p = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             root.movePage(p, getLocalEndpoint());

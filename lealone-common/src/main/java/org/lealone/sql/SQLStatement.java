@@ -210,9 +210,9 @@ public interface SQLStatement extends Command {
     int DROP_CONSTANT = 37;
 
     /**
-     * The type of a DROP ALL OBJECTS statement.
+     * The type of a DROP DATABASE statement.
      */
-    int DROP_ALL_OBJECTS = 38;
+    int DROP_DATABASE = 38;
 
     /**
      * The type of a DROP ALIAS statement.
