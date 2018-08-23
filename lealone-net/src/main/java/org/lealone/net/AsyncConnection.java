@@ -734,12 +734,12 @@ public class AsyncConnection implements Handler<Buffer> {
             break;
         }
         case Session.COMMAND_STORAGE_MOVE_PAGE: {
-            String mapName = transfer.readString();
-            // ByteBuffer splitKey = transfer.readByteBuffer();
+            String dbName = transfer.readString();
+            // mapName
+            transfer.readString();
             ByteBuffer page = transfer.readByteBuffer();
 
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            map.addLeafPage(null, page);
+            session.addRootPages(dbName, page);
             // writeResponseHeader(transfer, session, id);
             // transfer.flush();
             break;

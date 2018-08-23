@@ -536,12 +536,12 @@ public class ClientCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public void movePage(String mapName, ByteBuffer page) {
+    public void movePage(String dbName, String mapName, ByteBuffer page) {
         int id = session.getNextId();
         try {
             session.traceOperation("COMMAND_STORAGE_MOVE_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_PAGE);
-            transfer.writeString(mapName).writeByteBuffer(page);
+            transfer.writeString(dbName).writeString(mapName).writeByteBuffer(page);
             transfer.flush();
         } catch (Exception e) {
             session.handleException(e);

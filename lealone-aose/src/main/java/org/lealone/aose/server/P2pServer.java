@@ -581,13 +581,19 @@ public class P2pServer extends NotificationBroadcasterSupport
      */
     public List<NetEndpoint> getReplicationEndpoints(Database db, Set<NetEndpoint> oldReplicationEndpoints,
             Set<NetEndpoint> candidateEndpoints) {
+        return getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints, false);
+    }
+
+    public List<NetEndpoint> getReplicationEndpoints(Database db, Set<NetEndpoint> oldReplicationEndpoints,
+            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
         return ClusterMetaData.getReplicationStrategy(db).getReplicationEndpoints(oldReplicationEndpoints,
-                candidateEndpoints);
+                candidateEndpoints, includeOldReplicationEndpoints);
     }
 
     public List<NetEndpoint> getLiveReplicationEndpoints(Database db, Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints) {
-        List<NetEndpoint> endpoints = getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints);
+            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
+        List<NetEndpoint> endpoints = getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints,
+                includeOldReplicationEndpoints);
         List<NetEndpoint> liveEps = new ArrayList<>(endpoints.size());
         for (NetEndpoint endpoint : endpoints) {
             if (FailureDetector.instance.isAlive(endpoint))

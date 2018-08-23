@@ -43,6 +43,7 @@ import org.lealone.replication.ReplicationSession;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.router.Router;
+import org.lealone.storage.Storage;
 
 public class P2pRouter implements Router {
 
@@ -124,32 +125,12 @@ public class P2pRouter implements Router {
     }
 
     @Override
-    public String[] getHostIds(Database db, boolean alterDatabase) {
-        if (alterDatabase) {
-            String[] oldHostIds = db.getHostIds();
-            int size = oldHostIds.length;
-            List<NetEndpoint> oldReplicationEndpoints = new ArrayList<>(size);
-            for (int i = 0; i < size; i++) {
-                oldReplicationEndpoints
-                        .add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(oldHostIds[i]));
-            }
-            List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getLiveReplicationEndpoints(db,
-                    new HashSet<>(oldReplicationEndpoints), Gossiper.instance.getLiveMembers());
-
-            size = newReplicationEndpoints.size();
-            String[] hostIds = new String[size];
-            int j = 0;
-            for (NetEndpoint e : newReplicationEndpoints) {
-                String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
-                if (hostId != null)
-                    hostIds[j++] = hostId;
-            }
-            return hostIds;
-        }
+    public String[] getHostIds(Database db) {
         RunMode runMode = db.getRunMode();
         Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
         ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
         int size = liveMembers.size();
+        size = liveMembers.size();
         if (runMode == RunMode.CLIENT_SERVER) {
             int i = random.nextInt(size);
             NetEndpoint addr = list.get(i);
@@ -275,4 +256,35 @@ public class P2pRouter implements Router {
         return rs;
     }
 
+    @Override
+    public void replicate(Database db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationEndpoints) {
+        new Thread(() -> {
+            for (Storage storage : db.getStorages()) {
+                storage.replicate(newReplicationEndpoints, newRunMode);
+            }
+        }, "Replicate Pages").start();
+    }
+
+    @Override
+    public String[] getReplicationEndpoints(Database db) {
+        String[] oldHostIds = db.getHostIds();
+        int size = oldHostIds.length;
+        List<NetEndpoint> oldReplicationEndpoints = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            oldReplicationEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(oldHostIds[i]));
+        }
+        List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getLiveReplicationEndpoints(db,
+                new HashSet<>(oldReplicationEndpoints), Gossiper.instance.getLiveMembers(), true);
+
+        size = newReplicationEndpoints.size();
+        String[] hostIds = new String[size];
+        int j = 0;
+        for (NetEndpoint e : newReplicationEndpoints) {
+            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+            if (hostId != null)
+                hostIds[j++] = hostId;
+        }
+
+        return hostIds;
+    }
 }

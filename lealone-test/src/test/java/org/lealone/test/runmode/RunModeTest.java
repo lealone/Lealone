@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.misc;
+package org.lealone.test.runmode;
 
 import org.junit.Test;
 import org.lealone.db.LealoneDatabase;

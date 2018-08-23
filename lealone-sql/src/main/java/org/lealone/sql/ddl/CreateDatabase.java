@@ -80,7 +80,7 @@ public class CreateDatabase extends DatabaseStatement {
             newDB.setReplicationProperties(replicationProperties);
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
-                String[] hostIds = RouterHolder.getRouter().getHostIds(newDB, false);
+                String[] hostIds = RouterHolder.getRouter().getHostIds(newDB);
                 if (hostIds != null && hostIds.length > 0)
                     newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
                 else

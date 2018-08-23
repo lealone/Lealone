@@ -37,7 +37,7 @@ public interface StorageCommand extends Command, AutoCloseable {
     Object executeAppend(String replicationName, String mapName, ByteBuffer value,
             CommandUpdateResult commandUpdateResult);
 
-    public default void movePage(String mapName, ByteBuffer page) {
+    public default void movePage(String dbName, String mapName, ByteBuffer page) {
     }
 
     public default ByteBuffer readRemotePage(String mapName, ByteBuffer key, boolean last) {

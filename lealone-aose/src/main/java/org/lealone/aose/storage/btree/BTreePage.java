@@ -1136,19 +1136,6 @@ public class BTreePage {
         }
     }
 
-    void movePage2(DataBuffer buff, NetEndpoint localEndpoint) {
-        String hostAndPort = localEndpoint.getHostAndPort();
-        buff.putStringData(hostAndPort, hostAndPort.length());
-        writeReplicationHostIds(buff);
-        StorageDataType kt = map.getKeyType();
-        StorageDataType vt = map.getValueType();
-        buff.putInt(keys.length);
-        for (int i = 0; i < keys.length; i++) {
-            kt.write(buff, keys[i]);
-            vt.write(buff, values[i]);
-        }
-    }
-
     int movePage(DataBuffer buff, NetEndpoint localEndpoint) {
         int start = buff.position();
         int keyLength = keys.length;
@@ -1215,7 +1202,6 @@ public class BTreePage {
 
         int chunkId = 1;
         int maxLength = DataUtils.PAGE_LARGE;
-        int offset = 0;
         int start = buff.position();
         int pageLength = buff.getInt();
         if (pageLength > maxLength || pageLength < 4) {
@@ -1223,9 +1209,8 @@ public class BTreePage {
                     "File corrupted in chunk {0}, expected page length 4..{1}, got {2}", chunkId, maxLength,
                     pageLength);
         }
-        buff.limit(start + pageLength);
         short check = buff.getShort();
-        int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
+        int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(start)
                 ^ DataUtils.getCheckValue(pageLength);
         if (check != (short) checkTest) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,

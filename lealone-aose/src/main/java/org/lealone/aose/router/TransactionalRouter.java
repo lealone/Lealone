@@ -19,6 +19,7 @@ package org.lealone.aose.router;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.sql.StatementBase;
@@ -96,12 +97,22 @@ public class TransactionalRouter implements Router {
     }
 
     @Override
-    public String[] getHostIds(Database db, boolean alterDatabase) {
-        return nestedRouter.getHostIds(db, alterDatabase);
+    public String[] getHostIds(Database db) {
+        return nestedRouter.getHostIds(db);
     }
 
     @Override
     public int executeDatabaseStatement(Database db, ServerSession currentSession, StatementBase statement) {
         return nestedRouter.executeDatabaseStatement(db, currentSession, statement);
+    }
+
+    @Override
+    public void replicate(Database db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationEndpoints) {
+        nestedRouter.replicate(db, oldRunMode, newRunMode, newReplicationEndpoints);
+    }
+
+    @Override
+    public String[] getReplicationEndpoints(Database db) {
+        return nestedRouter.getReplicationEndpoints(db);
     }
 }

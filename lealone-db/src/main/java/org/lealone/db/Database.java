@@ -184,11 +184,13 @@ public class Database implements DataHandler, DbObject {
         this.id = id;
         this.name = name;
         this.storageName = getStorageName();
-        this.parameters = parameters;
-        if (parameters != null)
+        if (parameters != null) {
             dbSettings = DbSettings.getInstance(parameters);
-        else
+            this.parameters = parameters;
+        } else {
             dbSettings = DbSettings.getDefaultSettings();
+            this.parameters = new HashMap<>();
+        }
         persistent = dbSettings.persistent;
         compareMode = CompareMode.getInstance(null, 0, false);
         if (dbSettings.mode != null) {
@@ -300,6 +302,10 @@ public class Database implements DataHandler, DbObject {
         return parameters;
     }
 
+    public void alterParameters(Map<String, String> newParameters) {
+        parameters.putAll(newParameters);
+    }
+
     public boolean isShardingMode() {
         return runMode == RunMode.SHARDING;
     }
@@ -337,9 +343,16 @@ public class Database implements DataHandler, DbObject {
         initTraceSystem();
         openDatabase();
         addShutdownHook();
-        initDbObjectVersionTable();
+
+        // LealoneDatabase中的表结构是固定的，所以不需要记录表结构修改历史
+        if (!isLealoneDatabase())
+            initDbObjectVersionTable();
 
         opened();
+    }
+
+    private boolean isLealoneDatabase() {
+        return LealoneDatabase.ID == id;
     }
 
     private void initTraceSystem() {
@@ -2204,7 +2217,7 @@ public class Database implements DataHandler, DbObject {
         return sql.toString();
     }
 
-    private static void appendMap(StatementBuilder sql, Map<String, String> map) {
+    public static void appendMap(StatementBuilder sql, Map<String, String> map) {
         sql.resetCount();
         sql.append("(");
         for (Entry<String, String> e : map.entrySet()) {
@@ -2355,6 +2368,8 @@ public class Database implements DataHandler, DbObject {
     }
 
     public synchronized void addTableAlterHistoryRecord(int id, int version, int alterType, String columns) {
+        if (psAddTableAlterHistoryRecord == null)
+            return;
         try {
             psAddTableAlterHistoryRecord.setInt(1, id);
             psAddTableAlterHistoryRecord.setInt(2, version);
@@ -2367,6 +2382,8 @@ public class Database implements DataHandler, DbObject {
     }
 
     public synchronized void deleteTableAlterHistoryRecord(int id) {
+        if (psDeleteTableAlterHistoryRecord == null)
+            return;
         try {
             psDeleteTableAlterHistoryRecord.setInt(1, id);
             psDeleteTableAlterHistoryRecord.executeUpdate();

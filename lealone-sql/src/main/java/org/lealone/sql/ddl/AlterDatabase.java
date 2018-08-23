@@ -17,8 +17,13 @@
  */
 package org.lealone.sql.ddl;
 
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 
+import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.StatementBuilder;
+import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
@@ -26,7 +31,6 @@ import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.router.RouterHolder;
-import org.lealone.storage.Storage;
 
 /**
  * This class represents the statement
@@ -61,23 +65,68 @@ public class AlterDatabase extends DatabaseStatement {
             if (runMode != null)
                 db.setRunMode(runMode);
             if (parameters != null)
-                ; // TODO
+                db.alterParameters(parameters);
             if (replicationProperties != null)
                 db.setReplicationProperties(replicationProperties);
+
+            boolean clientServer2ReplicationMode = false;
+            boolean clientServer2ShardingMode = false;
+            if (oldRunMode == RunMode.CLIENT_SERVER) {
+                if (runMode == RunMode.REPLICATION)
+                    clientServer2ReplicationMode = true;
+                else if (runMode == RunMode.SHARDING)
+                    clientServer2ShardingMode = true;
+            }
+
+            String[] newHostIds = null;
+            if (clientServer2ReplicationMode) {
+                if (session.isRoot()) {
+                    String[] oldHostIds = db.getHostIds();
+                    if (parameters != null && parameters.containsKey("hostIds")) {
+                        newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
+                    } else {
+                        newHostIds = RouterHolder.getRouter().getReplicationEndpoints(db);
+                    }
+
+                    String hostIds = StringUtils.arrayCombine(oldHostIds, ',') + ","
+                            + StringUtils.arrayCombine(newHostIds, ',');
+                    db.getParameters().put("hostIds", hostIds);
+
+                    StatementBuilder sql = new StatementBuilder("ALTER DATABASE ");
+                    sql.append(db.getShortName());
+                    sql.append(" RUN MODE ").append(runMode.toString());
+                    if (replicationProperties != null && !replicationProperties.isEmpty()) {
+                        sql.append(" WITH REPLICATION STRATEGY");
+                        Database.appendMap(sql, replicationProperties);
+                    }
+                    sql.append(" PARAMETERS");
+                    Database.appendMap(sql, db.getParameters());
+                    this.sql = sql.toString();
+                } else {
+                    if (isTargetEndpoint(db)) {
+                        String[] oldHostIds = db.getHostIds();
+                        HashSet<String> oldSet = new HashSet<>(Arrays.asList(oldHostIds));
+                        if (parameters != null && parameters.containsKey("hostIds")) {
+                            String[] hostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
+                            HashSet<String> newSet = new HashSet<>(Arrays.asList(hostIds));
+                            newSet.removeAll(oldSet);
+                            newHostIds = newSet.toArray(new String[0]);
+                        } else {
+                            DbException.throwInternalError();
+                        }
+                    }
+                }
+            }
+
             LealoneDatabase.getInstance().updateMeta(session, db);
             if (isTargetEndpoint(db)) {
                 db.copy();
-                if ((oldRunMode == RunMode.CLIENT_SERVER)
-                        && (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)) {
-                    new Thread(() -> {
-                        String[] hostIds = RouterHolder.getRouter().getHostIds(db, true);
-                        for (Storage storage : db.getStorages()) {
-                            storage.move(hostIds, runMode);
-                        }
-                    }, "Move Pages").start();
+                if (clientServer2ReplicationMode || clientServer2ShardingMode) {
+                    RouterHolder.getRouter().replicate(db, oldRunMode, runMode, newHostIds);
                 }
             }
         }
+
         executeDatabaseStatement(db);
         return 0;
     }

@@ -18,6 +18,7 @@
 package org.lealone.sql.router;
 
 import org.lealone.db.Database;
+import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.sql.StatementBase;
@@ -28,7 +29,14 @@ public interface Router {
 
     Result executeQuery(StatementBase statement, int maxRows);
 
-    String[] getHostIds(Database db, boolean alterDatabase);
+    String[] getHostIds(Database db);
 
     int executeDatabaseStatement(Database db, ServerSession currentSession, StatementBase statement);
+
+    default void replicate(Database db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationEndpoints) {
+    }
+
+    default String[] getReplicationEndpoints(Database db) {
+        return new String[0];
+    }
 }

@@ -45,8 +45,8 @@ public interface Storage {
 
     Set<String> getMapNames();
 
-    public default void move(String[] targetEndpoints, RunMode runMode) {
-        throw DbException.getUnsupportedException("move");
+    public default void replicate(String[] targetEndpoints, RunMode runMode) {
+        throw DbException.getUnsupportedException("replicate");
     }
 
     public default void drop() {

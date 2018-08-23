@@ -39,7 +39,7 @@ public class LocalStrategy extends AbstractReplicationStrategy {
      */
     @Override
     public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints) {
+            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
         ArrayList<NetEndpoint> l = new ArrayList<NetEndpoint>(1);
         l.add(ConfigDescriptor.getLocalEndpoint());
         return l;
@@ -47,7 +47,8 @@ public class LocalStrategy extends AbstractReplicationStrategy {
 
     @Override
     public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints) {
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
+            boolean includeOldReplicationEndpoints) {
         return Collections.singletonList(ConfigDescriptor.getLocalEndpoint());
     }
 

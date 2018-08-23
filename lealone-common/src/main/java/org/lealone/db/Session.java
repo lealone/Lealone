@@ -7,6 +7,7 @@
 package org.lealone.db;
 
 import java.io.Closeable;
+import java.nio.ByteBuffer;
 
 import org.lealone.common.trace.Trace;
 import org.lealone.sql.ParsedStatement;
@@ -185,6 +186,8 @@ public interface Session extends Closeable, Transaction.Participant {
     boolean isShardingMode();
 
     StorageMap<Object, Object> getStorageMap(String mapName);
+
+    void addRootPages(String dbName, ByteBuffer rootPages);
 
     int getNextId();
 

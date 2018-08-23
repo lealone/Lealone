@@ -60,7 +60,8 @@ public abstract class AbstractReplicationStrategy {
      * @return a copy of the natural endpoints for the given token
      */
     public abstract List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints);
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
+            boolean includeOldReplicationEndpoints);
 
     /**
      * calculate the RF based on strategy_options. When overwriting, ensure that this get()
@@ -73,9 +74,10 @@ public abstract class AbstractReplicationStrategy {
     public abstract void validateOptions() throws ConfigException;
 
     public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints) {
+            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
         TopologyMetaData tm = metaData.cachedOnlyTokenMap();
-        return calculateReplicationEndpoints(tm, oldReplicationEndpoints, candidateEndpoints);
+        return calculateReplicationEndpoints(tm, oldReplicationEndpoints, candidateEndpoints,
+                includeOldReplicationEndpoints);
     }
 
     /*

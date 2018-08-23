@@ -85,7 +85,8 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
     @Override
     @SuppressWarnings("serial")
     public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints) {
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
+            boolean includeOldReplicationEndpoints) {
         // we want to preserve insertion order so that the first added endpoint becomes primary
         Set<NetEndpoint> replicas = new LinkedHashSet<>();
         int totalReplicas = 0;
@@ -95,6 +96,9 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
             totalReplicas += dc.getValue();
             dcReplicas.put(dc.getKey(), new HashSet<NetEndpoint>(dc.getValue()));
         }
+
+        if (includeOldReplicationEndpoints)
+            totalReplicas -= oldReplicationEndpoints.size();
 
         Topology topology = metaData.getTopology();
         // all endpoints in each DC, so we can check when we have exhausted all the members of a DC
@@ -155,7 +159,7 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         // 不够时，从原来的复制节点中取
         if (!oldReplicationEndpoints.isEmpty() && replicas.size() < totalReplicas) {
             List<NetEndpoint> oldEndpoints = calculateReplicationEndpoints(metaData, new HashSet<>(0),
-                    oldReplicationEndpoints);
+                    oldReplicationEndpoints, includeOldReplicationEndpoints);
 
             Iterator<NetEndpoint> old = oldEndpoints.iterator();
             while (replicas.size() < totalReplicas && old.hasNext()) {

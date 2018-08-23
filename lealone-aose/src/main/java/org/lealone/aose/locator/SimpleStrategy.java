@@ -42,8 +42,11 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
 
     @Override
     public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints) {
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
+            boolean includeOldReplicationEndpoints) {
         int replicas = getReplicationFactor();
+        if (includeOldReplicationEndpoints)
+            replicas -= oldReplicationEndpoints.size();
         ArrayList<String> hostIds = metaData.sortedHostIds();
         List<NetEndpoint> endpoints = new ArrayList<NetEndpoint>(replicas);
 

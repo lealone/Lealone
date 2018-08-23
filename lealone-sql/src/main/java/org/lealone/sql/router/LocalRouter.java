@@ -45,7 +45,7 @@ public class LocalRouter implements Router {
     }
 
     @Override
-    public String[] getHostIds(Database db, boolean alterDatabase) {
+    public String[] getHostIds(Database db) {
         return new String[] { NetEndpoint.getLocalTcpHostAndPort() };
     }
 

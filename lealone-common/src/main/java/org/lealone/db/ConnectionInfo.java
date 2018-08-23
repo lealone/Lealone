@@ -351,17 +351,21 @@ public class ConnectionInfo implements Cloneable {
         userPasswordHash = hashPassword(passwordHash, user, password);
     }
 
-    private static byte[] hashPassword(boolean passwordHash, String userName, char[] password) {
+    private static byte[] hashPassword(boolean passwordHash, String userName, char[] passwordChars) {
         if (passwordHash) {
-            return StringUtils.convertHexToBytes(new String(password));
+            return StringUtils.convertHexToBytes(new String(passwordChars));
         }
+        return createUserPasswordHash(userName, passwordChars);
+    }
+
+    public static byte[] createUserPasswordHash(String userName, char[] passwordChars) {
         // 不能用用户名和密码组成hash，否则重命名用户后将不能通过原来的密码登录
         // TODO 如果不用固定的名称是否还有更好办法？
         userName = Constants.PROJECT_NAME;
-        if (userName.length() == 0 && password.length == 0) {
+        if (userName.length() == 0 && passwordChars.length == 0) {
             return new byte[0];
         }
-        return SHA256.getKeyPasswordHash(userName, password);
+        return SHA256.getKeyPasswordHash(userName, passwordChars);
     }
 
     /**

@@ -34,7 +34,6 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
@@ -941,16 +940,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return null;
     }
 
-    public void move(String[] targetEndpoints, RunMode runMode) {
-        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(targetEndpoints);
-        // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
-        Session session = LealoneDatabase.getInstance().createInternalSession();
-        ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
-        try (DataBuffer p = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
-            root.movePage(p, getLocalEndpoint());
-            ByteBuffer pageBuffer = p.getAndFlipBuffer();
-            c.movePage(getName(), pageBuffer);
-        }
+    public void replicateRootPage(DataBuffer p) {
+        root.movePage(p, NetEndpoint.getLocalTcpEndpoint());
     }
 
     @Override
@@ -985,20 +976,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    // private void movePage2(BTreePage p, String targetEndpoint) {
-    // List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(new String[] { targetEndpoint });
-    // Session session = db.getLastSession();
-    // ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
-    // try (DataBuffer buff = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
-    // p.movePage(buff, getLocalEndpoint());
-    // ByteBuffer pageBuffer = buff.getAndFlipBuffer();
-    // c.movePage(getName(), pageBuffer);
-    // }
-    // }
-
     BTreePage readRemotePage(PageReference ref, final String hostId) {
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(new String[] { hostId });
-        Session session = db.getLastSession();
+        Session session = LealoneDatabase.getInstance().createInternalSession();
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
         try (DataBuffer buff = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = buff.write(keyType, ref.key);
