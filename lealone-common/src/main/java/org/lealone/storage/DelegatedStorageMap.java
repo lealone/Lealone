@@ -229,4 +229,9 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     public ByteBuffer readPage(ByteBuffer key, boolean last) {
         return map.readPage(key, last);
     }
+
+    @Override
+    public void setRootPage(ByteBuffer buff) {
+        map.setRootPage(buff);
+    }
 }

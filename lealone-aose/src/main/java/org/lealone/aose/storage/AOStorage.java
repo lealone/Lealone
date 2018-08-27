@@ -227,7 +227,7 @@ public class AOStorage extends StorageBase {
                 replicateRootPage(db, map, p, oldEndpoints, runMode);
             }
             ByteBuffer pageBuffer = p.getAndFlipBuffer();
-            c.movePage(db.getShortName(), "", pageBuffer);
+            c.replicateRootPages(db.getShortName(), pageBuffer);
         }
     }
 

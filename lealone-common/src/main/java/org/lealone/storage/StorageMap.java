@@ -236,4 +236,6 @@ public interface StorageMap<K, V> extends ReplicationMap {
     public default ByteBuffer readPage(ByteBuffer key, boolean last) {
         throw DbException.getUnsupportedException("readPage");
     }
+
+    void setRootPage(ByteBuffer buff);
 }

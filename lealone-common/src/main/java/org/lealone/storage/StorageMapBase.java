@@ -26,8 +26,8 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
-import org.lealone.storage.type.StorageDataType;
 import org.lealone.storage.type.ObjectDataType;
+import org.lealone.storage.type.StorageDataType;
 
 public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
 
@@ -127,4 +127,8 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         return (StorageMap<Object, Object>) this;
     }
 
+    @Override
+    public void setRootPage(ByteBuffer buff) {
+        throw DbException.getUnsupportedException("setRootPage");
+    }
 }

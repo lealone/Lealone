@@ -1138,7 +1138,7 @@ public class BTreePage {
         }
     }
 
-    int movePage(DataBuffer buff, NetEndpoint localEndpoint) {
+    int replicatePage(DataBuffer buff, NetEndpoint localEndpoint) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = children != null ? DataUtils.PAGE_TYPE_NODE : DataUtils.PAGE_TYPE_LEAF;
@@ -1283,7 +1283,7 @@ public class BTreePage {
         return p;
     }
 
-    void readRemotePags() {
+    void readRemotePages() {
         for (int i = 0, length = children.length; i < length; i++) {
             final int index = i;
             Callable<BTreePage> task = new Callable<BTreePage>() {

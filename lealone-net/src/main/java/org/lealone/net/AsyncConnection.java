@@ -733,17 +733,15 @@ public class AsyncConnection implements Handler<Buffer> {
             // transfer.flush();
             break;
         }
-        case Session.COMMAND_STORAGE_MOVE_PAGE: {
+        case Session.COMMAND_STORAGE_REPLICATE_ROOT_PAGES: {
             final String dbName = transfer.readString();
-            // mapName
-            transfer.readString();
-            final ByteBuffer page = transfer.readByteBuffer();
+            final ByteBuffer rootPages = transfer.readByteBuffer();
             final Session s = session;
             new Thread(() -> {
-                s.addRootPages(dbName, page);
-            }, "Add Root Pages").start();
+                s.replicateRootPages(dbName, rootPages);
+            }, "Replicate Root Pages").start();
 
-            // session.addRootPages(dbName, page);
+            // session.replicateRootPages(dbName, rootPages);
             // writeResponseHeader(transfer, session, id);
             // transfer.flush();
             break;

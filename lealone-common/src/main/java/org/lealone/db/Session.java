@@ -80,7 +80,7 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE = 180;
     public static final int COMMAND_STORAGE_MOVE_LEAF_PAGE = 181;
     public static final int COMMAND_STORAGE_REMOVE_LEAF_PAGE = 182;
-    public static final int COMMAND_STORAGE_MOVE_PAGE = 183;
+    public static final int COMMAND_STORAGE_REPLICATE_ROOT_PAGES = 183;
     public static final int COMMAND_STORAGE_READ_PAGE = 184;
 
     public static final int COMMAND_STORAGE_MESSAGE = 10000;
@@ -187,7 +187,7 @@ public interface Session extends Closeable, Transaction.Participant {
 
     StorageMap<Object, Object> getStorageMap(String mapName);
 
-    void addRootPages(String dbName, ByteBuffer rootPages);
+    void replicateRootPages(String dbName, ByteBuffer rootPages);
 
     int getNextId();
 

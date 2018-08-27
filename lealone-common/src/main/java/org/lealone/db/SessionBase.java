@@ -63,8 +63,8 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void addRootPages(String dbName, ByteBuffer rootPages) {
-        throw DbException.getUnsupportedException("addRootPages");
+    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
+        throw DbException.getUnsupportedException("replicateRootPages");
     }
 
     @Override

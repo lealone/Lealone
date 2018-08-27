@@ -1348,7 +1348,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public void addRootPages(String dbName, ByteBuffer rootPages) {
+    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
         if (!database.isInitialized()) {
             database.init();
@@ -1357,7 +1357,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         for (int i = 0; i < size; i++) {
             String mapName = ValueString.type.read(rootPages);
             StorageMap<?, ?> map = database.getStorageMap(mapName);
-            map.addLeafPage(null, rootPages);
+            map.setRootPage(rootPages);
             if (i == 0) {
                 database = database.copy();
             }

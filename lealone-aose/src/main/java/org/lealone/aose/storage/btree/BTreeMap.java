@@ -741,14 +741,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public synchronized void addLeafPage(ByteBuffer splitKey, ByteBuffer page) {
-        if (splitKey == null) {
-            root = BTreePage.readPage(this, page);
-            if (!root.isLeaf() && !getName().endsWith("_0")) { // 只异步读非SYS表
-                root.readRemotePags();
-            }
-            return;
-        }
-
         BTreePage p = root;
         Object k = keyType.read(splitKey);
         if (p.isLeaf()) {
@@ -948,7 +940,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public void replicateRootPage(DataBuffer p) {
-        root.movePage(p, NetEndpoint.getLocalTcpEndpoint());
+        root.replicatePage(p, NetEndpoint.getLocalTcpEndpoint());
     }
 
     public void setOldEndpoints(String[] oldEndpoints) {
@@ -1065,7 +1057,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private ByteBuffer movePage(BTreePage p) {
         try (DataBuffer buff = DataBuffer.create()) {
-            p.movePage(buff, getLocalEndpoint());
+            p.replicatePage(buff, getLocalEndpoint());
             ByteBuffer pageBuffer = buff.getAndFlipBuffer();
             return pageBuffer.slice();
         }
@@ -1081,6 +1073,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             ByteBuffer keyBuffer = buff.write(keyType, ref.key);
             ByteBuffer page = c.readRemotePage(getName(), keyBuffer, ref.last);
             return BTreePage.readPage(this, page);
+        }
+    }
+
+    @Override
+    public synchronized void setRootPage(ByteBuffer buff) {
+        root = BTreePage.readPage(this, buff);
+        if (!root.isLeaf() && !getName().endsWith("_0")) { // 只异步读非SYS表
+            root.readRemotePages();
         }
     }
 }

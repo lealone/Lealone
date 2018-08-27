@@ -536,12 +536,12 @@ public class ClientCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public void movePage(String dbName, String mapName, ByteBuffer page) {
+    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
         int id = session.getNextId();
         try {
-            session.traceOperation("COMMAND_STORAGE_MOVE_PAGE", id);
-            transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_PAGE);
-            transfer.writeString(dbName).writeString(mapName).writeByteBuffer(page);
+            session.traceOperation("COMMAND_STORAGE_REPLICATE_ROOT_PAGES", id);
+            transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_REPLICATE_ROOT_PAGES);
+            transfer.writeString(dbName).writeByteBuffer(rootPages);
             transfer.flush();
         } catch (Exception e) {
             session.handleException(e);

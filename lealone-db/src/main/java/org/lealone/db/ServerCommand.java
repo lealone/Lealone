@@ -96,9 +96,8 @@ public class ServerCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public void movePage(String dbName, String mapName, ByteBuffer page) {
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        map.addLeafPage(null, page);
+    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
+        session.replicateRootPages(dbName, rootPages);
     }
 
     @Override
