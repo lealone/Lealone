@@ -351,7 +351,9 @@ public class BTreeStorage {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         } else if (ref != null && pos < 0) {
             String hostId = findHostId(pos);
-            return readRemotePage(ref, hostId);
+            BTreePage p = readRemotePage(ref, hostId);
+            ref.page = p;
+            return p;
         }
 
         // BTreePage p = cache == null ? null : cache.get(pos);

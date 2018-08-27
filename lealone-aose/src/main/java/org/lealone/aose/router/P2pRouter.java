@@ -130,7 +130,6 @@ public class P2pRouter implements Router {
         Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
         ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
         int size = liveMembers.size();
-        size = liveMembers.size();
         if (runMode == RunMode.CLIENT_SERVER) {
             int i = random.nextInt(size);
             NetEndpoint addr = list.get(i);
@@ -260,7 +259,7 @@ public class P2pRouter implements Router {
     public void replicate(Database db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationEndpoints) {
         new Thread(() -> {
             for (Storage storage : db.getStorages()) {
-                storage.replicate(newReplicationEndpoints, newRunMode);
+                storage.replicate(db, newReplicationEndpoints, newRunMode);
             }
         }, "Replicate Pages").start();
     }
@@ -284,7 +283,37 @@ public class P2pRouter implements Router {
             if (hostId != null)
                 hostIds[j++] = hostId;
         }
-
         return hostIds;
+    }
+
+    @Override
+    public void sharding(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
+            String[] newEndpoints) {
+        new Thread(() -> {
+            for (Storage storage : db.getStorages()) {
+                storage.sharding(db, oldEndpoints, newEndpoints, newRunMode);
+            }
+        }, "Sharding Pages").start();
+    }
+
+    @Override
+    public String[] getShardingEndpoints(Database db) {
+        HashSet<NetEndpoint> oldEndpoints = new HashSet<>();
+        for (String hostId : db.getHostIds()) {
+            oldEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
+        }
+        Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
+        liveMembers.removeAll(oldEndpoints);
+        ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
+        int size = liveMembers.size();
+        AbstractReplicationStrategy replicationStrategy = ClusterMetaData.getReplicationStrategy(db);
+        int replicationFactor = replicationStrategy.getReplicationFactor();
+        Map<String, String> parameters = db.getParameters();
+        int nodes = replicationFactor + 2;
+        if (parameters != null && parameters.containsKey("nodes")) {
+            nodes = Integer.parseInt(parameters.get("nodes"));
+        }
+        nodes -= db.getHostIds().length;
+        return getHostIds(list, size, nodes);
     }
 }

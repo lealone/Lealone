@@ -11,7 +11,9 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
 
+import org.lealone.aose.storage.AOStorageService;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -1034,7 +1036,7 @@ public class BTreePage {
         /**
          * The page, if in memory, or null.
          */
-        final BTreePage page;
+        BTreePage page;
 
         /**
          * The position, if known, or 0.
@@ -1279,5 +1281,19 @@ public class BTreePage {
         p.replicationHostIds = replicationHostIds;
         p.remoteHostId = remoteHostId;
         return p;
+    }
+
+    void readRemotePags() {
+        for (int i = 0, length = children.length; i < length; i++) {
+            final int index = i;
+            Callable<BTreePage> task = new Callable<BTreePage>() {
+                @Override
+                public BTreePage call() throws Exception {
+                    BTreePage p = getChildPage(index);
+                    return p;
+                }
+            };
+            AOStorageService.addTask(task);
+        }
     }
 }

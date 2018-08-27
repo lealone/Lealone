@@ -31,6 +31,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.router.RouterHolder;
+import org.lealone.storage.Storage;
 
 /**
  * This class represents the statement
@@ -71,21 +72,29 @@ public class AlterDatabase extends DatabaseStatement {
 
             boolean clientServer2ReplicationMode = false;
             boolean clientServer2ShardingMode = false;
+            boolean replication2ShardingMode = false;
             if (oldRunMode == RunMode.CLIENT_SERVER) {
                 if (runMode == RunMode.REPLICATION)
                     clientServer2ReplicationMode = true;
                 else if (runMode == RunMode.SHARDING)
                     clientServer2ShardingMode = true;
+            } else if (oldRunMode == RunMode.REPLICATION) {
+                if (runMode == RunMode.SHARDING)
+                    replication2ShardingMode = true;
             }
 
             String[] newHostIds = null;
-            if (clientServer2ReplicationMode) {
+            String[] oldHostIds = null;
+            if (clientServer2ReplicationMode || clientServer2ShardingMode || replication2ShardingMode) {
                 if (session.isRoot()) {
-                    String[] oldHostIds = db.getHostIds();
+                    oldHostIds = db.getHostIds();
                     if (parameters != null && parameters.containsKey("hostIds")) {
                         newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
                     } else {
-                        newHostIds = RouterHolder.getRouter().getReplicationEndpoints(db);
+                        if (clientServer2ReplicationMode)
+                            newHostIds = RouterHolder.getRouter().getReplicationEndpoints(db);
+                        else
+                            newHostIds = RouterHolder.getRouter().getShardingEndpoints(db);
                     }
 
                     String hostIds = StringUtils.arrayCombine(oldHostIds, ',') + ","
@@ -104,7 +113,7 @@ public class AlterDatabase extends DatabaseStatement {
                     this.sql = sql.toString();
                 } else {
                     if (isTargetEndpoint(db)) {
-                        String[] oldHostIds = db.getHostIds();
+                        oldHostIds = db.getHostIds();
                         HashSet<String> oldSet = new HashSet<>(Arrays.asList(oldHostIds));
                         if (parameters != null && parameters.containsKey("hostIds")) {
                             String[] hostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
@@ -120,9 +129,14 @@ public class AlterDatabase extends DatabaseStatement {
 
             LealoneDatabase.getInstance().updateMeta(session, db);
             if (isTargetEndpoint(db)) {
-                db.copy();
-                if (clientServer2ReplicationMode || clientServer2ShardingMode) {
-                    RouterHolder.getRouter().replicate(db, oldRunMode, runMode, newHostIds);
+                for (Storage storage : db.getStorages()) {
+                    storage.save();
+                }
+                Database db2 = db.copy();
+                if (clientServer2ReplicationMode) {
+                    RouterHolder.getRouter().replicate(db2, oldRunMode, runMode, newHostIds);
+                } else if (clientServer2ShardingMode || replication2ShardingMode) {
+                    RouterHolder.getRouter().sharding(db2, oldRunMode, runMode, oldHostIds, newHostIds);
                 }
             }
         }

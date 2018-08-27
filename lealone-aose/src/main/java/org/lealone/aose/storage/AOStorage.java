@@ -197,34 +197,52 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
-    public void replicate(String[] targetEndpoints, RunMode runMode) {
+    public void replicate(Object dbObject, String[] newReplicationEndpoints, RunMode runMode) {
+        replicateRootPages(dbObject, null, newReplicationEndpoints, runMode);
+    }
+
+    @Override
+    public void sharding(Object dbObject, String[] oldEndpoints, String[] newEndpoints, RunMode runMode) {
+        replicateRootPages(dbObject, oldEndpoints, newEndpoints, runMode);
+    }
+
+    private void replicateRootPages(Object dbObject, String[] oldEndpoints, String[] targetEndpoints, RunMode runMode) {
+        AOStorageService.forceMerge();
+
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(targetEndpoints);
         // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
         Session session = LealoneDatabase.getInstance().createInternalSession();
         ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
-        Database db = (Database) config.get("db");
+        Database db = (Database) dbObject;
         int id = db.getId();
         String sysMapName = "t_" + id + "_0";
         try (DataBuffer p = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             HashMap<String, StorageMap<?, ?>> maps = new HashMap<>(this.maps);
             Collection<StorageMap<?, ?>> values = maps.values();
             p.putInt(values.size());
+            // SYS表放在前面，并且总是使用CLIENT_SERVER模式
             StorageMap<?, ?> sysMap = maps.remove(sysMapName);
-            replicateMap(sysMap, p);
+            replicateRootPage(db, sysMap, p, oldEndpoints, RunMode.CLIENT_SERVER);
             for (StorageMap<?, ?> map : values) {
-                replicateMap(map, p);
+                replicateRootPage(db, map, p, oldEndpoints, runMode);
             }
             ByteBuffer pageBuffer = p.getAndFlipBuffer();
             c.movePage(db.getShortName(), "", pageBuffer);
         }
     }
 
-    private void replicateMap(StorageMap<?, ?> map, DataBuffer p) {
+    private void replicateRootPage(Database db, StorageMap<?, ?> map, DataBuffer p, String[] oldEndpoints,
+            RunMode runMode) {
         map = map.getRawMap();
         if (map instanceof BTreeMap) {
             String mapName = map.getName();
             ValueString.type.write(p, mapName);
-            ((BTreeMap<?, ?>) map).replicateRootPage(p);
+
+            BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
+            btreeMap.setOldEndpoints(oldEndpoints);
+            btreeMap.setDatabase(db);
+            btreeMap.setRunMode(runMode);
+            btreeMap.replicateRootPage(p);
         }
     }
 
@@ -233,6 +251,12 @@ public class AOStorage extends StorageBase {
         close();
         String storageName = (String) config.get("storageName");
         FileUtils.deleteRecursive(storageName, false);
+    }
+
+    @Override
+    public void save() {
+        AOStorageService.forceMerge();
+        super.save();
     }
 
 }

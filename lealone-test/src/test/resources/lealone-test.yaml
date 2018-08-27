@@ -31,7 +31,7 @@ transaction_engines:
     enabled: true
     parameters: {
         redo_log_dir: redo_log, # ${base_dir} + "/"+ ${redo_log_dir},
-        log_sync_type: batch
+        log_sync_type: periodic
     }
 
 sql_engines:

@@ -85,4 +85,9 @@ public abstract class StorageBase implements Storage {
     public void closeMap(String name) {
         maps.remove(name);
     }
+
+    @Override
+    public StorageMap<?, ?> getMap(String name) {
+        return maps.get(name);
+    }
 }

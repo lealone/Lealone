@@ -137,6 +137,8 @@ public class DatabaseEngine {
                 if (user != null) {
                     if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
                         user = null;
+                    } else {
+                        database.setLastConnectionInfo(ci);
                     }
                 }
             }

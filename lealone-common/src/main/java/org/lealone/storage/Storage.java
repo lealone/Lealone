@@ -45,10 +45,16 @@ public interface Storage {
 
     Set<String> getMapNames();
 
-    public default void replicate(String[] targetEndpoints, RunMode runMode) {
+    public default void replicate(Object dbObject, String[] newReplicationEndpoints, RunMode runMode) {
         throw DbException.getUnsupportedException("replicate");
+    }
+
+    public default void sharding(Object dbObject, String[] oldEndpoints, String[] newEndpoints, RunMode runMode) {
+        throw DbException.getUnsupportedException("sharding");
     }
 
     public default void drop() {
     }
+
+    StorageMap<?, ?> getMap(String name);
 }

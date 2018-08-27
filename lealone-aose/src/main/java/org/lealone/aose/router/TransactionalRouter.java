@@ -115,4 +115,15 @@ public class TransactionalRouter implements Router {
     public String[] getReplicationEndpoints(Database db) {
         return nestedRouter.getReplicationEndpoints(db);
     }
+
+    @Override
+    public void sharding(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
+            String[] newEndpoints) {
+        nestedRouter.sharding(db, oldRunMode, newRunMode, oldEndpoints, newEndpoints);
+    }
+
+    @Override
+    public String[] getShardingEndpoints(Database db) {
+        return nestedRouter.getShardingEndpoints(db);
+    }
 }

@@ -1356,10 +1356,10 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         int size = rootPages.getInt();
         for (int i = 0; i < size; i++) {
             String mapName = ValueString.type.read(rootPages);
-            StorageMap<Object, Object> map = getStorageMap(mapName);
+            StorageMap<?, ?> map = database.getStorageMap(mapName);
             map.addLeafPage(null, rootPages);
             if (i == 0) {
-                database.copy();
+                database = database.copy();
             }
         }
     }

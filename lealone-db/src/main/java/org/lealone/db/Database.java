@@ -70,6 +70,7 @@ import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
+import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.memory.MemoryStorageEngine;
@@ -179,6 +180,7 @@ public class Database implements DataHandler, DbObject {
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
 
     private RunMode runMode = RunMode.CLIENT_SERVER;
+    private ConnectionInfo lastConnectionInfo;
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -316,6 +318,9 @@ public class Database implements DataHandler, DbObject {
         db.storageName = storageName;
         db.storageBuilder = storageBuilder;
         db.storages.putAll(storages);
+        db.runMode = runMode;
+        db.replicationProperties = replicationProperties;
+        db.lastConnectionInfo = lastConnectionInfo;
         db.init();
         LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
         for (ServerSession s : userSessions) {
@@ -1026,24 +1031,22 @@ public class Database implements DataHandler, DbObject {
     }
 
     public ServerSession createInternalSession() {
-        User admin = null;
-        for (User user : getAllUsers()) {
-            if (user.isAdmin()) {
-                admin = user;
-                break;
-            }
-        }
-        if (admin == null) {
-            DbException.throwInternalError("no admin");
-        }
-        return createSession(admin);
-    }
-
-    public ServerSession getLastSession() {
-        if (exclusiveSession != null) {
-            return exclusiveSession;
-        }
-        return userSessions.iterator().next();
+        // User admin = null;
+        // for (User user : getAllUsers()) {
+        // if (user.isAdmin()) {
+        // admin = user;
+        // break;
+        // }
+        // }
+        // if (admin == null) {
+        // DbException.throwInternalError("no admin");
+        // }
+        if (lastConnectionInfo == null)
+            throw DbException.throwInternalError("lastConnectionInfo is null");
+        User user = getUser(lastConnectionInfo.getUserName());
+        ServerSession session = createSession(user);
+        session.setConnectionInfo(lastConnectionInfo);
+        return session;
     }
 
     /**
@@ -2474,5 +2477,17 @@ public class Database implements DataHandler, DbObject {
             }
             storage.drop();
         }
+    }
+
+    public StorageMap<?, ?> getStorageMap(String mapName) {
+        for (Storage s : getStorages()) {
+            if (s.hasMap(mapName))
+                return s.getMap(mapName);
+        }
+        throw DbException.throwInternalError(mapName + " not found");
+    }
+
+    void setLastConnectionInfo(ConnectionInfo ci) {
+        lastConnectionInfo = ci;
     }
 }

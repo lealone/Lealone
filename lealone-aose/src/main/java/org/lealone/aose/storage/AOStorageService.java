@@ -108,13 +108,28 @@ public class AOStorageService extends Thread {
     }
 
     private static void merge() {
-        for (BufferedMap<?, ?> map : bufferedMaps) {
-            if (map.getRawMap().isClosed()) {
-                bufferedMaps.remove(map);
-                continue;
+        synchronized (bufferedMaps) {
+            for (BufferedMap<?, ?> map : bufferedMaps) {
+                if (map.getRawMap().isClosed()) {
+                    bufferedMaps.remove(map);
+                    continue;
+                }
+                if (map.needMerge())
+                    addTask(map);
             }
-            if (map.needMerge())
-                addTask(map);
+        }
+    }
+
+    static void forceMerge() {
+        synchronized (bufferedMaps) {
+            for (BufferedMap<?, ?> map : bufferedMaps) {
+                if (map.getRawMap().isClosed()) {
+                    bufferedMaps.remove(map);
+                    continue;
+                }
+                if (map.needMerge())
+                    map.merge();
+            }
         }
     }
 }
