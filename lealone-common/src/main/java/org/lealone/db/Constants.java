@@ -39,7 +39,7 @@ public class Constants {
     /**
      * The major version of this database.
      */
-    public static final int VERSION_MAJOR = 3;
+    public static final int VERSION_MAJOR = 5;
 
     /**
      * The minor version of this database.
