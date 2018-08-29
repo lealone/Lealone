@@ -350,10 +350,7 @@ public class BTreeStorage {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         } else if (ref != null && pos < 0) {
-            String hostId = findHostId(pos);
-            BTreePage p = readRemotePage(ref, hostId);
-            ref.page = p;
-            return p;
+            return ref.readRemotePage(map);
         }
 
         // BTreePage p = cache == null ? null : cache.get(pos);
@@ -853,9 +850,5 @@ public class BTreeStorage {
             hashCode = -hashCode;
         }
         return hashCode;
-    }
-
-    BTreePage readRemotePage(PageReference ref, final String hostId) {
-        return map.readRemotePage(ref, hostId);
     }
 }

@@ -30,7 +30,7 @@ public interface StorageCommand extends Command, AutoCloseable {
 
     LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan);
 
-    void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page);
+    void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage);
 
     void removeLeafPage(String mapName, ByteBuffer key);
 

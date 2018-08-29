@@ -85,7 +85,7 @@ public class ClientServerModeToReplicationModeTest extends SqlTestBase {
                 String tableName = "run_mode_test_" + i;
                 executeUpdate("create table IF NOT EXISTS " + tableName + "(f0 int, f1 int, f2 int, f3 int, f4 int,"
                         + " f5 int, f6 int, f7 int, f8 int, f9 int)");
-                int rows = 50;
+                int rows = 1;
                 StringBuilder sql = new StringBuilder();
                 for (int j = 0; j < rows; j++) {
                     sql.append("insert into " + tableName + " values(0,1,2,3,4,5,6,7,8,9);");

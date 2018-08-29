@@ -726,9 +726,13 @@ public class AsyncConnection implements Handler<Buffer> {
             String mapName = transfer.readString();
             ByteBuffer splitKey = transfer.readByteBuffer();
             ByteBuffer page = transfer.readByteBuffer();
-
+            boolean last = transfer.readBoolean();
+            boolean addPage = transfer.readBoolean();
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            map.addLeafPage(splitKey, page);
+            new Thread(() -> {
+                map.addLeafPage(splitKey, page, last, addPage);
+            }, "Add Leaf Page").start();
+            // map.addLeafPage(splitKey, page, last, addPage);
             // writeResponseHeader(transfer, session, id);
             // transfer.flush();
             break;

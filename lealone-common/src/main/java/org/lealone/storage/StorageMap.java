@@ -225,7 +225,7 @@ public interface StorageMap<K, V> extends ReplicationMap {
 
     K append(V value);
 
-    void addLeafPage(ByteBuffer splitKey, ByteBuffer page);
+    void addLeafPage(ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage);
 
     void removeLeafPage(ByteBuffer key);
 

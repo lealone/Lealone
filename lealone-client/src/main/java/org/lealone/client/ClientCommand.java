@@ -523,12 +523,13 @@ public class ClientCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page) {
+    public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage) {
         int id = session.getNextId();
         try {
             session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
-            transfer.writeString(mapName).writeByteBuffer(splitKey).writeByteBuffer(page);
+            transfer.writeString(mapName).writeByteBuffer(splitKey).writeByteBuffer(page).writeBoolean(last)
+                    .writeBoolean(addPage);
             transfer.flush();
         } catch (Exception e) {
             session.handleException(e);

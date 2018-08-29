@@ -186,8 +186,8 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public void addLeafPage(ByteBuffer splitKey, ByteBuffer page) {
-        map.addLeafPage(splitKey, page);
+    public void addLeafPage(ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage) {
+        map.addLeafPage(splitKey, page, last, addPage);
     }
 
     @Override

@@ -284,7 +284,8 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
     }
 
     @Override
-    public void moveLeafPage(final String mapName, final ByteBuffer splitKey, final ByteBuffer page) {
+    public void moveLeafPage(final String mapName, final ByteBuffer splitKey, final ByteBuffer page, final boolean last,
+            final boolean addPage) {
         int n = session.n;
         ArrayList<Future<?>> futures = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
@@ -292,7 +293,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
-                    c.moveLeafPage(mapName, splitKey.slice(), page.slice());
+                    c.moveLeafPage(mapName, splitKey.slice(), page.slice(), last, addPage);
                 }
             };
             futures.add(ThreadPool.executor.submit(command));
