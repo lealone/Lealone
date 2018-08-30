@@ -172,7 +172,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
         Object result = put(p, key, value);
         if (split && isShardingMode && root.isLeaf()) {
-            moveLeafPage(p.getKey(0), p.getChildPage(1), p, 1);
+            moveLeafPageLazy(p.getKey(0));
         }
 
         newRoot(p);
@@ -282,7 +282,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             // now we are not sure where to add
             Object result = put(p, key, value);
             if (isLeaf && isShardingMode) {
-                moveLeafPage(k, rightChildPage, p, index);
+                moveLeafPageLazy(k);
             }
             return result;
         }
@@ -310,24 +310,47 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return page;
     }
 
-    private void moveLeafPage(Object keyObejct, BTreePage oldRightChildPage, BTreePage parent, int index) {
+    private void moveLeafPageLazy(Object keyObejct) {
+        AOStorageService.addPendingTask(() -> {
+            moveLeafPage(keyObejct);
+            return null;
+        });
+    }
+
+    private void moveLeafPage(Object keyObejct) {
         ByteBuffer keyBuffer;
         try (DataBuffer buff = DataBuffer.create()) {
             getKeyType().write(buff, keyObejct);
             keyBuffer = buff.getAndCopyBuffer();
         }
-        String[] oldEndpoints;
-        if (oldRightChildPage.replicationHostIds == null) {
-            oldEndpoints = new String[0];
-        } else {
-            oldEndpoints = new String[oldRightChildPage.replicationHostIds.size()];
-            oldRightChildPage.replicationHostIds.toArray(oldEndpoints);
+        BTreePage p = root;
+        BTreePage parent = p;
+        int index = 0;
+        while (p.isNode()) {
+            index = p.binarySearch(keyObejct);
+            if (index < 0) {
+                index = -index - 1;
+                parent = p;
+                p = p.getChildPage(index);
+            } else {
+                index++;
+                p = parent.getChildPage(index);
+                BTreePage left = parent.getChildPage(index - 1);
+                // 左边已经移动过了，那么右边就不需要再移
+                if (p.replicationHostIds != left.replicationHostIds) {
+                    return;
+                }
+                String[] oldEndpoints;
+                if (p.replicationHostIds == null) {
+                    oldEndpoints = new String[0];
+                } else {
+                    oldEndpoints = new String[p.replicationHostIds.size()];
+                    p.replicationHostIds.toArray(oldEndpoints);
+                }
+                replicateOrMovePage(keyObejct, keyBuffer, p, parent, index, true, oldEndpoints, false);
+                break;
+            }
         }
-
-        AOStorageService.addTask(() -> {
-            replicateOrMovePage(keyObejct, keyBuffer, oldRightChildPage, parent, index, true, oldEndpoints, false);
-            return null;
-        });
     }
 
     // 处理三种场景:

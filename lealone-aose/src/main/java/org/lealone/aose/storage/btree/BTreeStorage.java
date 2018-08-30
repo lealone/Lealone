@@ -379,7 +379,7 @@ public class BTreeStorage {
 
             if (sqlStatementExecutor != null && (Thread.currentThread() == sqlStatementExecutor)) {
                 if (!taskInQueue) {
-                    AOStorageService.addTask(task);
+                    AOStorageService.submitTask(task);
                     taskInQueue = true;
                 }
                 sqlStatementExecutor.executeNextStatement();

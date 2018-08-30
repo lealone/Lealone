@@ -1238,7 +1238,7 @@ public class BTreePage {
                     return p;
                 }
             };
-            AOStorageService.addTask(task);
+            AOStorageService.submitTask(task);
         }
     }
 

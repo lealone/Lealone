@@ -17,9 +17,11 @@
  */
 package org.lealone.aose.storage;
 
+import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.aose.concurrent.DebuggableThreadPoolExecutor;
@@ -29,8 +31,9 @@ public class AOStorageService extends Thread {
 
     private static final CopyOnWriteArrayList<BufferedMap<?, ?>> bufferedMaps = new CopyOnWriteArrayList<>();
     private static final CopyOnWriteArrayList<AOMap<?, ?>> aoMaps = new CopyOnWriteArrayList<>();
+    private static final CopyOnWriteArrayList<Callable<?>> pendingTasks = new CopyOnWriteArrayList<>();
 
-    private static final ExecutorService executorService = new DebuggableThreadPoolExecutor("AOStorageServiceThread", 0,
+    private static final ExecutorService executorService = new DebuggableThreadPoolExecutor("AOStorageServiceThread", 1,
             Utils.getAvailableProcessors(), 6000, TimeUnit.MILLISECONDS);
 
     private static final AOStorageService INSTANCE = new AOStorageService();
@@ -39,8 +42,12 @@ public class AOStorageService extends Thread {
         return INSTANCE;
     }
 
-    public static void addTask(Callable<?> task) {
-        executorService.submit(task);
+    public static Future<?> submitTask(Callable<?> task) {
+        return executorService.submit(task);
+    }
+
+    public static void addPendingTask(Callable<?> task) {
+        pendingTasks.add(task);
     }
 
     public static void addBufferedMap(BufferedMap<?, ?> map) {
@@ -109,13 +116,38 @@ public class AOStorageService extends Thread {
 
     private static void merge() {
         synchronized (bufferedMaps) {
+            ArrayList<Future<?>> futures = new ArrayList<>(bufferedMaps.size());
             for (BufferedMap<?, ?> map : bufferedMaps) {
                 if (map.getRawMap().isClosed()) {
                     bufferedMaps.remove(map);
                     continue;
                 }
-                if (map.needMerge())
-                    addTask(map);
+                if (map.needMerge()) {
+                    Future<?> f = submitTask(map);
+                    futures.add(f);
+                }
+            }
+            for (Future<?> f : futures) {
+                try {
+                    f.get();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            futures.clear();
+
+            ArrayList<Callable<?>> list = new ArrayList<>(pendingTasks);
+            for (Callable<?> task : list) {
+                Future<?> f = submitTask(task);
+                futures.add(f);
+                pendingTasks.remove(task);
+            }
+            for (Future<?> f : futures) {
+                try {
+                    f.get();
+                } catch (Exception e) {
+                    // ignore
+                }
             }
         }
     }
