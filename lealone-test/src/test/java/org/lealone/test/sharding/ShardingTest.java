@@ -39,7 +39,7 @@ public class ShardingTest extends SqlTestBase {
 
         String dbName = "ShardingTestDB1";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName
-                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:3)"
+                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:1)"
                 + " PARAMETERS(nodes=7)";
         stmt.executeUpdate(sql);
         // stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");

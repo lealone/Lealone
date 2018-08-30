@@ -342,32 +342,26 @@ public class BTreeStorage {
      * @param pos the page position
      * @return the page
      */
-    BTreePage readPage(final long pos) {
+    BTreePage readPage(long pos) {
         return readPage(null, pos);
     }
 
-    BTreePage readPage(PageReference ref, final long pos) {
+    BTreePage readPage(PageReference ref, long pos) {
         if (pos == 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Position 0");
         } else if (ref != null && pos < 0) {
             return ref.readRemotePage(map);
         }
+        // return readLocalPageSync(pos);
+        return readLocalPageAsync(pos);
+    }
 
-        // BTreePage p = cache == null ? null : cache.get(pos);
-        // if (p == null) {
-        // BTreeChunk c = getChunk(pos);
-        // long filePos = getFilePos(DataUtils.getPageOffset(pos));
-        // long maxPos = c.blockCount * BLOCK_SIZE;
-        // p = BTreePage.read(c.fileStorage, pos, map, filePos, maxPos);
-        // cachePage(pos, p, p.getMemory());
-        // }
-        // return p;
-
+    private BTreePage readLocalPageAsync(final long pos) {
         Callable<BTreePage> task = null;
         boolean taskInQueue = false;
         final SQLStatementExecutor sqlStatementExecutor = SQLEngineManager.getInstance().getSQLStatementExecutor();
         while (true) {
-            BTreePage p = cache == null ? null : cache.get(pos);
+            BTreePage p = getPageFromCache(pos);
             if (p != null)
                 return p;
 
@@ -375,11 +369,7 @@ public class BTreeStorage {
                 task = new Callable<BTreePage>() {
                     @Override
                     public BTreePage call() throws Exception {
-                        BTreeChunk c = getChunk(pos);
-                        long filePos = getFilePos(DataUtils.getPageOffset(pos));
-                        long maxPos = c.blockCount * BLOCK_SIZE;
-                        BTreePage p = BTreePage.read(c.fileStorage, pos, map, filePos, maxPos);
-                        cachePage(pos, p, p.getMemory());
+                        BTreePage p = readLocalPageSync(pos);
                         if (sqlStatementExecutor != null)
                             sqlStatementExecutor.wakeUp();
                         return p;
@@ -402,6 +392,22 @@ public class BTreeStorage {
                 }
             }
         }
+    }
+
+    private BTreePage getPageFromCache(long pos) {
+        return cache == null ? null : cache.get(pos);
+    }
+
+    private BTreePage readLocalPageSync(long pos) {
+        BTreePage p = getPageFromCache(pos);
+        if (p != null)
+            return p;
+        BTreeChunk c = getChunk(pos);
+        long filePos = getFilePos(DataUtils.getPageOffset(pos));
+        long maxPos = c.blockCount * BLOCK_SIZE;
+        p = BTreePage.read(c.fileStorage, pos, map, filePos, maxPos);
+        cachePage(pos, p, p.getMemory());
+        return p;
     }
 
     /**

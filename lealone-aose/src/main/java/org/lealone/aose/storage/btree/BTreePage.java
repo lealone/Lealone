@@ -14,13 +14,18 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.lealone.aose.router.P2pRouter;
 import org.lealone.aose.storage.AOStorageService;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.LealoneDatabase;
+import org.lealone.db.Session;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetEndpoint;
+import org.lealone.replication.ReplicationSession;
 import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.StorageCommand;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.type.StorageDataType;
 
@@ -165,6 +170,10 @@ public class BTreePage {
      */
     public boolean isLeaf() {
         return children == null;
+    }
+
+    public boolean isNode() {
+        return children != null;
     }
 
     /**
@@ -1119,9 +1128,22 @@ public class BTreePage {
             return pos < 0;
         }
 
-        BTreePage readRemotePage(BTreeMap<Object, Object> map) {
+        synchronized BTreePage readRemotePage(BTreeMap<Object, Object> map) {
+            if (page != null) {
+                return page;
+            }
+
             // TODO 支持多节点容错
-            page = map.readRemotePage(this, remoteHostIds.get(0));
+            String remoteHostId = remoteHostIds.get(0);
+            List<NetEndpoint> replicationEndpoints = map.getReplicationEndpoints(new String[] { remoteHostId });
+            Session session = LealoneDatabase.getInstance().createInternalSession();
+            ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
+            try (DataBuffer buff = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+                ByteBuffer keyBuffer = buff.write(map.getKeyType(), key);
+                ByteBuffer pageBuffer = c.readRemotePage(map.getName(), keyBuffer, last);
+                page = BTreePage.readReplicatedPage(map, pageBuffer);
+            }
+
             if (!map.isShardingMode() || (page.replicationHostIds != null
                     && page.replicationHostIds.contains(NetEndpoint.getLocalTcpHostAndPort()))) {
                 pos = 0;

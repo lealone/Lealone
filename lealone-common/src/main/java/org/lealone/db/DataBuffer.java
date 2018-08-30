@@ -441,6 +441,14 @@ public class DataBuffer implements AutoCloseable {
         return buff;
     }
 
+    public ByteBuffer getAndCopyBuffer() {
+        buff.flip();
+        ByteBuffer value = ByteBuffer.allocateDirect(buff.limit());
+        value.put(buff);
+        value.flip();
+        return value;
+    }
+
     public ByteBuffer write(StorageDataType type, Object obj) {
         type.write(this, obj);
         ByteBuffer buff = getAndFlipBuffer();
