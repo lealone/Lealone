@@ -18,27 +18,27 @@
 package org.lealone.test.runmode;
 
 import org.junit.Test;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.test.sql.SqlTestBase;
 
-public class ReplicationModeToShardingModeTest extends SqlTestBase {
+public class ClientServerToReplicationTest extends RunModeTest {
 
-    public ReplicationModeToShardingModeTest() {
-        super(LealoneDatabase.NAME); // 连到LealoneDatabase才能执行CREATE DATABASE
-        setHost("127.0.0.1");
+    public ClientServerToReplicationTest() {
+        setHost("127.0.0.2");
     }
 
     @Test
+    @Override
     public void run() throws Exception {
-        String dbName = ReplicationModeToShardingModeTest.class.getSimpleName();
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
-                + "  RUN MODE REPLICATION WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");
+        String dbName = ClientServerToReplicationTest.class.getSimpleName();
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server");
 
         new CrudTest(dbName).runTest();
 
         executeUpdate("ALTER DATABASE " + dbName //
-                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)"
-                + " PARAMETERS (nodes=2)");
+                + " RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");
+
+        // String p = " PARAMETERS(hostIds='1,2')";
+        // executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding" + p);
     }
 
     private static class CrudTest extends SqlTestBase {
@@ -55,7 +55,7 @@ public class ReplicationModeToShardingModeTest extends SqlTestBase {
             batch();
         }
 
-        void insert() {
+        void insert() throws Exception {
             executeUpdate("drop table IF EXISTS test");
             executeUpdate("create table IF NOT EXISTS test(f1 int SELECTIVITY 10, f2 int, f3 int)");
             // executeUpdate("create index IF NOT EXISTS test_i1 on test(f1)");
@@ -72,19 +72,19 @@ public class ReplicationModeToShardingModeTest extends SqlTestBase {
             executeUpdate("insert into test(f1, f2, f3) values(8,2,3)");
         }
 
-        void select() {
+        void select() throws Exception {
             sql = "select distinct * from test where f1 > 3";
             sql = "select distinct f1 from test";
             printResultSet();
         }
 
         void batch() {
-            int count = 35;
+            int count = 50;
             for (int i = 0; i < count; i++) {
                 String tableName = "run_mode_test_" + i;
                 executeUpdate("create table IF NOT EXISTS " + tableName + "(f0 int, f1 int, f2 int, f3 int, f4 int,"
                         + " f5 int, f6 int, f7 int, f8 int, f9 int)");
-                int rows = 50;
+                int rows = 1;
                 StringBuilder sql = new StringBuilder();
                 for (int j = 0; j < rows; j++) {
                     sql.append("insert into " + tableName + " values(0,1,2,3,4,5,6,7,8,9);");

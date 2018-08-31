@@ -82,4 +82,24 @@ public class RunModeTest extends SqlTestBase {
             printResultSet();
         }
     }
+
+    protected void crudTest(String dbName) {
+        class CrudTest2 extends SqlTestBase {
+            public CrudTest2(String dbName) {
+                super(dbName);
+            }
+
+            @Override
+            protected void test() throws Exception {
+                String tableName = "run_mode_test";
+                executeUpdate("drop table IF EXISTS " + tableName);
+                executeUpdate("create table IF NOT EXISTS " + tableName + "(f1 int primary key, f2 int, f3 int)");
+
+                for (int i = 1; i <= 300; i++) {
+                    executeUpdate("insert into " + tableName + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
+                }
+            }
+        }
+        new CrudTest2(dbName).runTest();
+    }
 }

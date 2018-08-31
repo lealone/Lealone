@@ -50,6 +50,10 @@ public class ClusterMetaData {
     private static final AbstractReplicationStrategy defaultReplicationStrategy = ConfigDescriptor
             .getDefaultReplicationStrategy();
 
+    public static void removeReplicationStrategy(Database db) {
+        replicationStrategys.remove(db);
+    }
+
     public static AbstractReplicationStrategy getReplicationStrategy(Database db) {
         if (db.getReplicationProperties() == null)
             return defaultReplicationStrategy;

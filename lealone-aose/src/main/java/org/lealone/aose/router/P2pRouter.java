@@ -266,6 +266,7 @@ public class P2pRouter implements Router {
 
     @Override
     public String[] getReplicationEndpoints(Database db) {
+        ClusterMetaData.removeReplicationStrategy(db); // 避免使用旧的
         String[] oldHostIds = db.getHostIds();
         int size = oldHostIds.length;
         List<NetEndpoint> oldReplicationEndpoints = new ArrayList<>(size);
