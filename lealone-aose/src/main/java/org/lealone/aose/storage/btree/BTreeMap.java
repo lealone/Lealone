@@ -221,48 +221,58 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @return the old value, or null
      */
     private Object put(BTreePage p, Object key, Object value) {
-        int index = p.binarySearch(key);
-        if (p.isLeaf()) {
-            boolean containsLocalEndpoint;
-            Object returnValue = null;
-            // 本地后台批量put时(比如通过BufferedMap执行)，可能会发生leafPage切割
-            // 这时，复制节点就发生改变了，需要重定向到新的复制节点
-            if (p.leafPageMovePlan != null) {
-                if (p.leafPageMovePlan.moverHostId.equals(P2pServer.instance.getLocalHostId())) {
-                    int size = p.leafPageMovePlan.replicationEndpoints.size();
-                    List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
-                    replicationEndpoints.addAll(p.leafPageMovePlan.replicationEndpoints);
-                    containsLocalEndpoint = replicationEndpoints.remove(getLocalEndpoint());
+        // 本地后台批量put时(比如通过BufferedMap执行)，可能会发生leafPage切割，
+        // 这时复制节点就发生改变了，需要重定向到新的复制节点
+        // 比如下面这样的场景就会发生:
+        // AOStorageService执行完merge后，正准备执行page move，此时又有新数据写入BufferedMap，
+        // 当下次merge执行到put时，page所在节点就可能不是当前节点了
+        if (p.leafPageMovePlan != null) {
+            return putRemote(p, key, value);
+        } else {
+            return putLocal(p, key, value);
+        }
+    }
 
-                    ReplicationSession rs = P2pRouter.createReplicationSession(db.createInternalSession(),
-                            replicationEndpoints);
-                    try (DataBuffer k = DataBuffer.create();
-                            DataBuffer v = DataBuffer.create();
-                            StorageCommand c = rs.createStorageCommand()) {
-                        ByteBuffer keyBuffer = k.write(keyType, key);
-                        ByteBuffer valueBuffer = v.write(valueType, value);
-                        byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer, true);
-                        if (oldValue != null) {
-                            returnValue = valueType.read(ByteBuffer.wrap(oldValue));
-                        }
-                    }
-                } else {
-                    containsLocalEndpoint = false;
+    private Object putRemote(BTreePage p, Object key, Object value) {
+        if (p.leafPageMovePlan.moverHostId.equals(P2pServer.instance.getLocalHostId())) {
+            int size = p.leafPageMovePlan.replicationEndpoints.size();
+            List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
+            replicationEndpoints.addAll(p.leafPageMovePlan.replicationEndpoints);
+            boolean containsLocalEndpoint = replicationEndpoints.remove(getLocalEndpoint());
+            Object returnValue = null;
+            ReplicationSession rs = P2pRouter.createReplicationSession(db.createInternalSession(),
+                    replicationEndpoints);
+            try (DataBuffer k = DataBuffer.create();
+                    DataBuffer v = DataBuffer.create();
+                    StorageCommand c = rs.createStorageCommand()) {
+                ByteBuffer keyBuffer = k.write(keyType, key);
+                ByteBuffer valueBuffer = v.write(valueType, value);
+                byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer, true);
+                if (oldValue != null) {
+                    returnValue = valueType.read(ByteBuffer.wrap(oldValue));
                 }
-            } else {
-                containsLocalEndpoint = true;
             }
+            // 如果新的复制节点中还包含本地节点，那么还需要put到本地节点中
             if (containsLocalEndpoint) {
-                if (index < 0) {
-                    index = -index - 1;
-                    p.insertLeaf(index, key, value);
-                    setLastKey(key);
-                    return null;
-                }
-                return p.setValue(index, value);
+                return putLocal(p, key, value);
             } else {
                 return returnValue;
             }
+        } else {
+            return null; // 不是由当前节点移动的，那么put操作就可以忽略了
+        }
+    }
+
+    private Object putLocal(BTreePage p, Object key, Object value) {
+        int index = p.binarySearch(key);
+        if (p.isLeaf()) {
+            if (index < 0) {
+                index = -index - 1;
+                p.insertLeaf(index, key, value);
+                setLastKey(key);
+                return null;
+            }
+            return p.setValue(index, value);
         }
         // p is a node
         if (index < 0) {

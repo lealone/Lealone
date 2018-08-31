@@ -57,10 +57,27 @@ public class ShardingTest extends SqlTestBase {
 
         @Override
         protected void test() throws Exception {
+            testPutRemote();
             insert();
             split();
             select();
             testMultiThread(dbName);
+        }
+
+        void testPutRemote() throws Exception {
+            String name = "ShardingTest_PutRemote";
+            executeUpdate("drop table IF EXISTS " + name);
+            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
+            for (int i = 1; i < 500; i += 2) {
+                if (i == 67)
+                    continue;
+                executeUpdate("insert into " + name + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
+            }
+
+            for (int i = 2; i < 500; i += 2) {
+                executeUpdate("insert into " + name + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
+            }
+            executeUpdate("insert into " + name + "(f1, f2, f3) values(67,67,67)");
         }
 
         void insert() throws Exception {
