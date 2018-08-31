@@ -60,10 +60,6 @@ import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.metrics.DroppedMessageMetrics;
 import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.server.P2pServer;
-import org.lealone.aose.server.PullSchema;
-import org.lealone.aose.server.PullSchemaAck;
-import org.lealone.aose.server.PullSchemaAckVerbHandler;
-import org.lealone.aose.server.PullSchemaVerbHandler;
 import org.lealone.aose.util.ExpiringMap;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
@@ -98,8 +94,6 @@ public final class MessagingService implements MessagingServiceMBean {
         GOSSIP_SHUTDOWN,
         INTERNAL_RESPONSE, // responses to internal calls
         ECHO,
-        PULL_SCHEMA,
-        PULL_SCHEMA_ACK,
         // remember to add new verbs at the end, since we serialize by ordinal
         UNUSED_1,
         UNUSED_2,
@@ -144,9 +138,6 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.GOSSIP_SHUTDOWN, Stage.GOSSIP);
             put(Verb.ECHO, Stage.GOSSIP);
 
-            put(Verb.PULL_SCHEMA, Stage.REQUEST_RESPONSE);
-            put(Verb.PULL_SCHEMA_ACK, Stage.REQUEST_RESPONSE);
-
             put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);
             put(Verb.UNUSED_2, Stage.INTERNAL_RESPONSE);
             put(Verb.UNUSED_3, Stage.INTERNAL_RESPONSE);
@@ -171,8 +162,6 @@ public final class MessagingService implements MessagingServiceMBean {
             put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
             put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
             put(Verb.ECHO, EchoMessage.serializer);
-            put(Verb.PULL_SCHEMA, PullSchema.serializer);
-            put(Verb.PULL_SCHEMA_ACK, PullSchemaAck.serializer);
         }
     };
 
@@ -244,8 +233,6 @@ public final class MessagingService implements MessagingServiceMBean {
         registerVerbHandler(Verb.GOSSIP_DIGEST_ACK, new GossipDigestAckVerbHandler());
         registerVerbHandler(Verb.GOSSIP_DIGEST_ACK2, new GossipDigestAck2VerbHandler());
         registerVerbHandler(Verb.ECHO, new EchoVerbHandler());
-        registerVerbHandler(Verb.PULL_SCHEMA, new PullSchemaVerbHandler());
-        registerVerbHandler(Verb.PULL_SCHEMA_ACK, new PullSchemaAckVerbHandler());
     }
 
     private MessagingService() {

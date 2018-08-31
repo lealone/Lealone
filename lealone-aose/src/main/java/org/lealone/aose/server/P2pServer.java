@@ -106,7 +106,6 @@ public class P2pServer extends NotificationBroadcasterSupport
     private String localHostId;
     private Mode operationMode = Mode.STARTING;
 
-    public volatile boolean pullSchemaFinished;
     private ServerEncryptionOptions options;
 
     private P2pServer() {
@@ -190,21 +189,6 @@ public class P2pServer extends NotificationBroadcasterSupport
         Gossiper.instance.addLocalApplicationStates(states);
         setMode(Mode.NORMAL, false);
     }
-
-    // private void pullSchema() {
-    // pullSchemaFinished = false;
-    //
-    // NetEndpoint seed = Gossiper.instance.getLiveSeedEndpoint();
-    // MessageOut<PullSchema> message = new MessageOut<>(MessagingService.Verb.PULL_SCHEMA, new PullSchema(),
-    // PullSchema.serializer);
-    // MessagingService.instance().sendOneWay(message, seed);
-    //
-    // while (!pullSchemaFinished) {
-    // setMode(Mode.JOINING, "waiting for db information to complete", true);
-    // Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
-    // }
-    // setMode(Mode.JOINING, "db complete, ready to bootstrap", true);
-    // }
 
     public void register(IEndpointLifecycleSubscriber subscriber) {
         lifecycleSubscribers.add(subscriber);
