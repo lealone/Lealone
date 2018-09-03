@@ -317,4 +317,14 @@ public class P2pRouter implements Router {
         nodes -= db.getHostIds().length;
         return getHostIds(list, size, nodes);
     }
+
+    @Override
+    public void scaleIn(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
+            String[] newEndpoints) {
+        new Thread(() -> {
+            for (Storage storage : db.getStorages()) {
+                storage.scaleIn(db, oldRunMode, newRunMode, oldEndpoints, newEndpoints);
+            }
+        }, "ScaleIn Endpoints").start();
+    }
 }

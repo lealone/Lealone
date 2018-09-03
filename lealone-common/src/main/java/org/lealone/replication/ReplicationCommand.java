@@ -293,7 +293,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
-                    c.moveLeafPage(mapName, splitKey.slice(), page.slice(), last, addPage);
+                    c.moveLeafPage(mapName, splitKey == null ? null : splitKey.slice(), page.slice(), last, addPage);
                 }
             };
             futures.add(ThreadPool.executor.submit(command));

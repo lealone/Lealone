@@ -302,7 +302,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private Set<NetEndpoint> getCandidateEndpoints() {
-        String[] hostIds = db.getHostIds();
+        return getCandidateEndpoints(db.getHostIds());
+    }
+
+    static Set<NetEndpoint> getCandidateEndpoints(String[] hostIds) {
         Set<NetEndpoint> candidateEndpoints = new HashSet<>(hostIds.length);
         TopologyMetaData metaData = P2pServer.instance.getTopologyMetaData();
         for (String hostId : hostIds) {
@@ -373,10 +376,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // client_server模式只有一个节点，在replication模式下，如果副本个数是1，那么也相当于client_server模式。
     private void replicateOrMovePage(Object keyObejct, ByteBuffer keyBuffer, BTreePage p, BTreePage parent, int index,
             boolean last, String[] oldEndpoints, boolean replicate) {
+        Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
+        replicateOrMovePage(keyObejct, keyBuffer, p, parent, index, last, oldEndpoints, replicate, candidateEndpoints);
+    }
+
+    void replicateOrMovePage(Object keyObejct, ByteBuffer keyBuffer, BTreePage p, BTreePage parent, int index,
+            boolean last, String[] oldEndpoints, boolean replicate, Set<NetEndpoint> candidateEndpoints) {
         if (oldEndpoints == null || oldEndpoints.length == 0) {
             DbException.throwInternalError("oldEndpoints is null");
         }
-        Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
+
         List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(oldEndpoints);
         Set<NetEndpoint> oldEndpointSet;
         if (replicate) {
@@ -438,7 +447,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
 
         // 当前节点已经不是副本所在节点
-        if (replicate && otherEndpoints.contains(localEndpoint)) {
+        if (parent != null && replicate && otherEndpoints.contains(localEndpoint)) {
             otherEndpoints.remove(localEndpoint);
             PageReference r = new PageReference(null, -1, 0);
             r.key = parent.getKey(index);
@@ -827,6 +836,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public synchronized void addLeafPage(ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage) {
+        if (splitKey == null) {
+            root = BTreePage.readLeafPage(this, page);
+            return;
+        }
         BTreePage p = root;
         Object k = keyType.read(splitKey);
         if (p.isLeaf()) {
@@ -951,11 +964,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return getReplicationEndpoints(p.replicationHostIds);
     }
 
-    List<NetEndpoint> getReplicationEndpoints(String[] replicationHostIds) {
+    static List<NetEndpoint> getReplicationEndpoints(String[] replicationHostIds) {
         return getReplicationEndpoints(Arrays.asList(replicationHostIds));
     }
 
-    private List<NetEndpoint> getReplicationEndpoints(List<String> replicationHostIds) {
+    static List<NetEndpoint> getReplicationEndpoints(List<String> replicationHostIds) {
         int size = replicationHostIds.size();
         List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
@@ -1061,7 +1074,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Object k = keyType.read(key);
         key.flip();
         if (p.isLeaf()) {
-            throw DbException.throwInternalError("readPage: key=" + key + ", last=" + last);
+            throw DbException.throwInternalError("readPage: key=" + k + ", last=" + last);
         }
         BTreePage parent = p;
         int index = 0;
@@ -1120,8 +1133,17 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public synchronized void setRootPage(ByteBuffer buff) {
         root = BTreePage.readReplicatedPage(this, buff);
-        if (!root.isLeaf() && !getName().endsWith("_0")) { // 只异步读非SYS表
+        if (root.isNode() && !getName().endsWith("_0")) { // 只异步读非SYS表
             root.readRemotePages();
         }
     }
+
+    public void replicateAllRemotePages() {
+        root.readRemotePagesRecursive();
+    }
+
+    public void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
+        root.moveAllLocalLeafPages(oldEndpoints, newEndpoints);
+    }
+
 }

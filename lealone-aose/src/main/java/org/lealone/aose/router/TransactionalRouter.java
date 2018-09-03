@@ -126,4 +126,10 @@ public class TransactionalRouter implements Router {
     public String[] getShardingEndpoints(Database db) {
         return nestedRouter.getShardingEndpoints(db);
     }
+
+    @Override
+    public void scaleIn(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
+            String[] newEndpoints) {
+        nestedRouter.scaleIn(db, oldRunMode, newRunMode, oldEndpoints, newEndpoints);
+    }
 }

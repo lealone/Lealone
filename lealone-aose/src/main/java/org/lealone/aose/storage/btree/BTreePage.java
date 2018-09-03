@@ -12,6 +12,7 @@ import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 import org.lealone.aose.router.P2pRouter;
@@ -1135,7 +1136,7 @@ public class BTreePage {
 
             // TODO 支持多节点容错
             String remoteHostId = remoteHostIds.get(0);
-            List<NetEndpoint> replicationEndpoints = map.getReplicationEndpoints(new String[] { remoteHostId });
+            List<NetEndpoint> replicationEndpoints = BTreeMap.getReplicationEndpoints(new String[] { remoteHostId });
             Session session = LealoneDatabase.getInstance().createInternalSession();
             ReplicationSession rs = P2pRouter.createReplicationSession(session, replicationEndpoints);
             try (DataBuffer buff = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
@@ -1242,9 +1243,74 @@ public class BTreePage {
         }
     }
 
+    void readRemotePagesRecursive() {
+        if (isNode()) {
+            for (int i = 0, length = children.length; i < length; i++) {
+                if (children[i].isRemotePage()) {
+                    final int index = i;
+                    Callable<BTreePage> task = new Callable<BTreePage>() {
+                        @Override
+                        public BTreePage call() throws Exception {
+                            BTreePage p = getChildPage(index);
+                            if (p.isNode()) {
+                                p.readRemotePagesRecursive();
+                            }
+                            return p;
+                        }
+                    };
+                    AOStorageService.submitTask(task);
+                } else if (children[i].page != null && children[i].page.isNode()) {
+                    readRemotePagesRecursive();
+                }
+            }
+        }
+    }
+
+    void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
+        Set<NetEndpoint> candidateEndpoints = BTreeMap.getCandidateEndpoints(newEndpoints);
+        if (isNode()) {
+            for (int i = 0, length = keys.length; i <= length; i++) {
+                if (!children[i].isRemotePage()) {
+                    BTreePage p = getChildPage(i);
+                    if (p.isNode()) {
+                        p.moveAllLocalLeafPages(oldEndpoints, newEndpoints);
+                    } else {
+                        Object keyObejct = i == length ? keys[i - 1] : keys[i];
+                        ByteBuffer keyBuffer;
+                        try (DataBuffer buff = DataBuffer.create()) {
+                            map.getKeyType().write(buff, keyObejct);
+                            keyBuffer = buff.getAndCopyBuffer();
+                        }
+                        if (p.replicationHostIds == null) {
+                            oldEndpoints = new String[0];
+                        } else {
+                            oldEndpoints = new String[p.replicationHostIds.size()];
+                            p.replicationHostIds.toArray(oldEndpoints);
+                        }
+                        map.replicateOrMovePage(keyObejct, keyBuffer, p, this, i, true, oldEndpoints, false,
+                                candidateEndpoints);
+                    }
+                }
+            }
+        } else {
+            map.replicateOrMovePage(null, null, this, null, 0, true, oldEndpoints, false, candidateEndpoints);
+            // moveLocalLeafPage(oldEndpoints, newEndpoints);
+        }
+    }
+
+    // void moveLocalLeafPage(String[] removeEndpoints, String[] newEndpoints) {
+    // Set<NetEndpoint> candidateEndpoints = BTreeMap.getCandidateEndpoints(newEndpoints);
+    // List<NetEndpoint> oldReplicationEndpoints = BTreeMap.getReplicationEndpoints(replicationHostIds);
+    // Set<NetEndpoint> removeEndpointSet = new HashSet<>(BTreeMap.getReplicationEndpoints(removeEndpoints));
+    //
+    // List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getReplicationEndpoints(map.db, new HashSet<>(0),
+    // candidateEndpoints);
+    //
+    // }
+
     void replicatePage(DataBuffer buff, NetEndpoint localEndpoint) {
         BTreePage p = copyOnly();
-        boolean isNode = !isLeaf();
+        boolean isNode = isNode();
         if (isNode) {
             int len = children.length;
             p.children = new PageReference[len];

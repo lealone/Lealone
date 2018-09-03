@@ -57,4 +57,9 @@ public interface Storage {
     }
 
     StorageMap<?, ?> getMap(String name);
+
+    public default void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
+            String[] newEndpoints) {
+        throw DbException.getUnsupportedException("scaleIn");
+    }
 }

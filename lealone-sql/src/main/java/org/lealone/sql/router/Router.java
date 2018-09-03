@@ -47,4 +47,8 @@ public interface Router {
     default String[] getShardingEndpoints(Database db) {
         return new String[0];
     }
+
+    default void scaleIn(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
+            String[] newEndpoints) {
+    }
 }

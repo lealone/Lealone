@@ -33,7 +33,7 @@ public class ReplicationToReplicationTest extends RunModeTest {
     }
 
     private void scaleOut() {
-        String dbName = ReplicationToReplicationTest.class.getSimpleName();
+        String dbName = ReplicationToReplicationTest.class.getSimpleName() + "_scaleOut";
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
                 + "  RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");
 
@@ -44,7 +44,7 @@ public class ReplicationToReplicationTest extends RunModeTest {
     }
 
     private void scaleIn() {
-        String dbName = ReplicationToReplicationTest.class.getSimpleName();
+        String dbName = ReplicationToReplicationTest.class.getSimpleName() + "_scaleIn";
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
                 + "  RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 3)");
 

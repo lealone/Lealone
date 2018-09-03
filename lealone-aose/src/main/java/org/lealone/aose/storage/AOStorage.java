@@ -259,4 +259,23 @@ public class AOStorage extends StorageBase {
         super.save();
     }
 
+    @Override
+    public void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
+            String[] newEndpoints) {
+        for (StorageMap<?, ?> map : maps.values()) {
+            Database db = (Database) dbObject;
+            map = map.getRawMap();
+            if (map instanceof BTreeMap) {
+                BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
+                btreeMap.setOldEndpoints(oldEndpoints);
+                btreeMap.setDatabase(db);
+                btreeMap.setRunMode(newRunMode);
+                if (oldEndpoints == null) {
+                    btreeMap.replicateAllRemotePages();
+                } else {
+                    btreeMap.moveAllLocalLeafPages(oldEndpoints, newEndpoints);
+                }
+            }
+        }
+    }
 }
