@@ -88,6 +88,7 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;
     public static final int STATUS_ERROR = 1002;
+    public static final int STATUS_RUN_MODE_CHANGED = 1003;
 
     Command createCommand(String sql, int fetchSize);
 
@@ -225,4 +226,13 @@ public interface Session extends Closeable, Transaction.Participant {
     }
 
     int getSessionId();
+
+    boolean isRunModeChanged();
+
+    String getNewTargetEndpoints();
+
+    void runModeChanged(String newTargetEndpoints);
+
+    default void reconnectIfNeeded() {
+    }
 }

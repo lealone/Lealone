@@ -37,6 +37,8 @@ public abstract class SessionBase implements Session {
     protected boolean autoCommit = true;
     protected Transaction parentTransaction;
 
+    protected String newTargetEndpoints;
+
     @Override
     public String getReplicationName() {
         return replicationName;
@@ -163,5 +165,22 @@ public abstract class SessionBase implements Session {
     @Override
     public synchronized void setParentTransaction(Transaction parentTransaction) {
         this.parentTransaction = parentTransaction;
+    }
+
+    @Override
+    public boolean isRunModeChanged() {
+        return newTargetEndpoints != null;
+    }
+
+    @Override
+    public String getNewTargetEndpoints() {
+        String endpoints = newTargetEndpoints;
+        newTargetEndpoints = null;
+        return endpoints;
+    }
+
+    @Override
+    public void runModeChanged(String newTargetEndpoints) {
+        this.newTargetEndpoints = newTargetEndpoints;
     }
 }

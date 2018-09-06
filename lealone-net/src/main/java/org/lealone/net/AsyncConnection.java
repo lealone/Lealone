@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.api.ErrorCode;
+import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.JdbcSQLException;
 import org.lealone.common.logging.Logger;
@@ -91,11 +93,11 @@ public class AsyncConnection implements Handler<Buffer> {
 
     protected final NetSocket socket;
     private final boolean isServer;
+    private InetSocketAddress inetSocketAddress;
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
     final ConcurrentHashMap<Integer, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
-
     private String hostAndPort;
 
     public int getNextId() {
@@ -108,10 +110,9 @@ public class AsyncConnection implements Handler<Buffer> {
 
     public void removeSession(int sessionId) {
         sessions.remove(sessionId);
-    }
-
-    public boolean isEmpty() {
-        return sessions.isEmpty();
+        if (sessions.isEmpty()) {
+            AsyncConnectionFactory.removeConnection(inetSocketAddress);
+        }
     }
 
     public void setBaseDir(String baseDir) {
@@ -341,8 +342,10 @@ public class AsyncConnection implements Handler<Buffer> {
     }
 
     private static int getStatus(Session session) {
-        if (session != null && session.isClosed()) {
+        if (session.isClosed()) {
             return Session.STATUS_CLOSED;
+        } else if (session.isRunModeChanged()) {
+            return Session.STATUS_RUN_MODE_CHANGED;
         } else {
             return Session.STATUS_OK;
         }
@@ -370,6 +373,9 @@ public class AsyncConnection implements Handler<Buffer> {
                             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
                                     || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
                                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                            }
+                            if (session.isRunModeChanged()) {
+                                transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
                             }
                             int columnCount = result.getVisibleColumnCount();
                             transfer.writeInt(columnCount);
@@ -405,6 +411,9 @@ public class AsyncConnection implements Handler<Buffer> {
                         int updateCount = res.getResult();
                         try {
                             transfer.writeResponseHeader(id, getStatus(session));
+                            if (session.isRunModeChanged()) {
+                                transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
+                            }
                             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
                                     || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
                                 transfer.writeString(session.getTransaction().getLocalTransactionNames());
@@ -488,6 +497,8 @@ public class AsyncConnection implements Handler<Buffer> {
     }
 
     private void processResponse(Transfer transfer, int id) throws IOException {
+        String newTargetEndpoints = null;
+        Session session = null;
         int status = transfer.readInt();
         DbException e = null;
         if (status == Session.STATUS_OK) {
@@ -496,6 +507,10 @@ public class AsyncConnection implements Handler<Buffer> {
             e = parseError(transfer);
         } else if (status == Session.STATUS_CLOSED) {
             transfer = null;
+        } else if (status == Session.STATUS_RUN_MODE_CHANGED) {
+            int sessionId = transfer.readInt();
+            session = sessions.get(sessionId);
+            newTargetEndpoints = transfer.readString();
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
@@ -513,6 +528,8 @@ public class AsyncConnection implements Handler<Buffer> {
         if (e != null)
             ac.setDbException(e);
         ac.run(transfer);
+        if (newTargetEndpoints != null)
+            session.runModeChanged(newTargetEndpoints);
     }
 
     private static void writeResponseHeader(Transfer transfer, Session session, int id) throws IOException {
@@ -729,9 +746,9 @@ public class AsyncConnection implements Handler<Buffer> {
             boolean last = transfer.readBoolean();
             boolean addPage = transfer.readBoolean();
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            new Thread(() -> {
+            ConcurrentUtils.submitTask("Add Leaf Page", () -> {
                 map.addLeafPage(splitKey, page, last, addPage);
-            }, "Add Leaf Page").start();
+            });
             // map.addLeafPage(splitKey, page, last, addPage);
             // writeResponseHeader(transfer, session, id);
             // transfer.flush();
@@ -741,9 +758,9 @@ public class AsyncConnection implements Handler<Buffer> {
             final String dbName = transfer.readString();
             final ByteBuffer rootPages = transfer.readByteBuffer();
             final Session s = session;
-            new Thread(() -> {
+            ConcurrentUtils.submitTask("Replicate Root Pages", () -> {
                 s.replicateRootPages(dbName, rootPages);
-            }, "Replicate Root Pages").start();
+            });
 
             // session.replicateRootPages(dbName, rootPages);
             // writeResponseHeader(transfer, session, id);
@@ -1078,4 +1095,11 @@ public class AsyncConnection implements Handler<Buffer> {
         this.hostAndPort = hostAndPort;
     }
 
+    public InetSocketAddress getInetSocketAddress() {
+        return inetSocketAddress;
+    }
+
+    public void setInetSocketAddress(InetSocketAddress inetSocketAddress) {
+        this.inetSocketAddress = inetSocketAddress;
+    }
 }

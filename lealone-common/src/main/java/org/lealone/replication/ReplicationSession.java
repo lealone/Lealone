@@ -22,18 +22,13 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.common.trace.Trace;
 import org.lealone.db.Command;
-import org.lealone.db.ConnectionInfo;
-import org.lealone.db.DataHandler;
+import org.lealone.db.DelegatedSession;
 import org.lealone.db.Session;
-import org.lealone.db.SessionBase;
-import org.lealone.sql.ParsedStatement;
-import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageCommand;
 import org.lealone.transaction.Transaction;
 
-public class ReplicationSession extends SessionBase {
+public class ReplicationSession extends DelegatedSession {
     private final Session[] sessions;
 
     private final String[] servers;
@@ -54,6 +49,7 @@ public class ReplicationSession extends SessionBase {
     }
 
     public ReplicationSession(Session[] sessions, List<String> initReplicationEndpoints) {
+        super(sessions[0]);
         this.sessions = sessions;
 
         String replicationEndpoints = null;
@@ -111,11 +107,6 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public ParsedStatement parseStatement(String sql) {
-        return sessions[0].parseStatement(sql);
-    }
-
-    @Override
     public Command createCommand(String sql, int fetchSize) {
         Command[] commands = new Command[n];
         for (int i = 0; i < n; i++)
@@ -144,11 +135,6 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, int fetchSize) {
-        return sessions[0].prepareStatement(sql, fetchSize);
-    }
-
-    @Override
     public void commitTransaction(String localTransactionName) {
         for (int i = 0; i < n; i++)
             sessions[i].commitTransaction(localTransactionName);
@@ -168,16 +154,6 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public Trace getTrace() {
-        return sessions[0].getTrace();
-    }
-
-    @Override
-    public DataHandler getDataHandler() {
-        return sessions[0].getDataHandler();
-    }
-
-    @Override
     public void cancel() {
         for (int i = 0; i < n; i++)
             sessions[i].cancel();
@@ -187,16 +163,6 @@ public class ReplicationSession extends SessionBase {
     public void close() {
         for (int i = 0; i < n; i++)
             sessions[i].close();
-    }
-
-    @Override
-    public boolean isClosed() {
-        return sessions[0].isClosed();
-    }
-
-    @Override
-    public int getModificationId() {
-        return sessions[0].getModificationId();
     }
 
     @Override
@@ -218,44 +184,9 @@ public class ReplicationSession extends SessionBase {
     }
 
     @Override
-    public boolean validateTransaction(String localTransactionName) {
-        return sessions[0].validateTransaction(localTransactionName);
-    }
-
-    @Override
     public void commit(String allLocalTransactionNames) {
         for (int i = 0; i < n; i++)
             sessions[i].commit(allLocalTransactionNames);
-    }
-
-    @Override
-    public Session connect() {
-        return sessions[0].connect();
-    }
-
-    @Override
-    public Session connect(boolean first) {
-        return sessions[0].connect(first);
-    }
-
-    @Override
-    public String getURL() {
-        return sessions[0].getURL();
-    }
-
-    @Override
-    public String getReplicationName() {
-        return sessions[0].getReplicationName();
-    }
-
-    @Override
-    public void setReplicationName(String globalTransactionName) {
-        sessions[0].setReplicationName(globalTransactionName);
-    }
-
-    @Override
-    public ConnectionInfo getConnectionInfo() {
-        return sessions[0].getConnectionInfo();
     }
 
     @Override
@@ -264,10 +195,5 @@ public class ReplicationSession extends SessionBase {
         for (int i = 0; i < n; i++)
             commands[i] = sessions[i].createStorageCommand();
         return new ReplicationCommand(this, commands);
-    }
-
-    @Override
-    public int getSessionId() {
-        return sessions[0].getSessionId();
     }
 }

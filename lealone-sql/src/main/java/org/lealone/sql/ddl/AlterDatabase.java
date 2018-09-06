@@ -320,6 +320,7 @@ public class AlterDatabase extends DatabaseStatement {
                 newDB.setReplicationProperties(replicationProperties);
                 newDB.setRunMode(runMode);
                 lealoneDB.addDatabaseObject(session, newDB);
+                newDB.notifyRunModeChanged();
             }
         }
     }

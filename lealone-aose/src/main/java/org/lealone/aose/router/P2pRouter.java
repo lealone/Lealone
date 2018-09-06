@@ -31,6 +31,7 @@ import org.lealone.aose.locator.AbstractReplicationStrategy;
 import org.lealone.aose.locator.TopologyMetaData;
 import org.lealone.aose.server.ClusterMetaData;
 import org.lealone.aose.server.P2pServer;
+import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
 import org.lealone.db.Database;
@@ -257,11 +258,11 @@ public class P2pRouter implements Router {
 
     @Override
     public void replicate(Database db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationEndpoints) {
-        new Thread(() -> {
+        ConcurrentUtils.submitTask("Replicate Pages", () -> {
             for (Storage storage : db.getStorages()) {
                 storage.replicate(db, newReplicationEndpoints, newRunMode);
             }
-        }, "Replicate Pages").start();
+        });
     }
 
     @Override
@@ -290,11 +291,11 @@ public class P2pRouter implements Router {
     @Override
     public void sharding(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
             String[] newEndpoints) {
-        new Thread(() -> {
+        ConcurrentUtils.submitTask("Sharding Pages", () -> {
             for (Storage storage : db.getStorages()) {
                 storage.sharding(db, oldEndpoints, newEndpoints, newRunMode);
             }
-        }, "Sharding Pages").start();
+        });
     }
 
     @Override
@@ -321,10 +322,10 @@ public class P2pRouter implements Router {
     @Override
     public void scaleIn(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
             String[] newEndpoints) {
-        new Thread(() -> {
+        ConcurrentUtils.submitTask("ScaleIn Endpoints", () -> {
             for (Storage storage : db.getStorages()) {
                 storage.scaleIn(db, oldRunMode, newRunMode, oldEndpoints, newEndpoints);
             }
-        }, "ScaleIn Endpoints").start();
+        });
     }
 }

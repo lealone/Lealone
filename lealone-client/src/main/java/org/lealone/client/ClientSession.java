@@ -7,12 +7,8 @@ package org.lealone.client;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.sql.Connection;
 import java.util.ArrayList;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,13 +19,11 @@ import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.SmallLRUCache;
-import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
-import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
 import org.lealone.db.SetTypes;
@@ -37,10 +31,9 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
+import org.lealone.net.AsyncConnectionFactory;
 import org.lealone.net.NetEndpoint;
-import org.lealone.net.NetFactory;
 import org.lealone.net.Transfer;
-import org.lealone.replication.ReplicationSession;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
@@ -48,11 +41,6 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
-
-import io.vertx.core.Vertx;
-import io.vertx.core.net.NetClient;
-import io.vertx.core.net.NetClientOptions;
-import io.vertx.core.net.NetSocket;
 
 /**
  * The client side part of a session when using the server mode. 
@@ -63,45 +51,43 @@ import io.vertx.core.net.NetSocket;
  */
 public class ClientSession extends SessionBase implements DataHandler, Transaction.Participant {
 
-    // 使用InetSocketAddress为key而不是字符串，是因为像localhost和127.0.0.1这两种不同格式实际都是同一个意思，
-    // 如果用字符串，就会产生两条AsyncConnection，这是没必要的。
-    private static final ConcurrentHashMap<InetSocketAddress, AsyncConnection> asyncConnections = new ConcurrentHashMap<>();
-
-    private static Vertx vertx;
-    private static NetClient client;
-
+    private final ConnectionInfo ci;
+    private final String server;
+    private final Session parent;
+    private final Object lobSyncObject = new Object();
+    private LobStorage lobStorage;
     private TraceSystem traceSystem;
     private Trace trace;
     private Transfer transfer;
-    private final ConnectionInfo ci;
     private String cipher;
     private byte[] fileEncryptionKey;
-    private final Object lobSyncObject = new Object();
     private int sessionId;
-    private LobStorage lobStorage;
     private AsyncConnection asyncConnection;
-    private InetSocketAddress inetSocketAddress;
 
-    ClientSession(ConnectionInfo ci) {
+    ClientSession(ConnectionInfo ci, String server, Session parent) {
         if (!ci.isRemote()) {
             throw DbException.throwInternalError();
         }
         this.ci = ci;
-        if (vertx == null) {
-            synchronized (ClientSession.class) {
-                if (vertx == null) {
-                    vertx = NetFactory.getVertx(ci.getProperties());
-                    NetClientOptions options = NetFactory.getNetClientOptions(ci.getProperties());
-                    options.setConnectTimeout(10000);
-                    client = vertx.createNetClient(options);
-                }
-            }
-        }
+        this.server = server;
+        this.parent = parent;
+    }
+
+    AsyncConnection getAsyncConnection() {
+        return asyncConnection;
     }
 
     @Override
     public int getSessionId() {
         return sessionId;
+    }
+
+    @Override
+    public int getNextId() {
+        if (asyncConnection == null)
+            return super.getNextId();
+        else
+            return asyncConnection.getNextId();
     }
 
     /**
@@ -111,98 +97,24 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
      */
     @Override
     public Session connect() {
-        return connect(true);
-    }
-
-    @Override
-    public Session connect(boolean first) {
-        connectServer();
-        if (first) {
-            if (getRunMode() == RunMode.REPLICATION) {
-                ConnectionInfo ci = this.ci;
-                String[] servers = StringUtils.arraySplit(getTargetEndpoints(), ',', true);
-                int size = servers.length;
-                Session[] sessions = new ClientSession[size];
-                for (int i = 0; i < size; i++) {
-                    // 如果首次连接的节点就是复制节点之一，则复用它
-                    if (isValid()) {
-                        NetEndpoint endpoint = NetEndpoint.createTCP(servers[i]);
-                        if (endpoint.getInetSocketAddress().equals(this.inetSocketAddress)) {
-                            sessions[i] = this;
-                            continue;
-                        }
-                    }
-                    ci = this.ci.copy(servers[i]);
-                    sessions[i] = new ClientSession(ci);
-                    sessions[i] = sessions[i].connect(false);
-                }
-                ReplicationSession rs = new ReplicationSession(sessions);
-                rs.setAutoCommit(this.isAutoCommit());
-                return rs;
-            }
-            if (isInvalid()) {
-                switch (getRunMode()) {
-                case CLIENT_SERVER:
-                case SHARDING: {
-                    ConnectionInfo ci = this.ci.copy(getTargetEndpoints());
-                    // 关闭当前session,因为连到的节点不是所要的,这里可能会关闭vertx,
-                    // 所以要放在构造下一个ClientSession前调用
-                    this.close();
-                    ClientSession session = new ClientSession(ci);
-                    return session.connect(false);
-                }
-                default:
-                    return this;
-                }
-            }
-        }
-        return this;
-    }
-
-    private void connectServer() {
         initTraceSystem();
-
         cipher = ci.getProperty("CIPHER");
         if (cipher != null) {
             fileEncryptionKey = MathUtils.secureRandomBytes(32);
         }
-
-        transfer = null;
-        String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
-        Random random = new Random(System.currentTimeMillis());
+        NetEndpoint endpoint = NetEndpoint.createTCP(server);
         try {
-            for (int i = 0, len = servers.length; i < len; i++) {
-                String s = servers[random.nextInt(len)];
-                NetEndpoint endpoint = NetEndpoint.createTCP(s);
-                try {
-                    transfer = initTransfer(ci, endpoint);
-                    break;
-                } catch (Exception e) {
-                    if (i == len - 1) {
-                        throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, e + ": " + s);
-                    }
-                    int index = 0;
-                    String[] newServers = new String[len - 1];
-                    for (int j = 0; j < len; j++) {
-                        if (j != i)
-                            newServers[index++] = servers[j];
-                    }
-                    servers = newServers;
-                    len--;
-                    i = -1;
-                }
-            }
-        } catch (DbException e) {
-            traceSystem.close();
-            throw e;
+            transfer = initTransfer(ci, endpoint);
+        } catch (Exception e) {
+            closeTraceSystem();
+            throw DbException.convert(e);
         }
+        return this;
     }
 
     @Override
-    public int getNextId() {
-        if (asyncConnection == null)
-            super.getNextId();
-        return asyncConnection.getNextId();
+    public Session connect(boolean first) {
+        return connect();
     }
 
     private void initTraceSystem() {
@@ -229,38 +141,22 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         trace = traceSystem.getTrace(Trace.JDBC);
     }
 
+    private void closeTraceSystem() {
+        traceSystem.close();
+        traceSystem = null;
+        trace = null;
+    }
+
     private Transfer initTransfer(ConnectionInfo ci, NetEndpoint endpoint) throws Exception {
-        inetSocketAddress = endpoint.getInetSocketAddress();
-        asyncConnection = asyncConnections.get(inetSocketAddress);
-        if (asyncConnection == null) {
-            synchronized (ClientSession.class) {
-                asyncConnection = asyncConnections.get(inetSocketAddress);
-                if (asyncConnection == null) {
-                    CountDownLatch latch = new CountDownLatch(1);
-                    client.connect(endpoint.getPort(), endpoint.getHost(), res -> {
-                        try {
-                            if (res.succeeded()) {
-                                NetSocket socket = res.result();
-                                asyncConnection = new AsyncConnection(socket, false);
-                                asyncConnection.setHostAndPort(endpoint.getHostAndPort());
-                                asyncConnections.put(inetSocketAddress, asyncConnection);
-                                socket.handler(asyncConnection);
-                            } else {
-                                throw DbException.convert(res.cause());
-                            }
-                        } finally {
-                            latch.countDown();
-                        }
-                    });
-                    latch.await();
-                }
-            }
-        }
+        asyncConnection = AsyncConnectionFactory.createConnection(ci.getProperties(), endpoint);
         sessionId = getNextId();
         transfer = asyncConnection.createTransfer(this);
         asyncConnection.writeInitPacket(this, transfer, ci);
-        if (isValid())
+        if (isValid()) {
             asyncConnection.addSession(sessionId, this);
+        } else {
+            closeTraceSystem();
+        }
         return transfer;
     }
 
@@ -372,18 +268,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 if (isValid()) {
                     transfer.writeRequestHeader(Session.SESSION_CLOSE).flush();
                     asyncConnection.removeSession(sessionId);
-                }
-
-                synchronized (ClientSession.class) {
-                    if (asyncConnection.isEmpty()) {
-                        asyncConnections.remove(inetSocketAddress);
-                    }
-                    if (asyncConnections.isEmpty()) {
-                        client.close();
-                        NetFactory.closeVertx(vertx); // 不要像这样单独调用: vertx.close();
-                        client = null;
-                        vertx = null;
-                    }
                 }
             } catch (RuntimeException e) {
                 trace.error(e, "close");
@@ -653,4 +537,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         return ci;
     }
 
+    @Override
+    public void runModeChanged(String newTargetEndpoints) {
+        parent.runModeChanged(newTargetEndpoints);
+    }
 }

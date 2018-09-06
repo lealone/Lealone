@@ -228,6 +228,7 @@ public class AOStorage extends StorageBase {
             }
             ByteBuffer pageBuffer = p.getAndFlipBuffer();
             c.replicateRootPages(db.getShortName(), pageBuffer);
+            db.notifyRunModeChanged();
         }
     }
 
@@ -262,8 +263,8 @@ public class AOStorage extends StorageBase {
     @Override
     public void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
             String[] newEndpoints) {
+        Database db = (Database) dbObject;
         for (StorageMap<?, ?> map : maps.values()) {
-            Database db = (Database) dbObject;
             map = map.getRawMap();
             if (map instanceof BTreeMap) {
                 BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
@@ -277,5 +278,6 @@ public class AOStorage extends StorageBase {
                 }
             }
         }
+        db.notifyRunModeChanged();
     }
 }

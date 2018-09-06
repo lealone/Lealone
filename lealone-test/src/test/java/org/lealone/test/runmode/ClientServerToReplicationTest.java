@@ -31,8 +31,9 @@ public class ClientServerToReplicationTest extends RunModeTest {
     public void run() throws Exception {
         String dbName = ClientServerToReplicationTest.class.getSimpleName();
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server");
-
-        new CrudTest(dbName).runTest();
+        new Thread(() -> {
+            new CrudTest(dbName).runTest();
+        }).start();
 
         executeUpdate("ALTER DATABASE " + dbName //
                 + " RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");

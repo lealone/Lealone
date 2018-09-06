@@ -15,28 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.client;
+package org.lealone.common.concurrent;
 
-import java.sql.SQLException;
+public class ConcurrentUtils {
 
-import org.lealone.db.ConnectionInfo;
-import org.lealone.db.Session;
-import org.lealone.db.SessionFactory;
-
-public class ClientSessionFactory implements SessionFactory {
-
-    private static final ClientSessionFactory instance = new ClientSessionFactory();
-
-    public static ClientSessionFactory getInstance() {
-        return instance;
-    }
-
-    private ClientSessionFactory() {
-    }
-
-    @Override
-    public Session createSession(ConnectionInfo ci) throws SQLException {
-        return new AutoReconnectSession(ci);
+    public static void submitTask(String name, Runnable target) {
+        new Thread(target, name).start();
     }
 
 }

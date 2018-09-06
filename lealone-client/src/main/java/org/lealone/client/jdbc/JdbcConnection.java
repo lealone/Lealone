@@ -403,6 +403,8 @@ public class JdbcConnection extends TraceObject implements Connection {
             commit.executeUpdate();
         } catch (Exception e) {
             throw logAndConvert(e);
+        } finally {
+            session.reconnectIfNeeded();
         }
     }
 
@@ -420,6 +422,8 @@ public class JdbcConnection extends TraceObject implements Connection {
             rollbackInternal();
         } catch (Exception e) {
             throw logAndConvert(e);
+        } finally {
+            session.reconnectIfNeeded();
         }
     }
 
@@ -944,6 +948,8 @@ public class JdbcConnection extends TraceObject implements Connection {
             sp.rollback();
         } catch (Exception e) {
             throw logAndConvert(e);
+        } finally {
+            session.reconnectIfNeeded();
         }
     }
 

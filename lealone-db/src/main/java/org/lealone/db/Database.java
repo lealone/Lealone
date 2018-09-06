@@ -2490,4 +2490,11 @@ public class Database implements DataHandler, DbObject {
     void setLastConnectionInfo(ConnectionInfo ci) {
         lastConnectionInfo = ci;
     }
+
+    public void notifyRunModeChanged() {
+        String hostIds = getParameters().get("hostIds");
+        for (ServerSession session : getSessions(false)) {
+            session.runModeChanged(hostIds);
+        }
+    }
 }
