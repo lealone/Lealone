@@ -62,4 +62,8 @@ public interface Storage {
             String[] newEndpoints) {
         throw DbException.getUnsupportedException("scaleIn");
     }
+
+    long getDiskSpaceUsed();
+
+    long getMemorySpaceUsed();
 }

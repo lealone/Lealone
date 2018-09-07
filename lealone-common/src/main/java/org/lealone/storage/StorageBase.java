@@ -90,4 +90,20 @@ public abstract class StorageBase implements Storage {
     public StorageMap<?, ?> getMap(String name) {
         return maps.get(name);
     }
+
+    @Override
+    public long getDiskSpaceUsed() {
+        long total = 0;
+        for (StorageMap<?, ?> map : maps.values())
+            total += map.getDiskSpaceUsed();
+        return total;
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        long total = 0;
+        for (StorageMap<?, ?> map : maps.values())
+            total += map.getMemorySpaceUsed();
+        return total;
+    }
 }

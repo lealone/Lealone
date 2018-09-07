@@ -234,4 +234,14 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     public void setRootPage(ByteBuffer buff) {
         map.setRootPage(buff);
     }
+
+    @Override
+    public long getDiskSpaceUsed() {
+        return map.getDiskSpaceUsed();
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        return map.getDiskSpaceUsed();
+    }
 }

@@ -238,4 +238,8 @@ public interface StorageMap<K, V> extends ReplicationMap {
     }
 
     void setRootPage(ByteBuffer buff);
+
+    long getDiskSpaceUsed();
+
+    long getMemorySpaceUsed();
 }

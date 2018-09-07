@@ -451,6 +451,11 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
+    public long getMemorySpaceUsed() {
+        return 0;
+    }
+
+    @Override
     public StorageMap<? extends Object, ? extends Object> getStorageMap() {
         return null;
     }

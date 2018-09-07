@@ -315,8 +315,12 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public long getDiskSpaceUsed() {
-        // TODO estimate disk space usage
-        return 0;
+        return dataMap.getDiskSpaceUsed();
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        return dataMap.getMemorySpaceUsed();
     }
 
     /**

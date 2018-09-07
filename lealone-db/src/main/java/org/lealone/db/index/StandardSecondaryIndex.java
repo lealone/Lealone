@@ -375,8 +375,12 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     @Override
     public long getDiskSpaceUsed() {
-        // TODO estimate disk space usage
-        return 0;
+        return dataMap.getDiskSpaceUsed();
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        return dataMap.getMemorySpaceUsed();
     }
 
     @Override

@@ -857,4 +857,15 @@ public class BTreeStorage {
         }
         return hashCode;
     }
+
+    long getDiskSpaceUsed() {
+        return org.lealone.aose.util.FileUtils.folderSize(new File(btreeStorageName));
+    }
+
+    long getMemorySpaceUsed() {
+        if (cache != null)
+            return cache.getUsedMemory();
+        else
+            return 0;
+    }
 }

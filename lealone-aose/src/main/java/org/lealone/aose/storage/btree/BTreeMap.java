@@ -1146,4 +1146,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         root.moveAllLocalLeafPages(oldEndpoints, newEndpoints);
     }
 
+    @Override
+    public long getDiskSpaceUsed() {
+        return storage.getDiskSpaceUsed();
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        return storage.getMemorySpaceUsed();
+    }
 }

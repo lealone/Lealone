@@ -131,4 +131,14 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     public void setRootPage(ByteBuffer buff) {
         throw DbException.getUnsupportedException("setRootPage");
     }
+
+    @Override
+    public long getDiskSpaceUsed() {
+        return 0;
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        return 0;
+    }
 }

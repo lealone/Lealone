@@ -30,8 +30,9 @@ import com.google.common.annotations.VisibleForTesting;
  * Responsible for deciding whether to kill the JVM if it gets in an "unstable" state (think OOM).
  */
 public final class JVMStabilityInspector {
+
     private static final Logger logger = LoggerFactory.getLogger(JVMStabilityInspector.class);
-    private static Killer killer = new Killer();
+    private static final Killer killer = new Killer();
 
     private JVMStabilityInspector() {
     }
@@ -45,9 +46,8 @@ public final class JVMStabilityInspector {
         boolean isUnstable = false;
         if (t instanceof OutOfMemoryError)
             isUnstable = true;
-
         // Check for file handle exhaustion
-        if (t instanceof FileNotFoundException || t instanceof SocketException)
+        else if (t instanceof FileNotFoundException || t instanceof SocketException)
             if (t.getMessage().contains("Too many open files"))
                 isUnstable = true;
 

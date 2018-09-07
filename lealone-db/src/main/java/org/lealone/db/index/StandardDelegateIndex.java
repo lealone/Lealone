@@ -27,8 +27,8 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
 
     public StandardDelegateIndex(StandardTable table, int id, String name, StandardPrimaryIndex mainIndex,
             IndexType indexType) {
-        super(table, id, name, indexType, IndexColumn.wrap(new Column[] { table.getColumn(mainIndex
-                .getMainIndexColumn()) }));
+        super(table, id, name, indexType,
+                IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) }));
         this.mainIndex = mainIndex;
         if (id < 0) {
             throw DbException.throwInternalError("" + name);
@@ -124,7 +124,12 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
 
     @Override
     public long getDiskSpaceUsed() {
-        return 0;
+        return mainIndex.getDiskSpaceUsed();
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        return mainIndex.getMemorySpaceUsed();
     }
 
     @Override

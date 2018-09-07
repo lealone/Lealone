@@ -168,6 +168,13 @@ public interface Index extends SchemaObject {
     long getDiskSpaceUsed();
 
     /**
+     * Get the used memory space for this index.
+     *
+     * @return the estimated number of bytes
+     */
+    long getMemorySpaceUsed();
+
+    /**
      * Compare two rows.
      *
      * @param rowData the first row
