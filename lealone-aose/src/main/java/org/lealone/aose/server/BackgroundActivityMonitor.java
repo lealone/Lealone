@@ -126,7 +126,7 @@ public class BackgroundActivityMonitor {
 
     public double getSeverity(NetEndpoint endpoint) {
         VersionedValue event;
-        EndpointState state = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState state = Gossiper.instance.getEndpointState(endpoint);
         if (state != null && (event = state.getApplicationState(ApplicationState.SEVERITY)) != null)
             return Double.parseDouble(event.value);
         return 0.0;

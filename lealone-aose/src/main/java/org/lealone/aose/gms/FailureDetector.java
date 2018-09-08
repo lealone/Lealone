@@ -132,7 +132,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     @Override
     public String getEndpointState(String address) throws UnknownHostException {
         StringBuilder sb = new StringBuilder();
-        EndpointState endpointState = Gossiper.instance.getEndpointStateForEndpoint(NetEndpoint.getByName(address));
+        EndpointState endpointState = Gossiper.instance.getEndpointState(NetEndpoint.getByName(address));
         appendEndpointState(sb, endpointState);
         return sb.toString();
     }
@@ -178,7 +178,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
         if (ep.equals(ConfigDescriptor.getLocalEndpoint()))
             return true;
 
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);
+        EndpointState epState = Gossiper.instance.getEndpointState(ep);
         // we could assert not-null, but having isAlive fail screws a node over so badly that
         // it's worth being defensive here so minor bugs don't cause disproportionate
         // badness. (See lealone-1463 for an example).

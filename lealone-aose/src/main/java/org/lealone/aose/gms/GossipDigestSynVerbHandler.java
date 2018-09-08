@@ -99,7 +99,7 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
         List<GossipDigest> diffDigests = new ArrayList<>(gDigestList.size());
         for (GossipDigest gDigest : gDigestList) {
             NetEndpoint ep = gDigest.getEndpoint();
-            EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(ep);
+            EndpointState epState = Gossiper.instance.getEndpointState(ep);
             int version = (epState != null) ? Gossiper.instance.getMaxEndpointStateVersion(epState) : 0;
             int diffVersion = Math.abs(version - gDigest.getMaxVersion());
             diffDigests.add(new GossipDigest(ep, gDigest.getGeneration(), diffVersion));

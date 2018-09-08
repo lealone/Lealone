@@ -76,6 +76,7 @@ public class ClusterMetaData {
             conn = LealoneDatabase.getInstance().getInternalConnection();
             stmt = conn.createStatement();
             stmt.execute("CREATE TABLE IF NOT EXISTS " + NODES_TABLE + "(" //
+                    + "id varchar,"//
                     + "host_id varchar,"//
                     + "tcp_endpoint varchar,"//
                     + "p2p_endpoint varchar,"//
@@ -86,7 +87,7 @@ public class ClusterMetaData {
                     + "preferred_ip varchar,"//
                     + "gossip_generation int,"//
                     + "schema_version uuid,"//
-                    + "PRIMARY KEY (host_id))");
+                    + "PRIMARY KEY (id))");
         } catch (SQLException e) {
             handleException(e);
         }
@@ -117,11 +118,11 @@ public class ClusterMetaData {
         return hostIdMap;
     }
 
-    public static synchronized int incrementAndGetGeneration(String hostId) {
-        String sql = "SELECT gossip_generation FROM %s WHERE host_id='%s'";
+    public static synchronized int incrementAndGetGeneration(NetEndpoint ep) {
+        String sql = "SELECT gossip_generation FROM %s WHERE id='%s'";
         int generation = 0;
         try {
-            ResultSet rs = stmt.executeQuery(String.format(sql, NODES_TABLE, hostId));
+            ResultSet rs = stmt.executeQuery(String.format(sql, NODES_TABLE, ep.getHostAndPort()));
             if (rs.next()) {
                 generation = rs.getInt(1);
                 if (generation == 0) {
@@ -148,31 +149,22 @@ public class ClusterMetaData {
             handleException(e);
         }
 
-        updatePeerInfo(hostId, "gossip_generation", generation);
+        updatePeerInfo(ep, "gossip_generation", generation);
         return generation;
     }
 
     // 由调用者确定是否把本地节点的信息存入NODES表
     public static synchronized void updatePeerInfo(NetEndpoint ep, String columnName, Object value) {
-        updatePeerInfo(ep.getHostAndPort(), columnName, value);
-    }
-
-    private static synchronized void updatePeerInfo(String hostId, String columnName, Object value) {
         try {
-            if ("host_id".equalsIgnoreCase(columnName)) {
-                String sql = "MERGE INTO %s (host_id) KEY(host_id) VALUES('%s')";
-                stmt.executeUpdate(String.format(sql, NODES_TABLE, value));
-            } else {
-                String sql = "MERGE INTO %s (host_id, %s) KEY(host_id) VALUES('%s', '%s')";
-                stmt.executeUpdate(String.format(sql, NODES_TABLE, columnName, hostId, value));
-            }
+            String sql = "MERGE INTO %s (id, %s) KEY(id) VALUES('%s', '%s')";
+            stmt.executeUpdate(String.format(sql, NODES_TABLE, columnName, ep.getHostAndPort(), value));
         } catch (SQLException e) {
             handleException(e);
         }
     }
 
     public static synchronized void removeEndpoint(NetEndpoint ep) {
-        String sql = "DELETE FROM %s WHERE host_id = '%s'";
+        String sql = "DELETE FROM %s WHERE id = '%s'";
         try {
             stmt.executeUpdate(String.format(sql, NODES_TABLE, ep.getHostAndPort()));
         } catch (SQLException e) {
@@ -199,7 +191,7 @@ public class ClusterMetaData {
     }
 
     public static synchronized NetEndpoint getPreferredIP(NetEndpoint ep) {
-        String sql = "SELECT preferred_ip FROM %s WHERE host_id='%s'";
+        String sql = "SELECT preferred_ip FROM %s WHERE id='%s'";
         try {
             ResultSet rs = stmt.executeQuery(String.format(sql, NODES_TABLE, ep.getHostAndPort()));
             if (rs.next()) {
@@ -214,6 +206,6 @@ public class ClusterMetaData {
     }
 
     public static synchronized void updatePreferredIP(NetEndpoint ep, NetEndpoint preferred_ip) {
-        updatePeerInfo(ep.getHostAndPort(), "preferred_ip", preferred_ip.getHostAndPort());
+        updatePeerInfo(ep, "preferred_ip", preferred_ip.getHostAndPort());
     }
 }

@@ -672,7 +672,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         return storedTime == null ? computeExpireTime() : storedTime;
     }
 
-    public EndpointState getEndpointStateForEndpoint(NetEndpoint ep) {
+    public EndpointState getEndpointState(NetEndpoint ep) {
         return endpointStateMap.get(ep);
     }
 
@@ -690,7 +690,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     public boolean usesHostId(NetEndpoint endpoint) {
         if (MessagingService.instance().knowsVersion(endpoint))
             return true;
-        else if (getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.NET_VERSION) != null)
+        else if (getEndpointState(endpoint).getApplicationState(ApplicationState.NET_VERSION) != null)
             return true;
         return false;
     }
@@ -698,7 +698,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     public String getHostId(NetEndpoint endpoint) {
         if (!usesHostId(endpoint))
             throw new RuntimeException("Host " + endpoint + " does not use new-style tokens!");
-        return getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.HOST_ID).value;
+        return getEndpointState(endpoint).getApplicationState(ApplicationState.HOST_ID).value;
     }
 
     EndpointState getStateForVersionBiggerThan(NetEndpoint forEndpoint, int version) {
@@ -742,8 +742,8 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
      * determine which endpoint started up earlier
      */
     public int compareEndpointStartup(NetEndpoint addr1, NetEndpoint addr2) {
-        EndpointState ep1 = getEndpointStateForEndpoint(addr1);
-        EndpointState ep2 = getEndpointStateForEndpoint(addr2);
+        EndpointState ep1 = getEndpointState(addr1);
+        EndpointState ep2 = getEndpointState(addr2);
         assert ep1 != null && ep2 != null;
         return ep1.getHeartBeatState().getGeneration() - ep2.getHeartBeatState().getGeneration();
     }

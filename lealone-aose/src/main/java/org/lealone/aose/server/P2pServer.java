@@ -130,10 +130,11 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
     }
 
     private void prepareToJoin() throws ConfigException {
+        NetEndpoint localEndpoint = ConfigDescriptor.getLocalEndpoint();
         localHostId = NetEndpoint.getLocalTcpHostAndPort();
-        topologyMetaData.updateHostId(localHostId, ConfigDescriptor.getLocalEndpoint());
+        topologyMetaData.updateHostId(localHostId, localEndpoint);
 
-        int generation = ClusterMetaData.incrementAndGetGeneration(localHostId);
+        int generation = ClusterMetaData.incrementAndGetGeneration(localEndpoint);
 
         Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
         appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(localHostId));
@@ -145,7 +146,7 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
         appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
 
         // 先启动MessagingService再启动Gossiper
-        MessagingService.instance().start(ConfigDescriptor.getLocalEndpoint(), config);
+        MessagingService.instance().start(localEndpoint, config);
 
         logger.info("Starting up server gossip");
         Gossiper.instance.register(this);
@@ -153,12 +154,6 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
 
         logger.info("Starting up LoadBroadcaster");
         LoadBroadcaster.instance.startBroadcasting();
-    }
-
-    // gossip snitch infos (local DC and rack)
-    public void gossipSnitchInfo() {
-        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, getDatacenter());
-        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, getRack());
     }
 
     private VersionedValue getDatacenter() {
@@ -177,6 +172,12 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
         List<Pair<ApplicationState, VersionedValue>> states = new ArrayList<>(1);
         states.add(Pair.create(ApplicationState.STATUS, valueFactory.normal(localHostId)));
         Gossiper.instance.addLocalApplicationStates(states);
+    }
+
+    // gossip snitch infos (local DC and rack)
+    public void gossipSnitchInfo() {
+        Gossiper.instance.addLocalApplicationState(ApplicationState.DC, getDatacenter());
+        Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, getRack());
     }
 
     public void register(IEndpointLifecycleSubscriber subscriber) {
@@ -246,12 +247,6 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
     }
 
     @Override
-    public void beforeChange(NetEndpoint endpoint, EndpointState currentState, ApplicationState newStateKey,
-            VersionedValue newValue) {
-        // no-op
-    }
-
-    @Override
     public void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
         if (state == ApplicationState.STATUS) {
             String apStateValue = value.value;
@@ -276,12 +271,11 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
                 break;
             }
         } else {
-            EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+            EndpointState epState = Gossiper.instance.getEndpointState(endpoint);
             if (epState == null || Gossiper.instance.isDeadState(epState)) {
                 logger.debug("Ignoring state change for dead or unknown endpoint: {}", endpoint);
                 return;
             }
-
             if (!endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
                 updatePeerInfo(endpoint, state, value);
         }
@@ -318,7 +312,7 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
         if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
             return;
 
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState epState = Gossiper.instance.getEndpointState(endpoint);
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
             updatePeerInfo(endpoint, entry.getKey(), entry.getValue());
         }
@@ -359,8 +353,9 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
                     topologyMetaData.removeEndpoint(endpoint);
                     endpointsToRemove.add(endpoint);
                 }
-            } else
+            } else {
                 topologyMetaData.updateHostId(hostId, endpoint);
+            }
         }
 
         for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
@@ -376,8 +371,7 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
         if (!topologyMetaData.isMember(endpoint)) {
             logger.info("Node {} state jump to leaving", endpoint);
         }
-        // at this point the endpoint is certainly a member with this token, so let's proceed
-        // normally
+        // at this point the endpoint is certainly a member with this token, so let's proceed normally
         topologyMetaData.addLeavingEndpoint(endpoint);
     }
 
@@ -401,8 +395,8 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
         assert (pieces.length > 0);
 
         if (endpoint.equals(ConfigDescriptor.getLocalEndpoint())) {
-            logger.info(
-                    "Received removenode gossip about myself. Is this node rejoining after an explicit removenode?");
+            logger.info("Received removenode gossip about myself. "
+                    + "Is this node rejoining after an explicit removenode?");
             try {
                 // drain();
             } catch (Exception e) {

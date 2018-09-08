@@ -87,7 +87,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
             return myDC;
 
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState epState = Gossiper.instance.getEndpointState(endpoint);
         if (epState == null || epState.getApplicationState(ApplicationState.DC) == null) {
             if (savedEndpoints == null)
                 savedEndpoints = ClusterMetaData.loadDcRackInfo();
@@ -109,7 +109,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
             return myRack;
 
-        EndpointState epState = Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+        EndpointState epState = Gossiper.instance.getEndpointState(endpoint);
         if (epState == null || epState.getApplicationState(ApplicationState.RACK) == null) {
             if (savedEndpoints == null)
                 savedEndpoints = ClusterMetaData.loadDcRackInfo();
