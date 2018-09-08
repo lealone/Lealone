@@ -18,19 +18,18 @@
 package org.lealone.aose.gms;
 
 public enum ApplicationState {
-    STATUS,
-    LOAD,
-    SCHEMA,
+    HOST_ID,
+    TCP_ENDPOINT,
+    P2P_ENDPOINT,
     DC,
     RACK,
     RELEASE_VERSION,
-    REMOVAL_COORDINATOR,
-    INTERNAL_IP,
-    TCP_ENDPOINT,
-    P2P_ENDPOINT,
-    SEVERITY,
     NET_VERSION,
-    HOST_ID,
+    STATUS,
+    LOAD,
+    SEVERITY,
+    INTERNAL_IP,
+    REMOVAL_COORDINATOR,
     // pad to allow adding new states to existing cluster
     X1,
     X2,

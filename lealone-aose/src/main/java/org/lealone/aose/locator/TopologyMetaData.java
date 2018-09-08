@@ -41,20 +41,17 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Multimap;
 
 public class TopologyMetaData {
+
     private static final Logger logger = LoggerFactory.getLogger(TopologyMetaData.class);
 
     /** Maintains endpoint to host ID map of every node in the cluster */
     private final BiMap<NetEndpoint, String> endpointToHostIdMap;
-
-    // (don't need to record Token here since it's still part of tokenToEndpointMap until it's done leaving)
-    private final Set<NetEndpoint> leavingEndpoints = new HashSet<>();
-
-    /* Use this lock for manipulating the token map */
-    private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
-
     private final Topology topology;
 
+    // don't need to record host ID here since it's still part of endpointToHostIdMap until it's done leaving
+    private final Set<NetEndpoint> leavingEndpoints = new HashSet<>();
     private final AtomicReference<TopologyMetaData> cachedMap = new AtomicReference<>();
+    private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     // signals replication strategies that nodes have joined or left the ring and they need to recompute ownership
     private volatile long ringVersion = 0;
@@ -63,14 +60,14 @@ public class TopologyMetaData {
         this(HashBiMap.<NetEndpoint, String> create(), new Topology());
     }
 
-    private TopologyMetaData(BiMap<NetEndpoint, String> endpointsMap, Topology topology) {
+    private TopologyMetaData(BiMap<NetEndpoint, String> endpointToHostIdMap, Topology topology) {
+        this.endpointToHostIdMap = endpointToHostIdMap;
         this.topology = topology;
-        endpointToHostIdMap = endpointsMap;
     }
 
     /**
-     * Store an end-point to host ID mapping.  Each ID must be unique, and
-     * cannot be changed after the fact.
+     * Store an end-point to host ID mapping.
+     * Each ID must be unique, and cannot be changed after the fact.
      *
      * @param hostId
      * @param endpoint
@@ -87,6 +84,8 @@ public class TopologyMetaData {
                     throw new RuntimeException(String.format(
                             "Host ID collision between active endpoint %s and %s (id=%s)", storedEp, endpoint, hostId));
                 }
+            } else {
+                topology.addEndpoint(endpoint);
             }
 
             String storedId = endpointToHostIdMap.get(endpoint);
@@ -110,7 +109,7 @@ public class TopologyMetaData {
     }
 
     /** Return the end-point for a unique host ID */
-    public NetEndpoint getEndpointForHostId(String hostId) {
+    public NetEndpoint getEndpoint(String hostId) {
         lock.readLock().lock();
         try {
             return endpointToHostIdMap.inverse().get(hostId);
@@ -179,10 +178,10 @@ public class TopologyMetaData {
     }
 
     /**
-     * Create a copy of TopologyMetaData with only tokenToEndpointMap. That is, pending ranges,
-     * bootstrap tokens and leaving endpoints are not included in the copy.
+     * Create a copy of TopologyMetaData with only endpointToHostIdMap.
+     * That is, leaving endpoints are not included in the copy.
      */
-    public TopologyMetaData cloneOnlyTokenMap() {
+    private TopologyMetaData cloneOnlyHostIdMap() {
         lock.readLock().lock();
         try {
             return new TopologyMetaData(HashBiMap.create(endpointToHostIdMap), new Topology(topology));
@@ -192,29 +191,29 @@ public class TopologyMetaData {
     }
 
     /**
-     * Return a cached TopologyMetaData with only tokenToEndpointMap, i.e., the same as cloneOnlyTokenMap but
+     * Return a cached TopologyMetaData with only endpointToHostIdMap, i.e., the same as cloneOnlyHostIdMap but
      * uses a cached copy that is invalided when the ring changes, so in the common case
      * no extra locking is required.
      *
      * Callers must *NOT* mutate the returned metadata object.
      */
-    public TopologyMetaData cachedOnlyTokenMap() {
+    public TopologyMetaData getCacheOnlyHostIdMap() {
         TopologyMetaData tm = cachedMap.get();
         if (tm != null)
             return tm;
 
-        // synchronize to prevent thundering herd (lealone-6345)
+        // synchronize to prevent thundering herd
         synchronized (this) {
             if ((tm = cachedMap.get()) != null)
                 return tm;
 
-            tm = cloneOnlyTokenMap();
+            tm = cloneOnlyHostIdMap();
             cachedMap.set(tm);
             return tm;
         }
     }
 
-    public ArrayList<String> sortedHostIds() {
+    public ArrayList<String> getSortedHostIds() {
         return new ArrayList<>(endpointToHostIdMap.inverse().keySet());
     }
 
@@ -250,27 +249,6 @@ public class TopologyMetaData {
         }
     }
 
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        lock.readLock().lock();
-        try {
-            String lineSeparator = System.getProperty("line.separator");
-            if (!leavingEndpoints.isEmpty()) {
-                sb.append("Leaving Endpoints:");
-                sb.append(lineSeparator);
-                for (NetEndpoint ep : leavingEndpoints) {
-                    sb.append(ep);
-                    sb.append(lineSeparator);
-                }
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-
-        return sb.toString();
-    }
-
     /**
      * @return the Topology map of nodes to DCs + Racks
      *
@@ -289,6 +267,28 @@ public class TopologyMetaData {
     public void invalidateCachedRings() {
         ringVersion++;
         cachedMap.set(null);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        lock.readLock().lock();
+        try {
+            String lineSeparator = System.getProperty("line.separator");
+            sb.append("HostIds: " + getSortedHostIds());
+            if (!leavingEndpoints.isEmpty()) {
+                sb.append("Leaving Endpoints:");
+                sb.append(lineSeparator);
+                for (NetEndpoint ep : leavingEndpoints) {
+                    sb.append(ep);
+                    sb.append(lineSeparator);
+                }
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+
+        return sb.toString();
     }
 
     /**

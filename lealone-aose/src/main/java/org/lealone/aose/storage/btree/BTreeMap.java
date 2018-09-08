@@ -309,7 +309,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Set<NetEndpoint> candidateEndpoints = new HashSet<>(hostIds.length);
         TopologyMetaData metaData = P2pServer.instance.getTopologyMetaData();
         for (String hostId : hostIds) {
-            candidateEndpoints.add(metaData.getEndpointForHostId(hostId));
+            candidateEndpoints.add(metaData.getEndpoint(hostId));
         }
         return candidateEndpoints;
     }
@@ -972,8 +972,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         int size = replicationHostIds.size();
         List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            replicationEndpoints
-                    .add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(replicationHostIds.get(i)));
+            replicationEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpoint(replicationHostIds.get(i)));
         }
         return replicationEndpoints;
     }

@@ -35,18 +35,24 @@ public interface IEndpointStateChangeSubscriber {
      * @param endpoint endpoint for which the state change occurred.
      * @param epState  state that actually changed for the above endpoint.
      */
-    public void onJoin(NetEndpoint endpoint, EndpointState epState);
+    public default void onJoin(NetEndpoint endpoint, EndpointState epState) {
+    }
 
-    public void beforeChange(NetEndpoint endpoint, EndpointState currentState, ApplicationState newStateKey,
-            VersionedValue newValue);
+    public default void beforeChange(NetEndpoint endpoint, EndpointState currentState, ApplicationState newStateKey,
+            VersionedValue newValue) {
+    }
 
-    public void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value);
+    public default void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
+    }
 
-    public void onAlive(NetEndpoint endpoint, EndpointState state);
+    public default void onAlive(NetEndpoint endpoint, EndpointState state) {
+    }
 
-    public void onDead(NetEndpoint endpoint, EndpointState state);
+    public default void onDead(NetEndpoint endpoint, EndpointState state) {
+    }
 
-    public void onRemove(NetEndpoint endpoint);
+    public default void onRemove(NetEndpoint endpoint) {
+    }
 
     /**
      * Called whenever a node is restarted.
@@ -54,5 +60,6 @@ public interface IEndpointStateChangeSubscriber {
      * previously marked down. It will have only if {@code state.isAlive() == false}
      * as {@code state} is from before the restarted node is marked up.
      */
-    public void onRestart(NetEndpoint endpoint, EndpointState state);
+    public default void onRestart(NetEndpoint endpoint, EndpointState state) {
+    }
 }

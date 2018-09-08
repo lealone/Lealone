@@ -47,7 +47,7 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
         int replicas = getReplicationFactor();
         if (includeOldReplicationEndpoints)
             replicas -= oldReplicationEndpoints.size();
-        ArrayList<String> hostIds = metaData.sortedHostIds();
+        ArrayList<String> hostIds = metaData.getSortedHostIds();
         List<NetEndpoint> endpoints = new ArrayList<NetEndpoint>(replicas);
 
         if (hostIds.isEmpty())
@@ -55,7 +55,7 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
 
         Iterator<String> iter = hostIds.iterator();
         while (endpoints.size() < replicas && iter.hasNext()) {
-            NetEndpoint ep = metaData.getEndpointForHostId(iter.next());
+            NetEndpoint ep = metaData.getEndpoint(iter.next());
             if (candidateEndpoints.contains(ep) && !oldReplicationEndpoints.contains(ep) && !endpoints.contains(ep))
                 endpoints.add(ep);
         }

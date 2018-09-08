@@ -20,6 +20,7 @@ package org.lealone.aose.util;
 import com.google.common.base.Throwables;
 
 public abstract class WrappedRunnable implements Runnable {
+
     @Override
     public final void run() {
         try {

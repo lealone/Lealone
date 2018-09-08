@@ -125,7 +125,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                P2pServer.VALUE_FACTORY.internalIP(ConfigDescriptor.getLocalEndpoint().getHostAddress()));
+                P2pServer.valueFactory.internalIP(ConfigDescriptor.getLocalEndpoint().getHostAddress()));
 
         reloadGossiperState();
 

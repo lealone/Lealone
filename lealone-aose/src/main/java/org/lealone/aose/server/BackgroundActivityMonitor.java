@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose.util;
+package org.lealone.aose.server;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -30,7 +30,7 @@ import org.lealone.aose.gms.ApplicationState;
 import org.lealone.aose.gms.EndpointState;
 import org.lealone.aose.gms.Gossiper;
 import org.lealone.aose.gms.VersionedValue;
-import org.lealone.aose.server.P2pServer;
+import org.lealone.aose.util.Utils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetEndpoint;
@@ -38,6 +38,7 @@ import org.lealone.net.NetEndpoint;
 import com.google.common.util.concurrent.AtomicDouble;
 
 public class BackgroundActivityMonitor {
+
     private static final Logger logger = LoggerFactory.getLogger(BackgroundActivityMonitor.class);
 
     public static final int USER_INDEX = 0;
@@ -51,8 +52,8 @@ public class BackgroundActivityMonitor {
     private static final int NUM_CPUS = Runtime.getRuntime().availableProcessors();
     private static final String PROC_STAT_PATH = "/proc/stat";
 
-    private final AtomicDouble compaction_severity = new AtomicDouble();
-    private final AtomicDouble manual_severity = new AtomicDouble();
+    private final AtomicDouble compactionSeverity = new AtomicDouble();
+    private final AtomicDouble manualSeverity = new AtomicDouble();
     private final ScheduledExecutorService reportThread;
 
     private RandomAccessFile statsFile;
@@ -102,11 +103,11 @@ public class BackgroundActivityMonitor {
     }
 
     public void incrCompactionSeverity(double sev) {
-        compaction_severity.addAndGet(sev);
+        compactionSeverity.addAndGet(sev);
     }
 
     public void incrManualSeverity(double sev) {
-        manual_severity.addAndGet(sev);
+        manualSeverity.addAndGet(sev);
     }
 
     public double getIOWait() throws IOException {
@@ -143,12 +144,12 @@ public class BackgroundActivityMonitor {
                     logger.warn("Couldn't read /proc/stats");
             }
             if (report == -1d)
-                report = compaction_severity.get();
+                report = compactionSeverity.get();
 
             if (!Gossiper.instance.isEnabled())
                 return;
-            report += manual_severity.get(); // add manual severity setting.
-            VersionedValue updated = P2pServer.VALUE_FACTORY.severity(report);
+            report += manualSeverity.get(); // add manual severity setting.
+            VersionedValue updated = P2pServer.valueFactory.severity(report);
             Gossiper.instance.addLocalApplicationState(ApplicationState.SEVERITY, updated);
         }
     }

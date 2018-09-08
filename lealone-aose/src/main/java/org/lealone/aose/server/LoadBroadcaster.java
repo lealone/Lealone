@@ -34,20 +34,20 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetEndpoint;
 
 public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
-    private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
 
-    static final int BROADCAST_INTERVAL = 60 * 1000;
+    private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
+    private static final ConcurrentMap<NetEndpoint, Double> loadInfo = new ConcurrentHashMap<>();
+    private static final int BROADCAST_INTERVAL = 60 * 1000;
 
     public static final LoadBroadcaster instance = new LoadBroadcaster();
-
-    private final ConcurrentMap<NetEndpoint, Double> loadInfo = new ConcurrentHashMap<>();
 
     private LoadBroadcaster() {
         Gossiper.instance.register(this);
     }
 
     public void startBroadcasting() {
-        // send the first broadcast "right away" (i.e., in 2 gossip heartbeats, when we should have someone to talk to);
+        // send the first broadcast "right away"
+        // (i.e., in 2 gossip heartbeats, when we should have someone to talk to);
         // after that send every BROADCAST_INTERVAL.
         Runnable runnable = new Runnable() {
             @Override
@@ -55,7 +55,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
                 if (logger.isDebugEnabled())
                     logger.debug("Disseminating load info ...");
                 Gossiper.instance.addLocalApplicationState(ApplicationState.LOAD,
-                        P2pServer.VALUE_FACTORY.load(P2pServer.instance.getLoad()));
+                        P2pServer.valueFactory.load(P2pServer.instance.getLoad()));
             }
         };
         ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.INTERVAL_IN_MILLIS,
@@ -84,22 +84,5 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
     @Override
     public void onRemove(NetEndpoint endpoint) {
         loadInfo.remove(endpoint);
-    }
-
-    @Override
-    public void beforeChange(NetEndpoint endpoint, EndpointState currentState, ApplicationState newStateKey,
-            VersionedValue newValue) {
-    }
-
-    @Override
-    public void onAlive(NetEndpoint endpoint, EndpointState state) {
-    }
-
-    @Override
-    public void onDead(NetEndpoint endpoint, EndpointState state) {
-    }
-
-    @Override
-    public void onRestart(NetEndpoint endpoint, EndpointState state) {
     }
 }

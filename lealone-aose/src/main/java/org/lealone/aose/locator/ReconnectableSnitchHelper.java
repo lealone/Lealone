@@ -80,21 +80,4 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
     public void onAlive(NetEndpoint endpoint, EndpointState state) {
         onJoin(endpoint, state);
     }
-
-    @Override
-    public void beforeChange(NetEndpoint endpoint, EndpointState currentState, ApplicationState newStateKey,
-            VersionedValue newValue) {
-    }
-
-    @Override
-    public void onDead(NetEndpoint endpoint, EndpointState state) {
-    }
-
-    @Override
-    public void onRemove(NetEndpoint endpoint) {
-    }
-
-    @Override
-    public void onRestart(NetEndpoint endpoint, EndpointState state) {
-    }
 }

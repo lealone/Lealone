@@ -75,7 +75,7 @@ public abstract class AbstractReplicationStrategy {
 
     public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
             Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
-        TopologyMetaData tm = metaData.cachedOnlyTokenMap();
+        TopologyMetaData tm = metaData.getCacheOnlyHostIdMap();
         return calculateReplicationEndpoints(tm, oldReplicationEndpoints, candidateEndpoints,
                 includeOldReplicationEndpoints);
     }

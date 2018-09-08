@@ -119,11 +119,11 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         for (Map.Entry<String, Integer> dc : datacenters.entrySet())
             skippedDcEndpoints.put(dc.getKey(), new LinkedHashSet<NetEndpoint>());
 
-        ArrayList<String> hostIds = metaData.sortedHostIds();
+        ArrayList<String> hostIds = metaData.getSortedHostIds();
         Iterator<String> tokenIter = hostIds.iterator();
         while (tokenIter.hasNext() && !hasSufficientReplicas(dcReplicas, allEndpoints)) {
             String next = tokenIter.next();
-            NetEndpoint ep = metaData.getEndpointForHostId(next);
+            NetEndpoint ep = metaData.getEndpoint(next);
             if (!candidateEndpoints.contains(ep) || oldReplicationEndpoints.contains(ep))
                 continue;
             String dc = snitch.getDatacenter(ep);

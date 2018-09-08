@@ -101,7 +101,7 @@ public class VersionedValue implements Comparable<VersionedValue> {
         }
 
         public VersionedValue normal(String hostId) {
-            return new VersionedValue(versionString(VersionedValue.STATUS_NORMAL, hostId.toString()));
+            return new VersionedValue(versionString(VersionedValue.STATUS_NORMAL, hostId));
         }
 
         public VersionedValue load(double load) {
@@ -113,16 +113,15 @@ public class VersionedValue implements Comparable<VersionedValue> {
         }
 
         public VersionedValue leaving(String hostId) {
-            return new VersionedValue(versionString(VersionedValue.STATUS_LEAVING, hostId.toString()));
+            return new VersionedValue(versionString(VersionedValue.STATUS_LEAVING, hostId));
         }
 
         public VersionedValue left(String hostId, long expireTime) {
-            return new VersionedValue(
-                    versionString(VersionedValue.STATUS_LEFT, hostId.toString(), Long.toString(expireTime)));
+            return new VersionedValue(versionString(VersionedValue.STATUS_LEFT, hostId, Long.toString(expireTime)));
         }
 
         public VersionedValue hostId(String hostId) {
-            return new VersionedValue(hostId.toString());
+            return new VersionedValue(hostId);
         }
 
         public VersionedValue removingNonlocal(UUID hostId) {

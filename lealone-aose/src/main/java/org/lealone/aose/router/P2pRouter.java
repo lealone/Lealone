@@ -70,7 +70,7 @@ public class P2pRouter implements Router {
             liveMembers = new HashSet<>(hostIds.length);
             TopologyMetaData metaData = P2pServer.instance.getTopologyMetaData();
             for (String hostId : hostIds) {
-                liveMembers.add(metaData.getEndpointForHostId(hostId));
+                liveMembers.add(metaData.getEndpoint(hostId));
             }
         }
         List<String> initReplicationEndpoints = null;
@@ -272,7 +272,7 @@ public class P2pRouter implements Router {
         int size = oldHostIds.length;
         List<NetEndpoint> oldReplicationEndpoints = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            oldReplicationEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(oldHostIds[i]));
+            oldReplicationEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpoint(oldHostIds[i]));
         }
         List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getLiveReplicationEndpoints(db,
                 new HashSet<>(oldReplicationEndpoints), Gossiper.instance.getLiveMembers(), true);
@@ -302,7 +302,7 @@ public class P2pRouter implements Router {
     public String[] getShardingEndpoints(Database db) {
         HashSet<NetEndpoint> oldEndpoints = new HashSet<>();
         for (String hostId : db.getHostIds()) {
-            oldEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(hostId));
+            oldEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpoint(hostId));
         }
         Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
         liveMembers.removeAll(oldEndpoints);

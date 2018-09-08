@@ -190,8 +190,7 @@ public class AOStorage extends StorageBase {
         int size = replicationHostIds.size();
         List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            replicationEndpoints
-                    .add(P2pServer.instance.getTopologyMetaData().getEndpointForHostId(replicationHostIds.get(i)));
+            replicationEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpoint(replicationHostIds.get(i)));
         }
         return replicationEndpoints;
     }

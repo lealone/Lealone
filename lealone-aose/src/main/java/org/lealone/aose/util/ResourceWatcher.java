@@ -25,6 +25,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 
 public class ResourceWatcher {
+
     public static void watch(String resource, Runnable callback, int period) {
         ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(new WatchedResource(resource, callback), period,
                 period, TimeUnit.MILLISECONDS);
