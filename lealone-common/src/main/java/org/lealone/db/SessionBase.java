@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
@@ -153,6 +154,11 @@ public abstract class SessionBase implements Session {
 
     @Override
     public Transaction getTransaction() {
+        throw DbException.getUnsupportedException("getTransaction");
+    }
+
+    @Override
+    public Transaction getTransaction(PreparedStatement statement) {
         throw DbException.getUnsupportedException("getTransaction");
     }
 

@@ -23,9 +23,9 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 
 import org.junit.Test;
-import org.lealone.aose.storage.AOStorage;
-import org.lealone.aose.storage.AOStorageBuilder;
-import org.lealone.aose.storage.btree.BTreeMap;
+import org.lealone.aose.AOStorage;
+import org.lealone.aose.AOStorageBuilder;
+import org.lealone.aose.btree.BTreeMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.test.TestBase;
 

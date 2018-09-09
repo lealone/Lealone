@@ -458,6 +458,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return ps;
     }
 
+    @Override
     public Database getDatabase() {
         return database;
     }
@@ -1197,6 +1198,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return getTransaction(null);
     }
 
+    @Override
     public Transaction getTransaction(PreparedStatement p) {
         if (transaction != null)
             return transaction;
@@ -1235,6 +1237,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     // 得到的嵌套session会参与当前事务
+    @Override
     public Session getNestedSession(String hostAndPort, boolean remote) {
         // 不能直接把hostAndPort当成key，因为每个Session是对应到具体数据库的，所以URL中要包含数据库名
         String url = getURL(hostAndPort);

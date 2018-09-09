@@ -32,7 +32,7 @@
     <dependencies>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-aose</artifactId>
+            <artifactId>lealone-db</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

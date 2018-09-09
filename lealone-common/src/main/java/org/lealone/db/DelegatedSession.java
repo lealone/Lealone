@@ -132,6 +132,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public Transaction getTransaction(PreparedStatement statement) {
+        return session.getTransaction(statement);
+    }
+
+    @Override
     public Transaction getParentTransaction() {
         return session.getParentTransaction();
     }
@@ -316,4 +321,13 @@ public class DelegatedSession implements Session {
         session.reconnectIfNeeded();
     }
 
+    @Override
+    public IDatabase getDatabase() {
+        return session.getDatabase();
+    }
+
+    @Override
+    public Session getNestedSession(String hostAndPort, boolean remote) {
+        return session.getNestedSession(hostAndPort, remote);
+    }
 }

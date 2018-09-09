@@ -460,4 +460,6 @@ public interface SQLStatement extends Command {
     int ADMIN = 88;
 
     int CREATE_SERVICE = 89;
+
+    String INTERNAL_SAVEPOINT = "_INTERNAL_SAVEPOINT_";
 }

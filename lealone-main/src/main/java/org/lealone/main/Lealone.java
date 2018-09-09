@@ -20,10 +20,6 @@ package org.lealone.main;
 import java.util.List;
 import java.util.Map;
 
-import org.lealone.aose.config.Config;
-import org.lealone.aose.config.Config.PluggableEngineDef;
-import org.lealone.aose.config.ConfigLoader;
-import org.lealone.aose.config.YamlConfigLoader;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -33,6 +29,12 @@ import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.PluggableEngine;
 import org.lealone.db.SysProperties;
+import org.lealone.p2p.config.Config;
+import org.lealone.p2p.config.Config.PluggableEngineDef;
+import org.lealone.p2p.config.ConfigLoader;
+import org.lealone.p2p.config.YamlConfigLoader;
+import org.lealone.p2p.server.ClusterMetaData;
+import org.lealone.p2p.server.P2pServerEngine;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.ProtocolServerEngineManager;
@@ -89,6 +91,15 @@ public class Lealone {
         initBaseDir();
         initPluggableEngines();
         LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
+
+        if (config.protocol_server_engines != null) {
+            for (PluggableEngineDef def : config.protocol_server_engines) {
+                if (def.enabled && P2pServerEngine.NAME.equalsIgnoreCase(def.name)) {
+                    ClusterMetaData.init(LealoneDatabase.getInstance().getInternalConnection());
+                    break;
+                }
+            }
+        }
     }
 
     private static void initBaseDir() {

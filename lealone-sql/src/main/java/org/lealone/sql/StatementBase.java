@@ -259,6 +259,7 @@ public abstract class StatementBase extends CommandBase implements PreparedState
      *
      * @return the SQL statement
      */
+    @Override
     public String getSQL() {
         return sql;
     }
@@ -436,6 +437,7 @@ public abstract class StatementBase extends CommandBase implements PreparedState
         return false;
     }
 
+    @Override
     public ServerSession getSession() {
         return session;
     }
@@ -611,6 +613,7 @@ public abstract class StatementBase extends CommandBase implements PreparedState
         return false;
     }
 
+    @Override
     public boolean isReplicationStatement() {
         return false;
     }

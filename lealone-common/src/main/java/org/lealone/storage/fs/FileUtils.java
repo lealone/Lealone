@@ -7,6 +7,7 @@ package org.lealone.storage.fs;
 
 import java.io.Closeable;
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -374,6 +375,22 @@ public class FileUtils {
                 c.close();
         } catch (Exception e) {
         }
+    }
+
+    /**
+     * Get the size of a directory in bytes
+     * @param directory The directory for which we need size.
+     * @return The size of the directory
+     */
+    public static long folderSize(File directory) {
+        long length = 0;
+        for (File file : directory.listFiles()) {
+            if (file.isFile())
+                length += file.length();
+            else
+                length += folderSize(file);
+        }
+        return length;
     }
 
 }

@@ -31,8 +31,8 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.net.NetEndpoint;
+import org.lealone.router.RouterHolder;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.router.RouterHolder;
 import org.lealone.storage.Storage;
 
 /**

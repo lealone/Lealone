@@ -17,7 +17,7 @@
  */
 package org.lealone.test.start.two_data_center;
 
-import org.lealone.aose.locator.SnitchProperties;
+import org.lealone.p2p.locator.SnitchProperties;
 import org.lealone.test.start.NodeBase;
 
 public class TwoDCNodeBase extends NodeBase {

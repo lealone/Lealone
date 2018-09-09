@@ -15,12 +15,12 @@ package org.lealone.test.aose;
 
 import java.util.HashMap;
 
-import org.lealone.aose.storage.AOStorage;
-import org.lealone.aose.storage.AOStorageBuilder;
-import org.lealone.aose.storage.BufferedMap;
-import org.lealone.aose.storage.btree.BTreeMap;
-import org.lealone.aose.storage.rtree.RTreeMap;
-import org.lealone.aose.storage.rtree.SpatialKey;
+import org.lealone.aose.AOStorage;
+import org.lealone.aose.AOStorageBuilder;
+import org.lealone.aose.BufferedMap;
+import org.lealone.aose.btree.BTreeMap;
+import org.lealone.aose.rtree.RTreeMap;
+import org.lealone.aose.rtree.SpatialKey;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMapCursor;

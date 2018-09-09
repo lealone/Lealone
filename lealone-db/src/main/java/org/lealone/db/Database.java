@@ -14,6 +14,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -63,6 +64,8 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.net.NetEndpoint;
+import org.lealone.replication.ReplicationSession;
+import org.lealone.router.RouterHolder;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
@@ -83,7 +86,7 @@ import org.lealone.transaction.TransactionEngineManager;
  * @author H2 Group
  * @author zhh
  */
-public class Database implements DataHandler, DbObject {
+public class Database implements DataHandler, DbObject, IDatabase {
 
     /**
      * The default name of the system user. This name is only used as long as
@@ -240,6 +243,7 @@ public class Database implements DataHandler, DbObject {
         return name;
     }
 
+    @Override
     public String getShortName() {
         return getName();
     }
@@ -272,6 +276,7 @@ public class Database implements DataHandler, DbObject {
         return dbSettings.defaultStorageEngine;
     }
 
+    @Override
     public Map<String, String> getReplicationProperties() {
         return replicationProperties;
     }
@@ -296,10 +301,12 @@ public class Database implements DataHandler, DbObject {
         }
     }
 
+    @Override
     public RunMode getRunMode() {
         return runMode;
     }
 
+    @Override
     public Map<String, String> getParameters() {
         return parameters;
     }
@@ -308,6 +315,7 @@ public class Database implements DataHandler, DbObject {
         parameters.putAll(newParameters);
     }
 
+    @Override
     public boolean isShardingMode() {
         return runMode == RunMode.SHARDING;
     }
@@ -1030,6 +1038,7 @@ public class Database implements DataHandler, DbObject {
         return session;
     }
 
+    @Override
     public ServerSession createInternalSession() {
         // User admin = null;
         // for (User user : getAllUsers()) {
@@ -1895,6 +1904,7 @@ public class Database implements DataHandler, DbObject {
      *
      * @return true if the database is still starting
      */
+    @Override
     public boolean isStarting() {
         return starting;
     }
@@ -2111,6 +2121,7 @@ public class Database implements DataHandler, DbObject {
 
     private final ConcurrentHashMap<String, Storage> storages = new ConcurrentHashMap<>();
 
+    @Override
     public List<Storage> getStorages() {
         return new ArrayList<>(storages.values());
     }
@@ -2291,6 +2302,7 @@ public class Database implements DataHandler, DbObject {
     private HashSet<NetEndpoint> endpoints;
     private String targetEndpoints;
 
+    @Override
     public String[] getHostIds() {
         if (hostIds == null) {
             synchronized (this) {
@@ -2491,10 +2503,48 @@ public class Database implements DataHandler, DbObject {
         lastConnectionInfo = ci;
     }
 
+    @Override
     public void notifyRunModeChanged() {
         String hostIds = getParameters().get("hostIds");
         for (ServerSession session : getSessions(false)) {
             session.runModeChanged(hostIds);
         }
+    }
+
+    @Override
+    public Session createInternalSession(boolean useSystemDatabase) {
+        return LealoneDatabase.getInstance().createInternalSession();
+    }
+
+    @Override
+    public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints) {
+        return RouterHolder.getRouter().createReplicationSession(session, replicationEndpoints);
+    }
+
+    @Override
+    public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints,
+            Boolean remote) {
+        return RouterHolder.getRouter().createReplicationSession(session, replicationEndpoints, remote);
+    }
+
+    @Override
+    public NetEndpoint getEndpoint(String hostId) {
+        return RouterHolder.getRouter().getEndpoint(hostId);
+    }
+
+    @Override
+    public String getHostId(NetEndpoint endpoint) {
+        return RouterHolder.getRouter().getHostId(endpoint);
+    }
+
+    @Override
+    public String getLocalHostId() {
+        return NetEndpoint.getLocalTcpHostAndPort();
+    }
+
+    @Override
+    public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
+            Set<NetEndpoint> candidateEndpoints) {
+        return RouterHolder.getRouter().getReplicationEndpoints(this, oldReplicationEndpoints, candidateEndpoints);
     }
 }

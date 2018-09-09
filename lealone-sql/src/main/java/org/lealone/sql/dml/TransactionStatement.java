@@ -15,7 +15,6 @@ import org.lealone.sql.SQLStatement;
  * Represents a transactional statement.
  */
 public class TransactionStatement extends ManipulateStatement {
-    public static final String INTERNAL_SAVEPOINT = "_INTERNAL_SAVEPOINT_";
 
     private final int type;
     private String savepointName;

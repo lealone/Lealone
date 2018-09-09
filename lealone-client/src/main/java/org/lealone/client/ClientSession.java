@@ -154,8 +154,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         asyncConnection.writeInitPacket(this, transfer, ci);
         if (isValid()) {
             asyncConnection.addSession(sessionId, this);
-        } else {
-            closeTraceSystem();
         }
         return transfer;
     }

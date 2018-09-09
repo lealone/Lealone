@@ -17,6 +17,7 @@
  */
 package org.lealone.sql;
 
+import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 
 public interface PreparedStatement extends SQLStatement {
@@ -64,4 +65,10 @@ public interface PreparedStatement extends SQLStatement {
     boolean isDDL();
 
     boolean isDatabaseStatement();
+
+    boolean isReplicationStatement();
+
+    Session getSession();
+
+    String getSQL();
 }

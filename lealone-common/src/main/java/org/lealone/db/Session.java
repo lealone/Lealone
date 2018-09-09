@@ -158,6 +158,8 @@ public interface Session extends Closeable, Transaction.Participant {
 
     Transaction getTransaction();
 
+    Transaction getTransaction(PreparedStatement statement);
+
     Transaction getParentTransaction();
 
     void setParentTransaction(Transaction transaction);
@@ -234,5 +236,13 @@ public interface Session extends Closeable, Transaction.Participant {
     void runModeChanged(String newTargetEndpoints);
 
     default void reconnectIfNeeded() {
+    }
+
+    default IDatabase getDatabase() {
+        return null;
+    }
+
+    default Session getNestedSession(String hostAndPort, boolean remote) {
+        return null;
     }
 }

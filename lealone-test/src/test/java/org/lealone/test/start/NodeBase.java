@@ -17,10 +17,10 @@
  */
 package org.lealone.test.start;
 
-import org.lealone.aose.config.Config;
-import org.lealone.aose.config.YamlConfigLoader;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.main.Lealone;
+import org.lealone.p2p.config.Config;
+import org.lealone.p2p.config.YamlConfigLoader;
 
 import io.vertx.core.impl.FileResolver;
 
