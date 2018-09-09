@@ -34,34 +34,18 @@ import org.lealone.p2p.util.Utils;
  * A abstract parent for all replication strategies.
 */
 public abstract class AbstractReplicationStrategy {
+
     private static final Logger logger = LoggerFactory.getLogger(AbstractReplicationStrategy.class);
 
+    protected final String dbName;
     protected final Map<String, String> configOptions;
-    private final TopologyMetaData metaData;
-    private final String dbName;
 
-    AbstractReplicationStrategy(String dbName, TopologyMetaData metaData, IEndpointSnitch snitch,
-            Map<String, String> configOptions) {
+    AbstractReplicationStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions) {
         assert dbName != null;
         assert snitch != null;
-        assert metaData != null;
-        this.metaData = metaData;
-        this.configOptions = configOptions == null ? Collections.<String, String> emptyMap() : configOptions;
         this.dbName = dbName;
-        // lazy-initialize keyspace itself since we don't create them until after the replication strategies
+        this.configOptions = configOptions == null ? Collections.<String, String> emptyMap() : configOptions;
     }
-
-    /**
-     * calculate the natural endpoints for the given token
-     *
-     * @see #getReplicationEndpoints(org.lealone.daose.dht.RingPosition)
-     *
-     * @param searchHostId the token the natural endpoints are requested for
-     * @return a copy of the natural endpoints for the given token
-     */
-    public abstract List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
-            boolean includeOldReplicationEndpoints);
 
     /**
      * calculate the RF based on strategy_options. When overwriting, ensure that this get()
@@ -73,21 +57,27 @@ public abstract class AbstractReplicationStrategy {
 
     public abstract void validateOptions() throws ConfigException;
 
-    public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
-        TopologyMetaData tm = metaData.getCacheOnlyHostIdMap();
-        return calculateReplicationEndpoints(tm, oldReplicationEndpoints, candidateEndpoints,
-                includeOldReplicationEndpoints);
-    }
-
-    /*
+    /**
      * The options recognized by the strategy.
      * The empty collection means that no options are accepted, but null means
      * that any option is accepted.
      */
-    public Collection<String> recognizedOptions() {
-        // We default to null for backward compatibility sake
-        return null;
+    public abstract Collection<String> recognizedOptions();
+
+    /**
+     * calculate the natural endpoints
+     *
+     */
+    public abstract List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
+            boolean includeOldReplicationEndpoints);
+
+    public List<NetEndpoint> getReplicationEndpoints(TopologyMetaData metaData,
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
+            boolean includeOldReplicationEndpoints) {
+        TopologyMetaData tm = metaData.getCacheOnlyHostIdMap();
+        return calculateReplicationEndpoints(tm, oldReplicationEndpoints, candidateEndpoints,
+                includeOldReplicationEndpoints);
     }
 
     protected void validateReplicationFactor(String rf) throws ConfigException {
@@ -108,21 +98,20 @@ public abstract class AbstractReplicationStrategy {
         for (String key : configOptions.keySet()) {
             if (!expectedOptions.contains(key))
                 throw new ConfigException(
-                        String.format("Unrecognized strategy option {%s} passed to %s for keyspace %s", key,
+                        String.format("Unrecognized strategy option {%s} passed to %s for database %s", key,
                                 getClass().getSimpleName(), dbName));
         }
     }
 
     private static AbstractReplicationStrategy createInternal(String dbName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TopologyMetaData metaData,
-            IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigException {
+            Class<? extends AbstractReplicationStrategy> strategyClass, IEndpointSnitch snitch,
+            Map<String, String> strategyOptions) throws ConfigException {
         AbstractReplicationStrategy strategy;
-        Class<?>[] parameterTypes = new Class[] { String.class, TopologyMetaData.class, IEndpointSnitch.class,
-                Map.class };
+        Class<?>[] parameterTypes = new Class[] { String.class, IEndpointSnitch.class, Map.class };
         try {
             Constructor<? extends AbstractReplicationStrategy> constructor = strategyClass
                     .getConstructor(parameterTypes);
-            strategy = constructor.newInstance(dbName, metaData, snitch, strategyOptions);
+            strategy = constructor.newInstance(dbName, snitch, strategyOptions);
         } catch (Exception e) {
             throw new ConfigException("Error constructing replication strategy class", e);
         }
@@ -130,11 +119,10 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public static AbstractReplicationStrategy createReplicationStrategy(String dbName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TopologyMetaData metaData,
-            IEndpointSnitch snitch, Map<String, String> strategyOptions) {
+            Class<? extends AbstractReplicationStrategy> strategyClass, IEndpointSnitch snitch,
+            Map<String, String> strategyOptions) {
         try {
-            AbstractReplicationStrategy strategy = createInternal(dbName, strategyClass, metaData, snitch,
-                    strategyOptions);
+            AbstractReplicationStrategy strategy = createInternal(dbName, strategyClass, snitch, strategyOptions);
 
             // Because we used to not properly validate unrecognized options, we only log a warning if we find one.
             try {
@@ -151,12 +139,10 @@ public abstract class AbstractReplicationStrategy {
         }
     }
 
-    public static void validateReplicationStrategy(String dbName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, TopologyMetaData metaData,
-            IEndpointSnitch snitch, Map<String, String> strategyOptions) throws ConfigException {
-        AbstractReplicationStrategy strategy = createInternal(dbName, strategyClass, metaData, snitch, strategyOptions);
-        strategy.validateExpectedOptions();
-        strategy.validateOptions();
+    public static AbstractReplicationStrategy createReplicationStrategy(String dbName, String strategyClassName,
+            IEndpointSnitch snitch, Map<String, String> strategyOptions) {
+        Class<? extends AbstractReplicationStrategy> strategyClass = getClass(strategyClassName);
+        return createReplicationStrategy(dbName, strategyClass, snitch, strategyOptions);
     }
 
     public static Class<AbstractReplicationStrategy> getClass(String cls) throws ConfigException {

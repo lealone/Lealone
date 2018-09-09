@@ -45,7 +45,6 @@ import org.lealone.p2p.locator.IEndpointSnitch;
 import org.lealone.p2p.locator.SeedProvider;
 import org.lealone.p2p.locator.SimpleStrategy;
 import org.lealone.p2p.net.MessagingService;
-import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.server.P2pServerEngine;
 import org.lealone.p2p.util.Utils;
 
@@ -237,16 +236,14 @@ public class ConfigDescriptor {
             throws ConfigException {
         AbstractReplicationStrategy defaultReplicationStrategy;
         if (config.replication_strategy == null) {
-            defaultReplicationStrategy = new SimpleStrategy("system", P2pServer.instance.getTopologyMetaData(),
-                    getEndpointSnitch(), ImmutableMap.of("replication_factor", "1"));
+            defaultReplicationStrategy = new SimpleStrategy("system", getEndpointSnitch(),
+                    ImmutableMap.of("replication_factor", "1"));
         } else {
             if (config.replication_strategy.name == null) {
                 throw new ConfigException("replication_strategy.name is missing.");
             }
             defaultReplicationStrategy = AbstractReplicationStrategy.createReplicationStrategy("system",
-                    AbstractReplicationStrategy.getClass(config.replication_strategy.name),
-                    P2pServer.instance.getTopologyMetaData(), getEndpointSnitch(),
-                    config.replication_strategy.parameters);
+                    config.replication_strategy.name, getEndpointSnitch(), config.replication_strategy.parameters);
         }
         return defaultReplicationStrategy;
     }

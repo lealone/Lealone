@@ -29,27 +29,9 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.config.ConfigDescriptor;
 
 public class LocalStrategy extends AbstractReplicationStrategy {
-    public LocalStrategy(String dbName, TopologyMetaData metaData, IEndpointSnitch snitch,
-            Map<String, String> configOptions) {
-        super(dbName, metaData, snitch, configOptions);
-    }
 
-    /**
-     * 覆盖默认实现，默认实现里要拷贝TopologyMetaData
-     */
-    @Override
-    public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
-        ArrayList<NetEndpoint> l = new ArrayList<NetEndpoint>(1);
-        l.add(ConfigDescriptor.getLocalEndpoint());
-        return l;
-    }
-
-    @Override
-    public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
-            boolean includeOldReplicationEndpoints) {
-        return Collections.singletonList(ConfigDescriptor.getLocalEndpoint());
+    public LocalStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions) {
+        super(dbName, snitch, configOptions);
     }
 
     @Override
@@ -65,5 +47,24 @@ public class LocalStrategy extends AbstractReplicationStrategy {
     public Collection<String> recognizedOptions() {
         // LocalStrategy doesn't expect any options.
         return Collections.<String> emptySet();
+    }
+
+    /**
+     * 覆盖默认实现，默认实现里要拷贝TopologyMetaData
+     */
+    @Override
+    public List<NetEndpoint> getReplicationEndpoints(TopologyMetaData metaData,
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
+            boolean includeOldReplicationEndpoints) {
+        ArrayList<NetEndpoint> list = new ArrayList<NetEndpoint>(1);
+        list.add(ConfigDescriptor.getLocalEndpoint());
+        return list;
+    }
+
+    @Override
+    public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
+            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
+            boolean includeOldReplicationEndpoints) {
+        return Collections.singletonList(ConfigDescriptor.getLocalEndpoint());
     }
 }

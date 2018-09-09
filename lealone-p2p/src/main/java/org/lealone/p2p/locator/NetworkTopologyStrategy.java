@@ -57,18 +57,16 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
     private final IEndpointSnitch snitch;
     private final Map<String, Integer> datacenters;
 
-    public NetworkTopologyStrategy(String dbName, TopologyMetaData metaData, IEndpointSnitch snitch,
-            Map<String, String> configOptions) throws ConfigException {
-        super(dbName, metaData, snitch, configOptions);
+    public NetworkTopologyStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions)
+            throws ConfigException {
+        super(dbName, snitch, configOptions);
         this.snitch = snitch;
 
         Map<String, Integer> newDatacenters = new HashMap<>();
         if (configOptions != null) {
             for (Entry<String, String> entry : configOptions.entrySet()) {
                 String dc = entry.getKey();
-                if (dc.equalsIgnoreCase("replication_factor"))
-                    throw new ConfigException(
-                            "replication_factor is an option for SimpleStrategy, not NetworkTopologyStrategy");
+                validateOption(dc);
                 Integer replicas = Integer.valueOf(entry.getValue());
                 newDatacenters.put(dc, replicas);
             }
@@ -79,11 +77,38 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
             logger.debug("Configured datacenter replicas are {}", Utils.toString(datacenters));
     }
 
+    @Override
+    public int getReplicationFactor() {
+        int total = 0;
+        for (int repFactor : datacenters.values())
+            total += repFactor;
+        return total;
+    }
+
+    @Override
+    public void validateOptions() throws ConfigException {
+        for (Entry<String, String> e : configOptions.entrySet()) {
+            validateOption(e.getKey());
+            validateReplicationFactor(e.getValue());
+        }
+    }
+
+    private void validateOption(String key) throws ConfigException {
+        if (key.equalsIgnoreCase("replication_factor"))
+            throw new ConfigException(
+                    "replication_factor is an option for SimpleStrategy, not NetworkTopologyStrategy");
+    }
+
+    @Override
+    public Collection<String> recognizedOptions() {
+        // We explicitly allow all options
+        return null;
+    }
+
     /**
      * calculate endpoints in one pass through the tokens by tracking our progress in each DC, rack etc.
      */
     @Override
-    @SuppressWarnings("serial")
     public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
             Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
             boolean includeOldReplicationEndpoints) {
@@ -185,36 +210,8 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         return true;
     }
 
-    @Override
-    public int getReplicationFactor() {
-        int total = 0;
-        for (int repFactor : datacenters.values())
-            total += repFactor;
-        return total;
-    }
-
-    public int getReplicationFactor(String dc) {
+    private int getReplicationFactor(String dc) {
         Integer replicas = datacenters.get(dc);
         return replicas == null ? 0 : replicas;
-    }
-
-    public Set<String> getDatacenters() {
-        return datacenters.keySet();
-    }
-
-    @Override
-    public void validateOptions() throws ConfigException {
-        for (Entry<String, String> e : this.configOptions.entrySet()) {
-            if (e.getKey().equalsIgnoreCase("replication_factor"))
-                throw new ConfigException(
-                        "replication_factor is an option for SimpleStrategy, not NetworkTopologyStrategy");
-            validateReplicationFactor(e.getValue());
-        }
-    }
-
-    @Override
-    public Collection<String> recognizedOptions() {
-        // We explicitely allow all options
-        return null;
     }
 }

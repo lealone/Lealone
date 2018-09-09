@@ -35,9 +35,27 @@ import org.lealone.net.NetEndpoint;
  * on the ring.
  */
 public class SimpleStrategy extends AbstractReplicationStrategy {
-    public SimpleStrategy(String dbName, TopologyMetaData metaData, IEndpointSnitch snitch,
-            Map<String, String> configOptions) {
-        super(dbName, metaData, snitch, configOptions);
+
+    public SimpleStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions) {
+        super(dbName, snitch, configOptions);
+    }
+
+    @Override
+    public int getReplicationFactor() {
+        return Integer.parseInt(configOptions.get("replication_factor"));
+    }
+
+    @Override
+    public void validateOptions() throws ConfigException {
+        String rf = configOptions.get("replication_factor");
+        if (rf == null)
+            throw new ConfigException("SimpleStrategy requires a replication_factor strategy option.");
+        validateReplicationFactor(rf);
+    }
+
+    @Override
+    public Collection<String> recognizedOptions() {
+        return Collections.<String> singleton("replication_factor");
     }
 
     @Override
@@ -70,23 +88,5 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
             }
         }
         return endpoints;
-    }
-
-    @Override
-    public int getReplicationFactor() {
-        return Integer.parseInt(this.configOptions.get("replication_factor"));
-    }
-
-    @Override
-    public void validateOptions() throws ConfigException {
-        String rf = configOptions.get("replication_factor");
-        if (rf == null)
-            throw new ConfigException("SimpleStrategy requires a replication_factor strategy option.");
-        validateReplicationFactor(rf);
-    }
-
-    @Override
-    public Collection<String> recognizedOptions() {
-        return Collections.<String> singleton("replication_factor");
     }
 }

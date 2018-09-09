@@ -363,8 +363,8 @@ public class P2pRouter implements Router {
 
     private static List<NetEndpoint> getReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
             Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
-        return getReplicationStrategy(db).getReplicationEndpoints(oldReplicationEndpoints, candidateEndpoints,
-                includeOldReplicationEndpoints);
+        return getReplicationStrategy(db).getReplicationEndpoints(P2pServer.instance.getTopologyMetaData(),
+                oldReplicationEndpoints, candidateEndpoints, includeOldReplicationEndpoints);
     }
 
     private static List<NetEndpoint> getLiveReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
@@ -394,8 +394,7 @@ public class P2pRouter implements Router {
                 throw new ConfigException("Missing replication strategy class");
             }
 
-            replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getShortName(),
-                    AbstractReplicationStrategy.getClass(className), P2pServer.instance.getTopologyMetaData(),
+            replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getShortName(), className,
                     ConfigDescriptor.getEndpointSnitch(), map);
             replicationStrategys.put(db, replicationStrategy);
         }
