@@ -35,6 +35,7 @@
         <module>lealone-db</module>
         <module>lealone-mvcc</module>
         <module>lealone-aose</module>
+        <module>lealone-p2p</module>
         <module>lealone-vertx</module>
         <module>lealone-main</module>
         <module>lealone-test</module>
