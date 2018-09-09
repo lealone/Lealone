@@ -36,6 +36,7 @@ import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.config.ConfigDescriptor;
+import org.lealone.p2p.gms.FailureDetector;
 import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
 import org.lealone.p2p.locator.TopologyMetaData;
@@ -48,38 +49,15 @@ import org.lealone.storage.Storage;
 
 public class P2pRouter implements Router {
 
-    private static final P2pRouter INSTANCE = new P2pRouter();
+    private static final P2pRouter instance = new P2pRouter();
     private static final Random random = new Random();
-
-    public static P2pRouter getInstance() {
-        return INSTANCE;
-    }
 
     private static final HashMap<IDatabase, AbstractReplicationStrategy> replicationStrategys = new HashMap<>();
     private static final AbstractReplicationStrategy defaultReplicationStrategy = ConfigDescriptor
             .getDefaultReplicationStrategy();
 
-    public static void removeReplicationStrategy(IDatabase db) {
-        replicationStrategys.remove(db);
-    }
-
-    public static AbstractReplicationStrategy getReplicationStrategy(IDatabase db) {
-        if (db.getReplicationProperties() == null)
-            return defaultReplicationStrategy;
-        AbstractReplicationStrategy replicationStrategy = replicationStrategys.get(db);
-        if (replicationStrategy == null) {
-            HashMap<String, String> map = new HashMap<>(db.getReplicationProperties());
-            String className = map.remove("class");
-            if (className == null) {
-                throw new ConfigException("Missing replication strategy class");
-            }
-
-            replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getShortName(),
-                    AbstractReplicationStrategy.getClass(className), P2pServer.instance.getTopologyMetaData(),
-                    ConfigDescriptor.getEndpointSnitch(), map);
-            replicationStrategys.put(db, replicationStrategy);
-        }
-        return replicationStrategy;
+    public static P2pRouter getInstance() {
+        return instance;
     }
 
     protected P2pRouter() {
@@ -103,11 +81,11 @@ public class P2pRouter implements Router {
         List<String> initReplicationEndpoints = null;
         // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
         if (defineStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
-            List<NetEndpoint> endpoints = P2pServer.instance.getReplicationEndpoints(db, new HashSet<>(0), liveMembers);
+            List<NetEndpoint> endpoints = getReplicationEndpoints(db, new HashSet<>(0), liveMembers);
             if (!endpoints.isEmpty()) {
                 initReplicationEndpoints = new ArrayList<>(endpoints.size());
                 for (NetEndpoint e : endpoints) {
-                    String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+                    String hostId = getHostId(e);
                     initReplicationEndpoints.add(hostId);
                 }
             }
@@ -116,7 +94,7 @@ public class P2pRouter implements Router {
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
         for (NetEndpoint e : liveMembers) {
-            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+            String hostId = getHostId(e);
             sessions[i++] = currentSession.getNestedSession(hostId, !ConfigDescriptor.getLocalEndpoint().equals(e));
         }
 
@@ -161,7 +139,7 @@ public class P2pRouter implements Router {
         if (runMode == RunMode.CLIENT_SERVER) {
             int i = random.nextInt(size);
             NetEndpoint addr = list.get(i);
-            return new String[] { P2pServer.instance.getTopologyMetaData().getHostId(addr) };
+            return new String[] { getHostId(addr) };
         } else if (runMode == RunMode.REPLICATION) {
             AbstractReplicationStrategy replicationStrategy = getReplicationStrategy(db);
             int replicationFactor = replicationStrategy.getReplicationFactor();
@@ -198,7 +176,7 @@ public class P2pRouter implements Router {
         String[] hostIds = new String[needNodes];
         int j = 0;
         for (int i : indexSet) {
-            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(list.get(i));
+            String hostId = getHostId(list.get(i));
             if (hostId != null)
                 hostIds[j++] = hostId;
         }
@@ -214,7 +192,7 @@ public class P2pRouter implements Router {
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
         for (NetEndpoint e : liveMembers) {
-            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+            String hostId = getHostId(e);
             boolean isLocal = ConfigDescriptor.getLocalEndpoint().equals(e);
             sessions[i] = currentSession.getNestedSession(hostId, !isLocal);
             // if (isLocal) {
@@ -253,9 +231,8 @@ public class P2pRouter implements Router {
     }
 
     @Override
-    public ReplicationSession createReplicationSession(Session s, Collection<NetEndpoint> replicationEndpoints,
+    public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints,
             Boolean remote) {
-        Session session = s;
         NetEndpoint localEndpoint = ConfigDescriptor.getLocalEndpoint();
         TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
         int size = replicationEndpoints.size();
@@ -323,14 +300,14 @@ public class P2pRouter implements Router {
         for (int i = 0; i < size; i++) {
             oldReplicationEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpoint(oldHostIds[i]));
         }
-        List<NetEndpoint> newReplicationEndpoints = P2pServer.instance.getLiveReplicationEndpoints(db,
+        List<NetEndpoint> newReplicationEndpoints = getLiveReplicationEndpoints(db,
                 new HashSet<>(oldReplicationEndpoints), Gossiper.instance.getLiveMembers(), true);
 
         size = newReplicationEndpoints.size();
         String[] hostIds = new String[size];
         int j = 0;
         for (NetEndpoint e : newReplicationEndpoints) {
-            String hostId = P2pServer.instance.getTopologyMetaData().getHostId(e);
+            String hostId = getHostId(e);
             if (hostId != null)
                 hostIds[j++] = hostId;
         }
@@ -381,6 +358,47 @@ public class P2pRouter implements Router {
     @Override
     public List<NetEndpoint> getReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
             Set<NetEndpoint> candidateEndpoints) {
-        return P2pServer.instance.getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints);
+        return getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints, false);
+    }
+
+    private static List<NetEndpoint> getReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
+            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
+        return getReplicationStrategy(db).getReplicationEndpoints(oldReplicationEndpoints, candidateEndpoints,
+                includeOldReplicationEndpoints);
+    }
+
+    private static List<NetEndpoint> getLiveReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
+            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
+        List<NetEndpoint> endpoints = getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints,
+                includeOldReplicationEndpoints);
+        List<NetEndpoint> liveEps = new ArrayList<>(endpoints.size());
+        for (NetEndpoint endpoint : endpoints) {
+            if (FailureDetector.instance.isAlive(endpoint))
+                liveEps.add(endpoint);
+        }
+        return liveEps;
+    }
+
+    private static void removeReplicationStrategy(IDatabase db) {
+        replicationStrategys.remove(db);
+    }
+
+    private static AbstractReplicationStrategy getReplicationStrategy(IDatabase db) {
+        if (db.getReplicationProperties() == null)
+            return defaultReplicationStrategy;
+        AbstractReplicationStrategy replicationStrategy = replicationStrategys.get(db);
+        if (replicationStrategy == null) {
+            HashMap<String, String> map = new HashMap<>(db.getReplicationProperties());
+            String className = map.remove("class");
+            if (className == null) {
+                throw new ConfigException("Missing replication strategy class");
+            }
+
+            replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getShortName(),
+                    AbstractReplicationStrategy.getClass(className), P2pServer.instance.getTopologyMetaData(),
+                    ConfigDescriptor.getEndpointSnitch(), map);
+            replicationStrategys.put(db, replicationStrategy);
+        }
+        return replicationStrategy;
     }
 }

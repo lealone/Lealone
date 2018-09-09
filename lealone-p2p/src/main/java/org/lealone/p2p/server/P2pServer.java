@@ -32,13 +32,11 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
-import org.lealone.db.IDatabase;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.ApplicationState;
 import org.lealone.p2p.gms.EndpointState;
-import org.lealone.p2p.gms.FailureDetector;
 import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.gms.IEndpointStateChangeSubscriber;
 import org.lealone.p2p.gms.VersionedValue;
@@ -46,7 +44,6 @@ import org.lealone.p2p.gms.VersionedValue.VersionedValueFactory;
 import org.lealone.p2p.locator.IEndpointSnitch;
 import org.lealone.p2p.locator.TopologyMetaData;
 import org.lealone.p2p.net.MessagingService;
-import org.lealone.p2p.router.P2pRouter;
 import org.lealone.p2p.util.FileUtils;
 import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Utils;
@@ -536,37 +533,6 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
             stringEndpoints.add(ep.getHostAddress());
         }
         return stringEndpoints;
-    }
-
-    /**
-     * This method returns the N endpoints that are responsible for storing the
-     * specified key i.e for replication.
-     *
-     * @param db the database
-     * @param pos position for which we need to find the endpoint
-     * @return the endpoint responsible for this token
-     */
-    public List<NetEndpoint> getReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints) {
-        return getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints, false);
-    }
-
-    public List<NetEndpoint> getReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
-        return P2pRouter.getReplicationStrategy(db).getReplicationEndpoints(oldReplicationEndpoints, candidateEndpoints,
-                includeOldReplicationEndpoints);
-    }
-
-    public List<NetEndpoint> getLiveReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
-        List<NetEndpoint> endpoints = getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints,
-                includeOldReplicationEndpoints);
-        List<NetEndpoint> liveEps = new ArrayList<>(endpoints.size());
-        for (NetEndpoint endpoint : endpoints) {
-            if (FailureDetector.instance.isAlive(endpoint))
-                liveEps.add(endpoint);
-        }
-        return liveEps;
     }
 
     /**
