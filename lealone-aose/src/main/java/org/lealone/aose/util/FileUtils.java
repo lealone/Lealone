@@ -30,6 +30,7 @@ import java.util.Arrays;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.JVMStabilityInspector;
 
 import sun.nio.ch.DirectBuffer;
 

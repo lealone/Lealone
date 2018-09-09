@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose.concurrent;
+package org.lealone.common.concurrent;
 
 import java.util.Collection;
 import java.util.List;
@@ -26,10 +26,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.lealone.aose.util.JVMStabilityInspector;
-import org.lealone.common.concurrent.SimpleCondition;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.JVMStabilityInspector;
 
 public abstract class AbstractLealoneExecutorService implements LealoneExecutorService {
     private static final Logger logger = LoggerFactory.getLogger(AbstractLealoneExecutorService.class);

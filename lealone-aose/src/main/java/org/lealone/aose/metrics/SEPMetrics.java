@@ -17,10 +17,10 @@
  */
 package org.lealone.aose.metrics;
 
+import org.lealone.common.concurrent.SEPExecutor;
+
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Gauge;
-
-import org.lealone.aose.concurrent.SEPExecutor;
 
 public class SEPMetrics {
     /** Number of active tasks. */

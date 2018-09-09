@@ -24,8 +24,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.aose.concurrent.DebuggableThreadPoolExecutor;
 import org.lealone.aose.util.Utils;
+import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
 
 public class AOStorageService extends Thread {
 

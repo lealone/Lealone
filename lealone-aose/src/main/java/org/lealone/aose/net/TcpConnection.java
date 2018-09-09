@@ -21,12 +21,12 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import org.lealone.aose.concurrent.LealoneExecutorService;
 import org.lealone.aose.concurrent.StageManager;
 import org.lealone.aose.config.ConfigDescriptor;
 import org.lealone.aose.metrics.ConnectionMetrics;
 import org.lealone.aose.server.ClusterMetaData;
-import org.lealone.aose.util.JVMStabilityInspector;
+import org.lealone.common.concurrent.LealoneExecutorService;
+import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.db.Session;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;

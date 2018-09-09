@@ -20,9 +20,10 @@ package org.lealone.aose.util;
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.aose.concurrent.ScheduledExecutors;
+import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.JVMStabilityInspector;
 
 public class ResourceWatcher {
 

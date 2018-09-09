@@ -18,6 +18,7 @@
 package org.lealone.aose.server;
 
 import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryUsage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -488,7 +489,14 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
     /** raw load value */
     public double getLoad() {
         OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-        return os.getSystemLoadAverage();
+        double load = os.getSystemLoadAverage();
+        if (load < 0) {
+            MemoryUsage mu = ManagementFactory.getMemoryMXBean().getHeapMemoryUsage();
+            double max = mu.getMax() * 1.0D;
+            double used = mu.getUsed() * 1.0D;
+            load = used / max;
+        }
+        return load;
     }
 
     public String getLoadString() {

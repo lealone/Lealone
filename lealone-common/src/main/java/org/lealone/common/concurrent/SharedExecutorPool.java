@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose.concurrent;
+package org.lealone.common.concurrent;
 
 import java.util.List;
 import java.util.Map;
@@ -24,7 +24,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.lealone.aose.concurrent.SEPWorker.Work;
+import org.lealone.common.concurrent.SEPWorker.Work;
 
 /**
  * A pool of worker threads that are shared between all Executors created with it. Each executor is treated as a distinct
@@ -58,7 +58,7 @@ public class SharedExecutorPool {
     final AtomicLong workerId = new AtomicLong();
 
     // the collection of executors serviced by this pool; periodically ordered by traffic volume
-    final List<SEPExecutor> executors = new CopyOnWriteArrayList<>();
+    protected final List<SEPExecutor> executors = new CopyOnWriteArrayList<>();
 
     // the number of workers currently in a spinning state
     final AtomicInteger spinningCount = new AtomicInteger();

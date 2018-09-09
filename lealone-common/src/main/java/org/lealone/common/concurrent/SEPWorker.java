@@ -15,15 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose.concurrent;
+package org.lealone.common.concurrent;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 
-import org.lealone.aose.util.JVMStabilityInspector;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.JVMStabilityInspector;
 
 final class SEPWorker extends AtomicReference<SEPWorker.Work> implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(SEPWorker.class);

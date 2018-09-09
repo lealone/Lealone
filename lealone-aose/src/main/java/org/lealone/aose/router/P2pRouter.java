@@ -222,16 +222,11 @@ public class P2pRouter implements Router {
 
     public static ReplicationSession createReplicationSession(Session session,
             Collection<NetEndpoint> replicationEndpoints) {
-        return createReplicationSession(session, replicationEndpoints, null, null);
-    }
-
-    public static ReplicationSession createReplicationSession(Session session,
-            Collection<NetEndpoint> replicationEndpoints, Boolean remote) {
-        return createReplicationSession(session, replicationEndpoints, null, remote);
+        return createReplicationSession(session, replicationEndpoints, null);
     }
 
     public static ReplicationSession createReplicationSession(Session s, Collection<NetEndpoint> replicationEndpoints,
-            List<String> hostIds, Boolean remote) {
+            Boolean remote) {
         ServerSession session = (ServerSession) s;
         NetEndpoint localEndpoint = ConfigDescriptor.getLocalEndpoint();
         TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
@@ -240,10 +235,26 @@ public class P2pRouter implements Router {
         int i = 0;
         for (NetEndpoint e : replicationEndpoints) {
             String id = md.getHostId(e);
-            if (hostIds != null)
-                hostIds.add(id);
             sessions[i++] = session.getNestedSession(id,
                     remote != null ? remote.booleanValue() : !localEndpoint.equals(e));
+        }
+        return createReplicationSession(session, sessions);
+    }
+
+    public static ReplicationSession createReplicationSession(Session s, List<String> replicationHostIds,
+            Boolean remote) {
+        ServerSession session = (ServerSession) s;
+        NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
+        TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
+        Gossiper gossiper = Gossiper.instance;
+        int size = replicationHostIds.size();
+        Session[] sessions = new Session[size];
+        int i = 0;
+        for (String hostId : replicationHostIds) {
+            NetEndpoint p2pEndpoint = md.getEndpoint(hostId);
+            NetEndpoint tcpEndpoint = gossiper.getTcpEndpoint(p2pEndpoint);
+            sessions[i++] = session.getNestedSession(tcpEndpoint.getHostAndPort(),
+                    remote != null ? remote.booleanValue() : !localEndpoint.equals(tcpEndpoint));
         }
         return createReplicationSession(session, sessions);
     }

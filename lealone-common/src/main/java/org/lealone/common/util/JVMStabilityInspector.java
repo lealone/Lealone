@@ -15,16 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose.util;
+package org.lealone.common.util;
 
 import java.io.FileNotFoundException;
 import java.net.SocketException;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.ShutdownHookUtils;
-
-import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Responsible for deciding whether to kill the JVM if it gets in an "unstable" state (think OOM).
@@ -55,7 +52,7 @@ public final class JVMStabilityInspector {
             killer.killCurrentJVM(t);
     }
 
-    @VisibleForTesting
+    // @VisibleForTesting
     public static class Killer {
         /**
         * Certain situations represent "Die" conditions for the server, and if so, 

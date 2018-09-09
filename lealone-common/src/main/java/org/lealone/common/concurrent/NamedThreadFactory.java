@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose.concurrent;
+package org.lealone.common.concurrent;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -38,6 +38,10 @@ public class NamedThreadFactory implements ThreadFactory {
     public NamedThreadFactory(String id, int priority) {
         this.id = id;
         this.priority = priority;
+    }
+
+    public String getId() {
+        return id;
     }
 
     @Override

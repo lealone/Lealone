@@ -23,6 +23,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.aose.metrics.ThreadPoolMetrics;
+import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
+import org.lealone.common.concurrent.NamedThreadFactory;
 
 /**
  * This is a wrapper class for the <i>ScheduledThreadPoolExecutor</i>. It provides an implementation
@@ -58,7 +60,7 @@ public class MetricsEnabledThreadPoolExecutor extends DebuggableThreadPoolExecut
         super(corePoolSize, maxPoolSize, keepAliveTime, unit, workQueue, threadFactory);
         super.prestartAllCoreThreads();
 
-        metrics = new ThreadPoolMetrics(this, jmxPath, threadFactory.id);
+        metrics = new ThreadPoolMetrics(this, jmxPath, threadFactory.getId());
     }
 
     public MetricsEnabledThreadPoolExecutor(Stage stage) {

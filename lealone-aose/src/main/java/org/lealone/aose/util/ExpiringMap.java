@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.aose.concurrent.DebuggableScheduledThreadPoolExecutor;
+import org.lealone.common.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 

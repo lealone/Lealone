@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose.concurrent;
+package org.lealone.common.concurrent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,9 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.lealone.aose.concurrent.SEPWorker.Work;
-import org.lealone.common.concurrent.SimpleCondition;
-import org.lealone.common.concurrent.WaitQueue;
+import org.lealone.common.concurrent.SEPWorker.Work;
 
 public class SEPExecutor extends AbstractLealoneExecutorService {
     private final SharedExecutorPool pool;
@@ -51,7 +49,7 @@ public class SEPExecutor extends AbstractLealoneExecutorService {
     // TODO: see if other queue implementations might improve throughput
     protected final ConcurrentLinkedQueue<FutureTask<?>> tasks = new ConcurrentLinkedQueue<>();
 
-    SEPExecutor(SharedExecutorPool pool, int maxWorkers, int maxTasksQueued) {
+    public SEPExecutor(SharedExecutorPool pool, int maxWorkers, int maxTasksQueued) {
         this.pool = pool;
         this.maxWorkers = maxWorkers;
         this.maxTasksQueued = maxTasksQueued;

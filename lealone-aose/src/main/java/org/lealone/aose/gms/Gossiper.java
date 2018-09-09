@@ -42,7 +42,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.lealone.aose.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.lealone.aose.concurrent.MetricsEnabledThreadPoolExecutor;
 import org.lealone.aose.concurrent.Stage;
 import org.lealone.aose.concurrent.StageManager;
@@ -53,11 +52,12 @@ import org.lealone.aose.net.MessageIn;
 import org.lealone.aose.net.MessageOut;
 import org.lealone.aose.net.MessagingService;
 import org.lealone.aose.server.P2pServer;
-import org.lealone.aose.util.JVMStabilityInspector;
 import org.lealone.aose.util.Pair;
 import org.lealone.aose.util.Utils;
+import org.lealone.common.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.net.NetEndpoint;
 
 import com.google.common.collect.ImmutableList;
@@ -699,6 +699,13 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         if (!usesHostId(endpoint))
             throw new RuntimeException("Host " + endpoint + " does not use new-style tokens!");
         return getEndpointState(endpoint).getApplicationState(ApplicationState.HOST_ID).value;
+    }
+
+    public NetEndpoint getTcpEndpoint(NetEndpoint endpoint) {
+        if (!usesHostId(endpoint))
+            throw new RuntimeException("Host " + endpoint + " does not use new-style tokens!");
+        return NetEndpoint
+                .createP2P(getEndpointState(endpoint).getApplicationState(ApplicationState.TCP_ENDPOINT).value);
     }
 
     EndpointState getStateForVersionBiggerThan(NetEndpoint forEndpoint, int version) {
