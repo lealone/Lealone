@@ -31,15 +31,12 @@
         <module>lealone-client</module>
         <module>lealone-server</module>
         <module>lealone-sql</module>
-        <module>lealone-orm</module>
         <module>lealone-db</module>
         <module>lealone-mvcc</module>
         <module>lealone-aose</module>
         <module>lealone-p2p</module>
-        <module>lealone-vertx</module>
         <module>lealone-main</module>
         <module>lealone-test</module>
-        <module>lealone-js</module>
         <module>lealone-dist</module>
     </modules>
 
