@@ -7,7 +7,6 @@
 package org.lealone.db;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Properties;
@@ -654,21 +653,21 @@ public class ConnectionInfo implements Cloneable {
         return DbException.get(ErrorCode.URL_FORMAT_ERROR_2, Constants.URL_FORMAT, url);
     }
 
-    public Session createSession() throws SQLException {
+    public Session createSession() {
         return getSessionFactory().createSession(this);
     }
 
     public SessionFactory getSessionFactory() {
         if (sessionFactory == null) {
             try {
+                String className;
                 // 要使用反射，避免编译期依赖
                 if (remote) {
-                    sessionFactory = (SessionFactory) Class.forName("org.lealone.client.ClientSessionFactory")
-                            .getMethod("getInstance").invoke(null);
+                    className = "org.lealone.client.ClientSessionFactory";
                 } else {
-                    sessionFactory = (SessionFactory) Class.forName("org.lealone.db.DatabaseEngine")
-                            .getMethod("getSessionFactory").invoke(null);
+                    className = "org.lealone.db.ServerSessionFactory";
                 }
+                sessionFactory = (SessionFactory) Class.forName(className).getMethod("getInstance").invoke(null);
             } catch (Exception e) {
                 throw DbException.convert(e);
             }

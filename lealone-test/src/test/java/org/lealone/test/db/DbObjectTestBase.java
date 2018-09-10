@@ -21,9 +21,9 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.DatabaseEngine;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
+import org.lealone.db.ServerSessionFactory;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.result.Result;
@@ -45,7 +45,7 @@ public class DbObjectTestBase extends UnitTestBase {
         setEmbedded(true);
         addConnectionParameter("DATABASE_TO_UPPER", "false"); // 不转成大写
         ConnectionInfo ci = new ConnectionInfo(getURL(DB_NAME));
-        session = DatabaseEngine.createSession(ci);
+        session = ServerSessionFactory.getInstance().createSession(ci);
         db = session.getDatabase();
         schema = db.findSchema(Constants.SCHEMA_MAIN);
     }

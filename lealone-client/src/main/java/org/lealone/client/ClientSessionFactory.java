@@ -17,8 +17,6 @@
  */
 package org.lealone.client;
 
-import java.sql.SQLException;
-
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Session;
 import org.lealone.db.SessionFactory;
@@ -35,7 +33,7 @@ public class ClientSessionFactory implements SessionFactory {
     }
 
     @Override
-    public Session createSession(ConnectionInfo ci) throws SQLException {
+    public Session createSession(ConnectionInfo ci) {
         return new AutoReconnectSession(ci);
     }
 

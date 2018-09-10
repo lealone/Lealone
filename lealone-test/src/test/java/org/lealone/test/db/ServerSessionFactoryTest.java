@@ -21,11 +21,11 @@ import org.junit.Test;
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.DatabaseEngine;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.ServerSessionFactory;
 import org.lealone.test.UnitTestBase;
 
-public class DatabaseEngineTest extends UnitTestBase {
+public class ServerSessionFactoryTest extends UnitTestBase {
     @Test
     public void run() {
         setInMemory(true);
@@ -35,7 +35,7 @@ public class DatabaseEngineTest extends UnitTestBase {
         try {
             // 只有嵌入式模式时才允许访问lealone数据库
             ci = new ConnectionInfo(getURL(LealoneDatabase.NAME));
-            DatabaseEngine.createSession(ci);
+            ServerSessionFactory.getInstance().createSession(ci);
             fail();
         } catch (DbException e) {
             assertEquals(ErrorCode.DATABASE_NOT_FOUND_1, e.getErrorCode());

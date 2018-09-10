@@ -242,12 +242,7 @@ public class AsyncConnection implements Handler<Buffer> {
         if (baseDir != null) {
             ci.setBaseDir(baseDir);
         }
-
-        try {
-            return ci.createSession();
-        } catch (SQLException e) {
-            throw DbException.convert(e);
-        }
+        return ci.createSession();
     }
 
     private void closeSession(Session session) {

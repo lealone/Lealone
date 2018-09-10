@@ -17,10 +17,9 @@
  */
 package org.lealone.orm;
 
-import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
-import org.lealone.db.DatabaseEngine;
 import org.lealone.db.ServerSession;
+import org.lealone.db.ServerSessionFactory;
 import org.lealone.db.table.Table;
 
 public class ModelTable {
@@ -85,8 +84,7 @@ public class ModelTable {
                 throw new RuntimeException("'lealone.jdbc.url' must be set");
             }
 
-            ConnectionInfo ci = new ConnectionInfo(url);
-            session = DatabaseEngine.createSession(ci);
+            session = ServerSessionFactory.getInstance().createSession(url);
             Database db = session.getDatabase();
 
             // if (db.getSettings().databaseToUpper) {

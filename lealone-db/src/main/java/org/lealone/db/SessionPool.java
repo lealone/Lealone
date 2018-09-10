@@ -17,7 +17,6 @@
  */
 package org.lealone.db;
 
-import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -63,12 +62,8 @@ public class SessionPool {
             ci.setFilePasswordHash(oldCi.getFilePasswordHash());
             ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
             ci.setRemote(remote);
-            try {
-                // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
-                session = ci.createSession().connect(false);
-            } catch (SQLException e) {
-                throw DbException.convert(e);
-            }
+            // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
+            session = ci.createSession().connect(false);
         }
         return session;
     }

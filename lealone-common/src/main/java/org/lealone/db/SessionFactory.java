@@ -6,10 +6,6 @@
  */
 package org.lealone.db;
 
-import java.sql.SQLException;
-
-import org.lealone.db.ConnectionInfo;
-
 /**
  * A class that implements this interface can create new database sessions.
  */
@@ -21,6 +17,10 @@ public interface SessionFactory {
      * @param ci the connection parameters
      * @return the new session
      */
-    Session createSession(ConnectionInfo ci) throws SQLException;
+    Session createSession(ConnectionInfo ci);
+
+    default Session createSession(String url) {
+        return createSession(new ConnectionInfo(url));
+    }
 
 }
