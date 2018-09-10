@@ -181,6 +181,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     private Map<String, String> replicationProperties;
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
+    private Map<String, String> endpointAssignmentProperties;
 
     private RunMode runMode = RunMode.CLIENT_SERVER;
     private ConnectionInfo lastConnectionInfo;
@@ -295,6 +296,15 @@ public class Database implements DataHandler, DbObject, IDatabase {
         void replicationPropertiesChanged(Database db);
     }
 
+    @Override
+    public Map<String, String> getEndpointAssignmentProperties() {
+        return endpointAssignmentProperties;
+    }
+
+    public void setEndpointAssignmentProperties(Map<String, String> endpointAssignmentProperties) {
+        this.endpointAssignmentProperties = endpointAssignmentProperties;
+    }
+
     public void setRunMode(RunMode runMode) {
         if (runMode != null && this.runMode != runMode) {
             this.runMode = runMode;
@@ -328,6 +338,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         db.storages.putAll(storages);
         db.runMode = runMode;
         db.replicationProperties = replicationProperties;
+        db.replicationProperties = endpointAssignmentProperties;
         db.lastConnectionInfo = lastConnectionInfo;
         db.init();
         LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
@@ -2214,7 +2225,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     private static String getCreateSQL(String quotedDbName, Map<String, String> parameters,
-            Map<String, String> replicationProperties, RunMode runMode) {
+            Map<String, String> replicationProperties, Map<String, String> endpointAssignmentProperties,
+            RunMode runMode) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
         sql.append(quotedDbName);
         if (runMode != null) {
@@ -2223,6 +2235,10 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (replicationProperties != null && !replicationProperties.isEmpty()) {
             sql.append(" WITH REPLICATION STRATEGY");
             appendMap(sql, replicationProperties);
+        }
+        if (endpointAssignmentProperties != null && !endpointAssignmentProperties.isEmpty()) {
+            sql.append(" WITH ENDPOINT ASSIGNMENT STRATEGY");
+            appendMap(sql, endpointAssignmentProperties);
         }
         if (parameters != null && !parameters.isEmpty()) {
             sql.append(" PARAMETERS");
@@ -2255,7 +2271,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), parameters, replicationProperties, runMode);
+        return getCreateSQL(quoteIdentifier(name), parameters, replicationProperties, endpointAssignmentProperties,
+                runMode);
     }
 
     @Override

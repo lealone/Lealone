@@ -73,6 +73,7 @@ public class Config {
 
         public SeedProviderDef seed_provider;
         public ReplicationStrategyDef replication_strategy;
+        public EndpointAssignmentStrategyDef endpoint_assignment_strategy;
 
     }
 
@@ -92,6 +93,9 @@ public class Config {
     }
 
     public static class ReplicationStrategyDef extends MapPropertyTypeDef {
+    }
+
+    public static class EndpointAssignmentStrategyDef extends MapPropertyTypeDef {
     }
 
     public static class PluggableEngineDef extends MapPropertyTypeDef {

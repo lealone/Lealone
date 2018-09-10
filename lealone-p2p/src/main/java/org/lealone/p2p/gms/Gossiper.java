@@ -708,6 +708,12 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
                 .createP2P(getEndpointState(endpoint).getApplicationState(ApplicationState.TCP_ENDPOINT).value);
     }
 
+    public String getLoad(NetEndpoint endpoint) {
+        if (!usesHostId(endpoint))
+            throw new RuntimeException("Host " + endpoint + " does not use new-style tokens!");
+        return getEndpointState(endpoint).getApplicationState(ApplicationState.LOAD).value;
+    }
+
     EndpointState getStateForVersionBiggerThan(NetEndpoint forEndpoint, int version) {
         EndpointState epState = endpointStateMap.get(forEndpoint);
         EndpointState reqdEndpointState = null;

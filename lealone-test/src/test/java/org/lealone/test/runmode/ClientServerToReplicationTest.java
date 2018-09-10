@@ -30,13 +30,18 @@ public class ClientServerToReplicationTest extends RunModeTest {
     @Override
     public void run() throws Exception {
         String dbName = ClientServerToReplicationTest.class.getSimpleName();
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server");
+        sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
+        sql += " WITH ENDPOINT ASSIGNMENT STRATEGY (class: 'RandomEndpointAssignmentStrategy', assignment_factor: 1)";
+        executeUpdate(sql);
+
         new Thread(() -> {
             new CrudTest(dbName).runTest();
         }).start();
 
-        executeUpdate("ALTER DATABASE " + dbName //
-                + " RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");
+        sql = "ALTER DATABASE " + dbName + " RUN MODE replication";
+        sql += " WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)";
+        sql += " WITH ENDPOINT ASSIGNMENT STRATEGY (class: 'RandomEndpointAssignmentStrategy', assignment_factor: 2)";
+        executeUpdate(sql);
 
         // String p = " PARAMETERS(hostIds='1,2')";
         // executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding" + p);

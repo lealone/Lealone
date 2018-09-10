@@ -35,7 +35,7 @@ public interface Router {
 
     Result executeQuery(PreparedStatement statement, int maxRows);
 
-    String[] getHostIds(IDatabase db);
+    String[] assignEndpoints(IDatabase db);
 
     int executeDatabaseStatement(IDatabase db, Session currentSession, PreparedStatement statement);
 

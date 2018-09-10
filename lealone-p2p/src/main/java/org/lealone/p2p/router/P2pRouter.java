@@ -38,6 +38,7 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.FailureDetector;
 import org.lealone.p2p.gms.Gossiper;
+import org.lealone.p2p.locator.AbstractEndpointAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
 import org.lealone.p2p.locator.TopologyMetaData;
 import org.lealone.p2p.server.P2pServer;
@@ -52,9 +53,13 @@ public class P2pRouter implements Router {
     private static final P2pRouter instance = new P2pRouter();
     private static final Random random = new Random();
 
-    private static final HashMap<IDatabase, AbstractReplicationStrategy> replicationStrategys = new HashMap<>();
+    private static final Map<IDatabase, AbstractReplicationStrategy> replicationStrategies = new HashMap<>();
     private static final AbstractReplicationStrategy defaultReplicationStrategy = ConfigDescriptor
             .getDefaultReplicationStrategy();
+
+    private static final Map<IDatabase, AbstractEndpointAssignmentStrategy> endpointAssignmentStrategies = new HashMap<>();
+    private static final AbstractEndpointAssignmentStrategy defaultEndpointAssignmentStrategy = ConfigDescriptor
+            .getDefaultEndpointAssignmentStrategy();
 
     public static P2pRouter getInstance() {
         return instance;
@@ -131,7 +136,24 @@ public class P2pRouter implements Router {
     }
 
     @Override
-    public String[] getHostIds(IDatabase db) {
+    public String[] assignEndpoints(IDatabase db) {
+        removeEndpointAssignmentStrategy(db); // 避免使用旧的
+        List<NetEndpoint> list = getEndpointAssignmentStrategy(db).assignEndpoints(new HashSet<>(0),
+                Gossiper.instance.getLiveMembers(), false);
+
+        int size = list.size();
+        String[] hostIds = new String[size];
+        int i = 0;
+        for (NetEndpoint e : list) {
+            String hostId = getHostId(e);
+            if (hostId != null)
+                hostIds[i] = hostId;
+            i++;
+        }
+        return hostIds;
+    }
+
+    public String[] getHostIdsOld(IDatabase db) {
         RunMode runMode = db.getRunMode();
         Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
         ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
@@ -380,13 +402,13 @@ public class P2pRouter implements Router {
     }
 
     private static void removeReplicationStrategy(IDatabase db) {
-        replicationStrategys.remove(db);
+        replicationStrategies.remove(db);
     }
 
     private static AbstractReplicationStrategy getReplicationStrategy(IDatabase db) {
         if (db.getReplicationProperties() == null)
             return defaultReplicationStrategy;
-        AbstractReplicationStrategy replicationStrategy = replicationStrategys.get(db);
+        AbstractReplicationStrategy replicationStrategy = replicationStrategies.get(db);
         if (replicationStrategy == null) {
             HashMap<String, String> map = new HashMap<>(db.getReplicationProperties());
             String className = map.remove("class");
@@ -396,8 +418,30 @@ public class P2pRouter implements Router {
 
             replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getShortName(), className,
                     ConfigDescriptor.getEndpointSnitch(), map);
-            replicationStrategys.put(db, replicationStrategy);
+            replicationStrategies.put(db, replicationStrategy);
         }
         return replicationStrategy;
+    }
+
+    private static void removeEndpointAssignmentStrategy(IDatabase db) {
+        endpointAssignmentStrategies.remove(db);
+    }
+
+    private static AbstractEndpointAssignmentStrategy getEndpointAssignmentStrategy(IDatabase db) {
+        if (db.getEndpointAssignmentProperties() == null)
+            return defaultEndpointAssignmentStrategy;
+        AbstractEndpointAssignmentStrategy endpointAssignmentStrategy = endpointAssignmentStrategies.get(db);
+        if (endpointAssignmentStrategy == null) {
+            HashMap<String, String> map = new HashMap<>(db.getEndpointAssignmentProperties());
+            String className = map.remove("class");
+            if (className == null) {
+                throw new ConfigException("Missing endpoint assignment strategy class");
+            }
+
+            endpointAssignmentStrategy = AbstractEndpointAssignmentStrategy.create(db.getShortName(), className,
+                    ConfigDescriptor.getEndpointSnitch(), map);
+            endpointAssignmentStrategies.put(db, endpointAssignmentStrategy);
+        }
+        return endpointAssignmentStrategy;
     }
 }

@@ -58,6 +58,8 @@ public interface IDatabase {
 
     Map<String, String> getReplicationProperties();
 
+    Map<String, String> getEndpointAssignmentProperties();
+
     List<Storage> getStorages();
 
     Map<String, String> getParameters();

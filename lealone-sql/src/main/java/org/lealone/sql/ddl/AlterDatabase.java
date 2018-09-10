@@ -42,20 +42,22 @@ import org.lealone.storage.Storage;
 public class AlterDatabase extends DatabaseStatement {
 
     private final Database db;
-    private final Map<String, String> parameters;
-    private final Map<String, String> replicationProperties;
     private final RunMode runMode;
+    private final Map<String, String> replicationProperties;
+    private final Map<String, String> endpointAssignmentProperties;
+    private final Map<String, String> parameters;
 
     private String[] newHostIds;
     private String[] oldHostIds;
 
-    public AlterDatabase(ServerSession session, Database db, Map<String, String> parameters,
-            Map<String, String> replicationProperties, RunMode runMode) {
+    public AlterDatabase(ServerSession session, Database db, RunMode runMode, Map<String, String> replicationProperties,
+            Map<String, String> endpointAssignmentProperties, Map<String, String> parameters) {
         super(session);
         this.db = db;
-        this.parameters = parameters;
-        this.replicationProperties = replicationProperties;
         this.runMode = runMode;
+        this.replicationProperties = replicationProperties;
+        this.endpointAssignmentProperties = endpointAssignmentProperties;
+        this.parameters = parameters;
     }
 
     @Override
@@ -108,6 +110,8 @@ public class AlterDatabase extends DatabaseStatement {
             db.alterParameters(parameters);
         if (replicationProperties != null)
             db.setReplicationProperties(replicationProperties);
+        if (endpointAssignmentProperties != null)
+            db.setReplicationProperties(endpointAssignmentProperties);
     }
 
     private void updateLocalMeta() {

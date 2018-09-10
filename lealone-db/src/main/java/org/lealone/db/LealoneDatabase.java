@@ -56,6 +56,8 @@ public class LealoneDatabase extends Database {
 
         init();
         createRootUserIfNotExists();
+
+        DatabaseManager.setDatabases(databases);
     }
 
     public synchronized Database createEmbeddedDatabase(String name, ConnectionInfo ci) {

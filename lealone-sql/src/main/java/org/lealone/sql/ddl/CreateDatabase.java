@@ -41,16 +41,19 @@ public class CreateDatabase extends DatabaseStatement {
     private final boolean ifNotExists;
     private final RunMode runMode;
     private final Map<String, String> replicationProperties;
+    private final Map<String, String> endpointAssignmentProperties;
     private final Map<String, String> parameters;
     // private final Map<String, String> resourceQuota;
 
     public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, RunMode runMode,
-            Map<String, String> replicationProperties, Map<String, String> parameters) {
+            Map<String, String> replicationProperties, Map<String, String> endpointAssignmentProperties,
+            Map<String, String> parameters) {
         super(session);
         this.dbName = dbName;
         this.ifNotExists = ifNotExists;
         this.runMode = runMode;
         this.replicationProperties = replicationProperties;
+        this.endpointAssignmentProperties = endpointAssignmentProperties;
         if (parameters == null) {
             parameters = new CaseInsensitiveMap<>();
         }
@@ -78,9 +81,10 @@ public class CreateDatabase extends DatabaseStatement {
             int id = getObjectId(lealoneDB);
             newDB = new Database(id, dbName, parameters);
             newDB.setReplicationProperties(replicationProperties);
+            newDB.setEndpointAssignmentProperties(endpointAssignmentProperties);
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
-                String[] hostIds = RouterHolder.getRouter().getHostIds(newDB);
+                String[] hostIds = RouterHolder.getRouter().assignEndpoints(newDB);
                 if (hostIds != null && hostIds.length > 0)
                     newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
                 else

@@ -38,10 +38,12 @@ import org.lealone.p2p.auth.AllowAllInternodeAuthenticator;
 import org.lealone.p2p.auth.IInternodeAuthenticator;
 import org.lealone.p2p.config.Config.ClusterConfig;
 import org.lealone.p2p.config.Config.PluggableEngineDef;
+import org.lealone.p2p.locator.AbstractEndpointAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
 import org.lealone.p2p.locator.DynamicEndpointSnitch;
 import org.lealone.p2p.locator.EndpointSnitchInfo;
 import org.lealone.p2p.locator.IEndpointSnitch;
+import org.lealone.p2p.locator.RandomEndpointAssignmentStrategy;
 import org.lealone.p2p.locator.SeedProvider;
 import org.lealone.p2p.locator.SimpleStrategy;
 import org.lealone.p2p.net.MessagingService;
@@ -61,6 +63,7 @@ public class ConfigDescriptor {
     private static SeedProvider seedProvider;
     private static IInternodeAuthenticator internodeAuthenticator;
     private static AbstractReplicationStrategy defaultReplicationStrategy;
+    private static AbstractEndpointAssignmentStrategy defaultEndpointAssignmentStrategy;
 
     public static void applyConfig(Config config) throws ConfigException {
         ConfigDescriptor.config = config;
@@ -95,6 +98,7 @@ public class ConfigDescriptor {
         seedProvider = createSeedProvider(config.cluster_config);
         internodeAuthenticator = createInternodeAuthenticator(config.cluster_config);
         defaultReplicationStrategy = createDefaultReplicationStrategy(config.cluster_config);
+        defaultEndpointAssignmentStrategy = createDefaultEndpointAssignmentStrategy(config.cluster_config);
     }
 
     private static boolean isP2pServerEnabled() {
@@ -248,8 +252,29 @@ public class ConfigDescriptor {
         return defaultReplicationStrategy;
     }
 
+    private static AbstractEndpointAssignmentStrategy createDefaultEndpointAssignmentStrategy(ClusterConfig config)
+            throws ConfigException {
+        AbstractEndpointAssignmentStrategy defaultEndpointAssignmentStrategy;
+        if (config.endpoint_assignment_strategy == null) {
+            defaultEndpointAssignmentStrategy = new RandomEndpointAssignmentStrategy("system", getEndpointSnitch(),
+                    ImmutableMap.of("assignment_factor", "1"));
+        } else {
+            if (config.endpoint_assignment_strategy.name == null) {
+                throw new ConfigException("endpoint_assignment_strategy.name is missing.");
+            }
+            defaultEndpointAssignmentStrategy = AbstractEndpointAssignmentStrategy.create("system",
+                    config.endpoint_assignment_strategy.name, getEndpointSnitch(),
+                    config.endpoint_assignment_strategy.parameters);
+        }
+        return defaultEndpointAssignmentStrategy;
+    }
+
     public static AbstractReplicationStrategy getDefaultReplicationStrategy() {
         return defaultReplicationStrategy;
+    }
+
+    public static AbstractEndpointAssignmentStrategy getDefaultEndpointAssignmentStrategy() {
+        return defaultEndpointAssignmentStrategy;
     }
 
     public static IEndpointSnitch getEndpointSnitch() {

@@ -102,8 +102,8 @@ public class TransactionalRouter implements Router {
     }
 
     @Override
-    public String[] getHostIds(IDatabase db) {
-        return nestedRouter.getHostIds(db);
+    public String[] assignEndpoints(IDatabase db) {
+        return nestedRouter.assignEndpoints(db);
     }
 
     @Override
