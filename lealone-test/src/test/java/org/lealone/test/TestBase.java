@@ -38,6 +38,11 @@ import io.vertx.core.impl.FileResolver;
 import io.vertx.core.spi.resolver.ResolverProvider;
 
 public class TestBase extends Assert {
+
+    public static interface SqlExecuter {
+        void execute(String sql);
+    }
+
     public static String url;
     public static final String DEFAULT_STORAGE_ENGINE_NAME = getDefaultStorageEngineName();
     public static final String TEST_BASE_DIR = "." + File.separatorChar + "target" + File.separatorChar + "test-data";
