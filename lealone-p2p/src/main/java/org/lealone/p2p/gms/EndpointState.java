@@ -21,8 +21,8 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.lealone.p2p.net.IVersionedSerializer;
 import org.lealone.p2p.util.TypeSizes;
 
@@ -36,7 +36,7 @@ public class EndpointState {
     public final static IVersionedSerializer<EndpointState> serializer = new EndpointStateSerializer();
 
     private volatile HeartBeatState hbState;
-    final Map<ApplicationState, VersionedValue> applicationState = new NonBlockingHashMap<>();
+    final Map<ApplicationState, VersionedValue> applicationState = new ConcurrentHashMap<>();
 
     /* fields below do not get serialized */
     private volatile long updateTimestamp;

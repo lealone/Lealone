@@ -40,7 +40,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.cliffc.high_scale_lib.NonBlockingHashMap;
 import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
@@ -205,7 +204,7 @@ public final class MessagingService implements MessagingServiceMBean {
     /* Lookup table for registering message handlers based on the verb. */
     private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);;
 
-    private final ConcurrentMap<NetEndpoint, TcpConnection> connectionManagers = new NonBlockingHashMap<>();
+    private final ConcurrentMap<NetEndpoint, TcpConnection> connectionManagers = new ConcurrentHashMap<>();
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
@@ -215,7 +214,7 @@ public final class MessagingService implements MessagingServiceMBean {
     private final List<ILatencySubscriber> subscribers = new ArrayList<>();
 
     // protocol versions of the other nodes in the cluster
-    private final ConcurrentMap<NetEndpoint, Integer> versions = new NonBlockingHashMap<>();
+    private final ConcurrentMap<NetEndpoint, Integer> versions = new ConcurrentHashMap<>();
 
     private static class MSHandle {
         public static final MessagingService instance = new MessagingService();
