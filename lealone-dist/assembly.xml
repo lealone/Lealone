@@ -39,11 +39,11 @@
         <file>
             <source>lealone-dist/target/lealone-${project.version}.jar</source>
             <outputDirectory>lib</outputDirectory>
-        </file>
+        </file><!--
         <file>
             <source>lealone-client/target/lealone-client-${project.version}-all.jar</source>
             <outputDirectory>lib/client</outputDirectory>
-        </file>
+        </file>-->
     </files>
 
     <moduleSets>
