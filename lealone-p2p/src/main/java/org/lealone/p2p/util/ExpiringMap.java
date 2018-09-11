@@ -23,13 +23,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import org.lealone.common.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-
-import com.google.common.base.Function;
-import com.google.common.util.concurrent.Uninterruptibles;
 
 public class ExpiringMap<K, V> {
     private static final Logger logger = LoggerFactory.getLogger(ExpiringMap.class);

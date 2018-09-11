@@ -23,6 +23,7 @@ import java.lang.management.ManagementFactory;
 import java.util.StringTokenizer;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.DoubleAdder;
 
 import org.lealone.common.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.lealone.common.logging.Logger;
@@ -34,8 +35,6 @@ import org.lealone.p2p.gms.EndpointState;
 import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.gms.VersionedValue;
 import org.lealone.p2p.util.Utils;
-
-import com.google.common.util.concurrent.AtomicDouble;
 
 public class BackgroundActivityMonitor {
 
@@ -52,8 +51,8 @@ public class BackgroundActivityMonitor {
     private static final int NUM_CPUS = Runtime.getRuntime().availableProcessors();
     private static final String PROC_STAT_PATH = "/proc/stat";
 
-    private final AtomicDouble compactionSeverity = new AtomicDouble();
-    private final AtomicDouble manualSeverity = new AtomicDouble();
+    private final DoubleAdder compactionSeverity = new DoubleAdder();
+    private final DoubleAdder manualSeverity = new DoubleAdder();
     private final ScheduledExecutorService reportThread;
 
     private RandomAccessFile statsFile;
@@ -103,11 +102,11 @@ public class BackgroundActivityMonitor {
     }
 
     public void incrCompactionSeverity(double sev) {
-        compactionSeverity.addAndGet(sev);
+        compactionSeverity.add(sev);
     }
 
     public void incrManualSeverity(double sev) {
-        manualSeverity.addAndGet(sev);
+        manualSeverity.add(sev);
     }
 
     public double getIOWait() throws IOException {
@@ -144,11 +143,11 @@ public class BackgroundActivityMonitor {
                     logger.warn("Couldn't read /proc/stats");
             }
             if (report == -1d)
-                report = compactionSeverity.get();
+                report = compactionSeverity.sum();
 
             if (!Gossiper.instance.isEnabled())
                 return;
-            report += manualSeverity.get(); // add manual severity setting.
+            report += manualSeverity.sum(); // add manual severity setting.
             VersionedValue updated = P2pServer.valueFactory.severity(report);
             Gossiper.instance.addLocalApplicationState(ApplicationState.SEVERITY, updated);
         }

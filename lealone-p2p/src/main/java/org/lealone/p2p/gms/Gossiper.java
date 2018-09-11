@@ -58,10 +58,8 @@ import org.lealone.p2p.net.MessageOut;
 import org.lealone.p2p.net.MessagingService;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.Pair;
+import org.lealone.p2p.util.Uninterruptibles;
 import org.lealone.p2p.util.Utils;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.Uninterruptibles;
 
 /**
  * This module is responsible for Gossiping information for the local endpoint. This abstraction
@@ -332,7 +330,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
      * @return true if the chosen endpoint is also a seed.
      */
     private boolean sendGossip(MessageOut<GossipDigestSyn> message, Set<NetEndpoint> epSet) {
-        List<NetEndpoint> liveEndpoints = ImmutableList.copyOf(epSet);
+        List<NetEndpoint> liveEndpoints = new ArrayList<>(epSet);
 
         int size = liveEndpoints.size();
         if (size < 1)

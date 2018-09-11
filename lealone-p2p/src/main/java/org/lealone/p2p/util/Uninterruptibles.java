@@ -17,18 +17,29 @@
  */
 package org.lealone.p2p.util;
 
-import org.lealone.common.exceptions.DbException;
+import java.util.concurrent.TimeUnit;
 
-public abstract class WrappedRunnable implements Runnable {
+public class Uninterruptibles {
 
-    @Override
-    public final void run() {
+    public static void sleepUninterruptibly(long sleepFor, TimeUnit unit) {
+        boolean interrupted = false;
         try {
-            runMayThrow();
-        } catch (Exception e) {
-            throw DbException.convert(e);
+            long remainingNanos = unit.toNanos(sleepFor);
+            long end = System.nanoTime() + remainingNanos;
+            while (true) {
+                try {
+                    // TimeUnit.sleep() treats negative timeouts just like zero.
+                    java.util.concurrent.TimeUnit.NANOSECONDS.sleep(remainingNanos);
+                    return;
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                    remainingNanos = end - System.nanoTime();
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
-
-    abstract protected void runMayThrow() throws Exception;
 }

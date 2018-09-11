@@ -17,8 +17,6 @@
  */
 package org.lealone.p2p.util;
 
-import com.google.common.base.Objects;
-
 public class Pair<T1, T2> {
     public final T1 left;
     public final T2 right;
@@ -40,7 +38,7 @@ public class Pair<T1, T2> {
             return false;
         Pair<?, ?> that = (Pair<?, ?>) o;
         // handles nulls properly
-        return Objects.equal(left, that.left) && Objects.equal(right, that.right);
+        return equal(left, that.left) && equal(right, that.right);
     }
 
     @Override
@@ -50,5 +48,9 @@ public class Pair<T1, T2> {
 
     public static <X, Y> Pair<X, Y> create(X x, Y y) {
         return new Pair<X, Y>(x, y);
+    }
+
+    private static boolean equal(Object a, Object b) {
+        return a == b || (a != null && a.equals(b));
     }
 }

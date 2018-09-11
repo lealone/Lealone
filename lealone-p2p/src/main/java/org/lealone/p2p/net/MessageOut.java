@@ -20,15 +20,13 @@ package org.lealone.p2p.net;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.util.TypeSizes;
-
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableMap;
 
 public class MessageOut<T> {
     public final NetEndpoint from;
@@ -51,7 +49,6 @@ public class MessageOut<T> {
         this(ConfigDescriptor.getLocalEndpoint(), verb, payload, serializer, parameters);
     }
 
-    @VisibleForTesting
     public MessageOut(NetEndpoint from, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
             Map<String, byte[]> parameters) {
         this.from = from;
@@ -62,9 +59,9 @@ public class MessageOut<T> {
     }
 
     public MessageOut<T> withParameter(String key, byte[] value) {
-        ImmutableMap.Builder<String, byte[]> builder = ImmutableMap.builder();
-        builder.putAll(parameters).put(key, value);
-        return new MessageOut<T>(verb, payload, serializer, builder.build());
+        HashMap<String, byte[]> map = new HashMap<>(parameters);
+        map.put(key, value);
+        return new MessageOut<T>(verb, payload, serializer, map);
     }
 
     public Stage getStage() {

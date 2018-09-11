@@ -36,8 +36,6 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.locator.TopologyMetaData.Topology;
 import org.lealone.p2p.util.Utils;
 
-import com.google.common.collect.Multimap;
-
 /**
  * This Replication Strategy takes a property file that gives the intended
  * replication factor in each datacenter.  The sum total of the datacenter
@@ -127,9 +125,9 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
 
         Topology topology = metaData.getTopology();
         // all endpoints in each DC, so we can check when we have exhausted all the members of a DC
-        Multimap<String, NetEndpoint> allEndpoints = topology.getDatacenterEndpoints();
+        Map<String, Set<NetEndpoint>> allEndpoints = topology.getDatacenterEndpoints();
         // all racks in a DC so we can check when we have exhausted all racks in a DC
-        Map<String, Multimap<String, NetEndpoint>> racks = topology.getDatacenterRacks();
+        Map<String, Map<String, Set<NetEndpoint>>> racks = topology.getDatacenterRacks();
         assert !allEndpoints.isEmpty() && !racks.isEmpty() : "not aware of any cluster members";
 
         // tracks the racks we have already placed replicas in
@@ -198,12 +196,12 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
     }
 
     private boolean hasSufficientReplicas(String dc, Map<String, Set<NetEndpoint>> dcReplicas,
-            Multimap<String, NetEndpoint> allEndpoints) {
+            Map<String, Set<NetEndpoint>> allEndpoints) {
         return dcReplicas.get(dc).size() >= Math.min(allEndpoints.get(dc).size(), getReplicationFactor(dc));
     }
 
     private boolean hasSufficientReplicas(Map<String, Set<NetEndpoint>> dcReplicas,
-            Multimap<String, NetEndpoint> allEndpoints) {
+            Map<String, Set<NetEndpoint>> allEndpoints) {
         for (String dc : datacenters.keySet())
             if (!hasSufficientReplicas(dc, dcReplicas, allEndpoints))
                 return false;

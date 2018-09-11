@@ -25,6 +25,8 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,9 +51,6 @@ import org.lealone.p2p.locator.SimpleStrategy;
 import org.lealone.p2p.net.MessagingService;
 import org.lealone.p2p.server.P2pServerEngine;
 import org.lealone.p2p.util.Utils;
-
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 
 public class ConfigDescriptor {
 
@@ -240,8 +239,9 @@ public class ConfigDescriptor {
             throws ConfigException {
         AbstractReplicationStrategy defaultReplicationStrategy;
         if (config.replication_strategy == null) {
-            defaultReplicationStrategy = new SimpleStrategy("system", getEndpointSnitch(),
-                    ImmutableMap.of("replication_factor", "1"));
+            HashMap<String, String> map = new HashMap<>(1);
+            map.put("replication_factor", "1");
+            defaultReplicationStrategy = new SimpleStrategy("system", getEndpointSnitch(), map);
         } else {
             if (config.replication_strategy.name == null) {
                 throw new ConfigException("replication_strategy.name is missing.");
@@ -256,8 +256,10 @@ public class ConfigDescriptor {
             throws ConfigException {
         AbstractEndpointAssignmentStrategy defaultEndpointAssignmentStrategy;
         if (config.endpoint_assignment_strategy == null) {
+            HashMap<String, String> map = new HashMap<>(1);
+            map.put("assignment_factor", "1");
             defaultEndpointAssignmentStrategy = new RandomEndpointAssignmentStrategy("system", getEndpointSnitch(),
-                    ImmutableMap.of("assignment_factor", "1"));
+                    map);
         } else {
             if (config.endpoint_assignment_strategy.name == null) {
                 throw new ConfigException("endpoint_assignment_strategy.name is missing.");
@@ -307,7 +309,7 @@ public class ConfigDescriptor {
     }
 
     public static Set<NetEndpoint> getSeeds() {
-        return ImmutableSet.<NetEndpoint> builder().addAll(seedProvider.getSeeds()).build();
+        return new HashSet<>(seedProvider.getSeeds());
     }
 
     public static List<NetEndpoint> getSeedList() {

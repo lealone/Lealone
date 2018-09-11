@@ -36,6 +36,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
@@ -69,8 +70,6 @@ import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.ExpiringMap;
 import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Utils;
-
-import com.google.common.base.Function;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.net.NetClient;

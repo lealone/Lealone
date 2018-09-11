@@ -34,18 +34,13 @@ import org.lealone.p2p.gms.FailureDetector;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.Pair;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimap;
-
 public class TopologyMetaData {
 
     private static final Logger logger = LoggerFactory.getLogger(TopologyMetaData.class);
 
     /** Maintains endpoint to host ID map of every node in the cluster */
-    private final BiMap<NetEndpoint, String> endpointToHostIdMap;
+    private final Map<NetEndpoint, String> endpointToHostIdMap;
+    private final Map<String, NetEndpoint> hostIdToEndpointMap;
     private final Topology topology;
 
     // don't need to record host ID here since it's still part of endpointToHostIdMap until it's done leaving
@@ -57,11 +52,13 @@ public class TopologyMetaData {
     private volatile long ringVersion = 0;
 
     public TopologyMetaData() {
-        this(HashBiMap.<NetEndpoint, String> create(), new Topology());
+        this(new HashMap<>(), new HashMap<>(), new Topology());
     }
 
-    private TopologyMetaData(BiMap<NetEndpoint, String> endpointToHostIdMap, Topology topology) {
+    private TopologyMetaData(Map<NetEndpoint, String> endpointToHostIdMap, Map<String, NetEndpoint> hostIdToEndpointMap,
+            Topology topology) {
         this.endpointToHostIdMap = endpointToHostIdMap;
+        this.hostIdToEndpointMap = hostIdToEndpointMap;
         this.topology = topology;
     }
 
@@ -78,7 +75,7 @@ public class TopologyMetaData {
 
         lock.writeLock().lock();
         try {
-            NetEndpoint storedEp = endpointToHostIdMap.inverse().get(hostId);
+            NetEndpoint storedEp = hostIdToEndpointMap.get(hostId);
             if (storedEp != null) {
                 if (!storedEp.equals(endpoint) && (FailureDetector.instance.isAlive(storedEp))) {
                     throw new RuntimeException(String.format(
@@ -92,7 +89,8 @@ public class TopologyMetaData {
             if ((storedId != null) && (!storedId.equals(hostId)))
                 logger.warn("Changing {}'s host ID from {} to {}", endpoint, storedId, hostId);
 
-            endpointToHostIdMap.forcePut(endpoint, hostId);
+            endpointToHostIdMap.put(endpoint, hostId);
+            hostIdToEndpointMap.put(hostId, endpoint);
         } finally {
             lock.writeLock().unlock();
         }
@@ -112,7 +110,7 @@ public class TopologyMetaData {
     public NetEndpoint getEndpoint(String hostId) {
         lock.readLock().lock();
         try {
-            return endpointToHostIdMap.inverse().get(hostId);
+            return hostIdToEndpointMap.get(hostId);
         } finally {
             lock.readLock().unlock();
         }
@@ -148,6 +146,7 @@ public class TopologyMetaData {
         try {
             topology.removeEndpoint(endpoint);
             leavingEndpoints.remove(endpoint);
+            hostIdToEndpointMap.remove(endpointToHostIdMap.get(endpoint));
             endpointToHostIdMap.remove(endpoint);
             invalidateCachedRings();
         } finally {
@@ -184,7 +183,8 @@ public class TopologyMetaData {
     private TopologyMetaData cloneOnlyHostIdMap() {
         lock.readLock().lock();
         try {
-            return new TopologyMetaData(HashBiMap.create(endpointToHostIdMap), new Topology(topology));
+            return new TopologyMetaData(new HashMap<>(endpointToHostIdMap), new HashMap<>(hostIdToEndpointMap),
+                    new Topology(topology));
         } finally {
             lock.readLock().unlock();
         }
@@ -214,13 +214,13 @@ public class TopologyMetaData {
     }
 
     public ArrayList<String> getSortedHostIds() {
-        return new ArrayList<>(endpointToHostIdMap.inverse().keySet());
+        return new ArrayList<>(hostIdToEndpointMap.keySet());
     }
 
     public Set<NetEndpoint> getAllEndpoints() {
         lock.readLock().lock();
         try {
-            return ImmutableSet.copyOf(endpointToHostIdMap.keySet());
+            return new HashSet<>(endpointToHostIdMap.keySet());
         } finally {
             lock.readLock().unlock();
         }
@@ -230,7 +230,7 @@ public class TopologyMetaData {
     public Set<NetEndpoint> getLeavingEndpoints() {
         lock.readLock().lock();
         try {
-            return ImmutableSet.copyOf(leavingEndpoints);
+            return new HashSet<>(leavingEndpoints);
         } finally {
             lock.readLock().unlock();
         }
@@ -241,6 +241,7 @@ public class TopologyMetaData {
         lock.writeLock().lock();
         try {
             endpointToHostIdMap.clear();
+            hostIdToEndpointMap.clear();
             leavingEndpoints.clear();
             topology.clear();
             invalidateCachedRings();
@@ -297,14 +298,14 @@ public class TopologyMetaData {
      */
     public static class Topology {
         /** multi-map of DC to endpoints in that DC */
-        private final Multimap<String, NetEndpoint> dcEndpoints;
+        private final Map<String, Set<NetEndpoint>> dcEndpoints;
         /** map of DC to multi-map of rack to endpoints in that rack */
-        private final Map<String, Multimap<String, NetEndpoint>> dcRacks;
+        private final Map<String, Map<String, Set<NetEndpoint>>> dcRacks;
         /** reverse-lookup map for endpoint to current known dc/rack assignment */
         private final Map<NetEndpoint, Pair<String, String>> currentLocations;
 
         protected Topology() {
-            dcEndpoints = HashMultimap.create();
+            dcEndpoints = new HashMap<>();
             dcRacks = new HashMap<>();
             currentLocations = new HashMap<>();
         }
@@ -319,10 +320,19 @@ public class TopologyMetaData {
          * construct deep-copy of other
          */
         protected Topology(Topology other) {
-            dcEndpoints = HashMultimap.create(other.dcEndpoints);
-            dcRacks = new HashMap<>();
-            for (String dc : other.dcRacks.keySet())
-                dcRacks.put(dc, HashMultimap.create(other.dcRacks.get(dc)));
+            dcEndpoints = new HashMap<>(other.dcEndpoints.size());
+            for (String dc : other.dcEndpoints.keySet()) {
+                dcEndpoints.put(dc, new HashSet<>(other.dcEndpoints.get(dc)));
+            }
+            dcRacks = new HashMap<>(other.dcRacks.size());
+            for (String dc : other.dcRacks.keySet()) {
+                Map<String, Set<NetEndpoint>> oldRacks = other.dcRacks.get(dc);
+                Map<String, Set<NetEndpoint>> newRacks = new HashMap<>(oldRacks.size());
+                dcRacks.put(dc, newRacks);
+                for (String rack : oldRacks.keySet()) {
+                    newRacks.put(rack, new HashSet<>(oldRacks.get(rack)));
+                }
+            }
             currentLocations = new HashMap<>(other.currentLocations);
         }
 
@@ -337,15 +347,22 @@ public class TopologyMetaData {
             if (current != null) {
                 if (current.left.equals(dc) && current.right.equals(rack))
                     return;
-                dcRacks.get(current.left).remove(current.right, ep);
-                dcEndpoints.remove(current.left, ep);
+                dcRacks.get(current.left).get(current.right).remove(ep);
+                dcEndpoints.get(current.left).remove(ep);
             }
-
-            dcEndpoints.put(dc, ep);
+            Set<NetEndpoint> endpoints = dcEndpoints.get(dc);
+            if (endpoints == null) {
+                endpoints = new HashSet<>();
+                dcEndpoints.put(dc, endpoints);
+            }
+            endpoints.add(ep);
 
             if (!dcRacks.containsKey(dc))
-                dcRacks.put(dc, HashMultimap.<String, NetEndpoint> create());
-            dcRacks.get(dc).put(rack, ep);
+                dcRacks.put(dc, new HashMap<>());
+
+            if (!dcRacks.get(dc).containsKey(rack))
+                dcRacks.get(dc).put(rack, new HashSet<>());
+            dcRacks.get(dc).get(rack).add(ep);
 
             currentLocations.put(ep, Pair.create(dc, rack));
         }
@@ -357,21 +374,21 @@ public class TopologyMetaData {
             if (!currentLocations.containsKey(ep))
                 return;
             Pair<String, String> current = currentLocations.remove(ep);
-            dcEndpoints.remove(current.left, ep);
-            dcRacks.get(current.left).remove(current.right, ep);
+            dcEndpoints.get(current.left).remove(ep);
+            dcRacks.get(current.left).get(current.right).remove(ep);
         }
 
         /**
          * @return multi-map of DC to endpoints in that DC
          */
-        public Multimap<String, NetEndpoint> getDatacenterEndpoints() {
+        public Map<String, Set<NetEndpoint>> getDatacenterEndpoints() {
             return dcEndpoints;
         }
 
         /**
          * @return map of DC to multi-map of rack to endpoints in that rack
          */
-        public Map<String, Multimap<String, NetEndpoint>> getDatacenterRacks() {
+        public Map<String, Map<String, Set<NetEndpoint>>> getDatacenterRacks() {
             return dcRacks;
         }
     }

@@ -20,14 +20,13 @@ package org.lealone.p2p.net;
 import java.io.DataInput;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.util.FileUtils;
-
-import com.google.common.collect.ImmutableMap;
 
 public class MessageIn<T> {
     public final NetEndpoint from;
@@ -77,14 +76,14 @@ public class MessageIn<T> {
         if (parameterCount == 0) {
             parameters = Collections.emptyMap();
         } else {
-            ImmutableMap.Builder<String, byte[]> builder = ImmutableMap.builder();
+            HashMap<String, byte[]> map = new HashMap<>(parameterCount);
             for (int i = 0; i < parameterCount; i++) {
                 String key = in.readUTF();
                 byte[] value = new byte[in.readInt()];
                 in.readFully(value);
-                builder.put(key, value);
+                map.put(key, value);
             }
-            parameters = builder.build();
+            parameters = map;
         }
 
         int payloadSize = in.readInt();
