@@ -90,8 +90,10 @@ public class Lealone {
     private static void init() {
         initBaseDir();
         initPluggableEngines();
+        long t1 = System.currentTimeMillis();
         LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
-
+        long t2 = System.currentTimeMillis();
+        logger.info("Init lealone database: " + (t2 - t1) + "ms");
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled && P2pServerEngine.NAME.equalsIgnoreCase(def.name)) {
@@ -112,6 +114,7 @@ public class Lealone {
 
     // 初始化顺序: storage -> transaction -> sql -> protocol_server
     private static void initPluggableEngines() {
+        long t1 = System.currentTimeMillis();
         List<PluggableEngineDef> pluggable_engines = config.storage_engines;
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
@@ -135,6 +138,9 @@ public class Lealone {
                 }
             }
         }
+        long t2 = System.currentTimeMillis();
+        logger.info("Init storage engines: " + (t2 - t1) + "ms");
+
         pluggable_engines = config.transaction_engines;
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
@@ -161,6 +167,9 @@ public class Lealone {
                 }
             }
         }
+        long t3 = System.currentTimeMillis();
+        logger.info("Init transaction engines: " + (t3 - t2) + "ms");
+
         pluggable_engines = config.sql_engines;
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
@@ -183,6 +192,9 @@ public class Lealone {
                 }
             }
         }
+        long t4 = System.currentTimeMillis();
+        logger.info("Init sql engines: " + (t4 - t3) + "ms");
+
         pluggable_engines = config.protocol_server_engines;
         if (pluggable_engines != null) {
             for (PluggableEngineDef def : pluggable_engines) {
@@ -205,6 +217,8 @@ public class Lealone {
                 }
             }
         }
+        long t5 = System.currentTimeMillis();
+        logger.info("Init protocol server engines: " + (t5 - t4) + "ms");
     }
 
     private static void checkName(String engineName, PluggableEngineDef def) {

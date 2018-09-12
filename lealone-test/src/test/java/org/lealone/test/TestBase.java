@@ -18,6 +18,8 @@
 package org.lealone.test;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
+import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.HashMap;
@@ -32,8 +34,6 @@ import org.lealone.p2p.config.Config;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
-import io.netty.util.internal.logging.InternalLoggerFactory;
-import io.netty.util.internal.logging.JdkLoggerFactory;
 import io.vertx.core.impl.FileResolver;
 import io.vertx.core.spi.resolver.ResolverProvider;
 
@@ -68,10 +68,46 @@ public class TestBase extends Assert {
         setVertxProperties();
     }
 
-    private static void setVertxProperties() {
-        InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE);
+    public static void optimizeNetty() {
+        // 加了这一行反而慢100ms左右
+        // InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE);
+        try {
+            // 如果不设置io.netty.machineId参数，会在io.netty.channel.DefaultChannelId类的static初始代码中
+            // 调用io.netty.util.internal.MacAddressUtil.defaultMachineId()会多耗时三四百毫秒
+            String machineIdHexString = io.netty.util.internal.MacAddressUtil
+                    .formatAddress(InetAddress.getLocalHost().getAddress()) + ":00:01";
+            System.setProperty("io.netty.machineId", machineIdHexString);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public TestBase() {
+        optimizeNetty();
+        optimizeVertx();
+    }
+
+    public static void optimizeVertx() {
+        // 如果不禁用的话
+        // 执行到javax.naming.spi.NamingManager.getInitialContext方法的return factory.getInitialContext()会
+        // 生成一个类似"Thread-XXX"这样的线程
         System.setProperty(ResolverProvider.DISABLE_DNS_RESOLVER_PROP_NAME, "true");
 
+        disableSSLContext();
+    }
+
+    private static void disableSSLContext() {
+        // 这一行可以屏蔽在io.vertx.core.net.impl.SSLHelper类的static初始代码中调用耗时的SSLContext.getInstance("TLS")
+        // 但是在JDK 1.8.0_112-b15中不能正常启动，
+        // 在我自己构建的openjdk8-b132中就可以正常启动(能减少700ms以上)
+        String version = ManagementFactory.getRuntimeMXBean().getVmVersion();
+        if (version.equals("25.71-b00-fastdebug")) {
+            sun.security.jca.Providers.setProviderList(null);
+        }
+        // sun.security.jca.Providers.setProviderList(Providers.getProviderList());
+    }
+
+    private static void setVertxProperties() {
         System.setProperty(FileResolver.DISABLE_FILE_CACHING_PROP_NAME, "true");
         System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
         System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "./" + TEST_DIR + "/.vertx");

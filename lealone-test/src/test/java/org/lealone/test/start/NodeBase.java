@@ -21,6 +21,7 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.main.Lealone;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.YamlConfigLoader;
+import org.lealone.test.TestBase;
 
 import io.vertx.core.impl.FileResolver;
 
@@ -45,6 +46,9 @@ public class NodeBase extends YamlConfigLoader {
         System.setProperty("lealone.lobInDatabase", "false");
         System.setProperty("lealone.lobClientMaxSizeMemory", "1024");
         // System.setProperty("lealone.check2", "true");
+
+        TestBase.optimizeNetty();
+        TestBase.optimizeVertx();
     }
 
     protected String listen_address;

@@ -75,7 +75,12 @@ public class TcpServer implements ProtocolServer {
 
     @Override
     public synchronized void start() {
+        logger.info("Starting net server...");
+        long t1 = System.currentTimeMillis();
         server = NetFactory.createNetServer(vertx, ssl ? options : null);
+        long t2 = System.currentTimeMillis();
+        logger.info("Create net server: " + (t2 - t1) + "ms");
+
         server.connectHandler(socket -> {
             if (TcpServer.this.allow(socket)) {
                 AsyncConnection ac = new AsyncConnection(socket, true);
@@ -101,6 +106,7 @@ public class TcpServer implements ProtocolServer {
         });
 
         CountDownLatch latch = new CountDownLatch(1);
+        t1 = System.currentTimeMillis();
         server.listen(port, host, res -> {
             if (res.succeeded()) {
                 latch.countDown();
@@ -112,6 +118,8 @@ public class TcpServer implements ProtocolServer {
         CommandHandler.startCommandHandlers();
         try {
             latch.await();
+            t2 = System.currentTimeMillis();
+            logger.info("Listen net server: " + (t2 - t1) + "ms");
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }

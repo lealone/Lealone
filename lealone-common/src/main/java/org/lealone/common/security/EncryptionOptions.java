@@ -17,14 +17,14 @@
  */
 package org.lealone.common.security;
 
-import javax.net.ssl.SSLSocketFactory;
-
 public abstract class EncryptionOptions {
     public String keystore = "conf/.keystore";
     public String keystore_password = "lealone";
     public String truststore = "conf/.truststore";
     public String truststore_password = "lealone";
-    public String[] cipher_suites = ((SSLSocketFactory) SSLSocketFactory.getDefault()).getDefaultCipherSuites();;
+    // 这行执行很慢
+    // public String[] cipher_suites = ((SSLSocketFactory) SSLSocketFactory.getDefault()).getDefaultCipherSuites();
+    public String[] cipher_suites;
     public String protocol = "TLS";
     public String algorithm = "SunX509";
     public String store_type = "JKS";
