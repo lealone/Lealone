@@ -6,6 +6,7 @@
  */
 package org.lealone.common.util;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -17,6 +18,18 @@ public class CaseInsensitiveConcurrentHashMap<V> extends ConcurrentHashMap<Strin
 
     private static final long serialVersionUID = 1L;
 
+    public CaseInsensitiveConcurrentHashMap() {
+    }
+
+    public CaseInsensitiveConcurrentHashMap(int initialCapacity) {
+        super(initialCapacity);
+    }
+
+    public CaseInsensitiveConcurrentHashMap(Map<? extends String, ? extends V> m) {
+        this(m.size());
+        putAll(m);
+    }
+
     @Override
     public V get(Object key) {
         return super.get(toUpper(key));
@@ -25,6 +38,13 @@ public class CaseInsensitiveConcurrentHashMap<V> extends ConcurrentHashMap<Strin
     @Override
     public V put(String key, V value) {
         return super.put(toUpper(key), value);
+    }
+
+    @Override
+    public void putAll(Map<? extends String, ? extends V> m) {
+        for (Map.Entry<? extends String, ? extends V> e : m.entrySet()) {
+            put(e.getKey(), e.getValue());
+        }
     }
 
     @Override
