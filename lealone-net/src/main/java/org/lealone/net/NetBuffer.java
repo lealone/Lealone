@@ -15,37 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server;
+package org.lealone.net;
 
-import java.util.Map;
+public interface NetBuffer {
 
-public class TcpServerEngine extends ProtocolServerEngineBase {
+    NetBuffer appendBuffer(NetBuffer buff);
 
-    public static final String NAME = "TCP";
-    private final TcpServer tcpServer = new TcpServer();
+    int length();
 
-    public TcpServerEngine() {
-        super(NAME);
-    }
+    NetBuffer slice(int start, int end);
 
-    @Override
-    public ProtocolServer getProtocolServer() {
-        return tcpServer;
-    }
+    NetBuffer getBuffer(int start, int end);
 
-    @Override
-    public void init(Map<String, String> config) {
-        tcpServer.init(config);
-    }
+    short getUnsignedByte(int pos);
 
-    @Override
-    public void close() {
-        tcpServer.stop();
-    }
+    NetBuffer appendByte(byte b);
 
-    @Override
-    protected ProtocolServer getProtocolServer(int port) {
-        return tcpServer;
-    }
+    NetBuffer appendBytes(byte[] bytes, int offset, int len);
+
+    NetBuffer appendInt(int i);
+
+    NetBuffer setByte(int pos, byte b);
 
 }

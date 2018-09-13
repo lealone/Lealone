@@ -57,7 +57,7 @@ import io.netty.util.internal.logging.InternalLoggerFactory;
 
 //Netty为什么慢:
 //触发了两次NetworkInterface.getNetworkInterfaces()
-//调用了一次SelectorProvider.provider().openSelector() //背后也是触发次NetworkInterface.getNetworkInterfaces()
+//调用了一次SelectorProvider.provider().openSelector() //背后也是触发NetworkInterface.getNetworkInterfaces()
 //这两个api都是很慢的
 //触发的两次NetworkInterface.getNetworkInterfaces()在下面代码中
 //1. io.netty.util.NetUtil的static初始化代码(没有办法屏蔽)

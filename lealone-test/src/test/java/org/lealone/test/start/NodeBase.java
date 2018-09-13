@@ -23,8 +23,6 @@ import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.YamlConfigLoader;
 import org.lealone.test.TestBase;
 
-import io.vertx.core.impl.FileResolver;
-
 public class NodeBase extends YamlConfigLoader {
 
     public static void run(Class<?> loader, String[] args) {
@@ -76,7 +74,7 @@ public class NodeBase extends YamlConfigLoader {
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.base_dir);
 
-        System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
+        // System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
         System.setProperty("vertx.cacheDirBase", "./" + config.base_dir + "/.vertx");
 
         super.applyConfig(config);

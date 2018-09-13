@@ -28,6 +28,7 @@
     <modules>
         <module>lealone-common</module>
         <module>lealone-net</module>
+        <module>lealone-netty</module>
         <module>lealone-client</module>
         <module>lealone-server</module>
         <module>lealone-sql</module>
@@ -153,13 +154,13 @@
                         <artifactId>netty-resolver-dns</artifactId>
                     </exclusion>-->
                 </exclusions>
-            </dependency>
+            </dependency><!--
             <dependency>
                 <groupId>io.vertx</groupId>
                 <artifactId>vertx-unit</artifactId>
                 <version>3.5.1</version>
                 <scope>test</scope>
-            </dependency>
+            </dependency>-->
         </dependencies>
     </dependencyManagement>
     <dependencies>

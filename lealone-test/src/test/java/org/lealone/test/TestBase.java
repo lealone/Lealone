@@ -34,9 +34,6 @@ import org.lealone.p2p.config.Config;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
-import io.vertx.core.impl.FileResolver;
-import io.vertx.core.spi.resolver.ResolverProvider;
-
 public class TestBase extends Assert {
 
     public static interface SqlExecuter {
@@ -91,7 +88,7 @@ public class TestBase extends Assert {
         // 如果不禁用的话
         // 执行到javax.naming.spi.NamingManager.getInitialContext方法的return factory.getInitialContext()会
         // 生成一个类似"Thread-XXX"这样的线程
-        System.setProperty(ResolverProvider.DISABLE_DNS_RESOLVER_PROP_NAME, "true");
+        // System.setProperty(ResolverProvider.DISABLE_DNS_RESOLVER_PROP_NAME, "true");
 
         disableSSLContext();
     }
@@ -108,9 +105,9 @@ public class TestBase extends Assert {
     }
 
     private static void setVertxProperties() {
-        System.setProperty(FileResolver.DISABLE_FILE_CACHING_PROP_NAME, "true");
-        System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
-        System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "./" + TEST_DIR + "/.vertx");
+        // System.setProperty(FileResolver.DISABLE_FILE_CACHING_PROP_NAME, "true");
+        // System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
+        // System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "./" + TEST_DIR + "/.vertx");
     }
 
     public static String getDefaultStorageEngineName() {

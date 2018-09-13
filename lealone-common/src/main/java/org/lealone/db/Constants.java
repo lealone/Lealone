@@ -34,6 +34,10 @@ public class Constants {
 
     public static final String DEFAULT_CONTAINER_ENGINE_NAME = "CGROUP";
 
+    public static final String DEFAULT_NET_FACTORY_NAME = "netty";
+
+    public static final String NET_FACTORY_NAME_KEY = "NET_FACTORY_NAME";
+
     public static final char NAME_SEPARATOR = '_';
 
     /**

@@ -1,4 +1,4 @@
-<!--
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -14,26 +14,28 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
--->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.lealone</groupId>
-        <artifactId>lealone</artifactId>
-        <version>5.0.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
+ */
+package org.lealone.net.netty;
 
-    <artifactId>lealone-net</artifactId>
-    <packaging>jar</packaging>
-    <version>5.0.0-SNAPSHOT</version>
+import org.lealone.net.AsyncConnection;
 
-    <dependencies>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
-</project>
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.socket.SocketChannel;
+
+public class NettyNetServerInitializer extends ChannelInitializer<SocketChannel> {
+
+    private final NettyNetServer server;
+
+    public NettyNetServerInitializer(NettyNetServer server) {
+        this.server = server;
+    }
+
+    @Override
+    public void initChannel(SocketChannel ch) throws Exception {
+        ChannelPipeline pipeline = ch.pipeline();
+        NettyWritableChannel channel = new NettyWritableChannel(ch);
+        AsyncConnection conn = server.createConnection(channel, true);
+        pipeline.addLast(new NettyNetServerHandler(server, conn));
+    }
+}

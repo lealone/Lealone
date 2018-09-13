@@ -15,37 +15,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server;
+package org.lealone.net;
 
 import java.util.Map;
 
-public class TcpServerEngine extends ProtocolServerEngineBase {
+public abstract class NetFactoryBase implements NetFactory {
 
-    public static final String NAME = "TCP";
-    private final TcpServer tcpServer = new TcpServer();
+    protected final String name;
+    protected final NetClient netClient;
+    protected Map<String, String> config;
 
-    public TcpServerEngine() {
-        super(NAME);
+    public NetFactoryBase(String name, NetClient netClient) {
+        this.name = name;
+        // 见PluggableEngineManager.PluggableEngineService中的注释
+        NetFactoryManager.getInstance().registerEngine(this);
+        this.netClient = netClient;
     }
 
     @Override
-    public ProtocolServer getProtocolServer() {
-        return tcpServer;
+    public String getName() {
+        return name;
     }
 
     @Override
     public void init(Map<String, String> config) {
-        tcpServer.init(config);
+        this.config = config;
     }
 
     @Override
     public void close() {
-        tcpServer.stop();
     }
 
     @Override
-    protected ProtocolServer getProtocolServer(int port) {
-        return tcpServer;
+    public NetClient getNetClient() {
+        return netClient;
     }
-
 }

@@ -19,10 +19,8 @@ package org.lealone.p2p.net;
 
 import java.io.DataInput;
 import java.io.DataOutput;
-import java.io.IOError;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.net.BindException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -30,12 +28,11 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import javax.management.MBeanServer;
@@ -46,9 +43,12 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
+import org.lealone.net.AsyncConnection;
+import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
+import org.lealone.net.NetFactoryManager;
+import org.lealone.net.WritableChannel;
 import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.concurrent.StageManager;
 import org.lealone.p2p.config.ConfigDescriptor;
@@ -66,20 +66,12 @@ import org.lealone.p2p.locator.ILatencySubscriber;
 import org.lealone.p2p.metrics.ConnectionMetrics;
 import org.lealone.p2p.metrics.DroppedMessageMetrics;
 import org.lealone.p2p.server.ClusterMetaData;
-import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.ExpiringMap;
 import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Utils;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.net.NetClient;
-import io.vertx.core.net.NetClientOptions;
-import io.vertx.core.net.NetServer;
-import io.vertx.core.net.NetServerOptions;
-import io.vertx.core.net.NetSocket;
-
 @SuppressWarnings({ "rawtypes" })
-public final class MessagingService implements MessagingServiceMBean {
+public final class MessagingService implements MessagingServiceMBean, AsyncConnectionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
 
@@ -203,7 +195,7 @@ public final class MessagingService implements MessagingServiceMBean {
     /* Lookup table for registering message handlers based on the verb. */
     private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);;
 
-    private final ConcurrentMap<NetEndpoint, TcpConnection> connectionManagers = new ConcurrentHashMap<>();
+    private final ConcurrentMap<NetEndpoint, P2pConnection> connectionManagers = new ConcurrentHashMap<>();
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
@@ -214,6 +206,8 @@ public final class MessagingService implements MessagingServiceMBean {
 
     // protocol versions of the other nodes in the cluster
     private final ConcurrentMap<NetEndpoint, Integer> versions = new ConcurrentHashMap<>();
+
+    private Map<String, String> config;
 
     private static class MSHandle {
         public static final MessagingService instance = new MessagingService();
@@ -317,120 +311,29 @@ public final class MessagingService implements MessagingServiceMBean {
             subscriber.receiveTiming(address, latency);
     }
 
-    private Server server;
-
     /**
      * Listen on the specified port.
      *
      * @param localEp NetEndpoint whose port to listen on.
      */
     public void start(NetEndpoint localEp, Map<String, String> config) throws ConfigException {
-        initVertx(config);
+        this.config = config;
         callbacks.reset(); // hack to allow tests to stop/restart MS
-        server = new Server(getNetServer(localEp));
-        server.start();
     }
 
-    private NetServer getNetServer(NetEndpoint localEp) throws ConfigException {
-        boolean ssl = P2pServer.instance.isSSL();
-        int port = localEp.getPort();
-        NetServerOptions nso;
-        if (ssl) {
-            ServerEncryptionOptions options = ConfigDescriptor.getServerEncryptionOptions();
-            nso = NetFactory.getNetServerOptions(options);
-            logger.info("Starting Encrypted Messaging Service on port {}", port);
-        } else {
-            nso = NetFactory.getNetServerOptions(null);
-            logger.info("Starting Messaging Service on port {}", port);
-        }
-        nso.setHost(localEp.getHost());
-        nso.setPort(port);
-        NetServer server = vertx.createNetServer(nso);
-        return server;
-    }
+    private final ConcurrentHashMap<String, P2pConnection> asyncConnections = new ConcurrentHashMap<>();
 
-    private static Vertx vertx;
-    private static NetClient client;
-
-    private synchronized static void initVertx(Map<String, String> config) {
-        if (vertx == null) {
-            vertx = NetFactory.getVertx(config);
-            NetClientOptions options = NetFactory.getNetClientOptions(ConfigDescriptor.getClientEncryptionOptions());
-            options.setConnectTimeout(10000);
-            options.setReconnectAttempts(3);
-            client = vertx.createNetClient(options);
-        }
-    }
-
-    private final ConcurrentHashMap<String, TcpConnection> asyncConnections = new ConcurrentHashMap<>();
-
-    void addConnection(TcpConnection conn) {
-        TcpConnection oldConn = asyncConnections.put(conn.getHostId(), conn);
+    public void addConnection(P2pConnection conn) {
+        P2pConnection oldConn = asyncConnections.put(conn.getHostId(), conn);
         if (oldConn != null) {
             oldConn.close();
         }
     }
 
-    private static class Server {
-        private final NetServer netServer;
-        // private final Set<Closeable> connections = Sets.newConcurrentHashSet();
-
-        Server(NetServer netServer) {
-            this.netServer = netServer;
-        }
-
-        public void start() {
-            netServer.connectHandler(socket -> {
-                if (Server.this.authenticate(socket)) {
-                    TcpConnection c = new TcpConnection(socket, true);
-                    socket.handler(c);
-                } else {
-                    logger.trace("remote failed to authenticate");
-                    socket.close();
-                    // throw DbException.get(ErrorCode.REMOTE_CONNECTION_NOT_ALLOWED);
-                }
-            });
-
-            CountDownLatch latch = new CountDownLatch(1);
-            netServer.listen(res -> {
-                latch.countDown();
-                if (res.succeeded()) {
-                    logger.info("MessagingService listening on port " + netServer.actualPort());
-                } else {
-                    Throwable e = res.cause();
-                    String address = ConfigDescriptor.getLocalEndpoint().getHostAddress();
-                    if (e instanceof BindException) {
-                        if (e.getMessage().contains("in use"))
-                            throw new ConfigException(address + " is in use by another process.  "
-                                    + "Change listen_address:storage_port in lealone.yaml "
-                                    + "to values that do not conflict with other services");
-                        else if (e.getMessage().contains("Cannot assign requested address"))
-                            throw new ConfigException("Unable to bind to address " + address
-                                    + ". Set listen_address in lealone.yaml to an interface you can bind to, e.g.,"
-                                    + " your private IP address on EC2");
-                    }
-                    throw DbException.convert(e);
-                }
-            });
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                throw DbException.convert(e);
-            }
-        }
-
-        void close() throws IOException {
-            logger.trace("Closing accept() server");
-            // for (Closeable connection : connections) {
-            // connection.close();
-            // }
-            netServer.close();
-        }
-
-        // TODO
-        private boolean authenticate(NetSocket socket) {
-            return true;
-            // return ConfigDescriptor.getInternodeAuthenticator().authenticate(socket.remoteAddress(), 990);
+    public void removeConnection(P2pConnection conn) {
+        P2pConnection oldConn = asyncConnections.remove(conn.getHostId());
+        if (oldConn != null) {
+            oldConn.close();
         }
     }
 
@@ -514,51 +417,36 @@ public final class MessagingService implements MessagingServiceMBean {
                 logger.trace("{} sending {} to {}@{}", ConfigDescriptor.getLocalEndpoint(), message.verb, id, to);
         }
 
-        TcpConnection conn = getConnection(to);
+        P2pConnection conn = getConnection(to);
         if (conn != null)
             conn.enqueue(message, id);
     }
 
-    public TcpConnection getConnection(NetEndpoint remoteEndpoint) {
+    public P2pConnection getConnection(NetEndpoint remoteEndpoint) {
         NetEndpoint resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
         final String remoteHostAndPort = resetEndpoint.getHostAndPort();
-        TcpConnection asyncConnection = asyncConnections.get(remoteHostAndPort);
+        P2pConnection asyncConnection = asyncConnections.get(remoteHostAndPort);
         if (asyncConnection == null) {
             final int port = resetEndpoint.getPort();
-            final String host = resetEndpoint.getHost();
-            synchronized (TcpConnection.class) {
+            // final String host = resetEndpoint.getHost();
+            synchronized (P2pConnection.class) {
                 asyncConnection = asyncConnections.get(remoteHostAndPort);
                 if (asyncConnection == null) {
-                    final AtomicReference<TcpConnection> connRef = new AtomicReference<>();
-                    CountDownLatch latch = new CountDownLatch(1);
-                    client.connect(port, host, res -> {
-                        try {
-                            if (res.succeeded()) {
-                                NetSocket socket = res.result();
-                                TcpConnection conn = new TcpConnection(socket, false);
-                                socket.handler(conn);
-                                connRef.set(conn);
-                            } else {
-                                // TODO 是否不应该立刻移除节点
-                                Gossiper.instance.removeEndpoint(resetEndpoint);
-                                logger.warn("Failed to connect " + resetEndpoint, res.cause());
-                                // throw DbException.convert(res.cause());
-                            }
-                        } finally {
-                            latch.countDown();
-                        }
-                    });
+                    Properties prop = new Properties();
+                    prop.putAll(config);
+                    NetFactory factory = NetFactoryManager.getFactory(config);
                     try {
-                        latch.await();
-                        asyncConnection = connRef.get();
-                        if (asyncConnection != null) {
-                            String localHost = ConfigDescriptor.getLocalEndpoint().getHostAddress();
-                            String localHostAndPort = localHost + ":" + port;
-                            asyncConnection.initTransfer(resetEndpoint, remoteHostAndPort, localHostAndPort);
-                            asyncConnections.put(remoteHostAndPort, asyncConnection);
-                            connectionManagers.put(resetEndpoint, asyncConnection);
-                        }
+                        asyncConnection = (P2pConnection) factory.getNetClient().createConnection(prop, resetEndpoint,
+                                this);
+                        String localHost = ConfigDescriptor.getLocalEndpoint().getHostAddress();
+                        String localHostAndPort = localHost + ":" + port;
+                        asyncConnection.initTransfer(resetEndpoint, remoteHostAndPort, localHostAndPort);
+                        asyncConnections.put(remoteHostAndPort, asyncConnection);
+                        connectionManagers.put(resetEndpoint, asyncConnection);
                     } catch (Exception e) {
+                        // TODO 是否不应该立刻移除节点
+                        Gossiper.instance.removeEndpoint(resetEndpoint);
+                        logger.error("Failed to connect " + resetEndpoint, e);
                         throw DbException.convert(e);
                     }
                 }
@@ -568,7 +456,7 @@ public final class MessagingService implements MessagingServiceMBean {
     }
 
     public void destroyConnection(NetEndpoint to) {
-        TcpConnection conn = connectionManagers.get(to);
+        P2pConnection conn = connectionManagers.get(to);
         if (conn == null)
             return;
         conn.close();
@@ -601,15 +489,8 @@ public final class MessagingService implements MessagingServiceMBean {
      */
     public void shutdown() {
         logger.info("Waiting for messaging service to quiesce");
-
         // the important part
         callbacks.shutdownBlocking();
-
-        try {
-            server.close();
-        } catch (IOException e) {
-            throw new IOError(e);
-        }
     }
 
     public CallbackInfo getRegisteredCallback(int messageId) {
@@ -665,7 +546,7 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Integer> getResponsePendingTasks() {
         Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<NetEndpoint, TcpConnection> entry : connectionManagers.entrySet())
+        for (Map.Entry<NetEndpoint, P2pConnection> entry : connectionManagers.entrySet())
             pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().getPendingMessages());
         return pendingTasks;
     }
@@ -673,7 +554,7 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Long> getResponseCompletedTasks() {
         Map<String, Long> completedTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<NetEndpoint, TcpConnection> entry : connectionManagers.entrySet())
+        for (Map.Entry<NetEndpoint, P2pConnection> entry : connectionManagers.entrySet())
             completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().getCompletedMesssages());
         return completedTasks;
     }
@@ -694,11 +575,24 @@ public final class MessagingService implements MessagingServiceMBean {
     @Override
     public Map<String, Long> getTimeoutsPerHost() {
         Map<String, Long> result = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<NetEndpoint, TcpConnection> entry : connectionManagers.entrySet()) {
+        for (Map.Entry<NetEndpoint, P2pConnection> entry : connectionManagers.entrySet()) {
             String ip = entry.getKey().getHostAddress();
             long recent = entry.getValue().getTimeouts();
             result.put(ip, recent);
         }
         return result;
+    }
+
+    @Override
+    public P2pConnection createConnection(WritableChannel writableChannel, boolean isServer) {
+        P2pConnection conn = new P2pConnection(writableChannel, isServer);
+        conn.setHostAndPort(writableChannel.getHost() + ":" + writableChannel.getPort());
+        addConnection(conn);
+        return conn;
+    }
+
+    @Override
+    public void removeConnection(AsyncConnection conn) {
+        removeConnection((P2pConnection) conn);
     }
 }

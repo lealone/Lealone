@@ -30,9 +30,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
+import org.lealone.net.AsyncConnection;
+import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetFactory;
+import org.lealone.net.NetFactoryManager;
+import org.lealone.net.NetServer;
+import org.lealone.net.WritableChannel;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.ApplicationState;
@@ -44,10 +49,11 @@ import org.lealone.p2p.gms.VersionedValue.VersionedValueFactory;
 import org.lealone.p2p.locator.IEndpointSnitch;
 import org.lealone.p2p.locator.TopologyMetaData;
 import org.lealone.p2p.net.MessagingService;
+import org.lealone.p2p.net.P2pConnection;
 import org.lealone.p2p.util.FileUtils;
 import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Utils;
-import org.lealone.server.ProtocolServer;
+import org.lealone.server.DelegatedProtocolServer;
 
 import com.sun.management.OperatingSystemMXBean;
 
@@ -60,7 +66,8 @@ import com.sun.management.OperatingSystemMXBean;
  * @author Cassandra Group
  * @author zhh
  */
-public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer {
+public class P2pServer extends DelegatedProtocolServer
+        implements IEndpointStateChangeSubscriber, AsyncConnectionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(P2pServer.class);
     private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
@@ -71,47 +78,57 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
     private final TopologyMetaData topologyMetaData = new TopologyMetaData();
     private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
 
-    private boolean started;
-
-    private Map<String, String> config;
-    private String host = Constants.DEFAULT_HOST;
-    private int port = Constants.DEFAULT_P2P_PORT;
-    private boolean ssl;
+    private boolean gossipingStarted;
 
     private String localHostId;
-    private ServerEncryptionOptions options;
 
+    // 单例
     private P2pServer() {
+        super();
+    }
+
+    @Override
+    public String getName() {
+        return getClass().getSimpleName();
+    }
+
+    @Override
+    public String getType() {
+        return P2pServerEngine.NAME;
     }
 
     @Override
     public void init(Map<String, String> config) {
-        this.config = config;
-        if (config.containsKey("host"))
-            host = config.get("host");
-        if (config.containsKey("port"))
-            port = Integer.parseInt(config.get("port"));
+        if (!config.containsKey("port"))
+            config.put("port", String.valueOf(Constants.DEFAULT_P2P_PORT));
 
-        ssl = Boolean.parseBoolean(config.get("ssl"));
+        NetFactory factory = NetFactoryManager.getFactory(config);
+        NetServer netServer = factory.createNetServer();
+        netServer.setConnectionManager(this);
+        setProtocolServer(netServer);
+        netServer.init(config);
 
-        NetEndpoint.setLocalP2pEndpoint(host, port);
+        NetEndpoint.setLocalP2pEndpoint(getHost(), getPort());
     }
 
     @Override
-    public void stop() {
+    public synchronized void stop() {
+        if (isStopped())
+            return;
+        super.stop();
         Gossiper.instance.stop();
         MessagingService.instance().shutdown();
     }
 
     @Override
     public synchronized void start() throws ConfigException {
-        if (started)
+        if (isStarted())
             return;
-        started = true;
 
         loadPersistedNodeInfo();
         prepareToJoin();
         joinCluster();
+        super.start();
     }
 
     private void loadPersistedNodeInfo() {
@@ -145,7 +162,7 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
         appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
 
         // 先启动MessagingService再启动Gossiper
-        MessagingService.instance().start(localEndpoint, config);
+        MessagingService.instance().start(localEndpoint, getConfig());
 
         logger.info("Starting up server gossip");
         Gossiper.instance.register(this);
@@ -188,27 +205,23 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
     }
 
     public void startGossiping() {
-        if (!started) {
+        if (!gossipingStarted) {
             logger.warn("Starting gossip by operator request");
             Gossiper.instance.start((int) (System.currentTimeMillis() / 1000));
-            started = true;
+            gossipingStarted = true;
         }
     }
 
     public void stopGossiping() {
-        if (started) {
+        if (gossipingStarted) {
             logger.warn("Stopping gossip by operator request");
             Gossiper.instance.stop();
-            started = false;
+            gossipingStarted = false;
         }
     }
 
     public boolean isGossipRunning() {
         return Gossiper.instance.isEnabled();
-    }
-
-    public boolean isStarted() {
-        return started;
     }
 
     public TopologyMetaData getTopologyMetaData() {
@@ -550,56 +563,18 @@ public class P2pServer implements IEndpointStateChangeSubscriber, ProtocolServer
     public void decommission() {
     }
 
-    @Override
-    public boolean isRunning(boolean traceError) {
-        return started;
-    }
-
-    @Override
-    public String getURL() {
-        return "p2p://" + getHost() + ":" + getPort();
-    }
-
-    @Override
-    public int getPort() {
-        return port;
-    }
-
-    public boolean isSSL() {
-        return ssl;
-    }
-
-    @Override
-    public String getHost() {
-        return host;
-    }
-
-    @Override
-    public String getName() {
-        return getType();
-    }
-
-    @Override
-    public String getType() {
-        return this.getClass().getSimpleName();
-    }
-
-    @Override
-    public boolean getAllowOthers() {
+    public boolean authenticate(String host) {
         return true;
+        // return ConfigDescriptor.getInternodeAuthenticator().authenticate(socket.remoteAddress(), 990);
     }
 
     @Override
-    public boolean isDaemon() {
-        return true;
+    public AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer) {
+        return MessagingService.instance().createConnection(writableChannel, isServer);
     }
 
     @Override
-    public void setServerEncryptionOptions(ServerEncryptionOptions options) {
-        this.options = options;
-    }
-
-    public ServerEncryptionOptions getServerEncryptionOptions() {
-        return options;
+    public void removeConnection(AsyncConnection conn) {
+        MessagingService.instance().removeConnection((P2pConnection) conn);
     }
 }

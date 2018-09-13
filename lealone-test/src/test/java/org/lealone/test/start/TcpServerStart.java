@@ -22,7 +22,6 @@ import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.Config.PluggableEngineDef;
 import org.lealone.p2p.server.P2pServerEngine;
 
-//-javaagent:E:\continuations\target\continuations-1.0-SNAPSHOT.jar
 public class TcpServerStart extends NodeBase {
 
     // YamlConfigLoader的子类必须有一个无参数的构造函数

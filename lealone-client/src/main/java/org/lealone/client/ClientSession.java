@@ -31,8 +31,9 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
-import org.lealone.net.AsyncConnectionFactory;
 import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetFactory;
+import org.lealone.net.NetFactoryManager;
 import org.lealone.net.Transfer;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
@@ -148,7 +149,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     private Transfer initTransfer(ConnectionInfo ci, NetEndpoint endpoint) throws Exception {
-        asyncConnection = AsyncConnectionFactory.createConnection(ci.getProperties(), endpoint);
+        NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
+        asyncConnection = factory.getNetClient().createConnection(ci.getProperties(), endpoint);
         sessionId = getNextId();
         transfer = asyncConnection.createTransfer(this);
         asyncConnection.writeInitPacket(this, transfer, ci);

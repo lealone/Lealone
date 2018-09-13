@@ -23,7 +23,8 @@ public abstract class ProtocolServerEngineBase implements ProtocolServerEngine {
 
     protected final String name;
 
-    protected Map<String, String> config;
+    // 目前用不到
+    // protected Map<String, String> config;
 
     public ProtocolServerEngineBase(String name) {
         this.name = name;
@@ -38,7 +39,7 @@ public abstract class ProtocolServerEngineBase implements ProtocolServerEngine {
 
     @Override
     public void init(Map<String, String> config) {
-        this.config = config;
+        // this.config = config;
     }
 
     @Override

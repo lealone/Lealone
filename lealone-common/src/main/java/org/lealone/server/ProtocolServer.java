@@ -97,4 +97,24 @@ public interface ProtocolServer {
 
     void setServerEncryptionOptions(ServerEncryptionOptions options);
 
+    ServerEncryptionOptions getServerEncryptionOptions();
+
+    boolean isSSL();
+
+    Map<String, String> getConfig();
+
+    String getBaseDir();
+
+    boolean isStarted();
+
+    boolean isStopped();
+
+    /**
+     * Check if this socket may connect to this server.
+     * Remote connections are allowed if the flag allowOthers is set.
+     *
+     * @param socket the socket
+     * @return true if this client may connect
+     */
+    boolean allow(String testHost);
 }

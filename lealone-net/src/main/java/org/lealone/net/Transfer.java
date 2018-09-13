@@ -54,9 +54,6 @@ import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
 
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.net.NetSocket;
-
 /**
  * The transfer class is used to send and receive Value objects.
  * It is used on both the client side, and on the server side.
@@ -74,22 +71,22 @@ public class Transfer implements NetSerializer {
     private static final byte RESPONSE = 2;
 
     private AsyncConnection conn;
-    private NetSocket socket;
+    private WritableChannel writableChannel;
     private Session session;
     private DataInputStream in;
     private final DataOutputStream out;
     private final ResettableBufferOutputStream resettableOutputStream;
 
-    public Transfer(AsyncConnection conn, NetSocket socket, Session session) {
-        this(conn, socket, (Buffer) null);
+    public Transfer(AsyncConnection conn, WritableChannel writableChannel, Session session) {
+        this(conn, writableChannel, (NetBuffer) null);
         this.session = session;
     }
 
-    public Transfer(AsyncConnection conn, NetSocket socket, Buffer inBuffer) {
+    public Transfer(AsyncConnection conn, WritableChannel writableChannel, NetBuffer inBuffer) {
         this.conn = conn;
-        this.socket = socket;
+        this.writableChannel = writableChannel;
 
-        resettableOutputStream = new ResettableBufferOutputStream(BUFFER_SIZE);
+        resettableOutputStream = new ResettableBufferOutputStream(writableChannel, BUFFER_SIZE);
         out = new DataOutputStream(resettableOutputStream);
 
         if (inBuffer != null) {
@@ -99,7 +96,7 @@ public class Transfer implements NetSerializer {
     }
 
     public Transfer copy(Session session) {
-        return new Transfer(conn, socket, session);
+        return new Transfer(conn, writableChannel, session);
     }
 
     public AsyncConnection getAsyncConnection() {
@@ -181,7 +178,7 @@ public class Transfer implements NetSerializer {
      */
     public void flush() throws IOException {
         resettableOutputStream.writePacketLength();
-        socket.write(resettableOutputStream.buffer);
+        writableChannel.write(resettableOutputStream.buffer);
         resettableOutputStream.reset();
     }
 
@@ -189,7 +186,7 @@ public class Transfer implements NetSerializer {
      * Close the transfer object.
      */
     public void close() {
-        if (socket != null) {
+        if (writableChannel != null) {
             try {
                 if (out.size() > 4)
                     flush();
@@ -198,13 +195,13 @@ public class Transfer implements NetSerializer {
             } finally {
                 conn = null;
                 session = null;
-                socket = null;
+                writableChannel = null;
             }
         }
     }
 
     public boolean isClosed() {
-        return socket == null;
+        return writableChannel == null;
     }
 
     /**
@@ -822,11 +819,11 @@ public class Transfer implements NetSerializer {
     }
 
     private static class BufferInputStream extends InputStream {
-        final Buffer buffer;
+        final NetBuffer buffer;
         final int size;
         int pos;
 
-        BufferInputStream(Buffer buffer) {
+        BufferInputStream(NetBuffer buffer) {
             this.buffer = buffer;
             size = buffer.length();
         }
@@ -843,10 +840,12 @@ public class Transfer implements NetSerializer {
     }
 
     private static class ResettableBufferOutputStream extends OutputStream {
-        Buffer buffer;
+        final WritableChannel writableChannel;
         final int initialSizeHint;
+        NetBuffer buffer;
 
-        ResettableBufferOutputStream(int initialSizeHint) {
+        ResettableBufferOutputStream(WritableChannel writableChannel, int initialSizeHint) {
+            this.writableChannel = writableChannel;
             this.initialSizeHint = initialSizeHint;
             reset();
         }
@@ -862,7 +861,7 @@ public class Transfer implements NetSerializer {
         }
 
         void reset() {
-            buffer = Buffer.buffer(initialSizeHint);
+            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint);
             buffer.appendInt(0); // write packet header for next
         }
 

@@ -15,37 +15,47 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server;
+package org.lealone.net.netty;
 
-import java.util.Map;
+import org.lealone.net.NetBufferFactory;
+import org.lealone.net.WritableChannel;
 
-public class TcpServerEngine extends ProtocolServerEngineBase {
+import io.netty.channel.socket.SocketChannel;
 
-    public static final String NAME = "TCP";
-    private final TcpServer tcpServer = new TcpServer();
+public class NettyWritableChannel implements WritableChannel {
 
-    public TcpServerEngine() {
-        super(NAME);
+    private final SocketChannel channel;
+
+    public NettyWritableChannel(SocketChannel channel) {
+        this.channel = channel;
     }
 
     @Override
-    public ProtocolServer getProtocolServer() {
-        return tcpServer;
-    }
-
-    @Override
-    public void init(Map<String, String> config) {
-        tcpServer.init(config);
+    public void write(Object data) {
+        if (data instanceof NettyBuffer) {
+            channel.writeAndFlush(((NettyBuffer) data).getBuffer());
+        } else {
+            channel.writeAndFlush(data);
+        }
     }
 
     @Override
     public void close() {
-        tcpServer.stop();
+        channel.close();
     }
 
     @Override
-    protected ProtocolServer getProtocolServer(int port) {
-        return tcpServer;
+    public String getHost() {
+        return channel.remoteAddress().getHostName();
     }
 
+    @Override
+    public int getPort() {
+        return channel.remoteAddress().getPort();
+    }
+
+    @Override
+    public NetBufferFactory getBufferFactory() {
+        return NettyBufferFactory.getInstance();
+    }
 }

@@ -1,4 +1,4 @@
-<!--
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -14,26 +14,22 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
--->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.lealone</groupId>
-        <artifactId>lealone</artifactId>
-        <version>5.0.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
+ */
+package org.lealone.net;
 
-    <artifactId>lealone-net</artifactId>
-    <packaging>jar</packaging>
-    <version>5.0.0-SNAPSHOT</version>
+import java.net.InetSocketAddress;
+import java.util.Properties;
 
-    <dependencies>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
-</project>
+public interface NetClient {
+
+    AsyncConnection createConnection(Properties prop, NetEndpoint endpoint);
+
+    AsyncConnection createConnection(Properties prop, NetEndpoint endpoint, AsyncConnectionManager connectionManager);
+
+    default void removeConnection(InetSocketAddress inetSocketAddress) {
+        removeConnection(inetSocketAddress, true);
+    }
+
+    void removeConnection(InetSocketAddress inetSocketAddress, boolean closeClient);
+
+}

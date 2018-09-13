@@ -36,7 +36,7 @@ public class ConnectionInfo implements Cloneable {
         KNOWN_SETTINGS.addAll(SetTypes.getTypes());
 
         String[] connectionSettings = { "IGNORE_UNKNOWN_SETTINGS", "INIT", "USER", "PASSWORD", "PASSWORD_HASH",
-                "IS_LOCAL" };
+                "IS_LOCAL", Constants.NET_FACTORY_NAME_KEY };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
@@ -70,6 +70,8 @@ public class ConnectionInfo implements Cloneable {
     private SessionFactory sessionFactory;
 
     private Boolean persistent; // 首次调用isPersistent()时才初始化
+
+    private String netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
 
     public ConnectionInfo() {
     }
@@ -123,6 +125,8 @@ public class ConnectionInfo implements Cloneable {
                 setBaseDir(baseDir);
             }
         }
+        netFactoryName = removeProperty(Constants.NET_FACTORY_NAME_KEY,
+                Constants.DEFAULT_NET_FACTORY_NAME);
     }
 
     private void checkURL() {
@@ -721,5 +725,9 @@ public class ConnectionInfo implements Cloneable {
         ci.sessionFactory = sessionFactory;
         ci.persistent = persistent;
         return ci;
+    }
+
+    public String getNetFactoryName() {
+        return netFactoryName;
     }
 }

@@ -28,27 +28,25 @@ import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.Transfer;
+import org.lealone.net.WritableChannel;
 import org.lealone.p2p.concurrent.StageManager;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.metrics.ConnectionMetrics;
 import org.lealone.p2p.server.ClusterMetaData;
 
-import io.vertx.core.net.NetSocket;
-
-public class TcpConnection extends AsyncConnection {
+public class P2pConnection extends AsyncConnection {
 
     private Transfer transfer;
     private DataOutputStream out;
     private NetEndpoint remoteEndpoint;
     private NetEndpoint resetEndpoint; // pointer to the reset Address.
-    private String hostAndPort;
     private int targetVersion;
     private int version;
 
     private ConnectionMetrics metrics;
 
-    public TcpConnection(NetSocket socket, boolean isServer) {
-        super(socket, isServer);
+    public P2pConnection(WritableChannel writableChannel, boolean isServer) {
+        super(writableChannel, isServer);
     }
 
     String getHostId() {
@@ -73,8 +71,8 @@ public class TcpConnection extends AsyncConnection {
     protected void close() {
         if (transfer != null)
             transfer.close();
-        else if (socket != null) {
-            socket.close();
+        else if (writableChannel != null) {
+            writableChannel.close();
         }
         super.close();
     }
@@ -107,7 +105,7 @@ public class TcpConnection extends AsyncConnection {
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
             metrics = new ConnectionMetrics(remoteEndpoint);
             this.hostAndPort = remoteHostAndPort;
-            transfer = new Transfer(this, socket, (Session) null);
+            transfer = new Transfer(this, writableChannel, (Session) null);
             out = transfer.getDataOutputStream();
             targetVersion = MessagingService.instance().getVersion(remoteEndpoint);
             writeInitPacket(transfer, 0, targetVersion, localHostAndPort);
@@ -128,7 +126,7 @@ public class TcpConnection extends AsyncConnection {
     private void readInitPacket(Transfer transfer, int sessionId) {
         try {
             if (this.transfer == null) {
-                this.transfer = new Transfer(this, socket, (Session) null);
+                this.transfer = new Transfer(this, writableChannel, (Session) null);
                 out = this.transfer.getDataOutputStream();
             }
             MessagingService.validateMagic(transfer.readInt());
@@ -241,5 +239,4 @@ public class TcpConnection extends AsyncConnection {
     long getDroppedMessages() {
         return 0;
     }
-
 }

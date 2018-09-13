@@ -48,17 +48,13 @@ import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 
-import io.vertx.core.Handler;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.net.NetSocket;
-
 /**
  * An async tcp connection.
  * 
  * @author H2 Group
  * @author zhh
  */
-public class AsyncConnection implements Handler<Buffer> {
+public class AsyncConnection {
 
     static class SessionInfo {
         final String hostAndPort;
@@ -91,14 +87,15 @@ public class AsyncConnection implements Handler<Buffer> {
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
     private String baseDir;
 
-    protected final NetSocket socket;
+    protected final WritableChannel writableChannel;
     private final boolean isServer;
     private InetSocketAddress inetSocketAddress;
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
     final ConcurrentHashMap<Integer, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
-    private String hostAndPort;
+    protected String hostAndPort;
+    private NetClient netClient;
 
     public int getNextId() {
         return nextId.incrementAndGet();
@@ -110,8 +107,8 @@ public class AsyncConnection implements Handler<Buffer> {
 
     public void removeSession(int sessionId) {
         sessions.remove(sessionId);
-        if (sessions.isEmpty()) {
-            AsyncConnectionFactory.removeConnection(inetSocketAddress);
+        if (netClient != null && sessions.isEmpty()) {
+            netClient.removeConnection(inetSocketAddress);
         }
     }
 
@@ -127,13 +124,23 @@ public class AsyncConnection implements Handler<Buffer> {
         return callbackMap.get(id);
     }
 
-    public AsyncConnection(NetSocket socket, boolean isServer) {
-        this.socket = socket;
+    public WritableChannel getWritableChannel() {
+        return writableChannel;
+    }
+
+    public AsyncConnection(WritableChannel writableChannel, boolean isServer) {
+        this.writableChannel = writableChannel;
         this.isServer = isServer;
     }
 
+    public AsyncConnection(WritableChannel writableChannel, boolean isServer, NetClient netClient) {
+        this.writableChannel = writableChannel;
+        this.isServer = isServer;
+        this.netClient = netClient;
+    }
+
     public Transfer createTransfer(Session session) {
-        return new Transfer(this, socket, session);
+        return new Transfer(this, writableChannel, session);
     }
 
     public void writeInitPacket(Session session, Transfer transfer, ConnectionInfo ci) throws Exception {
@@ -1015,10 +1022,9 @@ public class AsyncConnection implements Handler<Buffer> {
 
     }
 
-    private Buffer lastBuffer;
+    private NetBuffer lastBuffer;
 
-    @Override
-    public void handle(Buffer buffer) {
+    public void handle(NetBuffer buffer) {
         if (lastBuffer != null) {
             buffer = lastBuffer.appendBuffer(buffer);
             lastBuffer = null;
@@ -1037,9 +1043,9 @@ public class AsyncConnection implements Handler<Buffer> {
                 // 否则如果有多个CommandHandler线程时会用同一个Transfer实例写数据，这会产生并发问题。
                 Transfer transfer;
                 if (pos == 0)
-                    transfer = new Transfer(this, socket, buffer);
+                    transfer = new Transfer(this, writableChannel, buffer);
                 else
-                    transfer = new Transfer(this, socket, buffer.slice(pos, pos + length));
+                    transfer = new Transfer(this, writableChannel, buffer.slice(pos, pos + length));
                 int packetLength = transfer.readInt();
                 if (length - 4 == packetLength) {
                     parsePacket(transfer);

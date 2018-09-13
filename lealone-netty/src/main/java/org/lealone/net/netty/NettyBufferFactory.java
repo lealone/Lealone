@@ -15,37 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server;
+package org.lealone.net.netty;
 
-import java.util.Map;
+import org.lealone.net.NetBuffer;
+import org.lealone.net.NetBufferFactory;
 
-public class TcpServerEngine extends ProtocolServerEngineBase {
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
-    public static final String NAME = "TCP";
-    private final TcpServer tcpServer = new TcpServer();
+public class NettyBufferFactory implements NetBufferFactory {
 
-    public TcpServerEngine() {
-        super(NAME);
+    private static final NettyBufferFactory instance = new NettyBufferFactory();
+
+    public static NettyBufferFactory getInstance() {
+        return instance;
+    }
+
+    private NettyBufferFactory() {
     }
 
     @Override
-    public ProtocolServer getProtocolServer() {
-        return tcpServer;
-    }
-
-    @Override
-    public void init(Map<String, String> config) {
-        tcpServer.init(config);
-    }
-
-    @Override
-    public void close() {
-        tcpServer.stop();
-    }
-
-    @Override
-    protected ProtocolServer getProtocolServer(int port) {
-        return tcpServer;
+    public NetBuffer createBuffer(int initialSizeHint) {
+        ByteBuf buffer = Unpooled.unreleasableBuffer(Unpooled.buffer(initialSizeHint, Integer.MAX_VALUE));
+        return new NettyBuffer(buffer);
     }
 
 }
