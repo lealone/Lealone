@@ -4,18 +4,16 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.value;
+package org.lealone.common.util;
 
-import java.util.HashMap;
-
-import org.lealone.common.util.StringUtils;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A hash map with a case-insensitive string key.
  *
  * @param <V> the value type
  */
-public class CaseInsensitiveMap<V> extends HashMap<String, V> {
+public class CaseInsensitiveConcurrentHashMap<V> extends ConcurrentHashMap<String, V> {
 
     private static final long serialVersionUID = 1L;
 

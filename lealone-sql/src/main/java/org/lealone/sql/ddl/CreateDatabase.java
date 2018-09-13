@@ -21,13 +21,13 @@ import java.util.Map;
 
 import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
-import org.lealone.db.value.CaseInsensitiveMap;
 import org.lealone.router.RouterHolder;
 import org.lealone.sql.SQLStatement;
 
