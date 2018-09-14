@@ -30,7 +30,7 @@ transaction_engines:
   - name: AOTE
     enabled: true
     parameters: {
-        redo_log_dir: redo_log, # ${base_dir} + "/"+ ${redo_log_dir},
+        redo_log_dir: redo_log, # 会组合成这样的目录: ${base_dir} + "/"+ ${redo_log_dir},
         log_sync_type: periodic
     }
 
@@ -50,6 +50,7 @@ protocol_server_engines:
         trace: false,
         allow_others: true,
         daemon: false,
+        net_factory_name: netty, # 网络层默认用netty来实现，也可以配置成vertx
         blocked_thread_check_interval: -1,
         ssl: false
     }

@@ -42,6 +42,7 @@ public class NettyNetServer extends NetServerBase {
     public synchronized void start() {
         if (isStarted())
             return;
+        logger.info("Starting netty net server");
         try {
             bossGroup = new NioEventLoopGroup(1);
             EventLoopGroup workerGroup = bossGroup; // 要不要用额外的线程池?
@@ -69,6 +70,7 @@ public class NettyNetServer extends NetServerBase {
     public synchronized void stop() {
         if (isStopped())
             return;
+        logger.info("Stopping netty net server");
         super.stop();
         if (bossGroup != null) {
             bossGroup.shutdownGracefully();

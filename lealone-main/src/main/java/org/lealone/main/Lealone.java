@@ -23,6 +23,7 @@ import java.util.Map;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
@@ -46,6 +47,7 @@ import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 
 public class Lealone {
+
     private static final Logger logger = LoggerFactory.getLogger(Lealone.class);
     private static Config config;
 
@@ -90,10 +92,13 @@ public class Lealone {
     private static void init() {
         initBaseDir();
         initPluggableEngines();
+
         long t1 = System.currentTimeMillis();
         LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
         long t2 = System.currentTimeMillis();
         logger.info("Init lealone database: " + (t2 - t1) + "ms");
+
+        // 如果启用了集群，集群的元数据表通过嵌入式的方式访问
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled && P2pServerEngine.NAME.equalsIgnoreCase(def.name)) {
@@ -112,121 +117,117 @@ public class Lealone {
         logger.info("Base dir: {}", config.base_dir);
     }
 
-    // 初始化顺序: storage -> transaction -> sql -> protocol_server
+    // 严格按这样的顺序初始化: storage -> transaction -> sql -> protocol_server
     private static void initPluggableEngines() {
+        initStorageEngineEngines();
+        initTransactionEngineEngines();
+        initSQLEngines();
+        initProtocolServerEngines();
+    }
+
+    private static void initStorageEngineEngines() {
+        registerAndInitEngines(config.storage_engines, "storage", "default.storage.engine", def -> {
+            StorageEngine se = StorageEngineManager.getInstance().getEngine(def.name);
+            if (se == null) {
+                Class<?> clz = Utils.loadUserClass(def.name);
+                se = (StorageEngine) clz.newInstance();
+                StorageEngineManager.getInstance().registerEngine(se);
+            }
+            return se;
+        });
+    }
+
+    private static void initTransactionEngineEngines() {
+        registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine", def -> {
+            TransactionEngine te = TransactionEngineManager.getInstance().getEngine(def.name);
+            if (te == null) {
+                try {
+                    Class<?> clz = Utils.loadUserClass(def.name);
+                    te = (TransactionEngine) clz.newInstance();
+                    TransactionEngineManager.getInstance().registerEngine(te);
+                } catch (Throwable e) {
+                    te = TransactionEngineManager.getInstance().getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+                    if (te == null)
+                        throw newConfigException("transaction engine", def, e);
+                }
+            }
+            return te;
+        });
+    }
+
+    private static void initSQLEngines() {
+        registerAndInitEngines(config.sql_engines, "sql", "default.sql.engine", def -> {
+            SQLEngine se = SQLEngineManager.getInstance().getEngine(def.name);
+            if (se == null) {
+                Class<?> clz = Utils.loadUserClass(def.name);
+                se = (SQLEngine) clz.newInstance();
+                SQLEngineManager.getInstance().registerEngine(se);
+            }
+            return se;
+        });
+    }
+
+    private static void initProtocolServerEngines() {
+        registerAndInitEngines(config.protocol_server_engines, "protocol server", null, def -> {
+            // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
+            if (!def.getParameters().containsKey("host") && config.listen_address != null)
+                def.getParameters().put("host", config.listen_address);
+            ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
+            if (pse == null) {
+                Class<?> clz = Utils.loadUserClass(def.name);
+                pse = (ProtocolServerEngine) clz.newInstance();
+                ProtocolServerEngineManager.getInstance().registerEngine(pse);
+            }
+            return pse;
+        });
+    }
+
+    private static interface CallableTask<V> {
+        V call(PluggableEngineDef def) throws Exception;
+    }
+
+    private static <T> void registerAndInitEngines(List<PluggableEngineDef> engines, String name,
+            String defaultEngineKey, CallableTask<T> callableTask) {
         long t1 = System.currentTimeMillis();
-        List<PluggableEngineDef> pluggable_engines = config.storage_engines;
-        if (pluggable_engines != null) {
-            for (PluggableEngineDef def : pluggable_engines) {
-                if (def.enabled) {
-                    checkName("StorageEngine", def);
-                    StorageEngine se = StorageEngineManager.getInstance().getEngine(def.name);
-                    if (se == null) {
-                        try {
-                            Class<?> clz = Utils.loadUserClass(def.name);
-                            se = (StorageEngine) clz.newInstance();
-                            StorageEngineManager.getInstance().registerEngine(se);
-                        } catch (Exception e) {
-                            throw newConfigException("StorageEngine", def, e);
-                        }
-                    }
+        if (engines != null) {
+            for (PluggableEngineDef def : engines) {
+                if (!def.enabled)
+                    continue;
 
-                    if (Config.getProperty("default.storage.engine") == null)
-                        Config.setProperty("default.storage.engine", se.getName());
+                // 允许后续的访问不用区分大小写
+                CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(def.getParameters());
+                def.setParameters(parameters);
 
-                    initPluggableEngine(se, def);
+                checkName(name, def);
+                T result;
+                try {
+                    result = callableTask.call(def);
+                } catch (Throwable e) {
+                    logger.warn("Failed to register " + name + " engine: " + def.name,
+                            newConfigException(name, def, e));
+                    return;
+                }
+                PluggableEngine pe = (PluggableEngine) result;
+                if (defaultEngineKey != null && Config.getProperty(defaultEngineKey) == null)
+                    Config.setProperty(defaultEngineKey, pe.getName());
+                try {
+                    initPluggableEngine(pe, def);
+                } catch (Throwable e) {
+                    logger.warn("Failed to init " + name + " engine: " + def.name, newConfigException(name, def, e));
+                    return;
                 }
             }
         }
         long t2 = System.currentTimeMillis();
-        logger.info("Init storage engines: " + (t2 - t1) + "ms");
-
-        pluggable_engines = config.transaction_engines;
-        if (pluggable_engines != null) {
-            for (PluggableEngineDef def : pluggable_engines) {
-                if (def.enabled) {
-                    checkName("TransactionEngine", def);
-                    TransactionEngine te = TransactionEngineManager.getInstance().getEngine(def.name);
-                    if (te == null) {
-                        try {
-                            Class<?> clz = Utils.loadUserClass(def.name);
-                            te = (TransactionEngine) clz.newInstance();
-                            TransactionEngineManager.getInstance().registerEngine(te);
-                        } catch (Exception e) {
-                            te = TransactionEngineManager.getInstance()
-                                    .getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-                            if (te == null)
-                                throw newConfigException("TransactionEngine", def, e);
-                        }
-                    }
-
-                    if (Config.getProperty("default.transaction.engine") == null)
-                        Config.setProperty("default.transaction.engine", te.getName());
-
-                    initPluggableEngine(te, def);
-                }
-            }
-        }
-        long t3 = System.currentTimeMillis();
-        logger.info("Init transaction engines: " + (t3 - t2) + "ms");
-
-        pluggable_engines = config.sql_engines;
-        if (pluggable_engines != null) {
-            for (PluggableEngineDef def : pluggable_engines) {
-                if (def.enabled) {
-                    checkName("SQLEngine", def);
-                    SQLEngine se = SQLEngineManager.getInstance().getEngine(def.name);
-                    if (se == null) {
-                        try {
-                            Class<?> clz = Utils.loadUserClass(def.name);
-                            se = (SQLEngine) clz.newInstance();
-                            SQLEngineManager.getInstance().registerEngine(se);
-                        } catch (Exception e) {
-                            throw newConfigException("SQLEngine", def, e);
-                        }
-                    }
-
-                    if (Config.getProperty("default.sql.engine") == null)
-                        Config.setProperty("default.sql.engine", se.getName());
-                    initPluggableEngine(se, def);
-                }
-            }
-        }
-        long t4 = System.currentTimeMillis();
-        logger.info("Init sql engines: " + (t4 - t3) + "ms");
-
-        pluggable_engines = config.protocol_server_engines;
-        if (pluggable_engines != null) {
-            for (PluggableEngineDef def : pluggable_engines) {
-                if (def.enabled) {
-                    checkName("ProtocolServerEngine", def);
-                    ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
-                    if (pse == null) {
-                        try {
-                            Class<?> clz = Utils.loadUserClass(def.name);
-                            pse = (ProtocolServerEngine) clz.newInstance();
-                            ProtocolServerEngineManager.getInstance().registerEngine(pse);
-                        } catch (Exception e) {
-                            throw newConfigException("ProtocolServerEngine", def, e);
-                        }
-                    }
-                    // 如果ProtocolServer的配置参数中没有指定host，那么就取listen_address的值
-                    if (!def.getParameters().containsKey("host") && config.listen_address != null)
-                        def.getParameters().put("host", config.listen_address);
-                    initPluggableEngine(pse, def);
-                }
-            }
-        }
-        long t5 = System.currentTimeMillis();
-        logger.info("Init protocol server engines: " + (t5 - t4) + "ms");
+        logger.info("Init " + name + " engines" + ": " + (t2 - t1) + "ms");
     }
 
     private static void checkName(String engineName, PluggableEngineDef def) {
         if (def.name == null || def.name.trim().isEmpty())
-            throw new ConfigException(engineName + ".name is missing.");
+            throw new ConfigException(engineName + " name is missing.");
     }
 
-    private static ConfigException newConfigException(String engineName, PluggableEngineDef def, Exception e) {
+    private static ConfigException newConfigException(String engineName, PluggableEngineDef def, Throwable e) {
         return new ConfigException(engineName + " '" + def.name + "' can not found", e);
     }
 
@@ -234,7 +235,6 @@ public class Lealone {
         Map<String, String> parameters = def.getParameters();
         if (!parameters.containsKey("base_dir"))
             parameters.put("base_dir", config.base_dir);
-
         pe.init(parameters);
     }
 
@@ -243,20 +243,18 @@ public class Lealone {
     }
 
     private static void startProtocolServers() throws Exception {
-        List<PluggableEngineDef> protocol_server_engines = config.protocol_server_engines;
-        if (protocol_server_engines != null) {
-            for (PluggableEngineDef def : protocol_server_engines) {
+        if (config.protocol_server_engines != null) {
+            for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled) {
                     ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
                     ProtocolServer protocolServer = pse.getProtocolServer();
-                    startProtocolServer(protocolServer, def.getParameters());
+                    startProtocolServer(protocolServer);
                 }
             }
         }
     }
 
-    private static void startProtocolServer(final ProtocolServer server, Map<String, String> parameters)
-            throws Exception {
+    private static void startProtocolServer(final ProtocolServer server) throws Exception {
         server.setServerEncryptionOptions(config.server_encryption_options);
         server.start();
         final String name = server.getName();

@@ -25,9 +25,12 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.common.exceptions.DbException;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 
 public abstract class PluggableEngineManager<T extends PluggableEngine> {
+
+    private static final Logger logger = LoggerFactory.getLogger(PluggableEngineManager.class);
 
     private final Class<T> pluggableEngineClass;
     private final Map<String, T> pluggableEngines = new ConcurrentHashMap<>();
@@ -85,7 +88,9 @@ public abstract class PluggableEngineManager<T extends PluggableEngine> {
                     iterator.next();
                 }
             } catch (Throwable t) {
-                DbException.convert(t);
+                // 只是发出警告
+                logger.warn("Failed to load pluggable engine: " + pluggableEngineClass.getName(), t);
+                // DbException.convert(t);
             }
             return null;
         }

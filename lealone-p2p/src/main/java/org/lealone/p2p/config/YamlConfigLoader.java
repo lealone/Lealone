@@ -85,7 +85,7 @@ public class YamlConfigLoader implements ConfigLoader {
 
     public Config loadConfig(URL url) throws ConfigException {
         try {
-            logger.info("Loading settings from {}", url);
+            logger.info("Loading config from {}", url);
             byte[] configBytes;
             try (InputStream is = url.openStream()) {
                 configBytes = IOUtils.toByteArray(is);
