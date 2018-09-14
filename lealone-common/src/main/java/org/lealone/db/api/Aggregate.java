@@ -1,10 +1,9 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
+ * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0,
+ * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.api;
+package org.lealone.db.api;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -13,7 +12,7 @@ import java.sql.SQLException;
  * A user-defined aggregate function needs to implement this interface.
  * The class must be public and must have a public non-argument constructor.
  */
-public interface AggregateFunction {
+public interface Aggregate {
 
     /**
      * This method is called when the aggregate function is used.
@@ -24,14 +23,16 @@ public interface AggregateFunction {
     void init(Connection conn) throws SQLException;
 
     /**
-     * This method must return the SQL type of the method, given the SQL type of
-     * the input data. The method should check here if the number of parameters
+     * This method must return the H2 data type, {@link org.lealone.db.value.Value},
+     * of the aggregate function, given the H2 data type of the input data.
+     * The method should check here if the number of parameters
      * passed is correct, and if not it should throw an exception.
      *
-     * @param inputTypes the SQL type of the parameters, {@link java.sql.Types}
-     * @return the SQL type of the result
+     * @param inputTypes the H2 data type of the parameters,
+     * @return the H2 data type of the result
+     * @throws SQLException if the number/type of parameters passed is incorrect
      */
-    int getType(int[] inputTypes) throws SQLException;
+    int getInternalType(int[] inputTypes) throws SQLException;
 
     /**
      * This method is called once for each row.

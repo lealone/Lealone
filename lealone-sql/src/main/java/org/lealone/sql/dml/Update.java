@@ -10,13 +10,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.lealone.api.ErrorCode;
-import org.lealone.api.Trigger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
+import org.lealone.db.api.Trigger;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.RowList;

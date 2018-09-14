@@ -17,11 +17,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * A tool to losslessly compress data, and expand the compressed data again.

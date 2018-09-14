@@ -24,9 +24,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveConcurrentHashMap;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * 管理所有Database

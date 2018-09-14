@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.CaseInsensitiveMap;
@@ -19,6 +18,7 @@ import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.schema.Schema;

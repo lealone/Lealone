@@ -19,12 +19,12 @@ import java.sql.Clob;
 import java.sql.NClob;
 import java.sql.SQLException;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.Task;
 import org.lealone.db.Constants;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.Value;
 
 /**

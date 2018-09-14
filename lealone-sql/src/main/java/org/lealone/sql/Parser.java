@@ -14,8 +14,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import org.lealone.api.ErrorCode;
-import org.lealone.api.Trigger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
@@ -34,6 +32,8 @@ import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
+import org.lealone.db.api.ErrorCode;
+import org.lealone.db.api.Trigger;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.ConstraintReferential;

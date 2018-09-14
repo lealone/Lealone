@@ -6,9 +6,9 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.api.Trigger;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.Trigger;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.RowList;

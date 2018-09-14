@@ -8,12 +8,12 @@ package org.lealone.sql.dml;
 
 import java.util.ArrayList;
 
-import org.lealone.api.ErrorCode;
-import org.lealone.api.Trigger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
+import org.lealone.db.api.Trigger;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;

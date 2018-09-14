@@ -10,11 +10,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;

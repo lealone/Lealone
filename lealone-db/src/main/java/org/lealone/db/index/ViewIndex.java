@@ -8,7 +8,6 @@ package org.lealone.db.index;
 
 import java.util.ArrayList;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
@@ -16,6 +15,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.expression.Comparison;
 import org.lealone.db.expression.Query;
 import org.lealone.db.expression.SelectUnion;

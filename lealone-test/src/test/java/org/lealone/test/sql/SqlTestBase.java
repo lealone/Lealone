@@ -24,10 +24,10 @@ import java.sql.Statement;
 
 import org.junit.After;
 import org.junit.Before;
-import org.lealone.api.ErrorCode;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.test.TestBase;
 
 public class SqlTestBase extends TestBase {

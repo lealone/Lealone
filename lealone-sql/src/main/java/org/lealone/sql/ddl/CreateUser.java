@@ -6,12 +6,12 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;

@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.CloseWatcher;
@@ -40,6 +39,7 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;

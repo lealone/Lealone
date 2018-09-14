@@ -17,7 +17,10 @@
  */
 package org.lealone.storage;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -84,6 +87,16 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
 
     public long getLastKey() {
         return lastKey.get();
+    }
+
+    @Override
+    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
+        throw DbException.getUnsupportedException("transferTo");
+    }
+
+    @Override
+    public void transferFrom(ReadableByteChannel src) throws IOException {
+        throw DbException.getUnsupportedException("transferFrom");
     }
 
     @Override

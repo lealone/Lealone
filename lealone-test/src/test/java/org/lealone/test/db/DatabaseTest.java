@@ -18,10 +18,10 @@
 package org.lealone.test.db;
 
 import org.junit.Test;
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SearchRow;
 
 public class DatabaseTest extends DbObjectTestBase {

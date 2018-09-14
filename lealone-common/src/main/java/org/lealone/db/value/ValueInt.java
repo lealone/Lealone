@@ -10,11 +10,11 @@ import java.nio.ByteBuffer;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.type.StorageDataTypeBase;
 
 /**

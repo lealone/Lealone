@@ -11,10 +11,10 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Locale;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * A few String utility functions.

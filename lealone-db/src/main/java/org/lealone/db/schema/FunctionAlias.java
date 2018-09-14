@@ -17,7 +17,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.New;
@@ -28,6 +27,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.DataType;

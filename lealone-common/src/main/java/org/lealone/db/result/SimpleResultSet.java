@@ -30,10 +30,10 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Map;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.New;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.DataType;
 
 /**

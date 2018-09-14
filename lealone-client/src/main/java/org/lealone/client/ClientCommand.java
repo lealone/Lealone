@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.async.AsyncHandler;
 import org.lealone.async.AsyncResult;
 import org.lealone.client.result.ClientResult;
@@ -27,6 +26,7 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;

@@ -8,9 +8,9 @@ package org.lealone.db.table;
 
 import java.util.ArrayList;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.RangeIndex;

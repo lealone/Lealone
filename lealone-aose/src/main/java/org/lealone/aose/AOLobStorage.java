@@ -18,12 +18,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.lealone.aose.btree.BTreeMap;
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.storage.LobStorage;

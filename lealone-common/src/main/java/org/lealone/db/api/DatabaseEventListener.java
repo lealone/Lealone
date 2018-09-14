@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.api;
+package org.lealone.db.api;
 
 import java.sql.SQLException;
 import java.util.EventListener;

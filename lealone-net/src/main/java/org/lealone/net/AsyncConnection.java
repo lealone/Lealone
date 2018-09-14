@@ -21,7 +21,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.JdbcSQLException;
@@ -38,6 +37,7 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;

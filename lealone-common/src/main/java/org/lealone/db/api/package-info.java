@@ -6,4 +6,4 @@
 /**
  * Contains interfaces for user-defined extensions, such as triggers and user-defined aggregate functions.
  */
-package org.lealone.api;
+package org.lealone.db.api;

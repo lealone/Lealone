@@ -29,7 +29,6 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.client.result.UpdatableRow;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
@@ -39,6 +38,7 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Command;
 import org.lealone.db.SysProperties;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;

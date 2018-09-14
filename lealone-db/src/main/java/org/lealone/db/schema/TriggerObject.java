@@ -9,8 +9,6 @@ import java.lang.reflect.Method;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import org.lealone.api.ErrorCode;
-import org.lealone.api.Trigger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
@@ -19,6 +17,8 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
+import org.lealone.db.api.Trigger;
 import org.lealone.db.result.Row;
 import org.lealone.db.table.Table;
 import org.lealone.db.util.SourceCompiler;

@@ -12,12 +12,12 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.StringTokenizer;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SortedProperties;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.fs.FilePathEncrypt;
 import org.lealone.storage.fs.FileUtils;
 

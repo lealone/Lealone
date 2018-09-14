@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.LealoneException;
 import org.lealone.common.trace.Trace;
@@ -28,6 +27,7 @@ import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;

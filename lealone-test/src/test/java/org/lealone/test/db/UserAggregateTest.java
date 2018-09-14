@@ -22,8 +22,8 @@ import java.sql.Types;
 import java.util.ArrayList;
 
 import org.junit.Test;
-import org.lealone.api.AggregateFunction;
 import org.lealone.db.UserAggregate;
+import org.lealone.db.api.AggregateFunction;
 
 public class UserAggregateTest extends DbObjectTestBase {
     @Test

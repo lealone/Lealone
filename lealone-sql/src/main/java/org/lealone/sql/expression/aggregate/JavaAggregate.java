@@ -9,12 +9,12 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashMap;
 
-import org.lealone.api.Aggregate;
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;
+import org.lealone.db.api.Aggregate;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.TableFilter;

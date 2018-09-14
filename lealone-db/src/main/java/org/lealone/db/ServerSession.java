@@ -14,12 +14,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;

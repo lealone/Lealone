@@ -24,7 +24,6 @@ import java.util.Locale;
 import java.util.TimeZone;
 import java.util.regex.PatternSyntaxException;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.compress.CompressTool;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.BlockCipher;
@@ -44,6 +43,7 @@ import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.Mode;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;

@@ -9,11 +9,11 @@ package org.lealone.db;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * This class contains various database-level settings. To override the

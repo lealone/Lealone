@@ -21,8 +21,8 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 import org.junit.Test;
-import org.lealone.api.ErrorCode;
-import org.lealone.api.Trigger;
+import org.lealone.db.api.ErrorCode;
+import org.lealone.db.api.Trigger;
 import org.lealone.db.result.Result;
 import org.lealone.test.db.DbObjectTestBase;
 

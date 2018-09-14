@@ -6,8 +6,8 @@
  */
 package org.lealone.common.security;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * A factory to create new block cipher objects.

@@ -8,11 +8,11 @@ package org.lealone.db;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import org.lealone.api.Aggregate;
-import org.lealone.api.AggregateFunction;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
+import org.lealone.db.api.Aggregate;
+import org.lealone.db.api.AggregateFunction;
 import org.lealone.db.value.DataType;
 
 /**
@@ -83,7 +83,7 @@ public class UserAggregate extends DbObjectBase {
 
     /**
      * Wrap {@link AggregateFunction} in order to behave as
-     * {@link org.lealone.api.Aggregate}
+     * {@link org.lealone.db.api.Aggregate}
      **/
     private static class AggregateWrapper implements Aggregate {
         private final AggregateFunction aggregateFunction;

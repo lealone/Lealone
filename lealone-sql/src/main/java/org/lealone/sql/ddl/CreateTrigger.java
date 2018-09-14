@@ -6,12 +6,12 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.api.ErrorCode;
-import org.lealone.api.Trigger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
+import org.lealone.db.api.Trigger;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.table.Table;

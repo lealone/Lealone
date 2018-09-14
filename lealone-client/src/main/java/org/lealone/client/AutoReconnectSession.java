@@ -20,7 +20,6 @@ package org.lealone.client;
 import java.net.InetSocketAddress;
 import java.util.Random;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
@@ -28,6 +27,7 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DelegatedSession;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.net.NetEndpoint;
 import org.lealone.replication.ReplicationSession;
 

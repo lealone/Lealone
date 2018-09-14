@@ -37,13 +37,10 @@ import java.util.List;
 
 import javax.net.ssl.SSLSocketFactory;
 
-import org.lealone.test.netty.echo.EchoServerHandler;
-
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -208,9 +205,9 @@ public class NettyTest {
                     .handler(new LoggingHandler(LogLevel.INFO)).childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
-                            ChannelPipeline p = ch.pipeline();
+                            // ChannelPipeline p = ch.pipeline();
                             // p.addLast(new LoggingHandler(LogLevel.INFO));
-                            p.addLast(new EchoServerHandler());
+                            // p.addLast(new EchoServerHandler());
                         }
                     });
             t2 = System.currentTimeMillis();

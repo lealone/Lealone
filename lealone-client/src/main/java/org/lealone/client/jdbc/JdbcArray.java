@@ -12,9 +12,9 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Map;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.value.Value;
 

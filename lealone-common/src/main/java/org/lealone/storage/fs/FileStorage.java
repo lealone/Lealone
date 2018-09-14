@@ -15,7 +15,6 @@ import java.nio.channels.OverlappingFileLockException;
 import java.util.Arrays;
 import java.util.Map;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SecureFileStorage;
 import org.lealone.common.util.DataUtils;
@@ -23,6 +22,7 @@ import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.cache.FilePathCache;
 
 /**

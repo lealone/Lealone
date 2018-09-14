@@ -9,12 +9,12 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;

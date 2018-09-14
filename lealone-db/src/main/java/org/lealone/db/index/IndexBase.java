@@ -6,7 +6,6 @@
  */
 package org.lealone.db.index;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
@@ -15,6 +14,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.Mode;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;

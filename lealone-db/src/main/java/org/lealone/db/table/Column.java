@@ -10,7 +10,6 @@ import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
@@ -18,6 +17,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Mode;
 import org.lealone.db.SQLEngineHolder;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.expression.Expression;
 import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.Row;

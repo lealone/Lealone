@@ -5,9 +5,9 @@
  */
 package org.lealone.db;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.net.NetEndpoint;
 

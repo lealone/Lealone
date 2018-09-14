@@ -18,7 +18,7 @@
 package org.lealone.test.db.schema;
 
 import org.junit.Test;
-import org.lealone.api.ErrorCode;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.schema.Sequence;
 import org.lealone.test.db.DbObjectTestBase;

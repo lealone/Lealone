@@ -19,13 +19,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Task;
 import org.lealone.common.util.Utils;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.fs.FileUtils;
 
 /**

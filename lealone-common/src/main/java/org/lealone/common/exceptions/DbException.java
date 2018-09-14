@@ -17,11 +17,11 @@ import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.Properties;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.util.SortedProperties;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * This exception wraps a checked exception.

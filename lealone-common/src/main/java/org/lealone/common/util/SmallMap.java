@@ -9,8 +9,8 @@ package org.lealone.common.util;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * A simple hash table with an optimization for the last recently used object.

@@ -11,8 +11,8 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * This is a wrapper class for the Deflater class.

@@ -18,8 +18,8 @@
 package org.lealone.test.db.auth;
 
 import org.junit.Test;
-import org.lealone.api.ErrorCode;
 import org.lealone.db.Constants;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Role;
 import org.lealone.db.result.SearchRow;
 import org.lealone.test.db.DbObjectTestBase;

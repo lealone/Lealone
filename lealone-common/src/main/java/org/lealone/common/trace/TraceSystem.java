@@ -12,11 +12,11 @@ import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.JdbcSQLException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.db.Constants;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.fs.FileUtils;
 
 /**

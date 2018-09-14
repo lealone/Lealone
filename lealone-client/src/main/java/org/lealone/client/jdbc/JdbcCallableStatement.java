@@ -27,12 +27,12 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.New;
 import org.lealone.db.CommandParameter;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.ValueNull;
 
 /**

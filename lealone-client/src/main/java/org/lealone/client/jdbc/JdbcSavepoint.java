@@ -9,11 +9,11 @@ package org.lealone.client.jdbc;
 import java.sql.SQLException;
 import java.sql.Savepoint;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.api.ErrorCode;
 
 /**
  * A savepoint is a point inside a transaction to where a transaction can be

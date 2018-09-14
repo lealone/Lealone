@@ -7,9 +7,9 @@ package org.lealone.db;
 
 import java.sql.SQLException;
 
-import org.lealone.api.DatabaseEventListener;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
+import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueString;

@@ -18,11 +18,11 @@
 package org.lealone.test.db;
 
 import org.junit.Test;
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSessionFactory;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.test.UnitTestBase;
 
 public class ServerSessionFactoryTest extends UnitTestBase {

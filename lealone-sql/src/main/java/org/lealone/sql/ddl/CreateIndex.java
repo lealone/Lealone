@@ -6,11 +6,11 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.schema.Schema;

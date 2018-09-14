@@ -21,10 +21,10 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-import org.lealone.api.ErrorCode;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.ValueLong;
 import org.lealone.mvcc.MVCCTransactionMap.MVCCReplicationMap;
 import org.lealone.mvcc.log.RedoLogRecord;
