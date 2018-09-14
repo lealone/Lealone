@@ -85,8 +85,11 @@ public class JdbcConnection extends TraceObject implements Connection {
      * INTERNAL
      */
     public JdbcConnection(String url, Properties info) throws SQLException {
+        this(new ConnectionInfo(url, info));
+    }
+
+    public JdbcConnection(ConnectionInfo ci) throws SQLException {
         try {
-            ConnectionInfo ci = new ConnectionInfo(url, info);
             // this will return an embedded or server connection
             session = ci.createSession().connect();
             trace = session.getTrace();
@@ -94,7 +97,6 @@ public class JdbcConnection extends TraceObject implements Connection {
             setTrace(trace, TraceObject.CONNECTION, id);
             user = ci.getUserName();
             url = ci.getURL(); // 不含参数
-            this.url = url;
             if (isInfoEnabled()) {
                 String code = String.format("Connection %s = DriverManager.getConnection(%s, %s, \"\");",
                         getTraceObjectName(), quote(url), quote(user));
