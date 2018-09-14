@@ -18,7 +18,6 @@
 package org.lealone.test;
 
 import java.io.File;
-import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -61,8 +60,6 @@ public class TestBase extends Assert {
 
         if (Config.getProperty("default.storage.engine") == null)
             Config.setProperty("default.storage.engine", getDefaultStorageEngineName());
-
-        setVertxProperties();
     }
 
     public static void optimizeNetty() {
@@ -81,33 +78,6 @@ public class TestBase extends Assert {
 
     public TestBase() {
         optimizeNetty();
-        optimizeVertx();
-    }
-
-    public static void optimizeVertx() {
-        // 如果不禁用的话
-        // 执行到javax.naming.spi.NamingManager.getInitialContext方法的return factory.getInitialContext()会
-        // 生成一个类似"Thread-XXX"这样的线程
-        // System.setProperty(ResolverProvider.DISABLE_DNS_RESOLVER_PROP_NAME, "true");
-
-        disableSSLContext();
-    }
-
-    private static void disableSSLContext() {
-        // 这一行可以屏蔽在io.vertx.core.net.impl.SSLHelper类的static初始代码中调用耗时的SSLContext.getInstance("TLS")
-        // 但是在JDK 1.8.0_112-b15中不能正常启动，
-        // 在我自己构建的openjdk8-b132中就可以正常启动(能减少700ms以上)
-        String version = ManagementFactory.getRuntimeMXBean().getVmVersion();
-        if (version.equals("25.71-b00-fastdebug")) {
-            sun.security.jca.Providers.setProviderList(null);
-        }
-        // sun.security.jca.Providers.setProviderList(Providers.getProviderList());
-    }
-
-    private static void setVertxProperties() {
-        // System.setProperty(FileResolver.DISABLE_FILE_CACHING_PROP_NAME, "true");
-        // System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
-        // System.setProperty(FileResolver.CACHE_DIR_BASE_PROP_NAME, "./" + TEST_DIR + "/.vertx");
     }
 
     public static String getDefaultStorageEngineName() {

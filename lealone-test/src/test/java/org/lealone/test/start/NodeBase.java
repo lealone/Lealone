@@ -46,7 +46,6 @@ public class NodeBase extends YamlConfigLoader {
         // System.setProperty("lealone.check2", "true");
 
         TestBase.optimizeNetty();
-        TestBase.optimizeVertx();
     }
 
     protected String listen_address;
@@ -73,9 +72,6 @@ public class NodeBase extends YamlConfigLoader {
 
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.base_dir);
-
-        // System.setProperty(FileResolver.DISABLE_CP_RESOLVING_PROP_NAME, "true");
-        System.setProperty("vertx.cacheDirBase", "./" + config.base_dir + "/.vertx");
 
         super.applyConfig(config);
     }
