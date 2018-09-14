@@ -12,9 +12,9 @@ import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.ScriptReader;
 import org.lealone.db.Constants;
 import org.lealone.db.ServerSession;
-import org.lealone.db.util.ScriptReader;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 

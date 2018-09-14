@@ -21,9 +21,9 @@ import java.util.ArrayList;
 
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.New;
+import org.lealone.common.util.ScriptReader;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
-import org.lealone.db.util.ScriptReader;
 
 /**
  * Interactive command line tool to access a database using JDBC.
