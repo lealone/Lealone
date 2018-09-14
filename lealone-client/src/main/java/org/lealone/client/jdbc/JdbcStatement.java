@@ -48,7 +48,8 @@ public class JdbcStatement extends TraceObject implements Statement {
     private ArrayList<String> batchCommands;
     private boolean escapeProcessing = true;
 
-    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency, boolean closeWithResultSet) {
+    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency,
+            boolean closeWithResultSet) {
         this.conn = conn;
         this.session = conn.getSession();
         setTrace(session.getTrace(), TraceObject.STATEMENT, id);
@@ -79,8 +80,8 @@ public class JdbcStatement extends TraceObject implements Statement {
         try {
             int id = getNextTraceId(TraceObject.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "executeQuery" + (async ? "Async" : "") + "("
-                        + quote(sql) + ")");
+                debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id,
+                        "executeQuery" + (async ? "Async" : "") + "(" + quote(sql) + ")");
             }
             checkClosed();
             closeOldResultSet();
@@ -224,24 +225,25 @@ public class JdbcStatement extends TraceObject implements Statement {
     private boolean executeInternal(String sql) throws SQLException {
         if (sql != null) {
             sql = sql.trim();
-            if (!sql.isEmpty()) {
-                char c = Character.toUpperCase(sql.charAt(0));
-                switch (c) {
-                case 'S': // select or show
-                    executeQuery(sql);
-                    return true;
-                case 'I': // insert
-                case 'U': // update
-                case 'D': // delete or drop
-                case 'C': // create
-                case 'A': // alter
-                case 'M': // merge
-                    executeUpdate(sql);
-                    return false;
-                default:
-                    break;
-                }
-            }
+            // 禁用这段代码，容易遗漏，比如set命令得用executeUpdate
+            // if (!sql.isEmpty()) {
+            // char c = Character.toUpperCase(sql.charAt(0));
+            // switch (c) {
+            // case 'S': // select or show
+            // executeQuery(sql);
+            // return true;
+            // case 'I': // insert
+            // case 'U': // update
+            // case 'D': // delete or drop
+            // case 'C': // create
+            // case 'A': // alter
+            // case 'M': // merge
+            // executeUpdate(sql);
+            // return false;
+            // default:
+            // break;
+            // }
+            // }
         }
         int id = getNextTraceId(TraceObject.RESULT_SET);
         checkClosed();

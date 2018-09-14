@@ -1729,7 +1729,9 @@ public class Function extends Expression implements FunctionCall {
     @Override
     public void mapColumns(ColumnResolver resolver, int level) {
         for (Expression e : args) {
-            e.mapColumns(resolver, level);
+            if (e != null) {
+                e.mapColumns(resolver, level);
+            }
         }
     }
 
@@ -1838,7 +1840,11 @@ public class Function extends Expression implements FunctionCall {
     public Expression optimize(ServerSession session) {
         boolean allConst = info.deterministic;
         for (int i = 0; i < args.length; i++) {
-            Expression e = args[i].optimize(session);
+            Expression e = args[i];
+            if (e == null) {
+                continue;
+            }
+            e = e.optimize(session);
             args[i] = e;
             if (!e.isConstant()) {
                 allConst = false;
@@ -2114,6 +2120,19 @@ public class Function extends Expression implements FunctionCall {
     @Override
     public String getSQL(boolean isDistributed) {
         StatementBuilder buff = new StatementBuilder(info.name);
+        if (info.type == CASE) {
+            if (args[0] != null) {
+                buff.append(" ").append(args[0].getSQL());
+            }
+            for (int i = 1, len = args.length - 1; i < len; i += 2) {
+                buff.append(" WHEN ").append(args[i].getSQL());
+                buff.append(" THEN ").append(args[i + 1].getSQL());
+            }
+            if (args.length % 2 == 0) {
+                buff.append(" ELSE ").append(args[args.length - 1].getSQL());
+            }
+            return buff.append(" END").toString();
+        }
         buff.append('(');
         switch (info.type) {
         case CAST: {
