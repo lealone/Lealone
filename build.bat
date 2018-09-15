@@ -65,7 +65,7 @@ set VERSION=%2
 if /i "%VERSION%" == "" goto usage
 call mvn versions:set -DnewVersion=%VERSION%
 call mvn versions:commit
-echo lealoneVersion=%VERSION%>lealone-common\src\main\resources\org\lealone\res\version.properties
+echo lealoneVersion=%VERSION%>lealone-common\src\main\resources\org\lealone\common\resources\version.properties
 goto end
 
 :end
