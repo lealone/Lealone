@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.aose;
+package org.lealone.storage.aose;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -17,7 +17,6 @@ import java.nio.charset.CodingErrorAction;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import org.lealone.aose.btree.BTreeMap;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.New;
@@ -29,6 +28,7 @@ import org.lealone.db.value.ValueLob;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.aose.btree.BTreeMap;
 
 /**
  * This class stores LOB objects in the database, in maps.

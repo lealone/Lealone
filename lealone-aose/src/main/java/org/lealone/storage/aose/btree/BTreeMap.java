@@ -3,7 +3,7 @@
  * EPL 1.0 (http://h2database.com/html/license.html). Initial Developer: H2
  * Group
  */
-package org.lealone.aose.btree;
+package org.lealone.storage.aose.btree;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -16,10 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.lealone.aose.AOStorage;
-import org.lealone.aose.AOStorageService;
-import org.lealone.aose.StorageMapBuilder;
-import org.lealone.aose.btree.BTreePage.PageReference;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.StringUtils;
@@ -35,6 +31,10 @@ import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.aose.AOStorage;
+import org.lealone.storage.aose.AOStorageService;
+import org.lealone.storage.aose.StorageMapBuilder;
+import org.lealone.storage.aose.btree.BTreePage.PageReference;
 import org.lealone.storage.type.StorageDataType;
 
 /**

@@ -3,19 +3,19 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.aose.rtree;
+package org.lealone.storage.aose.rtree;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 
-import org.lealone.aose.AOStorage;
-import org.lealone.aose.StorageMapBuilder;
-import org.lealone.aose.btree.BTreeMap;
-import org.lealone.aose.btree.BTreePage;
-import org.lealone.aose.btree.CursorPos;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.New;
+import org.lealone.storage.aose.AOStorage;
+import org.lealone.storage.aose.StorageMapBuilder;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.BTreePage;
+import org.lealone.storage.aose.btree.CursorPos;
 import org.lealone.storage.type.StorageDataType;
 
 /**

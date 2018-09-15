@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.aose;
+package org.lealone.storage.aose;
 
 import java.util.HashMap;
 import java.util.Map;

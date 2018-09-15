@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.aose;
+package org.lealone.storage.aose;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,8 +30,6 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-import org.lealone.aose.btree.BTreeMap;
-import org.lealone.aose.rtree.RTreeMap;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.IOUtils;
@@ -45,6 +43,8 @@ import org.lealone.replication.ReplicationSession;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.rtree.RTreeMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
