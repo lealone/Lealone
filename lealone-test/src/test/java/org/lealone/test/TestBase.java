@@ -28,10 +28,10 @@ import org.junit.Assert;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
-import org.lealone.mvcc.log.RedoLog;
 import org.lealone.p2p.config.Config;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
+import org.lealone.transaction.mvcc.log.RedoLog;
 
 public class TestBase extends Assert {
 

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvcc;
+package org.lealone.transaction.mvcc;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -34,14 +34,14 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
-import org.lealone.mvcc.MVCCTransaction.LogRecord;
-import org.lealone.mvcc.log.LogSyncService;
-import org.lealone.mvcc.log.RedoLog;
-import org.lealone.mvcc.log.RedoLogRecord;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.mvcc.MVCCTransaction.LogRecord;
+import org.lealone.transaction.mvcc.log.LogSyncService;
+import org.lealone.transaction.mvcc.log.RedoLog;
+import org.lealone.transaction.mvcc.log.RedoLogRecord;
 
 public class MVCCTransactionEngine extends TransactionEngineBase {
 

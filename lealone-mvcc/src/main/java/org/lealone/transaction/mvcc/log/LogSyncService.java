@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvcc.log;
+package org.lealone.transaction.mvcc.log;
 
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -23,7 +23,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
-import org.lealone.mvcc.MVCCTransaction;
+import org.lealone.transaction.mvcc.MVCCTransaction;
 
 public abstract class LogSyncService extends Thread {
 

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvcc;
+package org.lealone.transaction.mvcc;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -26,13 +26,13 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.ValueLong;
-import org.lealone.mvcc.MVCCTransactionMap.MVCCReplicationMap;
-import org.lealone.mvcc.log.RedoLogRecord;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.mvcc.MVCCTransactionMap.MVCCReplicationMap;
+import org.lealone.transaction.mvcc.log.RedoLogRecord;
 
 public class MVCCTransaction implements Transaction {
 

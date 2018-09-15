@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvcc.log;
+package org.lealone.transaction.mvcc.log;
 
-import org.lealone.mvcc.MVCCTransaction;
+import org.lealone.transaction.mvcc.MVCCTransaction;
 
 class NoLogSyncService extends LogSyncService {
 

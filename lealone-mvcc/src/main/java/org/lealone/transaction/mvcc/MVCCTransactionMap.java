@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.mvcc;
+package org.lealone.transaction.mvcc;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -11,7 +11,6 @@ import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
-import org.lealone.mvcc.MVCCTransaction.LogRecord;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.Storage;
@@ -21,6 +20,7 @@ import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.mvcc.MVCCTransaction.LogRecord;
 
 /**
  * A map that supports transactions.

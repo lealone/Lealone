@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.mvcc;
+package org.lealone.transaction.mvcc;
 
 import org.lealone.net.NetEndpoint;
 
