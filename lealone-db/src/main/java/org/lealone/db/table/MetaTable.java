@@ -680,7 +680,7 @@ public class MetaTable extends Table {
             break;
         }
         case HELP: {
-            String resource = "/org/lealone/res/help.csv";
+            String resource = Constants.RESOURCES_DIR + "help.csv";
             try {
                 byte[] data = Utils.getResource(resource);
                 Reader reader = new InputStreamReader(new ByteArrayInputStream(data));

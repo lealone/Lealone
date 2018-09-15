@@ -40,6 +40,8 @@ public class Constants {
 
     public static final char NAME_SEPARATOR = '_';
 
+    public static final String RESOURCES_DIR = "/org/lealone/common/resources/";
+
     /**
      * The major version of this database.
      */

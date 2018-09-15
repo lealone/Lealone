@@ -38,13 +38,13 @@ public class DbException extends RuntimeException {
 
     static {
         try {
-            byte[] messages = Utils.getResource("/org/lealone/res/_messages_en.prop");
+            byte[] messages = Utils.getResource(Constants.RESOURCES_DIR + "_messages_en.prop");
             if (messages != null) {
                 MESSAGES.load(new ByteArrayInputStream(messages));
             }
             String language = Locale.getDefault().getLanguage();
             if (!"en".equals(language)) {
-                byte[] translations = Utils.getResource("/org/lealone/res/_messages_" + language + ".prop");
+                byte[] translations = Utils.getResource(Constants.RESOURCES_DIR + "_messages_" + language + ".prop");
                 // message: translated message + english
                 // (otherwise certain applications don't work)
                 if (translations != null) {
