@@ -28,8 +28,8 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.router.RouterHolder;
 import org.lealone.sql.SQLStatement;
+import org.lealone.sql.router.RouterHolder;
 
 /**
  * This class represents the statement

@@ -28,9 +28,9 @@ import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 import org.lealone.net.NetEndpoint;
 import org.lealone.replication.ReplicationSession;
-import org.lealone.router.Router;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
+import org.lealone.sql.router.Router;
 
 public class TransactionalRouter implements Router {
     private final Router nestedRouter;

@@ -21,10 +21,10 @@ import java.util.Map;
 
 import org.lealone.p2p.router.P2pRouter;
 import org.lealone.p2p.router.TransactionalRouter;
-import org.lealone.router.Router;
-import org.lealone.router.RouterHolder;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngineBase;
+import org.lealone.sql.router.Router;
+import org.lealone.sql.router.RouterHolder;
 
 public class P2pServerEngine extends ProtocolServerEngineBase {
 

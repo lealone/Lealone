@@ -23,7 +23,7 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.NetEndpoint;
-import org.lealone.router.RouterHolder;
+import org.lealone.sql.router.RouterHolder;
 
 public abstract class DatabaseStatement extends DefineStatement {
 

@@ -43,9 +43,9 @@ import org.lealone.p2p.locator.AbstractReplicationStrategy;
 import org.lealone.p2p.locator.TopologyMetaData;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.replication.ReplicationSession;
-import org.lealone.router.Router;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
+import org.lealone.sql.router.Router;
 import org.lealone.storage.Storage;
 
 public class P2pRouter implements Router {
