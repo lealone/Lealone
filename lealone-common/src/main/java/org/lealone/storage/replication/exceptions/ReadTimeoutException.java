@@ -15,13 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication.exceptions;
+package org.lealone.storage.replication.exceptions;
 
 import org.lealone.common.exceptions.ExceptionCode;
-import org.lealone.replication.ConsistencyLevel;
+import org.lealone.storage.replication.ConsistencyLevel;
 
-public class WriteFailureException extends RequestFailureException {
-    public WriteFailureException(ConsistencyLevel consistency, int received, int failures, int blockFor) {
-        super(ExceptionCode.WRITE_FAILURE, consistency, received, failures, blockFor);
+public class ReadTimeoutException extends RequestTimeoutException {
+    public final boolean dataPresent;
+
+    public ReadTimeoutException(ConsistencyLevel consistency, int received, int blockFor, boolean dataPresent) {
+        super(ExceptionCode.READ_TIMEOUT, consistency, received, blockFor);
+        this.dataPresent = dataPresent;
     }
 }

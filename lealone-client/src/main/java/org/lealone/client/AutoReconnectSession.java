@@ -29,7 +29,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.NetEndpoint;
-import org.lealone.replication.ReplicationSession;
+import org.lealone.storage.replication.ReplicationSession;
 
 class AutoReconnectSession extends DelegatedSession {
 

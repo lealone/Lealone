@@ -15,10 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication.exceptions;
+package org.lealone.storage.replication.exceptions;
 
 import org.lealone.common.exceptions.ExceptionCode;
-import org.lealone.replication.ConsistencyLevel;
+import org.lealone.storage.replication.ConsistencyLevel;
 
 public class ReadFailureException extends RequestFailureException {
     public final boolean dataPresent;

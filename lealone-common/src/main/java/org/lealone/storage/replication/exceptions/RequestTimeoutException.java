@@ -15,24 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication.exceptions;
+package org.lealone.storage.replication.exceptions;
 
 import org.lealone.common.exceptions.ExceptionCode;
 import org.lealone.common.exceptions.RequestExecutionException;
-import org.lealone.replication.ConsistencyLevel;
+import org.lealone.storage.replication.ConsistencyLevel;
 
-public class RequestFailureException extends RequestExecutionException {
+public class RequestTimeoutException extends RequestExecutionException {
     public final ConsistencyLevel consistency;
     public final int received;
-    public final int failures;
     public final int blockFor;
 
-    protected RequestFailureException(ExceptionCode code, ConsistencyLevel consistency, int received, int failures,
-            int blockFor) {
-        super(code, String.format("Operation failed - received %d responses and %d failures", received, failures));
+    protected RequestTimeoutException(ExceptionCode code, ConsistencyLevel consistency, int received, int blockFor) {
+        super(code, String.format("Operation timed out - received only %d responses.", received));
         this.consistency = consistency;
         this.received = received;
-        this.failures = failures;
         this.blockFor = blockFor;
     }
 }

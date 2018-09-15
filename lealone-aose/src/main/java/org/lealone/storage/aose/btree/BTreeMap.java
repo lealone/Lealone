@@ -25,7 +25,6 @@ import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
-import org.lealone.replication.ReplicationSession;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
@@ -35,6 +34,7 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageService;
 import org.lealone.storage.aose.StorageMapBuilder;
 import org.lealone.storage.aose.btree.BTreePage.PageReference;
+import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.storage.type.StorageDataType;
 
 /**

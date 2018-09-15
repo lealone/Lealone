@@ -21,11 +21,11 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetEndpoint;
-import org.lealone.replication.ReplicationSession;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.aose.AOStorageService;
 import org.lealone.storage.fs.FileStorage;
+import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.storage.type.StorageDataType;
 
 /**

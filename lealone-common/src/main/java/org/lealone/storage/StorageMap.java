@@ -23,7 +23,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.replication.ReplicationMap;
+import org.lealone.storage.replication.ReplicationMap;
 import org.lealone.storage.type.StorageDataType;
 
 public interface StorageMap<K, V> extends ReplicationMap {

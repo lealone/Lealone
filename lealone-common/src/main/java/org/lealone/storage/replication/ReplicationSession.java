@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication;
+package org.lealone.storage.replication;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;

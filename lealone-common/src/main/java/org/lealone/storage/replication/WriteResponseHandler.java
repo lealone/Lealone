@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication;
+package org.lealone.storage.replication;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
@@ -23,48 +23,45 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.lealone.common.concurrent.SimpleCondition;
 import org.lealone.common.util.New;
-import org.lealone.db.result.Result;
-import org.lealone.replication.exceptions.ReadFailureException;
-import org.lealone.replication.exceptions.ReadTimeoutException;
+import org.lealone.storage.replication.exceptions.WriteFailureException;
+import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
-class ReadResponseHandler {
+class WriteResponseHandler {
     private final SimpleCondition condition = new SimpleCondition();
     private final long start;
 
-    private final ArrayList<Result> results;
-    private final ArrayList<Object> resultObjects;
+    private final ArrayList<Integer> updateCountList;
+    private final ArrayList<Object> resultList;
     private final int n;
-    private final int r;
+    private final int w;
 
-    private final AtomicIntegerFieldUpdater<ReadResponseHandler> failuresUpdater = AtomicIntegerFieldUpdater
-            .newUpdater(ReadResponseHandler.class, "failures");
+    private final AtomicIntegerFieldUpdater<WriteResponseHandler> failuresUpdater = AtomicIntegerFieldUpdater
+            .newUpdater(WriteResponseHandler.class, "failures");
     private volatile int failures = 0;
 
     private volatile boolean successful = false;
 
-    ReadResponseHandler(int n) {
+    WriteResponseHandler(int n) {
         start = System.nanoTime();
 
         this.n = n;
-        // r = n / 2 + 1;
-        r = 1; // 使用Write all read one模式
-        results = New.arrayList(n);
-        resultObjects = New.arrayList(n);
+        // w = n / 2 + 1;
+        w = n; // 使用Write all read one模式
+        updateCountList = New.arrayList(n);
+        resultList = New.arrayList(n);
     }
 
-    synchronized void response(Result result) {
-        results.add(result);
-
-        if (!successful && results.size() >= r) {
+    synchronized void response(int updateCount) {
+        updateCountList.add(updateCount);
+        if (!successful && updateCountList.size() >= w) {
             successful = true;
             signal();
         }
     }
 
     synchronized void response(Object result) {
-        resultObjects.add(result);
-
-        if (!successful && resultObjects.size() >= r) {
+        resultList.add(result);
+        if (!successful && resultList.size() >= w) {
             successful = true;
             signal();
         }
@@ -77,7 +74,7 @@ class ReadResponseHandler {
             signal();
     }
 
-    Result get(long rpcTimeoutMillis) {
+    void await(long rpcTimeoutMillis) {
         long requestTimeout = rpcTimeoutMillis;
 
         // 超时时间把调用构造函数开始直到调用get前的这段时间也算在内
@@ -98,61 +95,38 @@ class ReadResponseHandler {
             // avoid sending confusing info to the user (see CASSANDRA-6491).
             if (acks >= blockedFor)
                 acks = blockedFor - 1;
-            throw new ReadTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor, false);
+            throw new WriteTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor);
         }
 
         if (!successful && totalBlockFor() + failures >= totalEndpoints()) {
-            throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor(), false);
+            throw new WriteFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor());
         }
-
-        return results.get(0);
     }
 
-    Object getResultObject(long rpcTimeoutMillis) {
-        long requestTimeout = rpcTimeoutMillis;
-
-        // 超时时间把调用构造函数开始直到调用get前的这段时间也算在内
-        long timeout = TimeUnit.MILLISECONDS.toNanos(requestTimeout) - (System.nanoTime() - start);
-
-        boolean success;
-        try {
-            success = condition.await(timeout, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException ex) {
-            throw new AssertionError(ex);
-        }
-
-        if (!success) {
-            int blockedFor = totalBlockFor();
-            int acks = ackCount();
-            // It's pretty unlikely, but we can race between exiting await above and here, so
-            // that we could now have enough acks. In that case, we "lie" on the acks count to
-            // avoid sending confusing info to the user (see CASSANDRA-6491).
-            if (acks >= blockedFor)
-                acks = blockedFor - 1;
-            throw new ReadTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor, false);
-        }
-
-        if (!successful && totalBlockFor() + failures >= totalEndpoints()) {
-            throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor(), false);
-        }
-
-        return resultObjects.get(0);
+    int getUpdateCount(long rpcTimeoutMillis) {
+        await(rpcTimeoutMillis);
+        return updateCountList.get(0);
     }
 
-    void signal() {
+    Object getResult(long rpcTimeoutMillis) {
+        await(rpcTimeoutMillis);
+        return resultList.get(0);
+    }
+
+    private void signal() {
         condition.signalAll();
     }
 
-    int totalBlockFor() {
-        return r;
+    private int totalBlockFor() {
+        return w;
     }
 
-    int totalEndpoints() {
+    private int totalEndpoints() {
         return n;
     }
 
-    int ackCount() {
-        return results.size();
+    private int ackCount() {
+        return updateCountList.size();
     }
 
     int getFailures() {
@@ -162,5 +136,4 @@ class ReadResponseHandler {
     boolean isSuccessful() {
         return successful;
     }
-
 }

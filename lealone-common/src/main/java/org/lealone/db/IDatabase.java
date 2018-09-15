@@ -23,8 +23,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.lealone.net.NetEndpoint;
-import org.lealone.replication.ReplicationSession;
 import org.lealone.storage.Storage;
+import org.lealone.storage.replication.ReplicationSession;
 
 public interface IDatabase {
 

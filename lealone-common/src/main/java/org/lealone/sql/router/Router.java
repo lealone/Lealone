@@ -26,8 +26,8 @@ import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 import org.lealone.net.NetEndpoint;
-import org.lealone.replication.ReplicationSession;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.storage.replication.ReplicationSession;
 
 public interface Router {
 

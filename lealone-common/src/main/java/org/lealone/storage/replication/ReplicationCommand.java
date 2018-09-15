@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication;
+package org.lealone.storage.replication;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -32,12 +32,12 @@ import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.result.Result;
-import org.lealone.replication.exceptions.ReadFailureException;
-import org.lealone.replication.exceptions.ReadTimeoutException;
-import org.lealone.replication.exceptions.WriteFailureException;
-import org.lealone.replication.exceptions.WriteTimeoutException;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageCommand;
+import org.lealone.storage.replication.exceptions.ReadFailureException;
+import org.lealone.storage.replication.exceptions.ReadTimeoutException;
+import org.lealone.storage.replication.exceptions.WriteFailureException;
+import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
 public class ReplicationCommand extends CommandBase implements StorageCommand {
 

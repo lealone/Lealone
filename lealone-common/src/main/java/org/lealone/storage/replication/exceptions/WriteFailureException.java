@@ -15,26 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication;
+package org.lealone.storage.replication.exceptions;
 
-public enum ConsistencyLevel {
-    QUORUM(1),
-    LOCAL_QUORUM(2, true),
-    EACH_QUORUM(3);
+import org.lealone.common.exceptions.ExceptionCode;
+import org.lealone.storage.replication.ConsistencyLevel;
 
-    public final int code;
-    private final boolean isDCLocal;
-
-    private ConsistencyLevel(int code) {
-        this(code, false);
-    }
-
-    private ConsistencyLevel(int code, boolean isDCLocal) {
-        this.code = code;
-        this.isDCLocal = isDCLocal;
-    }
-
-    public boolean isDatacenterLocal() {
-        return isDCLocal;
+public class WriteFailureException extends RequestFailureException {
+    public WriteFailureException(ConsistencyLevel consistency, int received, int failures, int blockFor) {
+        super(ExceptionCode.WRITE_FAILURE, consistency, received, failures, blockFor);
     }
 }

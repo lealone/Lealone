@@ -15,13 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication.exceptions;
+package org.lealone.storage.replication;
 
-import org.lealone.common.exceptions.ExceptionCode;
-import org.lealone.replication.ConsistencyLevel;
+public enum ConsistencyLevel {
+    QUORUM(1),
+    LOCAL_QUORUM(2, true),
+    EACH_QUORUM(3);
 
-public class WriteTimeoutException extends RequestTimeoutException {
-    public WriteTimeoutException(ConsistencyLevel consistency, int received, int blockFor) {
-        super(ExceptionCode.WRITE_TIMEOUT, consistency, received, blockFor);
+    public final int code;
+    private final boolean isDCLocal;
+
+    private ConsistencyLevel(int code) {
+        this(code, false);
+    }
+
+    private ConsistencyLevel(int code, boolean isDCLocal) {
+        this.code = code;
+        this.isDCLocal = isDCLocal;
+    }
+
+    public boolean isDatacenterLocal() {
+        return isDCLocal;
     }
 }

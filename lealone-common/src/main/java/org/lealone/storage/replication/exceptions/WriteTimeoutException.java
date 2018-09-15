@@ -15,22 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.replication;
+package org.lealone.storage.replication.exceptions;
 
-import java.util.List;
+import org.lealone.common.exceptions.ExceptionCode;
+import org.lealone.storage.replication.ConsistencyLevel;
 
-import org.lealone.db.Session;
-import org.lealone.net.NetEndpoint;
-import org.lealone.storage.type.StorageDataType;
-
-public interface ReplicationMap {
-
-    List<NetEndpoint> getReplicationEndpoints(Object key);
-
-    Object replicationPut(Session session, Object key, Object value, StorageDataType valueType);
-
-    Object replicationGet(Session session, Object key);
-
-    Object replicationAppend(Session session, Object value, StorageDataType valueType);
-
+public class WriteTimeoutException extends RequestTimeoutException {
+    public WriteTimeoutException(ConsistencyLevel consistency, int received, int blockFor) {
+        super(ExceptionCode.WRITE_TIMEOUT, consistency, received, blockFor);
+    }
 }
