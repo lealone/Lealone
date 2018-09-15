@@ -46,7 +46,7 @@ public class NettyWritableChannel implements WritableChannel {
 
     @Override
     public String getHost() {
-        return channel.remoteAddress().getHostName();
+        return channel.remoteAddress().getHostString();
     }
 
     @Override

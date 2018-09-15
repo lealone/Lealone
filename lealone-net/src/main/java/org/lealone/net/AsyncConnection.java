@@ -474,6 +474,10 @@ public class AsyncConnection {
         } catch (Exception e2) {
             if (transfer.getSession() != null)
                 transfer.getSession().close();
+            else if (writableChannel != null) {
+                writableChannel.close();
+            }
+            logger.error("Failed to send error", e2);
         }
     }
 

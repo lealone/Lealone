@@ -6,8 +6,6 @@
  */
 package org.lealone.db.table;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -682,8 +680,7 @@ public class MetaTable extends Table {
         case HELP: {
             String resource = Constants.RESOURCES_DIR + "help.csv";
             try {
-                byte[] data = Utils.getResource(resource);
-                Reader reader = new InputStreamReader(new ByteArrayInputStream(data));
+                Reader reader = Utils.getResourceAsReader(resource);
                 Csv csv = new Csv();
                 csv.setLineCommentCharacter('#');
                 ResultSet rs = csv.read(reader, null);

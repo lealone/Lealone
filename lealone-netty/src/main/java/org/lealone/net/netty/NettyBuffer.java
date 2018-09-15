@@ -74,7 +74,7 @@ public class NettyBuffer implements NetBuffer {
 
     @Override
     public NettyBuffer appendBytes(byte[] bytes, int offset, int len) {
-        buffer.writeBytes(bytes);
+        buffer.writeBytes(bytes, offset, len);
         return this;
     }
 

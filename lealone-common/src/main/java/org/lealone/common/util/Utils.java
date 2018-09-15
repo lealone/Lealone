@@ -10,9 +10,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
+import java.io.Reader;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -31,7 +33,6 @@ import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.JavaObjectSerializer;
-import org.lealone.storage.fs.FileUtils;
 
 /**
  * This utility class contains miscellaneous functions.
@@ -615,8 +616,39 @@ public class Utils {
         return data == null ? EMPTY_BYTES : data;
     }
 
+    public static Properties getResourceAsProperties(String name) throws IOException {
+        Properties props = new Properties();
+        InputStream in = getResourceAsStream(name);
+        props.load(in);
+        return props;
+    }
+
+    public static InputStream getResourceAsStream(String name) throws IOException {
+        byte[] data = getResource(name);
+        return new ByteArrayInputStream(data);
+    }
+
+    public static Reader getResourceAsReader(String name) throws IOException {
+        byte[] data = getResource(name);
+        return new InputStreamReader(new ByteArrayInputStream(data));
+    }
+
+    // 目前投打包部署不支持把资源文件都压缩到一个大文件中
+    private static final boolean CHECK_DATA_ZIP_FILE = false;
+
+    // 如果有"/"前缀，那么Utils.class.getClassLoader().getResourceAsStream找不到资源，必须去掉"/"前缀
+    // 而Utils.class.getResourceAsStream刚好相反，必须有"/"前缀
     private static byte[] loadResource(String name) throws IOException {
-        InputStream in = Utils.class.getResourceAsStream("data.zip");
+        InputStream in;
+        if (!CHECK_DATA_ZIP_FILE) {
+            in = Utils.class.getResourceAsStream(name);
+            if (in == null) {
+                return null;
+            }
+            return IOUtils.readBytesAndClose(in, 0);
+        }
+
+        in = Utils.class.getResourceAsStream(Constants.RESOURCES_DIR + "data.zip");
         if (in == null) {
             in = Utils.class.getResourceAsStream(name);
             if (in == null) {
@@ -922,20 +954,15 @@ public class Utils {
     public static String getReleaseVersionString() {
         if (releaseVersion != null)
             return releaseVersion;
-        InputStream in = null;
+
         try {
-            in = Utils.class.getClassLoader().getResourceAsStream("org/lealone/res/version.properties");
-            if (in == null) {
+            Properties props = getResourceAsProperties(Constants.RESOURCES_DIR + "version.properties");
+            releaseVersion = props.getProperty("lealoneVersion");
+            if (releaseVersion == null) {
                 releaseVersion = System.getProperty(Constants.PROJECT_NAME_PREFIX + "release.version", "Unknown");
-            } else {
-                Properties props = new Properties();
-                props.load(in);
-                releaseVersion = props.getProperty("lealoneVersion");
             }
-        } catch (Exception e) {
-            releaseVersion = "debug version";
-        } finally {
-            FileUtils.closeQuietly(in);
+        } catch (Throwable e) {
+            releaseVersion = "Unknown(error: " + e.getMessage() + ")";
         }
         return releaseVersion;
     }
