@@ -23,9 +23,9 @@ import java.sql.Statement;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 
-import org.lealone.async.AsyncHandler;
-import org.lealone.async.AsyncResult;
 import org.lealone.client.jdbc.JdbcStatement;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.test.TestBase;
 
 public class AsyncBenchmark {

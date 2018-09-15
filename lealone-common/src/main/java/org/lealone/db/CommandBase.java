@@ -17,8 +17,8 @@
  */
 package org.lealone.db;
 
-import org.lealone.async.AsyncHandler;
-import org.lealone.async.AsyncResult;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 
 public abstract class CommandBase implements Command {

@@ -19,9 +19,9 @@ package org.lealone.net;
 
 import java.util.concurrent.CountDownLatch;
 
-import org.lealone.async.AsyncHandler;
-import org.lealone.async.AsyncResult;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 
 @SuppressWarnings("rawtypes")
 public class AsyncCallback<T> {
