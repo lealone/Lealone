@@ -73,9 +73,9 @@ public enum Verb {
     UNUSED_2,
     UNUSED_3;
 
-    Stage stage;
-    IVersionedSerializer<?> serializer;
-    IVerbHandler<?> verbHandler;
+    public final Stage stage;
+    public final IVersionedSerializer<?> serializer;
+    public final IVerbHandler<?> verbHandler;
 
     private Verb() {
         this(Stage.INTERNAL_RESPONSE, null, null);

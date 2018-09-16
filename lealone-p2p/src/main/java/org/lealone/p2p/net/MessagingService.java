@@ -83,9 +83,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
             throw new IOException("invalid protocol header");
     }
 
-    public static final EnumMap<Verb, Stage> verbStages = new EnumMap<>(Verb.class);
-    public static final EnumMap<Verb, IVersionedSerializer<?>> verbSerializers = new EnumMap<>(Verb.class);
-
     /**
      * Verbs it's okay to drop if the request has been queued longer than the request timeout.
      * These all correspond to client requests or something triggered by them; 
@@ -126,9 +123,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     /* This records all the results mapped by message Id */
     private final ExpiringMap<Integer, CallbackInfo> callbacks;
-
-    /* Lookup table for registering message handlers based on the verb. */
-    private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
@@ -198,15 +192,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     public void start() {
         callbacks.reset(); // hack to allow tests to stop/restart MS
-
-        for (Verb verb : Verb.values()) {
-            if (verb.stage != null)
-                verbStages.put(verb, verb.stage);
-            if (verb.serializer != null)
-                verbSerializers.put(verb, verb.serializer);
-            if (verb.verbHandler != null)
-                registerVerbHandler(verb, verb.verbHandler);
-        }
     }
 
     /**
@@ -252,29 +237,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     public void addLatency(NetEndpoint address, long latency) {
         for (ILatencySubscriber subscriber : subscribers)
             subscriber.receiveTiming(address, latency);
-    }
-
-    /**
-     * Register a verb and the corresponding verb handler with the
-     * Messaging Service.
-     *
-     * @param verb
-     * @param verbHandler handler for the specified verb
-     */
-    public void registerVerbHandler(Verb verb, IVerbHandler verbHandler) {
-        assert !verbHandlers.containsKey(verb);
-        verbHandlers.put(verb, verbHandler);
-    }
-
-    /**
-     * This method returns the verb handler associated with the registered
-     * verb. If no handler has been registered then null is returned.
-     *
-     * @param type for which the verb handler is sought
-     * @return a reference to IVerbHandler which is the handler for the specified verb
-     */
-    public IVerbHandler getVerbHandler(Verb type) {
-        return verbHandlers.get(type);
     }
 
     public int sendRR(MessageOut message, NetEndpoint to, IAsyncCallback cb) {

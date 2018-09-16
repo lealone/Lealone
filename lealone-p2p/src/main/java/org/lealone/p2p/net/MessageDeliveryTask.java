@@ -27,8 +27,7 @@ import org.lealone.p2p.gms.Gossiper;
 class MessageDeliveryTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageDeliveryTask.class);
 
-    private static final EnumSet<Verb> GOSSIP_VERBS = EnumSet.of(
-            Verb.GOSSIP_DIGEST_ACK, Verb.GOSSIP_DIGEST_ACK2,
+    private static final EnumSet<Verb> GOSSIP_VERBS = EnumSet.of(Verb.GOSSIP_DIGEST_ACK, Verb.GOSSIP_DIGEST_ACK2,
             Verb.GOSSIP_DIGEST_SYN);
 
     private final MessageIn message;
@@ -51,7 +50,7 @@ class MessageDeliveryTask implements Runnable {
             return;
         }
 
-        IVerbHandler verbHandler = MessagingService.instance().getVerbHandler(verb);
+        IVerbHandler verbHandler = verb.verbHandler;
         if (verbHandler == null) {
             if (logger.isDebugEnabled())
                 logger.debug("Unknown verb {}", verb);
@@ -66,7 +65,6 @@ class MessageDeliveryTask implements Runnable {
                         .withParameter(MessagingService.FAILURE_RESPONSE_PARAM, MessagingService.ONE_BYTE);
                 MessagingService.instance().sendReply(response, id, message.from);
             }
-
             throw t;
         }
         if (GOSSIP_VERBS.contains(message.verb))

@@ -44,8 +44,7 @@ public class MessageOut<T> {
         this(verb, payload, serializer, Collections.<String, byte[]> emptyMap());
     }
 
-    private MessageOut(Verb verb, T payload, IVersionedSerializer<T> serializer,
-            Map<String, byte[]> parameters) {
+    private MessageOut(Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters) {
         this(ConfigDescriptor.getLocalEndpoint(), verb, payload, serializer, parameters);
     }
 
@@ -65,7 +64,7 @@ public class MessageOut<T> {
     }
 
     public Stage getStage() {
-        return MessagingService.verbStages.get(verb);
+        return verb.stage;
     }
 
     public long getTimeout() {

@@ -35,8 +35,7 @@ public class MessageIn<T> {
     public final Verb verb;
     public final int version;
 
-    private MessageIn(NetEndpoint from, T payload, Map<String, byte[]> parameters, Verb verb,
-            int version) {
+    private MessageIn(NetEndpoint from, T payload, Map<String, byte[]> parameters, Verb verb, int version) {
         this.from = from;
         this.payload = payload;
         this.parameters = parameters;
@@ -45,7 +44,7 @@ public class MessageIn<T> {
     }
 
     public Stage getMessageType() {
-        return MessagingService.verbStages.get(verb);
+        return verb.stage;
     }
 
     public boolean doCallbackOnFailure() {
@@ -87,7 +86,7 @@ public class MessageIn<T> {
         }
 
         int payloadSize = in.readInt();
-        IVersionedSerializer<?> serializer = MessagingService.verbSerializers.get(verb);
+        IVersionedSerializer<?> serializer = verb.serializer;
         if (serializer instanceof MessagingService.CallbackDeterminedSerializer) {
             CallbackInfo callback = MessagingService.instance().getRegisteredCallback(id);
             if (callback == null) {
