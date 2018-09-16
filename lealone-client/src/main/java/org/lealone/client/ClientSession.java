@@ -34,6 +34,7 @@ import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
+import org.lealone.net.TcpConnection;
 import org.lealone.net.Transfer;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
@@ -63,7 +64,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private String cipher;
     private byte[] fileEncryptionKey;
     private int sessionId;
-    private AsyncConnection asyncConnection;
+    private TcpConnection tcpConnection;
 
     ClientSession(ConnectionInfo ci, String server, Session parent) {
         if (!ci.isRemote()) {
@@ -74,8 +75,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         this.parent = parent;
     }
 
-    AsyncConnection getAsyncConnection() {
-        return asyncConnection;
+    TcpConnection getTcpConnection() {
+        return tcpConnection;
     }
 
     @Override
@@ -85,10 +86,10 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public int getNextId() {
-        if (asyncConnection == null)
+        if (tcpConnection == null)
             return super.getNextId();
         else
-            return asyncConnection.getNextId();
+            return tcpConnection.getNextId();
     }
 
     /**
@@ -150,12 +151,16 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     private Transfer initTransfer(ConnectionInfo ci, NetEndpoint endpoint) throws Exception {
         NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
-        asyncConnection = factory.getNetClient().createConnection(ci.getProperties(), endpoint);
+        AsyncConnection conn = factory.getNetClient().createConnection(ci.getProperties(), endpoint);
+        if (!(conn instanceof TcpConnection)) {
+            throw DbException.throwInternalError("not tcp connection: " + conn.getClass().getName());
+        }
+        tcpConnection = (TcpConnection) conn;
         sessionId = getNextId();
-        transfer = asyncConnection.createTransfer(this);
-        asyncConnection.writeInitPacket(this, transfer, ci);
+        transfer = tcpConnection.createTransfer(this);
+        tcpConnection.writeInitPacket(this, transfer, ci);
         if (isValid()) {
-            asyncConnection.addSession(sessionId, this);
+            tcpConnection.addSession(sessionId, this);
         }
         return transfer;
     }
@@ -267,7 +272,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 // 只有当前Session有效时服务器端才持有对应的session
                 if (isValid()) {
                     transfer.writeRequestHeader(Session.SESSION_CLOSE).flush();
-                    asyncConnection.removeSession(sessionId);
+                    tcpConnection.removeSession(sessionId);
                 }
             } catch (RuntimeException e) {
                 trace.error(e, "close");

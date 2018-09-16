@@ -18,6 +18,7 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetServer;
+import org.lealone.net.TcpConnection;
 import org.lealone.net.WritableChannel;
 
 /**
@@ -73,10 +74,10 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
     @Override
     public AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
-            AsyncConnection ac = new AsyncConnection(writableChannel, isServer);
-            ac.setBaseDir(getBaseDir());
-            CommandHandler.addConnection(ac);
-            return ac;
+            TcpConnection conn = new TcpConnection(writableChannel, isServer);
+            conn.setBaseDir(getBaseDir());
+            CommandHandler.addConnection(conn);
+            return conn;
         } else {
             // TODO
             // should support a list of allowed databases
@@ -88,6 +89,6 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
 
     @Override
     public void removeConnection(AsyncConnection conn) {
-        CommandHandler.removeConnection(conn);
+        CommandHandler.removeConnection((TcpConnection) conn);
     }
 }

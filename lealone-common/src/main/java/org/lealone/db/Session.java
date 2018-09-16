@@ -83,7 +83,7 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_STORAGE_REPLICATE_ROOT_PAGES = 183;
     public static final int COMMAND_STORAGE_READ_PAGE = 184;
 
-    public static final int COMMAND_STORAGE_MESSAGE = 10000;
+    public static final int COMMAND_P2P_MESSAGE = 300;
 
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;

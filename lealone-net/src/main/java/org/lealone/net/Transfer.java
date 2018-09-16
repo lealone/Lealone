@@ -11,7 +11,6 @@ import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -70,19 +69,19 @@ public class Transfer implements NetSerializer {
     static final byte REQUEST = 1;
     private static final byte RESPONSE = 2;
 
-    private AsyncConnection conn;
+    private TransferConnection conn;
     private WritableChannel writableChannel;
     private Session session;
     private DataInputStream in;
     private final DataOutputStream out;
     private final ResettableBufferOutputStream resettableOutputStream;
 
-    public Transfer(AsyncConnection conn, WritableChannel writableChannel, Session session) {
+    public Transfer(TransferConnection conn, WritableChannel writableChannel, Session session) {
         this(conn, writableChannel, (NetBuffer) null);
         this.session = session;
     }
 
-    public Transfer(AsyncConnection conn, WritableChannel writableChannel, NetBuffer inBuffer) {
+    public Transfer(TransferConnection conn, WritableChannel writableChannel, NetBuffer inBuffer) {
         this.conn = conn;
         this.writableChannel = writableChannel;
 
@@ -90,8 +89,7 @@ public class Transfer implements NetSerializer {
         out = new DataOutputStream(resettableOutputStream);
 
         if (inBuffer != null) {
-            BufferInputStream bufferInputStream = new BufferInputStream(inBuffer);
-            in = new DataInputStream(bufferInputStream);
+            in = new DataInputStream(new NetBufferInputStream(inBuffer));
         }
     }
 
@@ -99,7 +97,7 @@ public class Transfer implements NetSerializer {
         return new Transfer(conn, writableChannel, session);
     }
 
-    public AsyncConnection getAsyncConnection() {
+    public TransferConnection getTransferConnection() {
         return conn;
     }
 
@@ -177,9 +175,7 @@ public class Transfer implements NetSerializer {
      * Write pending changes.
      */
     public void flush() throws IOException {
-        resettableOutputStream.writePacketLength();
-        writableChannel.write(resettableOutputStream.buffer);
-        resettableOutputStream.reset();
+        resettableOutputStream.flush();
     }
 
     /**
@@ -818,54 +814,25 @@ public class Transfer implements NetSerializer {
         }
     }
 
-    private static class BufferInputStream extends InputStream {
-        final NetBuffer buffer;
-        final int size;
-        int pos;
-
-        BufferInputStream(NetBuffer buffer) {
-            this.buffer = buffer;
-            size = buffer.length();
-        }
-
-        @Override
-        public int available() throws IOException {
-            return size - pos;
-        }
-
-        @Override
-        public int read() throws IOException {
-            return buffer.getUnsignedByte(pos++);
-        }
-    }
-
-    private static class ResettableBufferOutputStream extends OutputStream {
-        final WritableChannel writableChannel;
-        final int initialSizeHint;
-        NetBuffer buffer;
+    private static class ResettableBufferOutputStream extends NetBufferOutputStream {
 
         ResettableBufferOutputStream(WritableChannel writableChannel, int initialSizeHint) {
-            this.writableChannel = writableChannel;
-            this.initialSizeHint = initialSizeHint;
-            reset();
+            super(writableChannel, initialSizeHint);
         }
 
         @Override
-        public void write(int b) {
-            buffer.appendByte((byte) b);
+        public void flush() throws IOException {
+            writePacketLength();
+            super.flush();
         }
 
         @Override
-        public void write(byte b[], int off, int len) {
-            buffer.appendBytes(b, off, len);
-        }
-
-        void reset() {
-            buffer = writableChannel.getBufferFactory().createBuffer(initialSizeHint);
+        protected void reset() {
+            super.reset();
             buffer.appendInt(0); // write packet header for next
         }
 
-        void writePacketLength() {
+        private void writePacketLength() {
             int v = buffer.length() - 4;
             buffer.setByte(0, (byte) ((v >>> 24) & 0xFF));
             buffer.setByte(1, (byte) ((v >>> 16) & 0xFF));
@@ -873,5 +840,4 @@ public class Transfer implements NetSerializer {
             buffer.setByte(3, (byte) (v & 0xFF));
         }
     }
-
 }

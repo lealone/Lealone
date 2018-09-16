@@ -84,7 +84,6 @@ public class P2pServer extends DelegatedProtocolServer
 
     // 单例
     private P2pServer() {
-        super();
     }
 
     @Override

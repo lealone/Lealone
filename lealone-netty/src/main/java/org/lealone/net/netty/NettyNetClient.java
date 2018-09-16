@@ -28,7 +28,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetEndpoint;
-import org.lealone.net.WritableChannel;
+import org.lealone.net.TcpConnection;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -60,9 +60,9 @@ public class NettyNetClient implements org.lealone.net.NetClient {
 
     private static NettyNetClient.NettyClient client;
 
-    private static synchronized void openClient(NettyNetClient factory, Properties prop) {
+    private static synchronized void openClient(NettyNetClient nettyNetClient, Properties prop) {
         if (client == null) {
-            client = new NettyClient(factory, prop);
+            client = new NettyClient(nettyNetClient, prop);
         }
     }
 
@@ -106,10 +106,6 @@ public class NettyNetClient implements org.lealone.net.NetClient {
             }
         }
         return asyncConnection;
-    }
-
-    protected AsyncConnection createConnection(WritableChannel writableChannel) {
-        return new AsyncConnection(writableChannel, false, this);
     }
 
     @Override
@@ -162,7 +158,7 @@ public class NettyNetClient implements org.lealone.net.NetClient {
                     if (connectionManager != null) {
                         conn = connectionManager.createConnection(channel, false);
                     } else {
-                        conn = nettyNetClient.createConnection(channel);
+                        conn = new TcpConnection(channel, nettyNetClient);
                     }
                     ChannelPipeline p = ch.pipeline();
                     p.addLast(new NettyClientHandler(connectionManager, conn));
@@ -190,7 +186,9 @@ public class NettyNetClient implements org.lealone.net.NetClient {
         @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (msg instanceof ByteBuf) {
-                conn.handle(new NettyBuffer((ByteBuf) msg));
+                ByteBuf buff = (ByteBuf) msg;
+                conn.handle(new NettyBuffer(buff));
+                buff.release();
             }
         }
 

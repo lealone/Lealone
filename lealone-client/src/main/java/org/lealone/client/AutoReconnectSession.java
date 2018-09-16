@@ -69,7 +69,7 @@ class AutoReconnectSession extends DelegatedSession {
                 try {
                     clientSession = new ClientSession(ci, s, this);
                     clientSession.connect();
-                    inetSocketAddress = clientSession.getAsyncConnection().getInetSocketAddress();
+                    inetSocketAddress = clientSession.getTcpConnection().getInetSocketAddress();
                     session = clientSession;
                     break;
                 } catch (Exception e) {

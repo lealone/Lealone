@@ -22,19 +22,23 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 import org.lealone.common.concurrent.LealoneExecutorService;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.db.Session;
 import org.lealone.net.AsyncCallback;
-import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.Transfer;
+import org.lealone.net.TransferConnection;
 import org.lealone.net.WritableChannel;
 import org.lealone.p2p.concurrent.StageManager;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.metrics.ConnectionMetrics;
 import org.lealone.p2p.server.ClusterMetaData;
 
-public class P2pConnection extends AsyncConnection {
+public class P2pConnection extends TransferConnection {
+
+    private static final Logger logger = LoggerFactory.getLogger(P2pConnection.class);
 
     private Transfer transfer;
     private DataOutputStream out;
@@ -68,12 +72,9 @@ public class P2pConnection extends AsyncConnection {
     }
 
     @Override
-    protected void close() {
+    public void close() {
         if (transfer != null)
             transfer.close();
-        else if (writableChannel != null) {
-            writableChannel.close();
-        }
         super.close();
     }
 
@@ -171,12 +172,13 @@ public class P2pConnection extends AsyncConnection {
             readInitPacket(transfer, id);
             break;
         }
-        case Session.COMMAND_STORAGE_MESSAGE: {
+        case Session.COMMAND_P2P_MESSAGE: {
             receiveMessage(transfer.getDataInputStream(), id);
             break;
         }
         default:
-            super.processRequest(transfer, id, operation);
+            logger.warn("Unknow operation: {}", operation);
+            close();
         }
     }
 
@@ -190,7 +192,7 @@ public class P2pConnection extends AsyncConnection {
     }
 
     private synchronized void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
-        transfer.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_STORAGE_MESSAGE);
+        transfer.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_P2P_MESSAGE);
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
 
         // int cast cuts off the high-order half of the timestamp, which we can assume remains

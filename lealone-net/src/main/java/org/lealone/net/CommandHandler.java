@@ -26,14 +26,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.db.SessionStatus;
-import org.lealone.net.AsyncConnection.SessionInfo;
+import org.lealone.net.TcpConnection.SessionInfo;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 
 public class CommandHandler extends Thread implements SQLStatementExecutor {
 
-    private static final LinkedList<AsyncConnection> connections = new LinkedList<>();
+    private static final LinkedList<TcpConnection> connections = new LinkedList<>();
     private static final int commandHandlersCount = 2; // Runtime.getRuntime().availableProcessors();
     private static final CommandHandler[] commandHandlers = new CommandHandler[commandHandlersCount];
     private static final AtomicInteger index = new AtomicInteger(0);
@@ -66,11 +66,11 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         return commandHandlers[index.getAndIncrement() % commandHandlers.length];
     }
 
-    public static void addConnection(AsyncConnection c) {
+    public static void addConnection(TcpConnection c) {
         connections.add(c);
     }
 
-    public static void removeConnection(AsyncConnection c) {
+    public static void removeConnection(TcpConnection c) {
         connections.remove(c);
         c.close();
     }
@@ -132,7 +132,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
             try {
                 c.run();
             } catch (Throwable e) {
-                c.transfer.getAsyncConnection().sendError(c.transfer, c.id, e);
+                c.transfer.getTransferConnection().sendError(c.transfer, c.id, e);
             }
         }
     }
@@ -190,7 +190,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
             try {
                 c.run();
             } catch (Throwable e) {
-                c.transfer.getAsyncConnection().sendError(c.transfer, c.id, e);
+                c.transfer.getTransferConnection().sendError(c.transfer, c.id, e);
             }
         }
 
