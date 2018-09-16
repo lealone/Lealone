@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.lealone.p2p.net.IVersionedSerializer;
-import org.lealone.p2p.util.TypeSizes;
 
 /**
  * This is the first message that gets sent out as a start of the Gossip protocol in a
@@ -56,13 +55,6 @@ public class GossipDigestSyn {
             String clusterId = in.readUTF();
             List<GossipDigest> gDigests = GossipDigestSerializationHelper.deserialize(in, version);
             return new GossipDigestSyn(clusterId, gDigests);
-        }
-
-        @Override
-        public long serializedSize(GossipDigestSyn syn, int version) {
-            long size = TypeSizes.NATIVE.sizeof(syn.clusterId);
-            size += GossipDigestSerializationHelper.serializedSize(syn.gDigests, version);
-            return size;
         }
     }
 }

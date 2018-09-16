@@ -22,7 +22,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import org.lealone.p2p.net.IVersionedSerializer;
-import org.lealone.p2p.util.TypeSizes;
 
 /**
  * HeartBeat State associated with any given endpoint.
@@ -73,12 +72,6 @@ class HeartBeatState {
         @Override
         public HeartBeatState deserialize(DataInput in, int version) throws IOException {
             return new HeartBeatState(in.readInt(), in.readInt());
-        }
-
-        @Override
-        public long serializedSize(HeartBeatState state, int version) {
-            return TypeSizes.NATIVE.sizeof(state.getGeneration())
-                    + TypeSizes.NATIVE.sizeof(state.getHeartBeatVersion());
         }
     }
 }

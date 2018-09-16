@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.p2p.net.IVersionedSerializer;
-import org.lealone.p2p.util.TypeSizes;
 
 /**
  * This abstraction represents both the HeartBeatState and the ApplicationState in an EndpointState
@@ -131,18 +130,6 @@ public class EndpointState {
                 epState.addApplicationState(EndpointState.STATES[key], value);
             }
             return epState;
-        }
-
-        @Override
-        public long serializedSize(EndpointState epState, int version) {
-            long size = HeartBeatState.serializer.serializedSize(epState.getHeartBeatState(), version);
-            size += TypeSizes.NATIVE.sizeof(epState.applicationState.size());
-            for (Map.Entry<ApplicationState, VersionedValue> entry : epState.applicationState.entrySet()) {
-                VersionedValue value = entry.getValue();
-                size += TypeSizes.NATIVE.sizeof(entry.getKey().ordinal());
-                size += VersionedValue.serializer.serializedSize(value, version);
-            }
-            return size;
         }
     }
 }

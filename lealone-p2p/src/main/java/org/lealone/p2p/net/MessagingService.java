@@ -182,11 +182,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         public void serialize(Object o, DataOutput out, int version) throws IOException {
             throw new UnsupportedOperationException();
         }
-
-        @Override
-        public long serializedSize(Object o, int version) {
-            throw new UnsupportedOperationException();
-        }
     }
 
     /* This records all the results mapped by message Id */

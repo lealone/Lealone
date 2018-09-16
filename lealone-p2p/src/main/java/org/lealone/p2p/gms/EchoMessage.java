@@ -35,10 +35,5 @@ public class EchoMessage {
         public EchoMessage deserialize(DataInput in, int version) throws IOException {
             return new EchoMessage();
         }
-
-        @Override
-        public long serializedSize(EchoMessage t, int version) {
-            return 0;
-        }
     }
 }

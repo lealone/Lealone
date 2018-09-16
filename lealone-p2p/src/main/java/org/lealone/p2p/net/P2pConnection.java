@@ -27,6 +27,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.db.Session;
 import org.lealone.net.AsyncCallback;
+import org.lealone.net.NetBuffer;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.Transfer;
 import org.lealone.net.TransferConnection;
@@ -41,7 +42,6 @@ public class P2pConnection extends TransferConnection {
     private static final Logger logger = LoggerFactory.getLogger(P2pConnection.class);
 
     private Transfer transfer;
-    private DataOutputStream out;
     private NetEndpoint remoteEndpoint;
     private NetEndpoint resetEndpoint; // pointer to the reset Address.
     private int targetVersion;
@@ -107,7 +107,6 @@ public class P2pConnection extends TransferConnection {
             metrics = new ConnectionMetrics(remoteEndpoint);
             this.hostAndPort = remoteHostAndPort;
             transfer = new Transfer(this, writableChannel, (Session) null);
-            out = transfer.getDataOutputStream();
             targetVersion = MessagingService.instance().getVersion(remoteEndpoint);
             writeInitPacket(transfer, 0, targetVersion, localHostAndPort);
         }
@@ -128,7 +127,6 @@ public class P2pConnection extends TransferConnection {
         try {
             if (this.transfer == null) {
                 this.transfer = new Transfer(this, writableChannel, (Session) null);
-                out = this.transfer.getDataOutputStream();
             }
             MessagingService.validateMagic(transfer.readInt());
             version = transfer.readInt();
@@ -144,6 +142,30 @@ public class P2pConnection extends TransferConnection {
         } catch (Throwable e) {
             sendError(transfer, sessionId, e);
         }
+    }
+
+    void enqueue(MessageOut<?> message, int id) {
+        QueuedMessage qm = new QueuedMessage(message, id);
+        try {
+            sendMessage(qm.message, qm.id, qm.timestamp);
+        } catch (IOException e) {
+            JVMStabilityInspector.inspectThrowable(e);
+        }
+    }
+
+    private synchronized void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
+        Transfer transfer = new Transfer(this, writableChannel, (NetBuffer) null);
+        DataOutputStream out = transfer.getDataOutputStream();
+        transfer.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_P2P_MESSAGE);
+        out.writeInt(MessagingService.PROTOCOL_MAGIC);
+
+        // int cast cuts off the high-order half of the timestamp, which we can assume remains
+        // the same between now and when the recipient reconstructs it.
+        out.writeInt((int) timestamp);
+        int payloadStartPos = message.serialize(transfer, out, targetVersion);
+        int size = transfer.getDataOutputStreamSize() - payloadStartPos - 4;
+        transfer.setPayloadSize(payloadStartPos, size);
+        transfer.flush();
     }
 
     private void receiveMessage(DataInputStream in, int id) throws IOException {
@@ -166,7 +188,8 @@ public class P2pConnection extends TransferConnection {
     }
 
     @Override
-    protected void processRequest(Transfer transfer, int id, int operation) throws IOException {
+    protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
+        this.transfer = transfer;
         switch (operation) {
         case Session.SESSION_INIT: {
             readInitPacket(transfer, id);
@@ -180,26 +203,6 @@ public class P2pConnection extends TransferConnection {
             logger.warn("Unknow operation: {}", operation);
             close();
         }
-    }
-
-    void enqueue(MessageOut<?> message, int id) {
-        QueuedMessage qm = new QueuedMessage(message, id);
-        try {
-            sendMessage(qm.message, qm.id, qm.timestamp);
-        } catch (IOException e) {
-            JVMStabilityInspector.inspectThrowable(e);
-        }
-    }
-
-    private synchronized void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
-        transfer.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_P2P_MESSAGE);
-        out.writeInt(MessagingService.PROTOCOL_MAGIC);
-
-        // int cast cuts off the high-order half of the timestamp, which we can assume remains
-        // the same between now and when the recipient reconstructs it.
-        out.writeInt((int) timestamp);
-        message.serialize(out, targetVersion);
-        transfer.flush();
     }
 
     /** messages that have not been retried yet */
@@ -224,7 +227,6 @@ public class P2pConnection extends TransferConnection {
         boolean shouldRetry() {
             return !droppable;
         }
-
     }
 
     // TODO

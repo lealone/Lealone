@@ -25,7 +25,6 @@ import java.util.UUID;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.net.IVersionedSerializer;
 import org.lealone.p2p.net.MessagingService;
-import org.lealone.p2p.util.TypeSizes;
 import org.lealone.p2p.util.Utils;
 
 /**
@@ -186,11 +185,6 @@ public class VersionedValue implements Comparable<VersionedValue> {
             String value = in.readUTF();
             int valVersion = in.readInt();
             return new VersionedValue(value, valVersion);
-        }
-
-        @Override
-        public long serializedSize(VersionedValue value, int version) {
-            return TypeSizes.NATIVE.sizeof(outValue(value, version)) + TypeSizes.NATIVE.sizeof(value.version);
         }
     }
 }

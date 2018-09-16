@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lealone.p2p.util.TypeSizes;
-
 class GossipDigestSerializationHelper {
     private GossipDigestSerializationHelper() {
     }
@@ -41,12 +39,5 @@ class GossipDigestSerializationHelper {
         for (int i = 0; i < size; ++i)
             gDigests.add(GossipDigest.serializer.deserialize(in, version));
         return gDigests;
-    }
-
-    static int serializedSize(List<GossipDigest> digests, int version) {
-        int size = TypeSizes.NATIVE.sizeof(digests.size());
-        for (GossipDigest digest : digests)
-            size += GossipDigest.serializer.serializedSize(digest, version);
-        return size;
     }
 }

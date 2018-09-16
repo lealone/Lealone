@@ -24,7 +24,6 @@ import java.io.IOException;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.net.CompactEndpointSerializationHelper;
 import org.lealone.p2p.net.IVersionedSerializer;
-import org.lealone.p2p.util.TypeSizes;
 
 /**
  * Contains information about a specified list of Endpoints and the largest version
@@ -87,14 +86,6 @@ public class GossipDigest implements Comparable<GossipDigest> {
             int generation = in.readInt();
             int maxVersion = in.readInt();
             return new GossipDigest(endpoint, generation, maxVersion);
-        }
-
-        @Override
-        public long serializedSize(GossipDigest gDigest, int version) {
-            long size = CompactEndpointSerializationHelper.serializedSize(gDigest.endpoint);
-            size += TypeSizes.NATIVE.sizeof(gDigest.generation);
-            size += TypeSizes.NATIVE.sizeof(gDigest.maxVersion);
-            return size;
         }
     }
 }

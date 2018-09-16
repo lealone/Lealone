@@ -424,7 +424,7 @@ public class TcpConnection extends TransferConnection {
     }
 
     @Override
-    protected void processResponse(Transfer transfer, int id, int status) throws IOException {
+    protected void handleResponse(Transfer transfer, int id, int status) throws IOException {
         String newTargetEndpoints = null;
         Session session = null;
         if (status == Session.STATUS_RUN_MODE_CHANGED) {
@@ -432,7 +432,7 @@ public class TcpConnection extends TransferConnection {
             session = sessions.get(sessionId);
             newTargetEndpoints = transfer.readString();
         }
-        super.processResponse(transfer, id, status);
+        super.handleResponse(transfer, id, status);
         if (newTargetEndpoints != null)
             session.runModeChanged(newTargetEndpoints);
     }
@@ -442,7 +442,7 @@ public class TcpConnection extends TransferConnection {
     }
 
     @Override
-    protected void processRequest(Transfer transfer, int id, int operation) throws IOException {
+    protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
         int sessionId = transfer.readInt();
         Session session = sessions.get(sessionId);
         // 初始化时，肯定是不存在session的

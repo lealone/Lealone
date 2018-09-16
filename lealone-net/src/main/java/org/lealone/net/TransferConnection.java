@@ -41,9 +41,9 @@ public abstract class TransferConnection extends AsyncConnection {
         super(writableChannel, isServer);
     }
 
-    protected abstract void processRequest(Transfer transfer, int id, int operation) throws IOException;
+    protected abstract void handleRequest(Transfer transfer, int id, int operation) throws IOException;
 
-    protected void processResponse(Transfer transfer, int id, int status) throws IOException {
+    protected void handleResponse(Transfer transfer, int id, int status) throws IOException {
         DbException e = null;
         if (status == Session.STATUS_OK) {
             // ok
@@ -190,14 +190,14 @@ public abstract class TransferConnection extends AsyncConnection {
         if (isRequest) {
             int operation = transfer.readInt();
             try {
-                processRequest(transfer, id, operation);
+                handleRequest(transfer, id, operation);
             } catch (Throwable e) {
-                logger.error("Failed to process request, operation: " + operation, e);
+                logger.error("Failed to handle request, operation: " + operation, e);
                 sendError(transfer, id, e);
             }
         } else {
             int status = transfer.readInt();
-            processResponse(transfer, id, status);
+            handleResponse(transfer, id, status);
         }
     }
 }

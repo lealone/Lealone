@@ -24,9 +24,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.net.NetEndpoint;
+import org.lealone.net.Transfer;
 import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.config.ConfigDescriptor;
-import org.lealone.p2p.util.TypeSizes;
 
 public class MessageOut<T> {
     public final NetEndpoint from;
@@ -79,7 +79,7 @@ public class MessageOut<T> {
         return sbuf.toString();
     }
 
-    public void serialize(DataOutput out, int version) throws IOException {
+    public int serialize(Transfer transfer, DataOutput out, int version) throws IOException {
         CompactEndpointSerializationHelper.serialize(from, out);
 
         out.writeInt(verb.ordinal());
@@ -90,28 +90,13 @@ public class MessageOut<T> {
             out.write(entry.getValue());
         }
 
-        long longSize = payload == null ? 0 : serializer.serializedSize(payload, version);
-        assert longSize <= Integer.MAX_VALUE; // larger values are supported in sstables but not messages
-        out.writeInt((int) longSize);
+        // long longSize = payload == null ? 0 : serializer.serializedSize(payload, version);
+        // assert longSize <= Integer.MAX_VALUE; // larger values are supported in sstables but not messages
+        int payloadStartPos = transfer.getDataOutputStreamSize();
+        // out.writeInt((int) longSize);
+        out.writeInt(0); // 写设为0，会回填
         if (payload != null)
             serializer.serialize(payload, out, version);
-    }
-
-    public int serializedSize(int version) {
-        int size = CompactEndpointSerializationHelper.serializedSize(from);
-
-        size += TypeSizes.NATIVE.sizeof(verb.ordinal());
-        size += TypeSizes.NATIVE.sizeof(parameters.size());
-        for (Map.Entry<String, byte[]> entry : parameters.entrySet()) {
-            TypeSizes.NATIVE.sizeof(entry.getKey());
-            TypeSizes.NATIVE.sizeof(entry.getValue().length);
-            size += entry.getValue().length;
-        }
-
-        long longSize = payload == null ? 0 : serializer.serializedSize(payload, version);
-        assert longSize <= Integer.MAX_VALUE; // larger values are supported in sstables but not messages
-        size += TypeSizes.NATIVE.sizeof((int) longSize);
-        size += longSize;
-        return size;
+        return payloadStartPos;
     }
 }

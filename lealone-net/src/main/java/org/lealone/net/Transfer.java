@@ -93,6 +93,14 @@ public class Transfer implements NetSerializer {
         }
     }
 
+    public int getDataOutputStreamSize() {
+        return out.size();
+    }
+
+    public void setPayloadSize(int payloadStartPos, int size) {
+        resettableOutputStream.setPayloadSize(payloadStartPos, size);
+    }
+
     public Transfer copy(Session session) {
         return new Transfer(conn, writableChannel, session);
     }
@@ -838,6 +846,15 @@ public class Transfer implements NetSerializer {
             buffer.setByte(1, (byte) ((v >>> 16) & 0xFF));
             buffer.setByte(2, (byte) ((v >>> 8) & 0xFF));
             buffer.setByte(3, (byte) (v & 0xFF));
+        }
+
+        public void setPayloadSize(int payloadStartPos, int size) {
+            payloadStartPos += 4;
+            int v = size;
+            buffer.setByte(payloadStartPos, (byte) ((v >>> 24) & 0xFF));
+            buffer.setByte(payloadStartPos + 1, (byte) ((v >>> 16) & 0xFF));
+            buffer.setByte(payloadStartPos + 2, (byte) ((v >>> 8) & 0xFF));
+            buffer.setByte(payloadStartPos + 3, (byte) (v & 0xFF));
         }
     }
 }

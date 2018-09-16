@@ -40,12 +40,4 @@ public interface IVersionedSerializer<T> {
      * @throws IOException if deserialization fails
      */
     public T deserialize(DataInput in, int version) throws IOException;
-
-    /**
-     * Calculate serialized size of object without actually serializing.
-     * @param t object to calculate serialized size
-     * @param version protocol version
-     * @return serialized size of object t
-     */
-    public long serializedSize(T t, int version);
 }

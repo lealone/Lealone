@@ -27,7 +27,6 @@ import java.util.Map;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.net.CompactEndpointSerializationHelper;
 import org.lealone.p2p.net.IVersionedSerializer;
-import org.lealone.p2p.util.TypeSizes;
 
 /**
  * This ack gets sent out as a result of the receipt of a GossipDigestSynMessage by an
@@ -76,16 +75,6 @@ public class GossipDigestAck {
                 epStateMap.put(ep, epState);
             }
             return new GossipDigestAck(gDigestList, epStateMap);
-        }
-
-        @Override
-        public long serializedSize(GossipDigestAck ack, int version) {
-            int size = GossipDigestSerializationHelper.serializedSize(ack.gDigestList, version);
-            size += TypeSizes.NATIVE.sizeof(ack.epStateMap.size());
-            for (Map.Entry<NetEndpoint, EndpointState> entry : ack.epStateMap.entrySet())
-                size += CompactEndpointSerializationHelper.serializedSize(entry.getKey())
-                        + EndpointState.serializer.serializedSize(entry.getValue(), version);
-            return size;
         }
     }
 }
