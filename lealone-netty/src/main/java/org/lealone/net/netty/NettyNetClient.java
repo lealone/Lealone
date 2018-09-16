@@ -152,20 +152,22 @@ public class NettyNetClient implements org.lealone.net.NetClient {
             bootstrap.connect(host, port).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
-                    SocketChannel ch = (SocketChannel) future.channel();
-                    NettyWritableChannel channel = new NettyWritableChannel(ch);
-                    AsyncConnection conn;
-                    if (connectionManager != null) {
-                        conn = connectionManager.createConnection(channel, false);
-                    } else {
-                        conn = new TcpConnection(channel, nettyNetClient);
+                    if (future.isSuccess()) {
+                        SocketChannel ch = (SocketChannel) future.channel();
+                        NettyWritableChannel channel = new NettyWritableChannel(ch);
+                        AsyncConnection conn;
+                        if (connectionManager != null) {
+                            conn = connectionManager.createConnection(channel, false);
+                        } else {
+                            conn = new TcpConnection(channel, nettyNetClient);
+                        }
+                        ChannelPipeline p = ch.pipeline();
+                        p.addLast(new NettyClientHandler(connectionManager, conn));
+                        InetSocketAddress remoteAddress = ch.remoteAddress();
+                        conn.setHostAndPort(remoteAddress.getHostName() + ":" + remoteAddress.getPort());
+                        conn.setInetSocketAddress(inetSocketAddress);
+                        asyncConnections.put(inetSocketAddress, conn);
                     }
-                    ChannelPipeline p = ch.pipeline();
-                    p.addLast(new NettyClientHandler(connectionManager, conn));
-                    InetSocketAddress remoteAddress = ch.remoteAddress();
-                    conn.setHostAndPort(remoteAddress.getHostName() + ":" + remoteAddress.getPort());
-                    conn.setInetSocketAddress(inetSocketAddress);
-                    asyncConnections.put(inetSocketAddress, conn);
                     latch.countDown();
                 }
             });

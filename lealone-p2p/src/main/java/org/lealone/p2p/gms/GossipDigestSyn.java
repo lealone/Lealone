@@ -23,12 +23,14 @@ import java.io.IOException;
 import java.util.List;
 
 import org.lealone.p2p.net.IVersionedSerializer;
+import org.lealone.p2p.net.Message;
+import org.lealone.p2p.net.MessageType;
 
 /**
  * This is the first message that gets sent out as a start of the Gossip protocol in a
  * round.
  */
-public class GossipDigestSyn {
+public class GossipDigestSyn implements Message<GossipDigestSyn> {
     public static final IVersionedSerializer<GossipDigestSyn> serializer = new GossipDigestSynSerializer();
 
     final String clusterId;
@@ -41,6 +43,16 @@ public class GossipDigestSyn {
 
     List<GossipDigest> getGossipDigests() {
         return gDigests;
+    }
+
+    @Override
+    public MessageType getType() {
+        return MessageType.GOSSIP_DIGEST_SYN;
+    }
+
+    @Override
+    public IVersionedSerializer<GossipDigestSyn> getSerializer() {
+        return serializer;
     }
 
     private static class GossipDigestSynSerializer implements IVersionedSerializer<GossipDigestSyn> {

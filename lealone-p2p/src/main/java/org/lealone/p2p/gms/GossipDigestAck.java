@@ -27,12 +27,14 @@ import java.util.Map;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.net.CompactEndpointSerializationHelper;
 import org.lealone.p2p.net.IVersionedSerializer;
+import org.lealone.p2p.net.Message;
+import org.lealone.p2p.net.MessageType;
 
 /**
  * This ack gets sent out as a result of the receipt of a GossipDigestSynMessage by an
  * endpoint. This is the 2 stage of the 3 way messaging in the Gossip protocol.
  */
-public class GossipDigestAck {
+public class GossipDigestAck implements Message<GossipDigestAck> {
     public static final IVersionedSerializer<GossipDigestAck> serializer = new GossipDigestAckSerializer();
 
     final List<GossipDigest> gDigestList;
@@ -49,6 +51,16 @@ public class GossipDigestAck {
 
     Map<NetEndpoint, EndpointState> getEndpointStateMap() {
         return epStateMap;
+    }
+
+    @Override
+    public MessageType getType() {
+        return MessageType.GOSSIP_DIGEST_ACK;
+    }
+
+    @Override
+    public IVersionedSerializer<GossipDigestAck> getSerializer() {
+        return serializer;
     }
 
     private static class GossipDigestAckSerializer implements IVersionedSerializer<GossipDigestAck> {

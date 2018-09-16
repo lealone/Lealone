@@ -28,39 +28,36 @@ import org.lealone.net.Transfer;
 import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.config.ConfigDescriptor;
 
-public class MessageOut<T> {
+public class MessageOut<T extends Message<T>> {
     public final NetEndpoint from;
     public final Verb verb;
     public final T payload;
-    public final IVersionedSerializer<T> serializer;
     public final Map<String, byte[]> parameters;
 
     // we do support messages that just consist of a verb
     public MessageOut(Verb verb) {
-        this(verb, null, null);
+        this(verb, null);
     }
 
-    public MessageOut(Verb verb, T payload, IVersionedSerializer<T> serializer) {
-        this(verb, payload, serializer, Collections.<String, byte[]> emptyMap());
+    public MessageOut(Verb verb, T payload) {
+        this(verb, payload, Collections.<String, byte[]> emptyMap());
     }
 
-    private MessageOut(Verb verb, T payload, IVersionedSerializer<T> serializer, Map<String, byte[]> parameters) {
-        this(ConfigDescriptor.getLocalEndpoint(), verb, payload, serializer, parameters);
+    private MessageOut(Verb verb, T payload, Map<String, byte[]> parameters) {
+        this(ConfigDescriptor.getLocalEndpoint(), verb, payload, parameters);
     }
 
-    public MessageOut(NetEndpoint from, Verb verb, T payload, IVersionedSerializer<T> serializer,
-            Map<String, byte[]> parameters) {
+    public MessageOut(NetEndpoint from, Verb verb, T payload, Map<String, byte[]> parameters) {
         this.from = from;
         this.verb = verb;
         this.payload = payload;
-        this.serializer = serializer;
         this.parameters = parameters;
     }
 
     public MessageOut<T> withParameter(String key, byte[] value) {
         HashMap<String, byte[]> map = new HashMap<>(parameters);
         map.put(key, value);
-        return new MessageOut<T>(verb, payload, serializer, map);
+        return new MessageOut<T>(verb, payload, map);
     }
 
     public Stage getStage() {
@@ -95,7 +92,7 @@ public class MessageOut<T> {
         // out.writeInt((int) longSize);
         out.writeInt(0); // 写设为0，会回填
         if (payload != null)
-            serializer.serialize(payload, out, version);
+            payload.getSerializer().serialize(payload, out, version);
         return payloadStartPos;
     }
 }

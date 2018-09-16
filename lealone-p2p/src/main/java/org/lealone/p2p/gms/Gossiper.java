@@ -159,8 +159,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
                 if (gDigests.size() > 0) {
                     GossipDigestSyn digestSynMessage = new GossipDigestSyn(ConfigDescriptor.getClusterName(), gDigests);
-                    MessageOut<GossipDigestSyn> message = new MessageOut<>(Verb.GOSSIP_DIGEST_SYN,
-                            digestSynMessage, GossipDigestSyn.serializer);
+                    MessageOut<GossipDigestSyn> message = new MessageOut<>(Verb.GOSSIP_DIGEST_SYN, digestSynMessage);
                     /* Gossip to some random live member */
                     boolean gossipedToSeed = doGossipToLiveMember(message);
 
@@ -803,8 +802,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private void markAlive(final NetEndpoint addr, final EndpointState localState) {
         localState.markDead();
 
-        MessageOut<EchoMessage> echoMessage = new MessageOut<>(Verb.ECHO, new EchoMessage(),
-                EchoMessage.serializer);
+        MessageOut<EchoMessage> echoMessage = new MessageOut<>(Verb.ECHO, new EchoMessage());
         logger.trace("Sending a EchoMessage to {}", addr);
         IAsyncCallback<Void> echoHandler = new IAsyncCallback<Void>() {
             @Override
@@ -1081,8 +1079,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         // send a completely empty syn
         List<GossipDigest> gDigests = new ArrayList<>();
         GossipDigestSyn digestSynMessage = new GossipDigestSyn(ConfigDescriptor.getClusterName(), gDigests);
-        MessageOut<GossipDigestSyn> message = new MessageOut<>(Verb.GOSSIP_DIGEST_SYN,
-                digestSynMessage, GossipDigestSyn.serializer);
+        MessageOut<GossipDigestSyn> message = new MessageOut<>(Verb.GOSSIP_DIGEST_SYN, digestSynMessage);
         inShadowRound = true;
         for (NetEndpoint seed : seeds)
             MessagingService.instance().sendOneWay(message, seed);
@@ -1166,7 +1163,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
             scheduledGossipTask.cancel(false);
         logger.info("Announcing shutdown");
         Uninterruptibles.sleepUninterruptibly(INTERVAL_IN_MILLIS * 2, TimeUnit.MILLISECONDS);
-        MessageOut<Void> message = new MessageOut<>(Verb.GOSSIP_SHUTDOWN);
+        MessageOut<?> message = new MessageOut<>(Verb.GOSSIP_SHUTDOWN);
         for (NetEndpoint ep : liveEndpoints)
             MessagingService.instance().sendOneWay(message, ep);
     }

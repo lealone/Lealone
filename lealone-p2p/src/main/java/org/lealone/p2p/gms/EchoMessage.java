@@ -22,8 +22,10 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import org.lealone.p2p.net.IVersionedSerializer;
+import org.lealone.p2p.net.Message;
+import org.lealone.p2p.net.MessageType;
 
-public class EchoMessage {
+public class EchoMessage implements Message<EchoMessage> {
     public static final IVersionedSerializer<EchoMessage> serializer = new EchoMessageSerializer();
 
     private static class EchoMessageSerializer implements IVersionedSerializer<EchoMessage> {
@@ -35,5 +37,15 @@ public class EchoMessage {
         public EchoMessage deserialize(DataInput in, int version) throws IOException {
             return new EchoMessage();
         }
+    }
+
+    @Override
+    public MessageType getType() {
+        return MessageType.ECHO;
+    }
+
+    @Override
+    public IVersionedSerializer<EchoMessage> getSerializer() {
+        return serializer;
     }
 }

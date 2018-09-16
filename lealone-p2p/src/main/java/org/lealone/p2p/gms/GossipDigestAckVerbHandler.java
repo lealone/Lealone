@@ -75,7 +75,7 @@ public class GossipDigestAckVerbHandler implements IVerbHandler<GossipDigestAck>
         }
 
         MessageOut<GossipDigestAck2> gDigestAck2Message = new MessageOut<>(Verb.GOSSIP_DIGEST_ACK2,
-                new GossipDigestAck2(deltaEpStateMap), GossipDigestAck2.serializer);
+                new GossipDigestAck2(deltaEpStateMap));
         if (logger.isTraceEnabled())
             logger.trace("Sending a GossipDigestAck2Message to {}", from);
         MessagingService.instance().sendOneWay(gDigestAck2Message, from);
