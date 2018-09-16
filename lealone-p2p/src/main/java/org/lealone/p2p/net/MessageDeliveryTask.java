@@ -27,9 +27,9 @@ import org.lealone.p2p.gms.Gossiper;
 class MessageDeliveryTask implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(MessageDeliveryTask.class);
 
-    private static final EnumSet<MessagingService.Verb> GOSSIP_VERBS = EnumSet.of(
-            MessagingService.Verb.GOSSIP_DIGEST_ACK, MessagingService.Verb.GOSSIP_DIGEST_ACK2,
-            MessagingService.Verb.GOSSIP_DIGEST_SYN);
+    private static final EnumSet<Verb> GOSSIP_VERBS = EnumSet.of(
+            Verb.GOSSIP_DIGEST_ACK, Verb.GOSSIP_DIGEST_ACK2,
+            Verb.GOSSIP_DIGEST_SYN);
 
     private final MessageIn message;
     private final long constructionTime;
@@ -44,7 +44,7 @@ class MessageDeliveryTask implements Runnable {
 
     @Override
     public void run() {
-        MessagingService.Verb verb = message.verb;
+        Verb verb = message.verb;
         if (MessagingService.DROPPABLE_VERBS.contains(verb)
                 && System.currentTimeMillis() > constructionTime + message.getTimeout()) {
             MessagingService.instance().incrementDroppedMessages(verb);
@@ -62,7 +62,7 @@ class MessageDeliveryTask implements Runnable {
             verbHandler.doVerb(message, id);
         } catch (Throwable t) {
             if (message.doCallbackOnFailure()) {
-                MessageOut response = new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE)
+                MessageOut response = new MessageOut(Verb.INTERNAL_RESPONSE)
                         .withParameter(MessagingService.FAILURE_RESPONSE_PARAM, MessagingService.ONE_BYTE);
                 MessagingService.instance().sendReply(response, id, message.from);
             }

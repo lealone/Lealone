@@ -161,7 +161,7 @@ public class P2pServer extends DelegatedProtocolServer
         appStates.put(ApplicationState.NET_VERSION, valueFactory.networkVersion());
 
         // 先启动MessagingService再启动Gossiper
-        MessagingService.instance().start(localEndpoint, getConfig());
+        MessagingService.instance().start();
 
         logger.info("Starting up server gossip");
         Gossiper.instance.register(this);

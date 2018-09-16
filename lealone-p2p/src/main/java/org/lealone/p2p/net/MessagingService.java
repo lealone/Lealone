@@ -39,7 +39,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import org.lealone.common.concurrent.ScheduledExecutors;
-import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -52,20 +51,12 @@ import org.lealone.net.WritableChannel;
 import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.concurrent.StageManager;
 import org.lealone.p2p.config.ConfigDescriptor;
-import org.lealone.p2p.gms.EchoMessage;
-import org.lealone.p2p.gms.EchoVerbHandler;
-import org.lealone.p2p.gms.GossipDigestAck;
-import org.lealone.p2p.gms.GossipDigestAck2;
-import org.lealone.p2p.gms.GossipDigestAck2VerbHandler;
-import org.lealone.p2p.gms.GossipDigestAckVerbHandler;
-import org.lealone.p2p.gms.GossipDigestSyn;
-import org.lealone.p2p.gms.GossipDigestSynVerbHandler;
-import org.lealone.p2p.gms.GossipShutdownVerbHandler;
 import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.locator.ILatencySubscriber;
 import org.lealone.p2p.metrics.ConnectionMetrics;
 import org.lealone.p2p.metrics.DroppedMessageMetrics;
 import org.lealone.p2p.server.ClusterMetaData;
+import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.ExpiringMap;
 import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Utils;
@@ -74,21 +65,6 @@ import org.lealone.p2p.util.Utils;
 public final class MessagingService implements MessagingServiceMBean, AsyncConnectionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(MessagingService.class);
-
-    /* All verb handler identifiers */
-    public static enum Verb {
-        REQUEST_RESPONSE, // client-initiated reads and writes
-        GOSSIP_DIGEST_SYN,
-        GOSSIP_DIGEST_ACK,
-        GOSSIP_DIGEST_ACK2,
-        GOSSIP_SHUTDOWN,
-        INTERNAL_RESPONSE, // responses to internal calls
-        ECHO,
-        // remember to add new verbs at the end, since we serialize by ordinal
-        UNUSED_1,
-        UNUSED_2,
-        UNUSED_3;
-    }
 
     public static final int VERSION_10 = 1;
     public static final int CURRENT_VERSION = VERSION_10;
@@ -107,6 +83,9 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
             throw new IOException("invalid protocol header");
     }
 
+    public static final EnumMap<Verb, Stage> verbStages = new EnumMap<>(Verb.class);
+    public static final EnumMap<Verb, IVersionedSerializer<?>> verbSerializers = new EnumMap<>(Verb.class);
+
     /**
      * Verbs it's okay to drop if the request has been queued longer than the request timeout.
      * These all correspond to client requests or something triggered by them; 
@@ -115,45 +94,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     public static final EnumSet<Verb> DROPPABLE_VERBS = EnumSet.of(Verb.REQUEST_RESPONSE);
 
     private static final int LOG_DROPPED_INTERVAL_IN_MS = 5000;
-
-    public static final EnumMap<MessagingService.Verb, Stage> verbStages = new EnumMap<MessagingService.Verb, Stage>(
-            MessagingService.Verb.class) {
-        {
-            put(Verb.REQUEST_RESPONSE, Stage.REQUEST_RESPONSE);
-            put(Verb.INTERNAL_RESPONSE, Stage.INTERNAL_RESPONSE);
-
-            put(Verb.GOSSIP_DIGEST_ACK, Stage.GOSSIP);
-            put(Verb.GOSSIP_DIGEST_ACK2, Stage.GOSSIP);
-            put(Verb.GOSSIP_DIGEST_SYN, Stage.GOSSIP);
-            put(Verb.GOSSIP_SHUTDOWN, Stage.GOSSIP);
-            put(Verb.ECHO, Stage.GOSSIP);
-
-            put(Verb.UNUSED_1, Stage.INTERNAL_RESPONSE);
-            put(Verb.UNUSED_2, Stage.INTERNAL_RESPONSE);
-            put(Verb.UNUSED_3, Stage.INTERNAL_RESPONSE);
-        }
-    };
-
-    /**
-     * Messages we receive in IncomingTcpConnection have a Verb that tells us what kind of message it is.
-     * Most of the time, this is enough to determine how to deserialize the message payload.
-     * The exception is the REQUEST_RESPONSE verb, which just means "a reply to something you told me to do."
-     * Traditionally, this was fine since each VerbHandler knew what type of payload it expected, and
-     * handled the deserialization itself.  Now that we do that in ITC, to avoid the extra copy to an
-     * intermediary byte[] (See lealone-3716), we need to wire that up to the CallbackInfo object
-     * (see below).
-     */
-    public static final EnumMap<Verb, IVersionedSerializer<?>> verbSerializers = new EnumMap<Verb, IVersionedSerializer<?>>(
-            Verb.class) {
-        {
-            put(Verb.REQUEST_RESPONSE, CallbackDeterminedSerializer.instance);
-            put(Verb.INTERNAL_RESPONSE, CallbackDeterminedSerializer.instance);
-            put(Verb.GOSSIP_DIGEST_ACK, GossipDigestAck.serializer);
-            put(Verb.GOSSIP_DIGEST_ACK2, GossipDigestAck2.serializer);
-            put(Verb.GOSSIP_DIGEST_SYN, GossipDigestSyn.serializer);
-            put(Verb.ECHO, EchoMessage.serializer);
-        }
-    };
 
     /**
      * A Map of what kind of serializer to wire up to a REQUEST_RESPONSE callback, based on outbound Verb.
@@ -188,9 +128,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     private final ExpiringMap<Integer, CallbackInfo> callbacks;
 
     /* Lookup table for registering message handlers based on the verb. */
-    private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);;
-
-    private final ConcurrentMap<NetEndpoint, P2pConnection> connectionManagers = new ConcurrentHashMap<>();
+    private final Map<Verb, IVerbHandler> verbHandlers = new EnumMap<>(Verb.class);
 
     // total dropped message counts for server lifetime
     private final Map<Verb, DroppedMessageMetrics> droppedMessages = new EnumMap<>(Verb.class);
@@ -202,7 +140,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     // protocol versions of the other nodes in the cluster
     private final ConcurrentMap<NetEndpoint, Integer> versions = new ConcurrentHashMap<>();
 
-    private Map<String, String> config;
+    private final ConcurrentHashMap<String, P2pConnection> connections = new ConcurrentHashMap<>();
 
     private static class MSHandle {
         public static final MessagingService instance = new MessagingService();
@@ -212,19 +150,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         return MSHandle.instance;
     }
 
-    private void registerDefaultVerbHandlers() {
-        registerVerbHandler(Verb.REQUEST_RESPONSE, new ResponseVerbHandler());
-        registerVerbHandler(Verb.INTERNAL_RESPONSE, new ResponseVerbHandler());
-        registerVerbHandler(Verb.GOSSIP_SHUTDOWN, new GossipShutdownVerbHandler());
-        registerVerbHandler(Verb.GOSSIP_DIGEST_SYN, new GossipDigestSynVerbHandler());
-        registerVerbHandler(Verb.GOSSIP_DIGEST_ACK, new GossipDigestAckVerbHandler());
-        registerVerbHandler(Verb.GOSSIP_DIGEST_ACK2, new GossipDigestAck2VerbHandler());
-        registerVerbHandler(Verb.ECHO, new EchoVerbHandler());
-    }
-
     private MessagingService() {
-        registerDefaultVerbHandlers();
-
         for (Verb verb : DROPPABLE_VERBS) {
             droppedMessages.put(verb, new DroppedMessageMetrics(verb));
             lastDroppedInternal.put(verb, 0);
@@ -270,6 +196,28 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         }
     }
 
+    public void start() {
+        callbacks.reset(); // hack to allow tests to stop/restart MS
+
+        for (Verb verb : Verb.values()) {
+            if (verb.stage != null)
+                verbStages.put(verb, verb.stage);
+            if (verb.serializer != null)
+                verbSerializers.put(verb, verb.serializer);
+            if (verb.verbHandler != null)
+                registerVerbHandler(verb, verb.verbHandler);
+        }
+    }
+
+    /**
+     * Wait for callbacks and don't allow any more to be created (since they could require writing hints)
+     */
+    public void shutdown() {
+        logger.info("Waiting for messaging service to quiesce");
+        // the important part
+        callbacks.shutdownBlocking();
+    }
+
     public void incrementDroppedMessages(Verb verb) {
         assert DROPPABLE_VERBS.contains(verb) : "Verb " + verb + " should not legally be dropped";
         droppedMessages.get(verb).dropped.mark();
@@ -304,32 +252,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     public void addLatency(NetEndpoint address, long latency) {
         for (ILatencySubscriber subscriber : subscribers)
             subscriber.receiveTiming(address, latency);
-    }
-
-    /**
-     * Listen on the specified port.
-     *
-     * @param localEp NetEndpoint whose port to listen on.
-     */
-    public void start(NetEndpoint localEp, Map<String, String> config) throws ConfigException {
-        this.config = config;
-        callbacks.reset(); // hack to allow tests to stop/restart MS
-    }
-
-    private final ConcurrentHashMap<String, P2pConnection> asyncConnections = new ConcurrentHashMap<>();
-
-    public void addConnection(P2pConnection conn) {
-        P2pConnection oldConn = asyncConnections.put(conn.getHostId(), conn);
-        if (oldConn != null) {
-            oldConn.close();
-        }
-    }
-
-    public void removeConnection(P2pConnection conn) {
-        P2pConnection oldConn = asyncConnections.remove(conn.getHostId());
-        if (oldConn != null) {
-            oldConn.close();
-        }
     }
 
     /**
@@ -418,44 +340,32 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     }
 
     public P2pConnection getConnection(NetEndpoint remoteEndpoint) {
-        NetEndpoint resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-        final String remoteHostAndPort = resetEndpoint.getHostAndPort();
-        P2pConnection asyncConnection = asyncConnections.get(remoteHostAndPort);
-        if (asyncConnection == null) {
-            final int port = resetEndpoint.getPort();
-            // final String host = resetEndpoint.getHost();
-            synchronized (P2pConnection.class) {
-                asyncConnection = asyncConnections.get(remoteHostAndPort);
-                if (asyncConnection == null) {
+        remoteEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
+        final String remoteHostAndPort = remoteEndpoint.getHostAndPort();
+        P2pConnection conn = connections.get(remoteHostAndPort);
+        if (conn == null) {
+            synchronized (connections) {
+                conn = connections.get(remoteHostAndPort);
+                if (conn == null) {
                     Properties prop = new Properties();
-                    prop.putAll(config);
-                    NetFactory factory = NetFactoryManager.getFactory(config);
+                    prop.putAll(P2pServer.instance.getConfig());
+                    NetFactory factory = NetFactoryManager.getFactory(P2pServer.instance.getConfig());
                     try {
-                        asyncConnection = (P2pConnection) factory.getNetClient().createConnection(prop, resetEndpoint,
-                                this);
+                        conn = (P2pConnection) factory.getNetClient().createConnection(prop, remoteEndpoint, this);
                         String localHost = ConfigDescriptor.getLocalEndpoint().getHostAddress();
-                        String localHostAndPort = localHost + ":" + port;
-                        asyncConnection.initTransfer(resetEndpoint, remoteHostAndPort, localHostAndPort);
-                        asyncConnections.put(remoteHostAndPort, asyncConnection);
-                        connectionManagers.put(resetEndpoint, asyncConnection);
+                        String localHostAndPort = localHost + ":" + remoteEndpoint.getPort();
+                        conn.initTransfer(remoteEndpoint, remoteHostAndPort, localHostAndPort);
+                        connections.put(remoteHostAndPort, conn);
                     } catch (Exception e) {
                         // TODO 是否不应该立刻移除节点
-                        Gossiper.instance.removeEndpoint(resetEndpoint);
-                        logger.error("Failed to connect " + resetEndpoint, e);
+                        Gossiper.instance.removeEndpoint(remoteEndpoint);
+                        logger.error("Failed to connect " + remoteEndpoint, e);
                         throw DbException.convert(e);
                     }
                 }
             }
         }
-        return asyncConnection;
-    }
-
-    public void destroyConnection(NetEndpoint to) {
-        P2pConnection conn = connectionManagers.get(to);
-        if (conn == null)
-            return;
-        conn.close();
-        connectionManagers.remove(to);
+        return conn;
     }
 
     public NetEndpoint getConnectionEndpoint(NetEndpoint to) {
@@ -477,15 +387,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     public void register(ILatencySubscriber subcriber) {
         subscribers.add(subcriber);
-    }
-
-    /**
-     * Wait for callbacks and don't allow any more to be created (since they could require writing hints)
-     */
-    public void shutdown() {
-        logger.info("Waiting for messaging service to quiesce");
-        // the important part
-        callbacks.shutdownBlocking();
     }
 
     public CallbackInfo getRegisteredCallback(int messageId) {
@@ -531,6 +432,41 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         return versions.containsKey(endpoint);
     }
 
+    public void addConnection(P2pConnection conn) {
+        P2pConnection oldConn = connections.put(conn.getHostId(), conn);
+        if (oldConn != null) {
+            oldConn.close();
+        }
+    }
+
+    private void removeConnection(String hostId) {
+        P2pConnection oldConn = connections.remove(hostId);
+        if (oldConn != null) {
+            oldConn.close();
+        }
+    }
+
+    public void removeConnection(NetEndpoint ep) {
+        removeConnection(ep.getHostAndPort());
+    }
+
+    public void removeConnection(P2pConnection conn) {
+        removeConnection(conn.getHostId());
+    }
+
+    @Override
+    public void removeConnection(AsyncConnection conn) {
+        removeConnection((P2pConnection) conn);
+    }
+
+    @Override
+    public P2pConnection createConnection(WritableChannel writableChannel, boolean isServer) {
+        P2pConnection conn = new P2pConnection(writableChannel, isServer);
+        conn.setHostAndPort(writableChannel.getHost() + ":" + writableChannel.getPort());
+        addConnection(conn);
+        return conn;
+    }
+
     // --------------以下是MessagingServiceMBean的API实现-------------
 
     @Override
@@ -540,17 +476,17 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     @Override
     public Map<String, Integer> getResponsePendingTasks() {
-        Map<String, Integer> pendingTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<NetEndpoint, P2pConnection> entry : connectionManagers.entrySet())
-            pendingTasks.put(entry.getKey().getHostAddress(), entry.getValue().getPendingMessages());
+        Map<String, Integer> pendingTasks = new HashMap<>(connections.size());
+        for (P2pConnection conn : connections.values())
+            pendingTasks.put(conn.endpoint().getHostAddress(), conn.getPendingMessages());
         return pendingTasks;
     }
 
     @Override
     public Map<String, Long> getResponseCompletedTasks() {
-        Map<String, Long> completedTasks = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<NetEndpoint, P2pConnection> entry : connectionManagers.entrySet())
-            completedTasks.put(entry.getKey().getHostAddress(), entry.getValue().getCompletedMesssages());
+        Map<String, Long> completedTasks = new HashMap<>(connections.size());
+        for (P2pConnection conn : connections.values())
+            completedTasks.put(conn.endpoint().getHostAddress(), conn.getCompletedMesssages());
         return completedTasks;
     }
 
@@ -569,25 +505,10 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     @Override
     public Map<String, Long> getTimeoutsPerHost() {
-        Map<String, Long> result = new HashMap<>(connectionManagers.size());
-        for (Map.Entry<NetEndpoint, P2pConnection> entry : connectionManagers.entrySet()) {
-            String ip = entry.getKey().getHostAddress();
-            long recent = entry.getValue().getTimeouts();
-            result.put(ip, recent);
+        Map<String, Long> result = new HashMap<>(connections.size());
+        for (P2pConnection conn : connections.values()) {
+            result.put(conn.endpoint().getHostAddress(), conn.getTimeouts());
         }
         return result;
-    }
-
-    @Override
-    public P2pConnection createConnection(WritableChannel writableChannel, boolean isServer) {
-        P2pConnection conn = new P2pConnection(writableChannel, isServer);
-        conn.setHostAndPort(writableChannel.getHost() + ":" + writableChannel.getPort());
-        addConnection(conn);
-        return conn;
-    }
-
-    @Override
-    public void removeConnection(AsyncConnection conn) {
-        removeConnection((P2pConnection) conn);
     }
 }

@@ -28,6 +28,7 @@ import org.lealone.p2p.net.IVerbHandler;
 import org.lealone.p2p.net.MessageIn;
 import org.lealone.p2p.net.MessageOut;
 import org.lealone.p2p.net.MessagingService;
+import org.lealone.p2p.net.Verb;
 
 public class GossipDigestAckVerbHandler implements IVerbHandler<GossipDigestAck> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestAckVerbHandler.class);
@@ -73,7 +74,7 @@ public class GossipDigestAckVerbHandler implements IVerbHandler<GossipDigestAck>
                 deltaEpStateMap.put(addr, localEpStatePtr);
         }
 
-        MessageOut<GossipDigestAck2> gDigestAck2Message = new MessageOut<>(MessagingService.Verb.GOSSIP_DIGEST_ACK2,
+        MessageOut<GossipDigestAck2> gDigestAck2Message = new MessageOut<>(Verb.GOSSIP_DIGEST_ACK2,
                 new GossipDigestAck2(deltaEpStateMap), GossipDigestAck2.serializer);
         if (logger.isTraceEnabled())
             logger.trace("Sending a GossipDigestAck2Message to {}", from);

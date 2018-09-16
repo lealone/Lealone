@@ -100,7 +100,8 @@ public class P2pConnection extends TransferConnection {
         metrics = new ConnectionMetrics(resetEndpoint);
     }
 
-    void initTransfer(NetEndpoint remoteEndpoint, String remoteHostAndPort, String localHostAndPort) throws Exception {
+    synchronized void initTransfer(NetEndpoint remoteEndpoint, String remoteHostAndPort, String localHostAndPort)
+            throws Exception {
         if (transfer == null) {
             this.remoteEndpoint = remoteEndpoint;
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
@@ -123,7 +124,7 @@ public class P2pConnection extends TransferConnection {
         ac.await();
     }
 
-    private void readInitPacket(Transfer transfer, int sessionId) {
+    private synchronized void readInitPacket(Transfer transfer, int sessionId) {
         try {
             if (this.transfer == null) {
                 this.transfer = new Transfer(this, writableChannel, (Session) null);

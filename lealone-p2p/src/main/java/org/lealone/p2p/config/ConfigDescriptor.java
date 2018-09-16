@@ -48,7 +48,7 @@ import org.lealone.p2p.locator.IEndpointSnitch;
 import org.lealone.p2p.locator.RandomEndpointAssignmentStrategy;
 import org.lealone.p2p.locator.SeedProvider;
 import org.lealone.p2p.locator.SimpleStrategy;
-import org.lealone.p2p.net.MessagingService;
+import org.lealone.p2p.net.Verb;
 import org.lealone.p2p.server.P2pServerEngine;
 import org.lealone.p2p.util.Utils;
 
@@ -296,7 +296,7 @@ public class ConfigDescriptor {
     }
 
     // not part of the Verb enum so we can change timeouts easily via JMX
-    public static long getTimeout(MessagingService.Verb verb) {
+    public static long getTimeout(Verb verb) {
         return getRpcTimeout();
     }
 

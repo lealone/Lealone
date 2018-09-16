@@ -56,6 +56,7 @@ import org.lealone.p2p.net.IAsyncCallback;
 import org.lealone.p2p.net.MessageIn;
 import org.lealone.p2p.net.MessageOut;
 import org.lealone.p2p.net.MessagingService;
+import org.lealone.p2p.net.Verb;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Uninterruptibles;
@@ -158,7 +159,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
                 if (gDigests.size() > 0) {
                     GossipDigestSyn digestSynMessage = new GossipDigestSyn(ConfigDescriptor.getClusterName(), gDigests);
-                    MessageOut<GossipDigestSyn> message = new MessageOut<>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
+                    MessageOut<GossipDigestSyn> message = new MessageOut<>(Verb.GOSSIP_DIGEST_SYN,
                             digestSynMessage, GossipDigestSyn.serializer);
                     /* Gossip to some random live member */
                     boolean gossipedToSeed = doGossipToLiveMember(message);
@@ -518,7 +519,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         FailureDetector.instance.remove(endpoint);
         MessagingService.instance().removeVersion(endpoint);
         quarantineEndpoint(endpoint);
-        MessagingService.instance().destroyConnection(endpoint);
+        MessagingService.instance().removeConnection(endpoint);
         if (logger.isDebugEnabled())
             logger.debug("removing endpoint {}", endpoint);
     }
@@ -802,7 +803,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private void markAlive(final NetEndpoint addr, final EndpointState localState) {
         localState.markDead();
 
-        MessageOut<EchoMessage> echoMessage = new MessageOut<>(MessagingService.Verb.ECHO, new EchoMessage(),
+        MessageOut<EchoMessage> echoMessage = new MessageOut<>(Verb.ECHO, new EchoMessage(),
                 EchoMessage.serializer);
         logger.trace("Sending a EchoMessage to {}", addr);
         IAsyncCallback<Void> echoHandler = new IAsyncCallback<Void>() {
@@ -1080,7 +1081,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         // send a completely empty syn
         List<GossipDigest> gDigests = new ArrayList<>();
         GossipDigestSyn digestSynMessage = new GossipDigestSyn(ConfigDescriptor.getClusterName(), gDigests);
-        MessageOut<GossipDigestSyn> message = new MessageOut<>(MessagingService.Verb.GOSSIP_DIGEST_SYN,
+        MessageOut<GossipDigestSyn> message = new MessageOut<>(Verb.GOSSIP_DIGEST_SYN,
                 digestSynMessage, GossipDigestSyn.serializer);
         inShadowRound = true;
         for (NetEndpoint seed : seeds)
@@ -1165,7 +1166,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
             scheduledGossipTask.cancel(false);
         logger.info("Announcing shutdown");
         Uninterruptibles.sleepUninterruptibly(INTERVAL_IN_MILLIS * 2, TimeUnit.MILLISECONDS);
-        MessageOut<Void> message = new MessageOut<>(MessagingService.Verb.GOSSIP_SHUTDOWN);
+        MessageOut<Void> message = new MessageOut<>(Verb.GOSSIP_SHUTDOWN);
         for (NetEndpoint ep : liveEndpoints)
             MessagingService.instance().sendOneWay(message, ep);
     }

@@ -32,10 +32,10 @@ public class MessageIn<T> {
     public final NetEndpoint from;
     public final T payload;
     public final Map<String, byte[]> parameters;
-    public final MessagingService.Verb verb;
+    public final Verb verb;
     public final int version;
 
-    private MessageIn(NetEndpoint from, T payload, Map<String, byte[]> parameters, MessagingService.Verb verb,
+    private MessageIn(NetEndpoint from, T payload, Map<String, byte[]> parameters, Verb verb,
             int version) {
         this.from = from;
         this.payload = payload;
@@ -70,7 +70,7 @@ public class MessageIn<T> {
     public static MessageIn<?> read(DataInput in, int version, int id) throws IOException {
         NetEndpoint from = CompactEndpointSerializationHelper.deserialize(in);
 
-        MessagingService.Verb verb = MessagingService.Verb.values()[in.readInt()];
+        Verb verb = Verb.values()[in.readInt()];
         int parameterCount = in.readInt();
         Map<String, byte[]> parameters;
         if (parameterCount == 0) {

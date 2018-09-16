@@ -30,26 +30,26 @@ import org.lealone.p2p.config.ConfigDescriptor;
 
 public class MessageOut<T> {
     public final NetEndpoint from;
-    public final MessagingService.Verb verb;
+    public final Verb verb;
     public final T payload;
     public final IVersionedSerializer<T> serializer;
     public final Map<String, byte[]> parameters;
 
     // we do support messages that just consist of a verb
-    public MessageOut(MessagingService.Verb verb) {
+    public MessageOut(Verb verb) {
         this(verb, null, null);
     }
 
-    public MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer) {
+    public MessageOut(Verb verb, T payload, IVersionedSerializer<T> serializer) {
         this(verb, payload, serializer, Collections.<String, byte[]> emptyMap());
     }
 
-    private MessageOut(MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
+    private MessageOut(Verb verb, T payload, IVersionedSerializer<T> serializer,
             Map<String, byte[]> parameters) {
         this(ConfigDescriptor.getLocalEndpoint(), verb, payload, serializer, parameters);
     }
 
-    public MessageOut(NetEndpoint from, MessagingService.Verb verb, T payload, IVersionedSerializer<T> serializer,
+    public MessageOut(NetEndpoint from, Verb verb, T payload, IVersionedSerializer<T> serializer,
             Map<String, byte[]> parameters) {
         this.from = from;
         this.verb = verb;

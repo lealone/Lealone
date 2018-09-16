@@ -31,6 +31,7 @@ import org.lealone.p2p.net.IVerbHandler;
 import org.lealone.p2p.net.MessageIn;
 import org.lealone.p2p.net.MessageOut;
 import org.lealone.p2p.net.MessagingService;
+import org.lealone.p2p.net.Verb;
 
 public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn> {
     private static final Logger logger = LoggerFactory.getLogger(GossipDigestSynVerbHandler.class);
@@ -71,7 +72,7 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
         Gossiper.instance.examineGossiper(gDigestList, deltaGossipDigestList, deltaEpStateMap);
         if (logger.isTraceEnabled())
             logger.trace("sending {} digests and {} deltas", deltaGossipDigestList.size(), deltaEpStateMap.size());
-        MessageOut<GossipDigestAck> gDigestAckMessage = new MessageOut<>(MessagingService.Verb.GOSSIP_DIGEST_ACK,
+        MessageOut<GossipDigestAck> gDigestAckMessage = new MessageOut<>(Verb.GOSSIP_DIGEST_ACK,
                 new GossipDigestAck(deltaGossipDigestList, deltaEpStateMap), GossipDigestAck.serializer);
         if (logger.isTraceEnabled())
             logger.trace("Sending a GossipDigestAckMessage to {}", from);

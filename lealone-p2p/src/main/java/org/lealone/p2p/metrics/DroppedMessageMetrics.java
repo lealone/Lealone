@@ -19,7 +19,7 @@ package org.lealone.p2p.metrics;
 
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.p2p.net.MessagingService;
+import org.lealone.p2p.net.Verb;
 
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Meter;
@@ -31,7 +31,7 @@ public class DroppedMessageMetrics {
     /** Number of dropped messages */
     public final Meter dropped;
 
-    public DroppedMessageMetrics(MessagingService.Verb verb) {
+    public DroppedMessageMetrics(Verb verb) {
         MetricNameFactory factory = new DefaultNameFactory("DroppedMessage", verb.toString());
         dropped = Metrics.newMeter(factory.createMetricName("Dropped"), "dropped", TimeUnit.SECONDS);
     }

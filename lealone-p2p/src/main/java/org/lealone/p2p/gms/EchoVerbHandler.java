@@ -23,13 +23,14 @@ import org.lealone.p2p.net.IVerbHandler;
 import org.lealone.p2p.net.MessageIn;
 import org.lealone.p2p.net.MessageOut;
 import org.lealone.p2p.net.MessagingService;
+import org.lealone.p2p.net.Verb;
 
 public class EchoVerbHandler implements IVerbHandler<EchoMessage> {
     private static final Logger logger = LoggerFactory.getLogger(EchoVerbHandler.class);
 
     @Override
     public void doVerb(MessageIn<EchoMessage> message, int id) {
-        MessageOut<EchoMessage> echoMessage = new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,
+        MessageOut<EchoMessage> echoMessage = new MessageOut<>(Verb.REQUEST_RESPONSE,
                 new EchoMessage(), EchoMessage.serializer);
         if (logger.isTraceEnabled())
             logger.trace("Sending a EchoMessage reply {}", message.from);
