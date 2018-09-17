@@ -16,6 +16,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.LealoneException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceSystem;
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
@@ -151,7 +152,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     private Transfer initTransfer(ConnectionInfo ci, NetEndpoint endpoint) throws Exception {
         NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
-        AsyncConnection conn = factory.getNetClient().createConnection(ci.getProperties(), endpoint);
+        CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
+        AsyncConnection conn = factory.getNetClient().createConnection(config, endpoint);
         if (!(conn instanceof TcpConnection)) {
             throw DbException.throwInternalError("not tcp connection: " + conn.getClass().getName());
         }

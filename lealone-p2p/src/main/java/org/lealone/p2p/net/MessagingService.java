@@ -28,7 +28,6 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -311,11 +310,10 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                 if (conn != null)
                     return conn;
 
-                Properties prop = new Properties();
-                prop.putAll(P2pServer.instance.getConfig());
-                NetFactory factory = NetFactoryManager.getFactory(P2pServer.instance.getConfig());
+                Map<String, String> config = P2pServer.instance.getConfig();
+                NetFactory factory = NetFactoryManager.getFactory(config);
                 try {
-                    conn = (P2pConnection) factory.getNetClient().createConnection(prop, remoteEndpoint, this);
+                    conn = (P2pConnection) factory.getNetClient().createConnection(config, remoteEndpoint, this);
                     String localHostAndPort = ConfigDescriptor.getLocalEndpoint().getHostAndPort();
                     conn.initTransfer(remoteEndpoint, remoteHostAndPort, localHostAndPort);
                     connections.put(remoteHostAndPort, conn);

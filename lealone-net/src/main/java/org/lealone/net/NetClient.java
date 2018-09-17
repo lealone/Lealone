@@ -18,13 +18,14 @@
 package org.lealone.net;
 
 import java.net.InetSocketAddress;
-import java.util.Properties;
+import java.util.Map;
 
 public interface NetClient {
 
-    AsyncConnection createConnection(Properties prop, NetEndpoint endpoint);
+    AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint);
 
-    AsyncConnection createConnection(Properties prop, NetEndpoint endpoint, AsyncConnectionManager connectionManager);
+    AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint,
+            AsyncConnectionManager connectionManager);
 
     default void removeConnection(InetSocketAddress inetSocketAddress) {
         removeConnection(inetSocketAddress, true);

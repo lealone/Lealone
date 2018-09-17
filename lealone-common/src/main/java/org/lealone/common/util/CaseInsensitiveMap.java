@@ -8,6 +8,7 @@ package org.lealone.common.util;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 /**
  * A hash map with a case-insensitive string key.
@@ -30,6 +31,11 @@ public class CaseInsensitiveMap<V> extends HashMap<String, V> {
         putAll(m);
     }
 
+    public CaseInsensitiveMap(Properties prop) {
+        this(prop.size());
+        putAll(prop);
+    }
+
     @Override
     public V get(Object key) {
         return super.get(toUpper(key));
@@ -44,6 +50,13 @@ public class CaseInsensitiveMap<V> extends HashMap<String, V> {
     public void putAll(Map<? extends String, ? extends V> m) {
         for (Map.Entry<? extends String, ? extends V> e : m.entrySet()) {
             put(e.getKey(), e.getValue());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public void putAll(Properties prop) {
+        for (Entry<Object, Object> e : prop.entrySet()) {
+            put(e.getKey().toString(), (V) e.getValue().toString());
         }
     }
 

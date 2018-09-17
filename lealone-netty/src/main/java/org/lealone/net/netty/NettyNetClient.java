@@ -18,7 +18,7 @@
 package org.lealone.net.netty;
 
 import java.net.InetSocketAddress;
-import java.util.Properties;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
@@ -60,9 +60,9 @@ public class NettyNetClient implements org.lealone.net.NetClient {
 
     private static NettyNetClient.NettyClient client;
 
-    private static synchronized void openClient(NettyNetClient nettyNetClient, Properties prop) {
+    private static synchronized void openClient(NettyNetClient nettyNetClient, Map<String, String> config) {
         if (client == null) {
-            client = new NettyClient(nettyNetClient, prop);
+            client = new NettyClient(nettyNetClient, config);
         }
     }
 
@@ -77,15 +77,15 @@ public class NettyNetClient implements org.lealone.net.NetClient {
     }
 
     @Override
-    public AsyncConnection createConnection(Properties prop, NetEndpoint endpoint) {
-        return createConnection(prop, endpoint, null);
+    public AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint) {
+        return createConnection(config, endpoint, null);
     }
 
     @Override
-    public AsyncConnection createConnection(Properties prop, NetEndpoint endpoint,
+    public AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint,
             AsyncConnectionManager connectionManager) {
         if (client == null) {
-            openClient(this, prop);
+            openClient(this, config);
         }
         InetSocketAddress inetSocketAddress = endpoint.getInetSocketAddress();
         AsyncConnection asyncConnection = asyncConnections.get(inetSocketAddress);
@@ -129,7 +129,7 @@ public class NettyNetClient implements org.lealone.net.NetClient {
         private final NettyNetClient nettyNetClient;
         private final Bootstrap bootstrap;
 
-        public NettyClient(NettyNetClient nettyNetClient, Properties prop) {
+        public NettyClient(NettyNetClient nettyNetClient, Map<String, String> config) {
             this.nettyNetClient = nettyNetClient;
             EventLoopGroup group = new NioEventLoopGroup();
             bootstrap = new Bootstrap();
