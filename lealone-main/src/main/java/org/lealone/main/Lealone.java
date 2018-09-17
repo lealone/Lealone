@@ -139,17 +139,20 @@ public class Lealone {
 
     private static void initTransactionEngineEngines() {
         registerAndInitEngines(config.transaction_engines, "transaction", "default.transaction.engine", def -> {
-            TransactionEngine te = TransactionEngineManager.getInstance().getEngine(def.name);
-            if (te == null) {
-                try {
+            TransactionEngine te;
+            try {
+                te = TransactionEngineManager.getInstance().getEngine(def.name);
+                if (te == null) {
                     Class<?> clz = Utils.loadUserClass(def.name);
                     te = (TransactionEngine) clz.newInstance();
                     TransactionEngineManager.getInstance().registerEngine(te);
-                } catch (Throwable e) {
-                    te = TransactionEngineManager.getInstance().getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-                    if (te == null)
-                        throw newConfigException("transaction engine", def, e);
                 }
+            } catch (Throwable e) {
+                te = TransactionEngineManager.getInstance().getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+                if (te == null) {
+                    throw e;
+                }
+                logger.warn("Transaction engine " + def.name + " not found, use " + te.getName() + " instead");
             }
             return te;
         });
@@ -190,6 +193,7 @@ public class Lealone {
             String defaultEngineKey, CallableTask<T> callableTask) {
         long t1 = System.currentTimeMillis();
         if (engines != null) {
+            name += " engine";
             for (PluggableEngineDef def : engines) {
                 if (!def.enabled)
                     continue;
@@ -203,8 +207,8 @@ public class Lealone {
                 try {
                     result = callableTask.call(def);
                 } catch (Throwable e) {
-                    logger.warn("Failed to register " + name + " engine: " + def.name,
-                            newConfigException(name, def, e));
+                    String msg = "Failed to register " + name + ": " + def.name;
+                    checkException(msg, e);
                     return;
                 }
                 PluggableEngine pe = (PluggableEngine) result;
@@ -213,22 +217,27 @@ public class Lealone {
                 try {
                     initPluggableEngine(pe, def);
                 } catch (Throwable e) {
-                    logger.warn("Failed to init " + name + " engine: " + def.name, newConfigException(name, def, e));
-                    return;
+                    String msg = "Failed to init " + name + ": " + def.name;
+                    checkException(msg, e);
                 }
             }
         }
         long t2 = System.currentTimeMillis();
-        logger.info("Init " + name + " engines" + ": " + (t2 - t1) + "ms");
+        logger.info("Init " + name + "s" + ": " + (t2 - t1) + "ms");
+    }
+
+    private static void checkException(String msg, Throwable e) {
+        if (e instanceof ConfigException)
+            throw (ConfigException) e;
+        else if (e instanceof RuntimeException)
+            throw new ConfigException(msg, e);
+        else
+            logger.warn(msg, e);
     }
 
     private static void checkName(String engineName, PluggableEngineDef def) {
         if (def.name == null || def.name.trim().isEmpty())
             throw new ConfigException(engineName + " name is missing.");
-    }
-
-    private static ConfigException newConfigException(String engineName, PluggableEngineDef def, Throwable e) {
-        return new ConfigException(engineName + " '" + def.name + "' can not found", e);
     }
 
     private static void initPluggableEngine(PluggableEngine pe, PluggableEngineDef def) {

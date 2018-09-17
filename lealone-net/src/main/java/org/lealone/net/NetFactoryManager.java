@@ -42,7 +42,12 @@ public class NetFactoryManager extends PluggableEngineManager<NetFactory> {
         String netFactoryName = config.get(Constants.NET_FACTORY_NAME_KEY);
         if (netFactoryName == null)
             netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
-        return instance.getEngine(netFactoryName);
+
+        NetFactory factory = getFactory(netFactoryName);
+        if (factory == null) {
+            throw new RuntimeException("NetFactory '" + netFactoryName + "' can not found");
+        }
+        return factory;
     }
 
     public static void registerFactory(NetFactory factory) {
