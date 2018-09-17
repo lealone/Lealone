@@ -39,6 +39,18 @@ public class NettyNetServerHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
+    public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+        String msg = "RemoteAddress " + ctx.channel().remoteAddress() + " Unregistered";
+        logger.info(msg);
+    }
+
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        String msg = "RemoteAddress " + ctx.channel().remoteAddress() + " Inactive";
+        logger.info(msg);
+    }
+
+    @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) {
         if (msg instanceof ByteBuf) {
             ByteBuf buff = (ByteBuf) msg;

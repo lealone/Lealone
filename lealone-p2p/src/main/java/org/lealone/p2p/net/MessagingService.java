@@ -296,8 +296,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         }
 
         P2pConnection conn = getConnection(to);
-        if (conn != null)
-            conn.enqueue(message, id);
+        conn.enqueue(message, id);
     }
 
     public P2pConnection getConnection(NetEndpoint remoteEndpoint) {
@@ -315,8 +314,8 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                 try {
                     conn = (P2pConnection) factory.getNetClient().createConnection(config, remoteEndpoint, this);
                     String localHostAndPort = ConfigDescriptor.getLocalEndpoint().getHostAndPort();
-                    conn.initTransfer(remoteEndpoint, remoteHostAndPort, localHostAndPort);
-                    connections.put(remoteHostAndPort, conn);
+                    conn.initTransfer(remoteEndpoint, localHostAndPort);
+                    // connections.put(remoteHostAndPort, conn); //调用initTransfer成功后已经加到connections
                 } catch (Exception e) {
                     // TODO 是否不应该立刻移除节点
                     Gossiper.instance.removeEndpoint(remoteEndpoint);
@@ -393,7 +392,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     }
 
     public void addConnection(P2pConnection conn) {
-        P2pConnection oldConn = connections.put(conn.getHostId(), conn);
+        P2pConnection oldConn = connections.put(conn.getHostAndPort(), conn);
         if (oldConn != null) {
             oldConn.close();
         }
@@ -411,7 +410,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     }
 
     public void removeConnection(P2pConnection conn) {
-        removeConnection(conn.getHostId());
+        removeConnection(conn.getHostAndPort());
     }
 
     @Override

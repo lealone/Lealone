@@ -27,7 +27,6 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.db.Session;
 import org.lealone.net.AsyncCallback;
-import org.lealone.net.NetBuffer;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.Transfer;
 import org.lealone.net.TransferConnection;
@@ -41,122 +40,86 @@ public class P2pConnection extends TransferConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(P2pConnection.class);
 
-    private Transfer transfer;
     private NetEndpoint remoteEndpoint;
     private NetEndpoint resetEndpoint; // pointer to the reset Address.
-    private int targetVersion;
-    private int version;
-
     private ConnectionMetrics metrics;
+    private int version;
 
     public P2pConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
     }
 
-    String getHostId() {
-        return hostAndPort;
-    }
-
-    long getTimeouts() {
-        return metrics.timeouts.count();
-    }
-
-    void incrementTimeout() {
-        metrics.timeouts.mark();
-    }
-
-    NetEndpoint endpoint() {
-        if (remoteEndpoint.equals(ConfigDescriptor.getLocalEndpoint()))
-            return ConfigDescriptor.getLocalEndpoint();
-        return resetEndpoint;
-    }
-
     @Override
-    public void close() {
-        if (transfer != null)
-            transfer.close();
-        super.close();
+    protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
+        switch (operation) {
+        case Session.SESSION_INIT: {
+            readInitPacket(transfer, id);
+            break;
+        }
+        case Session.COMMAND_P2P_MESSAGE: {
+            receiveMessage(transfer, id);
+            break;
+        }
+        default:
+            logger.warn("Unknow operation: {}", operation);
+            close();
+        }
     }
 
-    private void closeSocket(boolean destroyThread) {
-        // backlog.clear();
-        // isStopped = destroyThread; // Exit loop to stop the thread
-        // enqueue(CLOSE_SENTINEL, -1);
-
-        metrics.release();
-    }
-
-    void reset() {
-        closeSocket(false);
-    }
-
-    void reset(NetEndpoint remoteEndpoint) {
-        ClusterMetaData.updatePreferredIP(this.remoteEndpoint, remoteEndpoint);
-        resetEndpoint = remoteEndpoint;
-        // softCloseSocket();
-
-        // release previous metrics and create new one with reset address
-        metrics.release();
-        metrics = new ConnectionMetrics(resetEndpoint);
-    }
-
-    synchronized void initTransfer(NetEndpoint remoteEndpoint, String remoteHostAndPort, String localHostAndPort)
-            throws Exception {
-        if (transfer == null) {
+    synchronized void initTransfer(NetEndpoint remoteEndpoint, String localHostAndPort) throws Exception {
+        if (this.remoteEndpoint == null) {
             this.remoteEndpoint = remoteEndpoint;
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
             metrics = new ConnectionMetrics(remoteEndpoint);
-            this.hostAndPort = remoteHostAndPort;
-            transfer = new Transfer(this, writableChannel, (Session) null);
-            targetVersion = MessagingService.instance().getVersion(remoteEndpoint);
-            writeInitPacket(transfer, 0, targetVersion, localHostAndPort);
+            hostAndPort = remoteEndpoint.getHostAndPort();
+            version = MessagingService.instance().getVersion(ConfigDescriptor.getLocalEndpoint());
+            writeInitPacket(localHostAndPort);
             MessagingService.instance().addConnection(this);
         }
     }
 
-    private void writeInitPacket(Transfer transfer, int packetId, int version, String hostAndPort) throws Exception {
+    private void writeInitPacket(String localHostAndPort) throws Exception {
+        int packetId = 0;
+        Transfer transfer = new Transfer(this, writableChannel);
         transfer.writeRequestHeaderWithoutSessionId(packetId, Session.SESSION_INIT);
         transfer.writeInt(MessagingService.PROTOCOL_MAGIC);
         transfer.writeInt(version);
-        transfer.writeString(hostAndPort);
+        transfer.writeString(localHostAndPort);
         AsyncCallback<Void> ac = new AsyncCallback<>();
         transfer.addAsyncCallback(packetId, ac);
         transfer.flush();
         ac.await();
     }
 
-    private synchronized void readInitPacket(Transfer transfer, int sessionId) {
+    private void readInitPacket(Transfer transfer, int packetId) {
         try {
-            if (this.transfer == null) {
-                this.transfer = new Transfer(this, writableChannel, (Session) null);
-            }
             MessagingService.validateMagic(transfer.readInt());
             version = transfer.readInt();
             hostAndPort = transfer.readString();
-            if (remoteEndpoint == null) {
-                remoteEndpoint = NetEndpoint.createP2P(hostAndPort);
-                resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-                metrics = new ConnectionMetrics(remoteEndpoint);
-            }
-            transfer.writeResponseHeader(sessionId, Session.STATUS_OK);
+            remoteEndpoint = NetEndpoint.createP2P(hostAndPort);
+            resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
+            metrics = new ConnectionMetrics(remoteEndpoint);
+            transfer.writeResponseHeader(packetId, Session.STATUS_OK);
             transfer.flush();
             MessagingService.instance().addConnection(this);
         } catch (Throwable e) {
-            sendError(transfer, sessionId, e);
+            sendError(transfer, packetId, e);
         }
     }
 
     void enqueue(MessageOut<?> message, int id) {
         QueuedMessage qm = new QueuedMessage(message, id);
         try {
-            sendMessage(qm.message, qm.id, qm.timestamp);
+            sendMessage(message, id, qm.timestamp);
         } catch (IOException e) {
             JVMStabilityInspector.inspectThrowable(e);
         }
     }
 
-    private synchronized void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
-        Transfer transfer = new Transfer(this, writableChannel, (NetBuffer) null);
+    // 不需要加synchronized，因为会创建新的临时DataOutputStream
+    private void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
+        checkClosed();
+        Transfer transfer = new Transfer(this, writableChannel);
         DataOutputStream out = transfer.getDataOutputStream();
         transfer.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_P2P_MESSAGE);
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
@@ -164,11 +127,12 @@ public class P2pConnection extends TransferConnection {
         // int cast cuts off the high-order half of the timestamp, which we can assume remains
         // the same between now and when the recipient reconstructs it.
         out.writeInt((int) timestamp);
-        message.serialize(transfer, out, targetVersion);
+        message.serialize(transfer, out, version);
         transfer.flush();
     }
 
-    private void receiveMessage(DataInputStream in, int id) throws IOException {
+    private void receiveMessage(Transfer transfer, int id) throws IOException {
+        DataInputStream in = transfer.getDataInputStream();
         MessagingService.validateMagic(in.readInt());
         long timestamp = System.currentTimeMillis();
         // make sure to readInt, even if cross_node_to is not enabled
@@ -187,22 +151,37 @@ public class P2pConnection extends TransferConnection {
         // callback expired; nothing to do
     }
 
+    long getTimeouts() {
+        return metrics.timeouts.count();
+    }
+
+    void incrementTimeout() {
+        metrics.timeouts.mark();
+    }
+
+    NetEndpoint endpoint() {
+        if (remoteEndpoint.equals(ConfigDescriptor.getLocalEndpoint()))
+            return ConfigDescriptor.getLocalEndpoint();
+        return resetEndpoint;
+    }
+
     @Override
-    protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
-        this.transfer = transfer;
-        switch (operation) {
-        case Session.SESSION_INIT: {
-            readInitPacket(transfer, id);
-            break;
-        }
-        case Session.COMMAND_P2P_MESSAGE: {
-            receiveMessage(transfer.getDataInputStream(), id);
-            break;
-        }
-        default:
-            logger.warn("Unknow operation: {}", operation);
-            close();
-        }
+    public void close() {
+        super.close();
+        reset();
+    }
+
+    void reset() {
+        metrics.release();
+    }
+
+    void reset(NetEndpoint remoteEndpoint) {
+        ClusterMetaData.updatePreferredIP(this.remoteEndpoint, remoteEndpoint);
+        resetEndpoint = remoteEndpoint;
+
+        // release previous metrics and create new one with reset address
+        metrics.release();
+        metrics = new ConnectionMetrics(resetEndpoint);
     }
 
     /** messages that have not been retried yet */

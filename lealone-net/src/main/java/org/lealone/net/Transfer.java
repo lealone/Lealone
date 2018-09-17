@@ -76,18 +76,21 @@ public class Transfer implements NetSerializer {
     private final DataOutputStream out;
     private final ResettableBufferOutputStream resettableOutputStream;
 
-    public Transfer(TransferConnection conn, WritableChannel writableChannel, Session session) {
-        this(conn, writableChannel, (NetBuffer) null);
-        this.session = session;
-    }
-
-    public Transfer(TransferConnection conn, WritableChannel writableChannel, NetBuffer inBuffer) {
+    public Transfer(TransferConnection conn, WritableChannel writableChannel) {
         this.conn = conn;
         this.writableChannel = writableChannel;
 
         resettableOutputStream = new ResettableBufferOutputStream(writableChannel, BUFFER_SIZE);
         out = new DataOutputStream(resettableOutputStream);
+    }
 
+    public Transfer(TransferConnection conn, WritableChannel writableChannel, Session session) {
+        this(conn, writableChannel);
+        this.session = session;
+    }
+
+    public Transfer(TransferConnection conn, WritableChannel writableChannel, NetBuffer inBuffer) {
+        this(conn, writableChannel);
         if (inBuffer != null) {
             in = new DataInputStream(new NetBufferInputStream(inBuffer));
         }

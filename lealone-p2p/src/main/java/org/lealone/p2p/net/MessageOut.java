@@ -82,14 +82,14 @@ public class MessageOut<T extends Message<T>> {
             out.write(entry.getValue());
         }
 
-        // 先设为0
-        out.writeInt(0);
+        out.writeInt(0); // 先设为0
         if (payload != null) {
-            int payloadSizeStartPos = transfer.getDataOutputStreamSize();
+            int lastSize = transfer.getDataOutputStreamSize();
             payload.getSerializer().serialize(payload, out, version);
-            // 再回填
-            int payloadSize = transfer.getDataOutputStreamSize() - payloadSizeStartPos - 4; // 需要减掉4
-            transfer.setPayloadSize(payloadSizeStartPos, payloadSize);
+
+            int payloadSize = transfer.getDataOutputStreamSize() - lastSize;
+            int payloadSizeStartPos = lastSize - 4;// 需要减掉4
+            transfer.setPayloadSize(payloadSizeStartPos, payloadSize); // 再回填
         }
     }
 }

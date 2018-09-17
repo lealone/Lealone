@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.AsyncConnection;
@@ -100,7 +99,10 @@ public class NettyNetClient implements org.lealone.net.NetClient {
                         latch.await();
                         asyncConnection = asyncConnections.get(inetSocketAddress);
                     } catch (Exception e) {
-                        throw DbException.convert(e);
+                        throw new RuntimeException("Cannot connect to " + inetSocketAddress, e);
+                    }
+                    if (asyncConnection == null) {
+                        throw new RuntimeException("Cannot connect to " + inetSocketAddress);
                     }
                 }
             }

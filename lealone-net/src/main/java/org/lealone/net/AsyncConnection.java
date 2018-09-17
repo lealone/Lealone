@@ -28,6 +28,7 @@ public abstract class AsyncConnection {
     protected final boolean isServer;
     protected InetSocketAddress inetSocketAddress;
     protected String hostAndPort;
+    protected boolean closed;
 
     public AsyncConnection(WritableChannel writableChannel, boolean isServer) {
         this.writableChannel = writableChannel;
@@ -59,6 +60,17 @@ public abstract class AsyncConnection {
     public void close() {
         if (writableChannel != null) {
             writableChannel.close();
+            closed = true;
+        }
+    }
+
+    public boolean isClosed() {
+        return closed;
+    }
+
+    public void checkClosed() {
+        if (closed) {
+            throw new RuntimeException("Connection[" + hostAndPort + "] is closed");
         }
     }
 }

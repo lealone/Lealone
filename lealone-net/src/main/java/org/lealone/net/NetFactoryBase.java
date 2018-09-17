@@ -27,14 +27,19 @@ public abstract class NetFactoryBase implements NetFactory {
 
     public NetFactoryBase(String name, NetClient netClient) {
         this.name = name;
+        this.netClient = netClient;
         // 见PluggableEngineManager.PluggableEngineService中的注释
         NetFactoryManager.getInstance().registerEngine(this);
-        this.netClient = netClient;
     }
 
     @Override
     public String getName() {
         return name;
+    }
+
+    @Override
+    public NetClient getNetClient() {
+        return netClient;
     }
 
     @Override
@@ -44,10 +49,5 @@ public abstract class NetFactoryBase implements NetFactory {
 
     @Override
     public void close() {
-    }
-
-    @Override
-    public NetClient getNetClient() {
-        return netClient;
     }
 }
