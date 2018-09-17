@@ -17,6 +17,9 @@
  */
 package org.lealone.net;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -185,4 +188,17 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
         return v;
     }
 
+    public void serialize(DataOutput out) throws IOException {
+        byte[] bytes = getAddress(); // Inet4Address是4个字节，Inet6Address是16个字节
+        out.writeByte(bytes.length);
+        out.write(bytes);
+        out.writeInt(getPort());
+    }
+
+    public static NetEndpoint deserialize(DataInput in) throws IOException {
+        byte[] bytes = new byte[in.readByte()];
+        in.readFully(bytes, 0, bytes.length);
+        int port = in.readInt();
+        return new NetEndpoint(InetAddress.getByAddress(bytes), port);
+    }
 }

@@ -30,16 +30,16 @@ import org.lealone.p2p.util.FileUtils;
 
 public class MessageIn<T> {
     public final NetEndpoint from;
+    public final Verb verb;
     public final T payload;
     public final Map<String, byte[]> parameters;
-    public final Verb verb;
     public final int version;
 
-    private MessageIn(NetEndpoint from, T payload, Map<String, byte[]> parameters, Verb verb, int version) {
+    private MessageIn(NetEndpoint from, Verb verb, T payload, Map<String, byte[]> parameters, int version) {
         this.from = from;
+        this.verb = verb;
         this.payload = payload;
         this.parameters = parameters;
-        this.verb = verb;
         this.version = version;
     }
 
@@ -67,7 +67,7 @@ public class MessageIn<T> {
     }
 
     public static MessageIn<?> read(DataInput in, int version, int id) throws IOException {
-        NetEndpoint from = CompactEndpointSerializationHelper.deserialize(in);
+        NetEndpoint from = NetEndpoint.deserialize(in);
 
         Verb verb = Verb.values()[in.readInt()];
         int parameterCount = in.readInt();
@@ -75,14 +75,13 @@ public class MessageIn<T> {
         if (parameterCount == 0) {
             parameters = Collections.emptyMap();
         } else {
-            HashMap<String, byte[]> map = new HashMap<>(parameterCount);
+            parameters = new HashMap<>(parameterCount);
             for (int i = 0; i < parameterCount; i++) {
                 String key = in.readUTF();
                 byte[] value = new byte[in.readInt()];
                 in.readFully(value);
-                map.put(key, value);
+                parameters.put(key, value);
             }
-            parameters = map;
         }
 
         int payloadSize = in.readInt();
@@ -97,9 +96,9 @@ public class MessageIn<T> {
             serializer = callback.serializer;
         }
         if (payloadSize == 0 || serializer == null)
-            return new MessageIn<>(from, null, parameters, verb, version);
+            return new MessageIn<>(from, verb, null, parameters, version);
 
         Object payload = serializer.deserialize(in, version);
-        return new MessageIn<>(from, payload, parameters, verb, version);
+        return new MessageIn<>(from, verb, payload, parameters, version);
     }
 }

@@ -22,7 +22,6 @@ package org.lealone.p2p.net;
  * The concrete implementation of this interface would provide the functionality
  * for a given verb.
  */
-
 public interface IVerbHandler<T> {
     /**
      * This method delivers a message to the implementing class (if the implementing

@@ -40,15 +40,11 @@ public class MessageOut<T extends Message<T>> {
     }
 
     public MessageOut(Verb verb, T payload) {
-        this(verb, payload, Collections.<String, byte[]> emptyMap());
+        this(verb, payload, Collections.emptyMap());
     }
 
     private MessageOut(Verb verb, T payload, Map<String, byte[]> parameters) {
-        this(ConfigDescriptor.getLocalEndpoint(), verb, payload, parameters);
-    }
-
-    public MessageOut(NetEndpoint from, Verb verb, T payload, Map<String, byte[]> parameters) {
-        this.from = from;
+        this.from = ConfigDescriptor.getLocalEndpoint();
         this.verb = verb;
         this.payload = payload;
         this.parameters = parameters;
@@ -57,7 +53,7 @@ public class MessageOut<T extends Message<T>> {
     public MessageOut<T> withParameter(String key, byte[] value) {
         HashMap<String, byte[]> map = new HashMap<>(parameters);
         map.put(key, value);
-        return new MessageOut<T>(verb, payload, map);
+        return new MessageOut<>(verb, payload, map);
     }
 
     public Stage getStage() {
@@ -75,8 +71,8 @@ public class MessageOut<T extends Message<T>> {
         return sbuf.toString();
     }
 
-    public int serialize(Transfer transfer, DataOutput out, int version) throws IOException {
-        CompactEndpointSerializationHelper.serialize(from, out);
+    public void serialize(Transfer transfer, DataOutput out, int version) throws IOException {
+        from.serialize(out);
 
         out.writeInt(verb.ordinal());
         out.writeInt(parameters.size());
@@ -86,13 +82,14 @@ public class MessageOut<T extends Message<T>> {
             out.write(entry.getValue());
         }
 
-        // long longSize = payload == null ? 0 : serializer.serializedSize(payload, version);
-        // assert longSize <= Integer.MAX_VALUE; // larger values are supported in sstables but not messages
-        int payloadStartPos = transfer.getDataOutputStreamSize();
-        // out.writeInt((int) longSize);
-        out.writeInt(0); // 写设为0，会回填
-        if (payload != null)
+        // 先设为0
+        out.writeInt(0);
+        if (payload != null) {
+            int payloadSizeStartPos = transfer.getDataOutputStreamSize();
             payload.getSerializer().serialize(payload, out, version);
-        return payloadStartPos;
+            // 再回填
+            int payloadSize = transfer.getDataOutputStreamSize() - payloadSizeStartPos - 4; // 需要减掉4
+            transfer.setPayloadSize(payloadSizeStartPos, payloadSize);
+        }
     }
 }

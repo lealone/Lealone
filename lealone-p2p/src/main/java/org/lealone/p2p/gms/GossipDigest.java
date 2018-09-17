@@ -22,7 +22,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import org.lealone.net.NetEndpoint;
-import org.lealone.p2p.net.CompactEndpointSerializationHelper;
 import org.lealone.p2p.net.IVersionedSerializer;
 
 /**
@@ -75,14 +74,14 @@ public class GossipDigest implements Comparable<GossipDigest> {
     private static class GossipDigestSerializer implements IVersionedSerializer<GossipDigest> {
         @Override
         public void serialize(GossipDigest gDigest, DataOutput out, int version) throws IOException {
-            CompactEndpointSerializationHelper.serialize(gDigest.endpoint, out);
+            gDigest.endpoint.serialize(out);
             out.writeInt(gDigest.generation);
             out.writeInt(gDigest.maxVersion);
         }
 
         @Override
         public GossipDigest deserialize(DataInput in, int version) throws IOException {
-            NetEndpoint endpoint = CompactEndpointSerializationHelper.deserialize(in);
+            NetEndpoint endpoint = NetEndpoint.deserialize(in);
             int generation = in.readInt();
             int maxVersion = in.readInt();
             return new GossipDigest(endpoint, generation, maxVersion);

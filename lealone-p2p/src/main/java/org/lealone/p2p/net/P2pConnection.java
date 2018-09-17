@@ -163,9 +163,7 @@ public class P2pConnection extends TransferConnection {
         // int cast cuts off the high-order half of the timestamp, which we can assume remains
         // the same between now and when the recipient reconstructs it.
         out.writeInt((int) timestamp);
-        int payloadStartPos = message.serialize(transfer, out, targetVersion);
-        int size = transfer.getDataOutputStreamSize() - payloadStartPos - 4;
-        transfer.setPayloadSize(payloadStartPos, size);
+        message.serialize(transfer, out, targetVersion);
         transfer.flush();
     }
 

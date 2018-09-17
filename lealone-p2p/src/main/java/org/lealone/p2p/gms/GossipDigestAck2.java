@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.net.NetEndpoint;
-import org.lealone.p2p.net.CompactEndpointSerializationHelper;
 import org.lealone.p2p.net.IVersionedSerializer;
 import org.lealone.p2p.net.Message;
 import org.lealone.p2p.net.MessageType;
@@ -62,7 +61,7 @@ public class GossipDigestAck2 implements Message<GossipDigestAck2> {
             out.writeInt(ack2.epStateMap.size());
             for (Map.Entry<NetEndpoint, EndpointState> entry : ack2.epStateMap.entrySet()) {
                 NetEndpoint ep = entry.getKey();
-                CompactEndpointSerializationHelper.serialize(ep, out);
+                ep.serialize(out);
                 EndpointState.serializer.serialize(entry.getValue(), out, version);
             }
         }
@@ -73,7 +72,7 @@ public class GossipDigestAck2 implements Message<GossipDigestAck2> {
             Map<NetEndpoint, EndpointState> epStateMap = new HashMap<>(size);
 
             for (int i = 0; i < size; ++i) {
-                NetEndpoint ep = CompactEndpointSerializationHelper.deserialize(in);
+                NetEndpoint ep = NetEndpoint.deserialize(in);
                 EndpointState epState = EndpointState.serializer.deserialize(in, version);
                 epStateMap.put(ep, epState);
             }

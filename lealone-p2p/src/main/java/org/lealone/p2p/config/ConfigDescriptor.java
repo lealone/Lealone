@@ -55,7 +55,7 @@ import org.lealone.p2p.util.Utils;
 public class ConfigDescriptor {
 
     private static Config config;
-    private static NetEndpoint localEndpoint;
+    private static NetEndpoint localP2pEndpoint;
     private static IEndpointSnitch snitch;
     private static String localDC;
     private static Comparator<NetEndpoint> localComparator;
@@ -77,10 +77,10 @@ public class ConfigDescriptor {
             throw new ConfigException("phi_convict_threshold must be between 5 and 16");
         }
 
-        localEndpoint = createLocalEndpoint(config);
+        localP2pEndpoint = createLocalP2pEndpoint(config);
         snitch = createEndpointSnitch(config.cluster_config);
 
-        localDC = snitch.getDatacenter(localEndpoint);
+        localDC = snitch.getDatacenter(localP2pEndpoint);
         localComparator = new Comparator<NetEndpoint>() {
             @Override
             public int compare(NetEndpoint endpoint1, NetEndpoint endpoint2) {
@@ -110,7 +110,7 @@ public class ConfigDescriptor {
         return p2pServerEnabled;
     }
 
-    private static NetEndpoint createLocalEndpoint(Config config) throws ConfigException {
+    private static NetEndpoint createLocalP2pEndpoint(Config config) throws ConfigException {
         InetAddress listenAddress = null;
         // Local IP, hostname or interface to bind services to
         if (config.listen_address != null && config.listen_interface != null) {
@@ -317,7 +317,7 @@ public class ConfigDescriptor {
     }
 
     public static NetEndpoint getLocalEndpoint() {
-        return localEndpoint;
+        return localP2pEndpoint;
     }
 
     public static IInternodeAuthenticator getInternodeAuthenticator() {
