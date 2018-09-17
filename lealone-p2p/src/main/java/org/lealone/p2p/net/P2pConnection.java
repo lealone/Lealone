@@ -110,16 +110,17 @@ public class P2pConnection extends TransferConnection {
             transfer = new Transfer(this, writableChannel, (Session) null);
             targetVersion = MessagingService.instance().getVersion(remoteEndpoint);
             writeInitPacket(transfer, 0, targetVersion, localHostAndPort);
+            MessagingService.instance().addConnection(this);
         }
     }
 
-    private void writeInitPacket(Transfer transfer, int sessionId, int version, String hostAndPort) throws Exception {
-        transfer.writeRequestHeaderWithoutSessionId(sessionId, Session.SESSION_INIT);
+    private void writeInitPacket(Transfer transfer, int packetId, int version, String hostAndPort) throws Exception {
+        transfer.writeRequestHeaderWithoutSessionId(packetId, Session.SESSION_INIT);
         transfer.writeInt(MessagingService.PROTOCOL_MAGIC);
         transfer.writeInt(version);
         transfer.writeString(hostAndPort);
         AsyncCallback<Void> ac = new AsyncCallback<>();
-        transfer.addAsyncCallback(sessionId, ac);
+        transfer.addAsyncCallback(packetId, ac);
         transfer.flush();
         ac.await();
     }

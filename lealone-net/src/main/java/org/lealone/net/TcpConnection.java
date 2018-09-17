@@ -95,6 +95,7 @@ public class TcpConnection extends TransferConnection {
     public TcpConnection(WritableChannel writableChannel, NetClient netClient) {
         super(writableChannel, false);
         this.netClient = netClient;
+        setHostAndPort(writableChannel.getHost() + ":" + writableChannel.getPort());
     }
 
     public int getNextId() {

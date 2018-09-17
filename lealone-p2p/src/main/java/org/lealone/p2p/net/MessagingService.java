@@ -303,27 +303,27 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     public P2pConnection getConnection(NetEndpoint remoteEndpoint) {
         remoteEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-        final String remoteHostAndPort = remoteEndpoint.getHostAndPort();
+        String remoteHostAndPort = remoteEndpoint.getHostAndPort();
         P2pConnection conn = connections.get(remoteHostAndPort);
         if (conn == null) {
             synchronized (connections) {
                 conn = connections.get(remoteHostAndPort);
-                if (conn == null) {
-                    Properties prop = new Properties();
-                    prop.putAll(P2pServer.instance.getConfig());
-                    NetFactory factory = NetFactoryManager.getFactory(P2pServer.instance.getConfig());
-                    try {
-                        conn = (P2pConnection) factory.getNetClient().createConnection(prop, remoteEndpoint, this);
-                        String localHost = ConfigDescriptor.getLocalEndpoint().getHostAddress();
-                        String localHostAndPort = localHost + ":" + remoteEndpoint.getPort();
-                        conn.initTransfer(remoteEndpoint, remoteHostAndPort, localHostAndPort);
-                        connections.put(remoteHostAndPort, conn);
-                    } catch (Exception e) {
-                        // TODO 是否不应该立刻移除节点
-                        Gossiper.instance.removeEndpoint(remoteEndpoint);
-                        logger.error("Failed to connect " + remoteEndpoint, e);
-                        throw DbException.convert(e);
-                    }
+                if (conn != null)
+                    return conn;
+
+                Properties prop = new Properties();
+                prop.putAll(P2pServer.instance.getConfig());
+                NetFactory factory = NetFactoryManager.getFactory(P2pServer.instance.getConfig());
+                try {
+                    conn = (P2pConnection) factory.getNetClient().createConnection(prop, remoteEndpoint, this);
+                    String localHostAndPort = ConfigDescriptor.getLocalEndpoint().getHostAndPort();
+                    conn.initTransfer(remoteEndpoint, remoteHostAndPort, localHostAndPort);
+                    connections.put(remoteHostAndPort, conn);
+                } catch (Exception e) {
+                    // TODO 是否不应该立刻移除节点
+                    Gossiper.instance.removeEndpoint(remoteEndpoint);
+                    logger.error("Failed to connect " + remoteEndpoint, e);
+                    throw DbException.convert(e);
                 }
             }
         }
@@ -423,10 +423,10 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     @Override
     public P2pConnection createConnection(WritableChannel writableChannel, boolean isServer) {
-        P2pConnection conn = new P2pConnection(writableChannel, isServer);
-        conn.setHostAndPort(writableChannel.getHost() + ":" + writableChannel.getPort());
-        addConnection(conn);
-        return conn;
+        // 此时还不能把创建的连接放到connections中，
+        // 如果是服务器端的连接，需要等到执行完P2pConnection.readInitPacket后才加入connections
+        // 如果是客户端(也就是对等端)的连接，需要等到执行完P2pConnection.writeInitPacket后才加入connections
+        return new P2pConnection(writableChannel, isServer);
     }
 
     // --------------以下是MessagingServiceMBean的API实现-------------

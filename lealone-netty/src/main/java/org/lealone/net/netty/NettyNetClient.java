@@ -163,8 +163,6 @@ public class NettyNetClient implements org.lealone.net.NetClient {
                         }
                         ChannelPipeline p = ch.pipeline();
                         p.addLast(new NettyClientHandler(connectionManager, conn));
-                        InetSocketAddress remoteAddress = ch.remoteAddress();
-                        conn.setHostAndPort(remoteAddress.getHostName() + ":" + remoteAddress.getPort());
                         conn.setInetSocketAddress(inetSocketAddress);
                         asyncConnections.put(inetSocketAddress, conn);
                     }
