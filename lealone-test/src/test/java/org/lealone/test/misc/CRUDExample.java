@@ -22,12 +22,15 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 import org.junit.Assert;
+import org.lealone.net.nio.NioNetFactory;
 import org.lealone.test.TestBase;
 
 public class CRUDExample {
 
     public static void main(String[] args) throws Exception {
-        Connection conn = new TestBase().getConnection();
+        TestBase test = new TestBase();
+        test.setNetFactoryName(NioNetFactory.NAME);
+        Connection conn = test.getConnection();
         crud(conn);
     }
 

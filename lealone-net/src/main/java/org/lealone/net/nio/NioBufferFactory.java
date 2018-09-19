@@ -15,21 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.net.netty;
+package org.lealone.net.nio;
 
-import org.lealone.net.NetFactoryBase;
-import org.lealone.net.NetServer;
+import java.nio.ByteBuffer;
 
-public class NettyNetFactory extends NetFactoryBase {
+import org.lealone.net.NetBuffer;
+import org.lealone.net.NetBufferFactory;
 
-    public static final String NAME = "netty";
+public class NioBufferFactory implements NetBufferFactory {
 
-    public NettyNetFactory() {
-        super(NAME, NettyNetClient.getInstance());
+    private static final NioBufferFactory instance = new NioBufferFactory();
+
+    public static NioBufferFactory getInstance() {
+        return instance;
+    }
+
+    private NioBufferFactory() {
     }
 
     @Override
-    public NetServer createNetServer() {
-        return new NettyNetServer();
+    public NetBuffer createBuffer(int initialSizeHint) {
+        ByteBuffer buffer = ByteBuffer.allocate(initialSizeHint);
+        return new NioBuffer(buffer);
     }
+
 }

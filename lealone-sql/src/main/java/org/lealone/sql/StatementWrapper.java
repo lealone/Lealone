@@ -32,7 +32,7 @@ import org.lealone.sql.router.RouterHolder;
  * @author H2 Group
  * @author zhh
  */
-class StatementWrapper extends StatementBase {
+public class StatementWrapper extends StatementBase {
 
     StatementBase statement;
 
@@ -51,7 +51,7 @@ class StatementWrapper extends StatementBase {
      */
     private volatile boolean cancel;
 
-    StatementWrapper(ServerSession session, StatementBase statement) {
+    public StatementWrapper(ServerSession session, StatementBase statement) {
         super(session);
         this.statement = statement;
         trace = session.getDatabase().getTrace(Trace.COMMAND);

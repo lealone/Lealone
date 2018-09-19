@@ -17,12 +17,12 @@ import org.lealone.sql.expression.Parameter;
  * @author H2 Group
  * @author zhh
  */
-class StatementWrapperList extends StatementWrapper {
+public class StatementWrapperList extends StatementWrapper {
 
     private final StatementWrapper firstStatement;
     private final String remaining;
 
-    StatementWrapperList(ServerSession session, StatementWrapper sw, String remaining) {
+    public StatementWrapperList(ServerSession session, StatementWrapper sw, String remaining) {
         super(session, sw.statement);
         this.remaining = remaining;
         firstStatement = sw;

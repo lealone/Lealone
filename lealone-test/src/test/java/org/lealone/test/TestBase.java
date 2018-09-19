@@ -116,6 +116,8 @@ public class TestBase extends Assert {
     private String host = Constants.DEFAULT_HOST;
     private int port = Constants.DEFAULT_TCP_PORT;
 
+    private String netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
+
     public static String joinDirs(String... dirs) {
         StringBuilder s = new StringBuilder(TEST_DIR);
         for (String dir : dirs)
@@ -149,6 +151,11 @@ public class TestBase extends Assert {
 
     public TestBase setStorageEngineName(String name) {
         storageEngineName = name;
+        return this;
+    }
+
+    public TestBase setNetFactoryName(String name) {
+        netFactoryName = name;
         return this;
     }
 
@@ -243,6 +250,7 @@ public class TestBase extends Assert {
         }
 
         url.append(dbName).append(firstSeparatorChar).append("default_storage_engine=").append(storageEngineName);
+        url.append(firstSeparatorChar).append(Constants.NET_FACTORY_NAME_KEY).append("=").append(netFactoryName);
 
         for (Map.Entry<String, String> e : connectionParameters.entrySet())
             url.append(separatorChar).append(e.getKey()).append('=').append(e.getValue());

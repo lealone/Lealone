@@ -15,21 +15,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.net.netty;
+package org.lealone.net.nio;
 
+import org.lealone.db.Constants;
 import org.lealone.net.NetFactoryBase;
 import org.lealone.net.NetServer;
 
-public class NettyNetFactory extends NetFactoryBase {
+public class NioNetFactory extends NetFactoryBase {
 
-    public static final String NAME = "netty";
+    public static final String NAME = Constants.DEFAULT_NET_FACTORY_NAME;
 
-    public NettyNetFactory() {
-        super(NAME, NettyNetClient.getInstance());
+    public NioNetFactory() {
+        super(NAME, NioNetClient.getInstance());
     }
 
     @Override
     public NetServer createNetServer() {
-        return new NettyNetServer();
+        return new NioNetServer();
     }
 }

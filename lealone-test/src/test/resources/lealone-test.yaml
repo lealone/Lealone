@@ -50,7 +50,7 @@ protocol_server_engines:
         trace: false,
         allow_others: true,
         daemon: false,
-        net_factory_name: netty, # 网络层默认用netty来实现
+        net_factory_name: nio, # 网络层默认用nio来实现
         ssl: false
     }
   - name: P2P

@@ -41,15 +41,44 @@ public class ShardingTest extends SqlTestBase {
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName
                 + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:1)"
                 + " PARAMETERS(nodes=7)";
+
+        sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
+        sql += " WITH ENDPOINT ASSIGNMENT STRATEGY (class: 'RandomEndpointAssignmentStrategy', assignment_factor: 1)";
         stmt.executeUpdate(sql);
         // stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");
         // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding
         // PARAMETERS(hostIds='1,2')");
 
-        new ShardingCrudTest(dbName).runTest();
+        // new ShardingCrudTest(dbName).runTest();
+
+        new ShardingFindTest(dbName).runTest();
     }
 
-    private class ShardingCrudTest extends SqlTestBase {
+    class ShardingFindTest extends SqlTestBase {
+
+        public ShardingFindTest(String dbName) {
+            super(dbName);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            String name = "ShardingTest_Find";
+            executeUpdate("drop table IF EXISTS " + name);
+            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
+            for (int i = 1; i <= 100; i++) {
+                executeUpdate("insert into " + name + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
+            }
+
+            sql = "select f1 from " + name;
+            printResultSet();
+            sql = "select * from " + name + " where f1 = 3";
+            printResultSet();
+            sql = "select * from " + name + " where f1 > 98";
+            printResultSet();
+        }
+    }
+
+    class ShardingCrudTest extends SqlTestBase {
 
         public ShardingCrudTest(String dbName) {
             super(dbName);
