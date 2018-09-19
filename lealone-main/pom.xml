@@ -60,10 +60,5 @@
             <artifactId>lealone-p2p</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.lealone</groupId>
-            <artifactId>lealone-netty</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
 </project>

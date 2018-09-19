@@ -18,7 +18,6 @@
 package org.lealone.test;
 
 import java.io.File;
-import java.net.InetAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.HashMap;
@@ -62,22 +61,7 @@ public class TestBase extends Assert {
             Config.setProperty("default.storage.engine", getDefaultStorageEngineName());
     }
 
-    public static void optimizeNetty() {
-        // 加了这一行反而慢100ms左右
-        // InternalLoggerFactory.setDefaultFactory(JdkLoggerFactory.INSTANCE);
-        try {
-            // 如果不设置io.netty.machineId参数，会在io.netty.channel.DefaultChannelId类的static初始代码中
-            // 调用io.netty.util.internal.MacAddressUtil.defaultMachineId()会多耗时三四百毫秒
-            String machineIdHexString = io.netty.util.internal.MacAddressUtil
-                    .formatAddress(InetAddress.getLocalHost().getAddress()) + ":00:01";
-            System.setProperty("io.netty.machineId", machineIdHexString);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     public TestBase() {
-        optimizeNetty();
     }
 
     public static String getDefaultStorageEngineName() {
