@@ -503,7 +503,7 @@ public class BTreePage {
                 p[i] = buff.getLong();
             }
             long total = 0;
-            List<String> defaultRemoteHostIds = Arrays.asList(map.db.getHostIds());
+            List<String> defaultRemoteHostIds = map.db == null ? null : Arrays.asList(map.db.getHostIds());
             for (int i = 0; i <= keyLength; i++) {
                 boolean isRemotePage = buff.get() == 1;
                 if (isRemotePage) {

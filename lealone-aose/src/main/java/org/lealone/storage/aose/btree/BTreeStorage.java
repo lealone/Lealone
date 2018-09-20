@@ -352,14 +352,15 @@ public class BTreeStorage {
         } else if (ref != null && pos < 0) {
             return ref.readRemotePage(map);
         }
-        // return readLocalPageSync(pos);
         return readLocalPageAsync(pos);
     }
 
     private BTreePage readLocalPageAsync(final long pos) {
+        final SQLStatementExecutor sqlStatementExecutor = SQLEngineManager.getInstance().getSQLStatementExecutor();
+        if (sqlStatementExecutor == null)
+            return readLocalPageSync(pos);
         Callable<BTreePage> task = null;
         boolean taskInQueue = false;
-        final SQLStatementExecutor sqlStatementExecutor = SQLEngineManager.getInstance().getSQLStatementExecutor();
         while (true) {
             BTreePage p = getPageFromCache(pos);
             if (p != null)

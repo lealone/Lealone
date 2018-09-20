@@ -36,7 +36,7 @@ public abstract class StorageDataTypeBase implements StorageDataType {
     }
 
     public Object read(ByteBuffer buff, int tag) {
-        throw newInternalError();
+        return readValue(buff, tag).getObject();
     }
 
     public Value readValue(ByteBuffer buff) {
