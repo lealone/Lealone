@@ -95,6 +95,11 @@ public class NioNetServer extends NetServerBase {
         }
     }
 
+    private static class Attachment {
+        AsyncConnection conn;
+        int endOfStreamCount;
+    }
+
     private void accept() {
         SocketChannel channel = null;
         try {
@@ -103,7 +108,10 @@ public class NioNetServer extends NetServerBase {
 
             NioWritableChannel writableChannel = new NioWritableChannel(selector, channel);
             AsyncConnection conn = createConnection(writableChannel, true);
-            channel.register(selector, SelectionKey.OP_READ, conn);
+
+            Attachment attachment = new Attachment();
+            attachment.conn = conn;
+            channel.register(selector, SelectionKey.OP_READ, attachment);
             connections.put(channel, conn);
         } catch (Throwable e) {
             closeChannel(channel);
@@ -112,14 +120,27 @@ public class NioNetServer extends NetServerBase {
     }
 
     private void read(SelectionKey key) {
-        AsyncConnection conn = (AsyncConnection) key.attachment();
+        Attachment attachment = (Attachment) key.attachment();
+        AsyncConnection conn = attachment.conn;
         SocketChannel channel = (SocketChannel) key.channel();
         try {
             while (true) {
                 ByteBuffer buffer = ByteBuffer.allocate(1024);
                 int count = channel.read(buffer);
-                if (count <= 0)
+                if (count > 0) {
+                    attachment.endOfStreamCount = 0;
+                } else {
+                    // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
+                    // netty框架在下面这个方法的代码中有自己的不同解决方案
+                    // io.netty.channel.nio.NioEventLoop.processSelectedKey
+                    if (count < 0) {
+                        attachment.endOfStreamCount++;
+                        if (attachment.endOfStreamCount > 3) {
+                            closeChannel(channel);
+                        }
+                    }
                     break;
+                }
                 buffer.flip();
                 NioBuffer nioBuffer = new NioBuffer(buffer);
                 conn.handle(nioBuffer);
