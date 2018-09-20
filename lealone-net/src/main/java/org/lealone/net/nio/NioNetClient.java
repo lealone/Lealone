@@ -56,7 +56,7 @@ public class NioNetClient implements org.lealone.net.NetClient {
     private synchronized void openSelector() throws IOException {
         if (selector == null) {
             this.selector = Selector.open();
-            ConcurrentUtils.submitTask("Nio-Client-Event-Loop", () -> {
+            ConcurrentUtils.submitTask("Client-Nio-Event-Loop", () -> {
                 NioNetClient.this.run();
             });
         }

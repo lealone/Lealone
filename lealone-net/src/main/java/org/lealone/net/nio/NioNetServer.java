@@ -26,7 +26,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
@@ -39,7 +38,6 @@ import org.lealone.net.NetServerBase;
 public class NioNetServer extends NetServerBase {
 
     private static final Logger logger = LoggerFactory.getLogger(NioNetServer.class);
-    private static final ConcurrentHashMap<SocketChannel, AsyncConnection> connections = new ConcurrentHashMap<>();
     private Selector selector;
     private ServerSocketChannel serverChannel;
 
@@ -49,14 +47,14 @@ public class NioNetServer extends NetServerBase {
             return;
         logger.info("Starting nio net server");
         try {
-            this.selector = Selector.open();
-            this.serverChannel = ServerSocketChannel.open();
-            this.serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
-            this.serverChannel.configureBlocking(false);
-            this.serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            selector = Selector.open();
+            serverChannel = ServerSocketChannel.open();
+            serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
+            serverChannel.configureBlocking(false);
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
             super.start();
 
-            ConcurrentUtils.submitTask("Nio-Server-Event-Loop", () -> {
+            ConcurrentUtils.submitTask("Server-Nio-Event-Loop", () -> {
                 NioNetServer.this.run();
             });
         } catch (Exception e) {
@@ -70,6 +68,8 @@ public class NioNetServer extends NetServerBase {
         for (;;) {
             try {
                 selector.select(1000L);
+                if (this.selector == null)
+                    break;
                 Set<SelectionKey> keys = selector.selectedKeys();
                 try {
                     for (SelectionKey key : keys) {
@@ -89,6 +89,8 @@ public class NioNetServer extends NetServerBase {
                 } finally {
                     keys.clear();
                 }
+                if (this.selector == null)
+                    break;
             } catch (Throwable e) {
                 logger.warn(getName(), e);
             }
@@ -102,18 +104,21 @@ public class NioNetServer extends NetServerBase {
 
     private void accept() {
         SocketChannel channel = null;
+        AsyncConnection conn = null;
         try {
             channel = serverChannel.accept();
             channel.configureBlocking(false);
 
             NioWritableChannel writableChannel = new NioWritableChannel(selector, channel);
-            AsyncConnection conn = createConnection(writableChannel, true);
+            conn = createConnection(writableChannel, true);
 
             Attachment attachment = new Attachment();
             attachment.conn = conn;
             channel.register(selector, SelectionKey.OP_READ, attachment);
-            connections.put(channel, conn);
         } catch (Throwable e) {
+            if (conn != null) {
+                removeConnection(conn);
+            }
             closeChannel(channel);
             logger.warn(getName(), e);
         }
@@ -146,6 +151,9 @@ public class NioNetServer extends NetServerBase {
                 conn.handle(nioBuffer);
             }
         } catch (IOException e) {
+            if (conn != null) {
+                removeConnection(conn);
+            }
             closeChannel(channel);
         }
     }
@@ -154,17 +162,16 @@ public class NioNetServer extends NetServerBase {
         if (channel == null) {
             return;
         }
-        connections.remove(channel);
         Socket socket = channel.socket();
         if (socket != null) {
             try {
                 socket.close();
-            } catch (IOException e) {
+            } catch (Throwable e) {
             }
         }
         try {
             channel.close();
-        } catch (IOException e) {
+        } catch (Throwable e) {
         }
     }
 
@@ -174,12 +181,21 @@ public class NioNetServer extends NetServerBase {
             return;
         logger.info("Stopping nio net server");
         super.stop();
-        if (serverChannel == null) {
-            return;
+        if (this.selector != null) {
+            try {
+                Selector selector = this.selector;
+                this.selector = null;
+                selector.wakeup();
+                selector.close();
+            } catch (Throwable e) {
+            }
         }
-        try {
-            serverChannel.close();
-        } catch (IOException e) {
+        if (serverChannel != null) {
+            try {
+                serverChannel.close();
+                serverChannel = null;
+            } catch (Throwable e) {
+            }
         }
     }
 }
