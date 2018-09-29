@@ -64,10 +64,10 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetEndpointManagerHolder;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
-import org.lealone.sql.router.RouterHolder;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
@@ -2535,23 +2535,23 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints) {
-        return RouterHolder.getRouter().createReplicationSession(session, replicationEndpoints);
+        return NetEndpointManagerHolder.get().createReplicationSession(session, replicationEndpoints);
     }
 
     @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints,
             Boolean remote) {
-        return RouterHolder.getRouter().createReplicationSession(session, replicationEndpoints, remote);
+        return NetEndpointManagerHolder.get().createReplicationSession(session, replicationEndpoints, remote);
     }
 
     @Override
     public NetEndpoint getEndpoint(String hostId) {
-        return RouterHolder.getRouter().getEndpoint(hostId);
+        return NetEndpointManagerHolder.get().getEndpoint(hostId);
     }
 
     @Override
     public String getHostId(NetEndpoint endpoint) {
-        return RouterHolder.getRouter().getHostId(endpoint);
+        return NetEndpointManagerHolder.get().getHostId(endpoint);
     }
 
     @Override
@@ -2562,6 +2562,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     @Override
     public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
             Set<NetEndpoint> candidateEndpoints) {
-        return RouterHolder.getRouter().getReplicationEndpoints(this, oldReplicationEndpoints, candidateEndpoints);
+        return NetEndpointManagerHolder.get().getReplicationEndpoints(this, oldReplicationEndpoints,
+                candidateEndpoints);
     }
 }

@@ -18,29 +18,30 @@
 package org.lealone.sql.router;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 
-import org.lealone.db.Command;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.Result;
 
 public class SerializedResult extends DelegatedResult {
     private final static int UNKNOW_ROW_COUNT = -1;
     private final List<Result> results;
-    private final List<? extends Command> commands;
-    private final int maxRows;
+    private final List<Callable<Result>> commands;
+    // private final int maxRows;
     private final int limitRows;
-    private final boolean scrollable;
+    // private final boolean scrollable;
 
     private final int size;
     private int index = 0;
     private int count = 0;
 
-    public SerializedResult(List<? extends Command> commands, int maxRows, boolean scrollable, int limitRows) {
+    public SerializedResult(List<Callable<Result>> commands, int maxRows, boolean scrollable, int limitRows) {
         this.results = null;
         this.commands = commands;
-        this.maxRows = maxRows;
+        // this.maxRows = maxRows;
         this.limitRows = limitRows;
-        this.scrollable = scrollable;
+        // this.scrollable = scrollable;
         this.size = commands.size();
         nextResult();
     }
@@ -48,9 +49,9 @@ public class SerializedResult extends DelegatedResult {
     public SerializedResult(List<Result> results, int limitRows) {
         this.results = results;
         this.commands = null;
-        this.maxRows = -1;
+        // this.maxRows = -1;
         this.limitRows = limitRows;
-        this.scrollable = false;
+        // this.scrollable = false;
         this.size = results.size();
         nextResult();
     }
@@ -65,7 +66,11 @@ public class SerializedResult extends DelegatedResult {
         if (results != null)
             result = results.get(index++);
         else
-            result = commands.get(index++).executeQuery(maxRows, scrollable);
+            try {
+                result = commands.get(index++).call();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
         return true;
     }
 

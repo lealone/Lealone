@@ -11,9 +11,11 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
@@ -26,6 +28,7 @@ import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
@@ -134,7 +137,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      */
     protected Object binarySearch(BTreePage p, Object key) {
         int index = p.binarySearch(key);
-        if (!p.isLeaf()) {
+        if (p.isNode()) {
             if (index < 0) {
                 index = -index - 1;
             } else {
@@ -338,16 +341,19 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             index = p.binarySearch(keyObejct);
             if (index < 0) {
                 index = -index - 1;
+                if (p.isRemoteChildPage(index))
+                    return;
                 parent = p;
                 p = p.getChildPage(index);
             } else {
                 index++;
-                p = parent.getChildPage(index);
-                BTreePage left = parent.getChildPage(index - 1);
-                // 左边已经移动过了，那么右边就不需要再移
-                if (p.replicationHostIds != left.replicationHostIds) {
+                if (parent.isRemoteChildPage(index))
                     return;
-                }
+                // 左边已经移动过了，那么右边就不需要再移
+                if (parent.isRemoteChildPage(index - 1))
+                    return;
+
+                p = parent.getChildPage(index);
                 String[] oldEndpoints;
                 if (p.replicationHostIds == null) {
                     oldEndpoints = new String[0];
@@ -381,7 +387,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             DbException.throwInternalError("oldEndpoints is null");
         }
 
-        List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(oldEndpoints);
+        List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(db, oldEndpoints);
         Set<NetEndpoint> oldEndpointSet;
         if (replicate) {
             // 允许选择原来的节点，所以用new HashSet<>(0)替代new HashSet<>(oldReplicationEndpoints)
@@ -424,6 +430,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
         Set<NetEndpoint> otherEndpoints = new HashSet<>(candidateEndpoints);
         otherEndpoints.removeAll(newReplicationEndpoints);
+
+        if (parent != null && !replicate && !newReplicationEndpoints.contains(localEndpoint)) {
+            PageReference r = new PageReference(null, -1, 0);
+            r.last = index == parent.getKeyCount();
+            r.key = parent.getKey(index - 1);
+            r.remoteHostIds = p.replicationHostIds;
+            parent.setChild(index, r);
+        }
         if (!replicate) {
             otherEndpoints.removeAll(oldReplicationEndpoints);
             newReplicationEndpoints.removeAll(oldReplicationEndpoints);
@@ -443,8 +457,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (parent != null && replicate && otherEndpoints.contains(localEndpoint)) {
             otherEndpoints.remove(localEndpoint);
             PageReference r = new PageReference(null, -1, 0);
-            r.key = parent.getKey(index);
-            r.last = index == parent.getKeyCount() - 1;
+            r.last = index == parent.getKeyCount();
+            r.key = parent.getKey(index - 1);
             r.remoteHostIds = p.replicationHostIds;
             parent.setChild(index, r);
         }
@@ -496,7 +510,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         synchronized (this) {
             BTreePage p = root.copy();
             result = (V) remove(p, key);
-            if (!p.isLeaf() && p.getTotalCount() == 0) {
+            if (p.isNode() && p.getTotalCount() == 0) {
                 p.removePage();
                 p = BTreePage.createEmpty(this);
             }
@@ -712,6 +726,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
+    public StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
+        if (pageKeys == null)
+            return new BTreeCursor<>(this, root, from);
+        else
+            return new ShardingBTreeCursor<>(pageKeys, root, from);
+    }
+
+    @Override
     public synchronized void clear() {
         beforeWrite();
         root.removeAllRecursive();
@@ -882,7 +904,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         synchronized (this) {
             BTreePage p = root.copy();
             removeLeafPage(p, k);
-            if (!p.isLeaf() && p.getTotalCount() == 0) {
+            if (p.isNode() && p.getTotalCount() == 0) {
                 p.removePage();
                 p = BTreePage.createEmpty(this);
             }
@@ -953,7 +975,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private List<NetEndpoint> getReplicationEndpoints(BTreePage p) {
-        return getReplicationEndpoints(p.replicationHostIds);
+        return getReplicationEndpoints(db, p.replicationHostIds);
     }
 
     static List<NetEndpoint> getReplicationEndpoints(IDatabase db, String[] replicationHostIds) {
@@ -1076,8 +1098,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 parent = p;
                 p = p.getChildPage(index);
             } else {
-                if (last)
-                    index++;
+                // if (last)
+                index++;
                 return replicateOrMovePage(k, key, parent.getChildPage(index), parent, index, last);
             }
         }
@@ -1144,5 +1166,97 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public long getMemorySpaceUsed() {
         return storage.getMemorySpaceUsed();
+    }
+
+    // 查找闭区间[from, to]对应的所有leaf page，并建立这些leaf page所在节点与page key的映射关系
+    // 该方法不需要读取leaf page或remote page
+    @Override
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
+        Map<String, List<PageKey>> map = new HashMap<>();
+        Random random = new Random();
+        if (root.isLeaf()) {
+            List<String> hostIds = root.replicationHostIds;
+            int i = random.nextInt(hostIds.size());
+            String hostId = hostIds.get(i);
+            List<PageKey> keys = new ArrayList<>();
+            map.put(hostId, keys);
+            PageKey pk = new PageKey(root.getKeyCount() == 0 ? null : root.getKey(0), true);
+            keys.add(pk);
+        } else {
+            dfs(map, random, from, to);
+        }
+        return map;
+    }
+
+    // 深度优先搜索(不使用递归)
+    private void dfs(Map<String, List<PageKey>> map, Random random, K from, K to) {
+        CursorPos pos = null;
+        BTreePage p = root;
+        while (p.isNode()) {
+            // 注意: x是子page的数组索引，不是keys数组的索引
+            int x = from == null ? -1 : p.binarySearch(from);
+            if (x < 0) {
+                x = -x - 1;
+            } else {
+                x++;
+            }
+            pos = new CursorPos(p, x + 1, pos);
+            if (p.isNodeChildPage(x)) {
+                p = p.getChildPage(x);
+            } else {
+                boolean needsCompare = false;
+                if (to != null) {
+                    Object lastKey = p.getLastKey();
+                    if (keyType.compare(lastKey, to) >= 0) {
+                        needsCompare = true;
+                    }
+                }
+
+                // node page的直接子page不会出现同时包含node page和leaf page的情况
+                for (int size = this.getChildPageCount(p); x < size; x++) {
+                    int keyIndex = x - 1;
+                    Object k = p.getKey(keyIndex < 0 ? 0 : keyIndex);
+                    if (needsCompare && keyType.compare(k, to) > 0) {
+                        return;
+                    }
+                    List<String> hostIds;
+                    if (p.isLeafChildPage(x)) {
+                        hostIds = p.getChildPageReference(x).replicationHostIds;
+                    } else {
+                        hostIds = p.getChildPageReference(x).remoteHostIds;
+                    }
+                    int i = random.nextInt(hostIds.size());
+                    String hostId = hostIds.get(i);
+                    List<PageKey> keys = map.get(hostId);
+                    if (keys == null) {
+                        keys = new ArrayList<>();
+                        map.put(hostId, keys);
+                    }
+                    PageKey pk = new PageKey(k, x == 0);
+                    keys.add(pk);
+                }
+
+                // from此时为null，代表从右边兄弟节点keys数组的0号索引开始
+                from = null;
+                // 转到上一层，遍历右边的兄弟节点
+                for (;;) {
+                    pos = pos.parent;
+                    if (pos == null) {
+                        return;
+                    }
+                    if (pos.index < this.getChildPageCount(pos.page)) {
+                        if (pos.page.isNodeChildPage(pos.index)) {
+                            p = pos.page.getChildPage(pos.index++);
+                            break; // 只是退出for循环
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // test only
+    public BTreePage getRootPage() {
+        return root;
     }
 }

@@ -6,6 +6,8 @@
 package org.lealone.sql;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -26,6 +28,7 @@ import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.storage.PageKey;
 
 /**
  * A parsed and prepared statement.
@@ -594,6 +597,12 @@ public abstract class StatementBase extends CommandBase implements PreparedState
     }
 
     @Override
+    public void executeQueryAsync(int maxRows, boolean scrollable, ArrayList<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Result>> handler) {
+        executeQueryAsync(maxRows, scrollable, handler);
+    }
+
+    @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
         int updateCount = executeUpdate();
         if (handler != null) {
@@ -618,4 +627,18 @@ public abstract class StatementBase extends CommandBase implements PreparedState
         return false;
     }
 
+    public TableFilter getTableFilter() {
+        return null;
+    }
+
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap() {
+        TableFilter tf = getTableFilter();
+        if (tf != null)
+            return tf.getEndpointToPageKeyMap(session);
+        return null;
+    }
+
+    public String getPlanSQL(boolean isDistributed) {
+        return getSQL();
+    }
 }

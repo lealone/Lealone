@@ -1346,6 +1346,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     @SuppressWarnings("unchecked")
     @Override
     public StorageMap<Object, Object> getStorageMap(String mapName) {
+        // 数据库可能还没有初始化，这时事务引擎中就找不到对应的Map
+        if (!database.isInitialized())
+            database.init();
         TransactionEngine transactionEngine = database.getTransactionEngine();
         return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName).getInstance(getTransaction());
     }

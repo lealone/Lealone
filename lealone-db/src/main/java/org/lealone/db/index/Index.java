@@ -6,6 +6,9 @@
  */
 package org.lealone.db.index;
 
+import java.util.List;
+import java.util.Map;
+
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -15,6 +18,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 
 /**
@@ -62,6 +66,8 @@ public interface Index extends SchemaObject {
      */
     Cursor find(ServerSession session, SearchRow first, SearchRow last);
 
+    Cursor find(ServerSession session, SearchRow first, SearchRow last, List<PageKey> pageKeys);
+
     /**
      * Find a row or a list of rows and create a cursor to iterate over the result.
      *
@@ -71,6 +77,8 @@ public interface Index extends SchemaObject {
      * @return the cursor to iterate over the results
      */
     Cursor find(TableFilter filter, SearchRow first, SearchRow last);
+
+    Cursor find(TableFilter filter, SearchRow first, SearchRow last, List<PageKey> pageKeys);
 
     /**
      * Estimate the cost to search for rows given the search mask.
@@ -250,4 +258,6 @@ public interface Index extends SchemaObject {
     boolean canScan();
 
     StorageMap<? extends Object, ? extends Object> getStorageMap();
+
+    Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
 }

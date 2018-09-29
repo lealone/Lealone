@@ -8,6 +8,8 @@ package org.lealone.db.index;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
@@ -22,6 +24,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.storage.PageKey;
 
 /**
  * The filter used to walk through an index. This class supports IN(..)
@@ -29,10 +32,9 @@ import org.lealone.db.value.ValueNull;
  */
 public class IndexCursor implements Cursor {
 
-    private ServerSession session;
     private final TableFilter tableFilter;
-    private Index index;
     private Table table;
+    private Index index;
     private IndexColumn[] indexColumns;
     private boolean alwaysFalse;
 
@@ -76,12 +78,14 @@ public class IndexCursor implements Cursor {
             return;
         }
         if (!alwaysFalse) {
-            cursor = index.find(tableFilter, start, end);
+            if (pageKeys == null)
+                cursor = index.find(tableFilter, start, end);
+            else
+                cursor = index.find(tableFilter, start, end, pageKeys);
         }
     }
 
-    public void parseIndexConditions(ServerSession s, ArrayList<IndexCondition> indexConditions) {
-        this.session = s;
+    public void parseIndexConditions(ServerSession session, ArrayList<IndexCondition> indexConditions) {
         alwaysFalse = false;
         start = end = null;
         inList = null;
@@ -100,7 +104,7 @@ public class IndexCursor implements Cursor {
                 if (start == null && end == null) {
                     if (canUseIndexForIn(column)) {
                         this.inColumn = column;
-                        inList = condition.getCurrentValueList(s);
+                        inList = condition.getCurrentValueList(session);
                         inListIndex = 0;
                     }
                 }
@@ -112,7 +116,7 @@ public class IndexCursor implements Cursor {
                     }
                 }
             } else {
-                Value v = condition.getCurrentValue(s);
+                Value v = condition.getCurrentValue(session);
                 boolean isStart = condition.isStart();
                 boolean isEnd = condition.isEnd();
                 int id = column.getColumnId();
@@ -127,10 +131,10 @@ public class IndexCursor implements Cursor {
                     }
                 }
                 if (isStart) {
-                    start = getSearchRow(column, start, id, v, true);
+                    start = getSearchRow(session, column, start, id, v, true);
                 }
                 if (isEnd) {
-                    end = getSearchRow(column, end, id, v, false);
+                    end = getSearchRow(session, column, end, id, v, false);
                 }
                 if (isStart || isEnd) {
                     // an X=? condition will produce less rows than
@@ -168,11 +172,11 @@ public class IndexCursor implements Cursor {
         return idxCol == null || idxCol.column == column;
     }
 
-    private SearchRow getSearchRow(Column column, SearchRow row, int id, Value v, boolean max) {
+    private SearchRow getSearchRow(ServerSession session, Column column, SearchRow row, int id, Value v, boolean max) {
         if (row == null) {
             row = table.getTemplateRow();
         } else {
-            v = getMax(row.getValue(id), v, max);
+            v = getMax(session, row.getValue(id), v, max);
         }
         if (id == -2) {
             row.setRowKey(v);
@@ -184,7 +188,7 @@ public class IndexCursor implements Cursor {
         return row;
     }
 
-    private Value getMax(Value a, Value b, boolean bigger) {
+    private Value getMax(ServerSession session, Value a, Value b, boolean bigger) {
         if (a == null) {
             return b;
         } else if (b == null) {
@@ -299,5 +303,19 @@ public class IndexCursor implements Cursor {
 
     public SearchRow getEndSearchRow() {
         return end;
+    }
+
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session) {
+        return index.getEndpointToPageKeyMap(session, start, end);
+    }
+
+    private List<PageKey> pageKeys;
+
+    public void setPageKeys(List<PageKey> pageKeys) {
+        this.pageKeys = pageKeys;
+    }
+
+    public List<PageKey> getPageKeys() {
+        return pageKeys;
     }
 }

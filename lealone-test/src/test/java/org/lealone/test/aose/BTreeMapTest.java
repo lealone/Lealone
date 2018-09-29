@@ -21,12 +21,21 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import org.junit.Test;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.BTreePage;
+import org.lealone.storage.aose.btree.BTreePage.PageReference;
 import org.lealone.test.TestBase;
 
 public class BTreeMapTest extends TestBase {
@@ -38,16 +47,21 @@ public class BTreeMapTest extends TestBase {
     public void run() {
         init();
         // testMapOperations();
+        testGetEndpointToKeyMap();
         // testCompact();
         // testTransfer();
 
-        testSplit();
+        // testSplit();
     }
 
     private void init() {
         AOStorageBuilder builder = new AOStorageBuilder();
         storageName = joinDirs("aose");
-        builder.storageName(storageName).compress().reuseSpace().pageSplitSize(1024).minFillRate(30);
+        int pageSplitSize = 16 * 1024;
+        pageSplitSize = 4 * 1024;
+        pageSplitSize = 1 * 1024;
+        // pageSplitSize = 32 * 1024;
+        builder.storageName(storageName).compress().reuseSpace().pageSplitSize(pageSplitSize).minFillRate(30);
         storage = builder.openStorage();
 
         map = storage.openBTreeMap("BTreeMapTest");
@@ -71,6 +85,92 @@ public class BTreeMapTest extends TestBase {
 
         map.remove(49);
         map.printPage();
+    }
+
+    void testGetEndpointToKeyMap() {
+        map.clear();
+        testGetEndpointToKeyMap(map); // 测试空map
+
+        map.clear();
+        int count = 10;
+        for (int i = 1; i <= count; i++) {
+            map.put(i, "value" + i);
+        }
+        testGetEndpointToKeyMap(map); // 测试只有一个root leaf page的map
+
+        map.clear();
+        count = 6000;
+        for (int i = 1; i <= count; i++) {
+            map.put(i, "value" + i);
+        }
+        testGetEndpointToKeyMap(map); // 测试有root node page的map
+
+        map.close();
+    }
+
+    void testGetEndpointToKeyMap(BTreeMap<Integer, String> map) {
+        BTreePage root = map.getRootPage();
+        Random random = new Random();
+        String[] ids = { "a", "b", "c", "d", "e", "f" };
+        injectReplicationHostIds(root, random, ids);
+        Integer from = 3; // 5900;
+        Integer to = 5999;
+        HashSet<PageKey> pageKeySet = new HashSet<>();
+        Map<String, List<PageKey>> endpointToPageKeyMap = map.getEndpointToPageKeyMap(null, from, to);
+        // System.out.println(endpointToPageKeyMap);
+        for (List<PageKey> pageKeys : endpointToPageKeyMap.values()) {
+            for (PageKey pk : pageKeys) {
+                if (!pageKeySet.add(pk)) {
+                    // System.out.println("PageKey: " + pk);
+                    fail("PageKey: " + pk);
+                }
+            }
+        }
+
+        int count = 0;
+        for (List<PageKey> pageKeys : endpointToPageKeyMap.values()) {
+            // System.out.println("pageKeys: " + pageKeys);
+            StorageMapCursor<Integer, String> cursor = map.cursor(pageKeys, from);
+            while (cursor.hasNext()) {
+                count++;
+                cursor.next();
+                // System.out.println(cursor.getKey());
+            }
+        }
+        System.out.println("count: " + count + ", to-from: " + (to - from + 1));
+    }
+
+    void injectReplicationHostIds(BTreePage page, Random random, String[] ids) {
+        if (page.isLeaf()) {
+            injectReplicationHostIds(null, page, random, ids);
+            return;
+        }
+        for (PageReference pf : page.getChildren()) {
+            if (pf.getPage().isNode())
+                injectReplicationHostIds(pf.getPage(), random, ids);
+            else {
+                injectReplicationHostIds(pf, page, random, ids);
+            }
+        }
+    }
+
+    void injectReplicationHostIds(PageReference pf, BTreePage page, Random random, String[] ids) {
+        int needNodes = 3;
+        ArrayList<String> replicationHostIds = new ArrayList<>(needNodes);
+        int totalNodes = ids.length;
+        Set<Integer> indexSet = new HashSet<>(needNodes);
+        while (true) {
+            int i = random.nextInt(totalNodes);
+            indexSet.add(i);
+            if (indexSet.size() == needNodes)
+                break;
+        }
+        for (int i : indexSet) {
+            replicationHostIds.add(ids[i]);
+        }
+        page.setReplicationHostIds(replicationHostIds);
+        if (pf != null)
+            pf.setReplicationHostIds(replicationHostIds);
     }
 
     void testMapOperations() {

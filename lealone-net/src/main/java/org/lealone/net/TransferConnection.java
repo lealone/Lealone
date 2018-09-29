@@ -100,6 +100,7 @@ public abstract class TransferConnection extends AsyncConnection {
     }
 
     protected void sendError(Transfer transfer, int id, Throwable t) {
+        logger.error("sendError", t);
         try {
             SQLException e = DbException.convert(t).getSQLException();
             StringWriter writer = new StringWriter();

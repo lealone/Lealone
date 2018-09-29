@@ -19,12 +19,10 @@ package org.lealone.p2p.server;
 
 import java.util.Map;
 
-import org.lealone.p2p.router.P2pRouter;
-import org.lealone.p2p.router.TransactionalRouter;
+import org.lealone.net.NetEndpointManagerHolder;
+import org.lealone.p2p.net.P2pNetEndpointManager;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngineBase;
-import org.lealone.sql.router.Router;
-import org.lealone.sql.router.RouterHolder;
 
 public class P2pServerEngine extends ProtocolServerEngineBase {
 
@@ -42,7 +40,7 @@ public class P2pServerEngine extends ProtocolServerEngineBase {
     @Override
     public void init(Map<String, String> config) {
         super.init(config);
-        initRouter();
+        initNetEndpointManager();
         P2pServer.instance.init(config);
     }
 
@@ -56,9 +54,8 @@ public class P2pServerEngine extends ProtocolServerEngineBase {
         return P2pServer.instance;
     }
 
-    private static void initRouter() {
-        Router r = P2pRouter.getInstance();
-        RouterHolder.setRouter(new TransactionalRouter(r));
+    private static void initNetEndpointManager() {
+        NetEndpointManagerHolder.set(P2pNetEndpointManager.getInstance());
     }
 
 }

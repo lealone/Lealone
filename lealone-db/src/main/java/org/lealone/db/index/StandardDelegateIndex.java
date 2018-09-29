@@ -6,6 +6,7 @@
 package org.lealone.db.index;
 
 import java.util.List;
+import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
@@ -17,6 +18,7 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.ValueLong;
+import org.lealone.storage.PageKey;
 
 /**
  * An index that delegates indexing to another index.
@@ -137,4 +139,13 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
         return mainIndex.isInMemory();
     }
 
+    @Override
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
+        return mainIndex.getEndpointToPageKeyMap(session, first, last);
+    }
+
+    @Override
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last, List<PageKey> pageKeys) {
+        return mainIndex.find(session, first, last, pageKeys);
+    }
 }

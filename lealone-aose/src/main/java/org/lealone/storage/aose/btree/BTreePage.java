@@ -505,7 +505,8 @@ public class BTreePage {
             long total = 0;
             List<String> defaultRemoteHostIds = map.db == null ? null : Arrays.asList(map.db.getHostIds());
             for (int i = 0; i <= keyLength; i++) {
-                boolean isRemotePage = buff.get() == 1;
+                int pageType = buff.get();
+                boolean isRemotePage = pageType == 2;
                 if (isRemotePage) {
                     children[i] = new PageReference(null, p[i], 0);
                     List<String> remoteHostIds = readReplicationHostIds(buff);
@@ -514,9 +515,14 @@ public class BTreePage {
                     }
                     children[i].remoteHostIds = remoteHostIds;
                 } else {
+                    List<String> replicationHostIds = null;
+                    if (pageType == 0) {
+                        replicationHostIds = readReplicationHostIds(buff);
+                    }
                     long s = DataUtils.readVarLong(buff);
                     total += s;
                     children[i] = new PageReference(null, p[i], s);
+                    children[i].replicationHostIds = replicationHostIds;
                 }
             }
             totalCount = total;
@@ -651,10 +657,15 @@ public class BTreePage {
             writeChildrenPositions(buff);
             for (int i = 0; i <= keyLength; i++) {
                 if (children[i].isRemotePage()) {
-                    buff.put((byte) 1);
+                    buff.put((byte) 2);
                     writeReplicationHostIds(children[i].remoteHostIds, buff);
                 } else {
-                    buff.put((byte) 0);
+                    if (children[i].isLeafPage()) {
+                        buff.put((byte) 0);
+                        writeReplicationHostIds(children[i].replicationHostIds, buff);
+                    } else {
+                        buff.put((byte) 1);
+                    }
                     buff.putVarLong(children[i].count); // count可能不大，所以用VarLong能节省一些空间
                 }
             }
@@ -778,6 +789,7 @@ public class BTreePage {
                 }
                 ref.page.writeEnd();
                 children[i] = new PageReference(null, ref.pos, ref.count);
+                children[i].replicationHostIds = ref.page.replicationHostIds;
             }
         }
     }
@@ -1108,6 +1120,7 @@ public class BTreePage {
         final long count;
 
         List<String> remoteHostIds;
+        List<String> replicationHostIds;
 
         Object key;
         boolean last;
@@ -1116,6 +1129,9 @@ public class BTreePage {
             this.page = page;
             this.pos = pos;
             this.count = count;
+            if (page != null) {
+                replicationHostIds = page.replicationHostIds;
+            }
         }
 
         @Override
@@ -1125,6 +1141,14 @@ public class BTreePage {
 
         boolean isRemotePage() {
             return pos < 0;
+        }
+
+        boolean isLeafPage() {
+            return pos >= 0 && replicationHostIds != null;
+        }
+
+        boolean isNodePage() {
+            return pos >= 0 && replicationHostIds == null;
         }
 
         synchronized BTreePage readRemotePage(BTreeMap<Object, Object> map) {
@@ -1150,6 +1174,16 @@ public class BTreePage {
                 remoteHostIds = null;
             }
             return page;
+        }
+
+        // test only
+        public BTreePage getPage() {
+            return page;
+        }
+
+        // test only
+        public void setReplicationHostIds(List<String> replicationHostIds) {
+            this.replicationHostIds = replicationHostIds;
         }
     }
 
@@ -1331,5 +1365,43 @@ public class BTreePage {
         int offset = buff.position();
         p.read(buff, chunkId, offset, buff.limit(), type == DataUtils.PAGE_TYPE_LEAF);
         return p;
+    }
+
+    boolean isRemoteChildPage(int index) {
+        if (isLeaf())
+            return false;
+        else
+            return getChildPageReference(index).isRemotePage();
+    }
+
+    boolean isNodeChildPage(int index) {
+        if (isLeaf())
+            return false;
+        else
+            return getChildPageReference(index).isNodePage();
+    }
+
+    boolean isLeafChildPage(int index) {
+        if (isLeaf())
+            return false;
+        else
+            return getChildPageReference(index).isLeafPage();
+    }
+
+    Object getLastKey() {
+        if (keys == null || keys.length == 0)
+            return null;
+        else
+            return keys[keys.length - 1];
+    }
+
+    // test only
+    public PageReference[] getChildren() {
+        return children;
+    }
+
+    // test only
+    public void setReplicationHostIds(List<String> replicationHostIds) {
+        this.replicationHostIds = replicationHostIds;
     }
 }

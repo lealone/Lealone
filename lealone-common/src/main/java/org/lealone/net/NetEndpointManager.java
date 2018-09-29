@@ -15,47 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.router;
+package org.lealone.net;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
 import org.lealone.db.IDatabase;
-import org.lealone.db.RunMode;
 import org.lealone.db.Session;
-import org.lealone.db.result.Result;
-import org.lealone.net.NetEndpoint;
-import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.replication.ReplicationSession;
 
-public interface Router {
+public interface NetEndpointManager {
 
-    int executeUpdate(PreparedStatement statement);
+    Set<NetEndpoint> getLiveEndpoints();
 
-    Result executeQuery(PreparedStatement statement, int maxRows);
+    default long getRpcTimeout() {
+        return 0;
+    }
 
     String[] assignEndpoints(IDatabase db);
-
-    int executeDatabaseStatement(IDatabase db, Session currentSession, PreparedStatement statement);
-
-    default void replicate(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationEndpoints) {
-    }
 
     default String[] getReplicationEndpoints(IDatabase db) {
         return new String[0];
     }
 
-    default void sharding(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
-            String[] newEndpoints) {
-    }
-
     default String[] getShardingEndpoints(IDatabase db) {
         return new String[0];
-    }
-
-    default void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
-            String[] newEndpoints) {
     }
 
     default ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints) {
@@ -64,6 +49,10 @@ public interface Router {
 
     default ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints,
             Boolean remote) {
+        return null;
+    }
+
+    default ReplicationSession createReplicationSession(Session s, Session[] sessions) {
         return null;
     }
 

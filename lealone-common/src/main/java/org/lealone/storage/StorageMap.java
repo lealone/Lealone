@@ -21,8 +21,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.util.List;
+import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.Session;
 import org.lealone.storage.replication.ReplicationMap;
 import org.lealone.storage.type.StorageDataType;
 
@@ -242,4 +245,12 @@ public interface StorageMap<K, V> extends ReplicationMap {
     long getDiskSpaceUsed();
 
     long getMemorySpaceUsed();
+
+    default StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
+        return cursor(from);
+    }
+
+    default Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
+        return null;
+    }
 }

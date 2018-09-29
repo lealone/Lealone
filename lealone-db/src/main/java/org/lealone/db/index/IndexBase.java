@@ -6,6 +6,9 @@
  */
 package org.lealone.db.index;
 
+import java.util.List;
+import java.util.Map;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
@@ -25,6 +28,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 
 /**
@@ -144,6 +148,16 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
         return find(filter.getSession(), first, last);
+    }
+
+    @Override
+    public Cursor find(TableFilter filter, SearchRow first, SearchRow last, List<PageKey> pageKeys) {
+        return find(filter.getSession(), first, last, pageKeys);
+    }
+
+    @Override
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last, List<PageKey> pageKeys) {
+        return find(session, first, last);
     }
 
     /**
@@ -457,6 +471,11 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
 
     @Override
     public StorageMap<? extends Object, ? extends Object> getStorageMap() {
+        return null;
+    }
+
+    @Override
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
         return null;
     }
 }

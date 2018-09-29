@@ -15,20 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.router;
+package org.lealone.net;
 
-public class RouterHolder {
+public class NetEndpointManagerHolder {
 
-    private static Router router = LocalRouter.getInstance();
+    private static NetEndpointManager netEndpointManager = LocalNetEndpointManager.getInstance();
 
-    public static Router getRouter() {
-        return router;
+    public static NetEndpointManager getNetEndpointManager() {
+        return netEndpointManager;
     }
 
-    public static void setRouter(Router r) {
-        if (r == null)
-            throw new NullPointerException("router is null");
-        router = r;
+    public static NetEndpointManager get() {
+        return netEndpointManager;
+    }
+
+    public static void set(NetEndpointManager m) {
+        if (m == null)
+            throw new NullPointerException("NetEndpointManager is null");
+        netEndpointManager = m;
     }
 
 }

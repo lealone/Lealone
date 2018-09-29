@@ -7,6 +7,8 @@
 package org.lealone.db.table;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
@@ -28,6 +30,7 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
+import org.lealone.storage.PageKey;
 
 /**
  * A table filter represents a table that is used in a query. There is one such
@@ -496,15 +499,15 @@ public class TableFilter implements ColumnResolver {
             if (joinCondition == null) {
                 joinCondition = condition;
             } else {
-                joinCondition = (Expression) session.getDatabase().getSQLEngine()
-                        .createConditionAndOr(true, joinCondition, condition);
+                joinCondition = (Expression) session.getDatabase().getSQLEngine().createConditionAndOr(true,
+                        joinCondition, condition);
             }
         } else {
             if (filterCondition == null) {
                 filterCondition = condition;
             } else {
-                filterCondition = (Expression) session.getDatabase().getSQLEngine()
-                        .createConditionAndOr(true, filterCondition, condition);
+                filterCondition = (Expression) session.getDatabase().getSQLEngine().createConditionAndOr(true,
+                        filterCondition, condition);
             }
         }
     }
@@ -1073,5 +1076,21 @@ public class TableFilter implements ColumnResolver {
             cursor.parseIndexConditions(session, indexConditions);
         }
         return cursor.getEndSearchRow();
+    }
+
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session) {
+        if (!indexConditionsParsed) {
+            indexConditionsParsed = true;
+            cursor.parseIndexConditions(session, indexConditions);
+        }
+        return cursor.getEndpointToPageKeyMap(session);
+    }
+
+    public void setPageKeys(List<PageKey> pageKeys) {
+        cursor.setPageKeys(pageKeys);
+    }
+
+    public List<PageKey> getPageKeys() {
+        return cursor.getPageKeys();
     }
 }

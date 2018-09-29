@@ -19,8 +19,10 @@
 package org.lealone.transaction;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 
 public interface TransactionMap<K, V> extends StorageMap<K, V> {
@@ -65,6 +67,10 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      * @return the iterator
      */
     public Iterator<Entry<K, V>> entryIterator(K from);
+
+    default public Iterator<Entry<K, V>> entryIterator(List<PageKey> pageKeys, K from) {
+        return entryIterator(from);
+    }
 
     /**
      * Iterate over keys.

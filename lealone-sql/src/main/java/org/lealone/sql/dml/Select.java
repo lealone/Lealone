@@ -359,7 +359,8 @@ public class Select extends Query implements org.lealone.db.expression.Select {
         }
 
         // 对min、max、count三个聚合函数的特殊优化
-        if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1) {
+        if (condition == null && isGroupQuery && groupIndex == null && havingIndex < 0 && filters.size() == 1
+                && filters.get(0).getPageKeys() != null) {
             Table t = filters.get(0).getTable();
             ExpressionVisitor optimizable = ExpressionVisitor.getOptimizableVisitor(t);
             isQuickAggregateQuery = isEverything(optimizable);
@@ -1196,8 +1197,12 @@ public class Select extends Query implements org.lealone.db.expression.Select {
         return getPlanSQL(false, false);
     }
 
+    @Override
     public String getPlanSQL(boolean isDistributed) {
-        return getPlanSQL(isDistributed, false);
+        if (isGroupQuery() || getLimit() != null || getOffset() != null)
+            return getPlanSQL(isDistributed, false);
+        else
+            return getSQL();
     }
 
     public String getPlanSQL(boolean isDistributed, boolean isMerged) {
@@ -1521,5 +1526,10 @@ public class Select extends Query implements org.lealone.db.expression.Select {
 
         priority = MIN_PRIORITY;
         return priority;
+    }
+
+    @Override
+    public TableFilter getTableFilter() {
+        return topTableFilter;
     }
 }

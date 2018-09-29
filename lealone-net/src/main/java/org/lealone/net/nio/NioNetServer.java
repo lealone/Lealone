@@ -130,7 +130,7 @@ public class NioNetServer extends NetServerBase {
         SocketChannel channel = (SocketChannel) key.channel();
         try {
             while (true) {
-                ByteBuffer buffer = ByteBuffer.allocate(1024);
+                ByteBuffer buffer = ByteBuffer.allocate(4096);
                 int count = channel.read(buffer);
                 if (count > 0) {
                     attachment.endOfStreamCount = 0;

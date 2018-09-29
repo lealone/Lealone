@@ -18,6 +18,7 @@
 package org.lealone.storage.aose;
 
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
@@ -27,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.DelegatedStorageMap;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
@@ -261,6 +263,11 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
     }
 
     @Override
+    public StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
+        return new Cursor<>(pageKeys, this, from);
+    }
+
+    @Override
     public void clear() {
         buffer.clear();
         map.clear();
@@ -332,11 +339,15 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
         private V value;
 
         Cursor(BufferedMap<K, V> bmap, K from) {
+            this(null, bmap, from);
+        }
+
+        Cursor(List<PageKey> pageKeys, BufferedMap<K, V> bmap, K from) {
             if (from == null)
                 bufferIterator = bmap.buffer.entrySet().iterator();
             else
                 bufferIterator = bmap.buffer.tailMap(from).entrySet().iterator();
-            mapCursor = bmap.map.cursor(from);
+            mapCursor = bmap.map.cursor(pageKeys, from);
             keyType = bmap.map.getKeyType();
         }
 

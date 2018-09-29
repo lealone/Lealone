@@ -31,8 +31,9 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetEndpointManagerHolder;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.router.RouterHolder;
+import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.Storage;
 
 /**
@@ -129,9 +130,9 @@ public class AlterDatabase extends DatabaseStatement {
                 newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
             } else {
                 if (toReplicationMode)
-                    newHostIds = RouterHolder.getRouter().getReplicationEndpoints(db);
+                    newHostIds = NetEndpointManagerHolder.get().getReplicationEndpoints(db);
                 else
-                    newHostIds = RouterHolder.getRouter().getShardingEndpoints(db);
+                    newHostIds = NetEndpointManagerHolder.get().getShardingEndpoints(db);
             }
 
             String hostIds = StringUtils.arrayCombine(oldHostIds, ',') + ","
@@ -236,7 +237,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteEndpoints();
         if (isTargetEndpoint(db)) {
             Database db2 = copyDatabase();
-            RouterHolder.getRouter().replicate(db2, RunMode.CLIENT_SERVER, runMode, newHostIds);
+            SQLRouter.replicate(db2, RunMode.CLIENT_SERVER, runMode, newHostIds);
         }
     }
 
@@ -247,7 +248,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteEndpoints();
         if (isTargetEndpoint(db)) {
             Database db2 = copyDatabase();
-            RouterHolder.getRouter().sharding(db2, RunMode.CLIENT_SERVER, runMode, oldHostIds, newHostIds);
+            SQLRouter.sharding(db2, RunMode.CLIENT_SERVER, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -258,7 +259,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteEndpoints();
         if (isTargetEndpoint(db)) {
             Database db2 = copyDatabase();
-            RouterHolder.getRouter().sharding(db2, RunMode.REPLICATION, runMode, oldHostIds, newHostIds);
+            SQLRouter.sharding(db2, RunMode.REPLICATION, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -269,7 +270,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteEndpoints();
         if (isTargetEndpoint(db)) {
             Database db2 = copyDatabase();
-            RouterHolder.getRouter().replicate(db2, RunMode.REPLICATION, runMode, newHostIds);
+            SQLRouter.replicate(db2, RunMode.REPLICATION, runMode, newHostIds);
         }
     }
 
@@ -280,7 +281,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteEndpoints();
         if (isTargetEndpoint(db)) {
             Database db2 = copyDatabase();
-            RouterHolder.getRouter().sharding(db2, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
+            SQLRouter.sharding(db2, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -394,13 +395,13 @@ public class AlterDatabase extends DatabaseStatement {
             set = new HashSet<>(Arrays.asList(removeHostIds));
             if (set.contains(localHostId)) {
                 Database db2 = copyDatabase();
-                RouterHolder.getRouter().scaleIn(db2, oldRunMode, newRunMode, removeHostIds, newHostIds);
+                SQLRouter.scaleIn(db2, oldRunMode, newRunMode, removeHostIds, newHostIds);
             }
         } else if (newRunMode == RunMode.CLIENT_SERVER || newRunMode == RunMode.REPLICATION) {
             set = new HashSet<>(Arrays.asList(newHostIds));
             if (set.contains(localHostId)) {
                 Database db2 = copyDatabase();
-                RouterHolder.getRouter().scaleIn(db2, oldRunMode, newRunMode, null, newHostIds);
+                SQLRouter.scaleIn(db2, oldRunMode, newRunMode, null, newHostIds);
             }
         }
     }

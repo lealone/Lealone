@@ -7,6 +7,7 @@ package org.lealone.sql;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -24,7 +25,8 @@ import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Parameter;
-import org.lealone.sql.router.RouterHolder;
+import org.lealone.sql.router.SQLRouter;
+import org.lealone.storage.PageKey;
 
 /**
  * Represents a SQL statement wrapper.
@@ -243,7 +245,7 @@ public class StatementWrapper extends StatementBase {
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private Object execute(int maxRows, boolean isUpdate, AsyncHandler<AsyncResult<Integer>> updateHandler,
-            AsyncHandler<AsyncResult<Result>> queryHandler) {
+            AsyncHandler<AsyncResult<Result>> queryHandler, ArrayList<PageKey> pageKeys) {
         boolean async = (updateHandler != null) || (queryHandler != null);
         startTimeNanos = 0;
         long start = 0;
@@ -271,7 +273,7 @@ public class StatementWrapper extends StatementBase {
                     int rowCount;
                     if (isUpdate) {
                         session.setLastScopeIdentity(ValueNull.INSTANCE);
-                        int updateCount = RouterHolder.getRouter().executeUpdate(statement);
+                        int updateCount = SQLRouter.executeUpdate(statement);
                         rowCount = updateCount;
                         if (updateHandler != null) {
                             AsyncResult<Integer> ar = new AsyncResult<>();
@@ -280,7 +282,11 @@ public class StatementWrapper extends StatementBase {
                         }
                         result = Integer.valueOf(updateCount);
                     } else {
-                        Result r = RouterHolder.getRouter().executeQuery(statement, maxRows);
+                        Result r;
+                        if (pageKeys == null)
+                            r = SQLRouter.executeQuery(statement, maxRows);
+                        else
+                            r = statement.executeQuery(maxRows, false, pageKeys);
                         rowCount = r.getRowCount();
                         result = r;
                         if (queryHandler != null) {
@@ -441,23 +447,34 @@ public class StatementWrapper extends StatementBase {
     }
 
     @Override
+    public Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+        return statement.executeQuery(maxRows, scrollable, pageKeys);
+    }
+
+    @Override
     public Result executeQuery(int maxRows) {
-        return (Result) execute(maxRows, false, null, null);
+        return (Result) execute(maxRows, false, null, null, null);
     }
 
     @Override
     public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        execute(0, false, null, handler);
+        execute(0, false, null, handler, null);
+    }
+
+    @Override
+    public void executeQueryAsync(int maxRows, boolean scrollable, ArrayList<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Result>> handler) {
+        execute(0, false, null, handler, pageKeys);
     }
 
     @Override
     public int executeUpdate() {
-        return ((Integer) execute(0, true, null, null)).intValue();
+        return ((Integer) execute(0, true, null, null, null)).intValue();
     }
 
     @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        execute(0, true, handler, null);
+        execute(0, true, handler, null, null);
     }
 
     @Override

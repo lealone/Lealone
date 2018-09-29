@@ -7,12 +7,14 @@ package org.lealone.transaction.mvcc;
 
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.DelegatedStorageMap;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
@@ -122,12 +124,15 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             // 那么在节点B中会读到不一致的数据，此时需要从节点A读出正确的值
             // TODO 如何更高效的判断，不用比较字符串
             if (data.hostAndPort != null && !data.hostAndPort.equals(NetEndpoint.getLocalTcpHostAndPort())) {
-                return getRemoteTransactionalValue(data.hostAndPort, key);
-            }
-
-            if (tid == transaction.transactionId) {
+                // return getRemoteTransactionalValue(data.hostAndPort, key);
                 return data;
             }
+            if (tid <= transaction.transactionId) {
+                return data;
+            }
+            // if (tid == transaction.transactionId) {
+            // return data;
+            // }
 
             TransactionalValue v = getValue(key, data, tid);
             if (v != null)
@@ -566,11 +571,11 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     }
 
     @Override
-    public Iterator<Entry<K, V>> entryIterator(final K from) {
+    public Iterator<Entry<K, V>> entryIterator(List<PageKey> pageKeys, K from) {
         return new Iterator<Entry<K, V>>() {
             private Entry<K, V> current;
             private K currentKey = from;
-            private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(currentKey);
+            private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(pageKeys, currentKey);
 
             {
                 fetchNext();
@@ -584,7 +589,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                     } catch (IllegalStateException e) {
                         // TODO this is a bit ugly
                         if (DataUtils.getErrorCode(e.getMessage()) == DataUtils.ERROR_CHUNK_NOT_FOUND) {
-                            cursor = map.cursor(currentKey);
+                            cursor = map.cursor(pageKeys, currentKey);
                             // we (should) get the current key again,
                             // we need to ignore that one
                             if (!cursor.hasNext()) {
@@ -631,6 +636,11 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                 throw DataUtils.newUnsupportedOperationException("Removing is not supported");
             }
         };
+    }
+
+    @Override
+    public Iterator<Entry<K, V>> entryIterator(final K from) {
+        return entryIterator(null, from);
     }
 
     @Override

@@ -44,7 +44,13 @@ public class ShardingTest extends SqlTestBase {
 
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
         sql += " WITH ENDPOINT ASSIGNMENT STRATEGY (class: 'RandomEndpointAssignmentStrategy', assignment_factor: 1)";
+        // stmt.executeUpdate(sql);
+
+        sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
+        sql += " WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)";
+        sql += " WITH ENDPOINT ASSIGNMENT STRATEGY (class: 'RandomEndpointAssignmentStrategy', assignment_factor: 3)";
         stmt.executeUpdate(sql);
+
         // stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");
         // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding
         // PARAMETERS(hostIds='1,2')");
@@ -56,24 +62,35 @@ public class ShardingTest extends SqlTestBase {
 
     class ShardingFindTest extends SqlTestBase {
 
+        private final String name = "ShardingTest_Find";
+
         public ShardingFindTest(String dbName) {
             super(dbName);
         }
 
         @Override
         protected void test() throws Exception {
-            String name = "ShardingTest_Find";
+            createAndInsertTable();
+            testSelect();
+        }
+
+        void createAndInsertTable() {
             executeUpdate("drop table IF EXISTS " + name);
             executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
-            for (int i = 1; i <= 100; i++) {
+            for (int i = 1; i <= 500; i++) {
                 executeUpdate("insert into " + name + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
             }
+        }
 
-            sql = "select f1 from " + name;
+        void testSelect() {
+            sql = "select * from " + name + " where f1 > 490";
+            printResultSet();
+            sql = "select count(*) from " + name + " where f1 > 490";
+            printResultSet();
+
+            sql = "select count(*) from " + name;
             printResultSet();
             sql = "select * from " + name + " where f1 = 3";
-            printResultSet();
-            sql = "select * from " + name + " where f1 > 98";
             printResultSet();
         }
     }

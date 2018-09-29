@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.p2p.router;
+package org.lealone.p2p.net;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,15 +26,12 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.ConfigException;
-import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Command;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
-import org.lealone.db.result.Result;
 import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetEndpointManager;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.FailureDetector;
 import org.lealone.p2p.gms.Gossiper;
@@ -42,15 +39,11 @@ import org.lealone.p2p.locator.AbstractEndpointAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
 import org.lealone.p2p.locator.TopologyMetaData;
 import org.lealone.p2p.server.P2pServer;
-import org.lealone.sql.PreparedStatement;
-import org.lealone.sql.SQLStatement;
-import org.lealone.sql.router.Router;
-import org.lealone.storage.Storage;
 import org.lealone.storage.replication.ReplicationSession;
 
-public class P2pRouter implements Router {
+public class P2pNetEndpointManager implements NetEndpointManager {
 
-    private static final P2pRouter instance = new P2pRouter();
+    private static final P2pNetEndpointManager instance = new P2pNetEndpointManager();
     private static final Random random = new Random();
 
     private static final Map<IDatabase, AbstractReplicationStrategy> replicationStrategies = new HashMap<>();
@@ -61,78 +54,21 @@ public class P2pRouter implements Router {
     private static final AbstractEndpointAssignmentStrategy defaultEndpointAssignmentStrategy = ConfigDescriptor
             .getDefaultEndpointAssignmentStrategy();
 
-    public static P2pRouter getInstance() {
+    public static P2pNetEndpointManager getInstance() {
         return instance;
     }
 
-    protected P2pRouter() {
-    }
-
-    private int executeDefineStatement(PreparedStatement defineStatement) {
-        Set<NetEndpoint> liveMembers;
-        Session currentSession = defineStatement.getSession();
-        IDatabase db = currentSession.getDatabase();
-        String[] hostIds = db.getHostIds();
-        if (hostIds.length == 0) {
-            throw DbException
-                    .throwInternalError("DB: " + db.getShortName() + ", Run Mode: " + db.getRunMode() + ", no hostIds");
-        } else {
-            liveMembers = new HashSet<>(hostIds.length);
-            TopologyMetaData metaData = P2pServer.instance.getTopologyMetaData();
-            for (String hostId : hostIds) {
-                liveMembers.add(metaData.getEndpoint(hostId));
-            }
-        }
-        List<String> initReplicationEndpoints = null;
-        // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
-        if (defineStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
-            List<NetEndpoint> endpoints = getReplicationEndpoints(db, new HashSet<>(0), liveMembers);
-            if (!endpoints.isEmpty()) {
-                initReplicationEndpoints = new ArrayList<>(endpoints.size());
-                for (NetEndpoint e : endpoints) {
-                    String hostId = getHostId(e);
-                    initReplicationEndpoints.add(hostId);
-                }
-            }
-        }
-
-        Session[] sessions = new Session[liveMembers.size()];
-        int i = 0;
-        for (NetEndpoint e : liveMembers) {
-            String hostId = getHostId(e);
-            sessions[i++] = currentSession.getNestedSession(hostId, !ConfigDescriptor.getLocalEndpoint().equals(e));
-        }
-
-        ReplicationSession rs = new ReplicationSession(sessions, initReplicationEndpoints);
-        rs.setAutoCommit(currentSession.isAutoCommit());
-        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-        Command c = null;
-        try {
-            c = rs.createCommand(defineStatement.getSQL(), -1);
-            return c.executeUpdate();
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            if (c != null)
-                c.close();
-        }
+    protected P2pNetEndpointManager() {
     }
 
     @Override
-    public int executeUpdate(PreparedStatement statement) {
-        // CREATE/ALTER/DROP DATABASE语句在执行update时才知道涉及哪些节点
-        if (statement.isDatabaseStatement()) {
-            return statement.executeUpdate();
-        }
-        if (statement.isDDL() && !statement.isLocal()) {
-            return executeDefineStatement(statement);
-        }
-        return statement.executeUpdate();
+    public Set<NetEndpoint> getLiveEndpoints() {
+        return Gossiper.instance.getLiveMembers();
     }
 
     @Override
-    public Result executeQuery(PreparedStatement statement, int maxRows) {
-        return statement.executeQuery(maxRows);
+    public long getRpcTimeout() {
+        return ConfigDescriptor.getRpcTimeout();
     }
 
     @Override
@@ -207,47 +143,6 @@ public class P2pRouter implements Router {
     }
 
     @Override
-    public int executeDatabaseStatement(IDatabase db, Session currentSession, PreparedStatement statement) {
-        Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
-        NetEndpoint localEndpoint = NetEndpoint.getLocalP2pEndpoint();
-        liveMembers.remove(localEndpoint);
-        Session[] sessions = new Session[liveMembers.size()];
-        int i = 0;
-        for (NetEndpoint e : liveMembers) {
-            String hostId = getHostId(e);
-            boolean isLocal = ConfigDescriptor.getLocalEndpoint().equals(e);
-            sessions[i] = currentSession.getNestedSession(hostId, !isLocal);
-            // if (isLocal) {
-            // currentSession.copyLastReplicationStatusTo((Session) sessions[i]);
-            // }
-            i++;
-        }
-
-        String sql = null;
-        switch (statement.getType()) {
-        case SQLStatement.CREATE_DATABASE:
-            sql = db.getCreateSQL();
-            break;
-        case SQLStatement.DROP_DATABASE:
-        case SQLStatement.ALTER_DATABASE:
-            sql = statement.getSQL();
-            break;
-        }
-
-        ReplicationSession rs = createReplicationSession(currentSession, sessions);
-        Command c = null;
-        try {
-            c = rs.createCommand(sql, -1);
-            return c.executeUpdate();
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            if (c != null)
-                c.close();
-        }
-    }
-
-    @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints) {
         return createReplicationSession(session, replicationEndpoints, null);
     }
@@ -268,8 +163,7 @@ public class P2pRouter implements Router {
         return createReplicationSession(session, sessions);
     }
 
-    public static ReplicationSession createReplicationSession(Session s, List<String> replicationHostIds,
-            Boolean remote) {
+    public ReplicationSession createReplicationSession(Session s, List<String> replicationHostIds, Boolean remote) {
         Session session = s;
         NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
         TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
@@ -286,7 +180,8 @@ public class P2pRouter implements Router {
         return createReplicationSession(session, sessions);
     }
 
-    private static ReplicationSession createReplicationSession(Session s, Session[] sessions) {
+    @Override
+    public ReplicationSession createReplicationSession(Session s, Session[] sessions) {
         ReplicationSession rs = new ReplicationSession(sessions);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
         rs.setAutoCommit(s.isAutoCommit());
@@ -302,15 +197,6 @@ public class P2pRouter implements Router {
     @Override
     public String getHostId(NetEndpoint endpoint) {
         return P2pServer.instance.getTopologyMetaData().getHostId(endpoint);
-    }
-
-    @Override
-    public void replicate(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationEndpoints) {
-        ConcurrentUtils.submitTask("Replicate Pages", () -> {
-            for (Storage storage : db.getStorages()) {
-                storage.replicate(db, newReplicationEndpoints, newRunMode);
-            }
-        });
     }
 
     @Override
@@ -337,16 +223,6 @@ public class P2pRouter implements Router {
     }
 
     @Override
-    public void sharding(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
-            String[] newEndpoints) {
-        ConcurrentUtils.submitTask("Sharding Pages", () -> {
-            for (Storage storage : db.getStorages()) {
-                storage.sharding(db, oldEndpoints, newEndpoints, newRunMode);
-            }
-        });
-    }
-
-    @Override
     public String[] getShardingEndpoints(IDatabase db) {
         HashSet<NetEndpoint> oldEndpoints = new HashSet<>();
         for (String hostId : db.getHostIds()) {
@@ -365,16 +241,6 @@ public class P2pRouter implements Router {
         }
         nodes -= db.getHostIds().length;
         return getHostIds(list, size, nodes);
-    }
-
-    @Override
-    public void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
-            String[] newEndpoints) {
-        ConcurrentUtils.submitTask("ScaleIn Endpoints", () -> {
-            for (Storage storage : db.getStorages()) {
-                storage.scaleIn(db, oldRunMode, newRunMode, oldEndpoints, newEndpoints);
-            }
-        });
     }
 
     @Override

@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,6 +34,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.Transfer;
 import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
 
 /**
@@ -174,6 +176,12 @@ public class ClientCommand extends CommandBase implements StorageCommand {
 
     @Override
     public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
+        executeQuery(maxRows, scrollable, handler, true);
+    }
+
+    @Override
+    public void executeQueryAsync(int maxRows, boolean scrollable, ArrayList<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Result>> handler) {
         executeQuery(maxRows, scrollable, handler, true);
     }
 
@@ -761,5 +769,66 @@ public class ClientCommand extends CommandBase implements StorageCommand {
             session.handleException(e);
         }
         return null;
+    }
+
+    @Override
+    public Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+        if (prepared) {
+            checkParameters();
+            prepareIfRequired();
+        } else {
+            id = session.getNextId();
+        }
+        int resultId = session.getNextId();
+        Result result = null;
+        try {
+            boolean isDistributedQuery = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
+
+            if (prepared) {
+                if (isDistributedQuery) {
+                    session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS", id);
+                    transfer.writeRequestHeader(id,
+                            Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS);
+                } else {
+                    session.traceOperation("COMMAND_PREPARED_QUERY_WITH_PAGE_KEYS", id);
+                    transfer.writeRequestHeader(id, Session.COMMAND_PREPARED_QUERY_WITH_PAGE_KEYS);
+                }
+                transfer.writeInt(resultId).writeInt(maxRows);
+            } else {
+                if (isDistributedQuery) {
+                    session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS", id);
+                    transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS);
+                } else {
+                    session.traceOperation("COMMAND_QUERY_WITH_PAGE_KEYS", id);
+                    transfer.writeRequestHeader(id, Session.COMMAND_QUERY_WITH_PAGE_KEYS);
+                }
+                transfer.writeString(sql).writeInt(resultId).writeInt(maxRows);
+            }
+            int fetch;
+            if (scrollable) {
+                fetch = Integer.MAX_VALUE;
+            } else {
+                fetch = fetchSize;
+            }
+            transfer.writeInt(fetch);
+            if (prepared)
+                sendParameters(transfer);
+            if (pageKeys == null) {
+                transfer.writeInt(0);
+            } else {
+                int size = pageKeys.size();
+                transfer.writeInt(size);
+                for (int i = 0; i < size; i++) {
+                    PageKey pk = pageKeys.get(i);
+                    transfer.writeValue((Value) pk.key);
+                    transfer.writeBoolean(pk.first);
+                }
+            }
+            result = getQueryResult(isDistributedQuery, fetch, resultId, null, false);
+        } catch (Exception e) {
+            session.handleException(e);
+        }
+        return result;
     }
 }

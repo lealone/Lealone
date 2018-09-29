@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import org.lealone.common.exceptions.DbException;
@@ -29,6 +30,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
@@ -195,32 +197,9 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        ValueLong min, max;
-        if (first == null) {
-            min = MIN;
-        } else if (mainIndexColumn < 0) {
-            min = ValueLong.get(first.getKey());
-        } else {
-            ValueLong v = (ValueLong) first.getValue(mainIndexColumn);
-            if (v == null) {
-                min = ValueLong.get(first.getKey());
-            } else {
-                min = v;
-            }
-        }
-        if (last == null) {
-            max = MAX;
-        } else if (mainIndexColumn < 0) {
-            max = ValueLong.get(last.getKey());
-        } else {
-            ValueLong v = (ValueLong) last.getValue(mainIndexColumn);
-            if (v == null) {
-                max = ValueLong.get(last.getKey());
-            } else {
-                max = v;
-            }
-        }
-        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(min), max);
+        ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
+        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(minAndMaxValues[0]),
+                minAndMaxValues[1]);
     }
 
     @Override
@@ -381,6 +360,58 @@ public class StandardPrimaryIndex extends IndexBase {
     @Override
     public StorageMap<? extends Object, ? extends Object> getStorageMap() {
         return dataMap;
+    }
+
+    private ValueLong[] getMinAndMaxValues(SearchRow first, SearchRow last) {
+        ValueLong min, max;
+        if (first == null) {
+            min = MIN;
+        } else if (mainIndexColumn < 0) {
+            min = ValueLong.get(first.getKey());
+        } else {
+            Value value = first.getValue(mainIndexColumn);
+            ValueLong v;
+            if (value instanceof ValueLong)
+                v = (ValueLong) value;
+            else
+                v = ValueLong.get(value.getLong());
+            if (v == null) {
+                min = ValueLong.get(first.getKey());
+            } else {
+                min = v;
+            }
+        }
+        if (last == null) {
+            max = MAX;
+        } else if (mainIndexColumn < 0) {
+            max = ValueLong.get(last.getKey());
+        } else {
+            Value value = first.getValue(mainIndexColumn);
+            ValueLong v;
+            if (value instanceof ValueLong)
+                v = (ValueLong) value;
+            else
+                v = ValueLong.get(value.getLong());
+            if (v == null) {
+                max = ValueLong.get(last.getKey());
+            } else {
+                max = v;
+            }
+        }
+        return new ValueLong[] { min, max };
+    }
+
+    @Override
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
+        ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
+        return getMap(session).getEndpointToPageKeyMap(session, minAndMaxValues[0], minAndMaxValues[1]);
+    }
+
+    @Override
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last, List<PageKey> pageKeys) {
+        ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
+        return new StandardPrimaryIndexCursor(session, table, this,
+                getMap(session).entryIterator(pageKeys, minAndMaxValues[0]), minAndMaxValues[1]);
     }
 
     /**

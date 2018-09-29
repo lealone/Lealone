@@ -33,7 +33,7 @@ public class NodeBase extends YamlConfigLoader {
         System.setProperty("lealone.config.loader", loader.getName());
         System.setProperty("lealone.config", "lealone-test.yaml");
 
-        // System.setProperty("lealone.load.persisted.node.info", "false"); // 不从nodes表加载ring状态信息
+        System.setProperty("lealone.load.persisted.node.info", "false"); // 不从nodes表加载ring状态信息
 
         // 见P2pServer.getRingDelay()
         // 默认30秒，等太久了

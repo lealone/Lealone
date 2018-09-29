@@ -75,6 +75,7 @@ public class Update extends ManipulateStatement {
         this.tableFilter = tableFilter;
     }
 
+    @Override
     public TableFilter getTableFilter() {
         return tableFilter;
     }

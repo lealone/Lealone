@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.List;
+import java.util.Map;
 
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
@@ -243,5 +244,15 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     @Override
     public long getMemorySpaceUsed() {
         return map.getDiskSpaceUsed();
+    }
+
+    @Override
+    public StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
+        return map.cursor(pageKeys, from);
+    }
+
+    @Override
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
+        return map.getEndpointToPageKeyMap(session, from, to);
     }
 }

@@ -15,33 +15,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.router;
+package org.lealone.net;
+
+import java.util.HashSet;
+import java.util.Set;
 
 import org.lealone.db.IDatabase;
-import org.lealone.db.Session;
-import org.lealone.db.result.Result;
-import org.lealone.net.NetEndpoint;
-import org.lealone.sql.PreparedStatement;
 
-public class LocalRouter implements Router {
+public class LocalNetEndpointManager implements NetEndpointManager {
 
-    private static final LocalRouter INSTANCE = new LocalRouter();
+    private static final LocalNetEndpointManager INSTANCE = new LocalNetEndpointManager();
 
-    public static LocalRouter getInstance() {
+    public static LocalNetEndpointManager getInstance() {
         return INSTANCE;
     }
 
-    protected LocalRouter() {
-    }
-
-    @Override
-    public int executeUpdate(PreparedStatement statement) {
-        return statement.update();
-    }
-
-    @Override
-    public Result executeQuery(PreparedStatement statement, int maxRows) {
-        return statement.query(maxRows);
+    protected LocalNetEndpointManager() {
     }
 
     @Override
@@ -50,7 +39,10 @@ public class LocalRouter implements Router {
     }
 
     @Override
-    public int executeDatabaseStatement(IDatabase db, Session currentSession, PreparedStatement statement) {
-        return 0;
+    public Set<NetEndpoint> getLiveEndpoints() {
+        HashSet<NetEndpoint> set = new HashSet<>(1);
+        set.add(NetEndpoint.getLocalTcpEndpoint());
+        return set;
     }
+
 }

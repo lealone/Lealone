@@ -28,8 +28,8 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.net.NetEndpointManagerHolder;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.router.RouterHolder;
 
 /**
  * This class represents the statement
@@ -84,7 +84,7 @@ public class CreateDatabase extends DatabaseStatement {
             newDB.setEndpointAssignmentProperties(endpointAssignmentProperties);
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
-                String[] hostIds = RouterHolder.getRouter().assignEndpoints(newDB);
+                String[] hostIds = NetEndpointManagerHolder.get().assignEndpoints(newDB);
                 if (hostIds != null && hostIds.length > 0)
                     newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
                 else

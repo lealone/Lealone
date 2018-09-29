@@ -5,11 +5,13 @@
  */
 package org.lealone.db;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
+import org.lealone.storage.PageKey;
 
 /**
  * Represents a command.
@@ -70,6 +72,11 @@ public interface Command {
 
     void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler);
 
+    default void executeQueryAsync(int maxRows, boolean scrollable, ArrayList<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Result>> handler) {
+        executeQueryAsync(maxRows, scrollable, handler);
+    }
+
     /**
      * Execute the update command
      *
@@ -102,4 +109,8 @@ public interface Command {
     void replicationCommit(long validKey, boolean autoCommit);
 
     void replicationRollback();
+
+    default Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+        return executeQuery(maxRows, scrollable);
+    }
 }

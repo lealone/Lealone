@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -40,6 +41,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 
@@ -383,6 +385,48 @@ public class TcpConnection extends TransferConnection {
         addPreparedCommandToQueue(pc, sessionId);
     }
 
+    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
+            int operation, int objectId, int maxRows, int fetchSize, ArrayList<PageKey> pageKeys) throws IOException {
+        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
+            @Override
+            public void run() {
+                command.executeQueryAsync(maxRows, false, pageKeys, res -> {
+                    if (res.isSucceeded()) {
+                        Result result = res.getResult();
+                        cache.addObject(objectId, result);
+                        try {
+                            transfer.writeResponseHeader(id, getStatus(session));
+                            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS
+                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS) {
+                                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                            }
+                            if (session.isRunModeChanged()) {
+                                transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
+                            }
+                            int columnCount = result.getVisibleColumnCount();
+                            transfer.writeInt(columnCount);
+                            int rowCount = result.getRowCount();
+                            transfer.writeInt(rowCount);
+                            for (int i = 0; i < columnCount; i++) {
+                                writeColumn(transfer, result, i);
+                            }
+                            int fetch = fetchSize;
+                            if (rowCount != -1)
+                                fetch = Math.min(rowCount, fetchSize);
+                            writeRow(transfer, result, fetch);
+                            transfer.flush();
+                        } catch (Exception e) {
+                            sendError(transfer, id, e);
+                        }
+                    } else {
+                        sendError(transfer, id, res.getCause());
+                    }
+                });
+            }
+        });
+        addPreparedCommandToQueue(pc, sessionId);
+    }
+
     private void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id,
             PreparedStatement command, int operation) throws IOException {
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
@@ -504,6 +548,56 @@ public class TcpConnection extends TransferConnection {
                 session.setRoot(false);
             }
             executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
+            break;
+        }
+
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS:
+        case Session.COMMAND_QUERY_WITH_PAGE_KEYS: {
+            String sql = transfer.readString();
+            int objectId = transfer.readInt();
+            int maxRows = transfer.readInt();
+            int fetchSize = transfer.readInt();
+            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
+            int size = transfer.readInt();
+            ArrayList<PageKey> pageKeys = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                Object value = transfer.readValue();
+                boolean first = transfer.readBoolean();
+                PageKey pk = new PageKey(value, first);
+                pageKeys.add(pk);
+            }
+            PreparedStatement command = session.prepareStatement(sql, fetchSize);
+            command.setFetchSize(fetchSize);
+            cache.addObject(id, command);
+            executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize,
+                    pageKeys);
+            break;
+        }
+        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS:
+        case Session.COMMAND_PREPARED_QUERY_WITH_PAGE_KEYS: {
+            int objectId = transfer.readInt();
+            int maxRows = transfer.readInt();
+            int fetchSize = transfer.readInt();
+            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            command.setFetchSize(fetchSize);
+            setParameters(transfer, command);
+            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS) {
+                session.setAutoCommit(false);
+                session.setRoot(false);
+            }
+            int size = transfer.readInt();
+            ArrayList<PageKey> pageKeys = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                Object value = transfer.readValue();
+                boolean first = transfer.readBoolean();
+                PageKey pk = new PageKey(value, first);
+                pageKeys.add(pk);
+            }
+            executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize,
+                    pageKeys);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:

@@ -159,4 +159,9 @@ public class Delete extends ManipulateStatement {
         priority = NORM_PRIORITY - 1;
         return priority;
     }
+
+    @Override
+    public TableFilter getTableFilter() {
+        return tableFilter;
+    }
 }
