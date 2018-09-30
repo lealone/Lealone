@@ -877,7 +877,7 @@ public abstract class Table extends SchemaObjectBase {
      *  @return if there are any triggers or rows defined
      */
     public boolean fireRow() {
-        return (constraints != null && constraints.size() > 0) || (triggers != null && triggers.size() > 0);
+        return (constraints != null && !constraints.isEmpty()) || (triggers != null && !triggers.isEmpty());
     }
 
     /**

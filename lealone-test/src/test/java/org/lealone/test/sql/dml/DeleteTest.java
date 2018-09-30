@@ -61,5 +61,15 @@ public class DeleteTest extends SqlTestBase {
 
         sql = "DELETE FROM DeleteTest WHERE pk >= '50'";
         assertEquals(6, executeUpdate(sql));
+
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('101', 'a1', 'b', 12)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('102', 'a2', 'b', 12)");
+        executeUpdate("INSERT INTO DeleteTest(pk, f1, f2, f3) VALUES('103', 'a1', 'b', 12)");
+
+        sql = "DELETE TOP 1 FROM DeleteTest";
+        assertEquals(1, executeUpdate(sql));
+
+        sql = "DELETE FROM DeleteTest LIMIT 2";
+        assertEquals(2, executeUpdate(sql));
     }
 }

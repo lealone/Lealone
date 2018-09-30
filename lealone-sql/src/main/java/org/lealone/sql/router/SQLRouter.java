@@ -147,18 +147,18 @@ public class SQLRouter {
     public static int executeUpdate(StatementBase statement) {
         // CREATE/ALTER/DROP DATABASE语句在执行update时才知道涉及哪些节点
         if (statement.isDatabaseStatement()) {
-            return statement.executeUpdate();
+            return statement.update();
         }
         if (statement.isDDL() && !statement.isLocal()) {
             return executeDefineStatement(statement);
         }
         if (statement.isLocal()) {
-            return statement.executeUpdate();
+            return statement.update();
         }
         if (statement.getSession().isShardingMode()) {
             return maybeExecuteDistributedUpdate(statement);
         }
-        return statement.executeUpdate();
+        return statement.update();
     }
 
     private static int maybeExecuteDistributedUpdate(StatementBase statement) {
@@ -175,7 +175,7 @@ public class SQLRouter {
             return updateCount;
         }
         default:
-            return statement.executeUpdate();
+            return statement.update();
         }
     }
 
@@ -270,13 +270,13 @@ public class SQLRouter {
 
     public static Result executeQuery(StatementBase statement, int maxRows) {
         if (statement.isLocal()) {
-            return statement.executeQuery(maxRows);
+            return statement.query(maxRows);
         }
         if (statement.getSession().isShardingMode()) {
             beginTransaction(statement);
             return maybeExecuteDistributedQuery(statement, maxRows);
         }
-        return statement.executeQuery(maxRows);
+        return statement.query(maxRows);
     }
 
     private static Result maybeExecuteDistributedQuery(StatementBase statement, int maxRows) {
@@ -339,7 +339,7 @@ public class SQLRouter {
             return new LocalResult();
         }
         default:
-            return statement.executeQuery(maxRows);
+            return statement.query(maxRows);
         }
     }
 
