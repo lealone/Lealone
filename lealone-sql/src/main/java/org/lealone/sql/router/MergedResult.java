@@ -31,9 +31,8 @@ public class MergedResult extends DelegatedResult {
         // 1. 结果集串行化，为合并做准备
         SerializedResult serializedResult = new SerializedResult(results, oldSelect.getLimitRows());
         Table table = newSelect.getTopTableFilter().getTable();
-        newSelect.getTopTableFilter().setIndex(
-                new MergedIndex(serializedResult, table, -1, IndexColumn.wrap(table.getColumns()), IndexType
-                        .createScan()));
+        newSelect.getTopTableFilter().setIndex(new MergedIndex(serializedResult, table, -1,
+                IndexColumn.wrap(table.getColumns()), IndexType.createScan()));
 
         // 2. 把多个结果集合并
         Result mergedResult = newSelect.queryGroupMerge();

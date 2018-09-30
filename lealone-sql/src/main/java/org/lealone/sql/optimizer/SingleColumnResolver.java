@@ -4,23 +4,26 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.table;
+package org.lealone.sql.optimizer;
 
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionColumn;
-import org.lealone.db.expression.Select;
+import org.lealone.db.Session;
+import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
+import org.lealone.sql.IExpression;
+import org.lealone.sql.dml.Select;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
 
 /**
  * The single column resolver is like a table with exactly one row.
  * It is used to parse a simple one-column check constraint.
  */
-public class SingleColumnResolver implements ColumnResolver {
+public class SingleColumnResolver implements ColumnResolver, IExpression.Evaluator {
 
     private final Column column;
     private Value value;
 
-    SingleColumnResolver(Column column) {
+    public SingleColumnResolver(Column column) {
         this.column = column;
     }
 
@@ -73,4 +76,16 @@ public class SingleColumnResolver implements ColumnResolver {
         return expressionColumn;
     }
 
+    @Override
+    public IExpression optimizeExpression(Session session, IExpression e) {
+        Expression expression = (Expression) e;
+        expression.mapColumns(this, 0);
+        return expression.optimize(session);
+    }
+
+    @Override
+    public Value getExpressionValue(Session session, IExpression e, Object data) {
+        setValue((Value) data);
+        return e.getValue(session);
+    }
 }

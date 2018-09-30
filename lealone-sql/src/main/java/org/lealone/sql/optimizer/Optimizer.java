@@ -4,15 +4,16 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.dml;
+package org.lealone.sql.optimizer;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 import org.lealone.common.util.BitField;
 import org.lealone.db.ServerSession;
-import org.lealone.db.table.Plan;
-import org.lealone.db.table.PlanItem;
-import org.lealone.db.table.TableFilter;
+import org.lealone.db.index.Index;
+import org.lealone.db.result.SortOrder;
+import org.lealone.db.table.Table;
 import org.lealone.db.util.Permutations;
 import org.lealone.sql.expression.Expression;
 
@@ -20,7 +21,7 @@ import org.lealone.sql.expression.Expression;
  * The optimizer is responsible to find the best execution plan
  * for a given query.
  */
-class Optimizer {
+public class Optimizer {
 
     private static final int MAX_BRUTE_FORCE_FILTERS = 7;
     private static final int MAX_BRUTE_FORCE = 2000;
@@ -49,7 +50,7 @@ class Optimizer {
     private double cost;
     private Random random;
 
-    Optimizer(TableFilter[] filters, Expression condition, ServerSession session) {
+    public Optimizer(TableFilter[] filters, Expression condition, ServerSession session) {
         this.filters = filters;
         this.condition = condition;
         this.session = session;
@@ -227,7 +228,7 @@ class Optimizer {
     /**
      * Calculate the best query plan to use.
      */
-    void optimize() {
+    public void optimize() {
         calculateBestPlan();
         bestPlan.removeUnusableIndexConditions();
         TableFilter[] f2 = bestPlan.getFilters();
@@ -245,8 +246,35 @@ class Optimizer {
         return topFilter;
     }
 
-    double getCost() {
+    public double getCost() {
         return cost;
+    }
+
+    /**
+     * Get the best plan for the given search mask.
+     *
+     * @param session the session
+     * @param masks per-column comparison bit masks, null means 'always false',
+     *              see constants in IndexCondition
+     * @param sortOrder the sort order
+     * @return the plan item
+     */
+    public static PlanItem getBestPlanItem(ServerSession session, int[] masks, Table table, SortOrder sortOrder) {
+        PlanItem item = new PlanItem();
+        item.setIndex(table.getScanIndex(session));
+        item.cost = item.getIndex().getCost(session, null, null);
+        ArrayList<Index> indexes = table.getIndexes();
+        if (indexes != null && masks != null) {
+            for (int i = 1, size = indexes.size(); i < size; i++) {
+                Index index = indexes.get(i);
+                double cost = index.getCost(session, masks, sortOrder);
+                if (cost < item.cost) {
+                    item.cost = cost;
+                    item.setIndex(index);
+                }
+            }
+        }
+        return item;
     }
 
 }

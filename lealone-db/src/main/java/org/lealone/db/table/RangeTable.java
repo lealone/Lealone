@@ -11,11 +11,11 @@ import java.util.ArrayList;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.RangeIndex;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.value.Value;
+import org.lealone.sql.IExpression;
 
 /**
  * The table SYSTEM_RANGE is a virtual table that generates incrementing numbers
@@ -33,7 +33,7 @@ public class RangeTable extends Table {
      */
     public static final String ALIAS = "GENERATE_SERIES";
 
-    private Expression min, max, step;
+    private IExpression min, max, step;
     private boolean optimized;
 
     /**
@@ -44,7 +44,7 @@ public class RangeTable extends Table {
      * @param max the end expression
      * @param noColumns whether this table has no columns
      */
-    public RangeTable(Schema schema, Expression min, Expression max, boolean noColumns) {
+    public RangeTable(Schema schema, IExpression min, IExpression max, boolean noColumns) {
         super(schema, 0, NAME, true, true);
         Column[] cols = noColumns ? new Column[0] : new Column[] { new Column("X", Value.LONG) };
         this.min = min;
@@ -52,7 +52,7 @@ public class RangeTable extends Table {
         setColumns(cols);
     }
 
-    public RangeTable(Schema schema, Expression min, Expression max, Expression step, boolean noColumns) {
+    public RangeTable(Schema schema, IExpression min, IExpression max, IExpression step, boolean noColumns) {
         this(schema, min, max, noColumns);
         this.step = step;
     }

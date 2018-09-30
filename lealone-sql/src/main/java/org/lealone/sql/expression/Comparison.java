@@ -13,18 +13,92 @@ import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.index.IndexCondition;
-import org.lealone.db.table.ColumnResolver;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.IndexCondition;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * Example comparison expressions are ID=1, NAME=NAME, NAME IS NULL.
  */
-public class Comparison extends Condition implements org.lealone.db.expression.Comparison {
+public class Comparison extends Condition {
+
+    /**
+     * This is a flag meaning the comparison is null safe (meaning never returns
+     * NULL even if one operand is NULL). Only EQUAL and NOT_EQUAL are supported
+     * currently.
+     */
+    public static final int NULL_SAFE = 16;
+
+    /**
+     * The comparison type meaning = as in ID=1.
+     */
+    public static final int EQUAL = 0;
+
+    /**
+     * The comparison type meaning ID IS 1 (ID IS NOT DISTINCT FROM 1).
+     */
+    public static final int EQUAL_NULL_SAFE = EQUAL | NULL_SAFE;
+
+    /**
+     * The comparison type meaning &gt;= as in ID&gt;=1.
+     */
+    public static final int BIGGER_EQUAL = 1;
+
+    /**
+     * The comparison type meaning &gt; as in ID&gt;1.
+     */
+    public static final int BIGGER = 2;
+
+    /**
+     * The comparison type meaning &lt;= as in ID&lt;=1.
+     */
+    public static final int SMALLER_EQUAL = 3;
+
+    /**
+     * The comparison type meaning &lt; as in ID&lt;1.
+     */
+    public static final int SMALLER = 4;
+
+    /**
+     * The comparison type meaning &lt;&gt; as in ID&lt;&gt;1.
+     */
+    public static final int NOT_EQUAL = 5;
+
+    /**
+     * The comparison type meaning ID IS NOT 1 (ID IS DISTINCT FROM 1).
+     */
+    public static final int NOT_EQUAL_NULL_SAFE = NOT_EQUAL | NULL_SAFE;
+
+    /**
+     * The comparison type meaning IS NULL as in NAME IS NULL.
+     */
+    public static final int IS_NULL = 6;
+
+    /**
+     * The comparison type meaning IS NOT NULL as in NAME IS NOT NULL.
+     */
+    public static final int IS_NOT_NULL = 7;
+
+    /**
+     * This is a pseudo comparison type that is only used for index conditions.
+     * It means the comparison will always yield FALSE. Example: 1=0.
+     */
+    public static final int FALSE = 8;
+
+    /**
+     * This is a pseudo comparison type that is only used for index conditions.
+     * It means equals any value of a list. Example: IN(1, 2, 3).
+     */
+    public static final int IN_LIST = 9;
+
+    /**
+     * This is a pseudo comparison type that is only used for index conditions.
+     * It means equals any value of a list. Example: IN(SELECT ...).
+     */
+    public static final int IN_QUERY = 10;
 
     private final Database database;
     private int compareType;

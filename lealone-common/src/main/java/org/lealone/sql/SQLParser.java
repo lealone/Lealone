@@ -21,7 +21,7 @@ public interface SQLParser {
 
     void setRightsChecked(boolean rightsChecked);
 
-    Expression parseExpression(String sql);
+    IExpression parseExpression(String sql);
 
     ParsedStatement parse(String sql);
 

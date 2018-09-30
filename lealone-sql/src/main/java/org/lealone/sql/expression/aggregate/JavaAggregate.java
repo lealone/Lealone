@@ -15,15 +15,15 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.api.Aggregate;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.table.ColumnResolver;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.Parser;
 import org.lealone.sql.dml.Select;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionVisitor;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * This class wraps a user-defined aggregate.

@@ -33,6 +33,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
+import org.lealone.net.Transfer;
 
 //TODO 1.支持SSL 2.支持配置参数
 public class NioNetServer extends NetServerBase {
@@ -130,7 +131,7 @@ public class NioNetServer extends NetServerBase {
         SocketChannel channel = (SocketChannel) key.channel();
         try {
             while (true) {
-                ByteBuffer buffer = ByteBuffer.allocate(4096);
+                ByteBuffer buffer = ByteBuffer.allocate(Transfer.BUFFER_SIZE);
                 int count = channel.read(buffer);
                 if (count > 0) {
                     attachment.endOfStreamCount = 0;

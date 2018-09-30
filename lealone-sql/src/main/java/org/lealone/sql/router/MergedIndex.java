@@ -27,7 +27,6 @@ import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
 
 public class MergedIndex extends IndexBase {
     private final Result result;
@@ -38,17 +37,12 @@ public class MergedIndex extends IndexBase {
     }
 
     @Override
-    public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-        return new MergedCursor(result);
-    }
-
-    @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         return new MergedCursor(result);
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         return 0;
     }
 

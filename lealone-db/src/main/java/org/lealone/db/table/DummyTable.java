@@ -31,61 +31,51 @@ public class DummyTable extends Table {
 
     @Override
     public String getCreateSQL() {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public TableType getTableType() {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public Index getScanIndex(ServerSession session) {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public ArrayList<Index> getIndexes() {
-        // TODO Auto-generated method stub
         return null;
     }
 
     @Override
     public long getMaxDataModificationId() {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public boolean isDeterministic() {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public boolean canDrop() {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public boolean canGetRowCount() {
-        // TODO Auto-generated method stub
         return false;
     }
 
     @Override
     public long getRowCount(ServerSession session) {
-        // TODO Auto-generated method stub
         return 0;
     }
 
     @Override
     public long getRowCountApproximation() {
-        // TODO Auto-generated method stub
         return 0;
     }
 

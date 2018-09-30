@@ -8,12 +8,11 @@ package org.lealone.sql.expression;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.table.ColumnResolver;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.sql.StatementBase;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * Represents the ROWNUM function.

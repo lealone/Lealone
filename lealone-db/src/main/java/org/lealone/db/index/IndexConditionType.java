@@ -15,12 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql;
+package org.lealone.db.index;
 
-public interface Expression {
+public class IndexConditionType {
 
-    int getType();
+    /**
+     * A bit of a search mask meaning 'equal'.
+     */
+    public static final int EQUALITY = 1;
 
-    String getSQL();
+    /**
+     * A bit of a search mask meaning 'larger or equal'.
+     */
+    public static final int START = 2;
 
+    /**
+     * A bit of a search mask meaning 'smaller or equal'.
+     */
+    public static final int END = 4;
+
+    /**
+     * A search mask meaning 'between'.
+     */
+    public static final int RANGE = START | END;
+
+    /**
+     * A bit of a search mask meaning 'the condition is always false'.
+     */
+    public static final int ALWAYS_FALSE = 8;
 }

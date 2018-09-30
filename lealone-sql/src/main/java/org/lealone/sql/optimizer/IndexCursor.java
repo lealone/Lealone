@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.index;
+package org.lealone.sql.optimizer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -13,7 +13,8 @@ import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.Comparison;
+import org.lealone.db.index.Cursor;
+import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -21,9 +22,9 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.expression.Comparison;
 import org.lealone.storage.PageKey;
 
 /**
@@ -79,9 +80,9 @@ public class IndexCursor implements Cursor {
         }
         if (!alwaysFalse) {
             if (pageKeys == null)
-                cursor = index.find(tableFilter, start, end);
+                cursor = index.find(tableFilter.getSession(), start, end);
             else
-                cursor = index.find(tableFilter, start, end, pageKeys);
+                cursor = index.find(tableFilter.getSession(), start, end, pageKeys);
         }
     }
 
@@ -289,7 +290,7 @@ public class IndexCursor implements Cursor {
             start = table.getTemplateRow();
         }
         start.setValue(id, v);
-        cursor = index.find(tableFilter, start, start);
+        cursor = index.find(tableFilter.getSession(), start, start);
     }
 
     @Override

@@ -34,6 +34,7 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.DataType;
 import org.lealone.sql.SQLStatement;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * This class represents the statement
@@ -180,8 +181,9 @@ public class CreateService extends SchemaStatement {
                 db.addSchemaObject(session, table);
             }
             try {
+                TableFilter tf = new TableFilter(session, table, null, false, null);
                 for (Column c : data.columns) {
-                    c.prepareExpression(session);
+                    c.prepareExpression(session, tf);
                 }
                 for (Sequence sequence : sequences) {
                     table.addSequence(sequence);

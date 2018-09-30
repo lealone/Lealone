@@ -21,7 +21,6 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
@@ -304,9 +303,9 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         try {
-            return 10 * getCostRangeIndex(masks, dataMap.rawSize(), filter, sortOrder);
+            return 10 * getCostRangeIndex(masks, dataMap.rawSize(), sortOrder);
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }

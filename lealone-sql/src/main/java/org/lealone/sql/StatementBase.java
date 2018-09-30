@@ -24,10 +24,10 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SearchRow;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.storage.PageKey;
 
 /**

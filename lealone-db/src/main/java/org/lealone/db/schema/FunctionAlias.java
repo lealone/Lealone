@@ -28,12 +28,12 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.Expression;
 import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.IExpression;
 
 /**
  * Represents a user-defined function, or alias.
@@ -246,7 +246,7 @@ public class FunctionAlias extends SchemaObjectBase {
      * @return the Java method
      * @throws DbException if no matching method could be found
      */
-    public JavaMethod findJavaMethod(Expression[] args) {
+    public JavaMethod findJavaMethod(IExpression[] args) {
         load();
         int parameterCount = args.length;
         for (JavaMethod m : javaMethods) {
@@ -255,8 +255,8 @@ public class FunctionAlias extends SchemaObjectBase {
                 return m;
             }
         }
-        throw DbException.get(ErrorCode.METHOD_NOT_FOUND_1, getName() + " (" + className + ", parameter count: "
-                + parameterCount + ")");
+        throw DbException.get(ErrorCode.METHOD_NOT_FOUND_1,
+                getName() + " (" + className + ", parameter count: " + parameterCount + ")");
     }
 
     public String getJavaClassName() {
@@ -380,7 +380,7 @@ public class FunctionAlias extends SchemaObjectBase {
          * @param columnList true if the function should only return the column list
          * @return the value
          */
-        public Value getValue(ServerSession session, Expression[] args, boolean columnList) {
+        public Value getValue(ServerSession session, IExpression[] args, boolean columnList) {
             Class<?>[] paramClasses = method.getParameterTypes();
             Object[] params = new Object[paramClasses.length];
             int p = 0;

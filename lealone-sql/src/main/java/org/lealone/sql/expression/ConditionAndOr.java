@@ -9,12 +9,11 @@ package org.lealone.sql.expression;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.table.ColumnResolver;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * An 'and' or 'or' condition as in WHERE ID=1 AND NAME=?

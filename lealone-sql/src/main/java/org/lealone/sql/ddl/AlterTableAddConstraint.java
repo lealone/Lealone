@@ -26,9 +26,9 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * This class represents the statement
@@ -177,7 +177,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
             checkExpression.mapColumns(filter, 0);
             checkExpression = checkExpression.optimize(session);
             check.setExpression(checkExpression);
-            check.setTableFilter(filter);
+            check.setExpressionEvaluator(filter);
             constraint = check;
             if (checkExisting) {
                 check.checkExistingData(session);

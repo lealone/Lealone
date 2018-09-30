@@ -55,7 +55,6 @@ import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.PlanItem;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableType;
 import org.lealone.db.value.Value;
@@ -64,6 +63,8 @@ import org.lealone.sql.Parser;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.optimizer.Optimizer;
+import org.lealone.sql.optimizer.PlanItem;
 
 /**
  * This class represents the statement
@@ -395,7 +396,7 @@ public class Script extends ScriptBase {
     }
 
     private int generateInsertValues(int count, Table table) throws IOException {
-        PlanItem plan = table.getBestPlanItem(session, null, null, null);
+        PlanItem plan = Optimizer.getBestPlanItem(session, null, table, null);
         Index index = plan.getIndex();
         Cursor cursor = index.find(session, null, null);
         Column[] columns = table.getColumns();

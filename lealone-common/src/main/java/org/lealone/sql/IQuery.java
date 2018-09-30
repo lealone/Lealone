@@ -15,15 +15,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db.expression;
+package org.lealone.sql;
 
-import org.lealone.db.table.Column;
-import org.lealone.db.table.TableFilter;
+import java.util.ArrayList;
+import java.util.HashSet;
 
-public interface ExpressionColumn extends Expression {
+import org.lealone.db.CommandParameter;
+import org.lealone.db.result.Result;
 
-    TableFilter getTableFilter();
+public interface IQuery {
 
-    Column getColumn();
+    Result query(int maxRows);
+
+    String getPlanSQL();
+
+    ArrayList<? extends CommandParameter> getParameters();
+
+    void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType);
+
+    void disableCache();
+
+    double getCost();
+
+    HashSet<?> getTables();
+
+    boolean allowGlobalConditions();
+
+    int getColumnCount();
+
+    ArrayList<? extends IExpression> getExpressions();
+
+    long getMaxDataModificationId();
+
+    boolean isDeterministic();
 
 }

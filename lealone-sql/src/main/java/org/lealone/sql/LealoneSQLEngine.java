@@ -60,17 +60,17 @@ public class LealoneSQLEngine implements SQLEngine {
     }
 
     @Override
-    public Expression createValueExpression(Value value) {
+    public IExpression createValueExpression(Value value) {
         return ValueExpression.get(value);
     }
 
     @Override
-    public Expression createSequenceValue(Object sequence) {
+    public IExpression createSequenceValue(Object sequence) {
         return new SequenceValue((Sequence) sequence);
     }
 
     @Override
-    public Expression createConditionAndOr(boolean and, Expression left, Expression right) {
+    public IExpression createConditionAndOr(boolean and, IExpression left, IExpression right) {
         return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR,
                 (org.lealone.sql.expression.Expression) left, (org.lealone.sql.expression.Expression) right);
     }

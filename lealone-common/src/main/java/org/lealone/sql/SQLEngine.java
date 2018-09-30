@@ -30,10 +30,10 @@ public interface SQLEngine extends PluggableEngine {
 
     CommandParameter createParameter(int index);
 
-    Expression createValueExpression(Value value);
+    IExpression createValueExpression(Value value);
 
-    Expression createSequenceValue(Object sequence);
+    IExpression createSequenceValue(Object sequence);
 
-    Expression createConditionAndOr(boolean and, Expression left, Expression right);
+    IExpression createConditionAndOr(boolean and, IExpression left, IExpression right);
 
 }

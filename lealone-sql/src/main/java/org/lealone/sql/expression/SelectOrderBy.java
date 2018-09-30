@@ -4,9 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.result;
-
-import org.lealone.db.expression.Expression;
+package org.lealone.sql.expression;
 
 /**
  * Describes one element of the ORDER BY clause of a query.

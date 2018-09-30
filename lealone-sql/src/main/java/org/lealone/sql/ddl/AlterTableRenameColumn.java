@@ -16,6 +16,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.optimizer.SingleColumnResolver;
 
 /**
  * This class represents the statement
@@ -62,7 +63,8 @@ public class AlterTableRenameColumn extends SchemaStatement {
             Expression newCheckExpr = (Expression) column.getCheckConstraint(session, newName);
             table.renameColumn(column, newName);
             column.removeCheckConstraint();
-            column.addCheckConstraint(session, newCheckExpr);
+            SingleColumnResolver resolver = new SingleColumnResolver(column);
+            column.addCheckConstraint(session, newCheckExpr, resolver);
             table.setModified();
             db.updateMeta(session, table);
             for (DbObject child : table.getChildren()) {

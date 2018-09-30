@@ -25,7 +25,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.TableAlterHistoryRecord;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
@@ -212,7 +211,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         try {
             long cost = 10 * (dataMap.rawSize() + Constants.COST_ROW_OFFSET);
             return cost;

@@ -15,16 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db.expression;
+package org.lealone.sql;
 
-import org.lealone.db.ServerSession;
-import org.lealone.db.table.ColumnResolver;
-import org.lealone.db.table.TableFilter;
+import java.util.Set;
+
+import org.lealone.db.Session;
 import org.lealone.db.value.Value;
 
-public interface Expression extends org.lealone.sql.Expression {
+public interface IExpression {
 
-    Value getValue(ServerSession session);
+    interface Evaluator {
+
+        IExpression optimizeExpression(Session session, IExpression e);
+
+        Value getExpressionValue(Session session, IExpression e, Object data);
+    }
+
+    int getType();
+
+    String getSQL();
+
+    IExpression optimize(Session session);
+
+    Value getValue(Session session);
 
     String getAlias();
 
@@ -36,9 +49,6 @@ public interface Expression extends org.lealone.sql.Expression {
 
     String getColumnName();
 
-    @Override
-    int getType();
-
     long getPrecision();
 
     int getNullable();
@@ -47,27 +57,13 @@ public interface Expression extends org.lealone.sql.Expression {
 
     int getScale();
 
-    @Override
-    String getSQL();
-
     String getSQL(boolean isDistributed);
 
-    Expression getNonAliasExpression();
+    IExpression getNonAliasExpression();
 
     boolean isConstant();
 
-    boolean isEverything(ExpressionVisitor visitor);
+    void getDependencies(Set<?> dependencies);
 
-    void setEvaluatable(TableFilter tableFilter, boolean value);
-
-    Expression optimize(ServerSession session);
-
-    void addFilterConditions(TableFilter filter, boolean outerJoin);
-
-    void mapColumns(ColumnResolver resolver, int level);
-
-    void createIndexConditions(ServerSession session, TableFilter filter);
-
-    Boolean getBooleanValue(ServerSession session);
-
+    void getColumns(Set<?> columns);
 }

@@ -13,7 +13,6 @@ import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.RangeTable;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 
@@ -48,7 +47,7 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         return 1;
     }
 

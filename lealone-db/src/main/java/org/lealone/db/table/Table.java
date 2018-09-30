@@ -22,8 +22,6 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -31,7 +29,6 @@ import org.lealone.db.result.RowList;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SimpleRow;
 import org.lealone.db.result.SimpleRowValue;
-import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObjectBase;
 import org.lealone.db.schema.Sequence;
@@ -39,6 +36,7 @@ import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.IExpression;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageMap;
 
@@ -358,14 +356,13 @@ public abstract class Table extends SchemaObjectBase {
                 dependencies.add(s);
             }
         }
-        ExpressionVisitor visitor = ExpressionVisitor.getDependenciesVisitor(dependencies);
         if (columns != null)
             for (Column col : columns) {
-                col.isEverything(visitor);
+                col.getDependencies(dependencies);
             }
         if (constraints != null) {
             for (Constraint c : constraints) {
-                c.isEverything(visitor);
+                c.getDependencies(dependencies);
             }
         }
         dependencies.add(this);
@@ -598,7 +595,7 @@ public abstract class Table extends SchemaObjectBase {
         return new SimpleRow(new Value[columns.length]);
     }
 
-    synchronized Row getNullRow() {
+    public synchronized Row getNullRow() {
         if (nullRow == null) {
             nullRow = new Row(new Value[columns.length], 1);
             for (int i = 0; i < columns.length; i++) {
@@ -650,32 +647,32 @@ public abstract class Table extends SchemaObjectBase {
         return columnMap.containsKey(columnName);
     }
 
-    /**
-     * Get the best plan for the given search mask.
-     *
-     * @param session the session
-     * @param masks per-column comparison bit masks, null means 'always false',
-     *              see constants in IndexCondition
-     * @param sortOrder the sort order
-     * @return the plan item
-     */
-    public PlanItem getBestPlanItem(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
-        PlanItem item = new PlanItem();
-        item.setIndex(getScanIndex(session));
-        item.cost = item.getIndex().getCost(session, null, null, null);
-        ArrayList<Index> indexes = getIndexes();
-        if (indexes != null && masks != null) {
-            for (int i = 1, size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                double cost = index.getCost(session, masks, filter, sortOrder);
-                if (cost < item.cost) {
-                    item.cost = cost;
-                    item.setIndex(index);
-                }
-            }
-        }
-        return item;
-    }
+    // /**
+    // * Get the best plan for the given search mask.
+    // *
+    // * @param session the session
+    // * @param masks per-column comparison bit masks, null means 'always false',
+    // * see constants in IndexCondition
+    // * @param sortOrder the sort order
+    // * @return the plan item
+    // */
+    // public PlanItem getBestPlanItem(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    // PlanItem item = new PlanItem();
+    // item.setIndex(getScanIndex(session));
+    // item.cost = item.getIndex().getCost(session, null, null, null);
+    // ArrayList<Index> indexes = getIndexes();
+    // if (indexes != null && masks != null) {
+    // for (int i = 1, size = indexes.size(); i < size; i++) {
+    // Index index = indexes.get(i);
+    // double cost = index.getCost(session, masks, filter, sortOrder);
+    // if (cost < item.cost) {
+    // item.cost = cost;
+    // item.setIndex(index);
+    // }
+    // }
+    // }
+    // return item;
+    // }
 
     /**
      * Get the primary key index if there is one, or null if there is none.
@@ -1101,7 +1098,7 @@ public abstract class Table extends SchemaObjectBase {
      * @return the value
      */
     public Value getDefaultValue(ServerSession session, Column column) {
-        Expression defaultExpr = column.getDefaultExpression();
+        IExpression defaultExpr = column.getDefaultExpression();
         Value v;
         if (defaultExpr == null) {
             v = column.validateConvertUpdateSequence(session, null);

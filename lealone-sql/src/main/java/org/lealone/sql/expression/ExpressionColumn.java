@@ -13,23 +13,22 @@ import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.index.IndexCondition;
 import org.lealone.db.schema.Constant;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.Parser;
 import org.lealone.sql.dml.Select;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.IndexCondition;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * A expression that represents a column of a table or view.
  */
-public class ExpressionColumn extends Expression implements org.lealone.db.expression.ExpressionColumn {
+public class ExpressionColumn extends Expression {
 
     private Database database;
     private String databaseName;
@@ -90,7 +89,6 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
         return sql;
     }
 
-    @Override
     public TableFilter getTableFilter() {
         return columnResolver == null ? null : columnResolver.getTableFilter();
     }
@@ -99,7 +97,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
     public void mapColumns(ColumnResolver resolver, int level) {
         getDatabase();
         if (select == null)
-            select = (Select) resolver.getSelect();
+            select = resolver.getSelect();
 
         if (tableAlias != null && !database.equalsIdentifiers(tableAlias, resolver.getTableAlias())) {
             return;
@@ -173,13 +171,13 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
             }
             throw DbException.get(ErrorCode.COLUMN_NOT_FOUND_1, name);
         }
-        return (Expression) columnResolver.optimize(this, column);
+        return columnResolver.optimize(this, column);
     }
 
     @Override
     public void updateAggregate(ServerSession session) {
         Value now = columnResolver.getValue(column);
-        Select select = (Select) columnResolver.getSelect();
+        Select select = columnResolver.getSelect();
         if (select == null) {
             throw DbException.get(ErrorCode.MUST_GROUP_BY_COLUMN_1, getSQL());
         }
@@ -196,7 +194,7 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
 
     @Override
     public Value getValue(ServerSession session) {
-        Select select = (Select) columnResolver.getSelect();
+        Select select = columnResolver.getSelect();
         if (select != null) {
             HashMap<Expression, Object> values = select.getCurrentGroup();
             if (values != null) {
@@ -226,7 +224,6 @@ public class ExpressionColumn extends Expression implements org.lealone.db.expre
         }
     }
 
-    @Override
     public Column getColumn() {
         return column;
     }

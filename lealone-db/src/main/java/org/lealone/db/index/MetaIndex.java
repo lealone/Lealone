@@ -16,7 +16,6 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.MetaTable;
-import org.lealone.db.table.TableFilter;
 
 /**
  * The index implementation for meta data tables.
@@ -39,11 +38,11 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         if (scan) {
             return 10 * MetaTable.ROW_COUNT_APPROXIMATION;
         }
-        return getCostRangeIndex(masks, MetaTable.ROW_COUNT_APPROXIMATION, filter, sortOrder);
+        return getCostRangeIndex(masks, MetaTable.ROW_COUNT_APPROXIMATION, sortOrder);
     }
 
     @Override

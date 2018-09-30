@@ -14,7 +14,6 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 
@@ -105,11 +104,11 @@ public class HashIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         for (Column column : columns) {
             int index = column.getColumnId();
             int mask = masks[index];
-            if ((mask & IndexCondition.EQUALITY) != IndexCondition.EQUALITY) {
+            if ((mask & IndexConditionType.EQUALITY) != IndexConditionType.EQUALITY) {
                 return Long.MAX_VALUE;
             }
         }

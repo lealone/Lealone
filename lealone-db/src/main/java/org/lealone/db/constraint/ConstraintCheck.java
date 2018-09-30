@@ -7,29 +7,29 @@ package org.lealone.db.constraint;
 
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
+import org.lealone.sql.IExpression;
 
 /**
  * A check constraint.
  */
 public class ConstraintCheck extends Constraint {
 
-    private TableFilter filter;
-    private Expression expr;
+    private IExpression.Evaluator exprEvaluator;
+    private IExpression expr;
 
     public ConstraintCheck(Schema schema, int id, String name, Table table) {
         super(schema, id, name, table);
@@ -40,11 +40,11 @@ public class ConstraintCheck extends Constraint {
         return Constraint.CHECK;
     }
 
-    public void setTableFilter(TableFilter filter) {
-        this.filter = filter;
+    public void setExpressionEvaluator(IExpression.Evaluator exprEvaluator) {
+        this.exprEvaluator = exprEvaluator;
     }
 
-    public void setExpression(Expression expr) {
+    public void setExpression(IExpression expr) {
         this.expr = expr;
     }
 
@@ -76,7 +76,7 @@ public class ConstraintCheck extends Constraint {
     public void removeChildrenAndResources(ServerSession session) {
         table.removeConstraint(this);
         database.removeMeta(session, getId());
-        filter = null;
+        exprEvaluator = null;
         expr = null;
         table = null;
         invalidate();
@@ -87,10 +87,9 @@ public class ConstraintCheck extends Constraint {
         if (newRow == null) {
             return;
         }
-        filter.set(newRow);
         Boolean b;
         try {
-            b = expr.getValue(session).getBoolean();
+            b = exprEvaluator.getExpressionValue(session, expr, newRow).getBoolean();
         } catch (DbException ex) {
             throw DbException.get(ErrorCode.CHECK_CONSTRAINT_INVALID, ex, getShortDescription());
         }
@@ -113,7 +112,7 @@ public class ConstraintCheck extends Constraint {
     @Override
     public HashSet<Column> getReferencedColumns(Table table) {
         HashSet<Column> columns = New.hashSet();
-        expr.isEverything(ExpressionVisitor.getColumnsVisitor(columns));
+        expr.getColumns(columns);
         for (Iterator<Column> it = columns.iterator(); it.hasNext();) {
             if (it.next().getTable() != table) {
                 it.remove();
@@ -122,7 +121,7 @@ public class ConstraintCheck extends Constraint {
         return columns;
     }
 
-    public Expression getExpression() {
+    public IExpression getExpression() {
         return expr;
     }
 
@@ -137,7 +136,7 @@ public class ConstraintCheck extends Constraint {
             // don't check at startup
             return;
         }
-        String sql = "SELECT 1 FROM " + filter.getTable().getSQL() + " WHERE NOT(" + expr.getSQL() + ")";
+        String sql = "SELECT 1 FROM " + table.getSQL() + " WHERE NOT(" + expr.getSQL() + ")";
         Result r = session.prepareStatement(sql).query(1);
         if (r.next()) {
             throw DbException.get(ErrorCode.CHECK_CONSTRAINT_VIOLATED_1, getName());
@@ -155,8 +154,7 @@ public class ConstraintCheck extends Constraint {
     }
 
     @Override
-    public boolean isEverything(ExpressionVisitor visitor) {
-        return expr.isEverything(visitor);
+    public void getDependencies(Set<DbObject> dependencies) {
+        expr.getDependencies(dependencies);
     }
-
 }

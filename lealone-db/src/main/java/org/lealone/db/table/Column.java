@@ -9,17 +9,18 @@ package org.lealone.db.table;
 import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
+import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
+import org.lealone.db.DbObject;
 import org.lealone.db.Mode;
 import org.lealone.db.SQLEngineHolder;
 import org.lealone.db.ServerSession;
+import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
@@ -33,6 +34,7 @@ import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
+import org.lealone.sql.IExpression;
 
 /**
  * This class represents a column in a table.
@@ -67,8 +69,8 @@ public class Column {
     private String name;
     private int columnId;
     private boolean nullable = true;
-    private Expression defaultExpression;
-    private Expression checkConstraint;
+    private IExpression defaultExpression;
+    private IExpression checkConstraint;
     private String checkConstraintSQL;
     private String originalSQL;
     private boolean autoIncrement;
@@ -77,9 +79,9 @@ public class Column {
     private boolean convertNullToDefault;
     private Sequence sequence;
     private boolean isComputed;
-    private TableFilter computeTableFilter;
+    private IExpression.Evaluator defaultExpressionEvaluator;
+    private IExpression.Evaluator checkConstraintEvaluator;
     private int selectivity;
-    private SingleColumnResolver resolver;
     private String comment;
     private boolean primaryKey;
 
@@ -173,9 +175,7 @@ public class Column {
      * @return the value
      */
     synchronized Value computeValue(ServerSession session, Row row) {
-        computeTableFilter.setSession(session);
-        computeTableFilter.set(row);
-        return defaultExpression.getValue(session);
+        return defaultExpressionEvaluator.getExpressionValue(session, defaultExpression, row);
     }
 
     /**
@@ -184,7 +184,7 @@ public class Column {
      *
      * @param expression the computed expression
      */
-    public void setComputedExpression(Expression expression) {
+    public void setComputedExpression(IExpression expression) {
         this.isComputed = true;
         this.defaultExpression = expression;
     }
@@ -210,12 +210,12 @@ public class Column {
      * @param session the session
      * @param defaultExpression the default expression
      */
-    public void setDefaultExpression(ServerSession session, Expression defaultExpression) {
+    public void setDefaultExpression(ServerSession session, IExpression defaultExpression) {
         // also to test that no column names are used
         if (defaultExpression != null) {
             defaultExpression = defaultExpression.optimize(session);
             if (defaultExpression.isConstant()) {
-                defaultExpression = (Expression) session.getDatabase().getSQLEngine()
+                defaultExpression = session.getDatabase().getSQLEngine()
                         .createValueExpression((defaultExpression.getValue(session)));
             }
         }
@@ -270,7 +270,7 @@ public class Column {
     public Value validateConvertUpdateSequence(ServerSession session, Value value) {
         // take a local copy of defaultExpression to avoid holding the lock
         // while calling getValue
-        final Expression localDefaultExpression;
+        final IExpression localDefaultExpression;
         synchronized (this) {
             localDefaultExpression = defaultExpression;
         }
@@ -311,10 +311,9 @@ public class Column {
             }
         }
         if (checkConstraint != null) {
-            resolver.setValue(value);
             Value v;
             synchronized (this) {
-                v = checkConstraint.getValue(session);
+                v = checkConstraintEvaluator.getExpressionValue(session, checkConstraint, value);
             }
             // Both TRUE and NULL are ok
             if (Boolean.FALSE.equals(v.getBoolean())) {
@@ -391,7 +390,7 @@ public class Column {
             session.getDatabase().addSchemaObject(session, seq);
         }
         setAutoIncrement(false, 0, 0);
-        setDefaultExpression(session, (Expression) session.getDatabase().getSQLEngine().createSequenceValue(seq));
+        setDefaultExpression(session, session.getDatabase().getSQLEngine().createSequenceValue(seq));
         setSequence(seq);
     }
 
@@ -400,11 +399,10 @@ public class Column {
      *
      * @param session the session
      */
-    public void prepareExpression(ServerSession session) {
+    public void prepareExpression(Session session, IExpression.Evaluator evaluator) {
         if (defaultExpression != null) {
-            computeTableFilter = new TableFilter(session, table, null, false, null);
-            defaultExpression.mapColumns(computeTableFilter, 0);
-            defaultExpression = defaultExpression.optimize(session);
+            defaultExpression = evaluator.optimizeExpression(session, defaultExpression);
+            defaultExpressionEvaluator = evaluator;
         }
     }
 
@@ -482,7 +480,7 @@ public class Column {
         return originalSQL;
     }
 
-    public Expression getDefaultExpression() {
+    public IExpression getDefaultExpression() {
         return defaultExpression;
     }
 
@@ -556,32 +554,30 @@ public class Column {
      * @param session the session
      * @param expr the (additional) constraint
      */
-    public void addCheckConstraint(ServerSession session, Expression expr) {
+    public void addCheckConstraint(ServerSession session, IExpression expr, IExpression.Evaluator evaluator) {
         if (expr == null) {
             return;
         }
-        resolver = new SingleColumnResolver(this);
         synchronized (this) {
             String oldName = name;
             if (name == null) {
                 name = "VALUE";
             }
-            expr.mapColumns(resolver, 0);
+            expr = evaluator.optimizeExpression(session, expr);
             name = oldName;
         }
-        expr = expr.optimize(session);
-        resolver.setValue(ValueNull.INSTANCE);
         // check if the column is mapped
         synchronized (this) {
-            expr.getValue(session);
+            evaluator.getExpressionValue(session, expr, ValueNull.INSTANCE);
         }
         if (checkConstraint == null) {
             checkConstraint = expr;
+            checkConstraintEvaluator = evaluator;
         } else {
-            checkConstraint = (Expression) session.getDatabase().getSQLEngine().createConditionAndOr(true,
-                    checkConstraint, expr);
+            checkConstraint = session.getDatabase().getSQLEngine().createConditionAndOr(true, checkConstraint, expr);
         }
         checkConstraintSQL = getCheckConstraintSQL(session, name);
+
     }
 
     /**
@@ -599,7 +595,7 @@ public class Column {
      * @param asColumnName the column name to use
      * @return the constraint expression
      */
-    public Expression getCheckConstraint(ServerSession session, String asColumnName) {
+    public IExpression getCheckConstraint(ServerSession session, String asColumnName) {
         if (checkConstraint == null) {
             return null;
         }
@@ -611,7 +607,7 @@ public class Column {
             sql = checkConstraint.getSQL();
             name = oldName;
         }
-        Expression expr = (Expression) parser.parseExpression(sql);
+        IExpression expr = parser.parseExpression(sql);
         return expr;
     }
 
@@ -635,7 +631,7 @@ public class Column {
      * @return the SQL snippet
      */
     String getCheckConstraintSQL(ServerSession session, String asColumnName) {
-        Expression constraint = getCheckConstraint(session, asColumnName);
+        IExpression constraint = getCheckConstraint(session, asColumnName);
         return constraint == null ? "" : constraint.getSQL();
     }
 
@@ -651,27 +647,16 @@ public class Column {
         this.primaryKey = primaryKey;
     }
 
-    /**
-     * Visit the default expression, the check constraint, and the sequence (if
-     * any).
-     *
-     * @param visitor the visitor
-     * @return true if every visited expression returned true, or if there are
-     *         no expressions
-     */
-    boolean isEverything(ExpressionVisitor visitor) {
-        if (visitor.getType() == ExpressionVisitor.GET_DEPENDENCIES) {
-            if (sequence != null) {
-                visitor.getDependencies().add(sequence);
-            }
+    void getDependencies(HashSet<DbObject> dependencies) {
+        if (sequence != null) {
+            dependencies.add(sequence);
         }
-        if (defaultExpression != null && !defaultExpression.isEverything(visitor)) {
-            return false;
+        if (defaultExpression != null) {
+            defaultExpression.getDependencies(dependencies);
         }
-        if (checkConstraint != null && !checkConstraint.isEverything(visitor)) {
-            return false;
+        if (checkConstraint != null) {
+            checkConstraint.getDependencies(dependencies);
         }
-        return true;
     }
 
     public boolean isPrimaryKey() {
@@ -743,12 +728,12 @@ public class Column {
         // columnId is not set
         nullable = source.nullable;
         defaultExpression = source.defaultExpression;
+        defaultExpressionEvaluator = source.defaultExpressionEvaluator;
         originalSQL = source.originalSQL;
         // autoIncrement, start, increment is not set
         convertNullToDefault = source.convertNullToDefault;
         sequence = source.sequence;
         comment = source.comment;
-        computeTableFilter = source.computeTableFilter;
         isComputed = source.isComputed;
         selectivity = source.selectivity;
         primaryKey = source.primaryKey;

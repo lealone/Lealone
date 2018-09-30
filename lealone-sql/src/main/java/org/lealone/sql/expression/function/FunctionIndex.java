@@ -20,7 +20,6 @@ import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.IndexColumn;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 
@@ -46,7 +45,7 @@ public class FunctionIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         if (masks != null) {
             throw DbException.getUnsupportedException("ALIAS");
         }

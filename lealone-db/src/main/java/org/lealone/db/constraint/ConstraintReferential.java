@@ -15,7 +15,6 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
@@ -27,6 +26,7 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.IExpression;
 import org.lealone.sql.PreparedStatement;
 
 /**
@@ -560,7 +560,7 @@ public class ConstraintReferential extends Constraint {
                 if (action == SET_NULL) {
                     value = ValueNull.INSTANCE;
                 } else {
-                    Expression expr = column.getDefaultExpression();
+                    IExpression expr = column.getDefaultExpression();
                     if (expr == null) {
                         throw DbException.get(ErrorCode.NO_DEFAULT_SET_1, column.getName());
                     }

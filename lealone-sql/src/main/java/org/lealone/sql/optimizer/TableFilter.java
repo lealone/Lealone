@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.table;
+package org.lealone.sql.optimizer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,21 +15,23 @@ import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
+import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.auth.Right;
-import org.lealone.db.expression.Comparison;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionColumn;
-import org.lealone.db.expression.Select;
 import org.lealone.db.index.Index;
-import org.lealone.db.index.IndexCondition;
-import org.lealone.db.index.IndexCursor;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
+import org.lealone.db.table.Column;
+import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.IExpression;
+import org.lealone.sql.dml.Select;
+import org.lealone.sql.expression.Comparison;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.storage.PageKey;
 
 /**
@@ -37,7 +39,7 @@ import org.lealone.storage.PageKey;
  * object whenever a table (or view) is used in a query. For example the
  * following query has 2 table filters: SELECT * FROM TEST T1, TEST T2.
  */
-public class TableFilter implements ColumnResolver {
+public class TableFilter implements ColumnResolver, IExpression.Evaluator {
 
     private static final int BEFORE_FIRST = 0, FOUND = 1, AFTER_LAST = 2, NULL_ROW = 3;
 
@@ -162,7 +164,7 @@ public class TableFilter implements ColumnResolver {
         if (indexConditions.isEmpty()) {
             item = new PlanItem();
             item.setIndex(table.getScanIndex(s));
-            item.cost = item.getIndex().getCost(s, null, null, null);
+            item.cost = item.getIndex().getCost(s, null, null);
         } else {
             int len = table.getColumns().length;
             int[] masks = new int[len];
@@ -184,7 +186,7 @@ public class TableFilter implements ColumnResolver {
             if (select != null) {
                 sortOrder = select.getSortOrder();
             }
-            item = table.getBestPlanItem(s, masks, this, sortOrder);
+            item = Optimizer.getBestPlanItem(s, masks, table, sortOrder);
             // The more index conditions, the earlier the table.
             // This is to ensure joins without indexes run quickly:
             // x (x.a=10); y (x.b=y.b) - see issue 113
@@ -1092,5 +1094,19 @@ public class TableFilter implements ColumnResolver {
 
     public List<PageKey> getPageKeys() {
         return cursor.getPageKeys();
+    }
+
+    @Override
+    public IExpression optimizeExpression(Session session, IExpression e) {
+        Expression expression = (Expression) e;
+        expression.mapColumns(this, 0);
+        return expression.optimize(session);
+    }
+
+    @Override
+    public Value getExpressionValue(Session session, IExpression e, Object data) {
+        setSession((ServerSession) session);
+        set((org.lealone.db.result.Row) data);
+        return e.getValue(session);
     }
 }

@@ -21,9 +21,7 @@ import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.RowList;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.PlanItem;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedStatement;
@@ -31,6 +29,8 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.optimizer.PlanItem;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * This class represents the statement

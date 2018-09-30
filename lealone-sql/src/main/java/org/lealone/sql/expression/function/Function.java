@@ -44,14 +44,11 @@ import org.lealone.db.Database;
 import org.lealone.db.Mode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.service.ServiceExecuterManager;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.util.AutoCloseInputStream;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -71,9 +68,12 @@ import org.lealone.db.value.ValueUuid;
 import org.lealone.sql.Parser;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.storage.fs.FileUtils;
 
 /**

@@ -15,38 +15,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db.expression;
+package org.lealone.sql;
 
-import org.lealone.db.result.LocalResult;
+import org.lealone.db.result.Result;
 
-public interface SelectUnion {
+public interface ISelectUnion {
 
     /**
-     * The type of a UNION statement.
-     */
+    * The type of a UNION statement.
+    */
     public static final int UNION = 0;
 
     /**
-     * The type of a UNION ALL statement.
-     */
+    * The type of a UNION ALL statement.
+    */
     public static final int UNION_ALL = 1;
 
     /**
-     * The type of an EXCEPT statement.
-     */
+    * The type of an EXCEPT statement.
+    */
     public static final int EXCEPT = 2;
 
     /**
-     * The type of an INTERSECT statement.
-     */
+    * The type of an INTERSECT statement.
+    */
     public static final int INTERSECT = 3;
 
     int getUnionType();
 
-    Query getLeft();
+    IQuery getLeft();
 
-    Query getRight();
+    IQuery getRight();
 
-    LocalResult getEmptyResult();
+    Result getEmptyResult();
 
 }

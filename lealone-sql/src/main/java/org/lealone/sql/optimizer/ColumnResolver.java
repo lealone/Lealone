@@ -4,12 +4,13 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.table;
+package org.lealone.sql.optimizer;
 
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionColumn;
-import org.lealone.db.expression.Select;
+import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
+import org.lealone.sql.dml.Select;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
 
 /**
  * A column resolver is list of column (for example, a table) that can map a

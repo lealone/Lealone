@@ -15,12 +15,11 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
 import org.lealone.db.SysProperties;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionColumn;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.TableFilter;
+import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.IExpression;
 
 /**
  * A sort order represents an ORDER BY clause in a query.
@@ -69,7 +68,7 @@ public class SortOrder implements Comparator<Value[]> {
     /**
      * The order list.
      */
-    private final ArrayList<SelectOrderBy> orderList;
+    private final Column[] orderList;
 
     /**
      * Construct a new sort order object.
@@ -79,7 +78,7 @@ public class SortOrder implements Comparator<Value[]> {
      * @param sortType the sort order bit masks
      * @param orderList the original query order list (if this is a query)
      */
-    public SortOrder(Database database, int[] queryColumnIndexes, int[] sortType, ArrayList<SelectOrderBy> orderList) {
+    public SortOrder(Database database, int[] queryColumnIndexes, int[] sortType, Column[] orderList) {
         this.database = database;
         this.queryColumnIndexes = queryColumnIndexes;
         this.sortTypes = sortType;
@@ -94,7 +93,7 @@ public class SortOrder implements Comparator<Value[]> {
      * @param visible the number of columns in the select list
      * @return the SQL snippet
      */
-    public String getSQL(Expression[] list, int visible) {
+    public String getSQL(IExpression[] list, int visible) {
         StatementBuilder buff = new StatementBuilder();
         int i = 0;
         for (int idx : queryColumnIndexes) {
@@ -220,34 +219,21 @@ public class SortOrder implements Comparator<Value[]> {
     }
 
     /**
-     * Get the column for the given table filter, if the sort column is for this
-     * filter.
+     * Get the column for the given table, if the sort column is for this table.
      *
      * @param index the column index (0, 1,..)
-     * @param filter the table filter
+     * @param table the table
      * @return the column, or null
      */
-    public Column getColumn(int index, TableFilter filter) {
+    public Column getColumn(int index, Table table) {
         if (orderList == null) {
             return null;
         }
-        SelectOrderBy order = orderList.get(index);
-        Expression expr = order.expression;
-        if (expr == null) {
+        Column c = orderList[index];
+        if (c == null || c.getTable() != table) {
             return null;
         }
-        expr = expr.getNonAliasExpression();
-        if (expr.isConstant()) {
-            return null;
-        }
-        if (!(expr instanceof ExpressionColumn)) {
-            return null;
-        }
-        ExpressionColumn exprCol = (ExpressionColumn) expr;
-        if (exprCol.getTableFilter() != filter) {
-            return null;
-        }
-        return exprCol.getColumn();
+        return c;
     }
 
     /**

@@ -8,12 +8,11 @@ package org.lealone.sql.expression;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.ColumnResolver;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * A list of expressions, as in (ID, NAME).

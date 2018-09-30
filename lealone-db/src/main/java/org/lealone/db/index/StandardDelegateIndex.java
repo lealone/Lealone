@@ -16,7 +16,6 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.PageKey;
 
@@ -85,8 +84,8 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
-        return 10 * getCostRangeIndex(masks, mainIndex.getRowCountApproximation(), filter, sortOrder);
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
+        return 10 * getCostRangeIndex(masks, mainIndex.getRowCountApproximation(), sortOrder);
     }
 
     @Override

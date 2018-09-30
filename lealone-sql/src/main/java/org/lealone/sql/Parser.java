@@ -38,7 +38,6 @@ import org.lealone.db.auth.Right;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Index;
-import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
@@ -49,8 +48,6 @@ import org.lealone.db.table.DummyTable;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.RangeTable;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
-import org.lealone.db.table.TableFilter.TableFilterVisitor;
 import org.lealone.db.table.TableView;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;
@@ -142,6 +139,7 @@ import org.lealone.sql.expression.ExpressionList;
 import org.lealone.sql.expression.Operation;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.Rownum;
+import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.Subquery;
 import org.lealone.sql.expression.ValueExpression;
@@ -154,6 +152,9 @@ import org.lealone.sql.expression.function.FunctionCall;
 import org.lealone.sql.expression.function.FunctionTable;
 import org.lealone.sql.expression.function.JavaFunction;
 import org.lealone.sql.expression.function.TableFunction;
+import org.lealone.sql.optimizer.SingleColumnResolver;
+import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.optimizer.TableFilter.TableFilterVisitor;
 
 /**
  * The parser is used to convert a SQL statement string to an command object.
@@ -1758,7 +1759,7 @@ public class Parser implements SQLParser {
                 command.addTableFilter(join, false);
             } else {
                 // make flat so the optimizer can work better
-                Expression on = (Expression) join.getJoinCondition();
+                Expression on = join.getJoinCondition();
                 if (on != null) {
                     command.addCondition(on);
                 }
@@ -3918,7 +3919,8 @@ public class Parser implements SQLParser {
             if (selectivity != Constants.SELECTIVITY_DEFAULT) {
                 column.setSelectivity(selectivity);
             }
-            column.addCheckConstraint(session, templateColumn.getCheckConstraint(session, columnName));
+            SingleColumnResolver resolver = new SingleColumnResolver(column);
+            column.addCheckConstraint(session, templateColumn.getCheckConstraint(session, columnName), resolver);
         }
         column.setComment(comment);
         column.setOriginalSQL(original);
@@ -4483,7 +4485,8 @@ public class Parser implements SQLParser {
         Column col = parseColumnForTable("VALUE", true);
         if (readIf("CHECK")) {
             Expression expr = readExpression();
-            col.addCheckConstraint(session, expr);
+            SingleColumnResolver resolver = new SingleColumnResolver(col);
+            col.addCheckConstraint(session, expr, resolver);
         }
         col.rename(null);
         command.setColumn(col);
@@ -5707,7 +5710,8 @@ public class Parser implements SQLParser {
         }
         if (readIf("CHECK")) {
             Expression expr = readExpression();
-            column.addCheckConstraint(session, expr);
+            SingleColumnResolver resolver = new SingleColumnResolver(column);
+            column.addCheckConstraint(session, expr, resolver);
         }
         if (readIf("REFERENCES")) {
             AlterTableAddConstraint ref = new AlterTableAddConstraint(session, schema, false);

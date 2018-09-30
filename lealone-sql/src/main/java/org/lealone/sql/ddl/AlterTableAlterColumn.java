@@ -16,7 +16,6 @@ import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Result;
@@ -28,6 +27,7 @@ import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionVisitor;
 
 /**
  * This class represents the statements

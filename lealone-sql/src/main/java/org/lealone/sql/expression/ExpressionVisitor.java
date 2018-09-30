@@ -4,14 +4,14 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.expression;
+package org.lealone.sql.expression;
 
 import java.util.HashSet;
 
 import org.lealone.db.DbObject;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.Table;
+import org.lealone.sql.optimizer.ColumnResolver;
 
 /**
  * The visitor pattern is used to iterate through all expressions of a query

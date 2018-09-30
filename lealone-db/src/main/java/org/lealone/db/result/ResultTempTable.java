@@ -12,7 +12,6 @@ import java.util.Arrays;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.Expression;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
@@ -23,6 +22,7 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.IExpression;
 
 /**
  * This class implements the temp table buffer for the LocalResult class.
@@ -44,7 +44,7 @@ public class ResultTempTable implements ResultExternal {
     private int childCount;
     private boolean containsLob;
 
-    ResultTempTable(ServerSession session, Expression[] expressions, boolean distinct, SortOrder sort) {
+    ResultTempTable(ServerSession session, IExpression[] expressions, boolean distinct, SortOrder sort) {
         this.session = session;
         this.distinct = distinct;
         this.sort = sort;

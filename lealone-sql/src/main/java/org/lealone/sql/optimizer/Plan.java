@@ -4,16 +4,16 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.table;
+package org.lealone.sql.optimizer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.lealone.common.util.New;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.table.TableFilter.TableFilterVisitor;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionVisitor;
+import org.lealone.sql.optimizer.TableFilter.TableFilterVisitor;
 
 /**
  * A possible query execution plan. The time required to execute a query depends

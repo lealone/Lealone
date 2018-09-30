@@ -22,22 +22,19 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
+import org.lealone.db.index.IndexConditionType;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
-import org.lealone.db.result.SelectOrderBy;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.ColumnResolver;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
@@ -49,7 +46,12 @@ import org.lealone.sql.expression.Comparison;
 import org.lealone.sql.expression.ConditionAndOr;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.expression.SelectOrderBy;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.Optimizer;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * This class represents a simple SELECT statement.
@@ -64,7 +66,7 @@ import org.lealone.sql.expression.Parameter;
  * @author Thomas Mueller
  * @author Joel Turkel (Group sorted query)
  */
-public class Select extends Query implements org.lealone.db.expression.Select {
+public class Select extends Query {
     private TableFilter topTableFilter;
     private final ArrayList<TableFilter> filters = New.arrayList();
     private final ArrayList<TableFilter> topFilters = New.arrayList();
@@ -518,7 +520,7 @@ public class Select extends Query implements org.lealone.db.expression.Select {
             if (n != null) {
                 setEvaluatableRecursive(n);
             }
-            Expression on = (Expression) f.getJoinCondition();
+            Expression on = f.getJoinCondition();
             if (on != null) {
                 if (!on.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
                     if (session.getDatabase().getSettings().nestedJoins) {
@@ -543,7 +545,7 @@ public class Select extends Query implements org.lealone.db.expression.Select {
                     }
                 }
             }
-            on = (Expression) f.getFilterCondition();
+            on = f.getFilterCondition();
             if (on != null) {
                 if (!on.isEverything(ExpressionVisitor.EVALUATABLE_VISITOR)) {
                     f.removeFilterCondition();
@@ -1504,7 +1506,6 @@ public class Select extends Query implements org.lealone.db.expression.Select {
         return false;
     }
 
-    @Override
     public SortOrder getSortOrder() {
         return sort;
     }
@@ -1515,7 +1516,21 @@ public class Select extends Query implements org.lealone.db.expression.Select {
     }
 
     @Override
-    public void addGlobalCondition(CommandParameter param, int columnId, int comparisonType) {
+    public void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType) {
+        int comparisonType = 0;
+        switch (indexConditionType) {
+        case IndexConditionType.EQUALITY:
+            comparisonType = Comparison.EQUAL_NULL_SAFE;
+            break;
+        case IndexConditionType.START:
+            comparisonType = Comparison.BIGGER_EQUAL;
+            break;
+        case IndexConditionType.END:
+            comparisonType = Comparison.SMALLER_EQUAL;
+            break;
+        default:
+            throw DbException.throwInternalError("indexConditionType: " + indexConditionType);
+        }
         this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }
 

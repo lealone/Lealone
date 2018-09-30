@@ -6,12 +6,13 @@
 package org.lealone.db.constraint;
 
 import java.util.HashSet;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
+import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.ExpressionVisitor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
@@ -175,15 +176,7 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
         return table.isHidden();
     }
 
-    /**
-     * Visit all elements in the constraint.
-     *
-     * @param visitor the visitor
-     * @return true if every visited expression returned true, or if there are
-     *         no expressions
-     */
-    public boolean isEverything(ExpressionVisitor visitor) {
-        return true;
+    public void getDependencies(Set<DbObject> dependencies) {
     }
 
 }

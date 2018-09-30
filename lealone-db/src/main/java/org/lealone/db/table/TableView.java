@@ -7,6 +7,7 @@
 package org.lealone.db.table;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
@@ -19,19 +20,17 @@ import org.lealone.db.Constants;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.expression.Query;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.ViewIndex;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
-import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.util.IntArray;
 import org.lealone.db.util.SynchronizedVerifier;
 import org.lealone.db.value.Value;
+import org.lealone.sql.IExpression;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.IQuery;
 
 /**
  * A view is a virtual table that is defined by a query.
@@ -43,7 +42,7 @@ public class TableView extends Table {
     private String querySQL;
     private ArrayList<Table> tables;
     private String[] columnNames;
-    private Query viewQuery;
+    private IQuery viewQuery;
     private ViewIndex index;
     private boolean recursive;
     private DbException createException;
@@ -52,7 +51,7 @@ public class TableView extends Table {
     private long lastModificationCheck;
     private long maxDataModificationId;
     private User owner;
-    private Query topQuery;
+    private IQuery topQuery;
     private LocalResult recursiveResult;
     private boolean tableExpression;
 
@@ -97,13 +96,13 @@ public class TableView extends Table {
         initColumnsAndTables(session);
     }
 
-    private static Query compileViewQuery(ServerSession session, String sql) {
+    private static IQuery compileViewQuery(ServerSession session, String sql) {
         PreparedStatement p = session.prepareStatement(sql);
         p = p.getWrappedStatement(); // 要看最原始的那条语句的类型
-        if (!(p instanceof Query)) {
+        if (!(p instanceof IQuery)) {
             throw DbException.getSyntaxError(sql, 0);
         }
-        return (Query) p;
+        return (IQuery) p;
     }
 
     /**
@@ -140,17 +139,18 @@ public class TableView extends Table {
         return force ? null : createException;
     }
 
+    @SuppressWarnings("unchecked")
     private void initColumnsAndTables(ServerSession session) {
         Column[] cols;
         removeViewFromTables();
         try {
-            Query query = compileViewQuery(session, querySQL);
+            IQuery query = compileViewQuery(session, querySQL);
             this.querySQL = query.getPlanSQL();
-            tables = New.arrayList(query.getTables());
-            ArrayList<? extends Expression> expressions = query.getExpressions();
+            tables = New.arrayList((HashSet<Table>) query.getTables());
+            ArrayList<? extends IExpression> expressions = query.getExpressions();
             ArrayList<Column> list = New.arrayList();
             for (int i = 0, count = query.getColumnCount(); i < count; i++) {
-                Expression expr = expressions.get(i);
+                IExpression expr = expressions.get(i);
                 String name = null;
                 if (columnNames != null && columnNames.length > i) {
                     name = columnNames[i];
@@ -202,20 +202,20 @@ public class TableView extends Table {
         return createException != null;
     }
 
-    @Override
-    public PlanItem getBestPlanItem(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
-        PlanItem item = new PlanItem();
-        item.cost = index.getCost(session, masks, filter, sortOrder);
-        IntArray masksArray = new IntArray(masks == null ? Utils.EMPTY_INT_ARRAY : masks);
-        SynchronizedVerifier.check(indexCache);
-        ViewIndex i2 = indexCache.get(masksArray);
-        if (i2 == null || i2.getSession() != session) {
-            i2 = new ViewIndex(this, index, session, masks);
-            indexCache.put(masksArray, i2);
-        }
-        item.setIndex(i2);
-        return item;
-    }
+    // @Override
+    // public PlanItem getBestPlanItem(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    // PlanItem item = new PlanItem();
+    // item.cost = index.getCost(session, masks, filter, sortOrder);
+    // IntArray masksArray = new IntArray(masks == null ? Utils.EMPTY_INT_ARRAY : masks);
+    // SynchronizedVerifier.check(indexCache);
+    // ViewIndex i2 = indexCache.get(masksArray);
+    // if (i2 == null || i2.getSession() != session) {
+    // i2 = new ViewIndex(this, index, session, masks);
+    // indexCache.put(masksArray, i2);
+    // }
+    // item.setIndex(i2);
+    // return item;
+    // }
 
     @Override
     public String getDropSQL() {
@@ -285,8 +285,17 @@ public class TableView extends Table {
             String msg = createException.getMessage();
             throw DbException.get(ErrorCode.VIEW_IS_INVALID_2, createException, getSQL(), msg);
         }
-        PlanItem item = getBestPlanItem(session, null, null, null);
-        return item.getIndex();
+        // PlanItem item = getBestPlanItem(session, null, null, null);
+        // return item.getIndex();
+
+        IntArray masksArray = new IntArray(Utils.EMPTY_INT_ARRAY);
+        SynchronizedVerifier.check(indexCache);
+        ViewIndex i2 = indexCache.get(masksArray);
+        if (i2 == null || i2.getSession() != session) {
+            i2 = new ViewIndex(this, index, session, null);
+            indexCache.put(masksArray, i2);
+        }
+        return i2;
     }
 
     @Override
@@ -318,7 +327,7 @@ public class TableView extends Table {
         if (recursive || viewQuery == null) {
             return false;
         }
-        return viewQuery.isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR);
+        return viewQuery.isDeterministic();
     }
 
     @Override
@@ -397,8 +406,8 @@ public class TableView extends Table {
      * @param topQuery the top level query
      * @return the view table
      */
-    public static TableView createTempView(ServerSession session, User owner, String name, Query query,
-            Query topQuery) {
+    public static TableView createTempView(ServerSession session, User owner, String name, IQuery query,
+            IQuery topQuery) {
         Schema mainSchema = session.getDatabase().getSchema(Constants.SCHEMA_MAIN);
         String querySQL = query.getPlanSQL();
         int size = query.getParameters().size();
@@ -415,7 +424,7 @@ public class TableView extends Table {
         return v;
     }
 
-    private void setTopQuery(Query topQuery) {
+    private void setTopQuery(IQuery topQuery) {
         this.topQuery = topQuery;
     }
 

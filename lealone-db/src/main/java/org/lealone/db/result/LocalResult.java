@@ -13,11 +13,11 @@ import java.util.ArrayList;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.New;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.Expression;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
+import org.lealone.sql.IExpression;
 
 /**
  * A local result set contains all row data of a result set.
@@ -30,7 +30,7 @@ public class LocalResult implements Result, ResultTarget {
     private int maxMemoryRows;
     private ServerSession session;
     private int visibleColumnCount;
-    private Expression[] expressions;
+    private IExpression[] expressions;
     private int rowId, rowCount;
     private ArrayList<Value[]> rows;
     private SortOrder sort;
@@ -58,7 +58,7 @@ public class LocalResult implements Result, ResultTarget {
      * @param expressions the expression array
      * @param visibleColumnCount the number of visible columns
      */
-    public LocalResult(ServerSession session, Expression[] expressions, int visibleColumnCount) {
+    public LocalResult(ServerSession session, IExpression[] expressions, int visibleColumnCount) {
         this.session = session;
         if (session == null) {
             this.maxMemoryRows = Integer.MAX_VALUE;
@@ -80,7 +80,7 @@ public class LocalResult implements Result, ResultTarget {
      * @return the local result set
      */
     public static LocalResult read(ServerSession session, ResultSet rs, int maxRows) {
-        Expression[] cols = getExpressionColumns(session, rs);
+        IExpression[] cols = getExpressionColumns(session, rs);
         int columnCount = cols.length;
         LocalResult result = new LocalResult(session, cols, columnCount);
         try {
@@ -106,8 +106,8 @@ public class LocalResult implements Result, ResultTarget {
      * @param rs the result set
      * @return an array of expression columns
      */
-    public static Expression[] getExpressionColumns(ServerSession session, ResultSet rs) {
-        return new Expression[0]; // TODO
+    public static IExpression[] getExpressionColumns(ServerSession session, ResultSet rs) {
+        return new IExpression[0]; // TODO
         // try {
         // ResultSetMetaData meta = rs.getMetaData();
         // int columnCount = meta.getColumnCount();

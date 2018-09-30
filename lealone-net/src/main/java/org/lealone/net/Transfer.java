@@ -62,7 +62,7 @@ import org.lealone.db.value.ValueUuid;
  */
 public class Transfer implements NetSerializer {
 
-    private static final int BUFFER_SIZE = 4 * 1024;
+    public static final int BUFFER_SIZE = 8 * 1024;
     private static final int LOB_MAGIC = 0x1234;
     private static final int LOB_MAC_SALT_LENGTH = 16;
 

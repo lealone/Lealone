@@ -16,9 +16,6 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.Comparison;
-import org.lealone.db.expression.Query;
-import org.lealone.db.expression.SelectUnion;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
@@ -27,12 +24,13 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.table.TableView;
 import org.lealone.db.util.IntArray;
 import org.lealone.db.util.SynchronizedVerifier;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.IQuery;
+import org.lealone.sql.ISelectUnion;
 
 /**
  * This object represents a virtual index for a query.
@@ -48,10 +46,11 @@ public class ViewIndex extends IndexBase {
     private boolean recursive;
     private final int[] indexMasks;
     private String planSQL;
-    private Query query;
+    private IQuery query;
     private final ServerSession createSession;
 
-    public ViewIndex(TableView view, String querySQL, ArrayList<CommandParameter> originalParameters, boolean recursive) {
+    public ViewIndex(TableView view, String querySQL, ArrayList<CommandParameter> originalParameters,
+            boolean recursive) {
         super(view, 0, null, IndexType.createNonUnique(), null);
         this.view = view;
         this.querySQL = querySQL;
@@ -103,7 +102,7 @@ public class ViewIndex extends IndexBase {
     }
 
     @Override
-    public synchronized double getCost(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
+    public synchronized double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         if (recursive) {
             return 1000;
         }
@@ -116,7 +115,7 @@ public class ViewIndex extends IndexBase {
                 return cachedCost.cost;
             }
         }
-        Query q = (Query) session.prepareStatement(querySQL, true).getWrappedStatement();
+        IQuery q = (IQuery) session.prepareStatement(querySQL, true).getWrappedStatement();
         if (masks != null) {
             IntArray paramIndex = new IntArray();
             for (int i = 0; i < masks.length; i++) {
@@ -131,22 +130,22 @@ public class ViewIndex extends IndexBase {
                 int idx = paramIndex.get(i);
                 int mask = masks[idx];
                 int nextParamIndex = q.getParameters().size() + view.getParameterOffset();
-                if ((mask & IndexCondition.EQUALITY) != 0) {
+                if ((mask & IndexConditionType.EQUALITY) != 0) {
                     CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
-                    q.addGlobalCondition(param, idx, Comparison.EQUAL_NULL_SAFE);
+                    q.addGlobalCondition(param, idx, IndexConditionType.EQUALITY);
                 } else {
-                    if ((mask & IndexCondition.START) != 0) {
+                    if ((mask & IndexConditionType.START) != 0) {
                         CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
-                        q.addGlobalCondition(param, idx, Comparison.BIGGER_EQUAL);
+                        q.addGlobalCondition(param, idx, IndexConditionType.START);
                     }
-                    if ((mask & IndexCondition.END) != 0) {
+                    if ((mask & IndexConditionType.END) != 0) {
                         CommandParameter param = session.getDatabase().getSQLEngine().createParameter(nextParamIndex);
-                        q.addGlobalCondition(param, idx, Comparison.SMALLER_EQUAL);
+                        q.addGlobalCondition(param, idx, IndexConditionType.END);
                     }
                 }
             }
             String sql = q.getPlanSQL();
-            q = (Query) session.prepareStatement(sql, true).getWrappedStatement();
+            q = (IQuery) session.prepareStatement(sql, true).getWrappedStatement();
         }
         double cost = q.getCost();
         cachedCost = new CostElement();
@@ -165,25 +164,25 @@ public class ViewIndex extends IndexBase {
                 return new ViewCursor(this, recResult, first, last);
             }
             if (query == null) {
-                query = (Query) createSession.prepareStatement(querySQL, true);
+                query = (IQuery) createSession.prepareStatement(querySQL, true);
                 planSQL = query.getPlanSQL();
             }
-            if (!(query instanceof SelectUnion)) {
+            if (!(query instanceof ISelectUnion)) {
                 throw DbException.get(ErrorCode.SYNTAX_ERROR_2, "recursive queries without UNION ALL");
             }
-            SelectUnion union = (SelectUnion) query;
-            if (union.getUnionType() != SelectUnion.UNION_ALL) {
+            ISelectUnion union = (ISelectUnion) query;
+            if (union.getUnionType() != ISelectUnion.UNION_ALL) {
                 throw DbException.get(ErrorCode.SYNTAX_ERROR_2, "recursive queries without UNION ALL");
             }
-            Query left = union.getLeft();
+            IQuery left = union.getLeft();
             // to ensure the last result is not closed
             left.disableCache();
             LocalResult r = (LocalResult) left.query(0);
-            LocalResult result = union.getEmptyResult();
+            LocalResult result = (LocalResult) union.getEmptyResult();
             while (r.next()) {
                 result.addRow(r.currentRow());
             }
-            Query right = union.getRight();
+            IQuery right = union.getRight();
             r.reset();
             view.setRecursiveResult(r);
             // to ensure the last result is not closed
@@ -229,13 +228,13 @@ public class ViewIndex extends IndexBase {
         idx += view.getParameterOffset();
         for (int i = 0; i < len; i++) {
             int mask = indexMasks[i];
-            if ((mask & IndexCondition.EQUALITY) != 0) {
+            if ((mask & IndexConditionType.EQUALITY) != 0) {
                 setParameter(paramList, idx++, first.getValue(i));
             }
-            if ((mask & IndexCondition.START) != 0) {
+            if ((mask & IndexConditionType.START) != 0) {
                 setParameter(paramList, idx++, first.getValue(i));
             }
-            if ((mask & IndexCondition.END) != 0) {
+            if ((mask & IndexConditionType.END) != 0) {
                 setParameter(paramList, idx++, last.getValue(i));
             }
         }
@@ -253,8 +252,8 @@ public class ViewIndex extends IndexBase {
         param.setValue(v);
     }
 
-    private Query getQuery(ServerSession session, int[] masks) {
-        Query q = (Query) session.prepareStatement(querySQL, true).getWrappedStatement();
+    private IQuery getQuery(ServerSession session, int[] masks) {
+        IQuery q = (IQuery) session.prepareStatement(querySQL, true).getWrappedStatement();
         if (masks == null) {
             return q;
         }
@@ -283,19 +282,19 @@ public class ViewIndex extends IndexBase {
             int idx = paramIndex.get(i);
             columnList.add(table.getColumn(idx));
             int mask = masks[idx];
-            if ((mask & IndexCondition.EQUALITY) == IndexCondition.EQUALITY) {
+            if ((mask & IndexConditionType.EQUALITY) == IndexConditionType.EQUALITY) {
                 CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
-                q.addGlobalCondition(param, idx, Comparison.EQUAL_NULL_SAFE);
+                q.addGlobalCondition(param, idx, IndexConditionType.EQUALITY);
                 i++;
             }
-            if ((mask & IndexCondition.START) == IndexCondition.START) {
+            if ((mask & IndexConditionType.START) == IndexConditionType.START) {
                 CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
-                q.addGlobalCondition(param, idx, Comparison.BIGGER_EQUAL);
+                q.addGlobalCondition(param, idx, IndexConditionType.START);
                 i++;
             }
-            if ((mask & IndexCondition.END) == IndexCondition.END) {
+            if ((mask & IndexConditionType.END) == IndexConditionType.END) {
                 CommandParameter param = session.getDatabase().getSQLEngine().createParameter(firstIndexParam + i);
-                q.addGlobalCondition(param, idx, Comparison.SMALLER_EQUAL);
+                q.addGlobalCondition(param, idx, IndexConditionType.END);
                 i++;
             }
         }
@@ -312,12 +311,12 @@ public class ViewIndex extends IndexBase {
                     continue;
                 }
                 if (type == 0) {
-                    if ((mask & IndexCondition.EQUALITY) != IndexCondition.EQUALITY) {
+                    if ((mask & IndexConditionType.EQUALITY) != IndexConditionType.EQUALITY) {
                         // the first columns need to be equality conditions
                         continue;
                     }
                 } else {
-                    if ((mask & IndexCondition.EQUALITY) == IndexCondition.EQUALITY) {
+                    if ((mask & IndexConditionType.EQUALITY) == IndexConditionType.EQUALITY) {
                         // then only range conditions
                         continue;
                     }
@@ -331,7 +330,7 @@ public class ViewIndex extends IndexBase {
         }
 
         String sql = q.getPlanSQL();
-        q = (Query) session.prepareStatement(sql, true).getWrappedStatement();
+        q = (IQuery) session.prepareStatement(sql, true).getWrappedStatement();
         return q;
     }
 

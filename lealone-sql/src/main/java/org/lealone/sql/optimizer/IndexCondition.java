@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.index;
+package org.lealone.sql.optimizer;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,16 +15,17 @@ import java.util.List;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.ServerSession;
-import org.lealone.db.expression.Comparison;
-import org.lealone.db.expression.Expression;
-import org.lealone.db.expression.ExpressionColumn;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.expression.Query;
+import org.lealone.db.index.IndexConditionType;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.TableType;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
+import org.lealone.sql.dml.Query;
+import org.lealone.sql.expression.Comparison;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.expression.ExpressionVisitor;
 
 /**
  * A index condition object is made for each condition that can potentially use
@@ -32,31 +33,6 @@ import org.lealone.db.value.Value;
  * expression that maps to each index condition.
  */
 public class IndexCondition {
-
-    /**
-     * A bit of a search mask meaning 'equal'.
-     */
-    public static final int EQUALITY = 1;
-
-    /**
-     * A bit of a search mask meaning 'larger or equal'.
-     */
-    public static final int START = 2;
-
-    /**
-     * A bit of a search mask meaning 'smaller or equal'.
-     */
-    public static final int END = 4;
-
-    /**
-     * A search mask meaning 'between'.
-     */
-    public static final int RANGE = START | END;
-
-    /**
-     * A bit of a search mask meaning 'the condition is always false'.
-     */
-    public static final int ALWAYS_FALSE = 8;
 
     private final Column column;
 
@@ -225,10 +201,10 @@ public class IndexCondition {
     public int getMask(ArrayList<IndexCondition> indexConditions) {
         switch (compareType) {
         case Comparison.FALSE:
-            return ALWAYS_FALSE;
+            return IndexConditionType.ALWAYS_FALSE;
         case Comparison.EQUAL:
         case Comparison.EQUAL_NULL_SAFE:
-            return EQUALITY;
+            return IndexConditionType.EQUALITY;
         case Comparison.IN_LIST:
         case Comparison.IN_QUERY:
             if (indexConditions.size() > 1) {
@@ -244,13 +220,13 @@ public class IndexCondition {
                     return 0;
                 }
             }
-            return EQUALITY;
+            return IndexConditionType.EQUALITY;
         case Comparison.BIGGER_EQUAL:
         case Comparison.BIGGER:
-            return START;
+            return IndexConditionType.START;
         case Comparison.SMALLER_EQUAL:
         case Comparison.SMALLER:
-            return END;
+            return IndexConditionType.END;
         default:
             throw DbException.throwInternalError("type=" + compareType);
         }

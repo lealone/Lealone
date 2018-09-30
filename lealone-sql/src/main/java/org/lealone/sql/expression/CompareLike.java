@@ -13,15 +13,14 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.expression.ExpressionVisitor;
-import org.lealone.db.index.IndexCondition;
-import org.lealone.db.table.ColumnResolver;
-import org.lealone.db.table.TableFilter;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
+import org.lealone.sql.optimizer.ColumnResolver;
+import org.lealone.sql.optimizer.IndexCondition;
+import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * Pattern matching comparison expression: WHERE NAME LIKE ?
@@ -199,23 +198,23 @@ public class CompareLike extends Condition {
         }
         String begin = buff.toString();
         if (maxMatch == patternLength) {
-            filter.addIndexCondition(IndexCondition.get(Comparison.EQUAL, l,
-                    ValueExpression.get(ValueString.get(begin))));
+            filter.addIndexCondition(
+                    IndexCondition.get(Comparison.EQUAL, l, ValueExpression.get(ValueString.get(begin))));
         } else {
             // TODO check if this is correct according to Unicode rules
             // (code points)
             String end;
             if (begin.length() > 0) {
-                filter.addIndexCondition(IndexCondition.get(Comparison.BIGGER_EQUAL, l,
-                        ValueExpression.get(ValueString.get(begin))));
+                filter.addIndexCondition(
+                        IndexCondition.get(Comparison.BIGGER_EQUAL, l, ValueExpression.get(ValueString.get(begin))));
                 char next = begin.charAt(begin.length() - 1);
                 // search the 'next' unicode character (or at least a character
                 // that is higher)
                 for (int i = 1; i < 2000; i++) {
                     end = begin.substring(0, begin.length() - 1) + (char) (next + i);
                     if (compareMode.compareString(begin, end, ignoreCase) == -1) {
-                        filter.addIndexCondition(IndexCondition.get(Comparison.SMALLER, l,
-                                ValueExpression.get(ValueString.get(end))));
+                        filter.addIndexCondition(
+                                IndexCondition.get(Comparison.SMALLER, l, ValueExpression.get(ValueString.get(end))));
                         break;
                     }
                 }
