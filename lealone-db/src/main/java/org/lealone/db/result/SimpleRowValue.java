@@ -20,7 +20,6 @@ public class SimpleRowValue implements SearchRow {
     private int index;
     private final int virtualColumnCount;
     private Value data;
-    private Value rowKey;
 
     public SimpleRowValue(int columnCount) {
         this.virtualColumnCount = columnCount;
@@ -64,8 +63,6 @@ public class SimpleRowValue implements SearchRow {
 
     @Override
     public void setValue(int idx, Value v, Column c) {
-        if (c != null && c.isRowKeyColumn())
-            this.rowKey = v;
         index = idx;
         data = v;
     }
@@ -79,15 +76,4 @@ public class SimpleRowValue implements SearchRow {
     public int getMemory() {
         return Constants.MEMORY_OBJECT + (data == null ? 0 : data.getMemory());
     }
-
-    @Override
-    public void setRowKey(Value rowKey) {
-        this.rowKey = rowKey;
-    }
-
-    @Override
-    public Value getRowKey() {
-        return rowKey;
-    }
-
 }

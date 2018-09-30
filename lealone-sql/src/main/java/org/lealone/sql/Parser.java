@@ -5657,7 +5657,6 @@ public class Parser implements SQLParser {
         Column column = parseColumnForTable(columnName, true);
         if (column.isAutoIncrement() && column.isPrimaryKey()) {
             column.setPrimaryKey(false);
-            column.setRowKeyColumn(true);
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = column.getName();
             cols[0].column = column;
@@ -5672,12 +5671,8 @@ public class Parser implements SQLParser {
         if (readIf("CONSTRAINT")) {
             constraintName = readColumnIdentifier();
         }
-        if (readIf("ROW")) {
+        if (readIf("PRIMARY")) {
             read("KEY");
-            column.setRowKeyColumn(true);
-        } else if (readIf("PRIMARY")) {
-            read("KEY");
-            column.setRowKeyColumn(true);
             boolean hash = readIf("HASH");
             IndexColumn[] cols = { new IndexColumn() };
             cols[0].columnName = column.getName();

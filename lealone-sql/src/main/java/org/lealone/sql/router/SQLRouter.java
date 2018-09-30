@@ -61,6 +61,8 @@ public class SQLRouter {
         Set<NetEndpoint> liveMembers = m.getLiveEndpoints();
         NetEndpoint localEndpoint = NetEndpoint.getLocalP2pEndpoint();
         liveMembers.remove(localEndpoint);
+        if (liveMembers.isEmpty())
+            return 0;
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
         for (NetEndpoint e : liveMembers) {
@@ -160,6 +162,25 @@ public class SQLRouter {
     }
 
     private static int maybeExecuteDistributedUpdate(StatementBase statement) {
+        int type = statement.getType();
+        switch (type) {
+        case SQLStatement.DELETE:
+        case SQLStatement.UPDATE: {
+            int updateCount = 0;
+            Map<String, List<PageKey>> endpointToPageKeyMap = statement.getEndpointToPageKeyMap();
+            int size = endpointToPageKeyMap.size();
+            if (size > 0) {
+                updateCount = maybeExecuteDistributedUpdate(statement, endpointToPageKeyMap, size > 1);
+            }
+            return updateCount;
+        }
+        default:
+            return statement.executeUpdate();
+        }
+    }
+
+    private static int maybeExecuteDistributedUpdate(StatementBase statement,
+            Map<String, List<PageKey>> endpointToPageKeyMap, boolean isBatch) {
         beginTransaction(statement);
 
         boolean isTopTransaction = false;
@@ -167,7 +188,7 @@ public class SQLRouter {
         Session session = statement.getSession();
 
         try {
-            if (!statement.isLocal() && statement.isBatch()) {
+            if (!statement.isLocal() && isBatch) {
                 if (session.isAutoCommit()) {
                     session.setAutoCommit(false);
                     isTopTransaction = true;
@@ -188,7 +209,7 @@ public class SQLRouter {
             // :
             // }
 
-            int updateCount = maybeExecuteDistributedUpdate0(statement);
+            int updateCount = maybeExecuteDistributedUpdate(statement, endpointToPageKeyMap);
             if (isTopTransaction)
                 session.prepareCommit();
             return updateCount;
@@ -207,54 +228,44 @@ public class SQLRouter {
         }
     }
 
-    private static int maybeExecuteDistributedUpdate0(StatementBase statement) {
-        int type = statement.getType();
-        switch (type) {
-        case SQLStatement.DELETE:
-        case SQLStatement.UPDATE: {
-            int updateCount = 0;
-            Map<String, List<PageKey>> endpointToPageKeyMap = statement.getEndpointToPageKeyMap();
-            int size = endpointToPageKeyMap.size();
-            if (size > 0) {
-                String sql = statement.getPlanSQL(true);
-                Session currentSession = statement.getSession();
-                Session[] sessions = new Session[size];
-                Command[] commands = new Command[size];
-                ArrayList<Callable<Integer>> callables = new ArrayList<>(size);
-                int i = 0;
-                for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
-                    String hostId = e.getKey();
-                    // List<PageKey> pageKeys = e.getValue();
-                    sessions[i] = currentSession.getNestedSession(hostId,
-                            !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
-                    commands[i] = sessions[i].createCommand(sql, Integer.MAX_VALUE);
-                    Command c = commands[i];
-                    callables.add(() -> {
-                        return c.executeUpdate();
-                    });
-                    i++;
-                }
+    private static int maybeExecuteDistributedUpdate(StatementBase statement,
+            Map<String, List<PageKey>> endpointToPageKeyMap) {
+        int updateCount = 0;
+        int size = endpointToPageKeyMap.size();
+        String sql = statement.getPlanSQL(true);
+        Session currentSession = statement.getSession();
+        Session[] sessions = new Session[size];
+        Command[] commands = new Command[size];
+        ArrayList<Callable<Integer>> callables = new ArrayList<>(size);
+        int i = 0;
+        for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
+            String hostId = e.getKey();
+            // List<PageKey> pageKeys = e.getValue();
+            sessions[i] = currentSession.getNestedSession(hostId,
+                    !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
+            commands[i] = sessions[i].createCommand(sql, Integer.MAX_VALUE);
+            Command c = commands[i];
+            callables.add(() -> {
+                return c.executeUpdate();
+            });
+            i++;
+        }
 
-                try {
-                    ArrayList<Future<Integer>> futures = new ArrayList<>(size);
-                    for (Callable<Integer> callable : callables) {
-                        futures.add(executorService.submit(callable));
-                    }
-                    for (Future<Integer> f : futures) {
-                        Integer count = f.get();
-                        if (count != null) {
-                            updateCount += count;
-                        }
-                    }
-                } catch (Exception e) {
-                    throw DbException.convert(e);
+        try {
+            ArrayList<Future<Integer>> futures = new ArrayList<>(size);
+            for (Callable<Integer> callable : callables) {
+                futures.add(executorService.submit(callable));
+            }
+            for (Future<Integer> f : futures) {
+                Integer count = f.get();
+                if (count != null) {
+                    updateCount += count;
                 }
             }
-            return updateCount;
+        } catch (Exception e) {
+            throw DbException.convert(e);
         }
-        default:
-            return statement.executeUpdate();
-        }
+        return updateCount;
     }
 
     public static Result executeQuery(StatementBase statement, int maxRows) {

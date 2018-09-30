@@ -562,14 +562,6 @@ public abstract class Query extends ManipulateStatement implements org.lealone.s
 
     public abstract List<TableFilter> getTopFilters();
 
-    // Query单独出现时不管涉及多少行记录都认为不是批量的，只有Query用于Insert时才有效
-    @Override
-    public boolean isBatch() {
-        return false;
-    }
-
-    public abstract boolean isBatchForInsert();
-
     protected List<PageKey> pageKeys;
 
     @Override

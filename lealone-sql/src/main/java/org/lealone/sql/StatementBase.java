@@ -23,7 +23,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
-import org.lealone.db.result.SearchRow;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
@@ -445,13 +444,6 @@ public abstract class StatementBase extends CommandBase implements PreparedState
         return session;
     }
 
-    // 多值insert、不带等号PartitionKey条件的delete/update都是一种批量操作，
-    // 这类批量操作会当成一个分布式事务处理
-    @Override
-    public boolean isBatch() {
-        return false;
-    }
-
     /**
      * Whether the statement is already closed (in which case it can be re-used).
      *
@@ -523,28 +515,6 @@ public abstract class StatementBase extends CommandBase implements PreparedState
             }
         }
         return buff.toString();
-    }
-
-    public static boolean containsEqualPartitionKeyComparisonType(TableFilter tableFilter) {
-        return getPartitionKey(tableFilter) != null;
-    }
-
-    public static Value getPartitionKey(TableFilter tableFilter) {
-        SearchRow startRow = tableFilter.getStartSearchRow();
-        SearchRow endRow = tableFilter.getEndSearchRow();
-
-        Value startPK = getPartitionKey(startRow);
-        Value endPK = getPartitionKey(endRow);
-        if (startPK != null && endPK != null && startPK == endPK)
-            return startPK;
-
-        return null;
-    }
-
-    public static Value getPartitionKey(SearchRow row) {
-        if (row == null)
-            return null;
-        return row.getRowKey();
     }
 
     protected double cost;

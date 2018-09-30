@@ -56,13 +56,6 @@ public class Merge extends ManipulateStatement {
     }
 
     @Override
-    public boolean isBatch() {
-        // 因为GlobalUniqueIndex是通过独立的唯一索引表实现的，如果包含GlobalUniqueIndex，
-        // 那么每次往主表中增加一条记录时，都会同时往唯一索引表中加一条记录，所以也是批量的
-        return (query != null && query.isBatchForInsert()) || list.size() > 1 || table.containsGlobalUniqueIndex();
-    }
-
-    @Override
     public void setLocal(boolean local) {
         super.setLocal(local);
         if (query != null)

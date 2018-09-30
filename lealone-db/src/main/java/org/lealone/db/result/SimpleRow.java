@@ -20,7 +20,6 @@ public class SimpleRow implements SearchRow {
     private int version;
     private final Value[] data;
     private int memory;
-    private Value rowKey;
 
     public SimpleRow(Value[] data) {
         this.data = data;
@@ -59,8 +58,6 @@ public class SimpleRow implements SearchRow {
 
     @Override
     public void setValue(int idx, Value v, Column c) {
-        if (c != null && c.isRowKeyColumn())
-            this.rowKey = v;
         data[idx] = v;
     }
 
@@ -98,15 +95,4 @@ public class SimpleRow implements SearchRow {
         }
         return memory;
     }
-
-    @Override
-    public void setRowKey(Value rowKey) {
-        this.rowKey = rowKey;
-    }
-
-    @Override
-    public Value getRowKey() {
-        return rowKey;
-    }
-
 }

@@ -53,11 +53,6 @@ public class Delete extends ManipulateStatement {
         this.limitExpr = limit;
     }
 
-    @Override
-    public boolean isBatch() {
-        return !containsEqualPartitionKeyComparisonType(tableFilter);
-    }
-
     public void setTableFilter(TableFilter tableFilter) {
         this.tableFilter = tableFilter;
     }

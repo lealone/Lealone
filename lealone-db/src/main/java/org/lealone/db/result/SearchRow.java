@@ -80,8 +80,4 @@ public interface SearchRow {
      */
     int getMemory();
 
-    void setRowKey(Value rowKey);
-
-    Value getRowKey();
-
 }

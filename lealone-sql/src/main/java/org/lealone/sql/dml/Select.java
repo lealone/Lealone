@@ -1511,11 +1511,6 @@ public class Select extends Query {
     }
 
     @Override
-    public boolean isBatchForInsert() {
-        return !containsEqualPartitionKeyComparisonType(topTableFilter);
-    }
-
-    @Override
     public void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType) {
         int comparisonType = 0;
         switch (indexConditionType) {

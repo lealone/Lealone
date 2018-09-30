@@ -34,8 +34,6 @@ public interface PreparedStatement extends SQLStatement {
 
     boolean isLocal();
 
-    boolean isBatch();
-
     void setObjectId(int i);
 
     void checkCanceled();

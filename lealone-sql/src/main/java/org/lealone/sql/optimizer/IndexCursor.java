@@ -179,9 +179,7 @@ public class IndexCursor implements Cursor {
         } else {
             v = getMax(session, row.getValue(id), v, max);
         }
-        if (id == -2) {
-            row.setRowKey(v);
-        } else if (id < 0) {
+        if (id < 0) {
             row.setKey(v.getLong());
         } else {
             row.setValue(id, v, column);

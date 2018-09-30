@@ -446,11 +446,6 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public boolean isBatchForInsert() {
-        return left.isBatchForInsert() || right.isBatchForInsert();
-    }
-
-    @Override
     public void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType) {
         this.addGlobalCondition((Parameter) param, columnId, indexConditionType);
     }

@@ -27,26 +27,9 @@ public class Row implements SearchRow {
     private int memory;
     private int version;
     private boolean deleted;
-    private Value rowKey;
     private Table table;
 
-    @Override
-    public Value getRowKey() {
-        return rowKey;
-    }
-
-    @Override
-    public void setRowKey(Value rowKey) {
-        this.rowKey = rowKey;
-    }
-
     public Row(Value[] data, int memory) {
-        this.data = data;
-        this.memory = memory;
-    }
-
-    public Row(Value rowKey, Value[] data, int memory) {
-        this.rowKey = rowKey;
         this.data = data;
         this.memory = memory;
     }
@@ -93,18 +76,13 @@ public class Row implements SearchRow {
 
     @Override
     public Value getValue(int i) {
-        return i == -1 ? ValueLong.get(key) : (i == -2 ? rowKey : data[i]);
+        return i == -1 ? ValueLong.get(key) : data[i];
     }
 
     @Override
     public void setValue(int i, Value v, Column c) {
-        if (c != null && c.isRowKeyColumn())
-            this.rowKey = v;
         if (i == -1) {
             this.key = v.getLong();
-            this.rowKey = v;
-        } else if (i == -2) {
-            this.rowKey = v;
         } else {
             data[i] = v;
         }

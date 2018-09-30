@@ -123,11 +123,6 @@ public class StatementWrapper extends StatementBase {
     }
 
     @Override
-    public boolean isBatch() {
-        return statement.isBatch();
-    }
-
-    @Override
     public int hashCode() {
         return statement.hashCode();
     }

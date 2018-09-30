@@ -57,7 +57,7 @@ public abstract class DatabaseStatement extends DefineStatement {
     }
 
     protected void executeDatabaseStatement(Database db) {
-        if (session.isRoot()) {
+        if (session.isRoot() && !this.isLocal()) {
             SQLRouter.executeDatabaseStatement(db, session, this);
         }
     }

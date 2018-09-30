@@ -1203,11 +1203,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         if (transaction != null)
             return transaction;
 
-        boolean autoCommit = this.autoCommit;
-        if (autoCommit && p != null && !p.isLocal() && p.isBatch()) { // 批量操作会当成一个分布式事务处理
-            autoCommit = false;
-        }
-
         boolean isShardingMode = isShardingMode();
         Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, isShardingMode);
         transaction.setValidator(this);

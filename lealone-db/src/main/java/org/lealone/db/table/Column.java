@@ -85,16 +85,6 @@ public class Column {
     private String comment;
     private boolean primaryKey;
 
-    private boolean isRowKeyColumn;
-
-    public void setRowKeyColumn(boolean isRowKeyColumn) {
-        this.isRowKeyColumn = isRowKeyColumn;
-    }
-
-    public boolean isRowKeyColumn() {
-        return isRowKeyColumn;
-    }
-
     public Column(String name, int type) {
         this(name, type, -1, -1, -1);
     }
@@ -443,9 +433,6 @@ public class Column {
                     buff.append(" DEFAULT ").append(sql);
                 }
             }
-        }
-        if (isRowKeyColumn) {
-            buff.append(" ROW KEY");
         }
         if (!nullable) {
             buff.append(" NOT NULL");

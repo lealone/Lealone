@@ -41,7 +41,7 @@ public class LocalNetEndpointManager implements NetEndpointManager {
     @Override
     public Set<NetEndpoint> getLiveEndpoints() {
         HashSet<NetEndpoint> set = new HashSet<>(1);
-        set.add(NetEndpoint.getLocalTcpEndpoint());
+        set.add(NetEndpoint.getLocalP2pEndpoint());
         return set;
     }
 
