@@ -30,7 +30,7 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * INSERT
  */
-public class Insert extends ManipulateStatement implements ResultTarget {
+public class Insert extends ManipulationStatement implements ResultTarget {
 
     private Table table;
     private Column[] columns;

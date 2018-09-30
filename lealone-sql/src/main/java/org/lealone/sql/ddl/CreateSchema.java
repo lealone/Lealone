@@ -22,7 +22,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class CreateSchema extends DefineStatement {
+public class CreateSchema extends DefinitionStatement {
 
     private String schemaName;
     private String authorization;

@@ -24,7 +24,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class AlterSchemaRename extends DefineStatement {
+public class AlterSchemaRename extends DefinitionStatement {
 
     private Schema oldSchema;
     private String newSchemaName;

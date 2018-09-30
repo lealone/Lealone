@@ -20,7 +20,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class CreateRole extends DefineStatement implements AuthStatement {
+public class CreateRole extends DefinitionStatement implements AuthStatement {
 
     private String roleName;
     private boolean ifNotExists;

@@ -30,7 +30,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class GrantRevoke extends DefineStatement implements AuthStatement {
+public class GrantRevoke extends DefinitionStatement implements AuthStatement {
 
     private ArrayList<String> roleNames;
     private int operationType;

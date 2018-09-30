@@ -35,7 +35,7 @@ import org.lealone.storage.fs.FileUtils;
 /**
  * This class is the base for RunScript and Script.
  */
-abstract class ScriptBase extends ManipulateStatement implements DataHandler {
+abstract class ScriptBase extends ManipulationStatement implements DataHandler {
 
     /**
      * The default name of the script file if .zip compression is used.

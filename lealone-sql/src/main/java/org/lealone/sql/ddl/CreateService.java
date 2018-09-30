@@ -48,7 +48,7 @@ public class CreateService extends SchemaStatement {
     protected IndexColumn[] pkColumns;
     protected boolean ifNotExists;
 
-    private final ArrayList<DefineStatement> constraintCommands = New.arrayList();
+    private final ArrayList<DefinitionStatement> constraintCommands = New.arrayList();
     private boolean onCommitDrop;
     private boolean onCommitTruncate;
     private String comment;
@@ -92,7 +92,7 @@ public class CreateService extends SchemaStatement {
      *
      * @param command the statement to add
      */
-    public void addConstraintCommand(DefineStatement command) {
+    public void addConstraintCommand(DefinitionStatement command) {
         if (command instanceof CreateIndex) {
             constraintCommands.add(command);
         } else {
@@ -188,7 +188,7 @@ public class CreateService extends SchemaStatement {
                 for (Sequence sequence : sequences) {
                     table.addSequence(sequence);
                 }
-                for (DefineStatement command : constraintCommands) {
+                for (DefinitionStatement command : constraintCommands) {
                     command.update();
                 }
             } catch (DbException e) {

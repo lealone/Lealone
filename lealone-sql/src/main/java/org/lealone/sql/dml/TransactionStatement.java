@@ -14,7 +14,7 @@ import org.lealone.sql.SQLStatement;
 /**
  * Represents a transactional statement.
  */
-public class TransactionStatement extends ManipulateStatement {
+public class TransactionStatement extends ManipulationStatement {
 
     private final int type;
     private String savepointName;

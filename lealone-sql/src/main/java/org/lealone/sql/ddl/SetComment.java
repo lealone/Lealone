@@ -24,7 +24,7 @@ import org.lealone.sql.expression.Expression;
  * @author H2 Group
  * @author zhh
  */
-public class SetComment extends DefineStatement {
+public class SetComment extends DefinitionStatement {
 
     private String schemaName;
     private String objectName;

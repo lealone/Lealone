@@ -27,7 +27,7 @@ import org.lealone.sql.expression.ExpressionColumn;
  * This class represents the statement
  * EXPLAIN
  */
-public class Explain extends ManipulateStatement {
+public class Explain extends ManipulationStatement {
 
     private StatementBase command;
     private LocalResult result;

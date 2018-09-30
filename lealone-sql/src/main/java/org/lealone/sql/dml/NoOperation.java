@@ -12,7 +12,7 @@ import org.lealone.sql.SQLStatement;
 /**
  * Represents an empty statement or a statement that has no effect.
  */
-public class NoOperation extends ManipulateStatement {
+public class NoOperation extends ManipulationStatement {
 
     public NoOperation(ServerSession session) {
         super(session);

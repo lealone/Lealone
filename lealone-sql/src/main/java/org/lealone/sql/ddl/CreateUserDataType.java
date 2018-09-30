@@ -24,7 +24,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class CreateUserDataType extends DefineStatement {
+public class CreateUserDataType extends DefinitionStatement {
 
     private String typeName;
     private Column column;

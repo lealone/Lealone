@@ -13,14 +13,14 @@ import org.lealone.sql.StatementBase;
 /**
  * This class represents a non-transaction statement, for example a CREATE or DROP.
  */
-public abstract class DefineStatement extends StatementBase {
+public abstract class DefinitionStatement extends StatementBase {
 
     /**
      * Create a new command for the given session.
      *
      * @param session the session
      */
-    protected DefineStatement(ServerSession session) {
+    protected DefinitionStatement(ServerSession session) {
         super(session);
     }
 

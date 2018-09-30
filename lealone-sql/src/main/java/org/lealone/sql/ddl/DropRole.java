@@ -21,7 +21,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class DropRole extends DefineStatement implements AuthStatement {
+public class DropRole extends DefinitionStatement implements AuthStatement {
 
     private String roleName;
     private boolean ifExists;

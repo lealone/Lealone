@@ -32,7 +32,7 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * MERGE
  */
-public class Merge extends ManipulateStatement {
+public class Merge extends ManipulationStatement {
 
     private Table table;
     private Column[] columns;

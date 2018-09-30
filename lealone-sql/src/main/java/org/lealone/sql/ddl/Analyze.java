@@ -26,7 +26,7 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * ANALYZE
  */
-public class Analyze extends DefineStatement {
+public class Analyze extends DefinitionStatement {
 
     /**
      * The sample size.

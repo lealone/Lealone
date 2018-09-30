@@ -19,7 +19,7 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * PREPARE
  */
-public class PrepareProcedure extends DefineStatement {
+public class PrepareProcedure extends DefinitionStatement {
 
     private String procedureName;
     private StatementBase prepared;

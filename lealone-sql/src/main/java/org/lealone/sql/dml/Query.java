@@ -38,7 +38,7 @@ import org.lealone.storage.PageKey;
 /**
  * Represents a SELECT statement (simple, or union).
  */
-public abstract class Query extends ManipulateStatement implements org.lealone.sql.IQuery {
+public abstract class Query extends ManipulationStatement implements org.lealone.sql.IQuery {
 
     /**
      * The limit expression as specified in the LIMIT or TOP clause.

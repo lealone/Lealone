@@ -21,7 +21,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class DropUserDataType extends DefineStatement {
+public class DropUserDataType extends DefinitionStatement {
 
     private String typeName;
     private boolean ifExists;

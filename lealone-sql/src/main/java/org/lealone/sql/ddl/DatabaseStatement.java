@@ -25,7 +25,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.net.NetEndpoint;
 import org.lealone.sql.router.SQLRouter;
 
-public abstract class DatabaseStatement extends DefineStatement {
+public abstract class DatabaseStatement extends DefinitionStatement {
 
     protected DatabaseStatement(ServerSession session) {
         super(session);

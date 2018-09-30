@@ -12,7 +12,7 @@ import org.lealone.db.schema.Schema;
 /**
  * This class represents a non-transaction statement that involves a schema.
  */
-public abstract class SchemaStatement extends DefineStatement {
+public abstract class SchemaStatement extends DefinitionStatement {
 
     private final Schema schema;
 

@@ -20,7 +20,7 @@ import org.lealone.sql.expression.Expression;
  * This class represents the statement
  * CALL.
  */
-public class Call extends ManipulateStatement {
+public class Call extends ManipulationStatement {
 
     private boolean isResultSet;
     private Expression expression;

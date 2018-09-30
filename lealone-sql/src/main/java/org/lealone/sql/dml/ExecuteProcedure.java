@@ -21,7 +21,7 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * EXECUTE
  */
-public class ExecuteProcedure extends ManipulateStatement {
+public class ExecuteProcedure extends ManipulationStatement {
 
     private final ArrayList<Expression> expressions = New.arrayList();
     private Procedure procedure;

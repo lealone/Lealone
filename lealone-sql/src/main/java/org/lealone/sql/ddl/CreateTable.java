@@ -48,7 +48,7 @@ public class CreateTable extends SchemaStatement {
     protected IndexColumn[] pkColumns;
     protected boolean ifNotExists;
 
-    private final ArrayList<DefineStatement> constraintCommands = New.arrayList();
+    private final ArrayList<DefinitionStatement> constraintCommands = New.arrayList();
     private boolean onCommitDrop;
     private boolean onCommitTruncate;
     private Query asQuery;
@@ -95,7 +95,7 @@ public class CreateTable extends SchemaStatement {
      *
      * @param command the statement to add
      */
-    public void addConstraintCommand(DefineStatement command) {
+    public void addConstraintCommand(DefinitionStatement command) {
         if (command instanceof CreateIndex) {
             constraintCommands.add(command);
         } else {
@@ -188,7 +188,7 @@ public class CreateTable extends SchemaStatement {
                 for (Sequence sequence : sequences) {
                     table.addSequence(sequence);
                 }
-                for (DefineStatement command : constraintCommands) {
+                for (DefinitionStatement command : constraintCommands) {
                     command.update();
                 }
                 if (asQuery != null) {

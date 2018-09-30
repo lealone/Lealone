@@ -13,7 +13,7 @@ import org.lealone.sql.SQLStatement;
  * This class represents the statement
  * DEALLOCATE
  */
-public class DeallocateProcedure extends DefineStatement {
+public class DeallocateProcedure extends DefinitionStatement {
 
     private String procedureName;
 

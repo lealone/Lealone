@@ -21,7 +21,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class DropAggregate extends DefineStatement {
+public class DropAggregate extends DefinitionStatement {
 
     private String name;
     private boolean ifExists;

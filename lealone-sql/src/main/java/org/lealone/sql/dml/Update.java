@@ -36,7 +36,7 @@ import org.lealone.sql.optimizer.TableFilter;
  * This class represents the statement
  * UPDATE
  */
-public class Update extends ManipulateStatement {
+public class Update extends ManipulationStatement {
 
     private Expression condition;
     private TableFilter tableFilter;

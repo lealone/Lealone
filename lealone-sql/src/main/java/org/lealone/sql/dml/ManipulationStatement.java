@@ -21,9 +21,9 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
 import org.lealone.sql.StatementBase;
 
-public abstract class ManipulateStatement extends StatementBase {
+public abstract class ManipulationStatement extends StatementBase {
 
-    public ManipulateStatement(ServerSession session) {
+    public ManipulationStatement(ServerSession session) {
         super(session);
     }
 

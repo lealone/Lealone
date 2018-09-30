@@ -23,7 +23,7 @@ import org.lealone.sql.expression.Expression;
  * @author H2 Group
  * @author zhh
  */
-public class AlterUser extends DefineStatement implements AuthStatement {
+public class AlterUser extends DefinitionStatement implements AuthStatement {
 
     private int type;
     private User user;

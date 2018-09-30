@@ -14,7 +14,7 @@ import org.lealone.sql.expression.Expression;
  * This class represents the statement
  * BACKUP
  */
-public class Backup extends ManipulateStatement {
+public class Backup extends ManipulationStatement {
 
     private Expression fileNameExpr;
 

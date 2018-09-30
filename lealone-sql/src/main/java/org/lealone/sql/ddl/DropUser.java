@@ -20,7 +20,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class DropUser extends DefineStatement implements AuthStatement {
+public class DropUser extends DefinitionStatement implements AuthStatement {
 
     private boolean ifExists;
     private String userName;

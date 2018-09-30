@@ -29,7 +29,7 @@ import org.lealone.sql.expression.ValueExpression;
  * This class represents the statement
  * SET
  */
-public class Set extends ManipulateStatement {
+public class Set extends ManipulationStatement {
 
     private final int type;
     private Expression expression;

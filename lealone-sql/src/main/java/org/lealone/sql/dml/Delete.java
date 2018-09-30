@@ -25,7 +25,7 @@ import org.lealone.sql.optimizer.TableFilter;
  * This class represents the statement
  * DELETE
  */
-public class Delete extends ManipulateStatement {
+public class Delete extends ManipulationStatement {
 
     private Expression condition;
     private TableFilter tableFilter;

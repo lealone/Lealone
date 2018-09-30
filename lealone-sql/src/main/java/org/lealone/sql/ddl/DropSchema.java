@@ -21,7 +21,7 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class DropSchema extends DefineStatement {
+public class DropSchema extends DefinitionStatement {
 
     private String schemaName;
     private boolean ifExists;
