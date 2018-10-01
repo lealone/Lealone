@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
@@ -52,7 +52,7 @@ public abstract class ClientResult implements Result {
             columns[i] = new ClientResultColumn(transfer);
         }
         rowId = -1;
-        result = New.arrayList();
+        result = Utils.newSmallArrayList();
         this.fetchSize = fetchSize;
         fetchRows(false);
     }

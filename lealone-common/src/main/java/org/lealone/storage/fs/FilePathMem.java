@@ -21,7 +21,6 @@ import java.util.TreeMap;
 import org.lealone.common.compress.CompressLZF;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
 import org.lealone.db.api.ErrorCode;
 
 /**
@@ -91,7 +90,7 @@ public class FilePathMem extends FilePath {
 
     @Override
     public List<FilePath> newDirectoryStream() {
-        ArrayList<FilePath> list = New.arrayList();
+        ArrayList<FilePath> list = new ArrayList<>();
         synchronized (MEMORY_FILES) {
             for (String n : MEMORY_FILES.tailMap(name).keySet()) {
                 if (n.startsWith(name)) {

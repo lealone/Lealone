@@ -9,6 +9,7 @@ package org.lealone.common.util;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.lealone.common.exceptions.DbException;
@@ -21,7 +22,7 @@ import org.lealone.storage.fs.FileUtils;
 public class TempFileDeleter {
 
     private final ReferenceQueue<Object> queue = new ReferenceQueue<Object>();
-    private final HashMap<PhantomReference<?>, String> refMap = New.hashMap();
+    private final HashMap<PhantomReference<?>, String> refMap = new HashMap<>();
 
     private TempFileDeleter() {
         // utility class
@@ -79,7 +80,7 @@ public class TempFileDeleter {
      * Delete all registered temp files.
      */
     public void deleteAll() {
-        for (String tempFile : New.arrayList(refMap.values())) {
+        for (String tempFile : new ArrayList<>(refMap.values())) {
             deleteFile(null, tempFile);
         }
         deleteUnused();

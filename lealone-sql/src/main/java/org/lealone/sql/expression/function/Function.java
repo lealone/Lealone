@@ -33,7 +33,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
@@ -122,8 +121,8 @@ public class Function extends Expression implements FunctionCall {
     private static final int VAR_ARGS = -1;
     private static final long PRECISION_UNKNOWN = -1;
 
-    private static final HashMap<String, FunctionInfo> FUNCTIONS = New.hashMap();
-    private static final HashMap<String, Integer> DATE_PART = New.hashMap();
+    private static final HashMap<String, FunctionInfo> FUNCTIONS = new HashMap<>();
+    private static final HashMap<String, Integer> DATE_PART = new HashMap<>();
     private static final char[] SOUNDEX_INDEX = new char[128];
 
     protected Expression[] args;
@@ -385,7 +384,7 @@ public class Function extends Expression implements FunctionCall {
         this.database = database;
         this.info = info;
         if (info.parameterCount == VAR_ARGS) {
-            varArgs = New.arrayList();
+            varArgs = new ArrayList<>(4);
         } else {
             args = new Expression[info.parameterCount];
         }

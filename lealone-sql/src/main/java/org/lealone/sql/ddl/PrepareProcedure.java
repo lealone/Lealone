@@ -8,7 +8,6 @@ package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
 
-import org.lealone.common.util.New;
 import org.lealone.db.Procedure;
 import org.lealone.db.ServerSession;
 import org.lealone.sql.SQLStatement;
@@ -58,7 +57,7 @@ public class PrepareProcedure extends DefinitionStatement {
 
     @Override
     public ArrayList<Parameter> getParameters() {
-        return New.arrayList();
+        return new ArrayList<>(0);
     }
 
 }

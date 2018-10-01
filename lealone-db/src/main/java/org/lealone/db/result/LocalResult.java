@@ -11,7 +11,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.DataType;
@@ -65,7 +65,7 @@ public class LocalResult implements Result, ResultTarget {
         } else {
             this.maxMemoryRows = session.getDatabase().getMaxMemoryRows();
         }
-        rows = New.arrayList();
+        rows = Utils.newSmallArrayList();
         this.visibleColumnCount = visibleColumnCount;
         rowId = -1;
         this.expressions = expressions;
@@ -330,7 +330,7 @@ public class LocalResult implements Result, ResultTarget {
                     ResultExternal temp = external;
                     external = null;
                     temp.reset();
-                    rows = New.arrayList();
+                    rows = new ArrayList<>();
                     // TODO use offset directly if possible
                     while (true) {
                         Value[] list = temp.next();
@@ -389,7 +389,7 @@ public class LocalResult implements Result, ResultTarget {
         }
         if (external == null) {
             if (rows.size() > limit) {
-                rows = New.arrayList(rows.subList(0, limit));
+                rows = new ArrayList<>(rows.subList(0, limit));
                 rowCount = limit;
             }
         } else {
@@ -483,7 +483,7 @@ public class LocalResult implements Result, ResultTarget {
             } else {
                 // avoid copying the whole array for each row
                 int remove = Math.min(offset, rows.size());
-                rows = New.arrayList(rows.subList(remove, rows.size()));
+                rows = new ArrayList<>(rows.subList(remove, rows.size()));
                 rowCount -= remove;
             }
         } else {

@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandParameter;
@@ -209,7 +208,7 @@ public class ConstraintReferential extends Constraint {
 
     @Override
     public HashSet<Column> getReferencedColumns(Table table) {
-        HashSet<Column> result = New.hashSet();
+        HashSet<Column> result = new HashSet<>();
         if (table == this.table) {
             for (IndexColumn c : columns) {
                 result.add(c.column);

@@ -19,7 +19,6 @@ package org.lealone.sql.expression;
 
 import java.util.ArrayList;
 
-import org.lealone.common.util.New;
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
@@ -58,7 +57,7 @@ public class SubqueryResult extends DelegatedResult {
 
             distinctRows = ValueHashMap.newInstance();
             int visibleColumnCount = getVisibleColumnCount();
-            ArrayList<Value[]> rowList = New.arrayList();
+            ArrayList<Value[]> rowList = new ArrayList<>();
             while (next()) {
                 rowCount++;
                 Value[] row = currentRow();

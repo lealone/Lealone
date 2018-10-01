@@ -9,7 +9,6 @@ package org.lealone.db.index;
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
@@ -277,7 +276,7 @@ public class ViewIndex extends IndexBase {
             }
         }
         int len = paramIndex.size();
-        ArrayList<Column> columnList = New.arrayList();
+        ArrayList<Column> columnList = new ArrayList<>(len);
         for (int i = 0; i < len;) {
             int idx = paramIndex.get(i);
             columnList.add(table.getColumn(idx));

@@ -7,7 +7,6 @@ package org.lealone.sql.expression.aggregate;
 
 import java.util.ArrayList;
 
-import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
@@ -33,7 +32,7 @@ class AggregateDataGroupConcat extends AggregateData {
             return;
         }
         if (list == null) {
-            list = New.arrayList();
+            list = new ArrayList<>();
         }
         list.add(v);
     }
@@ -62,7 +61,7 @@ class AggregateDataGroupConcat extends AggregateData {
     @Override
     void merge(Database database, int dataType, boolean distinct, Value v) {
         if (list == null) {
-            list = New.arrayList();
+            list = new ArrayList<>();
         }
         list.add(v);
     }

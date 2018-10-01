@@ -9,8 +9,6 @@ package org.lealone.db;
 import java.util.ArrayList;
 import java.util.HashSet;
 
-import org.lealone.common.util.New;
-
 /**
  * The list of setting for a SET statement.
  */
@@ -216,9 +214,11 @@ public class SetTypes {
      */
     public static final int QUERY_STATISTICS_MAX_ENTRIES = 40;
 
-    private static final ArrayList<String> TYPES = New.arrayList();
+    private static final int COUNT = QUERY_STATISTICS_MAX_ENTRIES + 1;
 
-    private static final HashSet<String> TYPE_NAMES = New.hashSet();
+    private static final ArrayList<String> TYPES = new ArrayList<>(COUNT);
+
+    private static final HashSet<String> TYPE_NAMES = new HashSet<>(COUNT);
 
     private SetTypes() {
         // utility class

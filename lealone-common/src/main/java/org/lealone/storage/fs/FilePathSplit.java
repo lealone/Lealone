@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.db.SysProperties;
 
 /**
@@ -95,7 +94,7 @@ public class FilePathSplit extends FilePathWrapper {
     @Override
     public ArrayList<FilePath> newDirectoryStream() {
         List<FilePath> list = getBase().newDirectoryStream();
-        ArrayList<FilePath> newList = New.arrayList();
+        ArrayList<FilePath> newList = new ArrayList<>();
         for (int i = 0, size = list.size(); i < size; i++) {
             FilePath f = list.get(i);
             if (!f.getName().endsWith(PART_SUFFIX)) {
@@ -122,7 +121,7 @@ public class FilePathSplit extends FilePathWrapper {
 
     @Override
     public FileChannel open(String mode) throws IOException {
-        ArrayList<FileChannel> list = New.arrayList();
+        ArrayList<FileChannel> list = new ArrayList<>();
         list.add(getBase().open(mode));
         for (int i = 1;; i++) {
             FilePath f = getBase(i);

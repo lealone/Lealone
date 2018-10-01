@@ -28,7 +28,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
 import org.lealone.db.DataBuffer;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
@@ -161,8 +160,8 @@ public class BTreeStorage {
     }
 
     private List<Integer> getAllChunkIds() {
-        List<Integer> ids = New.arrayList();
         String[] files = new File(btreeStorageName).list();
+        List<Integer> ids = new ArrayList<>(files.length);
         if (files != null && files.length > 0) {
             for (String f : files) {
                 if (f.endsWith(AOStorage.SUFFIX_AO_FILE)) {
@@ -759,7 +758,7 @@ public class BTreeStorage {
 
     private List<BTreeChunk> getOldChunks() {
         long maxBytesToWrite = BTreeChunk.MAX_SIZE;
-        List<BTreeChunk> old = New.arrayList();
+        List<BTreeChunk> old = new ArrayList<>();
         for (BTreeChunk c : chunks.values()) {
             if (c.getFillRate() > minFillRate)
                 continue;

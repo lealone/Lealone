@@ -14,7 +14,6 @@ import java.util.StringTokenizer;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
-import org.lealone.common.util.New;
 import org.lealone.common.util.SortedProperties;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.api.ErrorCode;
@@ -29,7 +28,7 @@ import org.lealone.storage.fs.FileUtils;
  */
 public class ConnectionInfo implements Cloneable {
 
-    private static final HashSet<String> KNOWN_SETTINGS = New.hashSet();
+    private static final HashSet<String> KNOWN_SETTINGS = new HashSet<>();
 
     static {
         KNOWN_SETTINGS.addAll(DbSettings.getDefaultSettings().getSettings().keySet());
@@ -125,8 +124,7 @@ public class ConnectionInfo implements Cloneable {
                 setBaseDir(baseDir);
             }
         }
-        netFactoryName = removeProperty(Constants.NET_FACTORY_NAME_KEY,
-                Constants.DEFAULT_NET_FACTORY_NAME);
+        netFactoryName = removeProperty(Constants.NET_FACTORY_NAME_KEY, Constants.DEFAULT_NET_FACTORY_NAME);
     }
 
     private void checkURL() {

@@ -8,10 +8,9 @@ package org.lealone.db.value;
 
 import java.lang.reflect.Array;
 import java.sql.PreparedStatement;
-import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Constants;
 
@@ -203,20 +202,28 @@ public class ValueArray extends Value {
         if (!force) {
             return this;
         }
-        ArrayList<Value> list = New.arrayList();
-        for (Value v : values) {
-            v = v.convertPrecision(precision, true);
+        int length = values.length;
+        Value[] newValues = new Value[length];
+        int i = 0;
+        boolean modified = false;
+        for (; i < length; i++) {
+            Value old = values[i];
+            Value v = old.convertPrecision(precision, true);
+            if (v != old) {
+                modified = true;
+            }
             // empty byte arrays or strings have precision 0
             // they count as precision 1 here
             precision -= Math.max(1, v.getPrecision());
             if (precision < 0) {
                 break;
             }
-            list.add(v);
+            newValues[i] = v;
         }
-        Value[] array = new Value[list.size()];
-        list.toArray(array);
-        return get(array);
+        if (i < length) {
+            return get(componentType, Arrays.copyOf(newValues, i));
+        }
+        return modified ? get(componentType, newValues) : this;
     }
 
 }

@@ -9,7 +9,6 @@ package org.lealone.sql.dml;
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
@@ -37,7 +36,7 @@ public class Merge extends ManipulationStatement {
     private Table table;
     private Column[] columns;
     private Column[] keys;
-    private final ArrayList<Expression[]> list = New.arrayList();
+    private final ArrayList<Expression[]> list = new ArrayList<>();
     private Query query;
     private StatementBase update;
 

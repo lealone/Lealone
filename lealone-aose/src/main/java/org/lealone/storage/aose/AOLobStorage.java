@@ -19,7 +19,6 @@ import java.util.Arrays;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.api.ErrorCode;
@@ -281,7 +280,7 @@ public class AOLobStorage implements LobStorage {
         }
         // this might not be very efficient -
         // to speed it up, we would need yet another map
-        ArrayList<Long> list = New.arrayList();
+        ArrayList<Long> list = new ArrayList<>();
         StorageMapCursor<Long, Object[]> cursor = lobMap.cursor(null);
         while (cursor.hasNext()) {
             cursor.next();

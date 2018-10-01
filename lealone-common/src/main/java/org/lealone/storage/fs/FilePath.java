@@ -10,11 +10,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
 
 /**
  * A path to a file. It similar to the Java 7 <code>java.nio.file.Path</code>,
@@ -69,7 +69,7 @@ public abstract class FilePath {
         if (providers == null || defaultProvider == null) {
             // 不使用硬编码包名字符串的方式，重命名包名时常常忘记
             String packageName = FilePath.class.getPackage().getName() + ".";
-            Map<String, FilePath> map = Collections.synchronizedMap(New.<String, FilePath> hashMap());
+            Map<String, FilePath> map = Collections.synchronizedMap(new HashMap<>());
             for (String c : new String[] { "FilePathDisk", "FilePathMem", "FilePathMemLZF", "FilePathNioMem",
                     "FilePathNioMemLZF", "FilePathSplit", "FilePathNio", "FilePathNioMapped", "FilePathZip" }) {
                 try {

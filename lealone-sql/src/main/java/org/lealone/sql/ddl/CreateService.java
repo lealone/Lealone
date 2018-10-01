@@ -18,7 +18,6 @@ import java.util.TreeSet;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.CaseInsensitiveMap;
-import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
@@ -48,13 +47,13 @@ public class CreateService extends SchemaStatement {
     protected IndexColumn[] pkColumns;
     protected boolean ifNotExists;
 
-    private final ArrayList<DefinitionStatement> constraintCommands = New.arrayList();
+    private final ArrayList<DefinitionStatement> constraintCommands = new ArrayList<>();
     private boolean onCommitDrop;
     private boolean onCommitTruncate;
     private String comment;
     private String packageName;
     private String implementBy;
-    private final ArrayList<CreateTable> serviceMethods = New.arrayList();
+    private final ArrayList<CreateTable> serviceMethods = new ArrayList<>();
     private boolean genCode;
     private String codePath;
 
@@ -156,7 +155,7 @@ public class CreateService extends SchemaStatement {
             service.setImplementBy(implementBy);
             service.setPackageName(packageName);
             Table table = getSchema().createTable(data);
-            ArrayList<Sequence> sequences = New.arrayList();
+            ArrayList<Sequence> sequences = new ArrayList<>();
             for (Column c : data.columns) {
                 if (c.isAutoIncrement()) {
                     int objId = getObjectId();

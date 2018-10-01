@@ -11,9 +11,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.Utils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
@@ -70,7 +70,7 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
     /**
      * The index conditions used for direct index lookup (start or end).
      */
-    private final ArrayList<IndexCondition> indexConditions = New.arrayList();
+    private final ArrayList<IndexCondition> indexConditions = Utils.newSmallArrayList();
 
     /**
      * Additional conditions that can't be used for index lookup, but for row
@@ -955,7 +955,7 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
      */
     public void addNaturalJoinColumn(Column c) {
         if (naturalJoinColumns == null) {
-            naturalJoinColumns = New.arrayList();
+            naturalJoinColumns = Utils.newSmallArrayList();
         }
         naturalJoinColumns.add(c);
     }

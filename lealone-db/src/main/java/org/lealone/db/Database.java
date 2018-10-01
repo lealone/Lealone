@@ -30,7 +30,6 @@ import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StatementBuilder;
@@ -94,14 +93,14 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     private static final String SYSTEM_USER_NAME = "DBA";
 
-    private final HashMap<String, User> users = New.hashMap();
-    private final HashMap<String, Role> roles = New.hashMap();
-    private final HashMap<String, Right> rights = New.hashMap();
-    private final HashMap<String, UserDataType> userDataTypes = New.hashMap();
-    private final HashMap<String, UserAggregate> aggregates = New.hashMap();
-    private final HashMap<String, Setting> settings = New.hashMap();
-    private final HashMap<String, Comment> comments = New.hashMap();
-    private final HashMap<String, Schema> schemas = New.hashMap();
+    private final HashMap<String, User> users = new HashMap<>();
+    private final HashMap<String, Role> roles = new HashMap<>();
+    private final HashMap<String, Right> rights = new HashMap<>();
+    private final HashMap<String, UserDataType> userDataTypes = new HashMap<>();
+    private final HashMap<String, UserAggregate> aggregates = new HashMap<>();
+    private final HashMap<String, Setting> settings = new HashMap<>();
+    private final HashMap<String, Comment> comments = new HashMap<>();
+    private final HashMap<String, Schema> schemas = new HashMap<>();
 
     // 与users、roles和rights相关的操作都用这个对象进行同步
     private final Object authLock = new Object();
@@ -479,7 +478,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         IndexType indexType = IndexType.createDelegate(); // 重用原有的primary index
         metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, indexType, true, null);
 
-        ArrayList<MetaRecord> records = New.arrayList();
+        ArrayList<MetaRecord> records = new ArrayList<>();
         Cursor cursor = metaIdIndex.find(systemSession, null, null);
         while (cursor.next()) {
             MetaRecord rec = new MetaRecord(cursor.get());
@@ -500,7 +499,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public synchronized void rollbackMetaTable(ServerSession session) {
-        ArrayList<MetaRecord> records = New.arrayList();
+        ArrayList<MetaRecord> records = new ArrayList<>();
         Cursor cursor = metaIdIndex.find(systemSession, null, null);
         while (cursor.next()) {
             MetaRecord rec = new MetaRecord(cursor.get());
@@ -1254,11 +1253,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public ArrayList<UserAggregate> getAllAggregates() {
-        return New.arrayList(aggregates.values());
+        return new ArrayList<>(aggregates.values());
     }
 
     public ArrayList<Comment> getAllComments() {
-        return New.arrayList(comments.values());
+        return new ArrayList<>(comments.values());
     }
 
     public int getAllowLiterals() {
@@ -1269,12 +1268,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public ArrayList<Right> getAllRights() {
-        return New.arrayList(rights.values());
+        return new ArrayList<>(rights.values());
     }
 
     public ArrayList<Role> getAllRoles() {
         synchronized (getAuthLock()) {
-            return New.arrayList(roles.values());
+            return new ArrayList<>(roles.values());
         }
     }
 
@@ -1285,7 +1284,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     public ArrayList<SchemaObject> getAllSchemaObjects() {
         initMetaTables();
-        ArrayList<SchemaObject> list = New.arrayList();
+        ArrayList<SchemaObject> list = new ArrayList<>();
         for (Schema schema : schemas.values()) {
             list.addAll(schema.getAll());
         }
@@ -1302,7 +1301,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (type == DbObjectType.TABLE_OR_VIEW) {
             initMetaTables();
         }
-        ArrayList<SchemaObject> list = New.arrayList();
+        ArrayList<SchemaObject> list = new ArrayList<>();
         for (Schema schema : schemas.values()) {
             list.addAll(schema.getAll(type));
         }
@@ -1321,7 +1320,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (includeMeta) {
             initMetaTables();
         }
-        ArrayList<Table> list = New.arrayList();
+        ArrayList<Table> list = new ArrayList<>();
         for (Schema schema : schemas.values()) {
             list.addAll(schema.getAllTablesAndViews());
         }
@@ -1330,20 +1329,20 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     public ArrayList<Schema> getAllSchemas() {
         initMetaTables();
-        return New.arrayList(schemas.values());
+        return new ArrayList<>(schemas.values());
     }
 
     public ArrayList<Setting> getAllSettings() {
-        return New.arrayList(settings.values());
+        return new ArrayList<>(settings.values());
     }
 
     public ArrayList<UserDataType> getAllUserDataTypes() {
-        return New.arrayList(userDataTypes.values());
+        return new ArrayList<>(userDataTypes.values());
     }
 
     public ArrayList<User> getAllUsers() {
         synchronized (getAuthLock()) {
-            return New.arrayList(users.values());
+            return new ArrayList<>(users.values());
         }
     }
 
@@ -1371,7 +1370,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         // need to synchronized on userSession, otherwise the list
         // may contain null elements
         synchronized (userSessions) {
-            list = New.arrayList(userSessions);
+            list = new ArrayList<>(userSessions);
         }
         // copy, to ensure the reference is stable
         ServerSession sys = systemSession;
@@ -1516,7 +1515,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             return null;
         default:
         }
-        HashSet<DbObject> set = New.hashSet();
+        HashSet<DbObject> set = new HashSet<>();
         for (Table t : getAllTablesAndViews(false)) {
             if (except == t) {
                 continue;

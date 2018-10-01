@@ -14,7 +14,7 @@ import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
@@ -370,7 +370,7 @@ public abstract class Table extends SchemaObjectBase {
 
     @Override
     public List<DbObject> getChildren() {
-        ArrayList<DbObject> children = New.arrayList();
+        ArrayList<DbObject> children = Utils.newSmallArrayList();
         ArrayList<Index> indexes = getIndexes();
         if (indexes != null) {
             children.addAll(indexes);
@@ -534,7 +534,7 @@ public abstract class Table extends SchemaObjectBase {
      *             constraints or indexes
      */
     public void dropSingleColumnConstraintsAndIndexes(ServerSession session, Column col) {
-        ArrayList<Constraint> constraintsToDrop = New.arrayList();
+        ArrayList<Constraint> constraintsToDrop = Utils.newSmallArrayList();
         if (constraints != null) {
             for (int i = 0, size = constraints.size(); i < size; i++) {
                 Constraint constraint = constraints.get(i);
@@ -549,7 +549,7 @@ public abstract class Table extends SchemaObjectBase {
                 }
             }
         }
-        ArrayList<Index> indexesToDrop = New.arrayList();
+        ArrayList<Index> indexesToDrop = Utils.newSmallArrayList();
         ArrayList<Index> indexes = getIndexes();
         if (indexes != null) {
             for (int i = 0, size = indexes.size(); i < size; i++) {
@@ -832,7 +832,7 @@ public abstract class Table extends SchemaObjectBase {
 
     private static <T> ArrayList<T> add(ArrayList<T> list, T obj) {
         if (list == null) {
-            list = New.arrayList();
+            list = new ArrayList<>(1);
         }
         // self constraints are two entries in the list
         list.add(obj);

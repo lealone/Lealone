@@ -8,7 +8,6 @@ package org.lealone.sql.dml;
 
 import java.util.ArrayList;
 
-import org.lealone.common.util.New;
 import org.lealone.db.Procedure;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
@@ -23,7 +22,7 @@ import org.lealone.sql.expression.Parameter;
  */
 public class ExecuteProcedure extends ManipulationStatement {
 
-    private final ArrayList<Expression> expressions = New.arrayList();
+    private final ArrayList<Expression> expressions = new ArrayList<>();
     private Procedure procedure;
 
     public ExecuteProcedure(ServerSession session) {

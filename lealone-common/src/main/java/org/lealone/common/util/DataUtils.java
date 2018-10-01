@@ -580,7 +580,7 @@ public class DataUtils {
      * @return the string builder
      */
     public static StringBuilder appendMap(StringBuilder buff, HashMap<String, ?> map) {
-        ArrayList<String> list = New.arrayList(map.keySet());
+        ArrayList<String> list = new ArrayList<>(map.keySet());
         Collections.sort(list);
         for (String k : list) {
             appendMap(buff, k, map.get(k));
@@ -633,7 +633,7 @@ public class DataUtils {
      * @throws IllegalStateException if parsing failed
      */
     public static HashMap<String, String> parseMap(String s) {
-        HashMap<String, String> map = New.hashMap();
+        HashMap<String, String> map = new HashMap<>();
         for (int i = 0, size = s.length(); i < size;) {
             int startKey = i;
             i = s.indexOf(':', i);

@@ -30,7 +30,6 @@ import java.util.Map;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.BitField;
-import org.lealone.common.util.New;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.ValueNull;
@@ -1533,8 +1532,8 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
         try {
             checkClosed();
             if (outParameters == null) {
-                maxOutParameters = Math.min(getParameterMetaData().getParameterCount(), getCheckedMetaData()
-                        .getColumnCount());
+                maxOutParameters = Math.min(getParameterMetaData().getParameterCount(),
+                        getCheckedMetaData().getColumnCount());
                 outParameters = new BitField();
             }
             checkIndexBounds(parameterIndex);
@@ -1565,7 +1564,7 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
             if (namedParameters == null) {
                 ResultSetMetaData meta = getCheckedMetaData();
                 int columnCount = meta.getColumnCount();
-                HashMap<String, Integer> map = New.hashMap(columnCount);
+                HashMap<String, Integer> map = new HashMap<>(columnCount);
                 for (int i = 1; i <= columnCount; i++) {
                     map.put(meta.getColumnLabel(i), i);
                 }

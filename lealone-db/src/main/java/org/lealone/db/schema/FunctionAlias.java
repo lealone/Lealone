@@ -19,7 +19,6 @@ import java.util.Arrays;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
@@ -148,7 +147,7 @@ public class FunctionAlias extends SchemaObjectBase {
     private void loadClass() {
         Class<?> javaClass = Utils.loadUserClass(className);
         Method[] methods = javaClass.getMethods();
-        ArrayList<JavaMethod> list = New.arrayList();
+        ArrayList<JavaMethod> list = new ArrayList<>(1);
         for (int i = 0, len = methods.length; i < len; i++) {
             Method m = methods[i];
             if (!Modifier.isStatic(m.getModifiers())) {

@@ -32,7 +32,7 @@ import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.DataType;
 
@@ -61,7 +61,7 @@ public class SimpleResultSet implements ResultSet, ResultSetMetaData {
     private int rowId = -1;
     private boolean wasNull;
     private SimpleRowSource source;
-    private ArrayList<Column> columns = New.arrayList();
+    private ArrayList<Column> columns = Utils.newSmallArrayList();
     private boolean autoClose = true;
 
     /**
@@ -202,7 +202,7 @@ public class SimpleResultSet implements ResultSet, ResultSetMetaData {
      * This constructor is used if the result set is later populated with addRow.
      */
     public SimpleResultSet() {
-        rows = New.arrayList();
+        rows = Utils.newSmallArrayList();
     }
 
     /**

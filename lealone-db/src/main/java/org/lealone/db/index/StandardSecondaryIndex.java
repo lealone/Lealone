@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Row;
@@ -112,7 +111,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     @Override
     public void addBufferedRows(ServerSession session, List<String> bufferNames) {
-        ArrayList<String> mapNames = New.arrayList(bufferNames);
+        ArrayList<String> mapNames = new ArrayList<>(bufferNames);
         final CompareMode compareMode = database.getCompareMode();
         /**
          * A source of values.
@@ -342,7 +341,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             }
             key = first ? map.higherKey(key) : map.lowerKey(key);
         }
-        ArrayList<Value> list = New.arrayList();
+        ArrayList<Value> list = new ArrayList<>(1);
         list.add(key);
         StandardSecondaryIndexCursor cursor = new StandardSecondaryIndexCursor(session, list.iterator(), null);
         cursor.next();

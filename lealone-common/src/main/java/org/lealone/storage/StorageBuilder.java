@@ -8,7 +8,6 @@ package org.lealone.storage;
 import java.util.HashMap;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.New;
 
 /**
  * A storage builder.
@@ -18,7 +17,7 @@ import org.lealone.common.util.New;
  */
 public abstract class StorageBuilder {
 
-    protected final HashMap<String, Object> config = New.hashMap();
+    protected final HashMap<String, Object> config = new HashMap<>();
 
     public abstract Storage openStorage();
 

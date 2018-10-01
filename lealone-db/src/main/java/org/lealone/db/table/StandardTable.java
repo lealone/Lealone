@@ -8,15 +8,16 @@ package org.lealone.db.table;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
@@ -48,7 +49,7 @@ public class StandardTable extends Table {
 
     private final ConcurrentHashMap<ServerSession, ServerSession> sharedSessions = new ConcurrentHashMap<>();
     private final StandardPrimaryIndex primaryIndex;
-    private final ArrayList<Index> indexes = New.arrayList();
+    private final ArrayList<Index> indexes = Utils.newSmallArrayList();
     private final StorageEngine storageEngine;
     private final String mapType;
     private final boolean globalTemporary;
@@ -237,10 +238,10 @@ public class StandardTable extends Table {
             if (clash == null) {
                 // verification is started
                 clash = session;
-                visited = New.hashSet();
+                visited = new HashSet<>();
             } else if (clash == session) {
                 // we found a circle where this session is involved
-                return New.arrayList();
+                return new ArrayList<>(0);
             } else if (visited.contains(session)) {
                 // we have already checked this session.
                 // there is a circle, but the sessions in the circle need to
@@ -410,10 +411,10 @@ public class StandardTable extends Table {
         Cursor cursor = scan.find(session, null, null);
         long i = 0;
         int bufferSize = database.getMaxMemoryRows() / 2;
-        ArrayList<Row> buffer = New.arrayList(bufferSize);
+        ArrayList<Row> buffer = new ArrayList<>(bufferSize);
         String n = getName() + ":" + index.getName();
         int t = MathUtils.convertLongToInt(total);
-        ArrayList<String> bufferNames = New.arrayList();
+        ArrayList<String> bufferNames = Utils.newSmallArrayList();
         while (cursor.next()) {
             Row row = cursor.get();
             buffer.add(row);
@@ -449,7 +450,7 @@ public class StandardTable extends Table {
         Cursor cursor = scan.find(session, null, null);
         long i = 0;
         int bufferSize = (int) Math.min(total, database.getMaxMemoryRows());
-        ArrayList<Row> buffer = New.arrayList(bufferSize);
+        ArrayList<Row> buffer = new ArrayList<>(bufferSize);
         String n = getName() + ":" + index.getName();
         int t = MathUtils.convertLongToInt(total);
         while (cursor.next()) {

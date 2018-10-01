@@ -20,7 +20,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 
 import org.lealone.common.util.JdbcUtils;
-import org.lealone.common.util.New;
 import org.lealone.common.util.ScriptReader;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
@@ -46,7 +45,7 @@ public class Shell {
     private Statement stat;
     private boolean listMode;
     private int maxColumnSize = 100;
-    private final ArrayList<String> history = New.arrayList();
+    private final ArrayList<String> history = new ArrayList<>();
 
     public static void main(String... args) throws SQLException {
         new Shell().run(args);
@@ -347,7 +346,7 @@ public class Shell {
         ResultSetMetaData meta = rs.getMetaData();
         int len = meta.getColumnCount();
         boolean truncated = false;
-        ArrayList<String[]> rows = New.arrayList();
+        ArrayList<String[]> rows = new ArrayList<>();
         // buffer the header
         String[] columns = new String[len];
         for (int i = 0; i < len; i++) {

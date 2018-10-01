@@ -12,7 +12,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
@@ -239,7 +238,7 @@ public class User extends RightOwner {
 
     @Override
     public ArrayList<DbObject> getChildren() {
-        ArrayList<DbObject> children = New.arrayList();
+        ArrayList<DbObject> children = new ArrayList<>();
         for (Right right : database.getAllRights()) {
             if (right.getGrantee() == this) {
                 children.add(right);

@@ -9,7 +9,6 @@ package org.lealone.sql.optimizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.lealone.common.util.New;
 import org.lealone.db.ServerSession;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
@@ -22,7 +21,7 @@ import org.lealone.sql.optimizer.TableFilter.TableFilterVisitor;
 public class Plan {
 
     private final TableFilter[] filters;
-    private final HashMap<TableFilter, PlanItem> planItems = New.hashMap();
+    private final HashMap<TableFilter, PlanItem> planItems = new HashMap<>();
     private final Expression[] allConditions;
     private final TableFilter[] allFilters;
 
@@ -36,8 +35,8 @@ public class Plan {
     public Plan(TableFilter[] filters, int count, Expression condition) {
         this.filters = new TableFilter[count];
         System.arraycopy(filters, 0, this.filters, 0, count);
-        final ArrayList<Expression> allCond = New.arrayList();
-        final ArrayList<TableFilter> all = New.arrayList();
+        final ArrayList<Expression> allCond = new ArrayList<>();
+        final ArrayList<TableFilter> all = new ArrayList<>();
         if (condition != null) {
             allCond.add(condition);
         }

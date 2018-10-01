@@ -7,7 +7,6 @@ package org.lealone.db;
 
 import java.util.HashMap;
 
-import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 
 /**
@@ -21,7 +20,7 @@ public class Mode {
      */
     private static final String REGULAR = "REGULAR";
 
-    private static final HashMap<String, Mode> MODES = New.hashMap();
+    private static final HashMap<String, Mode> MODES = new HashMap<>();
 
     // Modes are also documented in the features section
 

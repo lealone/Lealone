@@ -13,9 +13,9 @@ import java.util.ArrayList;
 
 import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.Utils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.DataType;
@@ -79,7 +79,7 @@ public class UpdatableRow {
         // but the table in the result set meta data is not, then the column
         // in the database meta data is also lower case
         boolean toUpper = !table.equals(tableName) && table.equalsIgnoreCase(tableName);
-        key = New.arrayList();
+        key = Utils.newSmallArrayList();
         rs = meta.getPrimaryKeys(null, StringUtils.escapeMetaDataPattern(schemaName), tableName);
         while (rs.next()) {
             String c = rs.getString("COLUMN_NAME");

@@ -8,7 +8,7 @@ package org.lealone.db.result;
 
 import java.util.ArrayList;
 
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.Database;
@@ -23,7 +23,7 @@ import org.lealone.storage.fs.FileStorage;
 public class RowList {
 
     private final ServerSession session;
-    private final ArrayList<Row> list = New.arrayList();
+    private final ArrayList<Row> list = Utils.newSmallArrayList();
     private int size;
     private int index, listIndex;
     private FileStorage file;
@@ -69,7 +69,7 @@ public class RowList {
                     // otherwise the temp file is deleted
                     if (v.getSmall() == null && v.getTableId() == 0) {
                         if (lobs == null) {
-                            lobs = New.arrayList();
+                            lobs = Utils.newSmallArrayList();
                         }
                         // need to create a copy, otherwise,
                         // if stored multiple times, it may be renamed

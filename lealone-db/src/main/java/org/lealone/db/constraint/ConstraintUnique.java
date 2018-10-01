@@ -7,7 +7,6 @@ package org.lealone.db.constraint;
 
 import java.util.HashSet;
 
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
@@ -127,7 +126,7 @@ public class ConstraintUnique extends Constraint {
 
     @Override
     public HashSet<Column> getReferencedColumns(Table table) {
-        HashSet<Column> result = New.hashSet();
+        HashSet<Column> result = new HashSet<>(columns.length);
         for (IndexColumn c : columns) {
             result.add(c.column);
         }

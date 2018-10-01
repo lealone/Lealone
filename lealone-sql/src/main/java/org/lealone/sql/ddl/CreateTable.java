@@ -14,7 +14,6 @@ import java.util.TreeSet;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.CaseInsensitiveMap;
-import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
@@ -48,7 +47,7 @@ public class CreateTable extends SchemaStatement {
     protected IndexColumn[] pkColumns;
     protected boolean ifNotExists;
 
-    private final ArrayList<DefinitionStatement> constraintCommands = New.arrayList();
+    private final ArrayList<DefinitionStatement> constraintCommands = new ArrayList<>();
     private boolean onCommitDrop;
     private boolean onCommitTruncate;
     private Query asQuery;
@@ -154,7 +153,7 @@ public class CreateTable extends SchemaStatement {
             // db.lockMeta(session);
             // }
             Table table = getSchema().createTable(data);
-            ArrayList<Sequence> sequences = New.arrayList();
+            ArrayList<Sequence> sequences = new ArrayList<>();
             for (Column c : data.columns) {
                 if (c.isAutoIncrement()) {
                     int objId = getObjectId();

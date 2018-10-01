@@ -19,7 +19,6 @@ import java.util.zip.ZipFile;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.New;
 
 /**
  * This is a read-only file system that allows
@@ -149,7 +148,7 @@ public class FilePathZip extends FilePath {
     @Override
     public ArrayList<FilePath> newDirectoryStream() {
         String path = name;
-        ArrayList<FilePath> list = New.arrayList();
+        ArrayList<FilePath> list = new ArrayList<>();
         try {
             if (path.indexOf('!') < 0) {
                 path += "!";

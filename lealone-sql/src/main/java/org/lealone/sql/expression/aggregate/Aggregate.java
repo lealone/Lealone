@@ -11,7 +11,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
@@ -130,7 +129,7 @@ public class Aggregate extends Expression {
      */
     static final int HISTOGRAM = 16;
 
-    private static final HashMap<String, Integer> AGGREGATES = New.hashMap();
+    private static final HashMap<String, Integer> AGGREGATES = new HashMap<>();
 
     private final int type;
     private final Select select;

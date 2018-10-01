@@ -10,7 +10,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.Database;
@@ -63,7 +63,7 @@ class ResultDiskBuffer implements ResultExternal {
         /**
          * A list of rows in the buffer.
          */
-        ArrayList<Value[]> buffer = New.arrayList();
+        ArrayList<Value[]> buffer = Utils.newSmallArrayList();
     }
 
     ResultDiskBuffer(ServerSession session, SortOrder sort, int columnCount) {
@@ -77,7 +77,7 @@ class ResultDiskBuffer implements ResultExternal {
         file.setCheckedWriting(false);
         file.seek(FileStorage.HEADER_LENGTH);
         if (sort != null) {
-            tapes = New.arrayList();
+            tapes = Utils.newSmallArrayList();
             mainTape = null;
         } else {
             tapes = null;
@@ -92,7 +92,7 @@ class ResultDiskBuffer implements ResultExternal {
         rowBuff = DataBuffer.create(parent.rowBuff.getHandler(), Constants.DEFAULT_PAGE_SIZE);
         file = parent.file;
         if (parent.tapes != null) {
-            tapes = New.arrayList();
+            tapes = new ArrayList<>(parent.tapes.size());
             for (ResultDiskTape t : parent.tapes) {
                 ResultDiskTape t2 = new ResultDiskTape();
                 t2.pos = t2.start = t.start;
@@ -183,11 +183,11 @@ class ResultDiskBuffer implements ResultExternal {
         if (sort != null) {
             for (ResultDiskTape tape : tapes) {
                 tape.pos = tape.start;
-                tape.buffer = New.arrayList();
+                tape.buffer = Utils.newSmallArrayList();
             }
         } else {
             mainTape.pos = FileStorage.HEADER_LENGTH;
-            mainTape.buffer = New.arrayList();
+            mainTape.buffer = Utils.newSmallArrayList();
         }
     }
 

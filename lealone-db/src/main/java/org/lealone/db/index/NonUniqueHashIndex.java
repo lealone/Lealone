@@ -9,7 +9,7 @@ package org.lealone.db.index;
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
@@ -29,7 +29,8 @@ public class NonUniqueHashIndex extends HashIndex {
     private final StandardTable table;
     private long rowCount;
 
-    public NonUniqueHashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+    public NonUniqueHashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns,
+            IndexType indexType) {
         super(table, id, indexName, columns, indexType);
         this.table = table;
         reset();
@@ -50,7 +51,7 @@ public class NonUniqueHashIndex extends HashIndex {
         Value key = row.getValue(indexColumn);
         ArrayList<Long> positions = rows.get(key);
         if (positions == null) {
-            positions = New.arrayList();
+            positions = Utils.newSmallArrayList();
             rows.put(key, positions);
         }
         positions.add(row.getKey());

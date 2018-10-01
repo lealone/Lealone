@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
@@ -29,8 +28,8 @@ import org.lealone.db.util.IntArray;
 import org.lealone.db.util.SynchronizedVerifier;
 import org.lealone.db.value.Value;
 import org.lealone.sql.IExpression;
-import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.IQuery;
+import org.lealone.sql.PreparedStatement;
 
 /**
  * A view is a virtual table that is defined by a query.
@@ -123,7 +122,7 @@ public class TableView extends Table {
         }
         ArrayList<TableView> views = getViews();
         if (views != null) {
-            views = New.arrayList(views);
+            views = new ArrayList<>(views);
         }
         SynchronizedVerifier.check(indexCache);
         indexCache.clear();
@@ -146,10 +145,11 @@ public class TableView extends Table {
         try {
             IQuery query = compileViewQuery(session, querySQL);
             this.querySQL = query.getPlanSQL();
-            tables = New.arrayList((HashSet<Table>) query.getTables());
+            tables = new ArrayList<>((HashSet<Table>) query.getTables());
             ArrayList<? extends IExpression> expressions = query.getExpressions();
-            ArrayList<Column> list = New.arrayList();
-            for (int i = 0, count = query.getColumnCount(); i < count; i++) {
+            int count = query.getColumnCount();
+            ArrayList<Column> list = new ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
                 IExpression expr = expressions.get(i);
                 String name = null;
                 if (columnNames != null && columnNames.length > i) {
@@ -176,7 +176,7 @@ public class TableView extends Table {
             // if it can't be compiled, then it's a 'zero column table'
             // this avoids problems when creating the view when opening the
             // database
-            tables = New.arrayList();
+            tables = Utils.newSmallArrayList();
             cols = new Column[0];
             if (recursive && columnNames != null) {
                 cols = new Column[columnNames.length];

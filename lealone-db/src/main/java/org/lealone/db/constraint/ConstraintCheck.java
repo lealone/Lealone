@@ -10,7 +10,6 @@ import java.util.Iterator;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
@@ -111,7 +110,7 @@ public class ConstraintCheck extends Constraint {
 
     @Override
     public HashSet<Column> getReferencedColumns(Table table) {
-        HashSet<Column> columns = New.hashSet();
+        HashSet<Column> columns = new HashSet<>();
         expr.getColumns(columns);
         for (Iterator<Column> it = columns.iterator(); it.hasNext();) {
             if (it.next().getTable() != table) {

@@ -23,7 +23,6 @@ import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.New;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 
@@ -159,7 +158,7 @@ public class FilePathDisk extends FilePath {
 
     @Override
     public List<FilePath> newDirectoryStream() {
-        ArrayList<FilePath> list = New.arrayList();
+        ArrayList<FilePath> list = new ArrayList<>();
         File f = new File(name);
         try {
             String[] files = f.list();

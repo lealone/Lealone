@@ -7,7 +7,6 @@ package org.lealone.db.auth;
 
 import java.util.HashMap;
 
-import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
@@ -102,7 +101,7 @@ public abstract class RightOwner extends DbObjectBase {
      */
     public void grantRight(DbObject object, Right right) {
         if (grantedRights == null) {
-            grantedRights = New.hashMap();
+            grantedRights = new HashMap<>();
         }
         grantedRights.put(object, right);
     }
@@ -130,7 +129,7 @@ public abstract class RightOwner extends DbObjectBase {
      */
     public void grantRole(Role role, Right right) {
         if (grantedRoles == null) {
-            grantedRoles = New.hashMap();
+            grantedRoles = new HashMap<>();
         }
         grantedRoles.put(role, right);
     }

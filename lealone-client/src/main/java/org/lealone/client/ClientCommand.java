@@ -18,7 +18,7 @@ import org.lealone.client.result.RowCountDeterminedClientResult;
 import org.lealone.client.result.RowCountUndeterminedClientResult;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
 import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
@@ -58,7 +58,7 @@ public class ClientCommand extends CommandBase implements StorageCommand {
 
     public ClientCommand(ClientSession session, Transfer transfer, String sql, int fetchSize) {
         this.transfer = transfer;
-        parameters = New.arrayList();
+        parameters = Utils.newSmallArrayList();
         trace = session.getTrace();
         this.sql = sql;
         this.fetchSize = fetchSize;

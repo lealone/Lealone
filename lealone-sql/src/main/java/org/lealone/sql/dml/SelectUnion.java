@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ServerSession;
@@ -258,7 +257,7 @@ public class SelectUnion extends Query implements ISelectUnion {
         ArrayList<Expression> le = left.getExpressions();
         // set the expressions to get the right column count and names,
         // but can't validate at this time
-        expressions = New.arrayList();
+        expressions = new ArrayList<>(len);
         for (int i = 0; i < len; i++) {
             Expression l = le.get(i);
             expressions.add(l);
@@ -279,7 +278,7 @@ public class SelectUnion extends Query implements ISelectUnion {
         right.prepare();
         int len = left.getColumnCount();
         // set the correct expressions now
-        expressions = New.arrayList();
+        expressions = new ArrayList<>(len);
         ArrayList<Expression> le = left.getExpressions();
         ArrayList<Expression> re = right.getExpressions();
         for (int i = 0; i < len; i++) {

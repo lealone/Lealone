@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -54,7 +53,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
     private boolean checkExisting;
     private boolean primaryKeyHash;
     private final boolean ifNotExists;
-    private final ArrayList<Index> createdIndexes = New.arrayList();
+    private final ArrayList<Index> createdIndexes = new ArrayList<>();
 
     public AlterTableAddConstraint(ServerSession session, Schema schema, boolean ifNotExists) {
         super(session, schema);
@@ -313,7 +312,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
         if (indexCols.length > cols.length) {
             return false;
         }
-        HashSet<Column> set = New.hashSet();
+        HashSet<Column> set = new HashSet<>(cols.length);
         for (IndexColumn c : cols) {
             set.add(c.column);
         }

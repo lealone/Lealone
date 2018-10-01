@@ -6,10 +6,10 @@
  */
 package org.lealone.sql.expression;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
@@ -513,13 +513,13 @@ public class Comparison extends Condition {
                 // a=b OR a=c
                 Database db = session.getDatabase();
                 if (rc && r2c && l.equals(l2)) {
-                    return new ConditionIn(db, left, New.arrayList(Arrays.asList(right, other.right)));
+                    return new ConditionIn(db, left, new ArrayList<>(Arrays.asList(right, other.right)));
                 } else if (rc && l2c && l.equals(r2)) {
-                    return new ConditionIn(db, left, New.arrayList(Arrays.asList(right, other.left)));
+                    return new ConditionIn(db, left, new ArrayList<>(Arrays.asList(right, other.left)));
                 } else if (lc && r2c && r.equals(l2)) {
-                    return new ConditionIn(db, right, New.arrayList(Arrays.asList(left, other.right)));
+                    return new ConditionIn(db, right, new ArrayList<>(Arrays.asList(left, other.right)));
                 } else if (lc && l2c && r.equals(r2)) {
-                    return new ConditionIn(db, right, New.arrayList(Arrays.asList(left, other.left)));
+                    return new ConditionIn(db, right, new ArrayList<>(Arrays.asList(left, other.left)));
                 }
             }
         }

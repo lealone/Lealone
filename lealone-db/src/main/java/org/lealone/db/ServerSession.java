@@ -17,7 +17,6 @@ import java.util.Random;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceSystem;
-import org.lealone.common.util.New;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
@@ -59,7 +58,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private ConnectionInfo connectionInfo;
     private final User user;
     private final int id;
-    private final ArrayList<Table> locks = New.arrayList();
+    private final ArrayList<Table> locks = new ArrayList<>();
     private Random random;
     private int lockTimeout;
     private Value lastIdentity = ValueLong.get(0);
@@ -194,9 +193,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public ArrayList<Table> getLocalTempTables() {
         if (localTempTables == null) {
-            return New.arrayList();
+            return new ArrayList<>();
         }
-        return New.arrayList(localTempTables.values());
+        return new ArrayList<>(localTempTables.values());
     }
 
     /**
@@ -245,7 +244,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public HashMap<String, Index> getLocalTempTableIndexes() {
         if (localTempTableIndexes == null) {
-            return New.hashMap();
+            return new HashMap<>();
         }
         return localTempTableIndexes;
     }
@@ -302,7 +301,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      */
     public HashMap<String, Constraint> getLocalTempTableConstraints() {
         if (localTempTableConstraints == null) {
-            return New.hashMap();
+            return new HashMap<>();
         }
         return localTempTableConstraints;
     }
@@ -711,7 +710,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private void cleanTempTables(boolean closeSession) {
         if (localTempTables != null && localTempTables.size() > 0) {
             synchronized (database) {
-                for (Table table : New.arrayList(localTempTables.values())) {
+                for (Table table : new ArrayList<>(localTempTables.values())) {
                     if (closeSession || table.getOnCommitDrop()) {
                         modificationId++;
                         table.setModified();
@@ -912,7 +911,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             DbException.throwInternalError();
         }
         if (unlinkLobMap == null) {
-            unlinkLobMap = New.hashMap();
+            unlinkLobMap = new HashMap<>();
         }
         unlinkLobMap.put(v.toString(), v);
     }
@@ -1020,8 +1019,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public Table[] getLocks() {
         // copy the data without synchronizing
-        ArrayList<Table> copy = New.arrayList();
-        for (int i = 0; i < locks.size(); i++) {
+        int size = locks.size();
+        ArrayList<Table> copy = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
             try {
                 copy.add(locks.get(i));
             } catch (Exception e) {
@@ -1074,7 +1074,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             return;
         }
         if (temporaryResults == null) {
-            temporaryResults = New.hashSet();
+            temporaryResults = new HashSet<>();
         }
         if (temporaryResults.size() < 100) {
             // reference at most 100 result sets to avoid memory problems
@@ -1219,7 +1219,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     // 参与本次事务的其他Session
-    protected final Map<String, Session> sessionCache = New.hashMap();
+    protected final Map<String, Session> sessionCache = new HashMap<>();
 
     public Map<String, Session> getSessionCache() {
         return sessionCache;

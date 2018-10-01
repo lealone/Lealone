@@ -12,9 +12,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
@@ -68,8 +68,8 @@ import org.lealone.sql.optimizer.TableFilter;
  */
 public class Select extends Query {
     private TableFilter topTableFilter;
-    private final ArrayList<TableFilter> filters = New.arrayList();
-    private final ArrayList<TableFilter> topFilters = New.arrayList();
+    private final ArrayList<TableFilter> filters = Utils.newSmallArrayList();
+    private final ArrayList<TableFilter> topFilters = Utils.newSmallArrayList();
     private ArrayList<Expression> expressions;
     private Expression[] expressionArray;
     private Expression having;
@@ -193,7 +193,7 @@ public class Select extends Query {
         visibleColumnCount = expressions.size();
         ArrayList<String> expressionSQL;
         if (orderList != null || group != null) {
-            expressionSQL = New.arrayList();
+            expressionSQL = new ArrayList<>(visibleColumnCount);
             for (int i = 0; i < visibleColumnCount; i++) {
                 Expression expr = expressions.get(i);
                 expr = expr.getNonAliasExpression();
@@ -572,7 +572,7 @@ public class Select extends Query {
         if (sort == null) {
             return null;
         }
-        ArrayList<Column> sortColumns = New.arrayList();
+        ArrayList<Column> sortColumns = new ArrayList<>();
         for (int idx : sort.getQueryColumnIndexes()) {
             if (idx < 0 || idx >= expressions.size()) {
                 throw DbException.getInvalidValueException("ORDER BY", idx + 1);
@@ -875,7 +875,7 @@ public class Select extends Query {
         setCurrentRowNumber(0);
         ArrayList<Row> forUpdateRows = null;
         if (isForUpdateMvcc) {
-            forUpdateRows = New.arrayList();
+            forUpdateRows = new ArrayList<>();
         }
         int sampleSize = getSampleSizeValue(session);
         while (topTableFilter.next()) {
@@ -932,11 +932,11 @@ public class Select extends Query {
 
                 if (previousKeyValues == null) {
                     previousKeyValues = keyValues;
-                    currentGroup = New.hashMap();
+                    currentGroup = new HashMap<>();
                 } else if (!Arrays.equals(previousKeyValues, keyValues)) {
                     addGroupSortedRow(previousKeyValues, columnCount, result);
                     previousKeyValues = keyValues;
-                    currentGroup = New.hashMap();
+                    currentGroup = new HashMap<>();
                 }
                 currentGroupRowId++;
 
@@ -1179,7 +1179,7 @@ public class Select extends Query {
 
     @Override
     public HashSet<Table> getTables() {
-        HashSet<Table> set = New.hashSet();
+        HashSet<Table> set = new HashSet<>(filters.size());
         for (TableFilter filter : filters) {
             set.add(filter.getTable());
         }

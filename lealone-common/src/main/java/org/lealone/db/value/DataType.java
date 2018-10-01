@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.UUID;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
@@ -48,9 +47,9 @@ public class DataType {
      * The list of types. An ArrayList so that Tomcat doesn't set it to null
      * when clearing references.
      */
-    private static final ArrayList<DataType> TYPES = New.arrayList();
-    private static final HashMap<String, DataType> TYPES_BY_NAME = New.hashMap();
-    private static final ArrayList<DataType> TYPES_BY_VALUE_TYPE = New.arrayList();
+    private static final ArrayList<DataType> TYPES = new ArrayList<>(96);
+    private static final HashMap<String, DataType> TYPES_BY_NAME = new HashMap<>(128);
+    private static final ArrayList<DataType> TYPES_BY_VALUE_TYPE = new ArrayList<>(64);
 
     /**
      * The value type of this data type.

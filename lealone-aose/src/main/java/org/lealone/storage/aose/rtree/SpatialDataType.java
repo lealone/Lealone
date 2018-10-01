@@ -9,7 +9,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.New;
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.type.StorageDataType;
 
@@ -352,17 +351,18 @@ public class SpatialDataType implements StorageDataType {
     }
 
     private static ArrayList<Object> getNotNull(ArrayList<Object> list) {
-        ArrayList<Object> result = null;
+        boolean foundNull = false;
         for (Object o : list) {
             SpatialKey a = (SpatialKey) o;
             if (a.isNull()) {
-                result = New.arrayList();
+                foundNull = true;
                 break;
             }
         }
-        if (result == null) {
+        if (!foundNull) {
             return list;
         }
+        ArrayList<Object> result = new ArrayList<>();
         for (Object o : list) {
             SpatialKey a = (SpatialKey) o;
             if (!a.isNull()) {

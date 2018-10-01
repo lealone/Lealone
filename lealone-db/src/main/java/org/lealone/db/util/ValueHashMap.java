@@ -9,7 +9,6 @@ package org.lealone.db.util;
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 
@@ -32,6 +31,7 @@ public class ValueHashMap<V> extends HashBase {
         return new ValueHashMap<T>();
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     protected void reset(int newLevel) {
         super.reset(newLevel);
@@ -39,6 +39,7 @@ public class ValueHashMap<V> extends HashBase {
         values = (V[]) new Object[len];
     }
 
+    @Override
     protected void rehash(int newLevel) {
         Value[] oldKeys = keys;
         V[] oldValues = values;
@@ -156,7 +157,7 @@ public class ValueHashMap<V> extends HashBase {
      * @return all keys
      */
     public ArrayList<Value> keys() {
-        ArrayList<Value> list = New.arrayList(size);
+        ArrayList<Value> list = new ArrayList<>(size);
         for (Value k : keys) {
             if (k != null && k != ValueNull.DELETED) {
                 list.add(k);
@@ -171,7 +172,7 @@ public class ValueHashMap<V> extends HashBase {
      * @return all values
      */
     public ArrayList<V> values() {
-        ArrayList<V> list = New.arrayList(size);
+        ArrayList<V> list = new ArrayList<>(size);
         int len = keys.length;
         for (int i = 0; i < len; i++) {
             Value k = keys[i];

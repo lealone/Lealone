@@ -10,7 +10,6 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.New;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.StorageMapBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
@@ -32,7 +31,8 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     private boolean quadraticSplit;
 
-    public RTreeMap(String name, int dimensions, StorageDataType valueType, Map<String, Object> config, AOStorage aoStorage) {
+    public RTreeMap(String name, int dimensions, StorageDataType valueType, Map<String, Object> config,
+            AOStorage aoStorage) {
         super(name, new SpatialDataType(dimensions), valueType, config, aoStorage);
         this.keyType = (SpatialDataType) getKeyType();
     }
@@ -45,8 +45,8 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
      * @param valueType the value type
      * @return the map
      */
-    public static <V> RTreeMap<V> create(String name, int dimensions, StorageDataType valueType, Map<String, Object> config,
-            AOStorage aoStorage) {
+    public static <V> RTreeMap<V> create(String name, int dimensions, StorageDataType valueType,
+            Map<String, Object> config, AOStorage aoStorage) {
         return new RTreeMap<V>(name, dimensions, valueType, config, aoStorage);
     }
 
@@ -296,8 +296,9 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     }
 
     private BTreePage splitLinear(BTreePage p) {
-        ArrayList<Object> keys = New.arrayList();
-        for (int i = 0; i < p.getKeyCount(); i++) {
+        int keyCount = p.getKeyCount();
+        ArrayList<Object> keys = new ArrayList<>(keyCount);
+        for (int i = 0; i < keyCount; i++) {
             keys.add(p.getKey(i));
         }
         int[] extremes = keyType.getExtremes(keys);

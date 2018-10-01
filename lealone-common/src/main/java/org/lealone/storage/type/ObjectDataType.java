@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.UUID;
 
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.New;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueByte;
@@ -43,7 +42,7 @@ public class ObjectDataType implements StorageDataType {
             Character.class, Integer.class, Long.class, BigInteger.class, Float.class, Double.class, BigDecimal.class,
             String.class, UUID.class, Date.class, Time.class, Timestamp.class };
 
-    private static final HashMap<Class<?>, Integer> COMMON_CLASSES_MAP = New.hashMap();
+    private static final HashMap<Class<?>, Integer> COMMON_CLASSES_MAP = new HashMap<>(32);
 
     private StorageDataTypeBase last = ValueString.type;
 

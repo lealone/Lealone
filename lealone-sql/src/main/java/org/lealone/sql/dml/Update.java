@@ -8,12 +8,11 @@ package org.lealone.sql.dml;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
+import org.lealone.common.util.Utils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
@@ -44,9 +43,8 @@ public class Update extends ManipulationStatement {
     /** The limit expression as specified in the LIMIT clause. */
     private Expression limitExpr;
 
-    private final ArrayList<Column> columns = New.arrayList();
-    private final HashMap<Column, Expression> expressionMap = New.hashMap();
-    private final List<Row> rows = New.arrayList();
+    private final ArrayList<Column> columns = Utils.newSmallArrayList();
+    private final HashMap<Column, Expression> expressionMap = new HashMap<>();
 
     public Update(ServerSession session) {
         super(session);
@@ -171,7 +169,6 @@ public class Update extends ManipulationStatement {
                     if (!done) {
                         rows.add(oldRow);
                         rows.add(newRow);
-                        this.rows.add(newRow);
                     }
                     count++;
                 }

@@ -34,7 +34,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.api.ErrorCode;
@@ -1212,7 +1212,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 set[i] = value;
             }
             if (batchParameters == null) {
-                batchParameters = New.arrayList();
+                batchParameters = Utils.newSmallArrayList();
             }
             batchParameters.add(set);
         } catch (Exception e) {

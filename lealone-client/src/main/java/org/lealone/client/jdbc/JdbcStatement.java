@@ -17,7 +17,7 @@ import org.lealone.client.ClientBatchCommand;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
-import org.lealone.common.util.New;
+import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
@@ -694,7 +694,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             checkClosed();
             sql = JdbcConnection.translateSQL(sql, escapeProcessing);
             if (batchCommands == null) {
-                batchCommands = New.arrayList();
+                batchCommands = Utils.newSmallArrayList();
             }
             batchCommands.add(sql);
         } catch (Exception e) {

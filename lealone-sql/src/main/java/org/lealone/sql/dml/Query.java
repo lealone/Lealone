@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
@@ -275,7 +274,7 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     public final Value[] getParameterValues() {
         ArrayList<Parameter> list = getParameters();
         if (list == null) {
-            list = New.arrayList();
+            list = new ArrayList<>();
         }
         int size = list.size();
         Value[] params = new Value[size];
@@ -527,7 +526,7 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      */
     void addParameter(Parameter param) {
         if (parameters == null) {
-            parameters = New.arrayList();
+            parameters = new ArrayList<>();
         }
         parameters.add(param);
     }

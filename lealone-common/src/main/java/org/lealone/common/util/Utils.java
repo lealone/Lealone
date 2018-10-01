@@ -63,7 +63,7 @@ public class Utils {
     private static final int MAX_GC = 8;
     private static long lastGC;
 
-    private static final HashMap<String, byte[]> RESOURCES = New.hashMap();
+    private static final HashMap<String, byte[]> RESOURCES = new HashMap<>();
 
     private static boolean allowAllClasses;
     private static HashSet<String> allowedClassNames;
@@ -443,6 +443,16 @@ public class Utils {
     }
 
     /**
+     * Create a new ArrayList with an initial capacity of 4.
+     *
+     * @param <T> the type
+     * @return the object
+     */
+    public static <T> ArrayList<T> newSmallArrayList() {
+        return new ArrayList<>(4);
+    }
+
+    /**
      * Find the top limit values using given comparator and place them as in a
      * full array sort, in descending order.
      *
@@ -545,9 +555,9 @@ public class Utils {
         if (allowedClassNames == null) {
             // initialize the static fields
             String s = SysProperties.ALLOWED_CLASSES;
-            ArrayList<String> prefixes = New.arrayList();
+            ArrayList<String> prefixes = new ArrayList<>();
             boolean allowAll = false;
-            HashSet<String> classNames = New.hashSet();
+            HashSet<String> classNames = new HashSet<>();
             for (String p : StringUtils.arraySplit(s, ',', true)) {
                 if (p.equals("*")) {
                     allowAll = true;

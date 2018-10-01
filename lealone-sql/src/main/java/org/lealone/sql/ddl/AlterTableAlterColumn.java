@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.New;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.ServerSession;
@@ -210,7 +209,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
         if (defaultExpression == null) {
             return;
         }
-        HashSet<DbObject> dependencies = New.hashSet();
+        HashSet<DbObject> dependencies = new HashSet<>();
         ExpressionVisitor visitor = ExpressionVisitor.getDependenciesVisitor(dependencies);
         defaultExpression.isEverything(visitor);
         if (dependencies.contains(table)) {
@@ -290,7 +289,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
     private void addTableAlterHistoryRecords0() {
         Database db = session.getDatabase();
         Column[] columns = table.getColumns();
-        ArrayList<Column> newColumns = New.arrayList();
+        ArrayList<Column> newColumns = new ArrayList<>(columns.length);
         for (Column col : columns) {
             newColumns.add(col.getClone());
         }

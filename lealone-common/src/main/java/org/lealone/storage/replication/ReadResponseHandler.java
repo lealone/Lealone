@@ -22,7 +22,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.lealone.common.concurrent.SimpleCondition;
-import org.lealone.common.util.New;
 import org.lealone.db.result.Result;
 import org.lealone.storage.replication.exceptions.ReadFailureException;
 import org.lealone.storage.replication.exceptions.ReadTimeoutException;
@@ -48,8 +47,8 @@ class ReadResponseHandler {
         this.n = n;
         // r = n / 2 + 1;
         r = 1; // 使用Write all read one模式
-        results = New.arrayList(n);
-        resultObjects = New.arrayList(n);
+        results = new ArrayList<>(n);
+        resultObjects = new ArrayList<>(n);
     }
 
     synchronized void response(Result result) {

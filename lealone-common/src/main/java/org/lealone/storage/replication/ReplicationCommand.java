@@ -26,7 +26,6 @@ import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.Future;
 
-import org.lealone.common.util.New;
 import org.lealone.db.Command;
 import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
@@ -91,7 +90,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         r = 1; // 使用Write all read one模式
         final HashSet<Command> seen = new HashSet<>();
         final ReadResponseHandler readResponseHandler = new ReadResponseHandler(n);
-        final ArrayList<Exception> exceptions = New.arrayList(1);
+        final ArrayList<Exception> exceptions = new ArrayList<>(1);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
         for (int i = 0; i < r; i++) {
@@ -143,7 +142,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         int n = session.n;
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Exception> exceptions = New.arrayList(1);
+        final ArrayList<Exception> exceptions = new ArrayList<>(1);
         final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w,
                 session.isAutoCommit(), this.commands);
 
@@ -205,7 +204,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         int n = session.n;
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Exception> exceptions = New.arrayList(1);
+        final ArrayList<Exception> exceptions = new ArrayList<>(1);
 
         for (int i = 0; i < n; i++) {
             final StorageCommand c = (StorageCommand) this.commands[i];
@@ -245,7 +244,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         r = 1; // 使用Write all read one模式
         final HashSet<Command> seen = new HashSet<>();
         final ReadResponseHandler readResponseHandler = new ReadResponseHandler(n);
-        final ArrayList<Exception> exceptions = New.arrayList(1);
+        final ArrayList<Exception> exceptions = new ArrayList<>(1);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
         for (int i = 0; i < r; i++) {
@@ -363,7 +362,7 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
         int n = session.n;
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Exception> exceptions = New.arrayList(1);
+        final ArrayList<Exception> exceptions = new ArrayList<>(1);
         final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w,
                 session.isAutoCommit(), this.commands);
 
@@ -407,8 +406,8 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
     private LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan, int tries) {
         final int n = session.n;
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Exception> exceptions = New.arrayList(1);
-        final ArrayList<LeafPageMovePlan> plans = New.arrayList(n);
+        final ArrayList<Exception> exceptions = new ArrayList<>(1);
+        final ArrayList<LeafPageMovePlan> plans = new ArrayList<>(n);
 
         for (int i = 0; i < n; i++) {
             final StorageCommand c = (StorageCommand) this.commands[i];
