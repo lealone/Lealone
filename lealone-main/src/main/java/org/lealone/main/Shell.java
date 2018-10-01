@@ -53,8 +53,8 @@ public class Shell {
 
     private void run(String... args) throws SQLException {
         String url = null;
-        String user = "";
-        String password = "";
+        String user = null;
+        String password = null;
         String sql = null;
         for (int i = 0; args != null && i < args.length; i++) {
             String arg = args[i];
@@ -326,7 +326,7 @@ public class Shell {
                 JdbcUtils.closeSilently(rs);
             }
         } catch (SQLException e) {
-            println("Error: " + e.toString());
+            println("Error: " + e.getMessage());
             if (listMode) {
                 e.printStackTrace(err);
             }

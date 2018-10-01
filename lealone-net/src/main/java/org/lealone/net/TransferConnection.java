@@ -117,9 +117,9 @@ public abstract class TransferConnection extends AsyncConnection {
                 sql = null;
             }
 
-            if (isServer) {
-                message = "[Server] " + message;
-            }
+            // if (isServer) {
+            // message = "[Server] " + message;
+            // }
 
             transfer.reset(); // 为什么要reset? 见reset中的注释
 

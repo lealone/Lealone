@@ -345,6 +345,8 @@ public class SysProperties {
      */
     public static final boolean OLD_STYLE_OUTER_JOIN = getProperty("old.style.outer.join", false);
 
+    public static final boolean USE_TRANSLATION_MESSAGE = getProperty("use.translation.message", false);
+
     /**
      * INTERNAL
      */

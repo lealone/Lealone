@@ -227,6 +227,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     public void handleException(Exception e) {
         checkClosed();
+        if (e instanceof DbException)
+            throw (DbException) e;
         throw new LealoneException(e);
     }
 
