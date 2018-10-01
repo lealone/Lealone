@@ -12,7 +12,6 @@ import java.util.Map;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Database;
@@ -20,8 +19,6 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
@@ -35,7 +32,7 @@ import org.lealone.storage.PageKey;
  * @author H2 Group
  * @author zhh
  */
-public abstract class StatementBase extends CommandBase implements PreparedStatement, ParsedStatement {
+public abstract class StatementBase implements PreparedStatement, ParsedStatement {
 
     /**
      * The session.
@@ -543,7 +540,15 @@ public abstract class StatementBase extends CommandBase implements PreparedState
 
     @Override
     public Result executeQuery(int maxRows, boolean scrollable) {
-        return executeQuery(maxRows);
+        return query(maxRows);
+    }
+
+    @Override
+    public Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+        TableFilter tf = getTableFilter();
+        if (tf != null)
+            tf.setPageKeys(pageKeys);
+        return query(maxRows);
     }
 
     @Override
@@ -552,34 +557,16 @@ public abstract class StatementBase extends CommandBase implements PreparedState
     }
 
     @Override
+    public int executeUpdate(List<PageKey> pageKeys) {
+        TableFilter tf = getTableFilter();
+        if (tf != null)
+            tf.setPageKeys(pageKeys);
+        return update();
+    }
+
+    @Override
     public int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult) {
-        return executeUpdate();
-    }
-
-    @Override
-    public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        Result result = executeQuery(maxRows, scrollable);
-        if (handler != null) {
-            AsyncResult<Result> r = new AsyncResult<>();
-            r.setResult(result);
-            handler.handle(r);
-        }
-    }
-
-    @Override
-    public void executeQueryAsync(int maxRows, boolean scrollable, ArrayList<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Result>> handler) {
-        executeQueryAsync(maxRows, scrollable, handler);
-    }
-
-    @Override
-    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        int updateCount = executeUpdate();
-        if (handler != null) {
-            AsyncResult<Integer> r = new AsyncResult<>();
-            r.setResult(updateCount);
-            handler.handle(r);
-        }
+        return update();
     }
 
     @Override

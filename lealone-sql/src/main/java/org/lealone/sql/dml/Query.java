@@ -32,7 +32,6 @@ import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.PageKey;
 
 /**
  * Represents a SELECT statement (simple, or union).
@@ -560,17 +559,6 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     }
 
     public abstract List<TableFilter> getTopFilters();
-
-    protected List<PageKey> pageKeys;
-
-    @Override
-    public Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
-        this.pageKeys = pageKeys;
-        for (TableFilter tf : getTopFilters()) {
-            tf.setPageKeys(pageKeys);
-        }
-        return query(maxRows, scrollable);
-    }
 
     @Override
     public boolean isDeterministic() {

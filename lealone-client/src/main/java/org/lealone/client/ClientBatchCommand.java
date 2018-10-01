@@ -24,7 +24,6 @@ import java.util.List;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.db.Command;
-import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Session;
@@ -33,7 +32,7 @@ import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.Transfer;
 
-public class ClientBatchCommand extends CommandBase {
+public class ClientBatchCommand implements Command {
     private ClientSession session;
     private Transfer transfer;
     private final Trace trace;

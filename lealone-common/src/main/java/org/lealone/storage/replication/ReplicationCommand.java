@@ -27,7 +27,6 @@ import java.util.Random;
 import java.util.concurrent.Future;
 
 import org.lealone.db.Command;
-import org.lealone.db.CommandBase;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.result.Result;
@@ -38,7 +37,7 @@ import org.lealone.storage.replication.exceptions.ReadTimeoutException;
 import org.lealone.storage.replication.exceptions.WriteFailureException;
 import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
-public class ReplicationCommand extends CommandBase implements StorageCommand {
+public class ReplicationCommand implements StorageCommand {
 
     private static final Random random = new Random(System.currentTimeMillis());
 
@@ -48,6 +47,11 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
     public ReplicationCommand(ReplicationSession session, Command[] commands) {
         this.session = session;
         this.commands = commands;
+    }
+
+    @Override
+    public int getType() {
+        return REPLICATION_COMMAND;
     }
 
     private Command getRandomNode(HashSet<Command> seen) {
@@ -61,11 +65,6 @@ public class ReplicationCommand extends CommandBase implements StorageCommand {
             if (seen.size() == session.n)
                 return null;
         }
-    }
-
-    @Override
-    public int getType() {
-        return commands[0].getType();
     }
 
     @Override

@@ -37,16 +37,12 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int RESULT_CLOSE = 23;
 
     public static final int COMMAND_QUERY = 40;
-    public static final int COMMAND_QUERY_WITH_PAGE_KEYS = 41;
-    public static final int COMMAND_UPDATE = 42;
-    public static final int COMMAND_UPDATE_WITH_PAGE_KEYS = 43;
+    public static final int COMMAND_UPDATE = 41;
 
     public static final int COMMAND_PREPARE = 50;
     public static final int COMMAND_PREPARE_READ_PARAMS = 51;
     public static final int COMMAND_PREPARED_QUERY = 52;
-    public static final int COMMAND_PREPARED_QUERY_WITH_PAGE_KEYS = 53;
-    public static final int COMMAND_PREPARED_UPDATE = 54;
-    public static final int COMMAND_PREPARED_UPDATE_WITH_PAGE_KEYS = 55;
+    public static final int COMMAND_PREPARED_UPDATE = 53;
 
     public static final int COMMAND_GET_META_DATA = 70;
     public static final int COMMAND_READ_LOB = 71;
@@ -58,13 +54,9 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_REPLICATION_ROLLBACK = 83;
 
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_QUERY = 100;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS = 101;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY = 102;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS = 103;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_UPDATE = 104;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_UPDATE_WITH_PAGE_KEYS = 105;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE = 106;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE_WITH_PAGE_KEYS = 107;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY = 101;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_UPDATE = 102;
+    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE = 103;
 
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_COMMIT = 120;
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK = 121;

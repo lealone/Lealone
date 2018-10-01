@@ -343,15 +343,56 @@ public class TcpConnection extends TransferConnection {
         transfer.flush();
     }
 
-    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
-            int operation, int objectId, int maxRows, int fetchSize) throws IOException {
+    private static List<PageKey> readPageKeys(Transfer transfer) throws IOException {
+        ArrayList<PageKey> pageKeys;
+        int size = transfer.readInt();
+        if (size > 0) {
+            pageKeys = new ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                Object value = transfer.readValue();
+                boolean first = transfer.readBoolean();
+                PageKey pk = new PageKey(value, first);
+                pageKeys.add(pk);
+            }
+        } else {
+            pageKeys = null;
+        }
+        return pageKeys;
+    }
+
+    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
+            boolean prepared) throws IOException {
+        int resultId = transfer.readInt();
+        int maxRows = transfer.readInt();
+        int fetchSize = transfer.readInt();
+        boolean scrollable = transfer.readBoolean();
+
+        if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
+                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
+
+        PreparedStatement command;
+        if (prepared) {
+            command = (PreparedStatement) cache.getObject(id, false);
+            setParameters(transfer, command);
+        } else {
+            String sql = transfer.readString();
+            command = session.prepareStatement(sql, fetchSize);
+            cache.addObject(id, command);
+        }
+        command.setFetchSize(fetchSize);
+
+        List<PageKey> pageKeys = readPageKeys(transfer);
+
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
             @Override
             public void run() {
-                command.executeQueryAsync(maxRows, false, res -> {
+                command.executeQueryAsync(maxRows, scrollable, pageKeys, res -> {
                     if (res.isSucceeded()) {
                         Result result = res.getResult();
-                        cache.addObject(objectId, result);
+                        cache.addObject(resultId, result);
                         try {
                             transfer.writeResponseHeader(id, getStatus(session));
                             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
@@ -385,54 +426,33 @@ public class TcpConnection extends TransferConnection {
         addPreparedCommandToQueue(pc, sessionId);
     }
 
-    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, PreparedStatement command,
-            int operation, int objectId, int maxRows, int fetchSize, ArrayList<PageKey> pageKeys) throws IOException {
-        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
-            @Override
-            public void run() {
-                command.executeQueryAsync(maxRows, false, pageKeys, res -> {
-                    if (res.isSucceeded()) {
-                        Result result = res.getResult();
-                        cache.addObject(objectId, result);
-                        try {
-                            transfer.writeResponseHeader(id, getStatus(session));
-                            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS
-                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS) {
-                                transfer.writeString(session.getTransaction().getLocalTransactionNames());
-                            }
-                            if (session.isRunModeChanged()) {
-                                transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
-                            }
-                            int columnCount = result.getVisibleColumnCount();
-                            transfer.writeInt(columnCount);
-                            int rowCount = result.getRowCount();
-                            transfer.writeInt(rowCount);
-                            for (int i = 0; i < columnCount; i++) {
-                                writeColumn(transfer, result, i);
-                            }
-                            int fetch = fetchSize;
-                            if (rowCount != -1)
-                                fetch = Math.min(rowCount, fetchSize);
-                            writeRow(transfer, result, fetch);
-                            transfer.flush();
-                        } catch (Exception e) {
-                            sendError(transfer, id, e);
-                        }
-                    } else {
-                        sendError(transfer, id, res.getCause());
-                    }
-                });
-            }
-        });
-        addPreparedCommandToQueue(pc, sessionId);
-    }
+    private void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
+            boolean prepared) throws IOException {
+        if (operation == Session.COMMAND_REPLICATION_UPDATE
+                || operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE) {
+            session.setReplicationName(transfer.readString());
+        } else if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
+                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
+            session.setAutoCommit(false);
+            session.setRoot(false);
+        }
 
-    private void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id,
-            PreparedStatement command, int operation) throws IOException {
+        PreparedStatement command;
+        if (prepared) {
+            command = (PreparedStatement) cache.getObject(id, false);
+            setParameters(transfer, command);
+        } else {
+            String sql = transfer.readString();
+            command = session.prepareStatement(sql, -1);
+            cache.addObject(id, command);
+        }
+
+        List<PageKey> pageKeys = readPageKeys(transfer);
+
         PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
             @Override
             public void run() {
-                command.executeUpdateAsync(res -> {
+                command.executeUpdateAsync(pageKeys, res -> {
                     if (res.isSucceeded()) {
                         int updateCount = res.getResult();
                         try {
@@ -521,114 +541,24 @@ public class TcpConnection extends TransferConnection {
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY:
         case Session.COMMAND_QUERY: {
-            String sql = transfer.readString();
-            int objectId = transfer.readInt();
-            int maxRows = transfer.readInt();
-            int fetchSize = transfer.readInt();
-            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-            PreparedStatement command = session.prepareStatement(sql, fetchSize);
-            command.setFetchSize(fetchSize);
-            cache.addObject(id, command);
-            executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
+            executeQueryAsync(transfer, session, sessionId, id, operation, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
         case Session.COMMAND_PREPARED_QUERY: {
-            int objectId = transfer.readInt();
-            int maxRows = transfer.readInt();
-            int fetchSize = transfer.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-            command.setFetchSize(fetchSize);
-            setParameters(transfer, command);
-            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-            executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize);
-            break;
-        }
-
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS:
-        case Session.COMMAND_QUERY_WITH_PAGE_KEYS: {
-            String sql = transfer.readString();
-            int objectId = transfer.readInt();
-            int maxRows = transfer.readInt();
-            int fetchSize = transfer.readInt();
-            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY_WITH_PAGE_KEYS) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-            int size = transfer.readInt();
-            ArrayList<PageKey> pageKeys = new ArrayList<>(size);
-            for (int i = 0; i < size; i++) {
-                Object value = transfer.readValue();
-                boolean first = transfer.readBoolean();
-                PageKey pk = new PageKey(value, first);
-                pageKeys.add(pk);
-            }
-            PreparedStatement command = session.prepareStatement(sql, fetchSize);
-            command.setFetchSize(fetchSize);
-            cache.addObject(id, command);
-            executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize,
-                    pageKeys);
-            break;
-        }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS:
-        case Session.COMMAND_PREPARED_QUERY_WITH_PAGE_KEYS: {
-            int objectId = transfer.readInt();
-            int maxRows = transfer.readInt();
-            int fetchSize = transfer.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-            command.setFetchSize(fetchSize);
-            setParameters(transfer, command);
-            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY_WITH_PAGE_KEYS) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-            int size = transfer.readInt();
-            ArrayList<PageKey> pageKeys = new ArrayList<>(size);
-            for (int i = 0; i < size; i++) {
-                Object value = transfer.readValue();
-                boolean first = transfer.readBoolean();
-                PageKey pk = new PageKey(value, first);
-                pageKeys.add(pk);
-            }
-            executeQueryAsync(transfer, session, sessionId, id, command, operation, objectId, maxRows, fetchSize,
-                    pageKeys);
+            executeQueryAsync(transfer, session, sessionId, id, operation, true);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
         case Session.COMMAND_UPDATE:
         case Session.COMMAND_REPLICATION_UPDATE: {
-            String sql = transfer.readString();
-            if (operation == Session.COMMAND_REPLICATION_UPDATE) {
-                session.setReplicationName(transfer.readString());
-                session.setRoot(false);
-            }
-            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-            PreparedStatement command = session.prepareStatement(sql, -1);
-            cache.addObject(id, command);
-            executeUpdateAsync(transfer, session, sessionId, id, command, operation);
+            executeUpdateAsync(transfer, session, sessionId, id, operation, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
-            if (operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE)
-                session.setReplicationName(transfer.readString());
-            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
-            setParameters(transfer, command);
-            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-            executeUpdateAsync(transfer, session, sessionId, id, command, operation);
+            executeUpdateAsync(transfer, session, sessionId, id, operation, true);
             break;
         }
         case Session.COMMAND_REPLICATION_COMMIT: {

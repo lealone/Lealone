@@ -5,7 +5,6 @@
  */
 package org.lealone.db;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.db.async.AsyncHandler;
@@ -24,6 +23,7 @@ public interface Command {
     int CLIENT_COMMAND = -1;
     int CLIENT_BATCH_COMMAND = -2;
     int SERVER_COMMAND = -3;
+    int REPLICATION_COMMAND = -4;
 
     /**
      * Get command type.
@@ -31,6 +31,16 @@ public interface Command {
      * @return the command type.
      */
     int getType();
+
+    /**
+     * Cancel the command if it is still processing.
+     */
+    void cancel();
+
+    /**
+     * Close the command.
+     */
+    void close();
 
     /**
      * Get the parameters (if any).
@@ -70,11 +80,22 @@ public interface Command {
      */
     Result executeQuery(int maxRows, boolean scrollable);
 
-    void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler);
+    default Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+        return executeQuery(maxRows, scrollable);
+    }
 
-    default void executeQueryAsync(int maxRows, boolean scrollable, ArrayList<PageKey> pageKeys,
+    default void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
+        executeQueryAsync(maxRows, scrollable, null, handler);
+    }
+
+    default void executeQueryAsync(int maxRows, boolean scrollable, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Result>> handler) {
-        executeQueryAsync(maxRows, scrollable, handler);
+        Result result = executeQuery(maxRows, scrollable, pageKeys);
+        if (handler != null) {
+            AsyncResult<Result> r = new AsyncResult<>();
+            r.setResult(result);
+            handler.handle(r);
+        }
     }
 
     /**
@@ -84,7 +105,9 @@ public interface Command {
      */
     int executeUpdate();
 
-    void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler);
+    default int executeUpdate(List<PageKey> pageKeys) {
+        return executeUpdate();
+    }
 
     /**
      * Execute the update command
@@ -94,23 +117,26 @@ public interface Command {
      */
     int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult);
 
-    /**
-     * Cancel the command if it is still processing.
-     */
-    void cancel();
+    default void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
+        executeUpdateAsync(null, handler);
+    }
 
-    /**
-     * Close the command.
-     */
-    void close();
+    default void executeUpdateAsync(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+        int updateCount = executeUpdate(pageKeys);
+        if (handler != null) {
+            AsyncResult<Integer> r = new AsyncResult<>();
+            r.setResult(updateCount);
+            handler.handle(r);
+        }
+    }
 
-    Command prepare();
+    default Command prepare() {
+        return this;
+    }
 
-    void replicationCommit(long validKey, boolean autoCommit);
+    default void replicationCommit(long validKey, boolean autoCommit) {
+    }
 
-    void replicationRollback();
-
-    default Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
-        return executeQuery(maxRows, scrollable);
+    default void replicationRollback() {
     }
 }

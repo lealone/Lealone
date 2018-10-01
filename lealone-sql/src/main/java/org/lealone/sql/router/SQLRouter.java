@@ -240,13 +240,13 @@ public class SQLRouter {
         int i = 0;
         for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
             String hostId = e.getKey();
-            // List<PageKey> pageKeys = e.getValue();
+            List<PageKey> pageKeys = e.getValue();
             sessions[i] = currentSession.getNestedSession(hostId,
                     !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
             commands[i] = sessions[i].createCommand(sql, Integer.MAX_VALUE);
             Command c = commands[i];
             callables.add(() -> {
-                return c.executeUpdate();
+                return c.executeUpdate(pageKeys);
             });
             i++;
         }

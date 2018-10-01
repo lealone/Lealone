@@ -27,7 +27,7 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
-public class ServerCommand extends CommandBase implements StorageCommand {
+public class ServerCommand implements StorageCommand {
 
     private final ServerSession session;
 
