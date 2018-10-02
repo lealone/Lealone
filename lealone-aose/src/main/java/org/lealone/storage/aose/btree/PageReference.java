@@ -60,7 +60,7 @@ public class PageReference {
         }
     }
 
-    public PageReference(BTreePage page, long pos, long count, Object key, boolean first) {
+    PageReference(BTreePage page, long pos, long count, Object key, boolean first) {
         this(page, pos, count);
         setPageKey(key, first);
     }
@@ -75,15 +75,24 @@ public class PageReference {
     }
 
     boolean isRemotePage() {
-        return pos == REMOTE_PAGE_POS;
+        if (page != null)
+            return page.isRemote();
+        else
+            return pos == REMOTE_PAGE_POS;
     }
 
     boolean isLeafPage() {
-        return pos != REMOTE_PAGE_POS && replicationHostIds != null;
+        if (page != null)
+            return page.isLeaf();
+        else
+            return pos != REMOTE_PAGE_POS && PageUtils.isLeafPage(pos);
     }
 
     boolean isNodePage() {
-        return pos != REMOTE_PAGE_POS && replicationHostIds == null;
+        if (page != null)
+            return page.isNode();
+        else
+            return pos != REMOTE_PAGE_POS && PageUtils.isNodePage(pos);
     }
 
     synchronized BTreePage readRemotePage(BTreeMap<Object, Object> map) {

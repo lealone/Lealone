@@ -182,7 +182,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean isLeaf) {
+    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, maxLength);
@@ -190,7 +190,7 @@ public class BTreeNodePage extends BTreeLocalPage {
         int oldLimit = buff.limit();
         buff.limit(start + pageLength);
 
-        readCheckValue(buff, chunkId, offset, pageLength);
+        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
 
         int keyLength = DataUtils.readVarInt(buff);
         keys = new Object[keyLength];
@@ -227,13 +227,13 @@ public class BTreeNodePage extends BTreeLocalPage {
             }
         }
         totalCount = total;
-
+        ByteBuffer oldBuff = buff;
         buff = expandPage(buff, type, start, pageLength);
 
         map.getKeyType().read(buff, keys, keyLength);
         setChildrenPageKeys();
         recalculateMemory();
-        buff.limit(oldLimit);
+        oldBuff.limit(oldLimit);
     }
 
     private void setChildrenPageKeys() {

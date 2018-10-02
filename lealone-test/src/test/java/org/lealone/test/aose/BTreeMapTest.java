@@ -36,6 +36,7 @@ import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
 import org.lealone.storage.aose.btree.PageReference;
+import org.lealone.storage.fs.FileUtils;
 import org.lealone.test.TestBase;
 
 public class BTreeMapTest extends TestBase {
@@ -46,10 +47,10 @@ public class BTreeMapTest extends TestBase {
     @Test
     public void run() {
         init();
-        testMapOperations();
-        testGetEndpointToKeyMap();
+        // testMapOperations();
+        // testGetEndpointToKeyMap();
         // testCompact();
-        // testTransfer();
+        testTransfer();
 
         // testSplit();
     }
@@ -291,16 +292,19 @@ public class BTreeMapTest extends TestBase {
 
     void testTransfer() {
         String file = storageName + File.separator + map.getName() + "TransferTo" + AOStorage.SUFFIX_AO_FILE;
-
-        // put();
-        // testTransferTo(file);
+        FileUtils.delete(file);
+        testTransferTo(file);
         testTransferFrom(file);
-
-        // map.get(3000);
     }
 
     void testTransferTo(String file) {
-        // put();
+        BTreeMap<Integer, String> map = storage.openBTreeMap("transfer_test_1");
+        map.clear();
+        for (int i = 1000; i < 4000; i++) {
+            map.put(i, "value" + i);
+        }
+        map.save();
+
         try {
             RandomAccessFile raf = new RandomAccessFile(file, "rw");
             FileChannel channel = raf.getChannel();
@@ -312,16 +316,22 @@ public class BTreeMapTest extends TestBase {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // map.get(3000);
     }
 
     void testTransferFrom(String file) {
+        BTreeMap<Integer, String> map = storage.openBTreeMap("transfer_test_2");
+        map.clear();
         try {
             RandomAccessFile raf = new RandomAccessFile(file, "rw");
             FileChannel channel = raf.getChannel();
+
             map.transferFrom(channel, 0, raf.length());
             raf.close();
+
+            // 会传输完整的一个Page，所以如果firstKey是在Page的中间，那么就会多出来前面的记录
+            assertTrue(map.size() >= ((3000 - 2000 + 1)));
+            assertTrue(map.containsKey(2000));
+            assertTrue(map.containsKey(3000));
         } catch (IOException e) {
             e.printStackTrace();
         }

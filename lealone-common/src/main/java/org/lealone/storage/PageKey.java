@@ -21,10 +21,18 @@ public class PageKey {
 
     public final Object key;
     public final boolean first;
+    public final long pos;
 
     public PageKey(Object key, boolean first) {
         this.key = key;
         this.first = first;
+        this.pos = -1;
+    }
+
+    public PageKey(Object key, boolean first, long pos) {
+        this.key = key;
+        this.first = first;
+        this.pos = pos;
     }
 
     @Override

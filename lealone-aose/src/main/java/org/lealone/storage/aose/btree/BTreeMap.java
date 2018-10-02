@@ -203,8 +203,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         BTreePage rightChildPage = p.split(at);
         Object[] keys = { k };
         PageReference[] children = { new PageReference(p, p.getPos(), p.getTotalCount(), k, true),
-                new PageReference(rightChildPage, rightChildPage.getPos(), rightChildPage.getTotalCount(), k,
-                        false) };
+                new PageReference(rightChildPage, rightChildPage.getPos(), rightChildPage.getTotalCount(), k, false) };
         p = BTreePage.create(this, keys, null, children, totalCount, 0);
         return p;
     }
@@ -805,8 +804,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         System.out.println(root.getPrettyPageInfo(readOffLinePage));
     }
 
-    @Override
-    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
+    @Deprecated
+    public void transferToOld(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
         if (firstKey == null)
             firstKey = firstKey();
         else
@@ -830,19 +829,92 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
+    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
+        ArrayList<PageKey> pageKeys = new ArrayList<>();
+        getEndpointToPageKeyMap(null, firstKey, lastKey, pageKeys);
+
+        int size = pageKeys.size();
+        for (int i = 0; i < size; i++) {
+            PageKey pk = pageKeys.get(i);
+            long pos = pk.pos;
+            try (DataBuffer buff = DataBuffer.create()) {
+                keyType.write(buff, pk.key);
+                buff.put((byte) (pk.first ? 1 : 0));
+                ByteBuffer pageBuff = null;
+                if (pos > 0) {
+                    pageBuff = readPageBuff(pos);
+                    int start = pageBuff.position();
+                    int pageLength = pageBuff.getInt();
+                    pageBuff.position(start);
+                    pageBuff.limit(start + pageLength);
+                } else {
+                    BTreePage p = root.binarySearchLeafPage(root, pk.key);
+                    p.replicatePage(buff, null);
+                }
+
+                ByteBuffer dataBuff = buff.getAndFlipBuffer();
+                target.write(dataBuff);
+                if (pageBuff != null)
+                    target.write(pageBuff);
+            }
+        }
+    }
+
+    private ByteBuffer readPageBuff(long pos) {
+        BTreeChunk chunk = storage.getChunk(pos);
+        long filePos = BTreeStorage.getFilePos(PageUtils.getPageOffset(pos));
+        long maxPos = chunk.blockCount * BTreeStorage.BLOCK_SIZE;
+        int maxLength = PageUtils.getPageMaxLength(pos);
+        return BTreePage.readPageBuff(chunk.fileStorage, maxLength, filePos, maxPos);
+    }
+
+    @Override
     public void transferFrom(ReadableByteChannel src) throws IOException {
     }
 
     // 1.root为空时怎么处理；2.不为空时怎么处理
     public void transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
+        ByteBuffer buff = ByteBuffer.allocateDirect((int) count);
+        src.read(buff);
+        buff.position((int) position);
+
+        while (buff.remaining() > 0) {
+            Object key = keyType.read(buff);
+            boolean first = buff.get() == 1;
+            PageKey pk = new PageKey(key, first);
+            addLeafPage(pk, buff, true, true);
+            // int pageLength = buff.getInt();
+            // pos += pageLength;
+            // buff.position(pos);
+        }
+    }
+
+    @Deprecated
+    public void transferFromOld(ReadableByteChannel src, long position, long count) throws IOException {
         BTreePage p = root;
         p.transferFrom(src, position, count);
     }
 
     @Override
     public synchronized void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
+        addLeafPage(pageKey, page, addPage, false);
+    }
+
+    private BTreePage readStreamPage(ByteBuffer buff) {
+        BTreePage p = new BTreeLeafPage(this);
+        int chunkId = 0;
+        int offset = buff.position();
+        p.read(buff, chunkId, offset, buff.limit(), true);
+        return p;
+    }
+
+    private BTreePage readLeafPage(ByteBuffer buff, boolean readStreamPage) {
+        return readStreamPage ? readStreamPage(buff) : BTreePage.readLeafPage(this, buff);
+    }
+
+    private synchronized void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage, boolean readStreamPage) {
         if (pageKey == null) {
-            root = BTreePage.readLeafPage(this, page);
+            root = readLeafPage(page, readStreamPage);
             return;
         }
         BTreePage p = root;
@@ -852,10 +924,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             BTreePage left = BTreeLeafPage.createEmpty(this);
             left.setReplicationHostIds(p.getReplicationHostIds());
 
-            BTreePage right = BTreePage.readLeafPage(this, page);
+            BTreePage right = readLeafPage(page, readStreamPage);
 
-            PageReference[] children = {
-                    new PageReference(left, left.getPos(), left.getTotalCount(), k, true),
+            PageReference[] children = { new PageReference(left, left.getPos(), left.getTotalCount(), k, true),
                     new PageReference(right, right.getPos(), right.getTotalCount(), k, false) };
             p = BTreePage.create(this, keys, null, children, right.getTotalCount(), 0);
             newRoot(p);
@@ -876,7 +947,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 }
                 p = p.getChildPage(index);
             }
-            BTreePage right = BTreePage.readLeafPage(this, page);
+            BTreePage right = readLeafPage(page, readStreamPage);
             if (addPage) {
                 BTreePage left = parent.getChildPage(index);
                 parent.setChild(index, right);
@@ -1159,6 +1230,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // 该方法不需要读取leaf page或remote page
     @Override
     public Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
+        return getEndpointToPageKeyMap(session, from, to, null);
+    }
+
+    public Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to, List<PageKey> pageKeys) {
         Map<String, List<PageKey>> map = new HashMap<>();
         Random random = new Random();
         if (root.isLeaf()) {
@@ -1170,13 +1245,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             PageKey pk = new PageKey(root.getKeyCount() == 0 ? null : root.getKey(0), true);
             keys.add(pk);
         } else {
-            dfs(map, random, from, to);
+            dfs(map, random, from, to, pageKeys);
         }
         return map;
     }
 
     // 深度优先搜索(不使用递归)
-    private void dfs(Map<String, List<PageKey>> map, Random random, K from, K to) {
+    private void dfs(Map<String, List<PageKey>> map, Random random, K from, K to, List<PageKey> pageKeys) {
         CursorPos pos = null;
         BTreePage p = root;
         while (p.isNode()) {
@@ -1206,16 +1281,21 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     if (needsCompare && keyType.compare(k, to) > 0) {
                         return;
                     }
-                    List<String> hostIds = p.getChildPageReference(x).replicationHostIds;
-                    int i = random.nextInt(hostIds.size());
-                    String hostId = hostIds.get(i);
-                    List<PageKey> keys = map.get(hostId);
-                    if (keys == null) {
-                        keys = new ArrayList<>();
-                        map.put(hostId, keys);
+                    PageReference pr = p.getChildPageReference(x);
+                    PageKey pk = new PageKey(k, x == 0, pr.pos);
+                    if (pageKeys != null)
+                        pageKeys.add(pk);
+                    List<String> hostIds = pr.replicationHostIds;
+                    if (hostIds != null) {
+                        int i = random.nextInt(hostIds.size());
+                        String hostId = hostIds.get(i);
+                        List<PageKey> keys = map.get(hostId);
+                        if (keys == null) {
+                            keys = new ArrayList<>();
+                            map.put(hostId, keys);
+                        }
+                        keys.add(pk);
                     }
-                    PageKey pk = new PageKey(k, x == 0);
-                    keys.add(pk);
                 }
 
                 // from此时为null，代表从右边兄弟节点keys数组的0号索引开始

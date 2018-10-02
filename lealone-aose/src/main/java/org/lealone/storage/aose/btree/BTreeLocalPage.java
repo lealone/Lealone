@@ -269,8 +269,9 @@ public abstract class BTreeLocalPage extends BTreePage {
             byte[] comp = DataUtils.newBytes(compLen);
             buff.get(comp);
             int l = compLen + lenAdd;
-            buff = ByteBuffer.allocate(l);
-            compressor.expand(comp, 0, compLen, buff.array(), buff.arrayOffset(), l);
+            ByteBuffer newBuff = ByteBuffer.allocate(l);
+            compressor.expand(comp, 0, compLen, newBuff.array(), newBuff.arrayOffset(), l);
+            return newBuff;
         }
         return buff;
     }

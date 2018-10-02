@@ -141,7 +141,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean isLeaf) {
+    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, maxLength);
@@ -149,19 +149,13 @@ public class BTreeLeafPage extends BTreeLocalPage {
         int oldLimit = buff.limit();
         buff.limit(start + pageLength);
 
-        if (isLeaf) {
-            int keyLength = buff.getInt();
-            if (keyLength != 0) {
-                map.getKeyType().read(buff); // read first key
-            }
-        }
-
-        readCheckValue(buff, chunkId, offset, pageLength);
+        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
 
         int keyLength = DataUtils.readVarInt(buff);
         keys = new Object[keyLength];
         int type = buff.get();
 
+        ByteBuffer oldBuff = buff;
         buff = expandPage(buff, type, start, pageLength);
 
         map.getKeyType().read(buff, keys, keyLength);
@@ -170,7 +164,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         totalCount = keyLength;
         replicationHostIds = readReplicationHostIds(buff);
         recalculateMemory();
-        buff.limit(oldLimit);
+        oldBuff.limit(oldLimit);
     }
 
     @Override
@@ -218,18 +212,8 @@ public class BTreeLeafPage extends BTreeLocalPage {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
-        buff.putInt(0);
-        // write first key
-        buff.putInt(keyLength);
-        if (keyLength != 0) {
-            map.getKeyType().write(buff, keys[0]);
-        }
-        // 不能这样，ValueNull.INSTANCE不会自动转成其他类型
-        // if (keyLength == 0) {
-        // map.getKeyType().write(buff, ValueNull.INSTANCE);
-        // } else {
-        // map.getKeyType().write(buff, keys[0]);
-        // }
+        buff.putInt(0); // 回填pageLength
+
         int checkPos = buff.position();
         buff.putShort((short) 0).putVarInt(keyLength);
         int typePos = buff.position();

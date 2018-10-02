@@ -43,7 +43,7 @@ public class BTreeRemotePage extends BTreePage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean isLeaf) {
+    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, maxLength);
@@ -51,7 +51,7 @@ public class BTreeRemotePage extends BTreePage {
         int oldLimit = buff.limit();
         buff.limit(start + pageLength);
 
-        readCheckValue(buff, chunkId, offset, pageLength);
+        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
 
         buff.get(); // type;
 

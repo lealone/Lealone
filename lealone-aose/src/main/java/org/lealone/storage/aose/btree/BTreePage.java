@@ -243,7 +243,11 @@ public class BTreePage {
      * @param offset the offset within the chunk
      * @param maxLength the maximum length
      */
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean isLeaf) {
+    void read(ByteBuffer buff, int chunkId, int offset, int maxLength) {
+        read(buff, chunkId, offset, maxLength, false);
+    }
+
+    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
         throw ie();
     }
 
@@ -335,8 +339,19 @@ public class BTreePage {
      * @return the page
      */
     static BTreePage read(FileStorage fileStorage, long pos, BTreeMap<?, ?> map, long filePos, long maxPos) {
-        ByteBuffer buff;
         int maxLength = PageUtils.getPageMaxLength(pos);
+        ByteBuffer buff = readPageBuff(fileStorage, maxLength, filePos, maxPos);
+        int type = PageUtils.getPageType(pos);
+        BTreePage p = create(map, type);
+        p.pos = pos;
+        int chunkId = PageUtils.getPageChunkId(pos);
+        int offset = PageUtils.getPageOffset(pos);
+        p.read(buff, chunkId, offset, maxLength);
+        return p;
+    }
+
+    static ByteBuffer readPageBuff(FileStorage fileStorage, int maxLength, long filePos, long maxPos) {
+        ByteBuffer buff;
         if (maxLength == PageUtils.PAGE_LARGE) {
             buff = fileStorage.readFully(filePos, 128);
             maxLength = buff.getInt();
@@ -348,13 +363,7 @@ public class BTreePage {
                     "Illegal page length {0} reading at {1}; max pos {2} ", length, filePos, maxPos);
         }
         buff = fileStorage.readFully(filePos, length);
-        int type = PageUtils.getPageType(pos);
-        BTreePage p = create(map, type);
-        p.pos = pos;
-        int chunkId = PageUtils.getPageChunkId(pos);
-        int offset = PageUtils.getPageOffset(pos);
-        p.read(buff, chunkId, offset, maxLength, type == PageUtils.PAGE_TYPE_LEAF);
-        return p;
+        return buff;
     }
 
     private static BTreePage create(BTreeMap<?, ?> map, int type) {
@@ -370,6 +379,7 @@ public class BTreePage {
         return p;
     }
 
+    @Deprecated
     void transferTo(WritableByteChannel target, Object firstKey, Object lastKey) throws IOException {
         BTreePage firstPage = binarySearchLeafPage(this, firstKey);
         BTreePage lastPage = binarySearchLeafPage(this, lastKey);
@@ -430,6 +440,7 @@ public class BTreePage {
         throw new AssertionError(); // 调用者已经确保key总是存在
     }
 
+    @Deprecated
     void transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
         ByteBuffer buff = ByteBuffer.allocateDirect((int) count);
         src.read(buff);
@@ -466,7 +477,7 @@ public class BTreePage {
         BTreePage p = create(map, type);
         int chunkId = 0;
         int offset = buff.position();
-        p.read(buff, chunkId, offset, buff.limit(), type == PageUtils.PAGE_TYPE_LEAF);
+        p.read(buff, chunkId, offset, buff.limit());
         return p;
     }
 
@@ -559,11 +570,11 @@ public class BTreePage {
     public void setLeafPageMovePlan(LeafPageMovePlan leafPageMovePlan) {
     }
 
-    static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength) {
+    static void readCheckValue(ByteBuffer buff, int chunkId, int offset, int pageLength, boolean disableCheck) {
         short check = buff.getShort();
         int checkTest = DataUtils.getCheckValue(chunkId) ^ DataUtils.getCheckValue(offset)
                 ^ DataUtils.getCheckValue(pageLength);
-        if (check != (short) checkTest) {
+        if (!disableCheck && check != (short) checkTest) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
                     "File corrupted in chunk {0}, expected check value {1}, got {2}", chunkId, checkTest, check);
         }

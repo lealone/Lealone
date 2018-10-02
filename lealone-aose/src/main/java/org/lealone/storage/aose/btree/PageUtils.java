@@ -148,4 +148,16 @@ public class PageUtils {
         // code = Math.min(31, code);
         return code;
     }
+
+    public static boolean isLeafPage(long pos) {
+        return pos > 0 && getPageType(pos) == PAGE_TYPE_LEAF;
+    }
+
+    public static boolean isNodePage(long pos) {
+        return pos > 0 && getPageType(pos) == PAGE_TYPE_NODE;
+    }
+
+    public static boolean isRemotePage(long pos) {
+        return pos > 0 && getPageType(pos) == PAGE_TYPE_REMOTE;
+    }
 }
