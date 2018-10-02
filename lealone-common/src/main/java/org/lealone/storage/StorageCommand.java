@@ -30,16 +30,16 @@ public interface StorageCommand extends Command, AutoCloseable {
 
     LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan);
 
-    void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage);
+    void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage);
 
-    void removeLeafPage(String mapName, ByteBuffer key);
+    void removeLeafPage(String mapName, PageKey pageKey);
 
     Object executeAppend(String replicationName, String mapName, ByteBuffer value,
             CommandUpdateResult commandUpdateResult);
 
     void replicateRootPages(String dbName, ByteBuffer rootPages);
 
-    public default ByteBuffer readRemotePage(String mapName, ByteBuffer key, boolean last) {
+    public default ByteBuffer readRemotePage(String mapName, PageKey pageKey) {
         return null;
     }
 }

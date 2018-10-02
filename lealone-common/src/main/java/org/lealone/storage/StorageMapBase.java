@@ -100,12 +100,12 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public void addLeafPage(ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage) {
+    public void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
         throw DbException.getUnsupportedException("addLeafPage");
     }
 
     @Override
-    public void removeLeafPage(ByteBuffer key) {
+    public void removeLeafPage(PageKey pageKey) {
         throw DbException.getUnsupportedException("removeLeafPage");
     }
 

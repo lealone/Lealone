@@ -349,9 +349,7 @@ public class TcpConnection extends TransferConnection {
         if (size > 0) {
             pageKeys = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
-                Object value = transfer.readValue();
-                boolean first = transfer.readBoolean();
-                PageKey pk = new PageKey(value, first);
+                PageKey pk = transfer.readPageKey();
                 pageKeys.add(pk);
             }
         } else {
@@ -672,15 +670,14 @@ public class TcpConnection extends TransferConnection {
         }
         case Session.COMMAND_STORAGE_MOVE_LEAF_PAGE: {
             String mapName = transfer.readString();
-            ByteBuffer splitKey = transfer.readByteBuffer();
+            PageKey pageKey = transfer.readPageKey();
             ByteBuffer page = transfer.readByteBuffer();
-            boolean last = transfer.readBoolean();
             boolean addPage = transfer.readBoolean();
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
             ConcurrentUtils.submitTask("Add Leaf Page", () -> {
-                map.addLeafPage(splitKey, page, last, addPage);
+                map.addLeafPage(pageKey, page, addPage);
             });
-            // map.addLeafPage(splitKey, page, last, addPage);
+            // map.addLeafPage(pageKey, page, addPage);
             // writeResponseHeader(transfer, session, id);
             // transfer.flush();
             break;
@@ -700,11 +697,9 @@ public class TcpConnection extends TransferConnection {
         }
         case Session.COMMAND_STORAGE_READ_PAGE: {
             String mapName = transfer.readString();
-            ByteBuffer splitKey = transfer.readByteBuffer();
-            boolean last = transfer.readBoolean();
-
+            PageKey pageKey = transfer.readPageKey();
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            ByteBuffer page = map.readPage(splitKey, last);
+            ByteBuffer page = map.readPage(pageKey);
             writeResponseHeader(transfer, session, id);
             transfer.writeByteBuffer(page);
             transfer.flush();
@@ -712,10 +707,10 @@ public class TcpConnection extends TransferConnection {
         }
         case Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE: {
             String mapName = transfer.readString();
-            ByteBuffer key = transfer.readByteBuffer();
+            PageKey pageKey = transfer.readPageKey();
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            map.removeLeafPage(key);
+            map.removeLeafPage(pageKey);
             writeResponseHeader(transfer, session, id);
             transfer.flush();
             break;

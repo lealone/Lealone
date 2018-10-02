@@ -228,15 +228,15 @@ public interface StorageMap<K, V> extends ReplicationMap {
 
     K append(V value);
 
-    void addLeafPage(ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage);
+    void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage);
 
-    void removeLeafPage(ByteBuffer key);
+    void removeLeafPage(PageKey pageKey);
 
     LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan);
 
     StorageMap<Object, Object> getRawMap();
 
-    public default ByteBuffer readPage(ByteBuffer key, boolean last) {
+    public default ByteBuffer readPage(PageKey pageKey) {
         throw DbException.getUnsupportedException("readPage");
     }
 

@@ -52,6 +52,7 @@ import org.lealone.db.value.ValueStringIgnoreCase;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
+import org.lealone.storage.PageKey;
 
 /**
  * The transfer class is used to send and receive Value objects.
@@ -463,6 +464,20 @@ public class Transfer implements NetSerializer {
      */
     public void readBytes(byte[] buff, int off, int len) throws IOException {
         in.readFully(buff, off, len);
+    }
+
+    @Override
+    public Transfer writePageKey(PageKey pk) throws IOException {
+        writeValue((Value) pk.key);
+        writeBoolean(pk.first);
+        return this;
+    }
+
+    @Override
+    public PageKey readPageKey() throws IOException {
+        Object value = readValue();
+        boolean first = readBoolean();
+        return new PageKey(value, first);
     }
 
     /**

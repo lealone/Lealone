@@ -20,6 +20,8 @@ package org.lealone.net;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import org.lealone.storage.PageKey;
+
 public interface NetSerializer {
 
     NetSerializer writeInt(int x) throws IOException;
@@ -28,10 +30,14 @@ public interface NetSerializer {
 
     NetSerializer writeByteBuffer(ByteBuffer data) throws IOException;
 
+    NetSerializer writePageKey(PageKey pk) throws IOException;
+
     int readInt() throws IOException;
 
     String readString() throws IOException;
 
     ByteBuffer readByteBuffer() throws IOException;
+
+    PageKey readPageKey() throws IOException;
 
 }

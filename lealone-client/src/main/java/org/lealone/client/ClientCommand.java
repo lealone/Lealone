@@ -253,8 +253,7 @@ public class ClientCommand implements StorageCommand {
             transfer.writeInt(size);
             for (int i = 0; i < size; i++) {
                 PageKey pk = pageKeys.get(i);
-                transfer.writeValue((Value) pk.key);
-                transfer.writeBoolean(pk.first);
+                transfer.writePageKey(pk);
             }
         }
     }
@@ -559,13 +558,12 @@ public class ClientCommand implements StorageCommand {
     }
 
     @Override
-    public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage) {
+    public void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
         int id = session.getNextId();
         try {
             session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
-            transfer.writeString(mapName).writeByteBuffer(splitKey).writeByteBuffer(page).writeBoolean(last)
-                    .writeBoolean(addPage);
+            transfer.writeString(mapName).writePageKey(pageKey).writeByteBuffer(page).writeBoolean(addPage);
             transfer.flush();
         } catch (Exception e) {
             session.handleException(e);
@@ -586,12 +584,12 @@ public class ClientCommand implements StorageCommand {
     }
 
     @Override
-    public void removeLeafPage(String mapName, ByteBuffer key) {
+    public void removeLeafPage(String mapName, PageKey pageKey) {
         int id = session.getNextId();
         try {
             session.traceOperation("COMMAND_STORAGE_REMOVE_LEAF_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
-            transfer.writeString(mapName).writeByteBuffer(key);
+            transfer.writeString(mapName).writePageKey(pageKey);
             transfer.flush();
         } catch (Exception e) {
             session.handleException(e);
@@ -773,13 +771,12 @@ public class ClientCommand implements StorageCommand {
     }
 
     @Override
-    public ByteBuffer readRemotePage(String mapName, ByteBuffer key, boolean last) {
+    public ByteBuffer readRemotePage(String mapName, PageKey pageKey) {
         int id = session.getNextId();
         try {
             session.traceOperation("COMMAND_STORAGE_READ_PAGE", id);
             transfer.writeRequestHeader(id, Session.COMMAND_STORAGE_READ_PAGE);
-            transfer.writeString(mapName).writeByteBuffer(key.slice()).writeBoolean(last);
-
+            transfer.writeString(mapName).writePageKey(pageKey);
             AsyncCallback<ByteBuffer> ac = new AsyncCallback<ByteBuffer>() {
                 @Override
                 public void runInternal() {

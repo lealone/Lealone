@@ -33,7 +33,6 @@ import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageService;
-import org.lealone.storage.aose.btree.BTreePage.PageReference;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
@@ -313,7 +312,7 @@ public class BTreeStorage {
      * @return the chunk
      */
     BTreeChunk getChunk(long pos) {
-        int chunkId = DataUtils.getPageChunkId(pos);
+        int chunkId = PageUtils.getPageChunkId(pos);
         BTreeChunk c = chunks.get(chunkId);
         if (c == null)
             c = readChunkHeader(chunkId);
@@ -403,7 +402,7 @@ public class BTreeStorage {
         if (p != null)
             return p;
         BTreeChunk c = getChunk(pos);
-        long filePos = getFilePos(DataUtils.getPageOffset(pos));
+        long filePos = getFilePos(PageUtils.getPageOffset(pos));
         long maxPos = c.blockCount * BLOCK_SIZE;
         p = BTreePage.read(c.fileStorage, pos, map, filePos, maxPos);
         cachePage(pos, p, p.getMemory());
@@ -429,7 +428,7 @@ public class BTreeStorage {
         }
 
         if (cache != null) {
-            if (DataUtils.getPageType(pos) == DataUtils.PAGE_TYPE_LEAF) {
+            if (PageUtils.getPageType(pos) == PageUtils.PAGE_TYPE_LEAF) {
                 // keep nodes in the cache, because they are still used for
                 // garbage collection
                 cache.remove(pos);
@@ -794,7 +793,7 @@ public class BTreeStorage {
         for (BTreeChunk c : old) {
             for (int i = 0, size = c.pagePositions.size(); i < size; i++) {
                 long pos = c.pagePositions.get(i);
-                if (DataUtils.getPageType(pos) == DataUtils.PAGE_TYPE_LEAF) {
+                if (PageUtils.getPageType(pos) == PageUtils.PAGE_TYPE_LEAF) {
                     if (!removedPages.contains(pos)) {
                         BTreePage p = readPage(pos);
                         if (p.getKeyCount() > 0) {

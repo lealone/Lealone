@@ -35,7 +35,7 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
-import org.lealone.storage.aose.btree.BTreePage.PageReference;
+import org.lealone.storage.aose.btree.PageReference;
 import org.lealone.test.TestBase;
 
 public class BTreeMapTest extends TestBase {
@@ -46,7 +46,7 @@ public class BTreeMapTest extends TestBase {
     @Test
     public void run() {
         init();
-        // testMapOperations();
+        testMapOperations();
         testGetEndpointToKeyMap();
         // testCompact();
         // testTransfer();
@@ -63,8 +63,12 @@ public class BTreeMapTest extends TestBase {
         // pageSplitSize = 32 * 1024;
         builder.storageName(storageName).compress().reuseSpace().pageSplitSize(pageSplitSize).minFillRate(30);
         storage = builder.openStorage();
+        openMap();
+    }
 
-        map = storage.openBTreeMap("BTreeMapTest");
+    private void openMap() {
+        if (map == null || map.isClosed())
+            map = storage.openBTreeMap("BTreeMapTest");
     }
 
     void testSplit() {
@@ -88,6 +92,7 @@ public class BTreeMapTest extends TestBase {
     }
 
     void testGetEndpointToKeyMap() {
+        openMap();
         map.clear();
         testGetEndpointToKeyMap(map); // 测试空map
 

@@ -15,6 +15,7 @@ import org.lealone.storage.aose.StorageMapBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
 import org.lealone.storage.aose.btree.CursorPos;
+import org.lealone.storage.aose.btree.PageReference;
 import org.lealone.storage.type.StorageDataType;
 
 /**
@@ -202,9 +203,9 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
                 Object k1 = getBounds(p);
                 Object k2 = getBounds(split);
                 Object[] keys = { k1, k2 };
-                BTreePage.PageReference[] children = { new BTreePage.PageReference(p, p.getPos(), p.getTotalCount()),
-                        new BTreePage.PageReference(split, split.getPos(), split.getTotalCount()),
-                        new BTreePage.PageReference(null, 0, 0) };
+                PageReference[] children = { new PageReference(p, p.getPos(), p.getTotalCount()),
+                        new PageReference(split, split.getPos(), split.getTotalCount()),
+                        new PageReference(null, 0, 0) };
                 p = BTreePage.create(this, keys, null, children, totalCount, 0);
                 // now p is a node; continues
             }
@@ -390,13 +391,13 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     private BTreePage newPage(boolean leaf) {
         Object[] values;
-        BTreePage.PageReference[] refs;
+        PageReference[] refs;
         if (leaf) {
             values = BTreePage.EMPTY_OBJECT_ARRAY;
             refs = null;
         } else {
             values = null;
-            refs = new BTreePage.PageReference[] { new BTreePage.PageReference(null, 0, 0) };
+            refs = new PageReference[] { new PageReference(null, 0, 0) };
         }
         return BTreePage.create(this, BTreePage.EMPTY_OBJECT_ARRAY, values, refs, 0, 0);
     }

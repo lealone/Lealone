@@ -15,13 +15,13 @@ package org.lealone.test.aose;
 
 import java.util.HashMap;
 
-import org.lealone.common.util.DataUtils;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.BufferedMap;
 import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.PageUtils;
 import org.lealone.storage.aose.rtree.RTreeMap;
 import org.lealone.storage.aose.rtree.SpatialKey;
 import org.lealone.test.TestBase;
@@ -158,12 +158,12 @@ public class AOStorageTest extends TestBase {
         int length = 30;
         int type = 1;
 
-        long pos = DataUtils.getPagePos(chunkId, offset, length, type);
-        int pageMaxLength = DataUtils.getPageMaxLength(pos);
-        assertEquals(chunkId, DataUtils.getPageChunkId(pos));
-        assertEquals(offset, DataUtils.getPageOffset(pos));
+        long pos = PageUtils.getPagePos(chunkId, offset, length, type);
+        int pageMaxLength = PageUtils.getPageMaxLength(pos);
+        assertEquals(chunkId, PageUtils.getPageChunkId(pos));
+        assertEquals(offset, PageUtils.getPageOffset(pos));
         assertEquals(32, pageMaxLength);
-        assertEquals(type, DataUtils.getPageType(pos));
+        assertEquals(type, PageUtils.getPageType(pos));
     }
 
     void openStorage() {

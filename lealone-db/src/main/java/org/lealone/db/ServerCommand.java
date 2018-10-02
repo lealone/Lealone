@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
@@ -90,9 +91,9 @@ public class ServerCommand implements StorageCommand {
     }
 
     @Override
-    public void moveLeafPage(String mapName, ByteBuffer splitKey, ByteBuffer page, boolean last, boolean addPage) {
+    public void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        map.addLeafPage(splitKey, page, last, addPage);
+        map.addLeafPage(pageKey, page, addPage);
     }
 
     @Override
@@ -101,9 +102,9 @@ public class ServerCommand implements StorageCommand {
     }
 
     @Override
-    public void removeLeafPage(String mapName, ByteBuffer key) {
+    public void removeLeafPage(String mapName, PageKey pageKey) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        map.removeLeafPage(key);
+        map.removeLeafPage(pageKey);
     }
 
     @Override

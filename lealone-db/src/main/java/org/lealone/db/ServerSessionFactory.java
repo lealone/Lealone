@@ -130,8 +130,12 @@ public class ServerSessionFactory implements SessionFactory {
     }
 
     private void initSession(ServerSession session, ConnectionInfo ci) {
-        if (ci.getProperty("IS_LOCAL") != null)
-            session.setLocal(Boolean.parseBoolean(ci.getProperty("IS_LOCAL")));
+        if (ci.getProperty("IS_LOCAL") != null) {
+            boolean isLocal = Boolean.parseBoolean(ci.getProperty("IS_LOCAL"));
+            session.setLocal(isLocal);
+            if (isLocal)
+                session.setRoot(false);
+        }
 
         boolean ignoreUnknownSetting = ci.getProperty("IGNORE_UNKNOWN_SETTINGS", false);
         String init = ci.getProperty("INIT", null);

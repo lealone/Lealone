@@ -18,7 +18,6 @@
 package org.lealone.storage;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,13 +28,13 @@ public class LeafPageMovePlan {
 
     public final String moverHostId;
     public final List<NetEndpoint> replicationEndpoints;
-    public final ByteBuffer splitKey;
+    public final PageKey pageKey;
     private int index;
 
-    public LeafPageMovePlan(String moverHostId, List<NetEndpoint> replicationEndpoints, ByteBuffer splitKey) {
+    public LeafPageMovePlan(String moverHostId, List<NetEndpoint> replicationEndpoints, PageKey pageKey) {
         this.moverHostId = moverHostId;
         this.replicationEndpoints = replicationEndpoints;
-        this.splitKey = splitKey;
+        this.pageKey = pageKey;
     }
 
     public void incrementIndex() {
@@ -55,7 +54,7 @@ public class LeafPageMovePlan {
     }
 
     public void serialize(NetSerializer netSerializer) throws IOException {
-        netSerializer.writeInt(index).writeString(moverHostId).writeByteBuffer(splitKey.slice());
+        netSerializer.writeInt(index).writeString(moverHostId).writePageKey(pageKey);
         netSerializer.writeInt(replicationEndpoints.size());
         for (NetEndpoint e : replicationEndpoints) {
             netSerializer.writeString(e.getHostAndPort());
@@ -65,13 +64,13 @@ public class LeafPageMovePlan {
     public static LeafPageMovePlan deserialize(NetSerializer netSerializer) throws IOException {
         int index = netSerializer.readInt();
         String moverHostId = netSerializer.readString();
-        ByteBuffer splitKey = netSerializer.readByteBuffer();
+        PageKey pageKey = netSerializer.readPageKey();
         int size = netSerializer.readInt();
         ArrayList<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             replicationEndpoints.add(NetEndpoint.createTCP(netSerializer.readString()));
         }
-        LeafPageMovePlan plan = new LeafPageMovePlan(moverHostId, replicationEndpoints, splitKey);
+        LeafPageMovePlan plan = new LeafPageMovePlan(moverHostId, replicationEndpoints, pageKey);
         plan.index = index;
         return plan;
     }

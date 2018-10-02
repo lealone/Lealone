@@ -31,6 +31,7 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.result.Result;
 import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.replication.exceptions.ReadFailureException;
 import org.lealone.storage.replication.exceptions.ReadTimeoutException;
@@ -282,7 +283,7 @@ public class ReplicationCommand implements StorageCommand {
     }
 
     @Override
-    public void moveLeafPage(final String mapName, final ByteBuffer splitKey, final ByteBuffer page, final boolean last,
+    public void moveLeafPage(final String mapName, final PageKey pageKey, final ByteBuffer page,
             final boolean addPage) {
         int n = session.n;
         ArrayList<Future<?>> futures = new ArrayList<>(n);
@@ -291,7 +292,7 @@ public class ReplicationCommand implements StorageCommand {
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
-                    c.moveLeafPage(mapName, splitKey == null ? null : splitKey.slice(), page.slice(), last, addPage);
+                    c.moveLeafPage(mapName, pageKey, page.slice(), addPage);
                 }
             };
             futures.add(ThreadPool.executor.submit(command));
@@ -329,7 +330,7 @@ public class ReplicationCommand implements StorageCommand {
     }
 
     @Override
-    public void removeLeafPage(final String mapName, final ByteBuffer key) {
+    public void removeLeafPage(final String mapName, final PageKey pageKey) {
         int n = session.n;
         ArrayList<Future<?>> futures = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
@@ -337,7 +338,7 @@ public class ReplicationCommand implements StorageCommand {
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
-                    c.removeLeafPage(mapName, key.slice());
+                    c.removeLeafPage(mapName, pageKey);
                 }
             };
             futures.add(ThreadPool.executor.submit(command));
@@ -465,7 +466,7 @@ public class ReplicationCommand implements StorageCommand {
     }
 
     @Override
-    public ByteBuffer readRemotePage(String mapName, ByteBuffer key, boolean last) {
-        return ((StorageCommand) commands[0]).readRemotePage(mapName, key, last);
+    public ByteBuffer readRemotePage(String mapName, PageKey pageKey) {
+        return ((StorageCommand) commands[0]).readRemotePage(mapName, pageKey);
     }
 }

@@ -27,10 +27,6 @@ public class PageKey {
         this.first = first;
     }
 
-    public PageKey(Object key) {
-        this(key, false);
-    }
-
     @Override
     public String toString() {
         return "PageKey [key=" + key + ", first=" + first + "]";

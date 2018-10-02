@@ -104,26 +104,6 @@ public class DataUtils {
     public static final int ERROR_TRANSACTION_STILL_OPEN = 104;
 
     /**
-     * The type for leaf page.
-     */
-    public static final int PAGE_TYPE_LEAF = 0;
-
-    /**
-     * The type for node page.
-     */
-    public static final int PAGE_TYPE_NODE = 1;
-
-    /**
-     * The bit mask for compressed pages (compression level fast).
-     */
-    public static final int PAGE_COMPRESSED = 2;
-
-    /**
-     * The bit mask for compressed pages (compression level high).
-     */
-    public static final int PAGE_COMPRESSED_HIGH = 2 + 4;
-
-    /**
      * The maximum length of a variable size int.
      */
     public static final int MAX_VAR_INT_LEN = 5;
@@ -144,21 +124,6 @@ public class DataUtils {
      * encoding (only 7 bytes instead of 8).
      */
     public static final long COMPRESSED_VAR_LONG_MAX = 0x1ffffffffffffL;
-
-    /**
-     * The estimated number of bytes used per page object.
-     */
-    public static final int PAGE_MEMORY = 128;
-
-    /**
-     * The estimated number of bytes used per child entry.
-     */
-    public static final int PAGE_MEMORY_CHILD = 16;
-
-    /**
-     * The marker size of a very large page.
-     */
-    public static final int PAGE_LARGE = 2 * 1024 * 1024;
 
     /**
      * The UTF-8 character encoding format.
@@ -461,103 +426,6 @@ public class DataUtils {
             throw newIllegalStateException(ERROR_WRITING_FAILED, "Writing to {0} failed; length {1} at {2}", file,
                     src.remaining(), pos, e);
         }
-    }
-
-    /**
-     * Convert the length to a length code 0..31. 31 means more than 1 MB.
-     *
-     * @param len the length
-     * @return the length code
-     */
-    public static int encodeLength(int len) {
-        if (len <= 32) {
-            return 0;
-        }
-        int code = Integer.numberOfLeadingZeros(len);
-        int remaining = len << (code + 1);
-        code += code;
-        if ((remaining & (1 << 31)) != 0) {
-            code--;
-        }
-        if ((remaining << 1) != 0) {
-            code--;
-        }
-        code = Math.min(31, 52 - code);
-        // alternative code (slower):
-        // int x = len;
-        // int shift = 0;
-        // while (x > 3) {
-        // shift++;
-        // x = (x >>> 1) + (x & 1);
-        // }
-        // shift = Math.max(0, shift - 4);
-        // int code = (shift << 1) + (x & 1);
-        // code = Math.min(31, code);
-        return code;
-    }
-
-    /**
-     * Get the chunk id from the position.
-     *
-     * @param pos the position
-     * @return the chunk id
-     */
-    public static int getPageChunkId(long pos) {
-        return (int) (pos >>> 38);
-    }
-
-    /**
-     * Get the maximum length for the given code.
-     * For the code 31, PAGE_LARGE is returned.
-     *
-     * @param pos the position
-     * @return the maximum length
-     */
-    public static int getPageMaxLength(long pos) {
-        int code = (int) ((pos >> 1) & 31);
-        if (code == 31) {
-            return PAGE_LARGE;
-        }
-        return (2 + (code & 1)) << ((code >> 1) + 4);
-    }
-
-    /**
-     * Get the offset from the position.
-     *
-     * @param pos the position
-     * @return the offset
-     */
-    public static int getPageOffset(long pos) {
-        return (int) (pos >> 6);
-    }
-
-    /**
-     * Get the page type from the position.
-     *
-     * @param pos the position
-     * @return the page type (PAGE_TYPE_NODE or PAGE_TYPE_LEAF)
-     */
-    public static int getPageType(long pos) {
-        return ((int) pos) & 1;
-    }
-
-    /**
-     * Get the position of this page. The following information is encoded in
-     * the position: the chunk id, the offset, the maximum length, and the type
-     * (node or leaf).
-     *
-     * @param chunkId the chunk id
-     * @param offset the offset
-     * @param length the length
-     * @param type the page type (1 for node, 0 for leaf)
-     * @return the position
-     */
-    public static long getPagePos(int chunkId, int offset, int length, int type) {
-        long pos = (long) chunkId << 38; // 往右移，相当于空出来38位，chunkId占64-38=26位
-        pos |= (long) offset << 6; // offset占38-6=32位
-        pos |= encodeLength(length) << 1; // encodeLength(length)占6-1=5位
-        pos |= type; // type占1位
-        return pos;
     }
 
     /**

@@ -24,7 +24,8 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
 
-class ShardingBTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
+//按page key遍历对应的page
+class PageKeyCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
 
     private final List<PageKey> pageKeys;
     private CursorPos pos;
@@ -32,7 +33,7 @@ class ShardingBTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
     private V currentValue, lastValue;
     private int index;
 
-    ShardingBTreeCursor(List<PageKey> pageKeys, BTreePage root, K from) {
+    PageKeyCursor(List<PageKey> pageKeys, BTreePage root, K from) {
         this.pageKeys = pageKeys;
         // 提前fetch
         min(root, from);
