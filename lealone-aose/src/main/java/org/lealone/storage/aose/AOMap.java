@@ -129,13 +129,13 @@ public class AOMap<K, V> extends DelegatedStorageMap<K, V> {
     }
 
     public int getReadPercent() {
-        long total = readCount + writeCount;
+        double total = readCount + writeCount;
         double result = readCount / total;
         return (int) (result * 100);
     }
 
     public int getWritePercent() {
-        long total = readCount + writeCount;
+        double total = readCount + writeCount;
         double result = writeCount / total;
         return (int) (result * 100);
     }

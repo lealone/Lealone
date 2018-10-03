@@ -37,7 +37,7 @@ public class AOStorageService extends Thread {
 
     private static final AOStorageService INSTANCE = new AOStorageService();
 
-    static AOStorageService getInstance() {
+    public static AOStorageService getInstance() {
         return INSTANCE;
     }
 
