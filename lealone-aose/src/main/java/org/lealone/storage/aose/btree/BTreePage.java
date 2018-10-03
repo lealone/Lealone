@@ -166,7 +166,7 @@ public class BTreePage {
      * @return the number of key-value pairs
      */
     public long getTotalCount() {
-        throw ie();
+        return 0;
     }
 
     /**

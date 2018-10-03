@@ -28,6 +28,7 @@ import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
+import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 import org.lealone.transaction.mvcc.log.RedoLog;
@@ -260,5 +261,13 @@ public class TestBase extends Assert {
 
     public static void p() {
         System.out.println();
+    }
+
+    public static void deleteFileRecursive(String path) {
+        // 避免误删除
+        if (!path.startsWith(TEST_BASE_DIR)) {
+            throw new RuntimeException("invalid path: " + path + ", must be start with: " + TEST_BASE_DIR);
+        }
+        FileUtils.deleteRecursive(path, false);
     }
 }

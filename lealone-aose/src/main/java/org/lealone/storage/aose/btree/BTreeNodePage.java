@@ -120,9 +120,16 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     public void setChild(int index, BTreePage c) {
-        int keyIndex = index > 0 ? index - 1 : 0;
-        Object key = keys[keyIndex];
-        boolean first = index == 0;
+        Object key;
+        boolean first;
+        if (keys.length > 0) {
+            int keyIndex = index > 0 ? index - 1 : 0;
+            key = keys[keyIndex];
+            first = index == 0;
+        } else {
+            key = children[index].pageKey.key;
+            first = true;
+        }
         if (c == null) {
             long oldCount = children[index].count;
             // this is slightly slower:

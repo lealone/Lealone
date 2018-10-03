@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,6 @@ import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
 import org.lealone.storage.aose.btree.PageReference;
-import org.lealone.storage.fs.FileUtils;
 import org.lealone.test.TestBase;
 
 public class BTreeMapTest extends TestBase {
@@ -47,12 +47,12 @@ public class BTreeMapTest extends TestBase {
     @Test
     public void run() {
         init();
-        // testMapOperations();
-        // testGetEndpointToKeyMap();
-        // testCompact();
+        testMapOperations();
+        testGetEndpointToKeyMap();
+        testCompact();
         testTransfer();
-
-        // testSplit();
+        testSplit();
+        testRemotePage();
     }
 
     private void init() {
@@ -72,23 +72,22 @@ public class BTreeMapTest extends TestBase {
             map = storage.openBTreeMap("BTreeMapTest");
     }
 
+    private BTreeMap<Integer, String> openMap(String name, Map<String, String> parameters) {
+        return storage.openBTreeMap(name, null, null, parameters);
+    }
+
     void testSplit() {
-        // map.clear();
-        // for (int i = 1; i <= 50; i += 2) {
-        // map.put(i, "value" + i);
-        // }
-        //
-        // map.save();
+        map.clear();
+        for (int i = 1; i <= 40; i += 2) {
+            map.put(i, "value" + i);
+        }
 
-        // for (int i = 29; i <= 48; i += 2) {
-        // map.remove(i);
-        // }
+        map.save();
 
-        for (int i = 1; i <= 50; i += 2) {
+        for (int i = 1; i <= 40; i += 2) {
             map.remove(i);
         }
 
-        map.remove(49);
         map.printPage();
     }
 
@@ -292,7 +291,7 @@ public class BTreeMapTest extends TestBase {
 
     void testTransfer() {
         String file = storageName + File.separator + map.getName() + "TransferTo" + AOStorage.SUFFIX_AO_FILE;
-        FileUtils.delete(file);
+        deleteFileRecursive(file);
         testTransferTo(file);
         testTransferFrom(file);
     }
@@ -342,5 +341,38 @@ public class BTreeMapTest extends TestBase {
             map.put(i, "value" + i);
         }
         map.save();
+    }
+
+    void testRemotePage() {
+        String mapName = "RemotePageTest";
+        String dir = storageName + File.separator + mapName;
+        deleteFileRecursive(dir);
+
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("isShardingMode", "true");
+        try {
+            openMap(mapName, parameters);
+            fail();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+        parameters.put("initReplicationEndpoints", "127.0.0.1:1111&127.0.0.1:222");
+        BTreeMap<Integer, String> map = openMap(mapName, parameters);
+        assertTrue(map.getRootPage().isRemote());
+        assertEquals(2, map.getRootPage().getReplicationHostIds().size());
+
+        try {
+            map.put(1, "abc");
+            fail();
+        } catch (Exception e) {
+            System.out.println("RemotePage put: " + e.getMessage());
+        }
+
+        try {
+            map.get(1);
+            fail();
+        } catch (Exception e) {
+            System.out.println("RemotePage get: " + e.getMessage());
+        }
     }
 }

@@ -103,22 +103,36 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             root = storage.readPage(storage.lastChunk.rootPagePos);
             setLastKey(lastKey());
         } else {
-            root = BTreeLeafPage.createEmpty(this);
-            String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
-            // DataUtils.checkArgument(initReplicationEndpoints != null, "The initReplicationEndpoints may not be
-            // null");
-            if (isShardingMode && initReplicationEndpoints != null) {
+            if (isShardingMode) {
+                String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
+                DataUtils.checkArgument(initReplicationEndpoints != null,
+                        "The initReplicationEndpoints may not be null");
                 String[] replicationEndpoints = StringUtils.arraySplit(initReplicationEndpoints, '&');
+                if (containsLocalEndpoint(replicationEndpoints)) {
+                    root = BTreeLeafPage.createEmpty(this);
+                } else {
+                    root = new BTreeRemotePage(this);
+                }
                 root.setReplicationHostIds(Arrays.asList(replicationEndpoints));
                 storage.addHostIds(replicationEndpoints);
                 // 强制把replicationHostIds持久化
                 storage.forceSave();
             } else {
                 isShardingMode = false;
+                root = BTreeLeafPage.createEmpty(this);
             }
         }
 
         this.isShardingMode = isShardingMode;
+    }
+
+    private boolean containsLocalEndpoint(String[] replicationEndpoints) {
+        NetEndpoint local = NetEndpoint.getLocalTcpEndpoint();
+        for (String e : replicationEndpoints) {
+            if (local.equals(NetEndpoint.createTCP(e)))
+                return true;
+        }
+        return false;
     }
 
     @Override
@@ -544,9 +558,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             // this child was deleted
             if (p.getKeyCount() == 0) { // 如果p的子节点只剩一个叶子节点时，keyCount为0
                 p.setChild(index, c);
-                c.removePage();
+                c.removePage(); // 直接删除最后一个子节点，父节点在remove(Object)那里删除
             } else {
-                p.remove(index);
+                p.remove(index); // 删除没有记录的子节点
             }
             if (c.isLeaf() && isShardingMode)
                 removeLeafPage(pageKey, c);

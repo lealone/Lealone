@@ -24,7 +24,6 @@ public class BTreeRemotePage extends BTreePage {
 
     BTreeRemotePage(BTreeMap<?, ?> map) {
         super(map);
-        pos = -1;
     }
 
     @Override

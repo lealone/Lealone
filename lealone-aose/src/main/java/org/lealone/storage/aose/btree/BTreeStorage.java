@@ -428,7 +428,7 @@ public class BTreeStorage {
         }
 
         if (cache != null) {
-            if (PageUtils.getPageType(pos) == PageUtils.PAGE_TYPE_LEAF) {
+            if (PageUtils.isLeafPage(pos)) {
                 // keep nodes in the cache, because they are still used for
                 // garbage collection
                 cache.remove(pos);
@@ -793,7 +793,7 @@ public class BTreeStorage {
         for (BTreeChunk c : old) {
             for (int i = 0, size = c.pagePositions.size(); i < size; i++) {
                 long pos = c.pagePositions.get(i);
-                if (PageUtils.getPageType(pos) == PageUtils.PAGE_TYPE_LEAF) {
+                if (PageUtils.isLeafPage(pos)) {
                     if (!removedPages.contains(pos)) {
                         BTreePage p = readPage(pos);
                         if (p.getKeyCount() > 0) {
