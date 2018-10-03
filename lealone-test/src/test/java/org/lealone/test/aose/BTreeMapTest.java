@@ -416,7 +416,7 @@ public class BTreeMapTest extends TestBase {
         for (int i = 1; i <= 40; i += 2) {
             map.put(i, "value" + i);
         }
-
+        // 上面put的数据得到一个node page加两个leaf page
         ArrayList<PageKey> pageKeys = new ArrayList<>();
         map.getEndpointToPageKeyMap(null, 1, 50, pageKeys);
         assertEquals(2, pageKeys.size());
@@ -427,6 +427,18 @@ public class BTreeMapTest extends TestBase {
         pk = pageKeys.get(1);
         map.removeLeafPage(pk);
 
+        assertTrue(map.getRootPage().isEmpty());
+
+        map.clear();
+
+        // 测试多层node page
+        for (int i = 1; i <= 500; i += 2) {
+            map.put(i, "value" + i);
+        }
+        pageKeys = new ArrayList<>();
+        map.getEndpointToPageKeyMap(null, 1, 500, pageKeys);
+        for (PageKey pageKey : pageKeys)
+            map.removeLeafPage(pageKey);
         assertTrue(map.getRootPage().isEmpty());
     }
 }

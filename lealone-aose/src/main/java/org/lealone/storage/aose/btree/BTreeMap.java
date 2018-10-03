@@ -1015,12 +1015,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         BTreePage cOld = p.getChildPage(x);
         BTreePage c = cOld.copy();
         removeLeafPage(c, pk);
-
-        c.removePage();
+        if (c.isLeaf())
+            c.removePage();
+        else
+            p.setChild(x, c);
         if (p.getKeyCount() == 0) { // 如果p的子节点只剩一个叶子节点时，keyCount为0
             p.setChild(x, (BTreePage) null);
         } else {
-            p.remove(x);
+            if (c.isLeaf())
+                p.remove(x);
         }
     }
 
