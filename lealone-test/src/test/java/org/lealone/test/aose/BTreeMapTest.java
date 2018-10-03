@@ -53,6 +53,7 @@ public class BTreeMapTest extends TestBase {
         testTransfer();
         testSplit();
         testRemotePage();
+        testLeafPageRemove();
     }
 
     private void init() {
@@ -77,6 +78,7 @@ public class BTreeMapTest extends TestBase {
     }
 
     void testSplit() {
+        openMap();
         map.clear();
         for (int i = 1; i <= 40; i += 2) {
             map.put(i, "value" + i);
@@ -110,7 +112,37 @@ public class BTreeMapTest extends TestBase {
         }
         testGetEndpointToKeyMap(map); // 测试有root node page的map
 
-        map.close();
+        map.clear();
+
+        ArrayList<PageKey> pageKeys = new ArrayList<>();
+        map.getEndpointToPageKeyMap(null, 1, 9, pageKeys);
+        assertEquals(1, pageKeys.size());
+        assertNull(pageKeys.get(0).key);
+
+        map.put(1, "value" + 1);
+
+        pageKeys = new ArrayList<>();
+        map.getEndpointToPageKeyMap(null, 1, 9, pageKeys);
+        assertEquals(1, pageKeys.size());
+        assertTrue(pageKeys.get(0).key.equals(1));
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.put(i, "value" + i);
+        }
+
+        pageKeys = new ArrayList<>();
+        map.getEndpointToPageKeyMap(null, 1, 9, pageKeys);
+        assertEquals(1, pageKeys.size());
+
+        pageKeys = new ArrayList<>();
+        map.getEndpointToPageKeyMap(null, 15, 40, pageKeys);
+        assertEquals(1, pageKeys.size());
+
+        pageKeys = new ArrayList<>();
+        map.getEndpointToPageKeyMap(null, 15, null, pageKeys);
+        assertEquals(1, pageKeys.size());
+
+        // map.close();
     }
 
     void testGetEndpointToKeyMap(BTreeMap<Integer, String> map) {
@@ -336,13 +368,6 @@ public class BTreeMapTest extends TestBase {
         }
     }
 
-    void put() {
-        for (int i = 1000; i < 4000; i++) {
-            map.put(i, "value" + i);
-        }
-        map.save();
-    }
-
     void testRemotePage() {
         String mapName = "RemotePageTest";
         String dir = storageName + File.separator + mapName;
@@ -374,5 +399,34 @@ public class BTreeMapTest extends TestBase {
         } catch (Exception e) {
             System.out.println("RemotePage get: " + e.getMessage());
         }
+    }
+
+    void testLeafPageRemove() {
+        openMap();
+        map.clear();
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.put(i, "value" + i);
+        }
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.remove(i);
+        }
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.put(i, "value" + i);
+        }
+
+        ArrayList<PageKey> pageKeys = new ArrayList<>();
+        map.getEndpointToPageKeyMap(null, 1, 50, pageKeys);
+        assertEquals(2, pageKeys.size());
+
+        PageKey pk = pageKeys.get(0);
+        map.removeLeafPage(pk);
+
+        pk = pageKeys.get(1);
+        map.removeLeafPage(pk);
+
+        assertTrue(map.getRootPage().isEmpty());
     }
 }

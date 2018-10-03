@@ -175,17 +175,15 @@ public class BTreeNodePage extends BTreeLocalPage {
     @Override
     public void remove(int index) {
         super.remove(index);
-        if (children != null) {
-            addMemory(-PageUtils.PAGE_MEMORY_CHILD);
-            long countOffset = children[index].count;
+        addMemory(-PageUtils.PAGE_MEMORY_CHILD);
+        long countOffset = children[index].count;
 
-            int childCount = children.length;
-            PageReference[] newChildren = new PageReference[childCount - 1];
-            DataUtils.copyExcept(children, newChildren, childCount, index);
-            children = newChildren;
+        int childCount = children.length;
+        PageReference[] newChildren = new PageReference[childCount - 1];
+        DataUtils.copyExcept(children, newChildren, childCount, index);
+        children = newChildren;
 
-            totalCount -= countOffset;
-        }
+        totalCount -= countOffset;
     }
 
     @Override
@@ -417,7 +415,6 @@ public class BTreeNodePage extends BTreeLocalPage {
         } else {
             p.addMemory(memory);
         }
-
         return p;
     }
 

@@ -20,6 +20,7 @@ package org.lealone.db;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.LeafPageMovePlan;
@@ -103,8 +104,8 @@ public class ServerCommand implements StorageCommand {
 
     @Override
     public void removeLeafPage(String mapName, PageKey pageKey) {
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        map.removeLeafPage(pageKey);
+        // 当前节点删除自己的 leaf page时不应该再触发自己再按 page key删一次
+        throw DbException.throwInternalError();
     }
 
     @Override

@@ -149,20 +149,31 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @return the value or null
      */
     protected Object binarySearch(BTreePage p, Object key) {
-        int index = p.binarySearch(key);
-        if (p.isNode()) {
-            if (index < 0) {
-                index = -index - 1;
+        while (true) {
+            int index = p.binarySearch(key);
+            if (p.isLeaf()) {
+                return index >= 0 ? p.getValue(index) : null;
             } else {
-                index++;
+                if (index < 0) {
+                    index = -index - 1;
+                } else {
+                    index++;
+                }
+                p = p.getChildPage(index);
             }
-            p = p.getChildPage(index);
-            return binarySearch(p, key);
         }
-        if (index >= 0) {
-            return p.getValue(index);
-        }
-        return null;
+        // 递归版本
+        // int index = p.binarySearch(key);
+        // if (p.isNode()) {
+        // if (index < 0) {
+        // index = -index - 1;
+        // } else {
+        // index++;
+        // }
+        // p = p.getChildPage(index);
+        // return binarySearch(p, key);
+        // }
+        // return index >= 0 ? p.getValue(index) : null;
     }
 
     @Override
@@ -329,7 +340,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     // 必需同步
     private synchronized BTreePage setLeafPageMovePlan(PageKey pageKey, LeafPageMovePlan leafPageMovePlan) {
-        BTreePage page = root.binarySearchLeafPage(root, pageKey.key);
+        BTreePage page = root.binarySearchLeafPage(pageKey.key);
         if (page != null) {
             page.setLeafPageMovePlan(leafPageMovePlan);
         }
@@ -514,7 +525,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         synchronized (this) {
             BTreePage p = root.copy();
             result = (V) remove(p, key);
-            if (p.isNode() && p.getTotalCount() == 0) {
+            if (p.isNode() && p.isEmpty()) {
                 p.removePage();
                 p = BTreeLeafPage.createEmpty(this);
             }
@@ -549,9 +560,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         BTreePage cOld = p.getChildPage(index);
         BTreePage c = cOld.copy();
         result = remove(c, key);
-        if (result == null || c.getTotalCount() != 0) {
-            // no change, or
-            // there are more nodes
+        if (result == null || c.isNotEmpty()) {
+            // no change, or there are more nodes
             p.setChild(index, c);
         } else {
             PageKey pageKey = p.getChildPageReference(index).pageKey;
@@ -562,7 +572,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             } else {
                 p.remove(index); // 删除没有记录的子节点
             }
-            if (c.isLeaf() && isShardingMode)
+            if (isShardingMode && c.isLeaf())
                 removeLeafPage(pageKey, c);
         }
         return result;
@@ -572,11 +582,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (leafPage.getReplicationHostIds().get(0).equals(getLocalHostId())) {
             AOStorageService.submitTask(() -> {
                 List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(leafPage);
-                oldReplicationEndpoints.remove(getLocalEndpoint());
-                Set<NetEndpoint> liveMembers = getCandidateEndpoints();
-                liveMembers.removeAll(oldReplicationEndpoints);
+                Set<NetEndpoint> otherEndpoints = getCandidateEndpoints();
+                otherEndpoints.removeAll(oldReplicationEndpoints);
                 Session session = db.createInternalSession();
-                ReplicationSession rs = db.createReplicationSession(session, liveMembers, true);
+                ReplicationSession rs = db.createReplicationSession(session, otherEndpoints, true);
                 try (StorageCommand c = rs.createStorageCommand()) {
                     c.removeLeafPage(getName(), pageKey);
                 }
@@ -862,7 +871,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     pageBuff.position(start);
                     pageBuff.limit(start + pageLength);
                 } else {
-                    BTreePage p = root.binarySearchLeafPage(root, pk.key);
+                    BTreePage p = root.binarySearchLeafPage(pk.key);
                     p.replicatePage(buff, null);
                 }
 
@@ -975,45 +984,43 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public synchronized void removeLeafPage(PageKey pageKey) {
         beforeWrite();
-        Object k = pageKey.key;
-        synchronized (this) {
-            BTreePage p = root.copy();
-            removeLeafPage(p, k);
-            if (p.isNode() && p.getTotalCount() == 0) {
+        BTreePage p;
+        if (pageKey == null) { // 说明删除的是root leaf page
+            p = BTreeLeafPage.createEmpty(this);
+        } else {
+            p = root.copy();
+            removeLeafPage(p, pageKey);
+            if (p.isNode() && p.isEmpty()) {
                 p.removePage();
                 p = BTreeLeafPage.createEmpty(this);
             }
-            newRoot(p);
         }
+        newRoot(p);
     }
 
-    private void removeLeafPage(BTreePage p, Object key) {
-        int index = p.binarySearch(key);
-        Object result = null;
+    private void removeLeafPage(BTreePage p, PageKey pk) {
         if (p.isLeaf()) {
             return;
         }
-        // node
-        if (index < 0) {
-            index = -index - 1;
+        // node page
+        int x = p.binarySearch(pk.key);
+        if (x < 0) {
+            x = -x - 1;
         } else {
-            index++;
+            x++;
         }
-        BTreePage cOld = p.getChildPage(index);
+        if (pk.first && p.isLeafChildPage(x)) {
+            x = 0;
+        }
+        BTreePage cOld = p.getChildPage(x);
         BTreePage c = cOld.copy();
-        result = remove(c, key);
-        if (result == null || c.getTotalCount() != 0) {
-            // no change, or
-            // there are more nodes
-            p.setChild(index, c);
+        removeLeafPage(c, pk);
+
+        c.removePage();
+        if (p.getKeyCount() == 0) { // 如果p的子节点只剩一个叶子节点时，keyCount为0
+            p.setChild(x, (BTreePage) null);
         } else {
-            // this child was deleted
-            if (p.getKeyCount() == 0) { // 如果p的子节点只剩一个叶子节点时，keyCount为0
-                p.setChild(index, c);
-                c.removePage();
-            } else {
-                p.remove(index);
-            }
+            p.remove(x);
         }
     }
 
@@ -1121,8 +1128,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public synchronized LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
-        Object key = leafPageMovePlan.pageKey;
-        BTreePage p = root.binarySearchLeafPage(root, key);
+        BTreePage p = root.binarySearchLeafPage(leafPageMovePlan.pageKey.key);
         if (p.isLeaf()) {
             // 老的index < 新的index时，说明上一次没有达成一致，进行第二次协商
             if (p.getLeafPageMovePlan() == null || p.getLeafPageMovePlan().getIndex() < leafPageMovePlan.getIndex()) {
@@ -1251,13 +1257,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Map<String, List<PageKey>> map = new HashMap<>();
         Random random = new Random();
         if (root.isLeaf()) {
-            List<String> hostIds = root.getReplicationHostIds();
-            int i = random.nextInt(hostIds.size());
-            String hostId = hostIds.get(i);
-            List<PageKey> keys = new ArrayList<>();
-            map.put(hostId, keys);
-            PageKey pk = new PageKey(root.getKeyCount() == 0 ? null : root.getKey(0), true);
-            keys.add(pk);
+            Object key = root.getKeyCount() == 0 ? null : root.getKey(0);
+            getPageKey(map, random, pageKeys, root, 0, key);
         } else {
             dfs(map, random, from, to, pageKeys);
         }
@@ -1269,48 +1270,18 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         CursorPos pos = null;
         BTreePage p = root;
         while (p.isNode()) {
-            // 注意: x是子page的数组索引，不是keys数组的索引
-            int x = from == null ? -1 : p.binarySearch(from);
-            if (x < 0) {
-                x = -x - 1;
+            // 注意: index是子page的数组索引，不是keys数组的索引
+            int index = from == null ? -1 : p.binarySearch(from);
+            if (index < 0) {
+                index = -index - 1;
             } else {
-                x++;
+                index++;
             }
-            pos = new CursorPos(p, x + 1, pos);
-            if (p.isNodeChildPage(x)) {
-                p = p.getChildPage(x);
+            pos = new CursorPos(p, index + 1, pos);
+            if (p.isNodeChildPage(index)) {
+                p = p.getChildPage(index);
             } else {
-                boolean needsCompare = false;
-                if (to != null) {
-                    Object lastKey = p.getLastKey();
-                    if (keyType.compare(lastKey, to) >= 0) {
-                        needsCompare = true;
-                    }
-                }
-
-                // node page的直接子page不会出现同时包含node page和leaf page的情况
-                for (int size = this.getChildPageCount(p); x < size; x++) {
-                    int keyIndex = x - 1;
-                    Object k = p.getKey(keyIndex < 0 ? 0 : keyIndex);
-                    if (needsCompare && keyType.compare(k, to) > 0) {
-                        return;
-                    }
-                    PageReference pr = p.getChildPageReference(x);
-                    PageKey pk = new PageKey(k, x == 0, pr.pos);
-                    if (pageKeys != null)
-                        pageKeys.add(pk);
-                    List<String> hostIds = pr.replicationHostIds;
-                    if (hostIds != null) {
-                        int i = random.nextInt(hostIds.size());
-                        String hostId = hostIds.get(i);
-                        List<PageKey> keys = map.get(hostId);
-                        if (keys == null) {
-                            keys = new ArrayList<>();
-                            map.put(hostId, keys);
-                        }
-                        keys.add(pk);
-                    }
-                }
+                getPageKeys(map, random, from, to, pageKeys, p, index);
 
                 // from此时为null，代表从右边兄弟节点keys数组的0号索引开始
                 from = null;
@@ -1320,7 +1291,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     if (pos == null) {
                         return;
                     }
-                    if (pos.index < this.getChildPageCount(pos.page)) {
+                    if (pos.index < getChildPageCount(pos.page)) {
                         if (pos.page.isNodeChildPage(pos.index)) {
                             p = pos.page.getChildPage(pos.index++);
                             break; // 只是退出for循环
@@ -1328,6 +1299,73 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     }
                 }
             }
+        }
+    }
+
+    private void getPageKeys(Map<String, List<PageKey>> map, Random random, K from, K to, List<PageKey> pageKeys,
+            BTreePage p, int index) {
+        int keyCount = p.getKeyCount();
+        if (keyCount > 1) {
+            boolean needsCompare = false;
+            if (to != null) {
+                Object lastKey = p.getLastKey();
+                if (keyType.compare(lastKey, to) >= 0) {
+                    needsCompare = true;
+                }
+            }
+            // node page的直接子page不会出现同时包含node page和leaf page的情况
+            for (int size = getChildPageCount(p); index < size; index++) {
+                int keyIndex = index - 1;
+                Object k = p.getKey(keyIndex < 0 ? 0 : keyIndex);
+                if (needsCompare && keyType.compare(k, to) > 0) {
+                    return;
+                }
+                getPageKey(map, random, pageKeys, p, index, k);
+            }
+        } else if (keyCount == 1) {
+            Object k = p.getKey(0);
+            if (from == null || keyType.compare(from, k) < 0) {
+                getPageKey(map, random, pageKeys, p, 0, k);
+            }
+            if ((from != null && keyType.compare(from, k) >= 0) //
+                    || to == null //
+                    || keyType.compare(to, k) >= 0) {
+                getPageKey(map, random, pageKeys, p, 1, k);
+            }
+        } else { // 当keyCount=0时也是合法的，比如node page只删到剩一个leaf page时
+            if (getChildPageCount(p) != 1) {
+                throw DbException.throwInternalError();
+            }
+            Object k = p.getChildPageReference(0).pageKey.key;
+            getPageKey(map, random, pageKeys, p, 0, k);
+        }
+    }
+
+    private void getPageKey(Map<String, List<PageKey>> map, Random random, List<PageKey> pageKeys, BTreePage p,
+            int index, Object key) {
+        long pos;
+        List<String> hostIds;
+        if (p.isNode()) {
+            PageReference pr = p.getChildPageReference(index);
+            pos = pr.pos;
+            hostIds = pr.replicationHostIds;
+        } else {
+            pos = p.getPos();
+            hostIds = p.getReplicationHostIds();
+        }
+
+        PageKey pk = new PageKey(key, index == 0, pos);
+        if (pageKeys != null)
+            pageKeys.add(pk);
+        if (hostIds != null) {
+            int i = random.nextInt(hostIds.size());
+            String hostId = hostIds.get(i);
+            List<PageKey> keys = map.get(hostId);
+            if (keys == null) {
+                keys = new ArrayList<>();
+                map.put(hostId, keys);
+            }
+            keys.add(pk);
         }
     }
 

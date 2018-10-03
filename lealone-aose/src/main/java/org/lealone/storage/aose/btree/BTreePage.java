@@ -81,6 +81,23 @@ public class BTreePage {
         throw ie();
     }
 
+    public boolean isEmpty() {
+        return getTotalCount() <= 0;
+    }
+
+    public boolean isNotEmpty() {
+        return getTotalCount() > 0;
+    }
+
+    /**
+     * Get the total number of key-value pairs, including child pages.
+     * 
+     * @return the number of key-value pairs
+     */
+    public long getTotalCount() {
+        return 0;
+    }
+
     /**
      * Get the number of keys in this page.
      * 
@@ -158,15 +175,6 @@ public class BTreePage {
      */
     BTreePage split(int at) {
         throw ie();
-    }
-
-    /**
-     * Get the total number of key-value pairs, including child pages.
-     * 
-     * @return the number of key-value pairs
-     */
-    public long getTotalCount() {
-        return 0;
     }
 
     /**
@@ -381,8 +389,8 @@ public class BTreePage {
 
     @Deprecated
     void transferTo(WritableByteChannel target, Object firstKey, Object lastKey) throws IOException {
-        BTreePage firstPage = binarySearchLeafPage(this, firstKey);
-        BTreePage lastPage = binarySearchLeafPage(this, lastKey);
+        BTreePage firstPage = binarySearchLeafPage(firstKey);
+        BTreePage lastPage = binarySearchLeafPage(lastKey);
 
         BTreeChunk chunk = map.storage.getChunk(firstPage.pos);
         long firstPos = firstPage.pos;
@@ -423,21 +431,23 @@ public class BTreePage {
         }
     }
 
-    BTreePage binarySearchLeafPage(BTreePage p, Object key) {
-        int index = p.binarySearch(key);
-        if (p.isNode()) {
-            if (index < 0) {
-                index = -index - 1;
+    // 返回key所在的leaf page
+    BTreePage binarySearchLeafPage(Object key) {
+        BTreePage p = this;
+        while (true) {
+            int index = p.binarySearch(key);
+            if (p.isLeaf()) {
+                // 如果找不到，是返回null还是throw new AssertionError()，由调用者确保key总是存在
+                return index >= 0 ? p : null;
             } else {
-                index++;
+                if (index < 0) {
+                    index = -index - 1;
+                } else {
+                    index++;
+                }
+                p = p.getChildPage(index);
             }
-            p = p.getChildPage(index);
-            return binarySearchLeafPage(p, key);
         }
-        if (index >= 0) {
-            return p;
-        }
-        throw new AssertionError(); // 调用者已经确保key总是存在
     }
 
     @Deprecated

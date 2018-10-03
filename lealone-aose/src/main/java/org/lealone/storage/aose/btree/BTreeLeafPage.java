@@ -130,14 +130,12 @@ public class BTreeLeafPage extends BTreeLocalPage {
     public void remove(int index) {
         int keyLength = keys.length;
         super.remove(index);
-        if (values != null) {
-            Object old = values[index];
-            addMemory(-map.getValueType().getMemory(old));
-            Object[] newValues = new Object[keyLength - 1];
-            DataUtils.copyExcept(values, newValues, keyLength, index);
-            values = newValues;
-            totalCount--;
-        }
+        Object old = values[index];
+        addMemory(-map.getValueType().getMemory(old));
+        Object[] newValues = new Object[keyLength - 1];
+        DataUtils.copyExcept(values, newValues, keyLength, index);
+        values = newValues;
+        totalCount--;
     }
 
     @Override
