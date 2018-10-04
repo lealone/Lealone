@@ -151,15 +151,15 @@ public class MVCCTransaction implements Transaction {
     @Override
     public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
             StorageDataType valueType, Storage storage, boolean isShardingMode, String initReplicationEndpoints) {
+        checkNotClosed();
         if (keyType == null)
             keyType = new ObjectDataType();
         if (valueType == null)
             valueType = new ObjectDataType();
-
-        checkNotClosed();
         valueType = new TransactionalValueType(valueType);
-        Map<String, String> parameters = new HashMap<>(1);
+        Map<String, String> parameters = null;
         if (isShardingMode) {
+            parameters = new HashMap<>(2);
             parameters.put("isShardingMode", "true");
             parameters.put("initReplicationEndpoints", initReplicationEndpoints);
         }
@@ -168,11 +168,12 @@ public class MVCCTransaction implements Transaction {
             transactionEngine.redo(map);
         }
         transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
-        return createTransactionMap(map);
+        return createTransactionMap(map, isShardingMode);
     }
 
-    protected <K, V> MVCCTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map) {
-        if (isShardingMode())
+    protected <K, V> MVCCTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
+            boolean isShardingMode) {
+        if (isShardingMode)
             return new MVCCReplicationMap<>(this, map);
         else
             return new MVCCTransactionMap<>(this, map);
@@ -311,7 +312,7 @@ public class MVCCTransaction implements Transaction {
 
     @Override
     public String toString() {
-        return "" + transactionId;
+        return "mvcc[" + transactionName + ", " + autoCommit + "]";
     }
 
     public static String getTransactionName(String hostAndPort, long tid) {

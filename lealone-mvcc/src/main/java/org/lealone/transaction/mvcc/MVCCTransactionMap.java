@@ -124,15 +124,11 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             // 那么在节点B中会读到不一致的数据，此时需要从节点A读出正确的值
             // TODO 如何更高效的判断，不用比较字符串
             if (data.hostAndPort != null && !data.hostAndPort.equals(NetEndpoint.getLocalTcpHostAndPort())) {
-                // return getRemoteTransactionalValue(data.hostAndPort, key);
+                return getRemoteTransactionalValue(data.hostAndPort, key);
+            }
+            if (tid == transaction.transactionId) {
                 return data;
             }
-            if (tid <= transaction.transactionId) {
-                return data;
-            }
-            // if (tid == transaction.transactionId) {
-            // return data;
-            // }
 
             TransactionalValue v = getValue(key, data, tid);
             if (v != null)
@@ -186,12 +182,14 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         return set(key, value);
     }
 
+    @SuppressWarnings("unchecked")
     private V set(K key, V value) {
         transaction.checkNotClosed();
-        V old = get(key);
-        boolean ok = trySet(key, value);
+        TransactionalValue oldValue = map.get(key);
+        boolean ok = trySet(key, value, oldValue);
         if (ok) {
-            return old;
+            oldValue = getValue(key, oldValue);
+            return oldValue == null ? null : (V) oldValue.value;
         }
         throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
     }
@@ -233,13 +231,16 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
      * @return true if the value was set, false if there was a concurrent update
      */
     public boolean trySet(K key, V value) {
-        TransactionalValue current = map.get(key);
-        TransactionalValue newValue = new TransactionalValue(transaction, value);
+        TransactionalValue oldValue = map.get(key);
+        return trySet(key, value, oldValue);
+    }
 
+    private boolean trySet(K key, V value, TransactionalValue oldValue) {
+        TransactionalValue newValue = new TransactionalValue(transaction, value);
         String mapName = getName();
-        if (current == null) {
+        if (oldValue == null) {
             // a new value
-            transaction.log(mapName, key, current, newValue);
+            transaction.log(mapName, key, oldValue, newValue);
             TransactionalValue old = map.putIfAbsent(key, newValue);
             if (old != null) {
                 transaction.logUndo();
@@ -247,13 +248,13 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             }
             return true;
         }
-        long tid = current.tid;
+        long tid = oldValue.tid;
         if (tid == 0) {
             // committed
-            transaction.log(mapName, key, current, newValue);
+            transaction.log(mapName, key, oldValue, newValue);
             // the transaction is committed:
             // overwrite the value
-            if (!map.replace(key, current, newValue)) {
+            if (!map.replace(key, oldValue, newValue)) {
                 // somebody else was faster
                 transaction.logUndo();
                 return false;
@@ -262,8 +263,8 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         }
         if (tid == transaction.transactionId) {
             // added or updated by this transaction
-            transaction.log(mapName, key, current, newValue);
-            if (!map.replace(key, current, newValue)) {
+            transaction.log(mapName, key, oldValue, newValue);
+            if (!map.replace(key, oldValue, newValue)) {
                 // strange, somebody overwrote the value
                 // even though the change was not committed
                 transaction.logUndo();

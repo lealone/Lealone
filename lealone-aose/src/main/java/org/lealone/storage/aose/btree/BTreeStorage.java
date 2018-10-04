@@ -615,11 +615,12 @@ public class BTreeStorage {
             this.removedPages.clear();
             p = map.root;
         }
-        if (p.getTotalCount() > 0 || force) {
-            p.writeUnsavedRecursive(c, buff);
-            c.rootPagePos = p.getPos();
-            p.writeEnd();
-        }
+        // 如果不写，rootPagePos会是0，重新打开时会报错
+        // if (p.getTotalCount() > 0 || force) {
+        p.writeUnsavedRecursive(c, buff);
+        c.rootPagePos = p.getPos();
+        p.writeEnd();
+        // }
 
         c.pagePositionsOffset = buff.position();
         for (long pos : c.pagePositions)

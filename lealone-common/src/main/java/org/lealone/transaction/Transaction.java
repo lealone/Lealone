@@ -35,7 +35,7 @@ public interface Transaction {
 
     /**
      * The status of a transaction that is being committed, but possibly not
-     * yet finished. A transactions can go into this state when the store is
+     * yet finished. A transaction can go into this state when the store is
      * closed while the transaction is committing. When opening a store,
      * such transactions should be committed.
      */
@@ -89,7 +89,8 @@ public interface Transaction {
      * @param valueType the value data type
      * @return the transaction map
      */
-    <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType, Storage storage);
+    <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
+            Storage storage);
 
     <K, V> TransactionMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
             Storage storage, boolean isShardingMode, String initReplicationEndpoints);

@@ -37,10 +37,10 @@ class BatchLogSyncService extends LogSyncService {
     @Override
     public void maybeWaitForSync(RedoLogRecord r) {
         haveWork.release();
-        if (!r.synced) {
+        if (!r.synced && running) {
             while (true) {
                 WaitQueue.Signal signal = syncComplete.register();
-                if (r.synced) {
+                if (r.synced || !running) {
                     signal.cancel();
                     return;
                 } else
