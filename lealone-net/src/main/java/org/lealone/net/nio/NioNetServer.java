@@ -28,7 +28,6 @@ import java.nio.channels.SocketChannel;
 import java.util.Set;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.AsyncConnection;
@@ -55,12 +54,11 @@ public class NioNetServer extends NetServerBase {
             serverChannel.register(selector, SelectionKey.OP_ACCEPT);
             super.start();
 
-            ConcurrentUtils.submitTask("Server-Nio-Event-Loop", () -> {
+            ConcurrentUtils.submitTask("Server-Nio-Event-Loop-" + getPort(), () -> {
                 NioNetServer.this.run();
             });
         } catch (Exception e) {
-            logger.error("Failed to start nio net server", e);
-            throw DbException.convert(e);
+            checkBindException(e, "Failed to start nio net server");
         }
     }
 

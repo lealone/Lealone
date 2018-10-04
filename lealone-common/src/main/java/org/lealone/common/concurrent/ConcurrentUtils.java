@@ -20,7 +20,9 @@ package org.lealone.common.concurrent;
 public class ConcurrentUtils {
 
     public static void submitTask(String name, Runnable target) {
-        new Thread(target, name).start();
+        Thread t = new Thread(target, name);
+        t.setDaemon(true);
+        t.start();
     }
 
 }

@@ -1,4 +1,4 @@
-package org.lealone.test.priority;
+package org.lealone.test.sql.priority;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
