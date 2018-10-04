@@ -13,268 +13,100 @@
  */
 package org.lealone.test.aose;
 
-import java.util.HashMap;
-
+import org.junit.Test;
 import org.lealone.db.value.ValueString;
-import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageBuilder;
-import org.lealone.storage.aose.BufferedMap;
 import org.lealone.storage.aose.btree.BTreeMap;
-import org.lealone.storage.aose.btree.PageUtils;
-import org.lealone.storage.aose.rtree.RTreeMap;
-import org.lealone.storage.aose.rtree.SpatialKey;
+import org.lealone.storage.fs.FilePath;
 import org.lealone.test.TestBase;
 
 public class AOStorageTest extends TestBase {
 
-    public static void main(String[] args) {
-        new AOStorageTest().run();
-    }
+    private AOStorage storage;
 
-    public static void p(Object o) {
-        System.out.println(o);
-    }
-
-    public static void p() {
-        System.out.println();
-    }
-
-    AOStorage storage;
-    BTreeMap<String, String> map;
-    RTreeMap<String> rmap;
-    String storageName = joinDirs("aose");
-
-    void run() {
-        // testPagePos();
-        openStorage();
+    @Test
+    public void run() {
+        init();
         try {
-            openMap();
-            testPut();
-            // testSplit();
-            // testGet();
-
-            // testPrintPage();
-
-            // testBTreeMap();
-            // testBufferedMap();
-
-            // openRTreeMap();
-            // testRTreePut();
-
+            testOpenMap();
             testBackupTo();
+            testDrop();
         } finally {
             storage.close();
         }
     }
 
-    void testBackupTo() {
-        String fileName = joinDirs("testBackup", "backup1.zip");
-        storage.backupTo(fileName);
-    }
-
-    void testBufferedMap() {
-        BufferedMap<Integer, String> bmap = storage.openBufferedMap("testBufferedMap", null, null, null);
-        p(bmap.firstKey());
-
-        for (int i = 10; i < 20; i += 2) {
-            bmap.put(i, "value" + i);
-        }
-
-        bmap.merge();
-
-        for (int i = 11; i < 20; i += 2) {
-            bmap.put(i, "value" + i);
-        }
-        bmap.put(22, "value" + 22);
-
-        int count = 0;
-
-        StorageMapCursor<Integer, String> cursor = bmap.cursor(null);
-        while (cursor.hasNext()) {
-            cursor.next();
-            p(cursor.getKey());
-            p(cursor.getValue());
-            count++;
-        }
-
-        assertEquals(5 + 5 + 1, count);
-        bmap.remove();
-    }
-
-    void testBTreeMap() {
-        Object v = null;
-        map.clear();
-
-        v = map.put("10", "a");
-        p(v);
-
-        v = map.putIfAbsent("10", "a1");
-        p(v);
-
-        v = map.putIfAbsent("20", "b");
-        p(v);
-
-        v = map.get("20");
-        p(v);
-
-        map.clear();
-
-        for (int i = 100; i < 300; i++) {
-            map.put("" + i, "value" + i);
-        }
-
-        v = map.get("105");
-        p(v);
-
-        v = map.firstKey();
-        p(v);
-        v = map.lastKey();
-        p(v);
-
-        v = map.higherKey("101"); // >"101"的最小key
-        p(v);
-        v = map.ceilingKey("101"); // >="101"的最小key
-        p(v);
-
-        v = map.lowerKey("101"); // <"101"的最大key
-        p(v);
-        v = map.floorKey("101"); // <="101"的最大key
-        p(v);
-
-        v = map.replace("100", "value100a", "value100");
-        p(v);
-        v = map.replace("100", "value100", "value100a");
-        p(v);
-        v = map.replace("100", "value100a", "value100");
-        p(v);
-
-        map.clear();
-    }
-
-    void testPagePos() {
-        int chunkId = 2;
-        int offset = 10;
-        int length = 30;
-        int type = 1;
-
-        long pos = PageUtils.getPagePos(chunkId, offset, length, type);
-        int pageMaxLength = PageUtils.getPageMaxLength(pos);
-        assertEquals(chunkId, PageUtils.getPageChunkId(pos));
-        assertEquals(offset, PageUtils.getPageOffset(pos));
-        assertEquals(32, pageMaxLength);
-        assertEquals(type, PageUtils.getPageType(pos));
-    }
-
-    void openStorage() {
+    private void init() {
         AOStorageBuilder builder = new AOStorageBuilder();
-        builder.storageName(storageName);
-        builder.compress();
         builder.pageSplitSize(1024);
         builder.encryptionKey("mykey".toCharArray());
         // builder.inMemory();
-        storage = builder.openStorage();
+        storage = openStorage(builder);
     }
 
-    void openMap() {
-        HashMap<String, String> parameters = new HashMap<>();
-        parameters.put("isShardingMode", "true");
-        parameters.put("initReplicationEndpoints", "a&b&c");
-        map = storage.openBTreeMap("testBTreeMap", ValueString.type, ValueString.type, parameters);
-        p(storage.getMapNames());
-    }
-
-    void openRTreeMap() {
-        rmap = storage.openRTreeMap("testRTreeMap", ValueString.type, 3);
-        p(storage.getMapNames());
-    }
-
-    void testRTreePut() {
-        for (int i = 10; i < 100; i++) {
-            rmap.put(new SpatialKey(i, i * 1.0F, i * 2.0F), "value" + i); // TODO 还有bug，h2也有
+    void testDrop() {
+        BTreeMap<Integer, String> map = storage.openBTreeMap("AOStorageTest_testDrop");
+        for (int i = 1; i <= 100; i++) {
+            map.put(i, "value" + i);
         }
-        rmap.save();
-
-        p(rmap.size());
-        p(new SpatialKey(1, 1 * 1.0F, 1 * 2.0F));
+        storage.drop();
+        assertEquals(0, storage.getMapNames().size());
+        FilePath p = FilePath.get(storage.getStoragePath());
+        assertTrue(!p.exists());
     }
 
-    void testPrintPage() {
-        for (int i = 10; i < 200; i++) {
-            map.put("" + i, "value" + i);
+    void testBackupTo() {
+        BTreeMap<Integer, String> map = storage.openBTreeMap("AOStorageTest_testBackupTo");
+        for (int i = 1; i <= 100; i++) {
+            map.put(i, "value" + i);
         }
-        map.save();
-
-        map.printPage();
+        String fileName = joinDirs("testBackup", "backup1.zip");
+        storage.backupTo(fileName);
+        FilePath p = FilePath.get(fileName);
+        assertTrue(p.exists());
+        assertTrue(!p.isDirectory());
+        assertTrue(p.size() > 0);
     }
 
-    void testSplit() {
-        map.clear();
+    void testOpenMap() {
+        storage.openBTreeMap("AOStorageTest_map1");
+        storage.openRTreeMap("AOStorageTest_map2", ValueString.type, 3);
+        storage.openBTreeMap("AOStorageTest_map3", null, null, null);
+        storage.openAOMap("AOStorageTest_map4", null, null, null);
 
-        map.put("10", "value10");
-        map.put("50", "value50");
+        assertEquals(4, storage.getMapNames().size());
+        assertTrue(storage.hasMap("AOStorageTest_map1"));
+        assertTrue(storage.hasMap("AOStorageTest_map2"));
+        assertTrue(storage.hasMap("AOStorageTest_map3"));
+        assertTrue(storage.hasMap("AOStorageTest_map4"));
 
-        for (int i = 51; i < 100; i += 2) {
-            map.put("" + i, "value" + i);
+        storage.closeMap("AOStorageTest_map1");
+        assertEquals(3, storage.getMapNames().size());
+        assertFalse(storage.hasMap("AOStorageTest_map1"));
+        assertTrue(storage.nextTemporaryMapName().length() > 0);
+
+        try {
+            storage.openMap("xxx", "Unknow map type", null, null, null);
+            fail();
+        } catch (Exception e) {
         }
-        map.save();
-
-        for (int i = 11; i < 50; i += 2) {
-            map.put("" + i, "value" + i);
-        }
-        map.save();
-
-        // for (int i = 10; i < 100; i += 2) {
-        // map.put("" + i, "value" + i);
-        // }
-        //
-        // map.save();
-
-        // for (int i = 11; i < 100; i += 2) {
-        // map.put("" + i, "value" + i);
-        // }
-        //
-        // map.save();
     }
 
-    void testPut() {
-        for (int i = 10; i < 1000; i++) {
-            map.put("" + i, "value" + i);
-        }
-
-        map.save();
-
-        // for (int i = 100; i < 200; i++) {
-        // map.put("" + i, "value" + i);
-        // }
-
-        map.put("" + 10, "value" + 10);
-
-        map.put("" + 30, "value" + 30);
-
-        p(map.size());
+    static AOStorage openStorage() {
+        AOStorageBuilder builder = new AOStorageBuilder();
+        return openStorage(builder);
     }
 
-    void testGet() {
-        p(map.get("50"));
+    static AOStorage openStorage(int pageSplitSize) {
+        AOStorageBuilder builder = new AOStorageBuilder();
+        builder.pageSplitSize(pageSplitSize);
+        return openStorage(builder);
+    }
 
-        String key = map.firstKey();
-        p(key);
-
-        key = map.lastKey();
-        p(key);
-
-        key = map.higherKey("30");
-        p(key);
-        key = map.ceilingKey("30");
-        p(key);
-
-        key = map.floorKey("30");
-        p(key);
-        key = map.lowerKey("30");
-        p(key);
-
-        // for (String k : map.keyList())
-        // p(k);
+    static AOStorage openStorage(AOStorageBuilder builder) {
+        String storagePath = joinDirs("aose");
+        builder.storagePath(storagePath).compress().reuseSpace().minFillRate(30);
+        return builder.openStorage();
     }
 }

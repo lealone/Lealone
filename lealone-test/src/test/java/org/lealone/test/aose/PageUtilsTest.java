@@ -43,5 +43,17 @@ public class PageUtilsTest extends Assert {
         type = PageUtils.PAGE_TYPE_REMOTE;
         pos = PageUtils.getPagePos(chunkId, offset, length, type);
         assertEquals(type, PageUtils.getPageType(pos));
+
+        chunkId = 2;
+        offset = 10;
+        length = 30;
+        type = 1;
+
+        pos = PageUtils.getPagePos(chunkId, offset, length, type);
+        int pageMaxLength = PageUtils.getPageMaxLength(pos);
+        assertEquals(chunkId, PageUtils.getPageChunkId(pos));
+        assertEquals(offset, PageUtils.getPageOffset(pos));
+        assertEquals(32, pageMaxLength);
+        assertEquals(type, PageUtils.getPageType(pos));
     }
 }

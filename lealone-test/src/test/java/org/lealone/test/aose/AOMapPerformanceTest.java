@@ -35,7 +35,7 @@ public class AOMapPerformanceTest extends TestBase {
     }
 
     private AOStorage storage;
-    private String storageName;
+    private String storagePath;
     private StorageMap<Integer, String> map;
 
     @Test
@@ -48,12 +48,12 @@ public class AOMapPerformanceTest extends TestBase {
 
     private void init() {
         AOStorageBuilder builder = new AOStorageBuilder();
-        storageName = joinDirs("aose");
+        storagePath = joinDirs("aose");
         int pageSplitSize = 16 * 1024;
         pageSplitSize = 2 * 1024;
         // pageSplitSize = 1 * 1024;
         // pageSplitSize = 32 * 1024;
-        builder.storageName(storageName).compress().reuseSpace().pageSplitSize(pageSplitSize).minFillRate(30);
+        builder.storagePath(storagePath).compress().reuseSpace().pageSplitSize(pageSplitSize).minFillRate(30);
         storage = builder.openStorage();
         openMap();
     }

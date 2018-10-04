@@ -195,7 +195,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
         BTreePage p = root.copy();
         Object result;
         if (alwaysAdd || get(key) == null) {
-            if (p.getMemory() > storage.getPageSplitSize() && p.getKeyCount() > 3) {
+            if (p.getMemory() > btreeStorage.getPageSplitSize() && p.getKeyCount() > 3) {
                 // only possible if this is the root, else we would have
                 // split earlier (this requires pageSplitSize is fixed)
                 long totalCount = p.getTotalCount();
@@ -275,7 +275,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
             }
         }
         BTreePage c = p.getChildPage(index).copy();
-        if (c.getMemory() > storage.getPageSplitSize() && c.getKeyCount() > 4) {
+        if (c.getMemory() > btreeStorage.getPageSplitSize() && c.getKeyCount() > 4) {
             // split on the way down
             BTreePage split = split(c);
             p.setKey(index, getBounds(c));

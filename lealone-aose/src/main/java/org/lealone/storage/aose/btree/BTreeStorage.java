@@ -62,7 +62,7 @@ public class BTreeStorage {
     }
 
     private final BTreeMap<Object, Object> map;
-    private final String btreeStorageName;
+    private final String btreeStoragePath;
 
     private final ConcurrentHashMap<Long, String> hashCodeToHostIdMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<>();
@@ -132,16 +132,16 @@ public class BTreeStorage {
         value = config.get("compress");
         compressionLevel = value == null ? 0 : (Integer) value;
 
-        btreeStorageName = (String) config.get("storageName") + File.separator + map.getName();
-        if (!FileUtils.exists(btreeStorageName))
-            FileUtils.createDirectories(btreeStorageName);
+        btreeStoragePath = map.getStorage().getStoragePath() + File.separator + map.getName();
+        if (!FileUtils.exists(btreeStoragePath))
+            FileUtils.createDirectories(btreeStoragePath);
         else {
             for (int id : getAllChunkIds()) {
                 chunkIds.set(id);
             }
         }
 
-        String file = btreeStorageName + File.separator + "chunkMetaData";
+        String file = btreeStoragePath + File.separator + "chunkMetaData";
         try {
             chunkMetaData = new RandomAccessFile(file, "rw");
             int lastChunkId = readLastChunkId();
@@ -159,7 +159,7 @@ public class BTreeStorage {
     }
 
     private List<Integer> getAllChunkIds() {
-        String[] files = new File(btreeStorageName).list();
+        String[] files = new File(btreeStoragePath).list();
         List<Integer> ids = new ArrayList<>(files.length);
         if (files != null && files.length > 0) {
             for (String f : files) {
@@ -236,7 +236,7 @@ public class BTreeStorage {
     }
 
     private FileStorage getFileStorage(int chunkId) {
-        String chunkFileName = btreeStorageName + File.separator + chunkId + AOStorage.SUFFIX_AO_FILE;
+        String chunkFileName = btreeStoragePath + File.separator + chunkId + AOStorage.SUFFIX_AO_FILE;
         FileStorage fileStorage = new FileStorage();
         fileStorage.open(chunkFileName, map.config);
         return fileStorage;
@@ -500,7 +500,7 @@ public class BTreeStorage {
     synchronized void remove() {
         checkOpen();
         closeImmediately();
-        FileUtils.deleteRecursive(btreeStorageName, true);
+        FileUtils.deleteRecursive(btreeStoragePath, true);
     }
 
     boolean isClosed() {
@@ -858,7 +858,7 @@ public class BTreeStorage {
     }
 
     long getDiskSpaceUsed() {
-        return org.lealone.storage.fs.FileUtils.folderSize(new File(btreeStorageName));
+        return org.lealone.storage.fs.FileUtils.folderSize(new File(btreeStoragePath));
     }
 
     long getMemorySpaceUsed() {

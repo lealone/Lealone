@@ -17,26 +17,29 @@
  */
 package org.lealone.test.aose;
 
-import org.lealone.storage.memory.MemoryStorageEngine;
+import org.junit.Test;
+import org.lealone.db.value.ValueString;
+import org.lealone.storage.aose.AOStorage;
+import org.lealone.storage.aose.rtree.RTreeMap;
+import org.lealone.storage.aose.rtree.SpatialKey;
 import org.lealone.test.TestBase;
-import org.lealone.test.misc.CRUDExample;
 
-public class MemoryStorageTest {
+public class RTreeMapTest extends TestBase {
+    @Test
+    public void run() {
+        AOStorage storage = AOStorageTest.openStorage();
+        String name = "RTreeMapTest";
+        RTreeMap<String> rmap = storage.openRTreeMap(name, ValueString.type, 3);
+        assertEquals(rmap, storage.getMap(name));
+        assertTrue(storage.hasMap(name));
 
-    public static void main(String[] args) throws Exception {
-        // 会自动加载src/test/resource/META-INF/services/org.lealone.storage.StorageEngine中的类，
-        // 这样的调用是多于的，会生成两个MemoryStorageEngine实例，不过StorageEngineManager只保留其中之一。
-        // StorageEngineManager.registerStorageEngine(new MemoryStorageEngine());
+        for (int i = 1; i <= 100; i++) {
+            SpatialKey key = new SpatialKey(i, i * 1.0F, i * 2.0F);
+            // p(key);
+            rmap.put(key, "value" + i);
+        }
+        // rmap.save(); // TODO 还有bug，h2也有
 
-        TestBase test = new TestBase();
-        test.setStorageEngineName(MemoryStorageEngine.NAME);
-        test.setEmbedded(true);
-        test.printURL();
-        TestBase.initTransactionEngine();
-
-        CRUDExample.crud(test.getConnection());
-
-        TestBase.closeTransactionEngine();
+        assertEquals(100, rmap.size());
     }
-
 }

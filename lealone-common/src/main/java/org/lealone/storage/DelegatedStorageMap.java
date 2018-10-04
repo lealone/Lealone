@@ -255,4 +255,19 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     public Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
         return map.getEndpointToPageKeyMap(session, from, to);
     }
+
+    @Override
+    public void setMaxKey(Object key) {
+        map.setMaxKey(key);
+    }
+
+    @Override
+    public long getMaxKeyAsLong() {
+        return map.getMaxKeyAsLong();
+    }
+
+    @Override
+    public long incrementAndGetMaxKeyAsLong() {
+        return map.incrementAndGetMaxKeyAsLong();
+    }
 }

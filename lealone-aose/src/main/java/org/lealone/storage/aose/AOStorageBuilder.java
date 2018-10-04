@@ -36,14 +36,14 @@ public class AOStorageBuilder extends StorageBuilder {
      */
     @Override
     public AOStorage openStorage() {
-        String storageName = (String) config.get("storageName");
-        AOStorage storage = cache.get(storageName);
+        String storagePath = (String) config.get("storagePath");
+        AOStorage storage = cache.get(storagePath);
         if (storage == null) {
             synchronized (cache) {
-                storage = cache.get(storageName);
+                storage = cache.get(storagePath);
                 if (storage == null) {
                     storage = new AOStorage(config);
-                    cache.put(storageName, storage);
+                    cache.put(storagePath, storage);
                 }
             }
         }

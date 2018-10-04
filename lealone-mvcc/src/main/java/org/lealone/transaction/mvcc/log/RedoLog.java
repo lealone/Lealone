@@ -55,13 +55,13 @@ public class RedoLog {
 
         String baseDir = config.get("base_dir");
         String logDir = config.get("redo_log_dir");
-        String storageName = baseDir + File.separator + logDir;
-        config.put("storageName", storageName);
+        String storagePath = baseDir + File.separator + logDir;
+        config.put("storagePath", storagePath);
 
-        if (!FileUtils.exists(storageName))
-            FileUtils.createDirectories(storageName);
+        if (!FileUtils.exists(storagePath))
+            FileUtils.createDirectories(storagePath);
 
-        FilePath dir = FilePath.get(storageName);
+        FilePath dir = FilePath.get(storagePath);
         int lastId = 0;
         for (FilePath fp : dir.newDirectoryStream()) {
             String fullName = fp.getName();

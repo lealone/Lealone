@@ -53,6 +53,13 @@ public interface StorageMap<K, V> extends ReplicationMap {
     StorageDataType getValueType();
 
     /**
+     * Get the storage.
+     *
+     * @return the storage
+     */
+    Storage getStorage();
+
+    /**
      * Get a value.
      *
      * @param key the key
@@ -218,15 +225,29 @@ public interface StorageMap<K, V> extends ReplicationMap {
      */
     void close();
 
+    /**
+     * Save the map data to disk.
+     */
     void save();
+
+    K append(V value);
+
+    default void setMaxKey(Object key) {
+    }
+
+    default long getMaxKeyAsLong() {
+        return 0;
+    }
+
+    long incrementAndGetMaxKeyAsLong();
+
+    long getDiskSpaceUsed();
+
+    long getMemorySpaceUsed();
 
     void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException;
 
     void transferFrom(ReadableByteChannel src) throws IOException;
-
-    Storage getStorage();
-
-    K append(V value);
 
     void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage);
 
@@ -241,10 +262,6 @@ public interface StorageMap<K, V> extends ReplicationMap {
     }
 
     void setRootPage(ByteBuffer buff);
-
-    long getDiskSpaceUsed();
-
-    long getMemorySpaceUsed();
 
     default StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
         return cursor(from);

@@ -126,7 +126,7 @@ public class BTreeRemotePage extends BTreePage {
 
     @Override
     public void removePage() {
-        map.storage.removePage(pos, 0);
+        map.btreeStorage.removePage(pos, 0);
     }
 
     @Override

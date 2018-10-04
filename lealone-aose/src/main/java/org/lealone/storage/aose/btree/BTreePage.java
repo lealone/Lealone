@@ -392,11 +392,11 @@ public class BTreePage {
         BTreePage firstPage = binarySearchLeafPage(firstKey);
         BTreePage lastPage = binarySearchLeafPage(lastKey);
 
-        BTreeChunk chunk = map.storage.getChunk(firstPage.pos);
+        BTreeChunk chunk = map.btreeStorage.getChunk(firstPage.pos);
         long firstPos = firstPage.pos;
         long lastPos = lastPage.pos;
 
-        map.storage.readPagePositions(chunk);
+        map.btreeStorage.readPagePositions(chunk);
         ArrayList<long[]> pairs = new ArrayList<>();
         long pos;
         long pageLength;

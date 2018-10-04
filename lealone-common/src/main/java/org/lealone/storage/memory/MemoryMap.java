@@ -17,14 +17,9 @@
  */
 package org.lealone.storage.memory;
 
-import java.io.IOException;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import org.lealone.db.value.ValueLong;
-import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.StorageDataType;
@@ -53,20 +48,11 @@ public class MemoryMap<K, V> extends StorageMapBase<K, V> {
     }
 
     protected final ConcurrentSkipListMap<K, V> skipListMap;
-    protected MemoryStorage memoryStorage;
     protected boolean closed;
 
-    public MemoryMap(String name, StorageDataType keyType, StorageDataType valueType) {
-        super(name, keyType, valueType);
+    public MemoryMap(String name, StorageDataType keyType, StorageDataType valueType, MemoryStorage memoryStorage) {
+        super(name, keyType, valueType, memoryStorage);
         skipListMap = new ConcurrentSkipListMap<>(new KeyComparator<K>(keyType));
-    }
-
-    public MemoryStorage getMemoryStorage() {
-        return memoryStorage;
-    }
-
-    public void setMemoryStorage(MemoryStorage memoryStorage) {
-        this.memoryStorage = memoryStorage;
     }
 
     @Override
@@ -76,13 +62,13 @@ public class MemoryMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public V put(K key, V value) {
-        setLastKey(key);
+        setMaxKey(key);
         return skipListMap.put(key, value);
     }
 
     @Override
     public V putIfAbsent(K key, V value) {
-        setLastKey(key);
+        setMaxKey(key);
         return skipListMap.putIfAbsent(key, value);
     }
 
@@ -215,26 +201,4 @@ public class MemoryMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public void save() {
     }
-
-    @Override
-    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
-    }
-
-    @Override
-    public void transferFrom(ReadableByteChannel src) throws IOException {
-    }
-
-    @Override
-    public Storage getStorage() {
-        return memoryStorage;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public K append(V value) {
-        K key = (K) ValueLong.get(lastKey.incrementAndGet());
-        skipListMap.put(key, value);
-        return key;
-    }
-
 }

@@ -29,13 +29,29 @@ public interface Storage {
     <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters);
 
+    void closeMap(String name);
+
     boolean hasMap(String name);
+
+    StorageMap<?, ?> getMap(String name);
+
+    Set<String> getMapNames();
 
     String nextTemporaryMapName();
 
-    void backupTo(String fileName);
+    String getStoragePath();
+
+    boolean isInMemory();
+
+    long getDiskSpaceUsed();
+
+    long getMemorySpaceUsed();
 
     void save();
+
+    void drop();
+
+    void backupTo(String fileName);
 
     void close();
 
@@ -43,27 +59,16 @@ public interface Storage {
 
     boolean isClosed();
 
-    Set<String> getMapNames();
-
-    public default void replicate(Object dbObject, String[] newReplicationEndpoints, RunMode runMode) {
+    default void replicate(Object dbObject, String[] newReplicationEndpoints, RunMode runMode) {
         throw DbException.getUnsupportedException("replicate");
     }
 
-    public default void sharding(Object dbObject, String[] oldEndpoints, String[] newEndpoints, RunMode runMode) {
+    default void sharding(Object dbObject, String[] oldEndpoints, String[] newEndpoints, RunMode runMode) {
         throw DbException.getUnsupportedException("sharding");
     }
 
-    public default void drop() {
-    }
-
-    StorageMap<?, ?> getMap(String name);
-
-    public default void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
+    default void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
             String[] newEndpoints) {
         throw DbException.getUnsupportedException("scaleIn");
     }
-
-    long getDiskSpaceUsed();
-
-    long getMemorySpaceUsed();
 }

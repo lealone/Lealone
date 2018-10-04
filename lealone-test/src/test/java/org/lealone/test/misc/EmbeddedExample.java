@@ -49,6 +49,6 @@ public class EmbeddedExample {
 
         stmt.close();
         conn.close();
-        TestBase.te.close();
+        TestBase.closeTransactionEngine();
     }
 }

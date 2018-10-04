@@ -27,14 +27,14 @@ public abstract class StorageBuilder {
     }
 
     /**
-     * Use the following storage name. If the file does not exist, it is
+     * Use the following storage path. If the file does not exist, it is
      * automatically created. The parent directory already must exist.
      * 
-     * @param storageName the storage name
+     * @param storagePath the storage path
      * @return this
      */
-    public StorageBuilder storageName(String storageName) {
-        return set("storageName", storageName);
+    public StorageBuilder storagePath(String storagePath) {
+        return set("storagePath", storagePath);
     }
 
     /**

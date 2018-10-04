@@ -69,7 +69,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     @Override
     public BTreePage getChildPage(int index) {
         PageReference ref = children[index];
-        return ref.page != null ? ref.page : map.storage.readPage(ref, ref.pos);
+        return ref.page != null ? ref.page : map.btreeStorage.readPage(ref, ref.pos);
     }
 
     @Override
@@ -393,9 +393,9 @@ public class BTreeNodePage extends BTreeLocalPage {
                     int type = PageUtils.getPageType(pos);
                     if (type == PageUtils.PAGE_TYPE_LEAF) {
                         int mem = PageUtils.getPageMaxLength(pos);
-                        map.storage.removePage(pos, mem);
+                        map.btreeStorage.removePage(pos, mem);
                     } else {
-                        map.storage.readPage(pos).removeAllRecursive();
+                        map.btreeStorage.readPage(pos).removeAllRecursive();
                     }
                 }
             }
@@ -520,7 +520,7 @@ public class BTreeNodePage extends BTreeLocalPage {
                     children[i].page.getPrettyPageInfoRecursive(indent + "  ", info);
                 } else {
                     if (info.readOffLinePage) {
-                        map.storage.readPage(children[i].pos).getPrettyPageInfoRecursive(indent + "  ", info);
+                        map.btreeStorage.readPage(children[i].pos).getPrettyPageInfoRecursive(indent + "  ", info);
                     } else {
                         buff.append(indent).append("  ");
                         buff.append("*** off-line *** ").append(children[i]).append('\n');

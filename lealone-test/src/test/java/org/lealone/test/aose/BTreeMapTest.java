@@ -33,7 +33,6 @@ import org.junit.Test;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
-import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
 import org.lealone.storage.aose.btree.PageReference;
@@ -41,7 +40,7 @@ import org.lealone.test.TestBase;
 
 public class BTreeMapTest extends TestBase {
     private AOStorage storage;
-    private String storageName;
+    private String storagePath;
     private BTreeMap<Integer, String> map;
 
     @Test
@@ -57,14 +56,12 @@ public class BTreeMapTest extends TestBase {
     }
 
     private void init() {
-        AOStorageBuilder builder = new AOStorageBuilder();
-        storageName = joinDirs("aose");
         int pageSplitSize = 16 * 1024;
         pageSplitSize = 4 * 1024;
         pageSplitSize = 1 * 1024;
         // pageSplitSize = 32 * 1024;
-        builder.storageName(storageName).compress().reuseSpace().pageSplitSize(pageSplitSize).minFillRate(30);
-        storage = builder.openStorage();
+        storage = AOStorageTest.openStorage(pageSplitSize);
+        storagePath = storage.getStoragePath();
         openMap();
     }
 
@@ -322,7 +319,7 @@ public class BTreeMapTest extends TestBase {
     }
 
     void testTransfer() {
-        String file = storageName + File.separator + map.getName() + "TransferTo" + AOStorage.SUFFIX_AO_FILE;
+        String file = storagePath + File.separator + map.getName() + "TransferTo" + AOStorage.SUFFIX_AO_FILE;
         deleteFileRecursive(file);
         testTransferTo(file);
         testTransferFrom(file);
@@ -370,7 +367,7 @@ public class BTreeMapTest extends TestBase {
 
     void testRemotePage() {
         String mapName = "RemotePageTest";
-        String dir = storageName + File.separator + mapName;
+        String dir = storagePath + File.separator + mapName;
         deleteFileRecursive(dir);
 
         Map<String, String> parameters = new HashMap<>();

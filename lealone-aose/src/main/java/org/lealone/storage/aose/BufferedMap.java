@@ -23,14 +23,12 @@ import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.StorageDataType;
 
@@ -46,13 +44,10 @@ import org.lealone.storage.type.StorageDataType;
 public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Callable<Void> {
 
     private final ConcurrentSkipListMap<Object, Object> buffer = new ConcurrentSkipListMap<>();
-    private final AtomicLong lastKey = new AtomicLong(0);
 
     public BufferedMap(StorageMap<K, V> map) {
         super(map);
-        if (map instanceof StorageMapBase) {
-            lastKey.set(((StorageMapBase<K, V>) map).getLastKey());
-        }
+        map.setMaxKey(map.lastKey()); // 先读取上一次的最大key，用于支持append操作
     }
 
     public StorageMap<K, V> getMap() {
@@ -69,26 +64,8 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
 
     @Override
     public V put(K key, V value) {
-        if (map instanceof StorageMapBase) {
-            ((StorageMapBase<K, V>) map).setLastKey(key);
-            setLastKey(key);
-        }
+        map.setMaxKey(key); // 更新最大key
         return (V) buffer.put(key, value);
-    }
-
-    private void setLastKey(Object key) {
-        if (key instanceof ValueLong) {
-            long k = ((ValueLong) key).getLong();
-            while (true) {
-                long old = lastKey.get();
-                if (k > old) {
-                    if (lastKey.compareAndSet(old, k))
-                        break;
-                } else {
-                    break;
-                }
-            }
-        }
     }
 
     @Override
@@ -317,8 +294,8 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
 
     @Override
     public K append(V value) {
-        K key = (K) ValueLong.get(lastKey.incrementAndGet());
-        put(key, value);
+        K key = (K) ValueLong.get(map.incrementAndGetMaxKeyAsLong());
+        buffer.put(key, value);
         return key;
     }
 

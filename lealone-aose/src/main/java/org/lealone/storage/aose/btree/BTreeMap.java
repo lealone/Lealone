@@ -25,11 +25,9 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
-import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
@@ -73,8 +71,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     protected final boolean isShardingMode;
 
     protected final Map<String, Object> config;
-    protected final BTreeStorage storage;
-    protected final AOStorage aoStorage;
+    protected final BTreeStorage btreeStorage;
     protected IDatabase db;
 
     /**
@@ -88,20 +85,19 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @SuppressWarnings("unchecked")
     protected BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
-        super(name, keyType, valueType);
+        super(name, keyType, valueType, aoStorage);
         DataUtils.checkArgument(config != null, "The config may not be null");
 
         this.readOnly = config.containsKey("readOnly");
         boolean isShardingMode = config.containsKey("isShardingMode");
         this.config = config;
-        this.aoStorage = aoStorage;
         this.db = (IDatabase) config.get("db");
 
-        storage = new BTreeStorage((BTreeMap<Object, Object>) this);
+        btreeStorage = new BTreeStorage((BTreeMap<Object, Object>) this);
 
-        if (storage.lastChunk != null) {
-            root = storage.readPage(storage.lastChunk.rootPagePos);
-            setLastKey(lastKey());
+        if (btreeStorage.lastChunk != null) {
+            root = btreeStorage.readPage(btreeStorage.lastChunk.rootPagePos);
+            setMaxKey(lastKey());
         } else {
             if (isShardingMode) {
                 String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
@@ -114,9 +110,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     root = new BTreeRemotePage(this);
                 }
                 root.setReplicationHostIds(Arrays.asList(replicationEndpoints));
-                storage.addHostIds(replicationEndpoints);
+                btreeStorage.addHostIds(replicationEndpoints);
                 // 强制把replicationHostIds持久化
-                storage.forceSave();
+                btreeStorage.forceSave();
             } else {
                 isShardingMode = false;
                 root = BTreeLeafPage.createEmpty(this);
@@ -207,7 +203,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @throws UnsupportedOperationException if the map is read-only.
      */
     protected void beforeWrite() {
-        if (storage.isClosed()) {
+        if (btreeStorage.isClosed()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
         }
         if (readOnly) {
@@ -293,7 +289,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             if (index < 0) {
                 index = -index - 1;
                 p.insertLeaf(index, key, value);
-                setLastKey(key);
+                setMaxKey(key);
                 return null;
             }
             return p.setValue(index, value);
@@ -755,24 +751,28 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void remove() {
-        storage.remove();
-        aoStorage.closeMap(name);
+        btreeStorage.remove();
+        closeMap();
     }
 
     @Override
     public boolean isClosed() {
-        return storage.isClosed();
+        return btreeStorage.isClosed();
     }
 
     @Override
     public void close() {
-        storage.close();
-        aoStorage.closeMap(name);
+        closeMap();
+        btreeStorage.close();
+    }
+
+    private void closeMap() {
+        storage.closeMap(name);
     }
 
     @Override
     public void save() {
-        storage.save();
+        btreeStorage.save();
     }
 
     public boolean isReadOnly() {
@@ -780,7 +780,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public BTreeStorage getBTreeStorage() {
-        return storage;
+        return btreeStorage;
     }
 
     /**
@@ -884,7 +884,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private ByteBuffer readPageBuff(long pos) {
-        BTreeChunk chunk = storage.getChunk(pos);
+        BTreeChunk chunk = btreeStorage.getChunk(pos);
         long filePos = BTreeStorage.getFilePos(PageUtils.getPageOffset(pos));
         long maxPos = chunk.blockCount * BTreeStorage.BLOCK_SIZE;
         int maxLength = PageUtils.getPageMaxLength(pos);
@@ -1025,19 +1025,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             if (c.isLeaf())
                 p.remove(x);
         }
-    }
-
-    @Override
-    public Storage getStorage() {
-        return aoStorage;
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public K append(V value) {
-        K key = (K) ValueLong.get(lastKey.incrementAndGet());
-        put(key, value);
-        return key;
     }
 
     @Override
@@ -1241,12 +1228,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public long getDiskSpaceUsed() {
-        return storage.getDiskSpaceUsed();
+        return btreeStorage.getDiskSpaceUsed();
     }
 
     @Override
     public long getMemorySpaceUsed() {
-        return storage.getMemorySpaceUsed();
+        return btreeStorage.getMemorySpaceUsed();
     }
 
     // 查找闭区间[from, to]对应的所有leaf page，并建立这些leaf page所在节点与page key的映射关系

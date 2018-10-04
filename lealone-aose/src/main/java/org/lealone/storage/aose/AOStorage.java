@@ -17,9 +17,6 @@
  */
 package org.lealone.storage.aose;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,12 +24,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.common.util.IOUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
@@ -59,17 +52,16 @@ public class AOStorage extends StorageBase {
     public static final String SUFFIX_AO_FILE = ".db";
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
 
-    private final Map<String, Object> config;
-    protected IDatabase db;
+    private final IDatabase db;
 
     AOStorage(Map<String, Object> config) {
-        this.config = config;
+        super(config);
         this.db = (IDatabase) config.get("db");
-        String storageName = (String) config.get("storageName");
-        DataUtils.checkArgument(storageName != null, "The storage name may not be null");
-        if (!FileUtils.exists(storageName))
-            FileUtils.createDirectories(storageName);
-        FilePath dir = FilePath.get(storageName);
+        String storagePath = getStoragePath();
+        DataUtils.checkArgument(storagePath != null, "The storage path may not be null");
+        if (!FileUtils.exists(storagePath))
+            FileUtils.createDirectories(storagePath);
+        FilePath dir = FilePath.get(storagePath);
         for (FilePath fp : dir.newDirectoryStream()) {
             String mapFullName = fp.getName();
             if (mapFullName.startsWith(TEMP_NAME_PREFIX)) {
@@ -115,6 +107,7 @@ public class AOStorage extends StorageBase {
             Map<String, String> parameters) {
         BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, parameters);
         AOMap<K, V> map = new AOMap<>(btreeMap);
+        maps.put(name, map); // 覆盖btreeMap
         AOStorageService.addAOMap(map);
         return map;
     }
@@ -123,6 +116,7 @@ public class AOStorage extends StorageBase {
             Map<String, String> parameters) {
         BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, parameters);
         BufferedMap<K, V> map = new BufferedMap<>(btreeMap);
+        maps.put(name, map); // 覆盖btreeMap
         AOStorageService.addBufferedMap(map);
         return map;
     }
@@ -147,38 +141,14 @@ public class AOStorage extends StorageBase {
         return map;
     }
 
-    public boolean isReadOnly() {
+    boolean isReadOnly() {
         return config.containsKey("readOnly");
     }
 
     @Override
-    public void backupTo(String fileName) {
-        try {
-            save();
-            close(); // TODO 如何在不关闭存储的情况下备份，现在每个文件与FileStorage相关的在打开时就用排它锁锁住了，所以读不了
-            OutputStream zip = FileUtils.newOutputStream(fileName, false);
-            ZipOutputStream out = new ZipOutputStream(zip);
-            String storageName = (String) config.get("storageName");
-            String storageShortName = storageName.replace('\\', '/');
-            storageShortName = storageShortName.substring(storageShortName.lastIndexOf('/') + 1);
-            FilePath dir = FilePath.get(storageName);
-            for (FilePath map : dir.newDirectoryStream()) {
-                String entryNameBase = storageShortName + "/" + map.getName();
-                for (FilePath file : map.newDirectoryStream()) {
-                    backupFile(out, file.newInputStream(), entryNameBase + "/" + file.getName());
-                }
-            }
-            out.close();
-            zip.close();
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, fileName);
-        }
-    }
-
-    private static void backupFile(ZipOutputStream out, InputStream in, String entryName) throws IOException {
-        out.putNextEntry(new ZipEntry(entryName));
-        IOUtils.copyAndCloseInput(in, out);
-        out.closeEntry();
+    public void save() {
+        AOStorageService.forceMerge();
+        super.save();
     }
 
     private List<NetEndpoint> getReplicationEndpoints(String[] replicationHostIds) {
@@ -243,19 +213,6 @@ public class AOStorage extends StorageBase {
             btreeMap.setRunMode(runMode);
             btreeMap.replicateRootPage(p);
         }
-    }
-
-    @Override
-    public void drop() {
-        close();
-        String storageName = (String) config.get("storageName");
-        FileUtils.deleteRecursive(storageName, false);
-    }
-
-    @Override
-    public void save() {
-        AOStorageService.forceMerge();
-        super.save();
     }
 
     @Override

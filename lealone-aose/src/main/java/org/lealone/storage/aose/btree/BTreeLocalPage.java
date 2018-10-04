@@ -153,7 +153,7 @@ public abstract class BTreeLocalPage extends BTreePage {
 
     @Override
     boolean needSplit() {
-        return memory > map.storage.getPageSplitSize() && keys.length > 1;
+        return memory > map.btreeStorage.getPageSplitSize() && keys.length > 1;
     }
 
     /**
@@ -224,7 +224,7 @@ public abstract class BTreeLocalPage extends BTreePage {
         if (p == 0) {
             removedInMemory = true;
         }
-        map.storage.removePage(p, memory);
+        map.btreeStorage.removePage(p, memory);
     }
 
     void compressPage(DataBuffer buff, int compressStart, int type, int typePos) {

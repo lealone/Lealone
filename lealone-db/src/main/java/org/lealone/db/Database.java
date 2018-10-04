@@ -176,7 +176,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private final SQLEngine sqlEngine;
     private final TransactionEngine transactionEngine;
 
-    private String storageName; // 不使用原始的名称，而是用id替换数据库名
+    private String storagePath; // 不使用原始的名称，而是用id替换数据库名
 
     private Map<String, String> replicationProperties;
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
@@ -188,7 +188,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
         this.name = name;
-        this.storageName = getStorageName();
+        this.storagePath = getStoragePath();
         if (parameters != null) {
             dbSettings = DbSettings.getInstance(parameters);
             this.parameters = parameters;
@@ -332,7 +332,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public synchronized Database copy() {
         Database db = new Database(id, name, parameters);
         // 因为每个存储只能打开一次，所以要复用原有存储
-        db.storageName = storageName;
+        db.storagePath = storagePath;
         db.storageBuilder = storageBuilder;
         db.storages.putAll(storages);
         db.runMode = runMode;
@@ -380,7 +380,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     private void initTraceSystem() {
         if (persistent) {
-            traceSystem = new TraceSystem(getStorageName() + Constants.SUFFIX_TRACE_FILE);
+            traceSystem = new TraceSystem(getStoragePath() + Constants.SUFFIX_TRACE_FILE);
             traceSystem.setLevelFile(dbSettings.traceLevelFile);
             traceSystem.setLevelSystemOut(dbSettings.traceLevelSystemOut);
             trace = traceSystem.getTrace(Trace.DATABASE);
@@ -1353,7 +1353,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     @Override
     public String getDatabasePath() {
         if (persistent) {
-            return getStorageName();
+            return getStoragePath();
         }
         return null;
     }
@@ -1435,20 +1435,20 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public String createTempFile() {
         try {
             boolean inTempDir = readOnly;
-            String name = getStorageName();
+            String name = getStoragePath();
             if (!persistent) {
                 name = "memFS:" + name;
             }
             return FileUtils.createTempFile(name, Constants.SUFFIX_TEMP_FILE, true, inTempDir);
         } catch (IOException e) {
-            throw DbException.convertIOException(e, getStorageName());
+            throw DbException.convertIOException(e, getStoragePath());
         }
     }
 
     private void deleteOldTempFiles() {
-        String path = FileUtils.getParent(getStorageName());
+        String path = FileUtils.getParent(getStoragePath());
         for (String name : FileUtils.newDirectoryStream(path)) {
-            if (name.endsWith(Constants.SUFFIX_TEMP_FILE) && name.startsWith(getStorageName())) {
+            if (name.endsWith(Constants.SUFFIX_TEMP_FILE) && name.startsWith(getStoragePath())) {
                 // can't always delete the files, they may still be open
                 FileUtils.tryDelete(name);
             }
@@ -2156,25 +2156,25 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return storages.get(storageEngineName);
     }
 
-    private String getStorageName() {
-        if (storageName != null)
-            return storageName;
+    private String getStoragePath() {
+        if (storagePath != null)
+            return storagePath;
         String baseDir = SysProperties.getBaseDir();
         if (baseDir != null && !baseDir.endsWith(File.separator))
             baseDir = baseDir + File.separator;
 
         if (baseDir == null)
-            storageName = "." + File.separator;
+            storagePath = "." + File.separator;
         else
-            storageName = baseDir;
+            storagePath = baseDir;
 
-        storageName = storageName + "db" + Constants.NAME_SEPARATOR + id;
+        storagePath = storagePath + "db" + Constants.NAME_SEPARATOR + id;
         try {
-            storageName = new File(storageName).getCanonicalPath();
+            storagePath = new File(storagePath).getCanonicalPath();
         } catch (IOException e) {
             throw DbException.convert(e);
         }
-        return storageName;
+        return storagePath;
     }
 
     public synchronized StorageBuilder getStorageBuilder(StorageEngine storageEngine) {
@@ -2185,10 +2185,10 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (!persistent) {
             builder.inMemory();
         } else {
-            String storageName = getStorageName();
+            String storagePath = getStoragePath();
             byte[] key = getFileEncryptionKey();
             builder.pageSplitSize(getPageSize());
-            builder.storageName(storageName);
+            builder.storagePath(storagePath);
             if (isReadOnly()) {
                 builder.readOnly();
             }
