@@ -30,23 +30,18 @@ import org.lealone.storage.fs.FileUtils;
  *
  * @author zhh
  */
-public class RedoLog {
+class RedoLog {
 
     private static final long DEFAULT_LOG_CHUNK_SIZE = 32 * 1024 * 1024;
-
-    public static final String LOG_SYNC_TYPE_PERIODIC = "periodic";
-    public static final String LOG_SYNC_TYPE_BATCH = "batch";
-    public static final String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
 
     public static final char NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
 
     private final Map<String, String> config;
     private final long logChunkSize;
-    private final LogSyncService logSyncService;
 
-    private RedoLogChunk current;
+    private RedoLogChunk currentChunk;
 
-    public RedoLog(Map<String, String> config) {
+    RedoLog(Map<String, String> config) {
         this.config = config;
         if (config.containsKey("log_chunk_size"))
             logChunkSize = Long.parseLong(config.get("log_chunk_size"));
@@ -73,55 +68,27 @@ public class RedoLog {
             }
         }
 
-        String logSyncType = config.get("log_sync_type");
-        if (logSyncType == null || LOG_SYNC_TYPE_PERIODIC.equalsIgnoreCase(logSyncType))
-            logSyncService = new PeriodicLogSyncService(config);
-        else if (LOG_SYNC_TYPE_BATCH.equalsIgnoreCase(logSyncType))
-            logSyncService = new BatchLogSyncService(config);
-        else if (LOG_SYNC_TYPE_NO_SYNC.equalsIgnoreCase(logSyncType))
-            logSyncService = new NoLogSyncService();
-        else
-            throw new IllegalArgumentException("Unknow log_sync_type: " + logSyncType);
-        logSyncService.setRedoLog(this);
-
-        current = new RedoLogChunk(lastId, config);
+        currentChunk = new RedoLogChunk(lastId, config);
     }
 
-    public void addRedoLogRecord(RedoLogRecord r) {
-        current.addRedoLogRecord(r);
+    void addRedoLogRecord(RedoLogRecord r) {
+        currentChunk.addRedoLogRecord(r);
     }
 
-    public Queue<RedoLogRecord> getAndResetRedoLogRecords() {
-        return current.getAndResetRedoLogRecords();
+    Queue<RedoLogRecord> getAndResetRedoLogRecords() {
+        return currentChunk.getAndResetRedoLogRecords();
     }
 
-    public void close() {
+    void close() {
         save();
-        current.close();
+        currentChunk.close();
+    }
 
-        logSyncService.close();
-        try {
-            logSyncService.join();
-        } catch (InterruptedException e) {
+    void save() {
+        currentChunk.save();
+        if (currentChunk.logChunkSize() > logChunkSize) {
+            currentChunk.close();
+            currentChunk = new RedoLogChunk(currentChunk.getId() + 1, config);
         }
     }
-
-    public void save() {
-        current.save();
-        if (current.logChunkSize() > logChunkSize) {
-            current.close();
-            current = new RedoLogChunk(current.getId() + 1, config);
-        }
-    }
-
-    public LogSyncService getLogSyncService() {
-        return logSyncService;
-    }
-
-    public void writeCheckpoint() {
-        RedoLogRecord r = new RedoLogRecord(true);
-        addRedoLogRecord(r);
-        logSyncService.maybeWaitForSync(r);
-    }
-
 }

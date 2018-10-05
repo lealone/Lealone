@@ -25,7 +25,7 @@ class BatchLogSyncService extends LogSyncService {
 
     private static final long DEFAULT_LOG_SYNC_BATCH_WINDOW = 5;
 
-    public BatchLogSyncService(Map<String, String> config) {
+    BatchLogSyncService(Map<String, String> config) {
         super("BatchLogSyncService");
 
         if (config.containsKey("log_sync_batch_window"))

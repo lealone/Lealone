@@ -47,8 +47,6 @@ public interface Transaction {
 
     long getTransactionId();
 
-    // long getCommitTimestamp();
-
     boolean isAutoCommit();
 
     void setAutoCommit(boolean autoCommit);

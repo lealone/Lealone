@@ -134,11 +134,11 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             if (v != null)
                 return v;
 
-            if (!transaction.transactionEngine.currentTransactions.containsKey(tid)) // TODO
+            if (!transaction.transactionEngine.containsTransaction(tid)) // TODO
                 return null;
 
             // get the value before the uncommitted transaction
-            LinkedList<LogRecord> d = transaction.transactionEngine.currentTransactions.get(tid).logRecords;
+            LinkedList<LogRecord> d = transaction.transactionEngine.getTransaction(tid).logRecords;
             if (d == null) {
                 // this entry should be committed or rolled back
                 // in the meantime (the transaction might still be open)
@@ -396,7 +396,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     public long sizeAsLong() {
         long sizeRaw = map.sizeAsLong();
         long undoLogSize = 0;
-        for (MVCCTransaction t : transaction.transactionEngine.currentTransactions.values()) {
+        for (MVCCTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
             undoLogSize += t.logRecords.size();
         }
         if (undoLogSize == 0) {
@@ -427,7 +427,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, null, new ObjectDataType(), new ObjectDataType(),
                 null);
         try {
-            for (MVCCTransaction t : transaction.transactionEngine.currentTransactions.values()) {
+            for (MVCCTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
                 LinkedList<LogRecord> records = t.logRecords;
                 for (LogRecord r : records) {
                     String m = r.mapName;
@@ -526,13 +526,9 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     public K append(V value) { // 追加新记录时不会产生事务冲突
         TransactionalValue newValue = new TransactionalValue(transaction, value);
         K key = map.append(newValue);
-        String mapName = getName();
         // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
         // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
-        transaction.log(mapName, key, null, newValue);
-        transaction.lastKey = key;
-        transaction.lastValue = newValue;
-        transaction.lastStorageMap = (StorageMap<Object, TransactionalValue>) map;
+        transaction.logAppend((StorageMap<Object, TransactionalValue>) map, key, newValue);
         return key;
     }
 

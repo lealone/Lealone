@@ -61,9 +61,7 @@ public class MVCCTransactionEngineTest extends TestBase {
         if (isDistributed) {
             config.put("host_and_port", Constants.DEFAULT_HOST + ":" + Constants.DEFAULT_TCP_PORT);
         }
-
         te.init(config);
-
         return te;
     }
 
@@ -118,13 +116,24 @@ public class MVCCTransactionEngineTest extends TestBase {
         Transaction t3 = te.beginTransaction(false, false);
         map = map.getInstance(t3);
         map.put("5", "f");
-        assertEquals(3, map.size());
+        assertEquals(3, map.size()); // t2未提交，所以读不到它put的数据
 
         Transaction t4 = te.beginTransaction(false, false);
         map = map.getInstance(t4);
         map.remove("1");
         assertEquals(1, map.size());
         t4.commit();
+
+        Transaction t5 = te.beginTransaction(false, false);
+        map = map.getInstance(t5);
+        map.put("6", "g");
+        assertEquals(2, map.size());
+        t5.prepareCommit(); // 提交到后台，由LogSyncService线程在sync完事务日志后自动提交事务
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+        }
+        assertEquals(Transaction.STATUS_CLOSED, t5.getStatus());
 
         te.close();
     }

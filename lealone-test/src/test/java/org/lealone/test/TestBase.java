@@ -32,7 +32,7 @@ import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.memory.MemoryStorageEngine;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
-import org.lealone.transaction.mvcc.log.RedoLog;
+import org.lealone.transaction.mvcc.log.LogSyncService;
 
 public class TestBase extends Assert {
 
@@ -77,7 +77,7 @@ public class TestBase extends Assert {
             Map<String, String> config = new HashMap<>();
             config.put("base_dir", TEST_DIR);
             config.put("redo_log_dir", "redo_log");
-            config.put("log_sync_type", RedoLog.LOG_SYNC_TYPE_PERIODIC);
+            config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
             te.init(config);
         }
     }
