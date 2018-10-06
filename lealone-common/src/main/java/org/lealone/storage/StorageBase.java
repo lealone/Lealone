@@ -132,6 +132,7 @@ public abstract class StorageBase implements Storage {
 
     @Override
     public void close() {
+        save();
         closeImmediately();
     }
 

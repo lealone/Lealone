@@ -29,8 +29,6 @@ class PeriodicLogSyncService extends LogSyncService {
     private final long blockWhenSyncLagsMillis;
 
     public PeriodicLogSyncService(Map<String, String> config) {
-        super("PeriodicLogSyncService");
-
         if (config.containsKey("log_sync_period"))
             syncIntervalMillis = Long.parseLong(config.get("log_sync_period"));
         else

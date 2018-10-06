@@ -26,6 +26,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
+import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
@@ -52,8 +53,8 @@ public abstract class LogSyncService extends Thread {
     // key: mapName, value: map key/value ByteBuffer list
     private final HashMap<String, ArrayList<ByteBuffer>> pendingRedoLog = new HashMap<>();
 
-    public LogSyncService(String name) {
-        super(name);
+    public LogSyncService() {
+        setName(getClass().getSimpleName());
         setDaemon(true);
     }
 
@@ -73,6 +74,17 @@ public abstract class LogSyncService extends Thread {
 
     @Override
     public void run() {
+        ShutdownHookUtils.addShutdownHook(this, () -> {
+            try {
+                LogSyncService.this.sync();
+            } catch (Exception e) {
+            }
+            try {
+                LogSyncService.this.close();
+                LogSyncService.this.join();
+            } catch (Exception e) {
+            }
+        });
         while (running) {
             long syncStarted = System.currentTimeMillis();
             sync();

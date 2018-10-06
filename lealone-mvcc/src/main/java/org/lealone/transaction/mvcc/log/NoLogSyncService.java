@@ -22,7 +22,6 @@ import org.lealone.transaction.mvcc.MVCCTransaction;
 class NoLogSyncService extends LogSyncService {
 
     public NoLogSyncService() {
-        super("NoLogSyncService");
     }
 
     @Override

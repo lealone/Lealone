@@ -333,7 +333,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         Database db = new Database(id, name, parameters);
         // 因为每个存储只能打开一次，所以要复用原有存储
         db.storagePath = storagePath;
-        db.storageBuilder = storageBuilder;
+        db.storageBuilders.putAll(storageBuilders);
         db.storages.putAll(storages);
         db.runMode = runMode;
         db.replicationProperties = replicationProperties;
@@ -420,10 +420,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
             systemSession = new SystemSession(this, systemUser, ++nextSessionId);
 
-            // long t1 = System.currentTimeMillis();
             openMetaTable();
-            // System.out.println(getShortName() + ": openMetaTable total time: " + (System.currentTimeMillis() - t1)
-            // + " ms");
 
             if (!readOnly) {
                 // set CREATE_BUILD in a new database
@@ -2126,9 +2123,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    // 每个数据库只有一个StorageBuilder
-    private StorageBuilder storageBuilder;
-
+    private final ConcurrentHashMap<String, StorageBuilder> storageBuilders = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Storage> storages = new ConcurrentHashMap<>();
 
     @Override
@@ -2178,19 +2173,21 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public synchronized StorageBuilder getStorageBuilder(StorageEngine storageEngine) {
+        StorageBuilder storageBuilder = storageBuilders.get(storageEngine.getName());
         if (storageBuilder != null)
             return storageBuilder;
 
-        StorageBuilder builder = storageEngine.getStorageBuilder();
+        storageBuilder = storageEngine.getStorageBuilder();
+        storageBuilders.put(storageEngine.getName(), storageBuilder);
         if (!persistent) {
-            builder.inMemory();
+            storageBuilder.inMemory();
         } else {
             String storagePath = getStoragePath();
             byte[] key = getFileEncryptionKey();
-            builder.pageSplitSize(getPageSize());
-            builder.storagePath(storagePath);
+            storageBuilder.pageSplitSize(getPageSize());
+            storageBuilder.storagePath(storagePath);
             if (isReadOnly()) {
-                builder.readOnly();
+                storageBuilder.readOnly();
             }
 
             if (key != null) {
@@ -2198,23 +2195,21 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 for (int i = 0; i < password.length; i++) {
                     password[i] = (char) (((key[i + i] & 255) << 16) | ((key[i + i + 1]) & 255));
                 }
-                builder.encryptionKey(password);
+                storageBuilder.encryptionKey(password);
             }
             if (getSettings().compressData) {
-                builder.compress();
+                storageBuilder.compress();
                 // use a larger page split size to improve the compression ratio
-                builder.pageSplitSize(64 * 1024);
+                storageBuilder.pageSplitSize(64 * 1024);
             }
-            builder.backgroundExceptionHandler(new UncaughtExceptionHandler() {
+            storageBuilder.backgroundExceptionHandler(new UncaughtExceptionHandler() {
                 @Override
                 public void uncaughtException(Thread t, Throwable e) {
                     setBackgroundException(DbException.convert(e));
                 }
             });
-            builder.db(this);
+            storageBuilder.db(this);
         }
-
-        storageBuilder = builder;
         return storageBuilder;
     }
 

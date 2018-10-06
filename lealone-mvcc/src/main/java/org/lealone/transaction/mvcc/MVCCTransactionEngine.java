@@ -226,6 +226,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
         StorageMapSaveService(Map<String, String> config) {
             super("StorageMapSaveService");
+            setDaemon(true);
 
             String v = config.get("map_cache_size_in_mb");
             if (v != null)
@@ -277,15 +278,13 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 long now = System.currentTimeMillis();
                 boolean writeCheckpoint = false;
                 for (Entry<String, AtomicInteger> e : estimatedMemory.entrySet()) {
-                    if (isClosed || e.getValue().get() > mapCacheSize || lastSavedAt + mapSavePeriod > now) {
+                    if (isClosed || e.getValue().get() > mapCacheSize || lastSavedAt + mapSavePeriod < now) {
                         maps.get(e.getKey()).save();
                         writeCheckpoint = true;
                     }
                 }
-                if (lastSavedAt + mapSavePeriod > now)
-                    lastSavedAt = now;
-
                 if (writeCheckpoint) {
+                    lastSavedAt = now;
                     logSyncService.writeCheckpoint();
                 }
             }
