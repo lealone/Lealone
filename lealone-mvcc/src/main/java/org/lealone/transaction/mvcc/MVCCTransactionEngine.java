@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.storage.StorageMap;
@@ -37,6 +39,8 @@ import org.lealone.transaction.mvcc.log.LogSyncService;
 import org.lealone.transaction.mvcc.log.RedoLogRecord;
 
 public class MVCCTransactionEngine extends TransactionEngineBase {
+
+    private static final Logger logger = LoggerFactory.getLogger(MVCCTransactionEngine.class);
 
     private static final String NAME = "MVCC";
 
@@ -95,7 +99,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     void removeMap(String mapName) {
         estimatedMemory.remove(mapName);
         maps.remove(mapName);
-        RedoLogRecord r = new RedoLogRecord(mapName);
+        RedoLogRecord r = RedoLogRecord.createDroppedMapRedoLogRecord(mapName);
         logSyncService.addAndMaybeWaitForSync(r);
     }
 
@@ -211,11 +215,17 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         return last;
     }
 
+    @Override
+    public void checkpoint() {
+        storageMapSaveService.checkpoint();
+    }
+
     private class StorageMapSaveService extends Thread {
 
         private static final int DEFAULT_MAP_CACHE_SIZE = 32 * 1024 * 1024; // 32M
         private static final int DEFAULT_MAP_SAVE_PERIOD = 1 * 60 * 60 * 1000; // 1小时
 
+        private final AtomicBoolean checking = new AtomicBoolean(false);
         private final Semaphore semaphore = new Semaphore(1);
         private final int mapCacheSize;
         private final int mapSavePeriod;
@@ -265,6 +275,34 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             }
         }
 
+        // 例如通过执行CHECKPOINT语句触发
+        void checkpoint() {
+            if (isClosed)
+                return;
+            checkpoint(true);
+        }
+
+        // 按周期自动触发
+        private void checkpoint(boolean force) {
+            if (!checking.compareAndSet(false, true))
+                return;
+            long now = System.currentTimeMillis();
+            boolean executeCheckpoint = false;
+            boolean forceSave = force || isClosed || (lastSavedAt + mapSavePeriod < now);
+            for (Entry<String, AtomicInteger> e : estimatedMemory.entrySet()) {
+                if (forceSave || executeCheckpoint || e.getValue().get() > mapCacheSize) {
+                    maps.get(e.getKey()).save();
+                    e.getValue().set(0);
+                    executeCheckpoint = true;
+                }
+            }
+            if (executeCheckpoint) {
+                lastSavedAt = now;
+                logSyncService.checkpoint(nextEvenTransactionId());
+            }
+            checking.set(false);
+        }
+
         @Override
         public void run() {
             while (!isClosed) {
@@ -274,18 +312,10 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 } catch (InterruptedException e) {
                     throw new AssertionError();
                 }
-
-                long now = System.currentTimeMillis();
-                boolean writeCheckpoint = false;
-                for (Entry<String, AtomicInteger> e : estimatedMemory.entrySet()) {
-                    if (isClosed || e.getValue().get() > mapCacheSize || lastSavedAt + mapSavePeriod < now) {
-                        maps.get(e.getKey()).save();
-                        writeCheckpoint = true;
-                    }
-                }
-                if (writeCheckpoint) {
-                    lastSavedAt = now;
-                    logSyncService.writeCheckpoint();
+                try {
+                    checkpoint(false);
+                } catch (Exception e) {
+                    logger.error("Failed to execute checkpoint", e);
                 }
             }
         }

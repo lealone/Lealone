@@ -24,6 +24,7 @@ import java.util.concurrent.LinkedTransferQueue;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.fs.FileStorage;
+import org.lealone.storage.fs.FileUtils;
 
 /**
  * A queue-based redo log chunk
@@ -32,7 +33,7 @@ import org.lealone.storage.fs.FileStorage;
  */
 class RedoLogChunk implements Comparable<RedoLogChunk> {
 
-    private static final String CHUNK_FILE_NAME_PREFIX = "redoLog" + RedoLog.NAME_ID_SEPARATOR;
+    static final String CHUNK_FILE_NAME_PREFIX = "redoLog" + RedoLog.NAME_ID_SEPARATOR;
 
     private static String getChunkFileName(Map<String, String> config, int id) {
         String storagePath = config.get("storagePath");
@@ -41,12 +42,13 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
 
     private final int id;
     private final FileStorage fileStorage;
-
+    private final Map<String, String> config;
     private LinkedTransferQueue<RedoLogRecord> queue;
     private long pos;
 
     RedoLogChunk(int id, Map<String, String> config) {
         this.id = id;
+        this.config = config;
         String chunkFileName = getChunkFileName(config, id);
         fileStorage = new FileStorage();
         fileStorage.open(chunkFileName, config);
@@ -60,10 +62,9 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         ByteBuffer buffer = fileStorage.readFully(0, (int) pos);
         while (buffer.remaining() > 0) {
             RedoLogRecord r = RedoLogRecord.read(buffer);
-            if (r.checkpoint)
-                queue = new LinkedTransferQueue<>();
-            else
-                queue.add(r);
+            if (r.isCheckpoint())
+                queue = new LinkedTransferQueue<>(); // 丢弃之前的
+            queue.add(r);
         }
     }
 
@@ -91,6 +92,12 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         if (!oldQueue.isEmpty()) {
             try (DataBuffer buff = DataBuffer.create()) {
                 for (RedoLogRecord r : oldQueue) {
+                    if (r.isCheckpoint()) {
+                        deleteOldChunkFiles();
+                        fileStorage.truncate(0);
+                        buff.reset();
+                        pos = 0;
+                    }
                     r.write(buff);
                 }
                 int chunkLength = buff.position();
@@ -102,9 +109,17 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
                     fileStorage.sync();
                 }
                 for (RedoLogRecord r : oldQueue) {
-                    r.synced = true;
+                    r.setSynced(true);
                 }
             }
+        }
+    }
+
+    private void deleteOldChunkFiles() {
+        for (int i = 0; i < id; i++) {
+            String chunkFileName = getChunkFileName(config, i);
+            if (FileUtils.exists(chunkFileName))
+                FileUtils.delete(chunkFileName);
         }
     }
 

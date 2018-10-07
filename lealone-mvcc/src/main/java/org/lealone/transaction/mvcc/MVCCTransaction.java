@@ -28,7 +28,6 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.ValueLong;
-import org.lealone.db.value.ValueString;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.ObjectDataType;
@@ -48,7 +47,7 @@ public class MVCCTransaction implements Transaction {
 
     String globalTransactionName;
     int logId;
-    LinkedList<LogRecord> logRecords = new LinkedList<>();
+    LinkedList<TransactionalLogRecord> logRecords = new LinkedList<>();
 
     private final LogSyncService logSyncService;
 
@@ -70,22 +69,8 @@ public class MVCCTransaction implements Transaction {
         status = Transaction.STATUS_OPEN;
     }
 
-    static class LogRecord {
-        final String mapName;
-        Object key; // 没有用final，在replicationPrepareCommit方法那里有特殊用途
-        final TransactionalValue oldValue;
-        final TransactionalValue newValue;
-
-        public LogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
-            this.mapName = mapName;
-            this.key = key;
-            this.oldValue = oldValue;
-            this.newValue = newValue;
-        }
-    }
-
     public void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
-        logRecords.add(new LogRecord(mapName, key, oldValue, newValue));
+        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue));
         logId++;
     }
 
@@ -196,7 +181,7 @@ public class MVCCTransaction implements Transaction {
         }
         StorageMap<K, TransactionalValue> map = storage.openMap(name, mapType, keyType, valueType, parameters);
         if (!map.isInMemory()) {
-            logSyncService.redo(map);
+            TransactionalLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(map));
         }
         transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
         return createTransactionMap(map, isShardingMode);
@@ -228,7 +213,7 @@ public class MVCCTransaction implements Transaction {
         checkNotClosed();
         prepared = true;
 
-        RedoLogRecord r = createRedoLogRecord();
+        RedoLogRecord r = createLocalTransactionRedoLogRecord();
         // 事务没有进行任何操作时不用同步日志
         if (r != null) {
             // 先写redoLog
@@ -254,7 +239,7 @@ public class MVCCTransaction implements Transaction {
 
     protected void commitLocal() {
         checkNotClosed();
-        if (prepared) {
+        if (prepared) { // 在prepareCommit阶段已经写完redoLog了
             commitFinal();
             if (session != null && session.getRunnable() != null) {
                 try {
@@ -264,7 +249,7 @@ public class MVCCTransaction implements Transaction {
                 }
             }
         } else {
-            RedoLogRecord r = createRedoLogRecord();
+            RedoLogRecord r = createLocalTransactionRedoLogRecord();
             if (r != null) { // 事务没有进行任何操作时不用同步日志
                 // 先写redoLog
                 logSyncService.addAndMaybeWaitForSync(r);
@@ -286,22 +271,8 @@ public class MVCCTransaction implements Transaction {
         MVCCTransaction t = transactionEngine.removeTransaction(tid);
         if (t == null)
             return;
-        StorageMap<Object, TransactionalValue> map;
-        for (LogRecord r : t.logRecords) {
-            map = transactionEngine.getMap(r.mapName);
-            if (map == null) {
-                // map was later removed
-            } else {
-                TransactionalValue value = map.get(r.key);
-                if (value == null) {
-                    // nothing to do
-                } else if (value.value == null) {
-                    // remove the value
-                    map.remove(r.key);
-                } else {
-                    map.put(r.key, TransactionalValue.createCommitted(value.value));
-                }
-            }
+        for (TransactionalLogRecord r : t.logRecords) {
+            r.commit(transactionEngine);
         }
         t.endTransaction();
     }
@@ -313,49 +284,27 @@ public class MVCCTransaction implements Transaction {
         transactionEngine.removeTransaction(transactionId);
     }
 
-    protected RedoLogRecord createRedoLogRecord() {
+    // 将当前一系列的事务操作日志转换成单条RedoLogRecord
+    protected ByteBuffer logRecords2redoLogRecordBuffer() {
         if (logRecords.isEmpty())
             return null;
         try (DataBuffer writeBuffer = DataBuffer.create()) {
-            String mapName;
-            TransactionalValue value;
-            StorageMap<?, ?> map;
-            int lastPosition = 0, keyValueStart, memory;
-
-            for (LogRecord r : logRecords) {
-                mapName = r.mapName;
-                value = r.newValue;
-                map = transactionEngine.getMap(mapName);
-
-                // 有可能在执行DROP DATABASE时删除了
-                if (map == null) {
-                    continue;
-                }
-
-                ValueString.type.write(writeBuffer, mapName);
-                keyValueStart = writeBuffer.position();
-                writeBuffer.putInt(0);
-
-                map.getKeyType().write(writeBuffer, r.key);
-                if (value.value == null)
-                    writeBuffer.put((byte) 0);
-                else {
-                    writeBuffer.put((byte) 1);
-                    ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, value.value);
-                }
-
-                writeBuffer.putInt(keyValueStart, writeBuffer.position() - keyValueStart - 4);
-                memory = writeBuffer.position() - lastPosition;
-                lastPosition = writeBuffer.position();
-                transactionEngine.incrementEstimatedMemory(mapName, memory);
+            for (TransactionalLogRecord r : logRecords) {
+                r.writeForRedo(writeBuffer, transactionEngine);
             }
-
             ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
-            ByteBuffer values = ByteBuffer.allocateDirect(buffer.limit());
-            values.put(buffer);
-            values.flip();
-            return new RedoLogRecord(transactionId, values);
+            ByteBuffer operations = ByteBuffer.allocateDirect(buffer.limit());
+            operations.put(buffer);
+            operations.flip();
+            return operations;
         }
+    }
+
+    private RedoLogRecord createLocalTransactionRedoLogRecord() {
+        ByteBuffer operations = logRecords2redoLogRecordBuffer();
+        if (operations == null)
+            return null;
+        return RedoLogRecord.createLocalTransactionRedoLogRecord(transactionId, operations);
     }
 
     @Override
@@ -402,20 +351,8 @@ public class MVCCTransaction implements Transaction {
 
     private void rollbackTo(long toLogId) {
         while (--logId >= toLogId) {
-            LogRecord r = logRecords.removeLast();
-            String mapName = r.mapName;
-            StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
-            if (map != null) {
-                Object key = r.key;
-                TransactionalValue oldValue = r.oldValue;
-                if (oldValue == null) {
-                    // this transaction added the value
-                    map.remove(key);
-                } else {
-                    // this transaction updated the value
-                    map.put(key, oldValue);
-                }
-            }
+            TransactionalLogRecord r = logRecords.removeLast();
+            r.rollback(transactionEngine);
         }
     }
 

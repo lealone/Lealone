@@ -18,8 +18,12 @@
 package org.lealone.transaction.mvcc.log;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.LinkedTransferQueue;
 
 import org.lealone.db.Constants;
 import org.lealone.storage.fs.FilePath;
@@ -56,27 +60,47 @@ class RedoLog {
         if (!FileUtils.exists(storagePath))
             FileUtils.createDirectories(storagePath);
 
-        FilePath dir = FilePath.get(storagePath);
-        int lastId = 0;
+        List<Integer> ids = getAllChunkIds();
+        int lastId;
+        if (!ids.isEmpty())
+            lastId = ids.get(ids.size() - 1);
+        else
+            lastId = 0;
+        currentChunk = new RedoLogChunk(lastId, config);
+    }
+
+    private List<Integer> getAllChunkIds() {
+        ArrayList<Integer> ids = new ArrayList<>();
+        int prefixLength = RedoLogChunk.CHUNK_FILE_NAME_PREFIX.length();
+        FilePath dir = FilePath.get(config.get("storagePath"));
         for (FilePath fp : dir.newDirectoryStream()) {
             String fullName = fp.getName();
-            int idStartPos = fullName.lastIndexOf(NAME_ID_SEPARATOR);
-            if (idStartPos > 0) {
-                int id = Integer.parseInt(fullName.substring(idStartPos + 1));
-                if (id > lastId)
-                    lastId = id;
+            if (fullName.startsWith(RedoLogChunk.CHUNK_FILE_NAME_PREFIX)) {
+                int id = Integer.parseInt(fullName.substring(prefixLength));
+                ids.add(id);
             }
         }
-
-        currentChunk = new RedoLogChunk(lastId, config);
+        Collections.sort(ids); // 必须排序，按id从小到大的顺序读取文件，才能正确的redo
+        return ids;
     }
 
     void addRedoLogRecord(RedoLogRecord r) {
         currentChunk.addRedoLogRecord(r);
     }
 
-    Queue<RedoLogRecord> getAndResetRedoLogRecords() {
-        return currentChunk.getAndResetRedoLogRecords();
+    Queue<RedoLogRecord> getAllRedoLogRecords() {
+        LinkedTransferQueue<RedoLogRecord> queue = new LinkedTransferQueue<>();
+        List<Integer> ids = getAllChunkIds();
+        for (int id : ids) {
+            RedoLogChunk chunk;
+            if (id == currentChunk.getId()) {
+                chunk = currentChunk;
+            } else {
+                chunk = new RedoLogChunk(id, config);
+            }
+            queue.addAll(chunk.getAndResetRedoLogRecords());
+        }
+        return queue;
     }
 
     void close() {

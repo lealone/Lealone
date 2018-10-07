@@ -1733,20 +1733,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    /**
-     * Synchronize the files with the file system. This method is called when
-     * executing the SQL statement CHECKPOINT SYNC.
-     */
-    public synchronized void sync() {
-        if (readOnly) {
-            return;
-        }
-
-        for (Storage s : getStorages()) {
-            s.save();
-        }
-    }
-
     public int getMaxMemoryRows() {
         return maxMemoryRows;
     }
@@ -2024,11 +2010,22 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     public void checkpoint() {
         if (persistent) {
-            for (Storage s : getStorages()) {
-                s.save();
-            }
+            transactionEngine.checkpoint();
         }
         getTempFileDeleter().deleteUnused();
+    }
+
+    /**
+     * Synchronize the files with the file system. This method is called when
+     * executing the SQL statement CHECKPOINT SYNC.
+     */
+    public synchronized void sync() {
+        if (readOnly) {
+            return;
+        }
+        for (Storage s : getStorages()) {
+            s.save();
+        }
     }
 
     /**

@@ -67,15 +67,15 @@ public class TransactionStatement extends ManipulationStatement {
         case SQLStatement.ROLLBACK:
             session.rollback();
             break;
-        case SQLStatement.CHECKPOINT:
-            session.getUser().checkAdmin();
-            session.getDatabase().checkpoint();
-            break;
         case SQLStatement.SAVEPOINT:
             session.addSavepoint(savepointName);
             break;
         case SQLStatement.ROLLBACK_TO_SAVEPOINT:
             session.rollbackToSavepoint(savepointName);
+            break;
+        case SQLStatement.CHECKPOINT:
+            session.getUser().checkAdmin();
+            session.getDatabase().checkpoint();
             break;
         case SQLStatement.CHECKPOINT_SYNC:
             session.getUser().checkAdmin();

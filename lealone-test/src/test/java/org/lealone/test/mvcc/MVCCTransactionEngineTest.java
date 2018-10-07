@@ -124,6 +124,8 @@ public class MVCCTransactionEngineTest extends TestBase {
         assertEquals(1, map.size());
         t4.commit();
 
+        te.checkpoint();
+
         Transaction t5 = te.beginTransaction(false, false);
         map = map.getInstance(t5);
         map.put("6", "g");

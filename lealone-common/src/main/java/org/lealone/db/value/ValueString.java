@@ -213,6 +213,10 @@ public class ValueString extends Value {
         }
 
         private void write0(DataBuffer buff, String s) {
+            if (s == null) {
+                buff.put((byte) STRING).putVarInt((byte) 0);
+                return;
+            }
             int len = s.length();
             if (len <= 15) {
                 buff.put((byte) (TAG_STRING_0_15 + len));
@@ -232,6 +236,8 @@ public class ValueString extends Value {
             int len;
             if (tag == STRING) {
                 len = DataUtils.readVarInt(buff);
+                if (len == 0)
+                    return ValueNull.INSTANCE;
             } else {
                 len = tag - TAG_STRING_0_15;
             }

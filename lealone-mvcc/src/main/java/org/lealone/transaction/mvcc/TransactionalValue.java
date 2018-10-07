@@ -193,19 +193,9 @@ public class TransactionalValue {
                 buff.put((byte) 1);
                 oldValueType.write(buff, oldValue);
             }
-            if (hostAndPort == null) {
-                buff.put((byte) 0);
-            } else {
-                buff.put((byte) 1);
-                ValueString.type.write(buff, hostAndPort);
-            }
-            if (globalReplicationName == null) {
-                buff.put((byte) 0);
-            } else {
-                buff.put((byte) 1);
-                buff.putVarLong(version);
-                ValueString.type.write(buff, globalReplicationName);
-            }
+            ValueString.type.write(buff, hostAndPort);
+            ValueString.type.write(buff, globalReplicationName);
+            buff.putVarLong(version);
         }
 
         private static NotCommitted read(long tid, Object value, ByteBuffer buff, StorageDataType oldValueType) {
@@ -214,16 +204,9 @@ public class TransactionalValue {
             if (buff.get() == 1) {
                 oldValue = (TransactionalValue) oldValueType.read(buff);
             }
-            String hostAndPort = null;
-            if (buff.get() == 1) {
-                hostAndPort = ValueString.type.read(buff);
-            }
-            String globalReplicationName = null;
-            long version = 0;
-            if (buff.get() == 1) {
-                version = DataUtils.readVarLong(buff);
-                globalReplicationName = ValueString.type.read(buff);
-            }
+            String hostAndPort = ValueString.type.read(buff);
+            String globalReplicationName = ValueString.type.read(buff);
+            long version = DataUtils.readVarLong(buff);
             return new NotCommitted(tid, value, logId, oldValue, oldValueType, hostAndPort, globalReplicationName,
                     version);
         }

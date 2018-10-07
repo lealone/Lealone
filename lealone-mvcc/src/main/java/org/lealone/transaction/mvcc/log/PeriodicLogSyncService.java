@@ -40,7 +40,7 @@ class PeriodicLogSyncService extends LogSyncService {
     @Override
     public void maybeWaitForSync(RedoLogRecord r) {
         haveWork.release();
-        if (!r.synced) {
+        if (!r.isSynced()) {
             // 因为Long.MAX_VALUE > Long.MAX_VALUE + 1
             // lastSyncedAt是long类型，当lastSyncedAt为Long.MAX_VALUE时，
             // 再加一个int类型的blockWhenSyncLagsMillis时还是小于Long.MAX_VALUE；
@@ -51,7 +51,7 @@ class PeriodicLogSyncService extends LogSyncService {
                 long started = System.currentTimeMillis();
                 while (waitForSyncToCatchUp(started)) {
                     WaitQueue.Signal signal = syncComplete.register();
-                    if (r.synced) {
+                    if (r.isSynced()) {
                         signal.cancel();
                         return;
                     } else if (waitForSyncToCatchUp(started))

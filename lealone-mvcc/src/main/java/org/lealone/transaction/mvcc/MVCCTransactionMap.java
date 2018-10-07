@@ -22,7 +22,6 @@ import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.mvcc.MVCCTransaction.LogRecord;
 
 /**
  * A map that supports transactions.
@@ -140,7 +139,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             }
 
             // get the value before the uncommitted transaction
-            LinkedList<LogRecord> d = transaction.transactionEngine.getTransaction(tid).logRecords;
+            LinkedList<TransactionalLogRecord> d = transaction.transactionEngine.getTransaction(tid).logRecords;
             if (d == null) {
                 // this entry should be committed or rolled back
                 // in the meantime (the transaction might still be open)
@@ -153,7 +152,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                             "The transaction log might be corrupt for key {0}", key);
                 }
             } else {
-                LogRecord r = d.get(data.getLogId());
+                TransactionalLogRecord r = d.get(data.getLogId());
                 data = r.oldValue;
             }
         }
@@ -430,8 +429,8 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                 null);
         try {
             for (MVCCTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
-                LinkedList<LogRecord> records = t.logRecords;
-                for (LogRecord r : records) {
+                LinkedList<TransactionalLogRecord> records = t.logRecords;
+                for (TransactionalLogRecord r : records) {
                     String m = r.mapName;
                     if (!mapName.equals(m)) {
                         // a different map - ignore

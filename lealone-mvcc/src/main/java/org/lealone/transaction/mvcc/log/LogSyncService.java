@@ -20,6 +20,7 @@ package org.lealone.transaction.mvcc.log;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
@@ -27,12 +28,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
 import org.lealone.common.util.ShutdownHookUtils;
-import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.mvcc.MVCCTransaction;
 import org.lealone.transaction.mvcc.TransactionalValue;
-import org.lealone.transaction.mvcc.TransactionalValueType;
 
 public abstract class LogSyncService extends Thread {
 
@@ -51,7 +49,7 @@ public abstract class LogSyncService extends Thread {
     protected RedoLog redoLog;
 
     // key: mapName, value: map key/value ByteBuffer list
-    private final HashMap<String, ArrayList<ByteBuffer>> pendingRedoLog = new HashMap<>();
+    private final HashMap<String, List<ByteBuffer>> pendingRedoLog = new HashMap<>();
 
     public LogSyncService() {
         setName(getClass().getSimpleName());
@@ -132,64 +130,22 @@ public abstract class LogSyncService extends Thread {
         maybeWaitForSync(r);
     }
 
-    public void writeCheckpoint() {
-        RedoLogRecord r = new RedoLogRecord(true);
+    public void checkpoint(long checkpointId) {
+        RedoLogRecord r = RedoLogRecord.createCheckpoint(checkpointId);
         addRedoLogRecord(r);
         maybeWaitForSync(r);
     }
 
     public long initPendingRedoLog() {
         long lastTransactionId = 0;
-        for (RedoLogRecord r : redoLog.getAndResetRedoLogRecords()) {
-            if (r.transactionId != null && r.transactionId > lastTransactionId) {
-                lastTransactionId = r.transactionId;
-            }
-            if (r.droppedMap != null) {
-                ArrayList<ByteBuffer> logs = pendingRedoLog.get(r.droppedMap);
-                if (logs != null) {
-                    logs = new ArrayList<>();
-                    pendingRedoLog.put(r.droppedMap, logs);
-                }
-            } else {
-                ByteBuffer buff = r.values;
-                if (buff == null)
-                    continue; // TODO 消除为NULL的可能
-                while (buff.hasRemaining()) {
-                    String mapName = ValueString.type.read(buff);
-
-                    ArrayList<ByteBuffer> logs = pendingRedoLog.get(mapName);
-                    if (logs == null) {
-                        logs = new ArrayList<>();
-                        pendingRedoLog.put(mapName, logs);
-                    }
-                    int len = buff.getInt();
-                    byte[] keyValue = new byte[len];
-                    buff.get(keyValue);
-                    logs.add(ByteBuffer.wrap(keyValue));
-                }
-            }
+        for (RedoLogRecord r : redoLog.getAllRedoLogRecords()) {
+            lastTransactionId = r.initPendingRedoLog(pendingRedoLog, lastTransactionId);
         }
         return lastTransactionId;
     }
 
-    @SuppressWarnings("unchecked")
-    public <K> void redo(StorageMap<K, TransactionalValue> map) {
-        ArrayList<ByteBuffer> logs = pendingRedoLog.remove(map.getName());
-        if (logs != null && !logs.isEmpty()) {
-            K key;
-            Object value;
-            StorageDataType kt = map.getKeyType();
-            StorageDataType vt = ((TransactionalValueType) map.getValueType()).valueType;
-            for (ByteBuffer log : logs) {
-                key = (K) kt.read(log);
-                if (log.get() == 0)
-                    map.remove(key);
-                else {
-                    value = vt.read(log);
-                    map.put(key, TransactionalValue.createCommitted(value));
-                }
-            }
-        }
+    public <K> List<ByteBuffer> getAndRemovePendingRedoLog(StorageMap<K, TransactionalValue> map) {
+        return pendingRedoLog.remove(map.getName());
     }
 
     public static LogSyncService create(Map<String, String> config) {
