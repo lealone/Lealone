@@ -299,7 +299,7 @@ public class MVCCTransaction implements Transaction {
                     // remove the value
                     map.remove(r.key);
                 } else {
-                    map.put(r.key, new TransactionalValue(value.value));
+                    map.put(r.key, TransactionalValue.createCommitted(value.value));
                 }
             }
         }

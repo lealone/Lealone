@@ -123,8 +123,8 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             // 数据从节点A迁移到节点B的过程中，如果把A中未提交的值也移到B中，
             // 那么在节点B中会读到不一致的数据，此时需要从节点A读出正确的值
             // TODO 如何更高效的判断，不用比较字符串
-            if (data.hostAndPort != null && !data.hostAndPort.equals(NetEndpoint.getLocalTcpHostAndPort())) {
-                return getRemoteTransactionalValue(data.hostAndPort, key);
+            if (data.getHostAndPort() != null && !data.getHostAndPort().equals(NetEndpoint.getLocalTcpHostAndPort())) {
+                return getRemoteTransactionalValue(data.getHostAndPort(), key);
             }
             if (tid == transaction.transactionId) {
                 return data;
@@ -134,8 +134,10 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             if (v != null)
                 return v;
 
-            if (!transaction.transactionEngine.containsTransaction(tid)) // TODO
-                return null;
+            // 底层存储写入了未提交事务的脏数据，并且在事务提交前数据库崩溃了
+            if (!transaction.transactionEngine.containsTransaction(tid)) {
+                return data.undo(map, key);
+            }
 
             // get the value before the uncommitted transaction
             LinkedList<LogRecord> d = transaction.transactionEngine.getTransaction(tid).logRecords;
@@ -151,7 +153,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                             "The transaction log might be corrupt for key {0}", key);
                 }
             } else {
-                LogRecord r = d.get(data.logId);
+                LogRecord r = d.get(data.getLogId());
                 data = r.oldValue;
             }
         }
@@ -236,7 +238,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     }
 
     private boolean trySet(K key, V value, TransactionalValue oldValue) {
-        TransactionalValue newValue = new TransactionalValue(transaction, value);
+        TransactionalValue newValue = TransactionalValue.create(transaction, value, oldValue, map.getValueType());
         String mapName = getName();
         if (oldValue == null) {
             // a new value
@@ -524,7 +526,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     @SuppressWarnings("unchecked")
     @Override
     public K append(V value) { // 追加新记录时不会产生事务冲突
-        TransactionalValue newValue = new TransactionalValue(transaction, value);
+        TransactionalValue newValue = TransactionalValue.create(transaction, value, null, null);
         K key = map.append(newValue);
         // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
         // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
@@ -551,7 +553,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     @SuppressWarnings("unchecked")
     public V putCommitted(K key, V value) {
         DataUtils.checkArgument(value != null, "The value may not be null");
-        TransactionalValue newValue = new TransactionalValue(value);
+        TransactionalValue newValue = TransactionalValue.createCommitted(value);
         TransactionalValue oldValue = map.put(key, newValue);
         return (V) (oldValue == null ? null : oldValue.value);
     }

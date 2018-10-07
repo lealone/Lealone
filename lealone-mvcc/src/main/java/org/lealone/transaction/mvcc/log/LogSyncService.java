@@ -186,7 +186,7 @@ public abstract class LogSyncService extends Thread {
                     map.remove(key);
                 else {
                     value = vt.read(log);
-                    map.put(key, new TransactionalValue(value));
+                    map.put(key, TransactionalValue.createCommitted(value));
                 }
             }
         }
