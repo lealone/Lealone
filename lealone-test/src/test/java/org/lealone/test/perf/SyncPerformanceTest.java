@@ -15,20 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.benchmark;
+package org.lealone.test.perf;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Random;
-import java.util.concurrent.CountDownLatch;
 
-import org.lealone.client.jdbc.JdbcStatement;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
 
-public class AsyncBenchmark {
+public class SyncPerformanceTest {
 
     public static void main(String[] args) throws Exception {
         run();
@@ -37,7 +34,7 @@ public class AsyncBenchmark {
     static Random random = new Random();
 
     static class MyThread extends Thread {
-        JdbcStatement stmt;
+        Statement stmt;
         Connection conn;
         long read_time;
         long random_read_time;
@@ -47,61 +44,47 @@ public class AsyncBenchmark {
 
         MyThread(int start, int count) throws Exception {
             super("MyThread-" + start);
-            conn = new TestBase().getConnection();
-            stmt = (JdbcStatement) conn.createStatement();
+            conn = new TestBase().getConnection(LealoneDatabase.NAME);
+            stmt = conn.createStatement();
             this.start = start;
             this.end = start + count;
         }
 
         void write() throws Exception {
-            CountDownLatch latch = new CountDownLatch(end - start);
             long t1 = System.currentTimeMillis();
             for (int i = start; i < end; i++) {
                 String sql = "INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")";
-                stmt.executeUpdateAsync(sql, res -> {
-                    // System.out.println(latch.getCount());
-                    latch.countDown();
-                });
+                stmt.executeUpdate(sql);
             }
-            latch.await();
 
             long t2 = System.currentTimeMillis();
             write_time = t2 - t1;
-            // System.out.println(getName() + " write end, time=" + write_time + " ms");
+            System.out.println(getName() + " write end, time=" + write_time + " ms");
         }
 
         void read(boolean random) throws Exception {
-            CountDownLatch latch = new CountDownLatch(end - start);
             long t1 = System.currentTimeMillis();
-
-            AsyncHandler<AsyncResult<ResultSet>> handler = ac -> {
-                ResultSet rs = ac.getResult();
-                try {
-                    while (rs.next()) {
-                        // System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
-                    }
-                    latch.countDown();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            };
             for (int i = start; i < end; i++) {
+                ResultSet rs;
                 if (!random)
-                    stmt.executeQueryAsync("SELECT * FROM test where f1 = " + i, handler);
+                    rs = stmt.executeQuery("SELECT * FROM test where f1 = " + i);
                 else
-                    stmt.executeQueryAsync("SELECT * FROM test where f1 = " + AsyncBenchmark.random.nextInt(end), handler);
+                    rs = stmt.executeQuery("SELECT * FROM test where f1 = " + SyncPerformanceTest.random.nextInt(end));
+                while (rs.next()) {
+                    // System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+                }
             }
-            latch.await();
+
             long t2 = System.currentTimeMillis();
 
             if (random)
                 random_read_time = t2 - t1;
             else
                 read_time = t2 - t1;
-            // if (random)
-            // System.out.println(getName() + " random read end, time=" + random_read_time + " ms");
-            // else
-            // System.out.println(getName() + " read end, time=" + read_time + " ms");
+            if (random)
+                System.out.println(getName() + " random read end, time=" + random_read_time + " ms");
+            else
+                System.out.println(getName() + "  read end, time=" + read_time + " ms");
         }
 
         @Override
@@ -119,21 +102,12 @@ public class AsyncBenchmark {
     }
 
     static void run() throws Exception {
-        Connection conn = new TestBase().getConnection();
+        Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
         Statement stmt = conn.createStatement();
-
-        int loop = 10;
-        for (int i = 0; i < loop; i++) {
-            stmt.executeUpdate("DROP TABLE IF EXISTS test");
-            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
-            benchmark();
-        }
-
+        stmt.executeUpdate("DROP TABLE IF EXISTS test");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
         stmt.close();
-        conn.close();
-    }
 
-    static void benchmark() throws Exception {
         int threadsCount = 1; // Runtime.getRuntime().availableProcessors() * 4;
         int loop = 1000;
 
@@ -148,6 +122,7 @@ public class AsyncBenchmark {
         for (int i = 0; i < threadsCount; i++) {
             threads[i].join();
         }
+        conn.close();
 
         long write_sum = 0;
         for (int i = 0; i < threadsCount; i++) {
@@ -170,5 +145,4 @@ public class AsyncBenchmark {
         System.out.println("read_sum=" + read_sum + ", avg=" + (read_sum / threadsCount) + " ms");
         System.out.println("random_read_sum=" + random_read_sum + ", avg=" + (random_read_sum / threadsCount) + " ms");
     }
-
 }

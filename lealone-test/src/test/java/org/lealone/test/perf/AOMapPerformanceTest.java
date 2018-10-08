@@ -15,11 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.aose;
+package org.lealone.test.perf;
 
 import java.util.Random;
 
-import org.junit.Test;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.aose.AOMap;
 import org.lealone.storage.aose.AOStorage;
@@ -38,7 +37,7 @@ public class AOMapPerformanceTest extends TestBase {
     private String storagePath;
     private StorageMap<Integer, String> map;
 
-    @Test
+    // @Test
     public void run() {
         // AOStorageService.getInstance().start();
         init();

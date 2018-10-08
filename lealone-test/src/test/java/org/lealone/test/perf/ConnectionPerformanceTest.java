@@ -15,21 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.benchmark;
+package org.lealone.test.perf;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 
-public class ConnectionTest {
+import org.lealone.db.LealoneDatabase;
+import org.lealone.test.TestBase;
 
-    static Connection getConnection(String url) throws Exception {
-        return DriverManager.getConnection(url);
-    }
+public class ConnectionPerformanceTest {
 
     public static void main(String[] args) throws Exception {
-        String url = "jdbc:h2:tcp://localhost:9092/test;user=sa;password=";
-        url = "jdbc:lealone:tcp://localhost:7210/test;user=sa;password=";
-
+        String url = new TestBase().getURL(LealoneDatabase.NAME);
         Connection conn = getConnection(url);
         int loop = 1;
         for (int i = 0; i < loop; i++) {
@@ -38,8 +35,12 @@ public class ConnectionTest {
         conn.close();
     }
 
+    static Connection getConnection(String url) throws Exception {
+        return DriverManager.getConnection(url);
+    }
+
     static void run(String url) throws Exception {
-        int count = 10000;
+        int count = 2000;
         Connection[] connections = new Connection[count];
 
         long t1 = System.currentTimeMillis();
@@ -47,11 +48,11 @@ public class ConnectionTest {
             connections[i] = getConnection(url);
         }
         long t2 = System.currentTimeMillis();
-        System.out.println("time=" + (t2 - t1) + " ms");
-        // Thread.sleep(1000);
+        System.out.println("connection count: " + count + ", total time: " + (t2 - t1) + " ms" + ", avg time: "
+                + (t2 - t1) / (count * 1.0) + " ms");
+
         for (int i = 0; i < count; i++) {
             connections[i].close();
         }
     }
-
 }
