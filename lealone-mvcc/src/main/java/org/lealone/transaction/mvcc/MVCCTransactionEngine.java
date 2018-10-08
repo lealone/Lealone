@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageEventListener;
@@ -250,8 +251,8 @@ public class MVCCTransactionEngine extends TransactionEngineBase implements Stor
         private final AtomicBoolean checking = new AtomicBoolean(false);
         private final Semaphore semaphore = new Semaphore(1);
         private final int committedDataCacheSize;
-        private final int checkpointPeriod;
-        private final int sleep;
+        private final long checkpointPeriod;
+        private final long loopInterval;
 
         private volatile long lastSavedAt = System.currentTimeMillis();
         private volatile boolean isClosed;
@@ -268,19 +269,18 @@ public class MVCCTransactionEngine extends TransactionEngineBase implements Stor
 
             v = config.get("checkpoint_period");
             if (v != null)
-                checkpointPeriod = Integer.parseInt(v);
+                checkpointPeriod = Long.parseLong(v);
             else
                 checkpointPeriod = DEFAULT_CHECKPOINT_PERIOD;
 
-            int sleep = 1 * 60 * 1000;// 1分钟
-            v = config.get("checkpoint_service_sleep_interval");
-            if (v != null)
-                sleep = Integer.parseInt(v);
+            // 默认1分钟
+            long loopInterval = DateTimeUtils.getLoopInterval(config, "checkpoint_service_loop_interval",
+                    1 * 60 * 1000);
 
-            if (checkpointPeriod < sleep)
-                sleep = checkpointPeriod;
+            if (checkpointPeriod < loopInterval)
+                loopInterval = checkpointPeriod;
 
-            this.sleep = sleep;
+            this.loopInterval = loopInterval;
         }
 
         void close() {
@@ -337,7 +337,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase implements Stor
         public void run() {
             while (!isClosed) {
                 try {
-                    semaphore.tryAcquire(sleep, TimeUnit.MILLISECONDS);
+                    semaphore.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
                     semaphore.drainPermits();
                 } catch (InterruptedException e) {
                     throw new AssertionError();

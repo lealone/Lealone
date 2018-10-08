@@ -30,6 +30,7 @@ import java.util.Set;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.DateTimeUtils;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 import org.lealone.net.Transfer;
@@ -63,10 +64,12 @@ public class NioNetServer extends NetServerBase {
     }
 
     private void run() {
+        // 默认1秒;
+        final long loopInterval = DateTimeUtils.getLoopInterval(config, "server_nio_event_loop_interval", 1000);
         final Selector selector = this.selector;
         for (;;) {
             try {
-                selector.select(1000L);
+                selector.select(loopInterval);
                 if (this.selector == null)
                     break;
                 Set<SelectionKey> keys = selector.selectedKeys();

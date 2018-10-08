@@ -75,7 +75,7 @@ public class MVCCTransactionEngineTest extends TestBase {
         config.put("base_dir", joinDirs("mvcc"));
         config.put("redo_log_dir", "redo_log");
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_INSTANT);
-        config.put("log_sync_service_sleep_interval", "10"); // 10ms
+        config.put("checkpoint_service_loop_interval", "10"); // 10ms
         // config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
         // config.put("log_sync_period", "500"); // 500ms
         return config;
@@ -85,7 +85,7 @@ public class MVCCTransactionEngineTest extends TestBase {
     public void testCheckpoint() {
         Map<String, String> config = getDefaultConfig();
         config.put("committed_data_cache_size_in_mb", "1");
-        config.put("checkpoint_service_sleep_interval", "100"); // 100ms
+        config.put("checkpoint_service_loop_interval", "100"); // 100ms
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
         TransactionEngine te = getTransactionEngine(config);
         Storage storage = getStorage();

@@ -36,7 +36,7 @@ public class AOStorageEngine extends StorageEngineBase {
     @Override
     public void init(Map<String, String> config) {
         super.init(config);
-        AOStorageService.getInstance().start();
+        AOStorageService.getInstance().start(config);
     }
 
     @Override

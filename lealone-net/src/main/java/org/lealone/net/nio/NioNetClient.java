@@ -33,6 +33,7 @@ import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.DateTimeUtils;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetEndpoint;
@@ -49,12 +50,15 @@ public class NioNetClient implements org.lealone.net.NetClient {
     }
 
     private Selector selector;
+    private long loopInterval;
 
     private NioNetClient() {
     }
 
-    private synchronized void openSelector() throws IOException {
+    private synchronized void openSelector(Map<String, String> config) throws IOException {
         if (selector == null) {
+            // 默认1秒;
+            loopInterval = DateTimeUtils.getLoopInterval(config, "client_nio_event_loop_interval", 1000);
             this.selector = Selector.open();
             ConcurrentUtils.submitTask("Client-Nio-Event-Loop", () -> {
                 NioNetClient.this.run();
@@ -66,7 +70,7 @@ public class NioNetClient implements org.lealone.net.NetClient {
         final Selector selector = this.selector;
         while (this.selector != null) {
             try {
-                selector.select(200L);
+                selector.select(loopInterval);
                 if (this.selector == null)
                     break;
                 Set<SelectionKey> keys = selector.selectedKeys();
@@ -154,7 +158,7 @@ public class NioNetClient implements org.lealone.net.NetClient {
             AsyncConnectionManager connectionManager) {
         if (selector == null) {
             try {
-                openSelector();
+                openSelector(config);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to open selector", e);
             }

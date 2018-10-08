@@ -18,6 +18,7 @@
 package org.lealone.storage.aose;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -25,6 +26,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
+import org.lealone.common.util.DateTimeUtils;
 
 public class AOStorageService extends Thread {
 
@@ -69,17 +71,22 @@ public class AOStorageService extends Thread {
         aoMaps.remove(map);
     }
 
-    private final int sleepMillis;
+    private long loopInterval;
     private boolean running;
 
     private AOStorageService() {
         super("AOStorageService");
-        this.sleepMillis = 3000;
         setDaemon(true);
     }
 
     void close() {
         running = false;
+    }
+
+    public synchronized void start(Map<String, String> config) {
+        // 默认3秒钟
+        loopInterval = DateTimeUtils.getLoopInterval(config, "storage_service_loop_interval", 3000);
+        start();
     }
 
     @Override
@@ -94,7 +101,7 @@ public class AOStorageService extends Thread {
     public void run() {
         while (running) {
             try {
-                sleep(sleepMillis);
+                sleep(loopInterval);
             } catch (InterruptedException e) {
                 continue;
             }

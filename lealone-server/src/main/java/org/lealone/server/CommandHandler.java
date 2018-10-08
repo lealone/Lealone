@@ -17,12 +17,14 @@
  */
 package org.lealone.server;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.SessionStatus;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLEngineManager;
@@ -45,9 +47,9 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
     private static final CommandHandler[] commandHandlers = new CommandHandler[commandHandlersCount];
     private static final AtomicInteger index = new AtomicInteger(0);
 
-    public static void startCommandHandlers() {
+    public static void startCommandHandlers(Map<String, String> config) {
         for (int i = 0; i < commandHandlersCount; i++) {
-            commandHandlers[i] = new CommandHandler(i);
+            commandHandlers[i] = new CommandHandler(i, config);
         }
 
         SQLEngineManager.getInstance().setSQLStatementExecutors(commandHandlers);
@@ -75,6 +77,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     private final CopyOnWriteArrayList<CommandQueue> commandQueues = new CopyOnWriteArrayList<>();
     private final Semaphore haveWork = new Semaphore(1);
+    private final long loopInterval;
     private boolean stop;
     private int nested;
 
@@ -86,9 +89,11 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         commandQueues.remove(queue);
     }
 
-    public CommandHandler(int id) {
+    public CommandHandler(int id, Map<String, String> config) {
         super("CommandHandler-" + id);
         // setDaemon(true);
+        // 默认100毫秒
+        loopInterval = DateTimeUtils.getLoopInterval(config, "command_handler_loop_interval", 100);
     }
 
     @Override
@@ -116,7 +121,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
             PreparedCommand c = getNextBestCommand(priority, true);
             if (c == null) {
                 try {
-                    haveWork.tryAcquire(100, TimeUnit.MILLISECONDS);
+                    haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
                     haveWork.drainPermits();
                 } catch (InterruptedException e) {
                     throw new AssertionError();

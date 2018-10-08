@@ -20,16 +20,15 @@ package org.lealone.transaction.mvcc.log;
 import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
+import org.lealone.common.util.DateTimeUtils;
 
 class InstantLogSyncService extends LogSyncService {
 
     private static final long DEFAULT_LOG_SYNC_INTERVAL = 5;
 
     InstantLogSyncService(Map<String, String> config) {
-        if (config.containsKey("log_sync_service_sleep_interval"))
-            syncIntervalMillis = Long.parseLong(config.get("log_sync_service_sleep_interval"));
-        else
-            syncIntervalMillis = DEFAULT_LOG_SYNC_INTERVAL;
+        syncIntervalMillis = DateTimeUtils.getLoopInterval(config, "log_sync_service_loop_interval",
+                DEFAULT_LOG_SYNC_INTERVAL);
     }
 
     @Override

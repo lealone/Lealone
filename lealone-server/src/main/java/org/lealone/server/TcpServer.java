@@ -60,7 +60,7 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
     public synchronized void start() {
         if (isStarted())
             return;
-        CommandHandler.startCommandHandlers();
+        CommandHandler.startCommandHandlers(getConfig());
         super.start();
     }
 
