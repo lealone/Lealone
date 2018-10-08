@@ -31,13 +31,15 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.storage.Storage;
+import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.mvcc.log.LogSyncService;
 import org.lealone.transaction.mvcc.log.RedoLogRecord;
 
-public class MVCCTransactionEngine extends TransactionEngineBase {
+public class MVCCTransactionEngine extends TransactionEngineBase implements StorageEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(MVCCTransactionEngine.class);
 
@@ -93,6 +95,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     void addMap(StorageMap<Object, TransactionalValue> map) {
         estimatedMemory.put(map.getName(), new AtomicInteger(0));
         maps.put(map.getName(), map);
+        map.getStorage().registerEventListener(this);
     }
 
     void removeMap(String mapName) {
@@ -230,6 +233,16 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
         checkpointService.checkpoint();
     }
 
+    @Override
+    public void beforeClose(Storage storage) {
+        checkpoint();
+        for (String mapName : storage.getMapNames()) {
+            estimatedMemory.remove(mapName);
+            maps.remove(mapName);
+            tmaps.remove(mapName);
+        }
+    }
+
     private class CheckpointService extends Thread {
 
         private static final int DEFAULT_COMMITTED_DATA_CACHE_SIZE = 32 * 1024 * 1024; // 32M
@@ -302,6 +315,9 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
             if (executeCheckpoint) {
                 for (StorageMap<Object, TransactionalValue> map : maps.values()) {
+                    if (map.isClosed())
+                        continue;
+
                     // 在这里有可能把已提交和未提交事务的数据都保存了，
                     // 不过不要紧，如果在生成检查点之后系统崩溃了导致未提交事务不能正常完成，还有读时撤销机制保证数据完整性，
                     // 因为在保存未提交数据时，也同时保存了原来的数据，如果在读到未提交数据时发现了异常，就会进行撤销，

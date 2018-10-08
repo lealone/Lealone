@@ -59,6 +59,10 @@ public interface Storage {
 
     boolean isClosed();
 
+    void registerEventListener(StorageEventListener listener);
+
+    void unregisterEventListener(StorageEventListener listener);
+
     default void replicate(Object dbObject, String[] newReplicationEndpoints, RunMode runMode) {
         throw DbException.getUnsupportedException("replicate");
     }

@@ -38,6 +38,7 @@ public abstract class StorageBase implements Storage {
 
     protected static final String TEMP_NAME_PREFIX = Constants.NAME_SEPARATOR + "temp" + Constants.NAME_SEPARATOR;
 
+    protected final ConcurrentHashMap<StorageEventListener, StorageEventListener> listeners = new ConcurrentHashMap<>();
     protected final ConcurrentHashMap<String, StorageMap<?, ?>> maps = new ConcurrentHashMap<>();
     protected final Map<String, Object> config;
     protected boolean closed;
@@ -132,6 +133,9 @@ public abstract class StorageBase implements Storage {
 
     @Override
     public void close() {
+        for (StorageEventListener listener : listeners.values())
+            listener.beforeClose(this);
+        listeners.clear();
         save();
         closeImmediately();
     }
@@ -149,6 +153,16 @@ public abstract class StorageBase implements Storage {
     @Override
     public boolean isClosed() {
         return closed;
+    }
+
+    @Override
+    public void registerEventListener(StorageEventListener listener) {
+        listeners.put(listener, listener);
+    }
+
+    @Override
+    public void unregisterEventListener(StorageEventListener listener) {
+        listeners.remove(listener);
     }
 
     private static void backupFiles(String path, String toFile) {
