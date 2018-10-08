@@ -8,6 +8,7 @@ package org.lealone.db.table;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.SmallLRUCache;
@@ -146,7 +147,7 @@ public class TableView extends Table {
             IQuery query = compileViewQuery(session, querySQL);
             this.querySQL = query.getPlanSQL();
             tables = new ArrayList<>((HashSet<Table>) query.getTables());
-            ArrayList<? extends IExpression> expressions = query.getExpressions();
+            List<? extends IExpression> expressions = query.getExpressions();
             int count = query.getColumnCount();
             ArrayList<Column> list = new ArrayList<>(count);
             for (int i = 0; i < count; i++) {

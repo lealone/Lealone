@@ -17,8 +17,8 @@
  */
 package org.lealone.sql;
 
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
@@ -29,7 +29,7 @@ public interface IQuery {
 
     String getPlanSQL();
 
-    ArrayList<? extends CommandParameter> getParameters();
+    List<? extends CommandParameter> getParameters();
 
     void addGlobalCondition(CommandParameter param, int columnId, int indexConditionType);
 
@@ -37,13 +37,13 @@ public interface IQuery {
 
     double getCost();
 
-    HashSet<?> getTables();
+    Set<?> getTables();
 
     boolean allowGlobalConditions();
 
     int getColumnCount();
 
-    ArrayList<? extends IExpression> getExpressions();
+    List<? extends IExpression> getExpressions();
 
     long getMaxDataModificationId();
 

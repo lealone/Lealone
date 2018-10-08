@@ -7,6 +7,7 @@
 package org.lealone.db.index;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.SmallLRUCache;
@@ -206,7 +207,7 @@ public class ViewIndex extends IndexBase {
             result.done();
             return new ViewCursor(this, result, first, last);
         }
-        ArrayList<? extends CommandParameter> paramList = query.getParameters();
+        List<? extends CommandParameter> paramList = query.getParameters();
         if (originalParameters != null) {
             for (int i = 0, size = originalParameters.size(); i < size; i++) {
                 CommandParameter orig = originalParameters.get(i);
@@ -241,7 +242,7 @@ public class ViewIndex extends IndexBase {
         return new ViewCursor(this, result, first, last);
     }
 
-    private static void setParameter(ArrayList<? extends CommandParameter> paramList, int x, Value v) {
+    private static void setParameter(List<? extends CommandParameter> paramList, int x, Value v) {
         if (x >= paramList.size()) {
             // the parameter may be optimized away as in
             // select * from (select null as x) where x=1;
