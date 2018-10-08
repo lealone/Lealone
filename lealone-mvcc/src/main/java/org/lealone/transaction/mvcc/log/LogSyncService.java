@@ -32,7 +32,7 @@ import org.lealone.transaction.mvcc.MVCCTransaction;
 public abstract class LogSyncService extends Thread {
 
     public static final String LOG_SYNC_TYPE_PERIODIC = "periodic";
-    public static final String LOG_SYNC_TYPE_BATCH = "batch";
+    public static final String LOG_SYNC_TYPE_INSTANT = "instant";
     public static final String LOG_SYNC_TYPE_NO_SYNC = "no_sync";
 
     protected final Semaphore haveWork = new Semaphore(1);
@@ -141,8 +141,8 @@ public abstract class LogSyncService extends Thread {
         String logSyncType = config.get("log_sync_type");
         if (logSyncType == null || LOG_SYNC_TYPE_PERIODIC.equalsIgnoreCase(logSyncType))
             logSyncService = new PeriodicLogSyncService(config);
-        else if (LOG_SYNC_TYPE_BATCH.equalsIgnoreCase(logSyncType))
-            logSyncService = new BatchLogSyncService(config);
+        else if (LOG_SYNC_TYPE_INSTANT.equalsIgnoreCase(logSyncType))
+            logSyncService = new InstantLogSyncService(config);
         else if (LOG_SYNC_TYPE_NO_SYNC.equalsIgnoreCase(logSyncType))
             logSyncService = new NoLogSyncService();
         else

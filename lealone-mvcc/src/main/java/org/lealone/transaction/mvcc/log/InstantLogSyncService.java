@@ -21,15 +21,15 @@ import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
 
-class BatchLogSyncService extends LogSyncService {
+class InstantLogSyncService extends LogSyncService {
 
-    private static final long DEFAULT_LOG_SYNC_BATCH_WINDOW = 5;
+    private static final long DEFAULT_LOG_SYNC_INTERVAL = 5;
 
-    BatchLogSyncService(Map<String, String> config) {
-        if (config.containsKey("log_sync_batch_window"))
-            syncIntervalMillis = Long.parseLong(config.get("log_sync_batch_window"));
+    InstantLogSyncService(Map<String, String> config) {
+        if (config.containsKey("log_sync_service_sleep_interval"))
+            syncIntervalMillis = Long.parseLong(config.get("log_sync_service_sleep_interval"));
         else
-            syncIntervalMillis = DEFAULT_LOG_SYNC_BATCH_WINDOW;
+            syncIntervalMillis = DEFAULT_LOG_SYNC_INTERVAL;
     }
 
     @Override
