@@ -211,12 +211,14 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
 
     @Override
     public int size() {
-        return buffer.size() + map.size();
+        merge(); // 如果不先merge，可能两边都存在相同的key，会导致重复计数
+        return map.size();
     }
 
     @Override
     public long sizeAsLong() {
-        return buffer.size() + map.sizeAsLong();
+        merge();
+        return map.sizeAsLong();
     }
 
     @Override
@@ -245,13 +247,13 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
     }
 
     @Override
-    public void clear() {
+    public synchronized void clear() {
         buffer.clear();
         map.clear();
     }
 
     @Override
-    public void remove() {
+    public synchronized void remove() {
         buffer.clear();
         map.remove();
     }
@@ -262,14 +264,16 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
+        merge();
         buffer.clear();
         map.close();
         AOStorageService.removeBufferedMap(this);
     }
 
     @Override
-    public void save() {
+    public synchronized void save() {
+        merge();
         map.save();
     }
 
@@ -279,12 +283,14 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
         return null;
     }
 
-    public void merge() {
-        for (Object key : buffer.keySet()) {
-            // 不能先remove再put，因为刚刚remove后，要是在put之前有一个读线程进来，那么它就读不到值了
-            Object value = buffer.get(key);
+    // 不允许多个线程同时调用，因为没有意义，反而会重复merge一样的值
+    public synchronized void merge() {
+        for (Entry<Object, Object> entry : buffer.entrySet()) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
             map.put((K) key, (V) value);
-            buffer.remove(key);
+            // 执行完put后，可能又有相同key的值来了，此时不能删，只有跟原来相同时才删
+            buffer.remove(key, value);
         }
     }
 

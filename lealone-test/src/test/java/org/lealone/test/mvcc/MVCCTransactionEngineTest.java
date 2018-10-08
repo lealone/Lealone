@@ -45,25 +45,78 @@ public class MVCCTransactionEngineTest extends TestBase {
         return storage;
     }
 
+    public static TransactionEngine getTransactionEngine() {
+        return getTransactionEngine(null, false);
+    }
+
     public static TransactionEngine getTransactionEngine(boolean isDistributed) {
+        return getTransactionEngine(null, isDistributed);
+    }
+
+    public static TransactionEngine getTransactionEngine(Map<String, String> config) {
+        return getTransactionEngine(config, false);
+    }
+
+    public static TransactionEngine getTransactionEngine(Map<String, String> config, boolean isDistributed) {
         TransactionEngine te = TransactionEngineManager.getInstance()
                 .getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_TRANSACTION_ENGINE_NAME, te.getName());
-
-        Map<String, String> config = new HashMap<>();
-        config.put("base_dir", joinDirs("mvcc"));
-        config.put("redo_log_dir", "redo_log");
-        config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_BATCH);
-        config.put("log_sync_batch_window", "10"); // 10ms
-
-        // config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
-        // config.put("log_sync_period", "500"); // 500ms
-
+        if (config == null)
+            config = getDefaultConfig();
         if (isDistributed) {
             config.put("host_and_port", Constants.DEFAULT_HOST + ":" + Constants.DEFAULT_TCP_PORT);
         }
         te.init(config);
         return te;
+    }
+
+    public static Map<String, String> getDefaultConfig() {
+        Map<String, String> config = new HashMap<>();
+        config.put("base_dir", joinDirs("mvcc"));
+        config.put("redo_log_dir", "redo_log");
+        config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_BATCH);
+        config.put("log_sync_batch_window", "10"); // 10ms
+        // config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
+        // config.put("log_sync_period", "500"); // 500ms
+        return config;
+    }
+
+    @Test
+    public void testCheckpoint() {
+        Map<String, String> config = getDefaultConfig();
+        config.put("committed_data_cache_size_in_mb", "1");
+        config.put("checkpoint_service_sleep_interval", "100"); // 100ms
+        config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
+        TransactionEngine te = getTransactionEngine(config);
+        Storage storage = getStorage();
+
+        Transaction t1 = te.beginTransaction(false, false);
+        TransactionMap<String, String> map = t1.openMap("testCheckpoint", storage);
+        map.remove();
+        map = t1.openMap("testCheckpoint", storage);
+        assertEquals(0, map.getDiskSpaceUsed());
+        assertEquals(0, map.size());
+
+        for (int i = 1; i <= 50000; i++) {
+            map.put("key" + i, "value" + i);
+        }
+        t1.commit();
+        assertEquals(50000, map.size());
+        try {
+            Thread.sleep(2000); // 等待后端检查点线程完成数据保存
+        } catch (InterruptedException e) {
+        }
+        assertTrue(map.getDiskSpaceUsed() > 0);
+
+        map.remove();
+        Transaction t2 = te.beginTransaction(false, false);
+        map = t2.openMap("testCheckpoint", storage);
+        assertEquals(0, map.getDiskSpaceUsed());
+        map.put("abc", "value123");
+        t2.commit();
+
+        te.checkpoint();
+        assertTrue(map.getDiskSpaceUsed() > 0);
     }
 
     @Test
@@ -124,8 +177,6 @@ public class MVCCTransactionEngineTest extends TestBase {
         map.remove("1");
         assertEquals(1, map.size());
         t4.commit();
-
-        te.checkpoint();
 
         Transaction t5 = te.beginTransaction(false, false);
         map = map.getInstance(t5);

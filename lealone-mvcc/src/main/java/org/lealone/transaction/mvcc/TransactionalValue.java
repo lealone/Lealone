@@ -122,6 +122,10 @@ public class TransactionalValue {
         NotCommitted(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
                 StorageDataType oldValueType) {
             super(transaction.transactionId, value);
+            // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可
+            if (oldValue != null && oldValue.tid == transaction.transactionId && (oldValue instanceof NotCommitted)) {
+                oldValue = ((NotCommitted) oldValue).oldValue;
+            }
             this.logId = transaction.logId;
             this.oldValue = oldValue;
             this.oldValueType = oldValueType;

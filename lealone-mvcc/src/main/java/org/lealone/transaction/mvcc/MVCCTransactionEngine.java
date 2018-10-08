@@ -19,7 +19,6 @@ package org.lealone.transaction.mvcc;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Semaphore;
@@ -233,12 +232,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     private class CheckpointService extends Thread {
 
-        private static final int DEFAULT_STORAGE_MAP_COMMITTED_DATA_CACHE_SIZE = 32 * 1024 * 1024; // 32M
+        private static final int DEFAULT_COMMITTED_DATA_CACHE_SIZE = 32 * 1024 * 1024; // 32M
         private static final int DEFAULT_CHECKPOINT_PERIOD = 1 * 60 * 60 * 1000; // 1小时
-
         private final AtomicBoolean checking = new AtomicBoolean(false);
         private final Semaphore semaphore = new Semaphore(1);
-        private final int mapCacheSize;
+        private final int committedDataCacheSize;
         private final int checkpointPeriod;
         private final int sleep;
 
@@ -249,11 +247,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             setName(getClass().getSimpleName());
             setDaemon(true);
 
-            String v = config.get("storage_map_committed_data_cache_size_in_mb");
+            String v = config.get("committed_data_cache_size_in_mb");
             if (v != null)
-                mapCacheSize = Integer.parseInt(v) * 1024 * 1024;
+                committedDataCacheSize = Integer.parseInt(v) * 1024 * 1024;
             else
-                mapCacheSize = DEFAULT_STORAGE_MAP_COMMITTED_DATA_CACHE_SIZE;
+                committedDataCacheSize = DEFAULT_COMMITTED_DATA_CACHE_SIZE;
 
             v = config.get("checkpoint_period");
             if (v != null)
@@ -291,16 +289,28 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
             if (!checking.compareAndSet(false, true))
                 return;
             long now = System.currentTimeMillis();
-            boolean executeCheckpoint = false;
-            boolean forceSave = force || isClosed || (lastSavedAt + checkpointPeriod < now);
-            for (Entry<String, AtomicInteger> e : estimatedMemory.entrySet()) {
-                if (forceSave || executeCheckpoint || e.getValue().get() > mapCacheSize) {
-                    maps.get(e.getKey()).save();
-                    e.getValue().set(0);
-                    executeCheckpoint = true;
+            boolean executeCheckpoint = force || isClosed || (lastSavedAt + checkpointPeriod < now);
+
+            // 如果上面的条件都不满足，那么再看看已经提交的数据占用的预估总内存大小是否大于阈值
+            if (!executeCheckpoint) {
+                long totalEstimatedMemory = 0;
+                for (AtomicInteger counter : estimatedMemory.values()) {
+                    totalEstimatedMemory += counter.get();
                 }
+                executeCheckpoint = totalEstimatedMemory > committedDataCacheSize;
             }
+
             if (executeCheckpoint) {
+                for (StorageMap<Object, TransactionalValue> map : maps.values()) {
+                    // 在这里有可能把已提交和未提交事务的数据都保存了，
+                    // 不过不要紧，如果在生成检查点之后系统崩溃了导致未提交事务不能正常完成，还有读时撤销机制保证数据完整性，
+                    // 因为在保存未提交数据时，也同时保存了原来的数据，如果在读到未提交数据时发现了异常，就会进行撤销，
+                    // 读时撤销机制在TransactionalValue类中实现。
+                    AtomicInteger counter = estimatedMemory.get(map.getName());
+                    if (counter != null && counter.getAndSet(0) > 0) {
+                        map.save();
+                    }
+                }
                 lastSavedAt = now;
                 logSyncService.checkpoint(nextEvenTransactionId());
             }
