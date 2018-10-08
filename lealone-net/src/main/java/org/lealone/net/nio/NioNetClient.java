@@ -36,7 +36,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetEndpoint;
-import org.lealone.net.TcpConnection;
+import org.lealone.net.TcpClientConnection;
 
 public class NioNetClient implements org.lealone.net.NetClient {
 
@@ -126,7 +126,7 @@ public class NioNetClient implements org.lealone.net.NetClient {
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false);
             } else {
-                conn = new TcpConnection(writableChannel, this);
+                conn = new TcpClientConnection(writableChannel, this);
             }
             conn.setInetSocketAddress(attachment.inetSocketAddress);
             asyncConnections.put(attachment.inetSocketAddress, conn);

@@ -15,25 +15,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.net;
+package org.lealone.server;
 
-import java.util.LinkedList;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.db.SessionStatus;
-import org.lealone.net.TcpConnection.SessionInfo;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 
 public class CommandHandler extends Thread implements SQLStatementExecutor {
 
-    private static final LinkedList<TcpConnection> connections = new LinkedList<>();
+    // 表示commands由commandHandler处理
+    static class CommandQueue {
+        final CommandHandler commandHandler;
+        final ConcurrentLinkedQueue<PreparedCommand> preparedCommands;
+
+        CommandQueue(CommandHandler commandHandler) {
+            this.commandHandler = commandHandler;
+            this.preparedCommands = new ConcurrentLinkedQueue<>();
+        }
+    }
+
     private static final int commandHandlersCount = 2; // Runtime.getRuntime().availableProcessors();
     private static final CommandHandler[] commandHandlers = new CommandHandler[commandHandlersCount];
     private static final AtomicInteger index = new AtomicInteger(0);
@@ -66,36 +73,22 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         return commandHandlers[index.getAndIncrement() % commandHandlers.length];
     }
 
-    public static void addConnection(TcpConnection c) {
-        connections.add(c);
-    }
-
-    public static void removeConnection(TcpConnection c) {
-        connections.remove(c);
-        c.close();
-    }
-
-    private final AtomicLong sequence = new AtomicLong(0);
-    private final ConcurrentHashMap<Long, SessionInfo> sessionInfoMap = new ConcurrentHashMap<>();
+    private final CopyOnWriteArrayList<CommandQueue> commandQueues = new CopyOnWriteArrayList<>();
     private final Semaphore haveWork = new Semaphore(1);
     private boolean stop;
     private int nested;
 
-    long getNextSequence() {
-        return sequence.incrementAndGet();
+    void addCommandQueue(CommandQueue queue) {
+        commandQueues.add(queue);
     }
 
-    void addSession(SessionInfo sessionInfo) {
-        // SessionInfo的hostAndPort和sessionId字段不足以区别它自身，所以用commandHandlerSequence
-        sessionInfoMap.put(sessionInfo.commandHandlerSequence, sessionInfo);
-    }
-
-    void removeSession(SessionInfo sessionInfo) {
-        sessionInfoMap.remove(sessionInfo.commandHandlerSequence);
+    void removeCommandQueue(CommandQueue queue) {
+        commandQueues.remove(queue);
     }
 
     public CommandHandler(int id) {
         super("CommandHandler-" + id);
+        // setDaemon(true);
     }
 
     @Override
@@ -118,8 +111,9 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
 
     @Override
     public void executeNextStatement() {
+        int priority = PreparedStatement.MIN_PRIORITY;
         while (true) {
-            PreparedCommand c = getNextBestCommand();
+            PreparedCommand c = getNextBestCommand(priority, true);
             if (c == null) {
                 try {
                     haveWork.tryAcquire(100, TimeUnit.MILLISECONDS);
@@ -137,41 +131,6 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         }
     }
 
-    private PreparedCommand getNextBestCommand() {
-        if (sessionInfoMap.isEmpty())
-            return null;
-
-        ConcurrentLinkedQueue<PreparedCommand> bestPreparedCommandQueue = null;
-        int priority = PreparedStatement.MIN_PRIORITY;
-
-        for (SessionInfo sessionInfo : sessionInfoMap.values()) {
-            ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = sessionInfo.preparedCommandQueue;
-            PreparedCommand pc = preparedCommandQueue.peek();
-            if (pc == null)
-                continue;
-
-            SessionStatus sessionStatus = pc.session.getStatus();
-            if (sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
-                continue;
-            } else if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
-                bestPreparedCommandQueue = preparedCommandQueue;
-                break;
-            } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
-                continue;
-            }
-
-            if (bestPreparedCommandQueue == null || pc.stmt.getPriority() > priority) {
-                bestPreparedCommandQueue = preparedCommandQueue;
-                priority = pc.stmt.getPriority();
-            }
-        }
-
-        if (bestPreparedCommandQueue == null)
-            return null;
-
-        return bestPreparedCommandQueue.poll();
-    }
-
     @Override
     public void executeNextStatementIfNeeded(PreparedStatement current) {
         // 如果出来各高优化级的命令，最多只抢占3次，避免堆栈溢出
@@ -181,7 +140,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         int priority = current.getPriority();
         boolean hasHigherPriorityCommand = false;
         while (true) {
-            PreparedCommand c = getNextBestCommand(priority);
+            PreparedCommand c = getNextBestCommand(priority, false);
             if (c == null) {
                 break;
             }
@@ -200,35 +159,42 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         nested--;
     }
 
-    private PreparedCommand getNextBestCommand(int priority) {
-        if (sessionInfoMap.isEmpty())
+    private PreparedCommand getNextBestCommand(int priority, boolean checkStatus) {
+        if (commandQueues.isEmpty())
             return null;
 
-        ConcurrentLinkedQueue<PreparedCommand> bestPreparedCommandQueue = null;
+        ConcurrentLinkedQueue<PreparedCommand> bestQueue = null;
 
-        for (SessionInfo sessionInfo : sessionInfoMap.values()) {
-            ConcurrentLinkedQueue<PreparedCommand> preparedCommandQueue = sessionInfo.preparedCommandQueue;
-            PreparedCommand pc = preparedCommandQueue.peek();
+        for (CommandQueue commandQueue : commandQueues) {
+            ConcurrentLinkedQueue<PreparedCommand> preparedCommands = commandQueue.preparedCommands;
+            PreparedCommand pc = preparedCommands.peek();
             if (pc == null)
                 continue;
 
-            // SessionStatus sessionStatus = pc.session.getStatus();
-            // if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
-            // bestPreparedCommandQueue = preparedCommandQueue;
-            // break;
-            // } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
-            // continue;
-            // }
+            if (checkStatus) {
+                SessionStatus sessionStatus = pc.session.getStatus();
+                if (sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
+                    continue;
+                } else if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
+                    bestQueue = preparedCommands;
+                    break;
+                } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
+                    continue;
+                }
+                if (bestQueue == null) {
+                    bestQueue = preparedCommands;
+                }
+            }
 
             if (pc.stmt.getPriority() > priority) {
-                bestPreparedCommandQueue = preparedCommandQueue;
+                bestQueue = preparedCommands;
                 priority = pc.stmt.getPriority();
             }
         }
 
-        if (bestPreparedCommandQueue == null)
+        if (bestQueue == null)
             return null;
 
-        return bestPreparedCommandQueue.poll();
+        return bestQueue.poll();
     }
 }

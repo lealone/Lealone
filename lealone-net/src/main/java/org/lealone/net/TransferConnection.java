@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.sql.SQLException;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.JdbcSQLException;
@@ -34,48 +33,22 @@ public abstract class TransferConnection extends AsyncConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TransferConnection.class);
 
-    protected final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private NetBuffer lastBuffer;
 
     public TransferConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
     }
 
-    protected abstract void handleRequest(Transfer transfer, int id, int operation) throws IOException;
+    protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
+        throw DbException.throwInternalError("handleRequest");
+    }
 
     protected void handleResponse(Transfer transfer, int id, int status) throws IOException {
-        DbException e = null;
-        if (status == Session.STATUS_OK) {
-            // ok
-        } else if (status == Session.STATUS_ERROR) {
-            e = parseError(transfer);
-        } else if (status == Session.STATUS_CLOSED) {
-            transfer = null;
-        } else {
-            e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
-        }
-
-        AsyncCallback<?> ac = callbackMap.remove(id);
-        if (ac == null) {
-            String msg = "Async callback is null, may be a bug! id = " + id;
-            if (e != null) {
-                logger.warn(msg, e);
-            } else {
-                logger.warn(msg);
-            }
-            return;
-        }
-        if (e != null)
-            ac.setDbException(e);
-        ac.run(transfer);
+        throw DbException.throwInternalError("handleResponse");
     }
 
-    public void addAsyncCallback(int id, AsyncCallback<?> ac) {
-        callbackMap.put(id, ac);
-    }
-
-    public AsyncCallback<?> getAsyncCallback(int id) {
-        return callbackMap.get(id);
+    protected void addAsyncCallback(int id, AsyncCallback<?> ac) {
+        throw DbException.throwInternalError("addAsyncCallback");
     }
 
     protected static DbException parseError(Transfer transfer) {
@@ -99,8 +72,7 @@ public abstract class TransferConnection extends AsyncConnection {
         return DbException.convert(t);
     }
 
-    protected void sendError(Transfer transfer, int id, Throwable t) {
-        // logger.error("sendError", t);
+    public void sendError(Transfer transfer, int id, Throwable t) {
         try {
             SQLException e = DbException.convert(t).getSQLException();
             StringWriter writer = new StringWriter();

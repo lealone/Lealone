@@ -40,6 +40,7 @@ public class P2pConnection extends TransferConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(P2pConnection.class);
 
+    private String hostAndPort;
     private NetEndpoint remoteEndpoint;
     private NetEndpoint resetEndpoint; // pointer to the reset Address.
     private ConnectionMetrics metrics;
@@ -47,6 +48,10 @@ public class P2pConnection extends TransferConnection {
 
     public P2pConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
+    }
+
+    public String getHostAndPort() {
+        return hostAndPort;
     }
 
     @Override

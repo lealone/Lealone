@@ -7,18 +7,17 @@
 package org.lealone.server;
 
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
-import org.lealone.net.CommandHandler;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetServer;
-import org.lealone.net.TcpConnection;
 import org.lealone.net.WritableChannel;
 
 /**
@@ -30,6 +29,8 @@ import org.lealone.net.WritableChannel;
  * @author zhh
  */
 public class TcpServer extends DelegatedProtocolServer implements AsyncConnectionManager {
+
+    private final CopyOnWriteArrayList<AsyncConnection> connections = new CopyOnWriteArrayList<>();
 
     @Override
     public String getName() {
@@ -74,9 +75,9 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
     @Override
     public AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
-            TcpConnection conn = new TcpConnection(writableChannel, isServer);
+            TcpServerConnection conn = new TcpServerConnection(writableChannel, isServer);
             conn.setBaseDir(getBaseDir());
-            CommandHandler.addConnection(conn);
+            connections.add(conn);
             return conn;
         } else {
             // TODO
@@ -89,6 +90,7 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
 
     @Override
     public void removeConnection(AsyncConnection conn) {
-        CommandHandler.removeConnection((TcpConnection) conn);
+        connections.remove(conn);
+        conn.close();
     }
 }

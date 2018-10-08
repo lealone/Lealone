@@ -35,6 +35,7 @@ import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
+import org.lealone.net.TcpClientConnection;
 import org.lealone.net.TcpConnection;
 import org.lealone.net.Transfer;
 import org.lealone.sql.ParsedStatement;
@@ -65,7 +66,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private String cipher;
     private byte[] fileEncryptionKey;
     private int sessionId;
-    private TcpConnection tcpConnection;
+    private TcpClientConnection tcpConnection;
 
     ClientSession(ConnectionInfo ci, String server, Session parent) {
         if (!ci.isRemote()) {
@@ -154,10 +155,10 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
         CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
         AsyncConnection conn = factory.getNetClient().createConnection(config, endpoint);
-        if (!(conn instanceof TcpConnection)) {
-            throw DbException.throwInternalError("not tcp connection: " + conn.getClass().getName());
+        if (!(conn instanceof TcpClientConnection)) {
+            throw DbException.throwInternalError("not tcp client connection: " + conn.getClass().getName());
         }
-        tcpConnection = (TcpConnection) conn;
+        tcpConnection = (TcpClientConnection) conn;
         sessionId = getNextId();
         transfer = tcpConnection.createTransfer(this);
         tcpConnection.writeInitPacket(this, transfer, ci);
