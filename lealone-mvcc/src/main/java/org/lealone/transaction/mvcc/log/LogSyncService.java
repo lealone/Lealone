@@ -27,10 +27,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
-import org.lealone.common.util.ShutdownHookUtils;
-import org.lealone.storage.StorageMap;
 import org.lealone.transaction.mvcc.MVCCTransaction;
-import org.lealone.transaction.mvcc.TransactionalValue;
 
 public abstract class LogSyncService extends Thread {
 
@@ -66,23 +63,10 @@ public abstract class LogSyncService extends Thread {
     public void close() {
         running = false;
         haveWork.release(1);
-        // 放在最后，让线程退出后再关闭
-        redoLog.close();
     }
 
     @Override
     public void run() {
-        ShutdownHookUtils.addShutdownHook(this, () -> {
-            try {
-                LogSyncService.this.sync();
-            } catch (Exception e) {
-            }
-            try {
-                LogSyncService.this.close();
-                LogSyncService.this.join();
-            } catch (Exception e) {
-            }
-        });
         while (running) {
             long syncStarted = System.currentTimeMillis();
             sync();
@@ -100,6 +84,10 @@ public abstract class LogSyncService extends Thread {
                 throw new AssertionError();
             }
         }
+        // 结束前最后sync一次
+        sync();
+        // 放在最后，让线程退出后再关闭
+        redoLog.close();
     }
 
     private void sync() {
@@ -144,8 +132,8 @@ public abstract class LogSyncService extends Thread {
         return lastTransactionId;
     }
 
-    public <K> List<ByteBuffer> getAndRemovePendingRedoLog(StorageMap<K, TransactionalValue> map) {
-        return pendingRedoLog.remove(map.getName());
+    public List<ByteBuffer> getAndRemovePendingRedoLog(String mapName) {
+        return pendingRedoLog.remove(mapName);
     }
 
     public static LogSyncService create(Map<String, String> config) {

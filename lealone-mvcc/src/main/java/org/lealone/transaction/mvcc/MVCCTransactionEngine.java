@@ -57,7 +57,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     private final AtomicBoolean init = new AtomicBoolean(false);
 
     private LogSyncService logSyncService;
-    private StorageMapSaveService storageMapSaveService;
+    private CheckpointService checkpointService;
 
     public MVCCTransactionEngine() {
         super(NAME);
@@ -111,7 +111,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
     public synchronized void init(Map<String, String> config) {
         if (!init.compareAndSet(false, true))
             return;
-        storageMapSaveService = new StorageMapSaveService(config);
+        checkpointService = new CheckpointService(config);
         logSyncService = LogSyncService.create(config);
 
         long lastTransactionId = logSyncService.initPendingRedoLog();
@@ -119,7 +119,15 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
         // 调用完initPendingRedoLog后再启动logSyncService
         logSyncService.start();
-        storageMapSaveService.start();
+        checkpointService.start();
+
+        addShutdownHook();
+    }
+
+    private void addShutdownHook() {
+        ShutdownHookUtils.addShutdownHook(this, () -> {
+            close();
+        });
     }
 
     @Override
@@ -140,19 +148,22 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     @Override
     public void close() {
+        if (!init.compareAndSet(true, false))
+            return;
         if (logSyncService != null) {
+            // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
+            try {
+                checkpointService.close();
+                checkpointService.join();
+            } catch (Exception e) {
+            }
             try {
                 logSyncService.close();
                 logSyncService.join();
             } catch (Exception e) {
             }
-            try {
-                storageMapSaveService.close();
-                storageMapSaveService.join();
-            } catch (Exception e) {
-            }
-            logSyncService = null;
-            storageMapSaveService = null;
+            this.logSyncService = null;
+            this.checkpointService = null;
         }
     }
 
@@ -217,55 +228,48 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
 
     @Override
     public void checkpoint() {
-        storageMapSaveService.checkpoint();
+        checkpointService.checkpoint();
     }
 
-    private class StorageMapSaveService extends Thread {
+    private class CheckpointService extends Thread {
 
-        private static final int DEFAULT_MAP_CACHE_SIZE = 32 * 1024 * 1024; // 32M
-        private static final int DEFAULT_MAP_SAVE_PERIOD = 1 * 60 * 60 * 1000; // 1小时
+        private static final int DEFAULT_STORAGE_MAP_COMMITTED_DATA_CACHE_SIZE = 32 * 1024 * 1024; // 32M
+        private static final int DEFAULT_CHECKPOINT_PERIOD = 1 * 60 * 60 * 1000; // 1小时
 
         private final AtomicBoolean checking = new AtomicBoolean(false);
         private final Semaphore semaphore = new Semaphore(1);
         private final int mapCacheSize;
-        private final int mapSavePeriod;
+        private final int checkpointPeriod;
         private final int sleep;
 
         private volatile long lastSavedAt = System.currentTimeMillis();
         private volatile boolean isClosed;
 
-        StorageMapSaveService(Map<String, String> config) {
-            super("StorageMapSaveService");
+        CheckpointService(Map<String, String> config) {
+            setName(getClass().getSimpleName());
             setDaemon(true);
 
-            String v = config.get("map_cache_size_in_mb");
+            String v = config.get("storage_map_committed_data_cache_size_in_mb");
             if (v != null)
                 mapCacheSize = Integer.parseInt(v) * 1024 * 1024;
             else
-                mapCacheSize = DEFAULT_MAP_CACHE_SIZE;
+                mapCacheSize = DEFAULT_STORAGE_MAP_COMMITTED_DATA_CACHE_SIZE;
 
-            v = config.get("map_save_period");
+            v = config.get("checkpoint_period");
             if (v != null)
-                mapSavePeriod = Integer.parseInt(v);
+                checkpointPeriod = Integer.parseInt(v);
             else
-                mapSavePeriod = DEFAULT_MAP_SAVE_PERIOD;
+                checkpointPeriod = DEFAULT_CHECKPOINT_PERIOD;
 
             int sleep = 1 * 60 * 1000;// 1分钟
-            v = config.get("map_save_service_sleep_interval");
+            v = config.get("checkpoint_service_sleep_interval");
             if (v != null)
                 sleep = Integer.parseInt(v);
 
-            if (mapSavePeriod < sleep)
-                sleep = mapSavePeriod;
+            if (checkpointPeriod < sleep)
+                sleep = checkpointPeriod;
 
             this.sleep = sleep;
-            ShutdownHookUtils.addShutdownHook(this, () -> {
-                StorageMapSaveService.this.close();
-                try {
-                    StorageMapSaveService.this.join();
-                } catch (InterruptedException e) {
-                }
-            });
         }
 
         void close() {
@@ -288,7 +292,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase {
                 return;
             long now = System.currentTimeMillis();
             boolean executeCheckpoint = false;
-            boolean forceSave = force || isClosed || (lastSavedAt + mapSavePeriod < now);
+            boolean forceSave = force || isClosed || (lastSavedAt + checkpointPeriod < now);
             for (Entry<String, AtomicInteger> e : estimatedMemory.entrySet()) {
                 if (forceSave || executeCheckpoint || e.getValue().get() > mapCacheSize) {
                     maps.get(e.getKey()).save();

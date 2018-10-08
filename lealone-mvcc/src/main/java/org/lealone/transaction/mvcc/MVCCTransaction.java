@@ -181,7 +181,7 @@ public class MVCCTransaction implements Transaction {
         }
         StorageMap<K, TransactionalValue> map = storage.openMap(name, mapType, keyType, valueType, parameters);
         if (!map.isInMemory()) {
-            TransactionalLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(map));
+            TransactionalLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(map.getName()));
         }
         transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
         return createTransactionMap(map, isShardingMode);
