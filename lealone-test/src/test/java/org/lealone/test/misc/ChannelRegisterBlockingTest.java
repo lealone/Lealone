@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package channel;
+package org.lealone.test.misc;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
@@ -26,8 +26,31 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ChannelRegisterBlockingTest {
-
     public static void main(String[] args) throws Exception {
+        blocking();
+        nonblocking();
+    }
+
+    public static void blocking() throws Exception {
+        Selector selector = Selector.open();
+        System.out.println("step 1");
+        new Thread(() -> {
+            try {
+                System.out.println("step 2");
+                selector.select(3000);
+                System.out.println("step 3");
+            } catch (Exception e) {
+            }
+        }).start();
+        Thread.sleep(1000);
+
+        SocketChannel channel = SocketChannel.open();
+        channel.configureBlocking(false);
+        channel.register(selector, SelectionKey.OP_CONNECT); // 直到select结束时才会被执行
+        System.out.println("step 4");
+    }
+
+    public static void nonblocking() throws Exception {
         // server event loop
         new Thread(() -> {
             try {
@@ -61,9 +84,9 @@ public class ChannelRegisterBlockingTest {
                 while (true) {
                     // clientSelector.select(5000);
                     if (selecting.compareAndSet(false, true)) {
-                        clientSelector.select(5000);
+                        clientSelector.select(50000);
                         selecting.set(false);
-                        Thread.sleep(10);
+                        Thread.sleep(10); // 实际场景在后面会有很多其他代码所以不需要这一句
                     }
                     Set<SelectionKey> keys = clientSelector.selectedKeys();
                     for (SelectionKey key : keys) {
