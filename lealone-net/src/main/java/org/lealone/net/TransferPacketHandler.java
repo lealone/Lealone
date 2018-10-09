@@ -15,30 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server;
+package org.lealone.net;
 
-import org.lealone.db.Session;
-import org.lealone.net.Transfer;
-import org.lealone.sql.PreparedStatement;
+public interface TransferPacketHandler {
 
-public class PreparedCommand {
-
-    final int id;
-    final PreparedStatement stmt;
-    final Transfer transfer;
-    final Session session;
-    private final Runnable runnable;
-
-    PreparedCommand(int id, PreparedStatement stmt, Transfer transfer, Session session, Runnable runnable) {
-        this.id = id;
-        this.stmt = stmt;
-        this.transfer = transfer;
-        this.session = session;
-        this.runnable = runnable;
-    }
-
-    void run() {
-        runnable.run();
-    }
+    void handle(Runnable task);
 
 }

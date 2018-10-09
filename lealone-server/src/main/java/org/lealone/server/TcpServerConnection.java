@@ -37,8 +37,10 @@ import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.TcpConnection;
 import org.lealone.net.Transfer;
+import org.lealone.net.TransferPacketHandler;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.CommandHandler.CommandQueue;
+import org.lealone.server.CommandHandler.PreparedCommand;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
@@ -60,15 +62,22 @@ public class TcpServerConnection extends TcpConnection {
     // 然后由CommandHandler根据优先级从多个CommandQueue中依次取出执行
     private final ConcurrentHashMap<Integer, CommandQueue> commandQueueMap = new ConcurrentHashMap<>();
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
+    private final TransferPacketHandler packetHandler;
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
     private String baseDir;
 
     public TcpServerConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
+        packetHandler = CommandHandler.getNextCommandHandler();
     }
 
     void setBaseDir(String baseDir) {
         this.baseDir = baseDir;
+    }
+
+    @Override
+    public TransferPacketHandler getPacketHandler() {
+        return packetHandler;
     }
 
     @Override
@@ -379,8 +388,12 @@ public class TcpServerConnection extends TcpConnection {
         if (queue == null) {
             commandQueueNotFound(sessionId);
         }
-        queue.preparedCommands.add(pc);
-        queue.commandHandler.wakeUp();
+        if (queue.commandHandler == packetHandler) {
+            pc.execute();
+        } else {
+            queue.preparedCommands.add(pc);
+            queue.commandHandler.wakeUp();
+        }
     }
 
     private void commandQueueNotFound(int sessionId) {

@@ -25,12 +25,35 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.util.DateTimeUtils;
+import org.lealone.db.Session;
 import org.lealone.db.SessionStatus;
+import org.lealone.net.Transfer;
+import org.lealone.net.TransferPacketHandler;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 
-public class CommandHandler extends Thread implements SQLStatementExecutor {
+public class CommandHandler extends Thread implements SQLStatementExecutor, TransferPacketHandler {
+
+    static class PreparedCommand {
+        private final int id;
+        private final PreparedStatement stmt;
+        private final Transfer transfer;
+        private final Session session;
+        private final Runnable runnable;
+
+        PreparedCommand(int id, PreparedStatement stmt, Transfer transfer, Session session, Runnable runnable) {
+            this.id = id;
+            this.stmt = stmt;
+            this.transfer = transfer;
+            this.session = session;
+            this.runnable = runnable;
+        }
+
+        void execute() {
+            runnable.run();
+        }
+    }
 
     // 表示commands由commandHandler处理
     static class CommandQueue {
@@ -47,7 +70,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
     private static final CommandHandler[] commandHandlers = new CommandHandler[commandHandlersCount];
     private static final AtomicInteger index = new AtomicInteger(0);
 
-    public static void startCommandHandlers(Map<String, String> config) {
+    static void startCommandHandlers(Map<String, String> config) {
         for (int i = 0; i < commandHandlersCount; i++) {
             commandHandlers[i] = new CommandHandler(i, config);
         }
@@ -58,7 +81,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         }
     }
 
-    public static void stopCommandHandlers() {
+    static void stopCommandHandlers() {
         for (int i = 0; i < commandHandlersCount; i++) {
             commandHandlers[i].end();
         }
@@ -75,6 +98,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         return commandHandlers[index.getAndIncrement() % commandHandlers.length];
     }
 
+    private final ConcurrentLinkedQueue<Runnable> tasks = new ConcurrentLinkedQueue<>();
     private final CopyOnWriteArrayList<CommandQueue> commandQueues = new CopyOnWriteArrayList<>();
     private final Semaphore haveWork = new Semaphore(1);
     private final long loopInterval;
@@ -89,7 +113,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
         commandQueues.remove(queue);
     }
 
-    public CommandHandler(int id, Map<String, String> config) {
+    private CommandHandler(int id, Map<String, String> config) {
         super("CommandHandler-" + id);
         // setDaemon(true);
         // 默认100毫秒
@@ -97,14 +121,29 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
     }
 
     @Override
+    public void handle(Runnable task) {
+        tasks.add(task);
+        wakeUp();
+    }
+
+    private void executeTasks() {
+        Runnable task = tasks.poll();
+        while (task != null) {
+            task.run();
+            task = tasks.poll();
+        }
+    }
+
+    @Override
     public void run() {
         // SQLEngineManager.getInstance().setSQLStatementExecutor(this);
         while (!stop) {
+            executeTasks();
             executeNextStatement();
         }
     }
 
-    public void end() {
+    private void end() {
         stop = true;
         wakeUp();
     }
@@ -129,7 +168,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
                 break;
             }
             try {
-                c.run();
+                c.execute();
             } catch (Throwable e) {
                 c.transfer.getTransferConnection().sendError(c.transfer, c.id, e);
             }
@@ -152,7 +191,7 @@ public class CommandHandler extends Thread implements SQLStatementExecutor {
 
             hasHigherPriorityCommand = true;
             try {
-                c.run();
+                c.execute();
             } catch (Throwable e) {
                 c.transfer.getTransferConnection().sendError(c.transfer, c.id, e);
             }

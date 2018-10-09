@@ -133,10 +133,10 @@ public abstract class TransferConnection extends AsyncConnection {
                     transfer = new Transfer(this, writableChannel, buffer.slice(pos, pos + length));
                 int packetLength = transfer.readInt();
                 if (length - 4 == packetLength) {
-                    parsePacket(transfer);
+                    handlePacket(transfer);
                     break;
                 } else if (length - 4 > packetLength) {
-                    parsePacket(transfer);
+                    handlePacket(transfer);
                     pos = pos + packetLength + 4;
                     length = length - (packetLength + 4);
                     // 有可能剩下的不够4个字节了
@@ -153,24 +153,80 @@ public abstract class TransferConnection extends AsyncConnection {
             }
         } catch (Throwable e) {
             if (isServer)
-                logger.error("Parse packet", e);
+                logger.error("Failed to handle packet", e);
         }
     }
 
-    private void parsePacket(Transfer transfer) throws IOException {
+    private static abstract class PacketDeliveryTask implements Runnable {
+        final TransferConnection conn;
+        final Transfer transfer;
+        final int id;
+
+        public PacketDeliveryTask(TransferConnection conn, Transfer transfer, int id) {
+            this.conn = conn;
+            this.transfer = transfer;
+            this.id = id;
+        }
+    }
+
+    private static class RequestPacketDeliveryTask extends PacketDeliveryTask {
+        final int operation;
+
+        public RequestPacketDeliveryTask(TransferConnection conn, Transfer transfer, int id, int operation) {
+            super(conn, transfer, id);
+            this.operation = operation;
+        }
+
+        @Override
+        public void run() {
+            try {
+                conn.handleRequest(transfer, id, operation);
+            } catch (IOException e) {
+                logger.error("Failed to handle request, id: " + id + ", operation: " + operation, e);
+                conn.sendError(transfer, id, e);
+            }
+        }
+    }
+
+    private static class ResponsePacketDeliveryTask extends PacketDeliveryTask {
+        final int status;
+
+        public ResponsePacketDeliveryTask(TransferConnection conn, Transfer transfer, int id, int status) {
+            super(conn, transfer, id);
+            this.status = status;
+        }
+
+        @Override
+        public void run() {
+            try {
+                conn.handleResponse(transfer, id, status);
+            } catch (IOException e) {
+                throw DbException.convertIOException(e, "Failed to handle response, id: " + id + ", status: " + status);
+            }
+        }
+    }
+
+    public TransferPacketHandler getPacketHandler() {
+        return null;
+    }
+
+    private void handlePacket(Transfer transfer) throws IOException {
         boolean isRequest = transfer.readByte() == Transfer.REQUEST;
         int id = transfer.readInt();
+        Runnable task;
         if (isRequest) {
             int operation = transfer.readInt();
-            try {
-                handleRequest(transfer, id, operation);
-            } catch (Throwable e) {
-                logger.error("Failed to handle request, operation: " + operation, e);
-                sendError(transfer, id, e);
-            }
+            task = new RequestPacketDeliveryTask(this, transfer, id, operation);
+
         } else {
             int status = transfer.readInt();
-            handleResponse(transfer, id, status);
+            task = new ResponsePacketDeliveryTask(this, transfer, id, status);
+        }
+        TransferPacketHandler packetHandler = getPacketHandler();
+        if (packetHandler == null) {
+            task.run();
+        } else {
+            packetHandler.handle(task);
         }
     }
 }
