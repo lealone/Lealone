@@ -217,7 +217,6 @@ public abstract class TransferConnection extends AsyncConnection {
         if (isRequest) {
             int operation = transfer.readInt();
             task = new RequestPacketDeliveryTask(this, transfer, id, operation);
-
         } else {
             int status = transfer.readInt();
             task = new ResponsePacketDeliveryTask(this, transfer, id, status);

@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Assert;
+import org.lealone.common.logging.ConsoleLogDelegateFactory;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
@@ -61,9 +63,16 @@ public class TestBase extends Assert {
 
         if (Config.getProperty("default.storage.engine") == null)
             Config.setProperty("default.storage.engine", getDefaultStorageEngineName());
+
+        setConsoleLoggerFactory();
     }
 
     public TestBase() {
+    }
+
+    // 测试阶段使用ConsoleLog能加快启动速度，比logback快
+    public static void setConsoleLoggerFactory() {
+        System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, ConsoleLogDelegateFactory.class.getName());
     }
 
     public static String getDefaultStorageEngineName() {

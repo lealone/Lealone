@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
@@ -49,6 +50,7 @@ public class NioNetClient implements org.lealone.net.NetClient {
         return instance;
     }
 
+    private final AtomicBoolean selecting = new AtomicBoolean(false);
     private Selector selector;
     private long loopInterval;
 
@@ -70,7 +72,10 @@ public class NioNetClient implements org.lealone.net.NetClient {
         final Selector selector = this.selector;
         while (this.selector != null) {
             try {
-                selector.select(loopInterval);
+                if (selecting.compareAndSet(false, true)) {
+                    selector.select(loopInterval);
+                    selecting.set(false);
+                }
                 if (this.selector == null)
                     break;
                 Set<SelectionKey> keys = selector.selectedKeys();
@@ -188,7 +193,20 @@ public class NioNetClient implements org.lealone.net.NetClient {
                         attachment.inetSocketAddress = inetSocketAddress;
                         attachment.latch = latch;
 
-                        channel.register(selector, SelectionKey.OP_CONNECT, attachment);
+                        // 当nio-event-loop线程执行selector.select被阻塞时，代码内部依然会占用publicKeys锁，
+                        // 而另一个线程执行channel.register时，内部也会去要publicKeys锁，从而导致也被阻塞，
+                        // 所以下面这段代码的用处是:
+                        // 只要发现nio-event-loop线程正在进行select，那么就唤醒它，并释放publicKeys锁。
+                        while (true) {
+                            if (selecting.compareAndSet(false, true)) {
+                                channel.register(selector, SelectionKey.OP_CONNECT, attachment);
+                                selecting.set(false);
+                                selector.wakeup();
+                                break;
+                            } else {
+                                selector.wakeup();
+                            }
+                        }
                         channel.connect(inetSocketAddress);
                         latch.await();
                         conn = asyncConnections.get(inetSocketAddress);
