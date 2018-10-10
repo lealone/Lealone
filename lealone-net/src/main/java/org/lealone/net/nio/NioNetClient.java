@@ -17,6 +17,7 @@
  */
 package org.lealone.net.nio;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -28,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
@@ -40,7 +40,7 @@ import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.TcpClientConnection;
 
-public class NioNetClient implements org.lealone.net.NetClient {
+public class NioNetClient extends NioEventLoopAdapter implements org.lealone.net.NetClient {
 
     private static final Logger logger = LoggerFactory.getLogger(NioNetClient.class);
     private static final ConcurrentHashMap<InetSocketAddress, AsyncConnection> asyncConnections = new ConcurrentHashMap<>();
@@ -50,9 +50,8 @@ public class NioNetClient implements org.lealone.net.NetClient {
         return instance;
     }
 
-    private final AtomicBoolean selecting = new AtomicBoolean(false);
-    private Selector selector;
     private long loopInterval;
+    private Selector selector;
 
     private NioNetClient() {
     }
@@ -61,7 +60,8 @@ public class NioNetClient implements org.lealone.net.NetClient {
         if (selector == null) {
             // 默认1秒;
             loopInterval = DateTimeUtils.getLoopInterval(config, "client_nio_event_loop_interval", 1000);
-            this.selector = Selector.open();
+            selector = Selector.open();
+            setSelector(selector);
             ConcurrentUtils.submitTask("Client-Nio-Event-Loop", () -> {
                 NioNetClient.this.run();
             });
@@ -72,10 +72,7 @@ public class NioNetClient implements org.lealone.net.NetClient {
         final Selector selector = this.selector;
         while (this.selector != null) {
             try {
-                if (selecting.compareAndSet(false, true)) {
-                    selector.select(loopInterval);
-                    selecting.set(false);
-                }
+                select(loopInterval);
                 if (this.selector == null)
                     break;
                 Set<SelectionKey> keys = selector.selectedKeys();
@@ -86,6 +83,8 @@ public class NioNetClient implements org.lealone.net.NetClient {
                         int readyOps = key.readyOps();
                         if ((readyOps & SelectionKey.OP_READ) != 0) {
                             read(key);
+                        } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                            write(key);
                         } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
                             Object att = key.attachment();
                             connectionEstablished(key, att);
@@ -102,6 +101,48 @@ public class NioNetClient implements org.lealone.net.NetClient {
                 break;
             }
         }
+    }
+
+    // 交由上层去解析协议包是否完整收到更好一点，因为这里假设前4个字节是包的长度，网络层不应该关心具体协议格式
+    static ByteBuffer handle(ByteBuffer buffer, ByteBuffer lastBuffer, AsyncConnection conn) throws EOFException {
+        if (lastBuffer != null) {
+            ByteBuffer buffer2 = ByteBuffer.allocate(lastBuffer.limit() + buffer.limit());
+            buffer2.put(lastBuffer).put(buffer);
+            buffer2.flip();
+            buffer = buffer2;
+        }
+        while (buffer.hasRemaining()) {
+            int remaining = buffer.remaining();
+            if (remaining > 4) {
+                int pos = buffer.position();
+                int length = 0;
+                int ch1 = buffer.get(pos) & 0xff;
+                int ch2 = buffer.get(pos + 1) & 0xff;
+                int ch3 = buffer.get(pos + 2) & 0xff;
+                int ch4 = buffer.get(pos + 3) & 0xff;
+                if ((ch1 | ch2 | ch3 | ch4) < 0)
+                    throw new EOFException();
+                length = ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
+                if (remaining >= 4 + length) {
+                    byte[] bytes = new byte[length + 4];
+                    buffer.get(bytes);
+                    ByteBuffer buffer2 = ByteBuffer.wrap(bytes);
+                    NioBuffer nioBuffer = new NioBuffer(buffer2);
+                    conn.handle(nioBuffer);
+                } else {
+                    ByteBuffer buffer2 = ByteBuffer.allocate(remaining);
+                    buffer2.put(buffer);
+                    buffer2.flip();
+                    return buffer2;
+                }
+            } else {
+                ByteBuffer buffer2 = ByteBuffer.allocate(remaining);
+                buffer2.put(buffer);
+                buffer2.flip();
+                return buffer2;
+            }
+        }
+        return null;
     }
 
     private void read(SelectionKey key) {
@@ -131,7 +172,8 @@ public class NioNetClient implements org.lealone.net.NetClient {
         AsyncConnection conn;
         try {
             channel.finishConnect();
-            NioWritableChannel writableChannel = new NioWritableChannel(selector, channel);
+            addSocketChannel(channel);
+            NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false);
             } else {
@@ -139,7 +181,6 @@ public class NioNetClient implements org.lealone.net.NetClient {
             }
             conn.setInetSocketAddress(attachment.inetSocketAddress);
             asyncConnections.put(attachment.inetSocketAddress, conn);
-            // channel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, conn);
             channel.register(selector, SelectionKey.OP_READ, conn);
             attachment.latch.countDown();
         } catch (Exception e) {
@@ -193,20 +234,7 @@ public class NioNetClient implements org.lealone.net.NetClient {
                         attachment.inetSocketAddress = inetSocketAddress;
                         attachment.latch = latch;
 
-                        // 当nio-event-loop线程执行selector.select被阻塞时，代码内部依然会占用publicKeys锁，
-                        // 而另一个线程执行channel.register时，内部也会去要publicKeys锁，从而导致也被阻塞，
-                        // 所以下面这段代码的用处是:
-                        // 只要发现nio-event-loop线程正在进行select，那么就唤醒它，并释放publicKeys锁。
-                        while (true) {
-                            if (selecting.compareAndSet(false, true)) {
-                                channel.register(selector, SelectionKey.OP_CONNECT, attachment);
-                                selecting.set(false);
-                                selector.wakeup();
-                                break;
-                            } else {
-                                selector.wakeup();
-                            }
-                        }
+                        register(channel, SelectionKey.OP_CONNECT, attachment);
                         channel.connect(inetSocketAddress);
                         latch.await();
                         conn = asyncConnections.get(inetSocketAddress);
@@ -220,26 +248,17 @@ public class NioNetClient implements org.lealone.net.NetClient {
         return conn;
     }
 
-    private void closeChannel(SocketChannel channel) {
+    @Override
+    public void closeChannel(SocketChannel channel) {
         if (channel == null) {
             return;
         }
         try {
             InetSocketAddress inetSocketAddress = (InetSocketAddress) channel.getRemoteAddress();
             removeConnection(inetSocketAddress, false);
-        } catch (IOException e1) {
+        } catch (Exception e1) {
         }
-        Socket socket = channel.socket();
-        if (socket != null) {
-            try {
-                socket.close();
-            } catch (IOException e) {
-            }
-        }
-        try {
-            channel.close();
-        } catch (IOException e) {
-        }
+        super.closeChannel(channel);
     }
 
     @Override

@@ -20,65 +20,52 @@ package org.lealone.net.nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
-import org.lealone.common.logging.Logger;
-import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetBufferFactory;
 import org.lealone.net.WritableChannel;
 
 public class NioWritableChannel implements WritableChannel {
 
-    private static final Logger logger = LoggerFactory.getLogger(NioWritableChannel.class);
-    private final Selector selector;
     private final SocketChannel channel;
-    private final InetSocketAddress address;
+    private final NioEventLoop nioEventLoop;
+    private final String host;
+    private final int port;
 
-    public NioWritableChannel(Selector selector, SocketChannel channel) throws IOException {
-        this.selector = selector;
+    public NioWritableChannel(SocketChannel channel, NioEventLoop nioEventLoop) throws IOException {
         this.channel = channel;
+        this.nioEventLoop = nioEventLoop;
         SocketAddress sa = channel.getRemoteAddress();
         if (sa instanceof InetSocketAddress) {
-            address = (InetSocketAddress) sa;
+            InetSocketAddress address = (InetSocketAddress) sa;
+            host = address.getHostString();
+            port = address.getPort();
         } else {
-            address = null;
+            host = "";
+            port = -1;
         }
     }
 
     @Override
     public void write(Object data) {
         if (data instanceof NioBuffer) {
-            ByteBuffer buffer = ((NioBuffer) data).getBuffer();
-            buffer.flip();
-            try {
-                channel.write(buffer);
-                selector.wakeup();
-            } catch (IOException e) {
-                logger.error("write exception", e);
-            }
+            nioEventLoop.addNioBuffer(channel, (NioBuffer) data);
         }
     }
 
     @Override
     public void close() {
-        try {
-            channel.register(selector, 0);
-            channel.close();
-        } catch (IOException e) {
-            logger.error("close exception", e);
-        }
+        nioEventLoop.closeChannel(channel);
     }
 
     @Override
     public String getHost() {
-        return address == null ? "" : address.getHostString();
+        return host;
     }
 
     @Override
     public int getPort() {
-        return address == null ? -1 : address.getPort();
+        return port;
     }
 
     @Override

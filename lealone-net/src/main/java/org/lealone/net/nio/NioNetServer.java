@@ -19,8 +19,8 @@ package org.lealone.net.nio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -36,11 +36,12 @@ import org.lealone.net.NetServerBase;
 import org.lealone.net.Transfer;
 
 //TODO 1.支持SSL 2.支持配置参数
-public class NioNetServer extends NetServerBase {
+public class NioNetServer extends NetServerBase implements NioEventLoop {
 
     private static final Logger logger = LoggerFactory.getLogger(NioNetServer.class);
     private Selector selector;
     private ServerSocketChannel serverChannel;
+    private NioEventLoopAdapter nioEventLoopAdapter;
 
     @Override
     public synchronized void start() {
@@ -49,6 +50,7 @@ public class NioNetServer extends NetServerBase {
         logger.info("Starting nio net server");
         try {
             selector = Selector.open();
+            nioEventLoopAdapter = new NioEventLoopAdapter(selector);
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
             serverChannel.configureBlocking(false);
@@ -69,7 +71,7 @@ public class NioNetServer extends NetServerBase {
         final Selector selector = this.selector;
         for (;;) {
             try {
-                selector.select(loopInterval);
+                select(loopInterval);
                 if (this.selector == null)
                     break;
                 Set<SelectionKey> keys = selector.selectedKeys();
@@ -79,6 +81,8 @@ public class NioNetServer extends NetServerBase {
                             int readyOps = key.readyOps();
                             if ((readyOps & SelectionKey.OP_READ) != 0) {
                                 read(key);
+                            } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                                write(key);
                             } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
                                 accept();
                             } else {
@@ -110,8 +114,8 @@ public class NioNetServer extends NetServerBase {
         try {
             channel = serverChannel.accept();
             channel.configureBlocking(false);
-
-            NioWritableChannel writableChannel = new NioWritableChannel(selector, channel);
+            addSocketChannel(channel);
+            NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
             conn = createConnection(writableChannel, true);
 
             Attachment attachment = new Attachment();
@@ -160,23 +164,6 @@ public class NioNetServer extends NetServerBase {
         }
     }
 
-    private void closeChannel(SocketChannel channel) {
-        if (channel == null) {
-            return;
-        }
-        Socket socket = channel.socket();
-        if (socket != null) {
-            try {
-                socket.close();
-            } catch (Throwable e) {
-            }
-        }
-        try {
-            channel.close();
-        } catch (Throwable e) {
-        }
-    }
-
     @Override
     public synchronized void stop() {
         if (isStopped())
@@ -199,5 +186,45 @@ public class NioNetServer extends NetServerBase {
             } catch (Throwable e) {
             }
         }
+    }
+
+    @Override
+    public void select(long timeout) throws IOException {
+        nioEventLoopAdapter.select(timeout);
+    }
+
+    @Override
+    public void register(SocketChannel channel, int ops, Object att) throws ClosedChannelException {
+        nioEventLoopAdapter.register(channel, ops, att);
+    }
+
+    @Override
+    public void wakeup() {
+        nioEventLoopAdapter.wakeup();
+    }
+
+    @Override
+    public void addSocketChannel(SocketChannel channel) {
+        nioEventLoopAdapter.addSocketChannel(channel);
+    }
+
+    @Override
+    public void addNioBuffer(SocketChannel channel, NioBuffer nioBuffer) {
+        nioEventLoopAdapter.addNioBuffer(channel, nioBuffer);
+    }
+
+    @Override
+    public void tryRegisterWriteOperation(Selector selector) {
+        nioEventLoopAdapter.tryRegisterWriteOperation(selector);
+    }
+
+    @Override
+    public void write(SelectionKey key) {
+        nioEventLoopAdapter.write(key);
+    }
+
+    @Override
+    public void closeChannel(SocketChannel channel) {
+        nioEventLoopAdapter.closeChannel(channel);
     }
 }

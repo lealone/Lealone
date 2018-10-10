@@ -35,6 +35,70 @@ public class AsyncPerformanceTest {
         run();
     }
 
+    static void run() throws Exception {
+        Connection conn = getConnection();
+        Statement stmt = conn.createStatement();
+
+        int loop = 20;
+        for (int i = 0; i < loop; i++) {
+            stmt.executeUpdate("DROP TABLE IF EXISTS test");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+            benchmark(i + 1);
+        }
+
+        stmt.close();
+        conn.close();
+    }
+
+    static Connection getConnection() throws Exception {
+        long t1 = System.currentTimeMillis();
+        TestBase t = new TestBase();
+        // t.setNetFactoryName("nio");
+        Connection conn = t.getConnection(LealoneDatabase.NAME);
+        long t2 = System.currentTimeMillis();
+        System.out.println(Thread.currentThread().getName() + " getConnection time: " + (t2 - t1) + " ms");
+        return conn;
+    }
+
+    static void benchmark(int loop) throws Exception {
+        int threadsCount = 1; // Runtime.getRuntime().availableProcessors() * 4;
+        int count = 500;
+
+        MyThread[] threads = new MyThread[threadsCount];
+        for (int i = 0; i < threadsCount; i++) {
+            threads[i] = new MyThread(i * count, count);
+        }
+
+        for (int i = 0; i < threadsCount; i++) {
+            threads[i].start();
+        }
+        for (int i = 0; i < threadsCount; i++) {
+            threads[i].join();
+        }
+
+        long write_sum = 0;
+        for (int i = 0; i < threadsCount; i++) {
+            write_sum += threads[i].write_time;
+        }
+
+        long read_sum = 0;
+        for (int i = 0; i < threadsCount; i++) {
+            read_sum += threads[i].read_time;
+        }
+        long random_read_sum = 0;
+        for (int i = 0; i < threadsCount; i++) {
+            random_read_sum += threads[i].random_read_time;
+        }
+
+        System.out.println();
+        System.out.println("threads: " + threadsCount + ", loop: " + loop + ", rows: " + (threadsCount * count));
+        System.out.println("==========================================================");
+        System.out.println("write_sum=" + write_sum + " ms, avg=" + (write_sum / threadsCount) + " ms");
+        System.out.println("read_sum=" + read_sum + " ms, avg=" + (read_sum / threadsCount) + " ms");
+        System.out
+                .println("random_read_sum=" + random_read_sum + " ms, avg=" + (random_read_sum / threadsCount) + " ms");
+    }
+
     static Random random = new Random();
 
     static class MyThread extends Thread {
@@ -48,20 +112,35 @@ public class AsyncPerformanceTest {
 
         MyThread(int start, int count) throws Exception {
             super("MyThread-" + start);
-            conn = new TestBase().getConnection(LealoneDatabase.NAME);
+            conn = getConnection();
             stmt = (JdbcStatement) conn.createStatement();
             this.start = start;
             this.end = start + count;
+        }
+
+        @Override
+        public void run() {
+            try {
+                write();
+                read(false);
+                read(true);
+                stmt.close();
+                conn.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         void write() throws Exception {
             CountDownLatch latch = new CountDownLatch(end - start);
             long t1 = System.currentTimeMillis();
             for (int i = start; i < end; i++) {
+                // System.out.println("i: " + i);
                 String sql = "INSERT INTO test(f1, f2) VALUES(" + i + "," + i * 10 + ")";
                 stmt.executeUpdateAsync(sql, res -> {
-                    // System.out.println((end - start) + " " + latch.getCount());
                     latch.countDown();
+                    // long count = latch.getCount();
+                    // System.out.println((end - start) + " " + count);
                 });
             }
             latch.await();
@@ -105,72 +184,5 @@ public class AsyncPerformanceTest {
             // else
             // System.out.println(getName() + " read end, time=" + read_time + " ms");
         }
-
-        @Override
-        public void run() {
-            try {
-                write();
-                read(false);
-                read(true);
-                stmt.close();
-                conn.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
     }
-
-    static void run() throws Exception {
-        Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
-        Statement stmt = conn.createStatement();
-
-        int loop = 10;
-        for (int i = 0; i < loop; i++) {
-            stmt.executeUpdate("DROP TABLE IF EXISTS test");
-            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
-            benchmark();
-        }
-
-        stmt.close();
-        conn.close();
-    }
-
-    static void benchmark() throws Exception {
-        int threadsCount = 1; // Runtime.getRuntime().availableProcessors() * 4;
-        int loop = 1000;
-
-        MyThread[] threads = new MyThread[threadsCount];
-        for (int i = 0; i < threadsCount; i++) {
-            threads[i] = new MyThread(i * loop, loop);
-        }
-
-        for (int i = 0; i < threadsCount; i++) {
-            threads[i].start();
-        }
-        for (int i = 0; i < threadsCount; i++) {
-            threads[i].join();
-        }
-
-        long write_sum = 0;
-        for (int i = 0; i < threadsCount; i++) {
-            write_sum += threads[i].write_time;
-        }
-
-        long read_sum = 0;
-        for (int i = 0; i < threadsCount; i++) {
-            read_sum += threads[i].read_time;
-        }
-        long random_read_sum = 0;
-        for (int i = 0; i < threadsCount; i++) {
-            random_read_sum += threads[i].random_read_time;
-        }
-
-        System.out.println();
-        System.out.println("threads: " + threadsCount + ", loop: " + loop + ", rows: " + (threadsCount * loop));
-        System.out.println("==========================================================");
-        System.out.println("write_sum=" + write_sum + ", avg=" + (write_sum / threadsCount) + " ms");
-        System.out.println("read_sum=" + read_sum + ", avg=" + (read_sum / threadsCount) + " ms");
-        System.out.println("random_read_sum=" + random_read_sum + ", avg=" + (random_read_sum / threadsCount) + " ms");
-    }
-
 }

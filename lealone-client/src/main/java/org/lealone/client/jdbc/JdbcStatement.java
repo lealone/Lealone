@@ -94,6 +94,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                 AsyncHandler<AsyncResult<Result>> h = new AsyncHandler<AsyncResult<Result>>() {
                     @Override
                     public void handle(AsyncResult<Result> ar) {
+                        JdbcResultSet resultSet = null;
                         if (ar.isSucceeded()) {
                             Result r = ar.getResult();
                             resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet,
