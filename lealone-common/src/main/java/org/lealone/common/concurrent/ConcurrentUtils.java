@@ -25,4 +25,10 @@ public class ConcurrentUtils {
         t.start();
     }
 
+    public static void submitTask(String name, boolean daemon, Runnable target) {
+        Thread t = new Thread(target, name);
+        t.setDaemon(daemon);
+        t.start();
+    }
+
 }

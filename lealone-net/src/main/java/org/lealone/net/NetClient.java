@@ -27,10 +27,10 @@ public interface NetClient {
     AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint,
             AsyncConnectionManager connectionManager);
 
-    default void removeConnection(InetSocketAddress inetSocketAddress) {
-        removeConnection(inetSocketAddress, true);
-    }
+    void removeConnection(InetSocketAddress inetSocketAddress);
 
-    void removeConnection(InetSocketAddress inetSocketAddress, boolean closeClient);
+    void close();
+
+    boolean isClosed();
 
 }

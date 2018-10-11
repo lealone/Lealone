@@ -24,11 +24,14 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.lealone.common.util.DateTimeUtils;
 
 public class NioEventLoopAdapter implements NioEventLoop {
 
@@ -36,16 +39,20 @@ public class NioEventLoopAdapter implements NioEventLoop {
 
     private final AtomicBoolean selecting = new AtomicBoolean(false);
     private Selector selector;
+    private final long loopInterval;
 
-    public NioEventLoopAdapter() {
+    public NioEventLoopAdapter(Map<String, String> config, String loopIntervalKey, long loopIntervalDefaultValue)
+            throws IOException {
+        loopInterval = DateTimeUtils.getLoopInterval(config, loopIntervalKey, loopIntervalDefaultValue);
+        selector = Selector.open();
     }
 
-    public NioEventLoopAdapter(Selector selector) {
-        this.selector = selector;
+    public Selector getSelector() {
+        return selector;
     }
 
-    public void setSelector(Selector selector) {
-        this.selector = selector;
+    public void select() throws IOException {
+        select(loopInterval);
     }
 
     @Override
@@ -159,6 +166,16 @@ public class NioEventLoopAdapter implements NioEventLoop {
         }
         try {
             channel.close();
+        } catch (Exception e) {
+        }
+    }
+
+    public void close() {
+        try {
+            Selector selector = this.selector;
+            this.selector = null;
+            selector.wakeup();
+            selector.close();
         } catch (Exception e) {
         }
     }

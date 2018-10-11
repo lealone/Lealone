@@ -30,7 +30,6 @@ import java.util.Set;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.DateTimeUtils;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 import org.lealone.net.Transfer;
@@ -39,7 +38,6 @@ import org.lealone.net.Transfer;
 public class NioNetServer extends NetServerBase implements NioEventLoop {
 
     private static final Logger logger = LoggerFactory.getLogger(NioNetServer.class);
-    private Selector selector;
     private ServerSocketChannel serverChannel;
     private NioEventLoopAdapter nioEventLoopAdapter;
 
@@ -49,12 +47,11 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
             return;
         logger.info("Starting nio net server");
         try {
-            selector = Selector.open();
-            nioEventLoopAdapter = new NioEventLoopAdapter(selector);
+            nioEventLoopAdapter = new NioEventLoopAdapter(config, "server_nio_event_loop_interval", 1000); // 默认1秒
             serverChannel = ServerSocketChannel.open();
             serverChannel.socket().bind(new InetSocketAddress(getHost(), getPort()));
             serverChannel.configureBlocking(false);
-            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+            serverChannel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_ACCEPT);
             super.start();
 
             ConcurrentUtils.submitTask("Server-Nio-Event-Loop-" + getPort(), () -> {
@@ -66,15 +63,12 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
     }
 
     private void run() {
-        // 默认1秒;
-        final long loopInterval = DateTimeUtils.getLoopInterval(config, "server_nio_event_loop_interval", 1000);
-        final Selector selector = this.selector;
         for (;;) {
             try {
-                select(loopInterval);
-                if (this.selector == null)
+                nioEventLoopAdapter.select();
+                if (isStopped())
                     break;
-                Set<SelectionKey> keys = selector.selectedKeys();
+                Set<SelectionKey> keys = nioEventLoopAdapter.getSelector().selectedKeys();
                 try {
                     for (SelectionKey key : keys) {
                         if (key.isValid()) {
@@ -95,7 +89,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
                 } finally {
                     keys.clear();
                 }
-                if (this.selector == null)
+                if (isStopped())
                     break;
             } catch (Throwable e) {
                 logger.warn(getName(), e);
@@ -120,7 +114,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
 
             Attachment attachment = new Attachment();
             attachment.conn = conn;
-            channel.register(selector, SelectionKey.OP_READ, attachment);
+            channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
         } catch (Throwable e) {
             if (conn != null) {
                 removeConnection(conn);
@@ -170,15 +164,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
             return;
         logger.info("Stopping nio net server");
         super.stop();
-        if (this.selector != null) {
-            try {
-                Selector selector = this.selector;
-                this.selector = null;
-                selector.wakeup();
-                selector.close();
-            } catch (Throwable e) {
-            }
-        }
+        nioEventLoopAdapter.close();
         if (serverChannel != null) {
             try {
                 serverChannel.close();
