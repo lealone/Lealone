@@ -19,32 +19,36 @@ package org.lealone.net.nio;
 
 import java.nio.ByteBuffer;
 
+import org.lealone.db.DataBuffer;
 import org.lealone.net.NetBuffer;
 
 public class NioBuffer implements NetBuffer {
 
-    private ByteBuffer buffer;
+    private DataBuffer dataBuffer;
 
-    public NioBuffer(ByteBuffer buff) {
-        this.buffer = buff;
+    public NioBuffer(DataBuffer dataBuffer) {
+        this.dataBuffer = dataBuffer;
     }
 
-    public ByteBuffer getBuffer() {
-        return buffer;
+    public ByteBuffer getByteBuffer() {
+        return dataBuffer.getAndFlipBuffer();
     }
 
     @Override
     public NioBuffer appendBuffer(NetBuffer buff) {
         if (buff instanceof NioBuffer) {
-            ByteBuffer newBuff = ((NioBuffer) buff).getBuffer();
-            if (buffer.limit() == 0) {
-                buffer = newBuff;
+            DataBuffer newDataBuffer = ((NioBuffer) buff).dataBuffer;
+            if (dataBuffer.limit() == 0) {
+                dataBuffer = newDataBuffer;
             } else {
-                ByteBuffer tmp = ByteBuffer.allocate(buffer.limit() + (newBuff.limit() - newBuff.position()));
-                tmp.put(buffer);
-                tmp.put(newBuff);
-                tmp.flip();
-                buffer = tmp;
+                DataBuffer tmp = DataBuffer
+                        .create(dataBuffer.limit() + (newDataBuffer.limit() - newDataBuffer.position()));
+                tmp.put(dataBuffer.getBuffer());
+                tmp.put(newDataBuffer.getBuffer());
+                tmp.getBuffer().flip();
+                dataBuffer = tmp;
+                // dataBuffer.position(dataBuffer.limit()).put(newDataBuffer.getBuffer());
+                // dataBuffer.getBuffer().flip();
             }
         }
         return this;
@@ -52,64 +56,51 @@ public class NioBuffer implements NetBuffer {
 
     @Override
     public int length() {
-        int pos = buffer.position();
+        int pos = dataBuffer.position();
         if (pos > 0)
             return pos;
         else
-            return buffer.limit();
+            return dataBuffer.limit();
     }
 
     @Override
     public NioBuffer slice(int start, int end) {
-        int pos = this.buffer.position();
-        int limit = this.buffer.limit();
-        this.buffer.position(start);
-        this.buffer.limit(end);
-        ByteBuffer buffer = this.buffer.slice();
-        this.buffer.position(pos);
-        this.buffer.limit(limit);
-        return new NioBuffer(buffer);
+        DataBuffer newDataBuffer = dataBuffer.slice(start, end);
+        return new NioBuffer(newDataBuffer);
     }
 
     @Override
     public NioBuffer getBuffer(int start, int end) {
-        byte[] bytes = new byte[end - start];
-        // 不能直接这样用，get的javadoc是错的，start应该是bytes的位置
-        // buffer.get(bytes, start, end - start);
-        int pos = buffer.position();
-        buffer.position(start);
-        buffer.get(bytes, 0, end - start);
-        buffer.position(pos);
-        ByteBuffer newBuffer = ByteBuffer.wrap(bytes);
-        return new NioBuffer(newBuffer);
+        DataBuffer newDataBuffer = dataBuffer.getBuffer(start, end);
+        return new NioBuffer(newDataBuffer);
     }
 
     @Override
     public short getUnsignedByte(int pos) {
-        return (short) (buffer.get(pos) & 0xff);
+        return dataBuffer.getUnsignedByte(pos);
     }
 
     @Override
     public NioBuffer appendByte(byte b) {
-        buffer.put(b);
+        dataBuffer.put(b);
         return this;
     }
 
     @Override
     public NioBuffer appendBytes(byte[] bytes, int offset, int len) {
-        buffer.put(bytes, offset, len);
+        dataBuffer.put(bytes, offset, len);
         return this;
     }
 
     @Override
     public NioBuffer appendInt(int i) {
-        buffer.putInt(i);
+        dataBuffer.putInt(i);
         return this;
     }
 
     @Override
     public NioBuffer setByte(int pos, byte b) {
-        buffer.put(pos, b);
+        dataBuffer.putByte(pos, b);
         return this;
     }
 }

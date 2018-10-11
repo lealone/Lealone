@@ -17,9 +17,7 @@
  */
 package org.lealone.net.nio;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.net.NetBuffer;
+import org.lealone.db.DataBuffer;
 import org.lealone.net.NetBufferFactory;
 
 public class NioBufferFactory implements NetBufferFactory {
@@ -34,9 +32,8 @@ public class NioBufferFactory implements NetBufferFactory {
     }
 
     @Override
-    public NetBuffer createBuffer(int initialSizeHint) {
-        ByteBuffer buffer = ByteBuffer.allocate(initialSizeHint);
-        return new NioBuffer(buffer);
+    public NioBuffer createBuffer(int initialSizeHint) {
+        return new NioBuffer(DataBuffer.create(initialSizeHint));
     }
 
 }

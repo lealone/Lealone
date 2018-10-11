@@ -31,15 +31,16 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetClientBase;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.TcpClientConnection;
+import org.lealone.net.Transfer;
 
 public class NioNetClient extends NetClientBase implements NioEventLoop {
 
@@ -99,8 +100,6 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
                 }
             } catch (Throwable e) {
                 logger.warn(Thread.currentThread().getName() + " run exception", e);
-                close();
-                break;
             }
         }
     }
@@ -129,7 +128,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
                     byte[] bytes = new byte[length + 4];
                     buffer.get(bytes);
                     ByteBuffer buffer2 = ByteBuffer.wrap(bytes);
-                    NioBuffer nioBuffer = new NioBuffer(buffer2);
+                    NioBuffer nioBuffer = new NioBuffer(DataBuffer.create(buffer2));
                     conn.handle(nioBuffer);
                 } else {
                     ByteBuffer buffer2 = ByteBuffer.allocate(remaining);
@@ -152,12 +151,13 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         SocketChannel channel = (SocketChannel) key.channel();
         try {
             while (true) {
-                ByteBuffer buffer = ByteBuffer.allocate(1024);
+                DataBuffer dataBuffer = DataBuffer.create(Transfer.BUFFER_SIZE);
+                ByteBuffer buffer = dataBuffer.getBuffer();
                 int count = channel.read(buffer);
                 if (count <= 0)
                     break;
                 buffer.flip();
-                NioBuffer nioBuffer = new NioBuffer(buffer);
+                NioBuffer nioBuffer = new NioBuffer(dataBuffer);
                 conn.handle(nioBuffer);
             }
         } catch (IOException e) {
@@ -165,7 +165,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         }
     }
 
-    private void connectionEstablished(SelectionKey key, Object att) {
+    private void connectionEstablished(SelectionKey key, Object att) throws Exception {
         SocketChannel channel = (SocketChannel) key.channel();
         if (!channel.isConnectionPending())
             return;
@@ -184,9 +184,8 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             conn.setInetSocketAddress(attachment.inetSocketAddress);
             addConnection(attachment.inetSocketAddress, conn);
             channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, conn);
+        } finally {
             attachment.latch.countDown();
-        } catch (Exception e) {
-            throw DbException.convert(e);
         }
     }
 

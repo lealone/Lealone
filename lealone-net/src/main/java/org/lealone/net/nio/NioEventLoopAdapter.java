@@ -99,8 +99,7 @@ public class NioEventLoopAdapter implements NioEventLoop {
     public void addNioBuffer(SocketChannel channel, NioBuffer nioBuffer) {
         ConcurrentLinkedQueue<ByteBuffer> queue = channels.get(channel);
         if (queue != null) {
-            ByteBuffer buffer = nioBuffer.getBuffer();
-            buffer.flip();
+            ByteBuffer buffer = nioBuffer.getByteBuffer();
             queue.add(buffer);
             wakeup();
         }

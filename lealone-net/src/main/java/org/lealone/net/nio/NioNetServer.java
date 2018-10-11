@@ -30,6 +30,7 @@ import java.util.Set;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 import org.lealone.net.Transfer;
@@ -92,7 +93,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
                 if (isStopped())
                     break;
             } catch (Throwable e) {
-                logger.warn(getName(), e);
+                logger.warn(Thread.currentThread().getName() + " run exception", e);
             }
         }
     }
@@ -130,7 +131,8 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
         SocketChannel channel = (SocketChannel) key.channel();
         try {
             while (true) {
-                ByteBuffer buffer = ByteBuffer.allocate(Transfer.BUFFER_SIZE);
+                DataBuffer dataBuffer = DataBuffer.create(Transfer.BUFFER_SIZE);
+                ByteBuffer buffer = dataBuffer.getBuffer();
                 int count = channel.read(buffer);
                 if (count > 0) {
                     attachment.endOfStreamCount = 0;
@@ -147,7 +149,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
                     break;
                 }
                 buffer.flip();
-                NioBuffer nioBuffer = new NioBuffer(buffer);
+                NioBuffer nioBuffer = new NioBuffer(dataBuffer);
                 conn.handle(nioBuffer);
             }
         } catch (IOException e) {
