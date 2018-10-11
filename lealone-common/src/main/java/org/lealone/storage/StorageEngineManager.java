@@ -31,4 +31,8 @@ public class StorageEngineManager extends PluggableEngineManager<StorageEngine> 
         super(StorageEngine.class);
     }
 
+    public static StorageEngine getStorageEngine(String name) {
+        return instance.getEngine(name);
+    }
+
 }

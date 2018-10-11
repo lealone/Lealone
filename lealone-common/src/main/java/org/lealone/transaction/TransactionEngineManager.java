@@ -30,4 +30,9 @@ public class TransactionEngineManager extends PluggableEngineManager<Transaction
     private TransactionEngineManager() {
         super(TransactionEngine.class);
     }
+
+    public static TransactionEngine getTransactionEngine(String name) {
+        return instance.getEngine(name);
+    }
+
 }

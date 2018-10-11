@@ -36,7 +36,7 @@ import org.lealone.transaction.mvcc.log.LogSyncService;
 public class MVCCTransactionEngineTest extends TestBase {
 
     public static Storage getStorage() {
-        StorageEngine se = StorageEngineManager.getInstance().getEngine(Constants.DEFAULT_STORAGE_ENGINE_NAME);
+        StorageEngine se = StorageEngineManager.getStorageEngine(Constants.DEFAULT_STORAGE_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_STORAGE_ENGINE_NAME, se.getName());
 
         StorageBuilder storageBuilder = se.getStorageBuilder();
@@ -58,8 +58,7 @@ public class MVCCTransactionEngineTest extends TestBase {
     }
 
     public static TransactionEngine getTransactionEngine(Map<String, String> config, boolean isDistributed) {
-        TransactionEngine te = TransactionEngineManager.getInstance()
-                .getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
+        TransactionEngine te = TransactionEngineManager.getTransactionEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_TRANSACTION_ENGINE_NAME, te.getName());
         if (config == null)
             config = getDefaultConfig();
