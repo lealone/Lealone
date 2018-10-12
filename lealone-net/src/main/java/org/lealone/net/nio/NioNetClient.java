@@ -22,9 +22,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.Set;
@@ -174,7 +172,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         AsyncConnection conn;
         try {
             channel.finishConnect();
-            addSocketChannel(channel);
+            nioEventLoopAdapter.addSocketChannel(channel);
             NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
             if (attachment.connectionManager != null) {
                 conn = attachment.connectionManager.createConnection(writableChannel, false);
@@ -241,38 +239,8 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
     }
 
     @Override
-    public void select(long timeout) throws IOException {
-        nioEventLoopAdapter.select(timeout);
-    }
-
-    @Override
-    public void register(SocketChannel channel, int ops, Object att) throws ClosedChannelException {
-        nioEventLoopAdapter.register(channel, ops, att);
-    }
-
-    @Override
-    public void wakeup() {
-        nioEventLoopAdapter.wakeup();
-    }
-
-    @Override
-    public void addSocketChannel(SocketChannel channel) {
-        nioEventLoopAdapter.addSocketChannel(channel);
-    }
-
-    @Override
-    public void addNioBuffer(SocketChannel channel, NioBuffer nioBuffer) {
-        nioEventLoopAdapter.addNioBuffer(channel, nioBuffer);
-    }
-
-    @Override
-    public void tryRegisterWriteOperation(Selector selector) {
-        nioEventLoopAdapter.tryRegisterWriteOperation(selector);
-    }
-
-    @Override
-    public void write(SelectionKey key) {
-        nioEventLoopAdapter.write(key);
+    public NioEventLoop getDefaultNioEventLoopImpl() {
+        return nioEventLoopAdapter;
     }
 
     @Override

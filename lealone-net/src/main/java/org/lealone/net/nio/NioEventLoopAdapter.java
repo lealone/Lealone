@@ -47,10 +47,17 @@ public class NioEventLoopAdapter implements NioEventLoop {
         selector = Selector.open();
     }
 
+    @Override
+    public NioEventLoop getDefaultNioEventLoopImpl() {
+        return this;
+    }
+
+    @Override
     public Selector getSelector() {
         return selector;
     }
 
+    @Override
     public void select() throws IOException {
         select(loopInterval);
     }

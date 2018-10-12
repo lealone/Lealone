@@ -25,20 +25,45 @@ import java.nio.channels.SocketChannel;
 
 public interface NioEventLoop {
 
-    void select(long timeout) throws IOException;
+    NioEventLoop getDefaultNioEventLoopImpl();
 
-    void register(SocketChannel channel, int ops, Object att) throws ClosedChannelException;
+    default Selector getSelector() {
+        return getDefaultNioEventLoopImpl().getSelector();
+    }
 
-    void wakeup();
+    default void select() throws IOException {
+        getDefaultNioEventLoopImpl().select();
+    }
 
-    void addSocketChannel(SocketChannel channel);
+    default void select(long timeout) throws IOException {
+        getDefaultNioEventLoopImpl().select(timeout);
+    }
 
-    void addNioBuffer(SocketChannel channel, NioBuffer nioBuffer);
+    default void register(SocketChannel channel, int ops, Object att) throws ClosedChannelException {
+        getDefaultNioEventLoopImpl().register(channel, ops, att);
+    }
 
-    void tryRegisterWriteOperation(Selector selector);
+    default void wakeup() {
+        getDefaultNioEventLoopImpl().wakeup();
+    }
 
-    void write(SelectionKey key);
+    default void addSocketChannel(SocketChannel channel) {
+        getDefaultNioEventLoopImpl().addSocketChannel(channel);
+    }
 
-    void closeChannel(SocketChannel channel);
+    default void addNioBuffer(SocketChannel channel, NioBuffer nioBuffer) {
+        getDefaultNioEventLoopImpl().addNioBuffer(channel, nioBuffer);
+    }
 
+    default void tryRegisterWriteOperation(Selector selector) {
+        getDefaultNioEventLoopImpl().tryRegisterWriteOperation(selector);
+    }
+
+    default void write(SelectionKey key) {
+        getDefaultNioEventLoopImpl().write(key);
+    }
+
+    default void closeChannel(SocketChannel channel) {
+        getDefaultNioEventLoopImpl().closeChannel(channel);
+    }
 }

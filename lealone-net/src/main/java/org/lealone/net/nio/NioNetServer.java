@@ -20,9 +20,7 @@ package org.lealone.net.nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
@@ -109,7 +107,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
         try {
             channel = serverChannel.accept();
             channel.configureBlocking(false);
-            addSocketChannel(channel);
+            nioEventLoopAdapter.addSocketChannel(channel);
             NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
             conn = createConnection(writableChannel, true);
 
@@ -177,42 +175,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
     }
 
     @Override
-    public void select(long timeout) throws IOException {
-        nioEventLoopAdapter.select(timeout);
-    }
-
-    @Override
-    public void register(SocketChannel channel, int ops, Object att) throws ClosedChannelException {
-        nioEventLoopAdapter.register(channel, ops, att);
-    }
-
-    @Override
-    public void wakeup() {
-        nioEventLoopAdapter.wakeup();
-    }
-
-    @Override
-    public void addSocketChannel(SocketChannel channel) {
-        nioEventLoopAdapter.addSocketChannel(channel);
-    }
-
-    @Override
-    public void addNioBuffer(SocketChannel channel, NioBuffer nioBuffer) {
-        nioEventLoopAdapter.addNioBuffer(channel, nioBuffer);
-    }
-
-    @Override
-    public void tryRegisterWriteOperation(Selector selector) {
-        nioEventLoopAdapter.tryRegisterWriteOperation(selector);
-    }
-
-    @Override
-    public void write(SelectionKey key) {
-        nioEventLoopAdapter.write(key);
-    }
-
-    @Override
-    public void closeChannel(SocketChannel channel) {
-        nioEventLoopAdapter.closeChannel(channel);
+    public NioEventLoop getDefaultNioEventLoopImpl() {
+        return nioEventLoopAdapter;
     }
 }
