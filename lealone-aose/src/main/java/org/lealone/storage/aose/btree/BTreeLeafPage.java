@@ -174,7 +174,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
             StorageDataType kt = map.getKeyType();
             StorageDataType vt = map.getValueType();
             buff.putInt(keys.length);
-            for (int i = 0; i < keys.length; i++) {
+            for (int i = 0, len = keys.length; i < len; i++) {
                 kt.write(buff, keys[i]);
                 vt.write(buff, values[i]);
             }
@@ -257,7 +257,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     protected void recalculateMemory() {
         int mem = recalculateKeysMemory();
         StorageDataType valueType = map.getValueType();
-        for (int i = 0; i < keys.length; i++) {
+        for (int i = 0, len = keys.length; i < len; i++) {
             mem += valueType.getMemory(values[i]);
         }
         addMemory(mem - memory);
@@ -325,11 +325,11 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     @Override
     protected void toString0(StringBuilder buff) {
-        for (int i = 0; i <= keys.length; i++) {
+        for (int i = 0, len = keys.length; i <= len; i++) {
             if (i > 0) {
                 buff.append(" ");
             }
-            if (i < keys.length) {
+            if (i < len) {
                 buff.append(keys[i]);
                 if (values != null) {
                     buff.append(':');
@@ -342,7 +342,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     @Override
     protected void getPrettyPageInfoRecursive(StringBuilder buff, String indent, PrettyPageInfo info) {
         buff.append(indent).append("values: ");
-        for (int i = 0; i < keys.length; i++) {
+        for (int i = 0, len = keys.length; i < len; i++) {
             if (i > 0)
                 buff.append(", ");
             buff.append(values[i]);

@@ -193,7 +193,7 @@ public abstract class BTreeLocalPage extends BTreePage {
     protected int recalculateKeysMemory() {
         int mem = PageUtils.PAGE_MEMORY;
         StorageDataType keyType = map.getKeyType();
-        for (int i = 0; i < keys.length; i++) {
+        for (int i = 0, len = keys.length; i < len; i++) {
             mem += keyType.getMemory(keys[i]);
         }
         return mem;
@@ -357,7 +357,7 @@ public abstract class BTreeLocalPage extends BTreePage {
 
         if (keys.length > 0) {
             buff.append(indent).append("keys: ");
-            for (int i = 0; i < keys.length; i++) {
+            for (int i = 0, len = keys.length; i < len; i++) {
                 if (i > 0)
                     buff.append(", ");
                 buff.append(keys[i]);

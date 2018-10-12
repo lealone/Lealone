@@ -307,8 +307,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     private void writeChildrenPositions(DataBuffer buff) {
-        int len = keys.length;
-        for (int i = 0; i <= len; i++) {
+        for (int i = 0, len = keys.length; i <= len; i++) {
             buff.putLong(children[i].pos); // pos通常是个很大的long，所以不值得用VarLong
         }
     }
@@ -320,8 +319,7 @@ public class BTreeNodePage extends BTreeLocalPage {
             return;
         }
         int patch = write(chunk, buff, false);
-        int len = children.length;
-        for (int i = 0; i < len; i++) {
+        for (int i = 0, len = children.length; i < len; i++) {
             BTreePage p = children[i].page;
             if (p != null) {
                 p.writeUnsavedRecursive(chunk, buff);
@@ -337,8 +335,7 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     void writeEnd() {
-        int len = children.length;
-        for (int i = 0; i < len; i++) {
+        for (int i = 0, len = children.length; i < len; i++) {
             PageReference ref = children[i];
             if (ref.page != null) {
                 if (ref.page.getPos() == 0) {
@@ -420,7 +417,7 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     void readRemotePages() {
-        for (int i = 0, length = children.length; i < length; i++) {
+        for (int i = 0, len = children.length; i < len; i++) {
             final int index = i;
             Callable<BTreePage> task = new Callable<BTreePage>() {
                 @Override
@@ -435,7 +432,7 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     void readRemotePagesRecursive() {
-        for (int i = 0, length = children.length; i < length; i++) {
+        for (int i = 0, len = children.length; i < len; i++) {
             if (children[i].isRemotePage()) {
                 final int index = i;
                 Callable<BTreePage> task = new Callable<BTreePage>() {
@@ -458,14 +455,14 @@ public class BTreeNodePage extends BTreeLocalPage {
     @Override
     void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
         Set<NetEndpoint> candidateEndpoints = BTreeMap.getCandidateEndpoints(map.db, newEndpoints);
-        for (int i = 0, length = keys.length; i <= length; i++) {
+        for (int i = 0, len = keys.length; i <= len; i++) {
             if (!children[i].isRemotePage()) {
                 BTreePage p = getChildPage(i);
                 if (p.isNode()) {
                     p.moveAllLocalLeafPages(oldEndpoints, newEndpoints);
                 } else {
                     List<String> replicationHostIds = p.getReplicationHostIds();
-                    Object key = i == length ? keys[i - 1] : keys[i];
+                    Object key = i == len ? keys[i - 1] : keys[i];
                     if (replicationHostIds == null) {
                         oldEndpoints = new String[0];
                     } else {
@@ -497,7 +494,7 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     protected void toString0(StringBuilder buff) {
-        for (int i = 0; i <= keys.length; i++) {
+        for (int i = 0, len = keys.length; i <= len; i++) {
             if (i > 0) {
                 buff.append(" ");
             }
@@ -514,7 +511,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     protected void getPrettyPageInfoRecursive(StringBuilder buff, String indent, PrettyPageInfo info) {
         if (children != null) {
             buff.append(indent).append("children: ").append(keys.length + 1).append('\n');
-            for (int i = 0; i <= keys.length; i++) {
+            for (int i = 0, len = keys.length; i <= len; i++) {
                 buff.append('\n');
                 if (children[i].page != null) {
                     children[i].page.getPrettyPageInfoRecursive(indent + "  ", info);
