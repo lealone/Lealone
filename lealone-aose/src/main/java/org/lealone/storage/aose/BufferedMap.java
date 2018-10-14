@@ -18,7 +18,6 @@
 package org.lealone.storage.aose;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.concurrent.Callable;
@@ -27,7 +26,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.DelegatedStorageMap;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.type.StorageDataType;
@@ -238,12 +237,12 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
 
     @Override
     public StorageMapCursor<K, V> cursor(K from) {
-        return new Cursor<>(this, from);
+        return cursor(IterationParameters.create(from));
     }
 
     @Override
-    public StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
-        return new Cursor<>(pageKeys, this, from);
+    public StorageMapCursor<K, V> cursor(IterationParameters<K> parameters) {
+        return new Cursor<>(this, parameters);
     }
 
     @Override
@@ -321,16 +320,12 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
         private K key;
         private V value;
 
-        Cursor(BufferedMap<K, V> bmap, K from) {
-            this(null, bmap, from);
-        }
-
-        Cursor(List<PageKey> pageKeys, BufferedMap<K, V> bmap, K from) {
-            if (from == null)
+        Cursor(BufferedMap<K, V> bmap, IterationParameters<K> parameters) {
+            if (parameters.from == null)
                 bufferIterator = bmap.buffer.entrySet().iterator();
             else
-                bufferIterator = bmap.buffer.tailMap(from).entrySet().iterator();
-            mapCursor = bmap.map.cursor(pageKeys, from);
+                bufferIterator = bmap.buffer.tailMap(parameters.from).entrySet().iterator();
+            mapCursor = bmap.map.cursor(parameters);
             keyType = bmap.map.getKeyType();
         }
 

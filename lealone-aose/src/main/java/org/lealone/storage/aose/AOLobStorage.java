@@ -281,7 +281,7 @@ public class AOLobStorage implements LobStorage {
         // this might not be very efficient -
         // to speed it up, we would need yet another map
         ArrayList<Long> list = new ArrayList<>();
-        StorageMapCursor<Long, Object[]> cursor = lobMap.cursor(null);
+        StorageMapCursor<Long, Object[]> cursor = lobMap.cursor();
         while (cursor.hasNext()) {
             cursor.next();
             Object[] value = cursor.getValue();

@@ -26,7 +26,7 @@ import org.lealone.storage.type.StorageDataType;
 
 public interface Storage {
 
-    <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
+    <K, V> StorageMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters);
 
     void closeMap(String name);

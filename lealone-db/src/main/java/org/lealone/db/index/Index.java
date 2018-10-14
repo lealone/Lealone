@@ -17,6 +17,7 @@ import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 
@@ -65,7 +66,7 @@ public interface Index extends SchemaObject {
      */
     Cursor find(ServerSession session, SearchRow first, SearchRow last);
 
-    Cursor find(ServerSession session, SearchRow first, SearchRow last, List<PageKey> pageKeys);
+    Cursor find(ServerSession session, IterationParameters<SearchRow> parameters);
 
     // /**
     // * Find a row or a list of rows and create a cursor to iterate over the result.

@@ -1542,4 +1542,31 @@ public class Select extends Query {
     public TableFilter getTableFilter() {
         return topTableFilter;
     }
+
+    public int[] getColumnIndexes(Table table) {
+        int len = expressionArray.length;
+        HashSet<Column> columnSet = new HashSet<>(len);
+        for (int i = 0; i < len; i++) {
+            expressionArray[i].getColumns(columnSet);
+        }
+        if (condition != null)
+            condition.getColumns(columnSet);
+
+        len = columnSet.size(); // size可能比原来的expressionArray大
+        int[] columnIndexes = new int[len];
+        int i = 0;
+        for (Column c : columnSet) {
+            if (c.getTable() == table) {
+                columnIndexes[i++] = c.getColumnId(); // 索引从0开始，columnId也是从0开始
+            }
+        }
+        if (i != len) {
+            int[] tmp = new int[i];
+            System.arraycopy(columnIndexes, 0, tmp, 0, i);
+            columnIndexes = tmp;
+        }
+
+        Arrays.sort(columnIndexes);
+        return columnIndexes;
+    }
 }

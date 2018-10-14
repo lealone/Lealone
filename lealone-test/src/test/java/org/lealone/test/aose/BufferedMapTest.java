@@ -59,7 +59,7 @@ public class BufferedMapTest extends TestBase {
 
         int count = 0;
 
-        StorageMapCursor<Integer, String> cursor = bmap.cursor(null);
+        StorageMapCursor<Integer, String> cursor = bmap.cursor();
         while (cursor.hasNext()) {
             cursor.next();
             // p(cursor.getKey());

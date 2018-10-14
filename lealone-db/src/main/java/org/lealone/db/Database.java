@@ -2197,7 +2197,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
             if (getSettings().compressData) {
                 storageBuilder.compress();
                 // use a larger page split size to improve the compression ratio
-                storageBuilder.pageSplitSize(64 * 1024);
+                int pageSize = getPageSize();
+                int compressPageSize = 64 * 1024;
+                if (pageSize > compressPageSize)
+                    compressPageSize = pageSize;
+                storageBuilder.pageSplitSize(compressPageSize);
             }
             storageBuilder.backgroundExceptionHandler(new UncaughtExceptionHandler() {
                 @Override

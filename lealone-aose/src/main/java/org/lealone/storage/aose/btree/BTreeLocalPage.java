@@ -5,11 +5,7 @@
  */
 package org.lealone.storage.aose.btree;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.common.compress.Compressor;
 import org.lealone.common.util.DataUtils;
-import org.lealone.db.DataBuffer;
 import org.lealone.storage.type.StorageDataType;
 
 /**
@@ -225,55 +221,6 @@ public abstract class BTreeLocalPage extends BTreePage {
             removedInMemory = true;
         }
         map.btreeStorage.removePage(p, memory);
-    }
-
-    void compressPage(DataBuffer buff, int compressStart, int type, int typePos) {
-        int expLen = buff.position() - compressStart;
-        if (expLen > 16) {
-            BTreeStorage storage = map.getBTreeStorage();
-            int compressionLevel = storage.getCompressionLevel();
-            if (compressionLevel > 0) {
-                Compressor compressor;
-                int compressType;
-                if (compressionLevel == 1) {
-                    compressor = storage.getCompressorFast();
-                    compressType = PageUtils.PAGE_COMPRESSED;
-                } else {
-                    compressor = storage.getCompressorHigh();
-                    compressType = PageUtils.PAGE_COMPRESSED_HIGH;
-                }
-                byte[] exp = new byte[expLen];
-                buff.position(compressStart).get(exp);
-                byte[] comp = new byte[expLen * 2];
-                int compLen = compressor.compress(exp, expLen, comp, 0);
-                int plus = DataUtils.getVarIntLen(compLen - expLen);
-                if (compLen + plus < expLen) {
-                    buff.position(typePos).put((byte) (type + compressType));
-                    buff.position(compressStart).putVarInt(expLen - compLen).put(comp, 0, compLen);
-                }
-            }
-        }
-    }
-
-    ByteBuffer expandPage(ByteBuffer buff, int type, int start, int pageLength) {
-        boolean compressed = (type & PageUtils.PAGE_COMPRESSED) != 0;
-        if (compressed) {
-            Compressor compressor;
-            if ((type & PageUtils.PAGE_COMPRESSED_HIGH) == PageUtils.PAGE_COMPRESSED_HIGH) {
-                compressor = map.getBTreeStorage().getCompressorHigh();
-            } else {
-                compressor = map.getBTreeStorage().getCompressorFast();
-            }
-            int lenAdd = DataUtils.readVarInt(buff);
-            int compLen = pageLength + start - buff.position();
-            byte[] comp = DataUtils.newBytes(compLen);
-            buff.get(comp);
-            int l = compLen + lenAdd;
-            ByteBuffer newBuff = ByteBuffer.allocate(l);
-            compressor.expand(comp, 0, compLen, newBuff.array(), newBuff.arrayOffset(), l);
-            return newBuff;
-        }
-        return buff;
     }
 
     @Override

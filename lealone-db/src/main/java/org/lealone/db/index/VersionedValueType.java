@@ -21,23 +21,35 @@ import java.nio.ByteBuffer;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.storage.type.StorageDataType;
 
-class VersionedValueType implements StorageDataType {
+public class VersionedValueType implements StorageDataType {
 
     final StorageDataType valueType;
+    final int columnCount;
 
-    public VersionedValueType(StorageDataType valueType) {
+    public VersionedValueType(StorageDataType valueType, int columnCount) {
         this.valueType = valueType;
+        this.columnCount = columnCount;
     }
 
     @Override
     public int getMemory(Object obj) {
         VersionedValue v = (VersionedValue) obj;
+        int memory = 4;
         if (v == null)
-            return 4;
-        return valueType.getMemory(v.value) + 4;
+            return memory;
+        Value[] columns = v.value.getList();
+        for (int i = 0, len = columns.length; i < len; i++) {
+            Value c = columns[i];
+            if (c == null)
+                memory += 4;
+            else
+                memory += valueType.getMemory(c);
+        }
+        return memory;
     }
 
     @Override
@@ -80,5 +92,54 @@ class VersionedValueType implements StorageDataType {
         VersionedValue v = (VersionedValue) obj;
         buff.putVarInt(v.vertion);
         valueType.write(buff, v.value);
+    }
+
+    @Override
+    public void writeMeta(DataBuffer buff, Object obj) {
+        VersionedValue v = (VersionedValue) obj;
+        buff.putVarInt(v.vertion);
+    }
+
+    @Override
+    public Object readMeta(ByteBuffer buff, int columnCount) {
+        int vertion = DataUtils.readVarInt(buff);
+        Value[] values = new Value[columnCount];
+        return new VersionedValue(vertion, ValueArray.get(values));
+    }
+
+    @Override
+    public void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
+        VersionedValue v = (VersionedValue) obj;
+        Value[] columns = v.value.getList();
+        if (columnIndex >= 0 && columnIndex < columns.length)
+            buff.writeValue(columns[columnIndex]);
+    }
+
+    @Override
+    public void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
+        VersionedValue v = (VersionedValue) obj;
+        Value[] columns = v.value.getList();
+        if (columnIndex >= 0 && columnIndex < columns.length) {
+            Value value = (Value) valueType.read(buff);
+            if (value == null)
+                System.out.println(obj);
+            columns[columnIndex] = value;
+        }
+    }
+
+    @Override
+    public int getColumnCount() {
+        return columnCount;
+    }
+
+    @Override
+    public int getMemory(Object obj, int columnIndex) {
+        VersionedValue v = (VersionedValue) obj;
+        Value[] columns = v.value.getList();
+        if (columnIndex >= 0 && columnIndex < columns.length) {
+            return valueType.getMemory(columns[columnIndex]);
+        } else {
+            return 0;
+        }
     }
 }

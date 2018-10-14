@@ -4368,7 +4368,9 @@ public class Parser implements SQLParser {
 
     private Map<String, String> parseParameters(boolean toLowerCase) {
         read("(");
-        HashMap<String, String> parameters = toLowerCase ? new HashMap<>() : new CaseInsensitiveMap<>();
+        // HashMap<String, String> parameters = toLowerCase ? new HashMap<>() : new CaseInsensitiveMap<>();
+        // 参数名都是大小写不敏感的
+        HashMap<String, String> parameters = new CaseInsensitiveMap<>();
         if (readIf(")"))
             return parameters;
         String k, v;
@@ -5762,7 +5764,7 @@ public class Parser implements SQLParser {
         } else if (database.getSettings().defaultStorageEngine != null) {
             command.setStorageEngineName(database.getSettings().defaultStorageEngine);
         }
-        if (readIf("WITH")) {
+        if (readIf("PARAMETERS")) {
             command.setStorageEngineParams(parseParameters());
         }
         if (temp) {

@@ -29,6 +29,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
@@ -64,24 +65,14 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         ValueDataType keyType = new ValueDataType(null, null, null);
         ValueDataType valueType = new ValueDataType(database, database.getCompareMode(), sortTypes);
-        VersionedValueType vvType = new VersionedValueType(valueType);
+        VersionedValueType vvType = new VersionedValueType(valueType, columns.length);
 
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
 
-        String initReplicationEndpoints = null;
-        String replicationName = session.getReplicationName();
-        if (replicationName != null) {
-            int pos = replicationName.indexOf('@');
-            if (pos != -1) {
-                initReplicationEndpoints = replicationName.substring(0, pos);
-            }
-        }
-
         // session.isShardingMode()是针对当前session的，如果是SystemSession，就算数据库是ShardingMode，也不管它
         Transaction t = transactionEngine.beginTransaction(false, session.isShardingMode());
-        dataMap = t.openMap(mapName, table.getMapType(), keyType, vvType, storage,
-                session.getDatabase().isShardingMode(), initReplicationEndpoints);
+        dataMap = t.openMap(mapName, keyType, vvType, storage, table.getParameters());
         transactionEngine.addTransactionMap(dataMap);
         t.commit(); // 避免产生内部未提交的事务
     }
@@ -196,8 +187,14 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
-        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(minAndMaxValues[0]),
+        return find(session, IterationParameters.create(first, last));
+    }
+
+    @Override
+    public Cursor find(ServerSession session, IterationParameters<SearchRow> parameters) {
+        ValueLong[] minAndMaxValues = getMinAndMaxValues(parameters.from, parameters.to);
+        IterationParameters<Value> newParameters = parameters.copy(minAndMaxValues[0], minAndMaxValues[1]);
+        return new StandardPrimaryIndexCursor(session, table, this, getMap(session).entryIterator(newParameters),
                 minAndMaxValues[1]);
     }
 
@@ -404,13 +401,6 @@ public class StandardPrimaryIndex extends IndexBase {
     public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
         ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
         return getMap(session).getEndpointToPageKeyMap(session, minAndMaxValues[0], minAndMaxValues[1]);
-    }
-
-    @Override
-    public Cursor find(ServerSession session, SearchRow first, SearchRow last, List<PageKey> pageKeys) {
-        ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
-        return new StandardPrimaryIndexCursor(session, table, this,
-                getMap(session).entryIterator(pageKeys, minAndMaxValues[0]), minAndMaxValues[1]);
     }
 
     /**

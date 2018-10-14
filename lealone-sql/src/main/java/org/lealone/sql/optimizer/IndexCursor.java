@@ -24,7 +24,9 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.dml.Select;
 import org.lealone.sql.expression.Comparison;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 
 /**
@@ -79,10 +81,13 @@ public class IndexCursor implements Cursor {
             return;
         }
         if (!alwaysFalse) {
-            if (pageKeys == null)
-                cursor = index.find(tableFilter.getSession(), start, end);
-            else
-                cursor = index.find(tableFilter.getSession(), start, end, pageKeys);
+            Select select = tableFilter.getSelect();
+            int[] columnIndexes = null;
+            if (select != null) {
+                columnIndexes = select.getColumnIndexes(tableFilter.getTable());
+            }
+            IterationParameters<SearchRow> parameters = IterationParameters.create(start, end, pageKeys, columnIndexes);
+            cursor = index.find(tableFilter.getSession(), parameters);
         }
     }
 

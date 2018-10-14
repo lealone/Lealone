@@ -23,9 +23,14 @@ public class PageUtils {
     public static final int PAGE_TYPE_NODE = 1;
 
     /**
+     * The type for column page.
+     */
+    public static final int PAGE_TYPE_COLUMN = 2;
+
+    /**
      * The type for remote page.
      */
-    public static final int PAGE_TYPE_REMOTE = 2;
+    public static final int PAGE_TYPE_REMOTE = 3;
 
     /**
      * The bit mask for compressed pages (compression level fast).

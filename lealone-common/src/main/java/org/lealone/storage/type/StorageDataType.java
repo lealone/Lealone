@@ -134,6 +134,31 @@ public interface StorageDataType {
         }
     }
 
+    default void writeMeta(DataBuffer buff, Object obj) {
+        // do nothing
+    }
+
+    default Object readMeta(ByteBuffer buff, int columnCount) {
+        // do nothing
+        return null;
+    }
+
+    default void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
+        write(buff, obj);
+    }
+
+    default void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
+        // do nothing
+    }
+
+    default int getColumnCount() {
+        return 1;
+    }
+
+    default int getMemory(Object obj, int columnIndex) {
+        return getMemory(obj);
+    }
+
     public static int getTypeId(int tag) {
         int typeId;
         if (tag <= TYPE_SERIALIZED_OBJECT) {

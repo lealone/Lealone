@@ -17,6 +17,8 @@
  */
 package org.lealone.transaction;
 
+import java.util.Map;
+
 import org.lealone.db.Session;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.StorageDataType;
@@ -90,8 +92,8 @@ public interface Transaction {
     <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
             Storage storage);
 
-    <K, V> TransactionMap<K, V> openMap(String name, String mapType, StorageDataType keyType, StorageDataType valueType,
-            Storage storage, boolean isShardingMode, String initReplicationEndpoints);
+    <K, V> TransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
+            Storage storage, Map<String, String> parameters);
 
     void addSavepoint(String name);
 

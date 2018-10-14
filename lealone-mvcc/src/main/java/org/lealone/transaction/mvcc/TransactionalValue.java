@@ -72,6 +72,21 @@ public class TransactionalValue {
         }
     }
 
+    public void writeMeta(DataBuffer buff) {
+        buff.putVarLong(tid);
+    }
+
+    public static TransactionalValue readMeta(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType,
+            int columnCount) {
+        long tid = DataUtils.readVarLong(buff);
+        Object value = valueType.readMeta(buff, columnCount);
+        if (tid == 0) {
+            return createCommitted(value);
+        } else {
+            return NotCommitted.read(tid, value, buff, oldValueType);
+        }
+    }
+
     public static TransactionalValue read(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType) {
         long tid = DataUtils.readVarLong(buff);
         Object value = null;

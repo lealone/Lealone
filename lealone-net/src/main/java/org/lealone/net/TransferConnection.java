@@ -181,7 +181,7 @@ public abstract class TransferConnection extends AsyncConnection {
         public void run() {
             try {
                 conn.handleRequest(transfer, id, operation);
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 logger.error("Failed to handle request, id: " + id + ", operation: " + operation, e);
                 conn.sendError(transfer, id, e);
             }
@@ -200,8 +200,9 @@ public abstract class TransferConnection extends AsyncConnection {
         public void run() {
             try {
                 conn.handleResponse(transfer, id, status);
-            } catch (IOException e) {
-                throw DbException.convertIOException(e, "Failed to handle response, id: " + id + ", status: " + status);
+            } catch (Throwable e) {
+                // String msg = "Failed to handle response, id: " + id + ", status: " + status;
+                throw DbException.convert(e);
             }
         }
     }

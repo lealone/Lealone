@@ -8,6 +8,7 @@ package org.lealone.storage.aose.btree;
 import java.util.Iterator;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.StorageMapCursor;
 
 /**
@@ -27,16 +28,17 @@ class BTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
     private CursorPos pos;
     private K currentKey, lastKey;
     private V currentValue, lastValue;
-
+    private final IterationParameters<K> parameters;
     // private boolean initialized;
 
-    BTreeCursor(BTreeMap<K, ?> map, BTreePage root, K from) {
+    BTreeCursor(BTreeMap<K, ?> map, BTreePage root, IterationParameters<K> parameters) {
         this.map = map;
+        this.parameters = parameters;
         // this.root = root;
         // this.from = from;
 
         // 提前fetch
-        min(root, from);
+        min(root, parameters.from);
         fetchNext();
     }
 
@@ -122,7 +124,10 @@ class BTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
             if (pos.index < pos.page.getKeyCount()) {
                 int index = pos.index++;
                 currentKey = (K) pos.page.getKey(index);
-                currentValue = (V) pos.page.getValue(index);
+                if (parameters.allColumns)
+                    currentValue = (V) pos.page.getValue(index, true);
+                else
+                    currentValue = (V) pos.page.getValue(index, parameters.columnIndexes);
                 return;
             }
             pos = pos.parent;

@@ -160,30 +160,25 @@ public class MVCCTransaction implements Transaction {
     @Override
     public <K, V> MVCCTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
             Storage storage) {
-        return openMap(name, null, keyType, valueType, storage, false, null);
+        return openMap(name, keyType, valueType, storage, null);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
-            StorageDataType valueType, Storage storage, boolean isShardingMode, String initReplicationEndpoints) {
+    public <K, V> MVCCTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
+            Storage storage, Map<String, String> parameters) {
         checkNotClosed();
         if (keyType == null)
             keyType = new ObjectDataType();
         if (valueType == null)
             valueType = new ObjectDataType();
         valueType = new TransactionalValueType(valueType);
-        Map<String, String> parameters = null;
-        if (isShardingMode) {
-            parameters = new HashMap<>(2);
-            parameters.put("isShardingMode", "true");
-            parameters.put("initReplicationEndpoints", initReplicationEndpoints);
-        }
-        StorageMap<K, TransactionalValue> map = storage.openMap(name, mapType, keyType, valueType, parameters);
+        StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
         if (!map.isInMemory()) {
             TransactionalLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(map.getName()));
         }
         transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
+        boolean isShardingMode = parameters == null ? false : Boolean.parseBoolean(parameters.get("isShardingMode"));
         return createTransactionMap(map, isShardingMode);
     }
 

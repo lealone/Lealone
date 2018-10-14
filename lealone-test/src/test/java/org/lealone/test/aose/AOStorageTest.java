@@ -93,20 +93,28 @@ public class AOStorageTest extends TestBase {
         }
     }
 
-    static AOStorage openStorage() {
+    public static AOStorage openStorage() {
         AOStorageBuilder builder = new AOStorageBuilder();
         return openStorage(builder);
     }
 
-    static AOStorage openStorage(int pageSplitSize) {
+    public static AOStorage openStorage(int pageSplitSize) {
         AOStorageBuilder builder = new AOStorageBuilder();
         builder.pageSplitSize(pageSplitSize);
         return openStorage(builder);
     }
 
-    static AOStorage openStorage(AOStorageBuilder builder) {
+    public static AOStorage openStorage(int pageSplitSize, int cacheSize) {
+        AOStorageBuilder builder = new AOStorageBuilder();
+        builder.pageSplitSize(pageSplitSize);
+        builder.cacheSize(cacheSize);
+        return openStorage(builder);
+    }
+
+    public static AOStorage openStorage(AOStorageBuilder builder) {
         String storagePath = joinDirs("aose");
-        builder.storagePath(storagePath).compress().reuseSpace().minFillRate(30);
+        builder.compressHigh();
+        builder.storagePath(storagePath).reuseSpace().minFillRate(30);
         return builder.openStorage();
     }
 }

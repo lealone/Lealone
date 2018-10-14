@@ -10,15 +10,18 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
+import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
@@ -51,7 +54,7 @@ public class StandardTable extends Table {
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = Utils.newSmallArrayList();
     private final StorageEngine storageEngine;
-    private final String mapType;
+    private final Map<String, String> parameters;
     private final boolean globalTemporary;
 
     private long lastModificationId;
@@ -68,11 +71,23 @@ public class StandardTable extends Table {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
         this.storageEngine = storageEngine;
         if (data.storageEngineParams != null) {
-            mapType = data.storageEngineParams.get("map_type");
+            parameters = data.storageEngineParams;
         } else {
-            mapType = null;
+            parameters = new CaseInsensitiveMap<>();
         }
         globalTemporary = data.globalTemporary;
+
+        String initReplicationEndpoints = null;
+        String replicationName = data.session.getReplicationName();
+        if (replicationName != null) {
+            int pos = replicationName.indexOf('@');
+            if (pos != -1) {
+                initReplicationEndpoints = replicationName.substring(0, pos);
+                parameters.put("initReplicationEndpoints", initReplicationEndpoints);
+            }
+        }
+        parameters.put("isShardingMode", data.session.getDatabase().isShardingMode() + "");
+
         isHidden = data.isHidden;
         nextAnalyze = database.getSettings().analyzeAuto;
 
@@ -92,12 +107,12 @@ public class StandardTable extends Table {
         return primaryIndex.getMapName();
     }
 
-    public String getMapType() {
-        return mapType;
-    }
-
     public StorageEngine getStorageEngine() {
         return storageEngine;
+    }
+
+    public Map<String, String> getParameters() {
+        return parameters;
     }
 
     /**
@@ -146,6 +161,10 @@ public class StandardTable extends Table {
                 buff.append(storageEngineName);
                 buff.append('\"');
             }
+        }
+        if (parameters != null && !parameters.isEmpty()) {
+            buff.append(" PARAMETERS");
+            Database.appendMap(buff, parameters);
         }
         if (!isPersistIndexes() && !isPersistData()) {
             buff.append("\nNOT PERSISTENT");

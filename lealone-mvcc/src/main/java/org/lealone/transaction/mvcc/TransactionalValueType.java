@@ -82,4 +82,39 @@ public class TransactionalValueType implements StorageDataType {
         TransactionalValue v = (TransactionalValue) obj;
         v.write(buff, valueType);
     }
+
+    @Override
+    public void writeMeta(DataBuffer buff, Object obj) {
+        TransactionalValue v = (TransactionalValue) obj;
+        v.writeMeta(buff);
+        valueType.writeMeta(buff, v.value);
+    }
+
+    @Override
+    public Object readMeta(ByteBuffer buff, int columnCount) {
+        return TransactionalValue.readMeta(buff, valueType, this, columnCount);
+    }
+
+    @Override
+    public void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
+        TransactionalValue v = (TransactionalValue) obj;
+        valueType.writeColumn(buff, v.value, columnIndex);
+    }
+
+    @Override
+    public void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
+        TransactionalValue v = (TransactionalValue) obj;
+        valueType.readColumn(buff, v.value, columnIndex);
+    }
+
+    @Override
+    public int getColumnCount() {
+        return valueType.getColumnCount();
+    }
+
+    @Override
+    public int getMemory(Object obj, int columnIndex) {
+        TransactionalValue v = (TransactionalValue) obj;
+        return valueType.getMemory(v.value, columnIndex);
+    }
 }

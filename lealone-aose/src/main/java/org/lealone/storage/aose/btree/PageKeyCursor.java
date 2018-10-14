@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
 
@@ -37,6 +38,13 @@ class PageKeyCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
         this.pageKeys = pageKeys;
         // 提前fetch
         min(root, from);
+        fetchNext();
+    }
+
+    PageKeyCursor(BTreePage root, IterationParameters<K> parameters) {
+        this.pageKeys = parameters.pageKeys;
+        // 提前fetch
+        min(root, parameters.from);
         fetchNext();
     }
 

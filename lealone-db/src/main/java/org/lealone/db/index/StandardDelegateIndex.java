@@ -17,6 +17,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.ValueLong;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 
 /**
@@ -68,6 +69,11 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
         // so avoid returning all rows (returning one row is OK)
         ValueLong max = mainIndex.getKey(last, StandardPrimaryIndex.MAX, StandardPrimaryIndex.MIN);
         return mainIndex.find(session, min, max);
+    }
+
+    @Override
+    public Cursor find(ServerSession session, IterationParameters<SearchRow> parameters) {
+        return mainIndex.find(session, parameters);
     }
 
     @Override
@@ -141,10 +147,5 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     @Override
     public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
         return mainIndex.getEndpointToPageKeyMap(session, first, last);
-    }
-
-    @Override
-    public Cursor find(ServerSession session, SearchRow first, SearchRow last, List<PageKey> pageKeys) {
-        return mainIndex.find(session, first, last, pageKeys);
     }
 }

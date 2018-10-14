@@ -32,6 +32,16 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     private List<String> replicationHostIds;
     private LeafPageMovePlan leafPageMovePlan;
+    private ColumnPageReference[] columnPages;
+
+    static class ColumnPageReference {
+        BTreeColumnPage page;
+        long pos;
+
+        public ColumnPageReference(long pos) {
+            this.pos = pos;
+        }
+    }
 
     BTreeLeafPage(BTreeMap<?, ?> map) {
         super(map);
@@ -64,6 +74,40 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     @Override
     public Object getValue(int index) {
+        return values[index];
+    }
+
+    @Override
+    public Object getValue(int index, int columnIndex) {
+        if (columnPages != null && columnPages[columnIndex].page == null) {
+            readColumnPage(columnIndex);
+        }
+        return values[index];
+    }
+
+    @Override
+    public Object getValue(int index, int[] columnIndexes) {
+        if (columnPages != null) {
+            // TODO 考虑一次加载连续的columnPage
+            for (int columnIndex : columnIndexes) {
+                if (columnPages[columnIndex].page == null) {
+                    readColumnPage(columnIndex);
+                }
+            }
+        }
+        return values[index];
+    }
+
+    @Override
+    public Object getValue(int index, boolean allColumns) {
+        if (allColumns && columnPages != null) {
+            // TODO 考虑一次加载连续的columnPage
+            for (int columnIndex = 0, len = columnPages.length; columnIndex < len; columnIndex++) {
+                if (columnPages[columnIndex].page == null) {
+                    readColumnPage(columnIndex);
+                }
+            }
+        }
         return values[index];
     }
 
@@ -138,12 +182,11 @@ public class BTreeLeafPage extends BTreeLocalPage {
         totalCount--;
     }
 
-    @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    void readRowStorage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, maxLength);
-
+        buff.get(); // mode
         int oldLimit = buff.limit();
         buff.limit(start + pageLength);
 
@@ -163,6 +206,125 @@ public class BTreeLeafPage extends BTreeLocalPage {
         replicationHostIds = readReplicationHostIds(buff);
         recalculateMemory();
         oldBuff.limit(oldLimit);
+    }
+
+    void readColumnStorageSinglePage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+        int start = buff.position();
+        int pageLength = buff.getInt();
+        checkPageLength(chunkId, pageLength, maxLength);
+        buff.get(); // mode
+        int oldLimit = buff.limit();
+        buff.limit(start + pageLength);
+
+        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
+
+        int keyLength = DataUtils.readVarInt(buff);
+        int columnCount = DataUtils.readVarInt(buff);
+        keys = new Object[keyLength];
+        int type = buff.get();
+        for (int i = 0; i < columnCount; i++) {
+            buff.getLong();
+        }
+
+        ByteBuffer oldBuff = buff;
+        buff = expandPage(buff, type, start, pageLength);
+
+        map.getKeyType().read(buff, keys, keyLength);
+        values = new Object[keyLength];
+        StorageDataType valueType = map.getValueType();
+        for (int row = 0; row < keyLength; row++) {
+            values[row] = valueType.readMeta(buff, columnCount);
+        }
+        replicationHostIds = readReplicationHostIds(buff);
+        for (int col = 0; col < columnCount; col++) {
+            int columnPageStartPos = buff.position();
+            int columnPageLength = buff.getInt();
+            int columnPageType = buff.get();
+            ByteBuffer columnPageBuff = expandPage(buff, columnPageType, columnPageStartPos, columnPageLength);
+            for (int row = 0; row < keyLength; row++) {
+                valueType.readColumn(columnPageBuff, values[row], col);
+            }
+        }
+        totalCount = keyLength;
+        recalculateMemory();
+        oldBuff.limit(oldLimit);
+    }
+
+    void readColumnStorageMultiPages(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+        int start = buff.position();
+        int pageLength = buff.getInt();
+        checkPageLength(chunkId, pageLength, maxLength);
+        buff.get(); // mode
+        int oldLimit = buff.limit();
+        buff.limit(start + pageLength);
+
+        readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
+
+        int keyLength = DataUtils.readVarInt(buff);
+        int columnCount = DataUtils.readVarInt(buff);
+        columnPages = new ColumnPageReference[columnCount];
+        keys = new Object[keyLength];
+        int type = buff.get();
+        for (int i = 0; i < columnCount; i++) {
+            long pos = buff.getLong();
+            columnPages[i] = new ColumnPageReference(pos);
+        }
+
+        ByteBuffer oldBuff = buff;
+        buff = expandPage(buff, type, start, pageLength);
+
+        map.getKeyType().read(buff, keys, keyLength);
+        values = new Object[keyLength];
+        StorageDataType valueType = map.getValueType();
+        for (int row = 0; row < keyLength; row++) {
+            values[row] = valueType.readMeta(buff, columnCount);
+        }
+        // for (int i = 0; i < columnCount; i++) {
+        // columnPages[i].page = new BTreeColumnPage(map, values, i);
+        // }
+        replicationHostIds = readReplicationHostIds(buff);
+        // 延迟加载
+        // for (int col = 0; col < columnCount; col++) {
+        // BTreeColumnPage page = (BTreeColumnPage) map.btreeStorage.readPage(columnPages[col].pos);
+        // if (page.values == null) {
+        // columnPages[col].page = page;
+        // page.readColumnPage(values, col);
+        // map.btreeStorage.cachePage(columnPages[col].pos, page, page.getMemory());
+        // } else {
+        // // 有可能因为缓存紧张，导致keys所在的page被逐出了，但是列所在的某些page还在
+        // values = page.values;
+        // }
+        // }
+        totalCount = keyLength;
+        recalculateMemory();
+        oldBuff.limit(oldLimit);
+    }
+
+    @Override
+    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+        int mode = buff.get(buff.position() + 4);
+        switch (PageStorageMode.values()[mode]) {
+        case COLUMN_STORAGE:
+            readColumnStorageMultiPages(buff, chunkId, offset, maxLength, disableCheck);
+            break;
+        case COLUMN_STORAGE_SINGLE_PAGE:
+            readColumnStorageSinglePage(buff, chunkId, offset, maxLength, disableCheck);
+            break;
+        default:
+            readRowStorage(buff, chunkId, offset, maxLength, disableCheck);
+        }
+    }
+
+    void readColumnPage(int columnIndex) {
+        BTreeColumnPage page = (BTreeColumnPage) map.btreeStorage.readPage(columnPages[columnIndex].pos);
+        if (page.values == null) {
+            columnPages[columnIndex].page = page;
+            page.readColumnPage(values, columnIndex);
+            map.btreeStorage.cachePage(columnPages[columnIndex].pos, page, page.getMemory());
+        } else {
+            // 有可能因为缓存紧张，导致keys所在的page被逐出了，但是列所在的某些page还在
+            values = page.values;
+        }
     }
 
     @Override
@@ -205,13 +367,12 @@ public class BTreeLeafPage extends BTreeLocalPage {
         return p;
     }
 
-    @Override
-    int write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    int writeRowStorage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
         buff.putInt(0); // 回填pageLength
-
+        buff.put((byte) map.pageStorageMode.ordinal());
         int checkPos = buff.position();
         buff.putShort((short) 0).putVarInt(keyLength);
         int typePos = buff.position();
@@ -222,12 +383,159 @@ public class BTreeLeafPage extends BTreeLocalPage {
         writeReplicationHostIds(replicationHostIds, buff);
 
         compressPage(buff, compressStart, type, typePos);
+        int pageLength = buff.position() - start;
+        // compressStart = start;
+        // compressPage(buff, compressStart, type, typePos);
+        // pageLength = buff.position() - start;
+        // compressStart = start;
+        // compressPage(buff, compressStart, type, typePos);
+        // pageLength = buff.position() - start;
+        buff.putInt(start, pageLength);
+        int chunkId = chunk.id;
+
+        writeCheckValue(buff, chunkId, start, pageLength, checkPos);
+
+        if (replicatePage) {
+            return typePos + 1;
+        }
+
+        updateChunkAndCachePage(chunk, start, pageLength, type);
+
+        if (removedInMemory) {
+            // if the page was removed _before_ the position was assigned, we
+            // need to mark it removed here, so the fields are updated
+            // when the next chunk is stored
+            map.getBTreeStorage().removePage(pos, memory);
+        }
+        return typePos + 1;
+    }
+
+    @Override
+    int write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+        switch (map.pageStorageMode) {
+        case COLUMN_STORAGE:
+            return writeColumnStorageMultiPages(chunk, buff, replicatePage);
+        case COLUMN_STORAGE_SINGLE_PAGE:
+            return writeColumnStorageSinglePage(chunk, buff, replicatePage);
+        default:
+            return writeRowStorage(chunk, buff, replicatePage);
+        }
+    }
+
+    int writeColumnStorageSinglePage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+        int start = buff.position();
+        int keyLength = keys.length;
+        int type = PageUtils.PAGE_TYPE_LEAF;
+        buff.putInt(0); // 回填pageLength
+        buff.put((byte) map.pageStorageMode.ordinal());
+        StorageDataType valueType = map.getValueType();
+        int columnCount = valueType.getColumnCount();
+        int checkPos = buff.position();
+        buff.putShort((short) 0).putVarInt(keyLength).putVarInt(columnCount);
+        int typePos = buff.position();
+        buff.put((byte) type);
+        int columnPageStartPos = buff.position();
+        for (int i = 0; i < columnCount; i++) {
+            buff.putLong(0);
+        }
+        // int compressStart0 = buff.position();
+        map.getKeyType().write(buff, keys, keyLength);
+        // valueType.write(buff, values, keyLength, 0);
+        for (int row = 0; row < keyLength; row++) {
+            valueType.writeMeta(buff, values[row]);
+        }
+        writeReplicationHostIds(replicationHostIds, buff);
+        int compressStart = buff.position();
+        int[] posArray = new int[columnCount];
+        for (int col = 0; col < columnCount; col++) {
+            posArray[col] = buff.position();
+            int columnPagPos = buff.position();
+            int columnPageType = PageUtils.PAGE_TYPE_LEAF;
+            buff.putInt(0); // 回填pageLength
+            int columnPageTypePos = buff.position();
+            buff.put((byte) columnPageType);
+            compressStart = buff.position();
+            for (int row = 0; row < keyLength; row++) {
+                valueType.writeColumn(buff, values[row], col);
+            }
+            compressPage(buff, compressStart, columnPageType, columnPageTypePos);
+            int pageLength = buff.position() - columnPagPos;
+            buff.putInt(columnPagPos, pageLength);
+        }
+        // map.getValueType().write(buff, values, keyLength, 1);
+        // compressPage(buff, compressStart, type, typePos);
+
+        // int[] posArray = map.getValueType().write(buff, values, keyLength, 1);
+        int oldPos = buff.position();
+        buff.position(columnPageStartPos);
+        for (int i = 0; i < columnCount; i++) {
+            buff.putLong(posArray[i]);
+        }
+        buff.position(oldPos);
+
+        // compressPage(buff, compressStart0, type, typePos);
+        int pageLength = buff.position() - start;
+        buff.putInt(start, pageLength);
+        int chunkId = chunk.id;
+
+        writeCheckValue(buff, chunkId, start, pageLength, checkPos);
+
+        if (replicatePage) {
+            return typePos + 1;
+        }
+
+        updateChunkAndCachePage(chunk, start, pageLength, type);
+
+        if (removedInMemory) {
+            // if the page was removed _before_ the position was assigned, we
+            // need to mark it removed here, so the fields are updated
+            // when the next chunk is stored
+            map.getBTreeStorage().removePage(pos, memory);
+        }
+        return typePos + 1;
+    }
+
+    int writeColumnStorageMultiPages(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+        int start = buff.position();
+        int keyLength = keys.length;
+        int type = PageUtils.PAGE_TYPE_LEAF;
+        buff.putInt(0); // 回填pageLength
+        buff.put((byte) map.pageStorageMode.ordinal());
+        StorageDataType valueType = map.getValueType();
+        int columnCount = valueType.getColumnCount();
+        int checkPos = buff.position();
+        buff.putShort((short) 0).putVarInt(keyLength).putVarInt(columnCount);
+        int typePos = buff.position();
+        buff.put((byte) type);
+        int columnPageStartPos = buff.position();
+        for (int i = 0; i < columnCount; i++) {
+            buff.putLong(0);
+        }
+        int compressStart = buff.position();
+        map.getKeyType().write(buff, keys, keyLength);
+        for (int row = 0; row < keyLength; row++) {
+            valueType.writeMeta(buff, values[row]);
+        }
+        writeReplicationHostIds(replicationHostIds, buff);
+        compressPage(buff, compressStart, type, typePos);
 
         int pageLength = buff.position() - start;
         buff.putInt(start, pageLength);
         int chunkId = chunk.id;
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
+
+        long[] posArray = new long[columnCount];
+        for (int col = 0; col < columnCount; col++) {
+            BTreeColumnPage page = new BTreeColumnPage(map, values, col);
+            posArray[col] = page.writeColumnPage(chunk, buff, replicatePage);
+        }
+        int oldPos = buff.position();
+        buff.position(columnPageStartPos);
+        for (int i = 0; i < columnCount; i++) {
+            buff.putLong(posArray[i]);
+        }
+        buff.position(oldPos);
 
         if (replicatePage) {
             return typePos + 1;

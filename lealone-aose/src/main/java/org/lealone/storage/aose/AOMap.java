@@ -17,10 +17,8 @@
  */
 package org.lealone.storage.aose;
 
-import java.util.List;
-
 import org.lealone.storage.DelegatedStorageMap;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
 
@@ -241,9 +239,9 @@ public class AOMap<K, V> extends DelegatedStorageMap<K, V> {
     }
 
     @Override
-    public StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
+    public StorageMapCursor<K, V> cursor(IterationParameters<K> parameters) {
         readCount++;
-        return map.cursor(pageKeys, from);
+        return map.cursor(parameters);
     }
 
     @Override

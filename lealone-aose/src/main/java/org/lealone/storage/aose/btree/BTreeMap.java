@@ -26,6 +26,7 @@ import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
@@ -72,6 +73,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     protected final Map<String, Object> config;
     protected final BTreeStorage btreeStorage;
+    protected PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
     protected IDatabase db;
 
     /**
@@ -89,9 +91,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         DataUtils.checkArgument(config != null, "The config may not be null");
 
         this.readOnly = config.containsKey("readOnly");
-        boolean isShardingMode = config.containsKey("isShardingMode");
+        boolean isShardingMode = false;
+        if (config.containsKey("isShardingMode"))
+            isShardingMode = Boolean.parseBoolean(config.get("isShardingMode").toString());
         this.config = config;
         this.db = (IDatabase) config.get("db");
+
+        Object mode = config.get("pageStorageMode");
+        if (mode != null) {
+            pageStorageMode = PageStorageMode.valueOf(mode.toString());
+        }
 
         btreeStorage = new BTreeStorage((BTreeMap<Object, Object>) this);
 
@@ -132,9 +141,22 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public V get(K key) {
-        return (V) binarySearch(root, key);
+        return get(key, true);
+    }
+
+    @SuppressWarnings("unchecked")
+    public V get(K key, boolean allColumns) {
+        return (V) binarySearch(root, key, allColumns);
+    }
+
+    public V get(K key, int columnIndex) {
+        return get(key, new int[] { columnIndex });
+    }
+
+    @SuppressWarnings("unchecked")
+    public V get(K key, int[] columnIndexes) {
+        return (V) binarySearch(root, key, columnIndexes);
     }
 
     /**
@@ -144,11 +166,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @param key the key
      * @return the value or null
      */
-    protected Object binarySearch(BTreePage p, Object key) {
+    protected Object binarySearch(BTreePage p, Object key, boolean allColumns) {
         while (true) {
             int index = p.binarySearch(key);
             if (p.isLeaf()) {
-                return index >= 0 ? p.getValue(index) : null;
+                return index >= 0 ? p.getValue(index, allColumns) : null;
             } else {
                 if (index < 0) {
                     index = -index - 1;
@@ -170,6 +192,22 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         // return binarySearch(p, key);
         // }
         // return index >= 0 ? p.getValue(index) : null;
+    }
+
+    protected Object binarySearch(BTreePage p, Object key, int[] columnIndexes) {
+        while (true) {
+            int index = p.binarySearch(key);
+            if (p.isLeaf()) {
+                return index >= 0 ? p.getValue(index, columnIndexes) : null;
+            } else {
+                if (index < 0) {
+                    index = -index - 1;
+                } else {
+                    index++;
+                }
+                p = p.getChildPage(index);
+            }
+        }
     }
 
     @Override
@@ -731,15 +769,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public StorageMapCursor<K, V> cursor(K from) {
-        return new BTreeCursor<>(this, root, from);
+        return cursor(IterationParameters.create(from));
     }
 
     @Override
-    public StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
-        if (pageKeys == null)
-            return new BTreeCursor<>(this, root, from);
+    public StorageMapCursor<K, V> cursor(IterationParameters<K> parameters) {
+        if (parameters.pageKeys == null)
+            return new BTreeCursor<>(this, root, parameters);
         else
-            return new PageKeyCursor<>(pageKeys, root, from);
+            return new PageKeyCursor<>(root, parameters);
     }
 
     @Override
@@ -1362,5 +1400,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // test only
     public BTreePage getRootPage() {
         return root;
+    }
+
+    public void setPageStorageMode(PageStorageMode pageStorageMode) {
+        this.pageStorageMode = pageStorageMode;
     }
 }

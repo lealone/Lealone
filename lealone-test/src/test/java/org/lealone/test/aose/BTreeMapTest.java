@@ -30,6 +30,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.junit.Test;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
@@ -164,7 +165,7 @@ public class BTreeMapTest extends TestBase {
         int count = 0;
         for (List<PageKey> pageKeys : endpointToPageKeyMap.values()) {
             // System.out.println("pageKeys: " + pageKeys);
-            StorageMapCursor<Integer, String> cursor = map.cursor(pageKeys, from);
+            StorageMapCursor<Integer, String> cursor = map.cursor(IterationParameters.create(from, pageKeys));
             while (cursor.hasNext()) {
                 count++;
                 cursor.next();
@@ -260,7 +261,7 @@ public class BTreeMapTest extends TestBase {
         v = map.replace(100, "value100a", "value100");
         assertTrue((boolean) v);
 
-        StorageMapCursor<?, ?> cursor = map.cursor(null);
+        StorageMapCursor<?, ?> cursor = map.cursor();
         int count = 0;
         while (cursor.hasNext()) {
             cursor.next();

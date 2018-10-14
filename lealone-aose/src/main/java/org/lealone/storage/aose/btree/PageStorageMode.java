@@ -15,20 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.aose;
+package org.lealone.storage.aose.btree;
 
-import org.junit.Test;
-import org.lealone.test.sql.SqlTestBase;
-
-public class StorageTest extends SqlTestBase {
-    @Test
-    public void run() {
-        executeUpdate("CREATE TABLE IF NOT EXISTS StorageTest(f1 int, f2 int) ENGINE " + DEFAULT_STORAGE_ENGINE_NAME
-                + " PARAMETERS(mapType='BufferedMap')");
-        executeUpdate("INSERT INTO StorageTest(f1, f2) VALUES(1, 10)");
-        executeUpdate("INSERT INTO StorageTest(f1, f2) VALUES(2, 20)");
-
-        sql = "SELECT * FROM StorageTest";
-        printResultSet();
-    }
+public enum PageStorageMode {
+    ROW_STORAGE,
+    COLUMN_STORAGE,
+    COLUMN_STORAGE_SINGLE_PAGE;
 }

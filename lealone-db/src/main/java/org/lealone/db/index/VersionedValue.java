@@ -19,7 +19,7 @@ package org.lealone.db.index;
 
 import org.lealone.db.value.ValueArray;
 
-class VersionedValue {
+public class VersionedValue {
 
     public final int vertion; // 表的元数据版本号
     public final ValueArray value;

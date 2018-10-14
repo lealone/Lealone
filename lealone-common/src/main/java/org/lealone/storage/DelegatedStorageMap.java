@@ -142,6 +142,11 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
+    public StorageMapCursor<K, V> cursor(IterationParameters<K> parameters) {
+        return map.cursor(parameters);
+    }
+
+    @Override
     public void clear() {
         map.clear();
     }
@@ -244,11 +249,6 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     @Override
     public long getMemorySpaceUsed() {
         return map.getDiskSpaceUsed();
-    }
-
-    @Override
-    public StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
-        return map.cursor(pageKeys, from);
     }
 
     @Override

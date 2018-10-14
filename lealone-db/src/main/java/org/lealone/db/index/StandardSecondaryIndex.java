@@ -71,18 +71,8 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         Storage storage = database.getStorage(table.getStorageEngine());
         TransactionEngine transactionEngine = database.getTransactionEngine();
 
-        String initReplicationEndpoints = null;
-        String replicationName = session.getReplicationName();
-        if (replicationName != null) {
-            int pos = replicationName.indexOf('@');
-            if (pos != -1) {
-                initReplicationEndpoints = replicationName.substring(0, pos);
-            }
-        }
-
         Transaction t = transactionEngine.beginTransaction(false, session.isShardingMode());
-        TransactionMap<Value, Value> map = t.openMap(mapName, table.getMapType(), keyType, valueType, storage,
-                session.getDatabase().isShardingMode(), initReplicationEndpoints);
+        TransactionMap<Value, Value> map = t.openMap(mapName, keyType, valueType, storage, table.getParameters());
         transactionEngine.addTransactionMap(map);
         t.commit(); // 避免产生内部未提交的事务
         if (!keyType.equals(map.getKeyType())) {

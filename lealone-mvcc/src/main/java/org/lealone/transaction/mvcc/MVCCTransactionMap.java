@@ -7,14 +7,13 @@ package org.lealone.transaction.mvcc;
 
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.DelegatedStorageMap;
-import org.lealone.storage.PageKey;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
@@ -407,7 +406,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             // the undo log is larger than the map -
             // count the entries of the map
             long size = 0;
-            StorageMapCursor<K, TransactionalValue> cursor = map.cursor(null);
+            StorageMapCursor<K, TransactionalValue> cursor = map.cursor();
             while (cursor.hasNext()) {
                 K key = cursor.next();
                 TransactionalValue data = cursor.getValue();
@@ -425,7 +424,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         String mapName = getName();
         Storage storage = map.getStorage();
         String tmpMapName = storage.nextTemporaryMapName();
-        StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, null, new ObjectDataType(), new ObjectDataType(),
+        StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, new ObjectDataType(), new ObjectDataType(),
                 null);
         try {
             for (MVCCTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
@@ -569,11 +568,16 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     }
 
     @Override
-    public Iterator<Entry<K, V>> entryIterator(List<PageKey> pageKeys, K from) {
+    public Iterator<Entry<K, V>> entryIterator(K from) {
+        return entryIterator(IterationParameters.create(from));
+    }
+
+    @Override
+    public Iterator<Entry<K, V>> entryIterator(IterationParameters<K> parameters) {
         return new Iterator<Entry<K, V>>() {
             private Entry<K, V> current;
-            private K currentKey = from;
-            private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(pageKeys, currentKey);
+            private K currentKey = parameters.from;
+            private StorageMapCursor<K, TransactionalValue> cursor = map.cursor(parameters);
 
             {
                 fetchNext();
@@ -587,7 +591,8 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                     } catch (IllegalStateException e) {
                         // TODO this is a bit ugly
                         if (DataUtils.getErrorCode(e.getMessage()) == DataUtils.ERROR_CHUNK_NOT_FOUND) {
-                            cursor = map.cursor(pageKeys, currentKey);
+                            parameters.from = currentKey;
+                            cursor = map.cursor(parameters);
                             // we (should) get the current key again,
                             // we need to ignore that one
                             if (!cursor.hasNext()) {
@@ -634,11 +639,6 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                 throw DataUtils.newUnsupportedOperationException("Removing is not supported");
             }
         };
-    }
-
-    @Override
-    public Iterator<Entry<K, V>> entryIterator(final K from) {
-        return entryIterator(null, from);
     }
 
     @Override
@@ -708,5 +708,4 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             }
         };
     }
-
 }

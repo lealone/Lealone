@@ -27,6 +27,7 @@ import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 
@@ -155,8 +156,8 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     // }
 
     @Override
-    public Cursor find(ServerSession session, SearchRow first, SearchRow last, List<PageKey> pageKeys) {
-        return find(session, first, last);
+    public Cursor find(ServerSession session, IterationParameters<SearchRow> parameters) {
+        return find(session, parameters.from, parameters.to);
     }
 
     /**

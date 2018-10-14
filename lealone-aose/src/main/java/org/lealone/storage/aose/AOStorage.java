@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.IDatabase;
@@ -71,6 +72,12 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
+    public <K, V> StorageMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
+            Map<String, String> parameters) {
+        String mapType = parameters == null ? null : parameters.get("mapType");
+        return openMap(name, mapType, keyType, valueType, parameters);
+    }
+
     public <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
             StorageDataType valueType, Map<String, String> parameters) {
         if (mapType == null || mapType.equalsIgnoreCase("AOMap")) {
@@ -129,7 +136,7 @@ public class AOStorage extends StorageBase {
             synchronized (this) {
                 map = (M) maps.get(name);
                 if (map == null) {
-                    HashMap<String, Object> c = new HashMap<>(config);
+                    CaseInsensitiveMap<Object> c = new CaseInsensitiveMap<>(config);
                     if (parameters != null)
                         c.putAll(parameters);
                     builder.name(name).config(c).aoStorage(this);

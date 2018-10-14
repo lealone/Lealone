@@ -30,8 +30,8 @@ public class MemoryStorage extends StorageBase {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <K, V> MemoryMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
-            StorageDataType valueType, Map<String, String> parameters) {
+    public <K, V> MemoryMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
+            Map<String, String> parameters) {
         MemoryMap<K, V> map = (MemoryMap<K, V>) maps.get(name);
         if (map == null) {
             synchronized (this) {

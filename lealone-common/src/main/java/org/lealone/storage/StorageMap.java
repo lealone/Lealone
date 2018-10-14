@@ -200,7 +200,16 @@ public interface StorageMap<K, V> extends ReplicationMap {
      * @param from the first key to return
      * @return the cursor
      */
+
     StorageMapCursor<K, V> cursor(K from);
+
+    default StorageMapCursor<K, V> cursor() {
+        return cursor((K) null);
+    }
+
+    default StorageMapCursor<K, V> cursor(IterationParameters<K> parameters) {
+        return cursor(parameters.from);
+    }
 
     /**
      * Remove all entries.
@@ -262,10 +271,6 @@ public interface StorageMap<K, V> extends ReplicationMap {
     }
 
     void setRootPage(ByteBuffer buff);
-
-    default StorageMapCursor<K, V> cursor(List<PageKey> pageKeys, K from) {
-        return cursor(from);
-    }
 
     default Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
         return null;
