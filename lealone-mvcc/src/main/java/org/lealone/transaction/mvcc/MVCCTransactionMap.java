@@ -182,6 +182,16 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         return set(key, value);
     }
 
+    @Override
+    public V put(K key, V oldValue, V newValue) {
+        TransactionalValue oldTV = TransactionalValue.createCommitted(oldValue);
+        boolean ok = trySet(key, newValue, oldTV);
+        if (ok) {
+            return oldValue;
+        }
+        throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
+    }
+
     @SuppressWarnings("unchecked")
     private V set(K key, V value) {
         transaction.checkNotClosed();

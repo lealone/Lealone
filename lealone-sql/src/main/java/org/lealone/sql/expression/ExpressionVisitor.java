@@ -6,7 +6,7 @@
  */
 package org.lealone.sql.expression;
 
-import java.util.HashSet;
+import java.util.Set;
 
 import org.lealone.db.DbObject;
 import org.lealone.db.table.Column;
@@ -94,14 +94,14 @@ public class ExpressionVisitor {
 
     private final int type;
     private final int queryLevel;
-    private final HashSet<DbObject> dependencies;
-    private final HashSet<Column> columns;
+    private final Set<DbObject> dependencies;
+    private final Set<Column> columns;
     private final Table table;
     private final long[] maxDataModificationId;
     private final ColumnResolver resolver;
 
-    private ExpressionVisitor(int type, int queryLevel, HashSet<DbObject> dependencies, HashSet<Column> columns,
-            Table table, ColumnResolver resolver, long[] maxDataModificationId) {
+    private ExpressionVisitor(int type, int queryLevel, Set<DbObject> dependencies, Set<Column> columns, Table table,
+            ColumnResolver resolver, long[] maxDataModificationId) {
         this.type = type;
         this.queryLevel = queryLevel;
         this.dependencies = dependencies;
@@ -127,7 +127,7 @@ public class ExpressionVisitor {
      * @param dependencies the dependencies set
      * @return the new visitor
      */
-    public static ExpressionVisitor getDependenciesVisitor(HashSet<DbObject> dependencies) {
+    public static ExpressionVisitor getDependenciesVisitor(Set<DbObject> dependencies) {
         return new ExpressionVisitor(GET_DEPENDENCIES, 0, dependencies, null, null, null, null);
     }
 
@@ -158,7 +158,7 @@ public class ExpressionVisitor {
      * @param columns the columns map
      * @return the new visitor
      */
-    public static ExpressionVisitor getColumnsVisitor(HashSet<Column> columns) {
+    public static ExpressionVisitor getColumnsVisitor(Set<Column> columns) {
         return new ExpressionVisitor(GET_COLUMNS, 0, null, columns, null, null, null);
     }
 
@@ -194,7 +194,7 @@ public class ExpressionVisitor {
      * @return the set
      */
 
-    public HashSet<DbObject> getDependencies() {
+    public Set<DbObject> getDependencies() {
         return dependencies;
     }
 

@@ -8,6 +8,7 @@ package org.lealone.sql.dml;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -97,21 +98,28 @@ public class Update extends ManipulationStatement {
 
     @Override
     public PreparedStatement prepare() {
+        int size = columns.size();
+        HashSet<Column> columnSet = new HashSet<>(size + 1);
         if (condition != null) {
             condition.mapColumns(tableFilter, 0);
             condition = condition.optimize(session);
             condition.createIndexConditions(session, tableFilter);
+            condition.getColumns(columnSet);
         }
-        for (int i = 0, size = columns.size(); i < size; i++) {
+        for (int i = 0; i < size; i++) {
             Column c = columns.get(i);
             Expression e = expressionMap.get(c);
             e.mapColumns(tableFilter, 0);
             expressionMap.put(c, e.optimize(session));
+
+            columnSet.add(c);
+            e.getColumns(columnSet); // 例如f1=f2*2;
         }
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
         tableFilter.prepare();
         cost = item.getCost();
+        tableFilter.createColumnIndexes(columnSet);
         return this;
     }
 
@@ -181,7 +189,7 @@ public class Update extends ManipulationStatement {
             // we need to update all indexes) before row triggers
 
             // the cached row is already updated - we need the old values
-            table.updateRows(this, session, rows);
+            table.updateRows(this, session, rows, this.columns);
             if (table.fireRow()) {
                 rows.invalidateCache();
                 for (rows.reset(); rows.hasNext();) {

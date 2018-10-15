@@ -9,7 +9,6 @@ package org.lealone.sql.expression;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.util.HashSet;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
@@ -380,14 +379,14 @@ public abstract class Expression implements org.lealone.sql.IExpression {
     @SuppressWarnings("unchecked")
     @Override
     public void getDependencies(Set<?> dependencies) {
-        ExpressionVisitor visitor = ExpressionVisitor.getDependenciesVisitor((HashSet<DbObject>) dependencies);
+        ExpressionVisitor visitor = ExpressionVisitor.getDependenciesVisitor((Set<DbObject>) dependencies);
         isEverything(visitor);
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public void getColumns(Set<?> columns) {
-        ExpressionVisitor visitor = ExpressionVisitor.getColumnsVisitor((HashSet<Column>) columns);
+        ExpressionVisitor visitor = ExpressionVisitor.getColumnsVisitor((Set<Column>) columns);
         isEverything(visitor);
     }
 }

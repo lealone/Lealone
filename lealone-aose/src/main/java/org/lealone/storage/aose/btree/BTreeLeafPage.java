@@ -87,7 +87,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     @Override
     public Object getValue(int index, int[] columnIndexes) {
-        if (columnPages != null) {
+        if (columnPages != null && columnIndexes != null) {
             // TODO 考虑一次加载连续的columnPage
             for (int columnIndex : columnIndexes) {
                 if (columnPages[columnIndex].page == null) {

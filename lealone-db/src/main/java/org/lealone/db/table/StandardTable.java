@@ -528,6 +528,44 @@ public class StandardTable extends Table {
     }
 
     @Override
+    public void addRow(ServerSession session, Row row) {
+        row.setVersion(getVersion());
+        lastModificationId = database.getNextModificationDataId();
+        Transaction t = session.getTransaction();
+        int savepointId = t.getSavepointId();
+        try {
+            // 第一个是PrimaryIndex
+            for (int i = 0, size = indexes.size(); i < size; i++) {
+                Index index = indexes.get(i);
+                index.add(session, row);
+            }
+        } catch (Throwable e) {
+            t.rollbackToSavepoint(savepointId);
+            throw DbException.convert(e);
+        }
+        analyzeIfRequired(session);
+    }
+
+    @Override
+    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        newRow.setVersion(getVersion());
+        lastModificationId = database.getNextModificationDataId();
+        Transaction t = session.getTransaction();
+        int savepointId = t.getSavepointId();
+        try {
+            // 第一个是PrimaryIndex
+            for (int i = 0, size = indexes.size(); i < size; i++) {
+                Index index = indexes.get(i);
+                index.update(session, oldRow, newRow, updateColumns);
+            }
+        } catch (Throwable e) {
+            t.rollbackToSavepoint(savepointId);
+            throw DbException.convert(e);
+        }
+        analyzeIfRequired(session);
+    }
+
+    @Override
     public void removeRow(ServerSession session, Row row) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
@@ -552,25 +590,6 @@ public class StandardTable extends Table {
             index.truncate(session);
         }
         changesSinceAnalyze = 0;
-    }
-
-    @Override
-    public void addRow(ServerSession session, Row row) {
-        row.setVersion(getVersion());
-        lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
-        try {
-            // 第一个是PrimaryIndex
-            for (int i = 0, size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                index.add(session, row);
-            }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
-        }
-        analyzeIfRequired(session);
     }
 
     protected void analyzeIfRequired(ServerSession session) {

@@ -47,14 +47,14 @@ public class UpdateTest extends SqlTestBase {
     }
 
     void testUpdate() {
-        sql = "UPDATE UpdateTest SET f1 = 'a1', f3 = 61 WHERE pk = '01'";
+        sql = "UPDATE UpdateTest SET f1 = 'a1', f3 = 61+LENGTH(f2) WHERE pk = '01'";
         assertEquals(1, executeUpdate(sql));
 
         sql = "SELECT f1, f2, f3 FROM UpdateTest WHERE pk = '01'";
         try {
             assertEquals("a1", getStringValue(1));
             assertEquals("b", getStringValue(2));
-            assertEquals(61, getIntValue(3, true));
+            assertEquals(62, getIntValue(3, true));
         } catch (Exception e) {
             e.printStackTrace();
         }

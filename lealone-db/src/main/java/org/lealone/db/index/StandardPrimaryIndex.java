@@ -165,6 +165,39 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
+    public void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        if (table.getContainsLargeObject()) {
+            for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
+                Value v = newRow.getValue(i);
+                Value v2 = v.link(database, getId());
+                if (v2.isLinked()) {
+                    session.unlinkAtCommitStop(v2);
+                }
+                if (v != v2) {
+                    newRow.setValue(i, v2);
+                }
+            }
+            for (int i = 0, len = oldRow.getColumnCount(); i < len; i++) {
+                Value v = oldRow.getValue(i);
+                if (v.isLinked()) {
+                    session.unlinkAtCommit(v);
+                }
+            }
+        }
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        VersionedValue oldValue = new VersionedValue(oldRow.getVersion(), ValueArray.get(oldRow.getValueList()));
+        VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
+        Value key = ValueLong.get(newRow.getKey());
+        try {
+            map.put(key, oldValue, newValue);
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+        }
+        session.setLastRow(newRow);
+        session.setLastIndex(this);
+    }
+
+    @Override
     public void remove(ServerSession session, Row row) {
         if (table.getContainsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
@@ -204,6 +237,7 @@ public class StandardPrimaryIndex extends IndexBase {
         ValueArray array = v.value;
         Row row = new Row(array.getList(), 0);
         row.setKey(key);
+        row.setVersion(v.vertion);
         return row;
     }
 

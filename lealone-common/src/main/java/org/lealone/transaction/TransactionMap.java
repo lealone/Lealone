@@ -86,4 +86,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public Iterator<K> keyIterator(K from, boolean includeUncommitted);
 
+    public V put(K key, V oldValue, V newValue);
+
 }

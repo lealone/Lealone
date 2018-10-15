@@ -48,6 +48,11 @@ public interface Index extends SchemaObject {
      */
     void add(ServerSession session, Row row);
 
+    default void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        remove(session, oldRow);
+        add(session, newRow);
+    }
+
     /**
      * Remove a row from the index.
      *

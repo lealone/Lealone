@@ -222,6 +222,17 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     /**
+     * Update a row from the table and all indexes.
+     *
+     * @param session the session
+     * @param oldRow the old row
+     * @param newRow the new row
+     */
+    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        throw newUnsupportedException();
+    }
+
+    /**
      * Remove a row from the table and all indexes.
      *
      * @param session the session
@@ -346,7 +357,7 @@ public abstract class Table extends SchemaObjectBase {
      *
      * @param dependencies the current set of dependencies
      */
-    public void addDependencies(HashSet<DbObject> dependencies) {
+    public void addDependencies(Set<DbObject> dependencies) {
         if (dependencies.contains(this)) {
             // avoid endless recursion
             return;
@@ -450,28 +461,19 @@ public abstract class Table extends SchemaObjectBase {
      * @param rows a list of row pairs of the form old row, new row, old row,
      *            new row,...
      */
-    public void updateRows(PreparedStatement prepared, ServerSession session, RowList rows) {
+    public void updateRows(PreparedStatement prepared, ServerSession session, RowList rows,
+            List<Column> updateColumns) {
         // in case we need to undo the update
         int savepointId = session.getTransaction().getSavepointId();
-        // remove the old rows
         int rowScanCount = 0;
         for (rows.reset(); rows.hasNext();) {
             if ((++rowScanCount & 127) == 0) {
                 prepared.checkCanceled();
             }
-            Row o = rows.next();
-            rows.next();
-            removeRow(session, o);
-        }
-        // add the new rows
-        for (rows.reset(); rows.hasNext();) {
-            if ((++rowScanCount & 127) == 0) {
-                prepared.checkCanceled();
-            }
-            rows.next();
-            Row n = rows.next();
+            Row oldRow = rows.next();
+            Row newRow = rows.next();
             try {
-                addRow(session, n);
+                updateRow(session, oldRow, newRow, updateColumns);
             } catch (DbException e) {
                 if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
                     session.rollbackTo(savepointId);
@@ -479,6 +481,35 @@ public abstract class Table extends SchemaObjectBase {
                 throw e;
             }
         }
+
+        // // in case we need to undo the update
+        // int savepointId = session.getTransaction().getSavepointId();
+        // // remove the old rows
+        // int rowScanCount = 0;
+        // for (rows.reset(); rows.hasNext();) {
+        // if ((++rowScanCount & 127) == 0) {
+        // prepared.checkCanceled();
+        // }
+        // Row o = rows.next();
+        // rows.next();
+        // removeRow(session, o);
+        // }
+        // // add the new rows
+        // for (rows.reset(); rows.hasNext();) {
+        // if ((++rowScanCount & 127) == 0) {
+        // prepared.checkCanceled();
+        // }
+        // rows.next();
+        // Row n = rows.next();
+        // try {
+        // addRow(session, n);
+        // } catch (DbException e) {
+        // if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
+        // session.rollbackTo(savepointId);
+        // }
+        // throw e;
+        // }
+        // }
     }
 
     public ArrayList<TableView> getViews() {

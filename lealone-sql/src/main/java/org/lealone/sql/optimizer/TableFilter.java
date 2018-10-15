@@ -7,8 +7,11 @@
 package org.lealone.sql.optimizer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -106,6 +109,8 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
     private boolean foundOne;
     private Expression fullCondition;
     private final int hashCode;
+
+    private int[] columnIndexes;
 
     /**
      * Create a new table filter object.
@@ -548,6 +553,7 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
             filter.joinOuter = outer;
             if (outer) {
                 visit(new TableFilterVisitor() {
+
                     @Override
                     public void accept(TableFilter f) {
                         f.joinOuterIndirect = true;
@@ -572,6 +578,7 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
                     }
                 } else {
                     if (outer) {
+
                         // convert all inner joins on the right hand side to outer joins
                         TableFilter f = filter.join;
                         while (f != null) {
@@ -1106,5 +1113,42 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
         setSession((ServerSession) session);
         set((org.lealone.db.result.Row) data);
         return e.getValue(session);
+    }
+
+    public int[] getColumnIndexes() {
+        return columnIndexes;
+    }
+
+    public void setColumnIndexes(int[] columnIndexes) {
+        this.columnIndexes = columnIndexes;
+    }
+
+    public int[] createColumnIndexes(Expression... expressionArray) {
+        int len = expressionArray.length;
+        HashSet<Column> columnSet = new HashSet<>(len);
+        for (int i = 0; i < len; i++) {
+            expressionArray[i].getColumns(columnSet);
+        }
+        return createColumnIndexes(columnSet);
+    }
+
+    public int[] createColumnIndexes(Set<Column> columnSet) {
+        int size = columnSet.size(); // size可能比原来的expressionArray大
+        int[] columnIndexes = new int[size];
+        int i = 0;
+        for (Column c : columnSet) {
+            if (c.getTable() == table) {
+                columnIndexes[i++] = c.getColumnId(); // 索引从0开始，columnId也是从0开始
+            }
+        }
+        if (i != size) {
+            int[] tmp = new int[i];
+            System.arraycopy(columnIndexes, 0, tmp, 0, i);
+            columnIndexes = tmp;
+        }
+
+        Arrays.sort(columnIndexes);
+        this.columnIndexes = columnIndexes;
+        return columnIndexes;
     }
 }

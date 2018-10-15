@@ -84,7 +84,9 @@ public class IndexCursor implements Cursor {
             Select select = tableFilter.getSelect();
             int[] columnIndexes = null;
             if (select != null) {
-                columnIndexes = select.getColumnIndexes(tableFilter.getTable());
+                columnIndexes = tableFilter.createColumnIndexes(select.getReferencedColumns());
+            } else {
+                columnIndexes = tableFilter.getColumnIndexes(); // update和delete在prepare阶段就设置好了
             }
             IterationParameters<SearchRow> parameters = IterationParameters.create(start, end, pageKeys, columnIndexes);
             cursor = index.find(tableFilter.getSession(), parameters);

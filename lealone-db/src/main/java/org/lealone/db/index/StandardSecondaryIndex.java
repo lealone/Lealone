@@ -232,6 +232,17 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
+    public void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        // 只有索引字段被更新时才更新索引
+        for (Column c : columns) {
+            if (updateColumns.contains(c)) {
+                super.update(session, oldRow, newRow, updateColumns);
+                break;
+            }
+        }
+    }
+
+    @Override
     public void remove(ServerSession session, Row row) {
         ValueArray array = convertToKey(row);
         TransactionMap<Value, Value> map = getMap(session);

@@ -9,7 +9,7 @@ package org.lealone.db.table;
 import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.Timestamp;
-import java.util.HashSet;
+import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
@@ -634,7 +634,7 @@ public class Column {
         this.primaryKey = primaryKey;
     }
 
-    void getDependencies(HashSet<DbObject> dependencies) {
+    void getDependencies(Set<DbObject> dependencies) {
         if (sequence != null) {
             dependencies.add(sequence);
         }

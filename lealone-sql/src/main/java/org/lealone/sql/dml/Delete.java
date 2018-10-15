@@ -67,6 +67,7 @@ public class Delete extends ManipulationStatement {
             condition.mapColumns(tableFilter, 0);
             condition = condition.optimize(session);
             condition.createIndexConditions(session, tableFilter);
+            tableFilter.createColumnIndexes(condition);
         }
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
