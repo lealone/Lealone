@@ -121,9 +121,20 @@ public class VersionedValueType implements StorageDataType {
         Value[] columns = v.value.getList();
         if (columnIndex >= 0 && columnIndex < columns.length) {
             Value value = (Value) valueType.read(buff);
-            if (value == null)
-                System.out.println(obj);
             columns[columnIndex] = value;
+        }
+    }
+
+    @Override
+    public void setColumns(Object oldObj, Object newObj, int[] columnIndexes) {
+        if (columnIndexes != null) {
+            VersionedValue oldValue = (VersionedValue) oldObj;
+            VersionedValue newValue = (VersionedValue) newObj;
+            Value[] oldColumns = oldValue.value.getList();
+            Value[] newColumns = newValue.value.getList();
+            for (int i : columnIndexes) {
+                oldColumns[i] = newColumns[i];
+            }
         }
     }
 

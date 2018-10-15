@@ -55,7 +55,8 @@ public class TransactionalLogRecord {
                 // remove the value
                 map.remove(key);
             } else {
-                map.put(key, TransactionalValue.createCommitted(value.value));
+                // map.put(key, TransactionalValue.createCommitted(value.value));
+                map.put(key, value.commit());
             }
         }
     }

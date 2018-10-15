@@ -27,6 +27,10 @@ public interface Cursor {
      */
     Row get();
 
+    default Row get(int[] columnIndexes) {
+        return get();
+    }
+
     /**
      * Get the current row.
      * Only the data for indexed columns is available in this row.

@@ -108,6 +108,11 @@ public class TransactionalValueType implements StorageDataType {
     }
 
     @Override
+    public void setColumns(Object oldObj, Object newObj, int[] columnIndexes) {
+        valueType.setColumns(oldObj, newObj, columnIndexes);
+    }
+
+    @Override
     public int getColumnCount() {
         return valueType.getColumnCount();
     }

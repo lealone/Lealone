@@ -62,6 +62,14 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
     }
 
     @Override
+    public V get(K key, int[] columnIndexes) {
+        Object v = buffer.get(key);
+        if (v == null)
+            v = map.get(key, columnIndexes);
+        return (V) v;
+    }
+
+    @Override
     public V put(K key, V value) {
         map.setMaxKey(key); // 更新最大key
         return (V) buffer.put(key, value);

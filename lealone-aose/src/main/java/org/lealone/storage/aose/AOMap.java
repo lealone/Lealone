@@ -145,6 +145,12 @@ public class AOMap<K, V> extends DelegatedStorageMap<K, V> {
     }
 
     @Override
+    public V get(K key, int[] columnIndexes) {
+        readCount++;
+        return map.get(key, columnIndexes);
+    }
+
+    @Override
     public V put(K key, V value) {
         beforeWrite();
         try {

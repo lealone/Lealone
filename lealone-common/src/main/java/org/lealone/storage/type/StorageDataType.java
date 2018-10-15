@@ -151,6 +151,10 @@ public interface StorageDataType {
         // do nothing
     }
 
+    default void setColumns(Object oldObj, Object newObj, int[] columnIndexes) {
+        // do nothing
+    }
+
     default int getColumnCount() {
         return 1;
     }

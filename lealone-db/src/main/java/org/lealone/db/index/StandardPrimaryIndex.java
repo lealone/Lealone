@@ -188,8 +188,13 @@ public class StandardPrimaryIndex extends IndexBase {
         VersionedValue oldValue = new VersionedValue(oldRow.getVersion(), ValueArray.get(oldRow.getValueList()));
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
+        int size = updateColumns.size();
+        int[] columnIndexes = new int[size];
+        for (int i = 0; i < size; i++) {
+            columnIndexes[i] = updateColumns.get(i).getColumnId();
+        }
         try {
-            map.put(key, oldValue, newValue);
+            map.put(key, oldValue, newValue, columnIndexes);
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
         }
@@ -233,7 +238,11 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public Row getRow(ServerSession session, long key) {
-        VersionedValue v = getMap(session).get(ValueLong.get(key));
+        return getRow(session, key, null);
+    }
+
+    public Row getRow(ServerSession session, long key, int[] columnIndexes) {
+        VersionedValue v = getMap(session).get(ValueLong.get(key), columnIndexes);
         ValueArray array = v.value;
         Row row = new Row(array.getList(), 0);
         row.setKey(key);

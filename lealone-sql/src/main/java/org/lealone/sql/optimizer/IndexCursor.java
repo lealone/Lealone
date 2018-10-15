@@ -242,6 +242,14 @@ public class IndexCursor implements Cursor {
     }
 
     @Override
+    public Row get(int[] columnIndexes) {
+        if (cursor == null) {
+            return null;
+        }
+        return cursor.get(columnIndexes);
+    }
+
+    @Override
     public SearchRow getSearchRow() {
         return cursor.getSearchRow();
     }

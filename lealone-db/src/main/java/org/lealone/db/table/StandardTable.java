@@ -321,6 +321,10 @@ public class StandardTable extends Table {
         return primaryIndex.getRow(session, key);
     }
 
+    public Row getRow(ServerSession session, long key, int[] columnIndexes) {
+        return primaryIndex.getRow(session, key, columnIndexes);
+    }
+
     @Override
     public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
             boolean create, String indexComment) {

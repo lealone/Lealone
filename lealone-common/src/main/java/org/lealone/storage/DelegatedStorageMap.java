@@ -57,6 +57,11 @@ public class DelegatedStorageMap<K, V> implements StorageMap<K, V> {
     }
 
     @Override
+    public V get(K key, int[] columnIndexes) {
+        return map.get(key, columnIndexes);
+    }
+
+    @Override
     public V put(K key, V value) {
         return map.put(key, value);
     }

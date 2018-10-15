@@ -154,6 +154,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return get(key, new int[] { columnIndex });
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public V get(K key, int[] columnIndexes) {
         return (V) binarySearch(root, key, columnIndexes);

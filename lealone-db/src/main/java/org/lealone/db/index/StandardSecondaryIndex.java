@@ -439,10 +439,15 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
         @Override
         public Row get() {
+            return get(null);
+        }
+
+        @Override
+        public Row get(int[] columnIndexes) {
             if (row == null) {
                 SearchRow r = getSearchRow();
                 if (r != null) {
-                    row = table.getRow(session, r.getKey());
+                    row = table.getRow(session, r.getKey(), columnIndexes);
                 }
             }
             return row;

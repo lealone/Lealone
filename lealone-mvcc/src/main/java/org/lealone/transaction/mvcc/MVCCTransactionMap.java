@@ -91,11 +91,19 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
      * @param key the key
      * @return the value or null
      */
-    @SuppressWarnings("unchecked")
     @Override
+    @SuppressWarnings("unchecked")
     public V get(K key) {
         TransactionalValue data = map.get(key);
         data = getValue(key, data);
+        return data == null ? null : (V) data.value;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public V get(K key, int[] columnIndexes) {
+        TransactionalValue data = map.get(key, columnIndexes);
+        data = getValue(key, data, columnIndexes);
         return data == null ? null : (V) data.value;
     }
 
@@ -107,6 +115,10 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
      * @return the value
      */
     protected TransactionalValue getValue(K key, TransactionalValue data) {
+        return getValue(key, data, null);
+    }
+
+    protected TransactionalValue getValue(K key, TransactionalValue data, int[] columnIndexes) {
         while (true) {
             if (data == null) {
                 // doesn't exist or deleted by a committed transaction
@@ -126,6 +138,10 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             }
             if (tid == transaction.transactionId) {
                 return data;
+            }
+
+            if (!data.isLocked(columnIndexes)) {
+                return data; // data.getCommitted();
             }
 
             TransactionalValue v = getValue(key, data, tid);
@@ -183,9 +199,9 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     }
 
     @Override
-    public V put(K key, V oldValue, V newValue) {
+    public V put(K key, V oldValue, V newValue, int[] columnIndexes) {
         TransactionalValue oldTV = TransactionalValue.createCommitted(oldValue);
-        boolean ok = trySet(key, newValue, oldTV);
+        boolean ok = trySet(key, newValue, oldTV, columnIndexes);
         if (ok) {
             return oldValue;
         }
@@ -246,7 +262,12 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     }
 
     private boolean trySet(K key, V value, TransactionalValue oldValue) {
-        TransactionalValue newValue = TransactionalValue.create(transaction, value, oldValue, map.getValueType());
+        return trySet(key, value, oldValue, null);
+    }
+
+    private boolean trySet(K key, V value, TransactionalValue oldValue, int[] columnIndexes) {
+        TransactionalValue newValue = TransactionalValue.create(transaction, value, oldValue, map.getValueType(),
+                columnIndexes);
         String mapName = getName();
         if (oldValue == null) {
             // a new value
@@ -265,13 +286,22 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             // the transaction is committed:
             // overwrite the value
             if (!map.replace(key, oldValue, newValue)) {
-                // somebody else was faster
-                transaction.logUndo();
-                return false;
+                TransactionalValue old = map.get(key);
+                if (!old.isLocked(columnIndexes)) {
+                    transaction.logUndo();
+                    newValue = TransactionalValue.create(transaction, value, old, map.getValueType(), columnIndexes);
+                    transaction.log(mapName, key, oldValue, newValue);
+                    map.put(key, newValue); // 强制覆盖
+                    return true;
+                } else {
+                    // somebody else was faster
+                    transaction.logUndo();
+                    return false;
+                }
             }
             return true;
         }
-        if (tid == transaction.transactionId) {
+        if (tid == transaction.transactionId || !oldValue.isLocked(columnIndexes)) {
             // added or updated by this transaction
             transaction.log(mapName, key, oldValue, newValue);
             if (!map.replace(key, oldValue, newValue)) {

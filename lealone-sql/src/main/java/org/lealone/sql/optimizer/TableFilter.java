@@ -455,7 +455,7 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
      */
     public Row get() {
         if (current == null && currentSearchRow != null) {
-            current = cursor.get();
+            current = cursor.get(getColumnIndexes());
         }
         return current;
     }

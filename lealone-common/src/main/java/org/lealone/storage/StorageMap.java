@@ -67,6 +67,10 @@ public interface StorageMap<K, V> extends ReplicationMap {
      */
     V get(K key);
 
+    default V get(K key, int[] columnIndexes) {
+        return get(key);
+    }
+
     /**
      * Add or replace a key-value pair.
      *
