@@ -103,7 +103,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     @SuppressWarnings("unchecked")
     public V get(K key, int[] columnIndexes) {
         TransactionalValue data = map.get(key, columnIndexes);
-        data = getValue(key, data, columnIndexes);
+        data = getValue(key, data);
         return data == null ? null : (V) data.value;
     }
 
@@ -115,10 +115,6 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
      * @return the value
      */
     protected TransactionalValue getValue(K key, TransactionalValue data) {
-        return getValue(key, data, null);
-    }
-
-    protected TransactionalValue getValue(K key, TransactionalValue data, int[] columnIndexes) {
         while (true) {
             if (data == null) {
                 // doesn't exist or deleted by a committed transaction
@@ -138,10 +134,6 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             }
             if (tid == transaction.transactionId) {
                 return data;
-            }
-
-            if (!data.isLocked(columnIndexes)) {
-                return data; // data.getCommitted();
             }
 
             TransactionalValue v = getValue(key, data, tid);
@@ -280,19 +272,21 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             return true;
         }
         long tid = oldValue.getTid();
-        if (tid == 0) {
+        if (tid == 0 || tid == transaction.transactionId || !oldValue.isLocked(columnIndexes)) {
             // committed
             transaction.log(mapName, key, oldValue, newValue);
+            TransactionalValue current = oldValue;
             // the transaction is committed:
             // overwrite the value
-            if (!map.replace(key, oldValue, newValue)) {
-                TransactionalValue old = map.get(key);
-                if (!old.isLocked(columnIndexes)) {
+            while (!map.replace(key, current, newValue)) {
+                current = map.get(key);
+                if (!current.isLocked(columnIndexes)) {
                     transaction.logUndo();
-                    newValue = TransactionalValue.create(transaction, value, old, map.getValueType(), columnIndexes);
+                    newValue = TransactionalValue.create(transaction, value, current, map.getValueType(),
+                            columnIndexes);
+                    // 只记录最初的oldValue，而不是current
                     transaction.log(mapName, key, oldValue, newValue);
-                    map.put(key, newValue); // 强制覆盖
-                    return true;
+                    continue;
                 } else {
                     // somebody else was faster
                     transaction.logUndo();
@@ -301,17 +295,17 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             }
             return true;
         }
-        if (tid == transaction.transactionId || !oldValue.isLocked(columnIndexes)) {
-            // added or updated by this transaction
-            transaction.log(mapName, key, oldValue, newValue);
-            if (!map.replace(key, oldValue, newValue)) {
-                // strange, somebody overwrote the value
-                // even though the change was not committed
-                transaction.logUndo();
-                return false;
-            }
-            return true;
-        }
+        // if (tid == transaction.transactionId || !oldValue.isLocked(columnIndexes)) {
+        // // added or updated by this transaction
+        // transaction.log(mapName, key, oldValue, newValue);
+        // if (!map.replace(key, oldValue, newValue)) {
+        // // strange, somebody overwrote the value
+        // // even though the change was not committed
+        // transaction.logUndo();
+        // return false;
+        // }
+        // return true;
+        // }
 
         // the transaction is not yet committed
         return false;

@@ -96,13 +96,26 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
     }
 
     @Override
-    public boolean replace(K key, V oldValue, V newValue) {
+    public synchronized boolean replace(K key, V oldValue, V newValue) {
         V old = get(key);
         if (areValuesEqual(old, oldValue)) {
             put(key, newValue);
             return true;
         }
         return false;
+        // // TODO 改成非同步版本，要考虑合并线程
+        // V old = get(key);
+        // if (areValuesEqual(old, oldValue)) {
+        // if (!buffer.containsKey(key)) {
+        // old = (V) buffer.putIfAbsent(key, newValue);
+        // return old == null;
+        // }
+        // if (buffer.replace(key, old, newValue)) {
+        // map.setMaxKey(key); // 更新最大key
+        // return true;
+        // }
+        // }
+        // return false;
     }
 
     @Override

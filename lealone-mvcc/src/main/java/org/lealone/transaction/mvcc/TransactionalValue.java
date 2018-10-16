@@ -19,6 +19,7 @@ package org.lealone.transaction.mvcc;
 
 import java.nio.ByteBuffer;
 import java.util.BitSet;
+import java.util.LinkedList;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -75,7 +76,7 @@ public abstract class TransactionalValue {
         return this;
     }
 
-    public TransactionalValue commit() {
+    public TransactionalValue commit(long tid) {
         return this;
     }
 
@@ -164,7 +165,7 @@ public abstract class TransactionalValue {
 
         private final long tid;
         private final int logId;
-        private final TransactionalValue oldValue;
+        private TransactionalValue oldValue;
         private final StorageDataType oldValueType;
         private final String hostAndPort;
         // 每次修改记录的事务名要全局唯一，
@@ -221,6 +222,16 @@ public abstract class TransactionalValue {
             this.hostAndPort = hostAndPort;
             this.globalReplicationName = globalTransactionName;
             this.version = version;
+        }
+
+        public Uncommitted copy() {
+            Uncommitted u = new Uncommitted(tid, value, logId, oldValue, oldValueType, hostAndPort,
+                    globalReplicationName, version);
+            u.replicated = replicated;
+            u.rowLock = rowLock;
+            u.lockedColumns = lockedColumns;
+            u.columnIndexes = columnIndexes;
+            return u;
         }
 
         @Override
@@ -302,26 +313,52 @@ public abstract class TransactionalValue {
         }
 
         @Override
-        public TransactionalValue commit() {
-            if (oldValue != null && !oldValue.isCommitted()) {
-                TransactionalValue v = oldValue.getCommitted();
-                if (v.value != null)
-                    oldValueType.setColumns(v.value, value, columnIndexes);
-                setColumns(value, columnIndexes);
-                return oldValue;
+        public TransactionalValue commit(long tid) {
+            int[] commitColumnIndexes = null;
+            Object commitValue = null;
+            LinkedList<Uncommitted> uncommittedList = new LinkedList<>();
+            if (tid != this.tid) {
+                uncommittedList.add(this);
             } else {
-                return createCommitted(value);
+                commitColumnIndexes = columnIndexes;
+                commitValue = value;
             }
-        }
-
-        void setColumns(Object newValue, int[] columnIndexes) {
-            if (oldValue != null) {
-                if (oldValue.value != null)
-                    oldValueType.setColumns(oldValue.value, newValue, columnIndexes);
+            TransactionalValue oldValue = this.oldValue;
+            while (oldValue != null) {
                 if (oldValue instanceof Uncommitted) {
-                    ((Uncommitted) oldValue).setColumns(newValue, columnIndexes);
+                    Uncommitted u = (Uncommitted) oldValue;
+                    oldValue = u.oldValue;
+                    if (tid != u.tid) {
+                        // 去掉当前正在提交的事务对应的条目
+                        uncommittedList.add(u);
+                    } else {
+                        commitColumnIndexes = u.columnIndexes;
+                        commitValue = u.value;
+                    }
+                } else {
+                    oldValue = null;
                 }
             }
+
+            Uncommitted ret = null;
+            Uncommitted uncommitted = null;
+            for (Uncommitted u : uncommittedList) {
+                u = u.copy(); // 避免多线程执行时修改原来的链接结构
+                if (uncommitted == null) {
+                    uncommitted = u;
+                    ret = u;
+                } else {
+                    uncommitted.oldValue = u;
+                    uncommitted = u;
+                }
+                if (u.value != null)
+                    u.oldValueType.setColumns(u.value, commitValue, commitColumnIndexes);
+            }
+
+            if (ret == null)
+                return createCommitted(value);
+            else
+                return ret;
         }
 
         private static Uncommitted read(long tid, StorageDataType valueType, ByteBuffer buff,

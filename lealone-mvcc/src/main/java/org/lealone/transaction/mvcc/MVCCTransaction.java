@@ -267,7 +267,7 @@ public class MVCCTransaction implements Transaction {
         if (t == null)
             return;
         for (TransactionalLogRecord r : t.logRecords) {
-            r.commit(transactionEngine);
+            r.commit(transactionEngine, tid);
         }
         t.endTransaction();
     }

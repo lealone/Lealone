@@ -43,7 +43,7 @@ public class TransactionalLogRecord {
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
-    public void commit(MVCCTransactionEngine transactionEngine) {
+    public void commit(MVCCTransactionEngine transactionEngine, long tid) {
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
         if (map == null) {
             // map was later removed
@@ -56,7 +56,12 @@ public class TransactionalLogRecord {
                 map.remove(key);
             } else {
                 // map.put(key, TransactionalValue.createCommitted(value.value));
-                map.put(key, value.commit());
+                // map.put(key, value.commit());
+                TransactionalValue newValue = value.commit(tid);
+                while (!map.replace(key, value, newValue)) {
+                    value = map.get(key);
+                    newValue = value.commit(tid);
+                }
             }
         }
     }
