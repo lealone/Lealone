@@ -27,14 +27,18 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 
-public class TransactionalValue {
+public abstract class TransactionalValue {
 
-    public final long tid; // 如果是0代表事务已经提交
     public final Object value;
 
-    public TransactionalValue(long tid, Object value) {
-        this.tid = tid;
+    public TransactionalValue(Object value) {
         this.value = value;
+    }
+
+    // 如果是0代表事务已经提交，对于已提交事务，只有在写入时才写入tid=0，
+    // 读出来的时候为了不占用内存就不加tid字段了，这样每条已提交记录能省8个字节(long)的内存空间
+    public long getTid() {
+        return 0;
     }
 
     public int getLogId() {
@@ -84,9 +88,7 @@ public class TransactionalValue {
         writeValue(buff, valueType);
     }
 
-    public void writeMeta(DataBuffer buff) {
-        buff.putVarLong(tid);
-    }
+    public abstract void writeMeta(DataBuffer buff);
 
     public void writeValue(DataBuffer buff, StorageDataType valueType) {
         if (value == null) {
@@ -104,7 +106,7 @@ public class TransactionalValue {
             Object value = valueType.readMeta(buff, columnCount);
             return createCommitted(value);
         } else {
-            return NotCommitted.readMeta(tid, valueType, buff, oldValueType, columnCount);
+            return Uncommitted.readMeta(tid, valueType, buff, oldValueType, columnCount);
         }
     }
 
@@ -122,18 +124,18 @@ public class TransactionalValue {
             Object value = readValue(buff, valueType);
             return createCommitted(value);
         } else {
-            return NotCommitted.read(tid, valueType, buff, oldValueType);
+            return Uncommitted.read(tid, valueType, buff, oldValueType);
         }
     }
 
     public static TransactionalValue create(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
             StorageDataType oldValueType) {
-        return new NotCommitted(transaction, value, oldValue, oldValueType, null);
+        return new Uncommitted(transaction, value, oldValue, oldValueType, null);
     }
 
     public static TransactionalValue create(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
             StorageDataType oldValueType, int[] columnIndexes) {
-        return new NotCommitted(transaction, value, oldValue, oldValueType, columnIndexes);
+        return new Uncommitted(transaction, value, oldValue, oldValueType, columnIndexes);
     }
 
     public static TransactionalValue createCommitted(Object value) {
@@ -142,25 +144,31 @@ public class TransactionalValue {
 
     static class Committed extends TransactionalValue {
         Committed(Object value) {
-            super(0, value);
+            super(value);
+        }
+
+        @Override
+        public void writeMeta(DataBuffer buff) {
+            buff.putVarLong(0);
         }
 
         @Override
         public String toString() {
-            StringBuilder buff = new StringBuilder("Committed[ value = ");
+            StringBuilder buff = new StringBuilder("Committed[ ");
             buff.append(value).append(" ]");
             return buff.toString();
         }
     }
 
-    static class NotCommitted extends TransactionalValue {
+    static class Uncommitted extends TransactionalValue {
 
-        // 每次修改记录的事务名要全局唯一，
-        // 比如用节点的IP拼接一个本地递增的计数器组成字符串就足够了
+        private final long tid;
         private final int logId;
         private final TransactionalValue oldValue;
         private final StorageDataType oldValueType;
         private final String hostAndPort;
+        // 每次修改记录的事务名要全局唯一，
+        // 比如用节点的IP拼接一个本地递增的计数器组成字符串就足够了
         private final String globalReplicationName;
         private long version; // 每次更新时自动加1
         private boolean replicated;
@@ -168,17 +176,18 @@ public class TransactionalValue {
         private BitSet lockedColumns;
         private int[] columnIndexes;
 
-        NotCommitted(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
+        Uncommitted(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
                 StorageDataType oldValueType, int[] columnIndexes) {
-            super(transaction.transactionId, value);
+            super(value);
             // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可
             if (oldValue != null) {
-                if (oldValue.tid == transaction.transactionId && (oldValue instanceof NotCommitted)) {
-                    oldValue = ((NotCommitted) oldValue).oldValue;
+                if (oldValue.getTid() == transaction.transactionId && (oldValue instanceof Uncommitted)) {
+                    oldValue = ((Uncommitted) oldValue).oldValue;
                 } else {
                     // oldValue = oldValue.getCommitted();
                 }
             }
+            this.tid = transaction.transactionId;
             this.logId = transaction.logId;
             this.oldValue = oldValue;
             this.oldValueType = oldValueType;
@@ -202,15 +211,21 @@ public class TransactionalValue {
             }
         }
 
-        NotCommitted(long tid, Object value, int logId, TransactionalValue oldValue, StorageDataType oldValueType,
+        Uncommitted(long tid, Object value, int logId, TransactionalValue oldValue, StorageDataType oldValueType,
                 String hostAndPort, String globalTransactionName, long version) {
-            super(tid, value);
+            super(value);
+            this.tid = tid;
             this.logId = logId;
             this.oldValue = oldValue;
             this.oldValueType = oldValueType;
             this.hostAndPort = hostAndPort;
             this.globalReplicationName = globalTransactionName;
             this.version = version;
+        }
+
+        @Override
+        public long getTid() {
+            return tid;
         }
 
         @Override
@@ -303,23 +318,23 @@ public class TransactionalValue {
             if (oldValue != null) {
                 if (oldValue.value != null)
                     oldValueType.setColumns(oldValue.value, newValue, columnIndexes);
-                if (oldValue instanceof NotCommitted) {
-                    ((NotCommitted) oldValue).setColumns(newValue, columnIndexes);
+                if (oldValue instanceof Uncommitted) {
+                    ((Uncommitted) oldValue).setColumns(newValue, columnIndexes);
                 }
             }
         }
 
-        private static NotCommitted read(long tid, StorageDataType valueType, ByteBuffer buff,
+        private static Uncommitted read(long tid, StorageDataType valueType, ByteBuffer buff,
                 StorageDataType oldValueType) {
             return read(tid, valueType, buff, oldValueType, false, 0);
         }
 
-        private static NotCommitted readMeta(long tid, StorageDataType valueType, ByteBuffer buff,
+        private static Uncommitted readMeta(long tid, StorageDataType valueType, ByteBuffer buff,
                 StorageDataType oldValueType, int columnCount) {
             return read(tid, valueType, buff, oldValueType, true, columnCount);
         }
 
-        private static NotCommitted read(long tid, StorageDataType valueType, ByteBuffer buff,
+        private static Uncommitted read(long tid, StorageDataType valueType, ByteBuffer buff,
                 StorageDataType oldValueType, boolean meta, int columnCount) {
             int logId = DataUtils.readVarInt(buff);
             boolean rowLock = buff.get() == 0;
@@ -344,16 +359,16 @@ public class TransactionalValue {
                 value = valueType.readMeta(buff, columnCount);
             else
                 value = readValue(buff, valueType);
-            NotCommitted notCommitted = new NotCommitted(tid, value, logId, oldValue, oldValueType, hostAndPort,
+            Uncommitted uncommitted = new Uncommitted(tid, value, logId, oldValue, oldValueType, hostAndPort,
                     globalReplicationName, version);
-            notCommitted.rowLock = rowLock;
-            notCommitted.lockedColumns = lockedColumns;
-            return notCommitted;
+            uncommitted.rowLock = rowLock;
+            uncommitted.lockedColumns = lockedColumns;
+            return uncommitted;
         }
 
         @Override
         public void writeMeta(DataBuffer buff) {
-            super.writeMeta(buff);
+            buff.putVarLong(tid);
             buff.putVarInt(logId);
             if (rowLock) {
                 buff.put((byte) 0);
@@ -379,11 +394,11 @@ public class TransactionalValue {
 
         @Override
         public String toString() {
-            StringBuilder buff = new StringBuilder("NotCommitted[ ");
+            StringBuilder buff = new StringBuilder("Uncommitted[ ");
             buff.append("tid = ").append(tid);
             buff.append(", logId = ").append(logId);
-            buff.append(", version = ").append(version);
-            buff.append(", globalReplicationName = ").append(globalReplicationName);
+            // buff.append(", version = ").append(version);
+            // buff.append(", globalReplicationName = ").append(globalReplicationName);
             buff.append(", value = ").append(value).append(" ]");
             return buff.toString();
         }

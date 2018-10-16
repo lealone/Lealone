@@ -34,7 +34,7 @@ public class TransactionalValueType implements StorageDataType {
     public int getMemory(Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
         // tid最大8字节
-        return 8 + valueType.getMemory(v.value);
+        return (v.isCommitted() ? 1 : 8) + valueType.getMemory(v.value);
         // TODO 由于BufferedMap的合并与复制逻辑的验证是并行的，
         // 可能导致split时三个复制节点中某些相同的TransactionalValue有些globalReplicationName为null，有些不为null
         // 这样就会得到不同的内存大小，从而使得splitKey不同
@@ -49,7 +49,7 @@ public class TransactionalValueType implements StorageDataType {
         }
         TransactionalValue a = (TransactionalValue) aObj;
         TransactionalValue b = (TransactionalValue) bObj;
-        long comp = a.tid - b.tid;
+        long comp = a.getTid() - b.getTid();
         if (comp == 0) {
             comp = a.getLogId() - b.getLogId();
             if (comp == 0)

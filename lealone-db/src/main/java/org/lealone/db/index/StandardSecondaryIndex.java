@@ -290,10 +290,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
      */
     SearchRow convertToSearchRow(ValueArray key) {
         Value[] array = key.getList();
+        int len = array.length - 1;
         SearchRow searchRow = table.getTemplateRow();
-        searchRow.setKey((array[array.length - 1]).getLong());
+        searchRow.setKey((array[len]).getLong());
         Column[] cols = getColumns();
-        for (int i = 0; i < array.length - 1; i++) {
+        for (int i = 0; i < len; i++) {
             Column c = cols[i];
             int idx = c.getColumnId();
             Value v = array[i];

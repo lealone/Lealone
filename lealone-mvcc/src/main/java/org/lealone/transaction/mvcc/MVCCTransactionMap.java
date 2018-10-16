@@ -124,7 +124,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                 // doesn't exist or deleted by a committed transaction
                 return null;
             }
-            long tid = data.tid;
+            long tid = data.getTid();
             if (tid == 0) {
                 // it is committed
                 return data;
@@ -161,7 +161,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
                 // or it might be changed again in a different
                 // transaction (possibly one with the same id)
                 data = map.get(key);
-                if (data != null && data.tid == tid) {
+                if (data != null && data.getTid() == tid) {
                     // the transaction was not committed correctly
                     throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_CORRUPT,
                             "The transaction log might be corrupt for key {0}", key);
@@ -279,7 +279,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             }
             return true;
         }
-        long tid = oldValue.tid;
+        long tid = oldValue.getTid();
         if (tid == 0) {
             // committed
             transaction.log(mapName, key, oldValue, newValue);
@@ -604,7 +604,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
             return false;
         }
 
-        return data.tid == transaction.transactionId;
+        return data.getTid() == transaction.transactionId;
     }
 
     @Override

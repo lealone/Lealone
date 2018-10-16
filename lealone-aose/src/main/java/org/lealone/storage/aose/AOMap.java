@@ -69,6 +69,8 @@ public class AOMap<K, V> extends DelegatedStorageMap<K, V> {
         waitWriteFinishIfNeeded();
         synchronized (sync) {
             try {
+                if (map instanceof BufferedMap)
+                    return;
                 bmap = new BufferedMap<>(map);
                 map = bmap;
                 AOStorageService.addBufferedMap(bmap);
@@ -84,6 +86,8 @@ public class AOMap<K, V> extends DelegatedStorageMap<K, V> {
         waitWriteFinishIfNeeded();
         synchronized (sync) {
             try {
+                if (!(map instanceof BufferedMap))
+                    return;
                 AOStorageService.removeBufferedMap(bmap);
                 bmap.merge();
                 map = bmap.getMap();
@@ -127,12 +131,16 @@ public class AOMap<K, V> extends DelegatedStorageMap<K, V> {
     }
 
     public int getReadPercent() {
+        if (readCount < 500)
+            return 0;
         double total = readCount + writeCount;
         double result = readCount / total;
         return (int) (result * 100);
     }
 
     public int getWritePercent() {
+        if (writeCount < 500)
+            return 0;
         double total = readCount + writeCount;
         double result = writeCount / total;
         return (int) (result * 100);
