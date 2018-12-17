@@ -57,6 +57,23 @@
 
 * [文档首页](https://github.com/codefollower/Lealone/blob/master/docs/README.md)
 
+### Lealone Plugins
+
+* 支持可插拨的网络应用框架(Apache MINA、Netty、Vert.x)
+
+* 支持可插拨的存储引擎(WiredTiger、MVStore、RocksDB)
+
+* 初步支持PostgreSQL协议
+
+* 初步支持MySQL协议和语法
+
+* [更多细节...](https://github.com/lealone/Lealone-Plugins)
+
+### Lealone ORM/DSL
+
+* 超简洁的类型安全的ORM/DSL框架
+
+* [更多细节...](https://github.com/lealone/Lealone-Platform/tree/master/lealone-platform-test/src/test/java/org/lealone/platform/test/orm)
 
 ### Lealone名字的由来
 
