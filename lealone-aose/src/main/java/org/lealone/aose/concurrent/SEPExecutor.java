@@ -181,11 +181,15 @@ public class SEPExecutor extends AbstractLealoneExecutorService {
         }
     }
 
+    // submit一个任务后立即停止，那么会将任务丢掉
+    // for循环submit一批任务后立即停止，仍然会丢一批任务
     @Override
     public synchronized void shutdown() {
         shuttingDown = true;
         pool.executors.remove(this);
-        if (getActiveCount() == 0)
+        boolean empty=tasks.isEmpty();    //  false
+        long active=getActiveCount();     //  zero
+        if (active == 0)                  //  (empty||active==0){ do something }
             shutdown.signalAll();
     }
 
