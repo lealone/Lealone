@@ -33,12 +33,12 @@ import org.lealone.transaction.TransactionMap;
  */
 public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements TransactionMap<K, V> {
 
-    static class MVCCReplicationMap<K, V> extends AMTransactionMap<K, V> {
+    static class AMReplicationMap<K, V> extends AMTransactionMap<K, V> {
 
         private final Session session;
         private final StorageDataType valueType;
 
-        MVCCReplicationMap(AMTransaction transaction, StorageMap<K, TransactionalValue> map) {
+        AMReplicationMap(AMTransaction transaction, StorageMap<K, TransactionalValue> map) {
             super(transaction, map);
             session = transaction.getSession();
             valueType = getValueType();
@@ -576,7 +576,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     public AMTransactionMap<K, V> getInstance(Transaction transaction) {
         AMTransaction t = (AMTransaction) transaction;
         if (t.isShardingMode())
-            return new MVCCReplicationMap<>(t, map);
+            return new AMReplicationMap<>(t, map);
         else
             return new AMTransactionMap<>(t, map);
     }

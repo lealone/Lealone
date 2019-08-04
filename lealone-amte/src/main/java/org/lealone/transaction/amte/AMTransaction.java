@@ -33,7 +33,7 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.amte.AMTransactionMap.MVCCReplicationMap;
+import org.lealone.transaction.amte.AMTransactionMap.AMReplicationMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 
@@ -185,7 +185,7 @@ public class AMTransaction implements Transaction {
     protected <K, V> AMTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
             boolean isShardingMode) {
         if (isShardingMode)
-            return new MVCCReplicationMap<>(this, map);
+            return new AMReplicationMap<>(this, map);
         else
             return new AMTransactionMap<>(this, map);
     }
@@ -359,7 +359,7 @@ public class AMTransaction implements Transaction {
 
     @Override
     public String toString() {
-        return "mvcc[" + transactionName + ", " + autoCommit + "]";
+        return "AMT[" + transactionName + ", " + autoCommit + "]";
     }
 
     public static String getTransactionName(String hostAndPort, long tid) {

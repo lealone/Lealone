@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.mvcc;
+package org.lealone.test.amte;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -33,14 +33,14 @@ import org.lealone.transaction.TransactionEngineManager;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 
-public class MVCCTransactionEngineTest extends TestBase {
+public class AMTransactionEngineTest extends TestBase {
 
     public static Storage getStorage() {
         StorageEngine se = StorageEngineManager.getStorageEngine(Constants.DEFAULT_STORAGE_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_STORAGE_ENGINE_NAME, se.getName());
 
         StorageBuilder storageBuilder = se.getStorageBuilder();
-        storageBuilder.storagePath(joinDirs("mvcc", "data"));
+        storageBuilder.storagePath(joinDirs("amte", "data"));
         Storage storage = storageBuilder.openStorage();
         return storage;
     }
@@ -71,7 +71,7 @@ public class MVCCTransactionEngineTest extends TestBase {
 
     public static Map<String, String> getDefaultConfig() {
         Map<String, String> config = new HashMap<>();
-        config.put("base_dir", joinDirs("mvcc"));
+        config.put("base_dir", joinDirs("amte"));
         config.put("redo_log_dir", "redo_log");
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_INSTANT);
         config.put("checkpoint_service_loop_interval", "10"); // 10ms

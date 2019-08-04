@@ -315,7 +315,7 @@ public class DbSettings extends SettingsBase {
 
     /**
      * Database setting <code>DEFAULT_TRANSACTION_ENGINE</code>
-     * (default: MVCC).<br />
+     * (default: AMTE).<br />
      * The default transaction engine.
      */
     public final String defaultTransactionEngine = get("DEFAULT_TRANSACTION_ENGINE",

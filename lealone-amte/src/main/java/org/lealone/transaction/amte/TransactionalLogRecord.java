@@ -30,7 +30,7 @@ import org.lealone.storage.type.StorageDataType;
 public class TransactionalLogRecord {
 
     final String mapName;
-    Object key; // 没有用final，在MVCCTransaction.replicationPrepareCommit方法那里有特殊用途
+    Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
     final TransactionalValue oldValue;
     final TransactionalValue newValue;
 

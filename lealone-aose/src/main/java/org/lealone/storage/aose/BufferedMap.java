@@ -403,7 +403,7 @@ public class BufferedMap<K, V> extends DelegatedStorageMap<K, V> implements Call
                     bufferIteratorEntry = null; // 下次bufferIterator要执行next
 
                     // 相等时，使用bufferIterator中的，mapCursor下次也要next，
-                    // 有些上层Map(比如MVCCTransactionMap)会把remove操作变成put操作，
+                    // 有些上层Map(比如AMTransactionMap)会把remove操作变成put操作，
                     // 把null值封装在一个VersionedValue中，然后调用get时取出VersionedValue，
                     // 里面是null值的话，等事务提交后再从最原始的Map中删除它
                     if (result == 0)
