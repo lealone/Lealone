@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.transaction.mvcc;
+package org.lealone.transaction.amte;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -31,14 +31,14 @@ import org.lealone.transaction.TransactionMap;
  * @author H2 Group
  * @author zhh
  */
-public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements TransactionMap<K, V> {
+public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements TransactionMap<K, V> {
 
-    static class MVCCReplicationMap<K, V> extends MVCCTransactionMap<K, V> {
+    static class MVCCReplicationMap<K, V> extends AMTransactionMap<K, V> {
 
         private final Session session;
         private final StorageDataType valueType;
 
-        MVCCReplicationMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
+        MVCCReplicationMap(AMTransaction transaction, StorageMap<K, TransactionalValue> map) {
             super(transaction, map);
             session = transaction.getSession();
             valueType = getValueType();
@@ -63,7 +63,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         }
     }
 
-    private final MVCCTransaction transaction;
+    private final AMTransaction transaction;
 
     /**
      * The map used for writing (the latest version).
@@ -74,7 +74,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     protected final StorageMap<K, TransactionalValue> map;
 
     @SuppressWarnings("unchecked")
-    public MVCCTransactionMap(MVCCTransaction transaction, StorageMap<K, TransactionalValue> map) {
+    public AMTransactionMap(AMTransaction transaction, StorageMap<K, TransactionalValue> map) {
         super((StorageMap<K, V>) map);
         this.transaction = transaction;
         this.map = map;
@@ -430,7 +430,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     public long sizeAsLong() {
         long sizeRaw = map.sizeAsLong();
         long undoLogSize = 0;
-        for (MVCCTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
+        for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
             undoLogSize += t.logRecords.size();
         }
         if (undoLogSize == 0) {
@@ -461,7 +461,7 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
         StorageMap<Object, Integer> temp = storage.openMap(tmpMapName, new ObjectDataType(), new ObjectDataType(),
                 null);
         try {
-            for (MVCCTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
+            for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
                 LinkedList<TransactionalLogRecord> records = t.logRecords;
                 for (TransactionalLogRecord r : records) {
                     String m = r.mapName;
@@ -573,12 +573,12 @@ public class MVCCTransactionMap<K, V> extends DelegatedStorageMap<K, V> implemen
     }
 
     @Override
-    public MVCCTransactionMap<K, V> getInstance(Transaction transaction) {
-        MVCCTransaction t = (MVCCTransaction) transaction;
+    public AMTransactionMap<K, V> getInstance(Transaction transaction) {
+        AMTransaction t = (AMTransaction) transaction;
         if (t.isShardingMode())
             return new MVCCReplicationMap<>(t, map);
         else
-            return new MVCCTransactionMap<>(t, map);
+            return new AMTransactionMap<>(t, map);
     }
 
     @Override

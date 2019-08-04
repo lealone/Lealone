@@ -15,12 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.mvcc.log;
+package org.lealone.transaction.amte.log;
 
 import java.util.Map;
 
 import org.lealone.common.concurrent.WaitQueue;
-import org.lealone.transaction.mvcc.MVCCTransaction;
+import org.lealone.transaction.amte.AMTransaction;
 
 class PeriodicLogSyncService extends LogSyncService {
 
@@ -70,7 +70,7 @@ class PeriodicLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void prepareCommit(MVCCTransaction t) {
+    public void prepareCommit(AMTransaction t) {
         // 如果在同步周期内，可以提前提交事务
         long started = System.currentTimeMillis();
         if (!waitForSyncToCatchUp(started) && (t.getSession() != null)) {

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.mvcc;
+package org.lealone.transaction.amte;
 
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -129,12 +129,12 @@ public abstract class TransactionalValue {
         }
     }
 
-    public static TransactionalValue create(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
+    public static TransactionalValue create(AMTransaction transaction, Object value, TransactionalValue oldValue,
             StorageDataType oldValueType) {
         return new Uncommitted(transaction, value, oldValue, oldValueType, null);
     }
 
-    public static TransactionalValue create(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
+    public static TransactionalValue create(AMTransaction transaction, Object value, TransactionalValue oldValue,
             StorageDataType oldValueType, int[] columnIndexes) {
         return new Uncommitted(transaction, value, oldValue, oldValueType, columnIndexes);
     }
@@ -177,7 +177,7 @@ public abstract class TransactionalValue {
         private BitSet lockedColumns;
         private int[] columnIndexes;
 
-        Uncommitted(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
+        Uncommitted(AMTransaction transaction, Object value, TransactionalValue oldValue,
                 StorageDataType oldValueType, int[] columnIndexes) {
             super(value);
             // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可

@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.mvcc.log;
+package org.lealone.transaction.amte.log;
 
-import org.lealone.transaction.mvcc.MVCCTransaction;
+import org.lealone.transaction.amte.AMTransaction;
 
 class NoLogSyncService extends LogSyncService {
 
@@ -37,7 +37,7 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void prepareCommit(MVCCTransaction t) {
+    public void prepareCommit(AMTransaction t) {
         if (t.getSession() != null) {
             t.getSession().commit(null);
         }

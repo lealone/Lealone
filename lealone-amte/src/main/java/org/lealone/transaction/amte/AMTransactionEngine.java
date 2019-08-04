@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.mvcc;
+package org.lealone.transaction.amte;
 
 import java.util.Collection;
 import java.util.Map;
@@ -37,12 +37,12 @@ import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.mvcc.log.LogSyncService;
-import org.lealone.transaction.mvcc.log.RedoLogRecord;
+import org.lealone.transaction.amte.log.LogSyncService;
+import org.lealone.transaction.amte.log.RedoLogRecord;
 
-public class MVCCTransactionEngine extends TransactionEngineBase implements StorageEventListener {
+public class AMTransactionEngine extends TransactionEngineBase implements StorageEventListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(MVCCTransactionEngine.class);
+    private static final Logger logger = LoggerFactory.getLogger(AMTransactionEngine.class);
 
     private static final String NAME = "MVCC";
 
@@ -53,7 +53,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase implements Stor
     // key: mapName, value: memory size
     private final ConcurrentHashMap<String, AtomicInteger> estimatedMemory = new ConcurrentHashMap<>();
     // key: transactionId
-    private final ConcurrentSkipListMap<Long, MVCCTransaction> currentTransactions = new ConcurrentSkipListMap<>();
+    private final ConcurrentSkipListMap<Long, AMTransaction> currentTransactions = new ConcurrentSkipListMap<>();
 
     private final AtomicLong lastTransactionId = new AtomicLong();
     private final AtomicBoolean init = new AtomicBoolean(false);
@@ -61,11 +61,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase implements Stor
     private LogSyncService logSyncService;
     private CheckpointService checkpointService;
 
-    public MVCCTransactionEngine() {
+    public AMTransactionEngine() {
         super(NAME);
     }
 
-    public MVCCTransactionEngine(String name) {
+    public AMTransactionEngine(String name) {
         super(name);
     }
 
@@ -73,7 +73,7 @@ public class MVCCTransactionEngine extends TransactionEngineBase implements Stor
         return logSyncService;
     }
 
-    MVCCTransaction removeTransaction(long tid) {
+    AMTransaction removeTransaction(long tid) {
         return currentTransactions.remove(tid);
     }
 
@@ -81,11 +81,11 @@ public class MVCCTransactionEngine extends TransactionEngineBase implements Stor
         return currentTransactions.containsKey(tid);
     }
 
-    MVCCTransaction getTransaction(long tid) {
+    AMTransaction getTransaction(long tid) {
         return currentTransactions.get(tid);
     }
 
-    Collection<MVCCTransaction> getCurrentTransactions() {
+    Collection<AMTransaction> getCurrentTransactions() {
         return currentTransactions.values();
     }
 
@@ -134,19 +134,19 @@ public class MVCCTransactionEngine extends TransactionEngineBase implements Stor
     }
 
     @Override
-    public MVCCTransaction beginTransaction(boolean autoCommit, boolean isShardingMode) {
+    public AMTransaction beginTransaction(boolean autoCommit, boolean isShardingMode) {
         if (!init.get()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
         long tid = getTransactionId(autoCommit, isShardingMode);
-        MVCCTransaction t = createTransaction(tid);
+        AMTransaction t = createTransaction(tid);
         t.setAutoCommit(autoCommit);
         currentTransactions.put(tid, t);
         return t;
     }
 
-    protected MVCCTransaction createTransaction(long tid) {
-        return new MVCCTransaction(this, tid);
+    protected AMTransaction createTransaction(long tid) {
+        return new AMTransaction(this, tid);
     }
 
     @Override

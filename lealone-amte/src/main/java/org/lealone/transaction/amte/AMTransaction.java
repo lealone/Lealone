@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.mvcc;
+package org.lealone.transaction.amte;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -33,15 +33,15 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.mvcc.MVCCTransactionMap.MVCCReplicationMap;
-import org.lealone.transaction.mvcc.log.LogSyncService;
-import org.lealone.transaction.mvcc.log.RedoLogRecord;
+import org.lealone.transaction.amte.AMTransactionMap.MVCCReplicationMap;
+import org.lealone.transaction.amte.log.LogSyncService;
+import org.lealone.transaction.amte.log.RedoLogRecord;
 
-public class MVCCTransaction implements Transaction {
+public class AMTransaction implements Transaction {
 
     // 以下几个public或包级别的字段是在其他地方频繁使用的，
     // 为了使用方便或节省一点点性能开销就不通过getter方法访问了
-    final MVCCTransactionEngine transactionEngine;
+    final AMTransactionEngine transactionEngine;
     public final long transactionId;
     public final String transactionName;
 
@@ -57,11 +57,11 @@ public class MVCCTransaction implements Transaction {
     private boolean autoCommit;
     private boolean prepared;
 
-    public MVCCTransaction(MVCCTransactionEngine engine, long tid) {
+    public AMTransaction(AMTransactionEngine engine, long tid) {
         this(engine, tid, null);
     }
 
-    public MVCCTransaction(MVCCTransactionEngine engine, long tid, String hostAndPort) {
+    public AMTransaction(AMTransactionEngine engine, long tid, String hostAndPort) {
         transactionEngine = engine;
         transactionId = tid;
         transactionName = getTransactionName(hostAndPort, tid);
@@ -153,19 +153,19 @@ public class MVCCTransaction implements Transaction {
     }
 
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, Storage storage) {
+    public <K, V> AMTransactionMap<K, V> openMap(String name, Storage storage) {
         return openMap(name, null, null, storage);
     }
 
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
+    public <K, V> AMTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
             Storage storage) {
         return openMap(name, keyType, valueType, storage, null);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <K, V> MVCCTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
+    public <K, V> AMTransactionMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
             Storage storage, Map<String, String> parameters) {
         checkNotClosed();
         if (keyType == null)
@@ -182,12 +182,12 @@ public class MVCCTransaction implements Transaction {
         return createTransactionMap(map, isShardingMode);
     }
 
-    protected <K, V> MVCCTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
+    protected <K, V> AMTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
             boolean isShardingMode) {
         if (isShardingMode)
             return new MVCCReplicationMap<>(this, map);
         else
-            return new MVCCTransactionMap<>(this, map);
+            return new AMTransactionMap<>(this, map);
     }
 
     @Override
@@ -263,7 +263,7 @@ public class MVCCTransaction implements Transaction {
     // tid在分布式场景下可能是其他事务的tid
     protected void commitFinal(long tid) {
         // 避免并发提交(TransactionValidator线程和其他读写线程都有可能在检查到分布式事务有效后帮助提交最终事务)
-        MVCCTransaction t = transactionEngine.removeTransaction(tid);
+        AMTransaction t = transactionEngine.removeTransaction(tid);
         if (t == null)
             return;
         for (TransactionalLogRecord r : t.logRecords) {

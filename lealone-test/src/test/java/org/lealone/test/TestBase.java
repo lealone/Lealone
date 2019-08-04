@@ -34,7 +34,7 @@ import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.memory.MemoryStorageEngine;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
-import org.lealone.transaction.mvcc.log.LogSyncService;
+import org.lealone.transaction.amte.log.LogSyncService;
 
 public class TestBase extends Assert {
 

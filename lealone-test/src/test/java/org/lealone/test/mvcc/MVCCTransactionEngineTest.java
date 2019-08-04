@@ -31,7 +31,7 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.mvcc.log.LogSyncService;
+import org.lealone.transaction.amte.log.LogSyncService;
 
 public class MVCCTransactionEngineTest extends TestBase {
 

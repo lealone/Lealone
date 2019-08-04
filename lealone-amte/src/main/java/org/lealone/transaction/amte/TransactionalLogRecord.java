@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.mvcc;
+package org.lealone.transaction.amte;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -43,7 +43,7 @@ public class TransactionalLogRecord {
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
-    public void commit(MVCCTransactionEngine transactionEngine, long tid) {
+    public void commit(AMTransactionEngine transactionEngine, long tid) {
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
         if (map == null) {
             // map was later removed
@@ -67,7 +67,7 @@ public class TransactionalLogRecord {
     }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
-    public void rollback(MVCCTransactionEngine transactionEngine) {
+    public void rollback(AMTransactionEngine transactionEngine) {
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map != null) {
@@ -82,7 +82,7 @@ public class TransactionalLogRecord {
     }
 
     // 用于redo时，不关心oldValue
-    public void writeForRedo(DataBuffer writeBuffer, MVCCTransactionEngine transactionEngine) {
+    public void writeForRedo(DataBuffer writeBuffer, AMTransactionEngine transactionEngine) {
         StorageMap<?, ?> map = transactionEngine.getMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map == null) {

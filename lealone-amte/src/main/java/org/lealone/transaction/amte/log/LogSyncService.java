@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.mvcc.log;
+package org.lealone.transaction.amte.log;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -27,7 +27,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
-import org.lealone.transaction.mvcc.MVCCTransaction;
+import org.lealone.transaction.amte.AMTransaction;
 
 public abstract class LogSyncService extends Thread {
 
@@ -38,7 +38,7 @@ public abstract class LogSyncService extends Thread {
     protected final Semaphore haveWork = new Semaphore(1);
     protected final WaitQueue syncComplete = new WaitQueue();
 
-    protected final LinkedBlockingQueue<MVCCTransaction> transactions = new LinkedBlockingQueue<>();
+    protected final LinkedBlockingQueue<AMTransaction> transactions = new LinkedBlockingQueue<>();
 
     protected long syncIntervalMillis;
     protected volatile long lastSyncedAt = System.currentTimeMillis();
@@ -55,7 +55,7 @@ public abstract class LogSyncService extends Thread {
 
     public abstract void maybeWaitForSync(RedoLogRecord r);
 
-    public void prepareCommit(MVCCTransaction t) {
+    public void prepareCommit(AMTransaction t) {
         transactions.add(t);
         haveWork.release();
     }
@@ -99,9 +99,9 @@ public abstract class LogSyncService extends Thread {
     private void commitTransactions() {
         if (transactions.isEmpty())
             return;
-        ArrayList<MVCCTransaction> oldTransactions = new ArrayList<>(transactions.size());
+        ArrayList<AMTransaction> oldTransactions = new ArrayList<>(transactions.size());
         transactions.drainTo(oldTransactions);
-        for (MVCCTransaction t : oldTransactions) {
+        for (AMTransaction t : oldTransactions) {
             if (t.getSession() != null)
                 t.getSession().commit(null);
             else
