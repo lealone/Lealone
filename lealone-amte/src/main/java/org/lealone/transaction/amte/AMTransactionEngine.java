@@ -44,7 +44,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
 
     private static final Logger logger = LoggerFactory.getLogger(AMTransactionEngine.class);
 
-    private static final String NAME = "MVCC";
+    private static final String NAME = "AMTE";
 
     // key: mapName
     private final ConcurrentHashMap<String, StorageMap<Object, TransactionalValue>> maps = new ConcurrentHashMap<>();
