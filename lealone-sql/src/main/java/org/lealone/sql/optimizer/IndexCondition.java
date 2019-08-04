@@ -22,10 +22,10 @@ import org.lealone.db.table.TableType;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.sql.dml.Query;
-import org.lealone.sql.expression.Comparison;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
+import org.lealone.sql.expression.condition.Comparison;
 
 /**
  * A index condition object is made for each condition that can potentially use

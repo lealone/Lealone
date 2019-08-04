@@ -4,11 +4,14 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.condition;
 
 import org.lealone.db.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionVisitor;
+import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 

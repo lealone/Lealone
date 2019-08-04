@@ -24,10 +24,10 @@ import org.lealone.db.Constants;
 import org.lealone.db.Session;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.value.Value;
-import org.lealone.sql.expression.ConditionAndOr;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
+import org.lealone.sql.expression.condition.ConditionAndOr;
 
 public class LealoneSQLEngine implements SQLEngine {
 

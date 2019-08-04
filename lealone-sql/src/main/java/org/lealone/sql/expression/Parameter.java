@@ -14,6 +14,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 

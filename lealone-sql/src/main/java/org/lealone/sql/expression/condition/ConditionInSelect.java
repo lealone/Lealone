@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.expression;
+package org.lealone.sql.expression.condition;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
@@ -15,6 +15,10 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.dml.Query;
+import org.lealone.sql.expression.Expression;
+import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.expression.ExpressionVisitor;
+import org.lealone.sql.expression.SubqueryResult;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
