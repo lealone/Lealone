@@ -23,6 +23,7 @@ import java.lang.management.MemoryUsage;
 
 import com.sun.management.OperatingSystemMXBean;
 
+@SuppressWarnings("restriction")
 public class MemDiskTest {
     public static void main(String[] args) {
         getMemInfo();

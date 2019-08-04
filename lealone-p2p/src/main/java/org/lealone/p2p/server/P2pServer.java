@@ -66,6 +66,7 @@ import com.sun.management.OperatingSystemMXBean;
  * @author Cassandra Group
  * @author zhh
  */
+@SuppressWarnings("restriction")
 public class P2pServer extends DelegatedProtocolServer
         implements IEndpointStateChangeSubscriber, AsyncConnectionManager {
 

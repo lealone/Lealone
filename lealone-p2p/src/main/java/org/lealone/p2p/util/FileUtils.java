@@ -34,6 +34,7 @@ import org.lealone.common.util.JVMStabilityInspector;
 
 import sun.nio.ch.DirectBuffer;
 
+@SuppressWarnings("restriction")
 public class FileUtils {
     private static final Logger logger = LoggerFactory.getLogger(FileUtils.class);
     private static final double KB = 1024d;
