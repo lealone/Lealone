@@ -43,10 +43,6 @@ JAVA_OPTS="$JAVA_OPTS -Dlealone.logdir=$LEALONE_HOME/logs"
 JAVA_OPTS="$JAVA_OPTS -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader"
 # JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y"
 
-CLASSPATH=$LEALONE_HOME/conf
-
-for jar in "$LEALONE_HOME"/lib/*.jar; do
-    CLASSPATH="$CLASSPATH:$jar"
-done
+CLASSPATH=$LEALONE_HOME/conf:$LEALONE_HOME/lib/*
 
 "$JAVA_HOME/bin/java" $JAVA_OPTS -cp $CLASSPATH $LEALONE_MAIN

@@ -32,17 +32,8 @@ set JAVA_OPTS=-Xms10M^
 REM ***** CLASSPATH library setting *****
 
 REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%LEALONE_HOME%\conf"
+set CLASSPATH="%LEALONE_HOME%\conf;%LEALONE_HOME%\lib\*"
 
-REM For each jar in the LEALONE_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%LEALONE_HOME%\lib\*.jar") do call :append "%%i"
-goto okClasspath
-
-:append
-set CLASSPATH=%CLASSPATH%;%1
-goto :eof
-
-:okClasspath
 REM set LEALONE_PARAMS=%1 %2
 REM goto runShell
 

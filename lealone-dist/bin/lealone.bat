@@ -47,20 +47,8 @@ set JAVA_OPTS=-Xms10M^
 REM set JAVA_OPTS=%JAVA_OPTS% -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y
 
 REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%LEALONE_HOME%\conf"
+set CLASSPATH="%LEALONE_HOME%\conf;%LEALONE_HOME%\lib\*"
 
-REM For each jar in the LEALONE_HOME lib directory call append to build the CLASSPATH variable.
-for %%i in ("%LEALONE_HOME%\lib\*.jar") do call :append "%%i"
-goto okClasspath
-
-:append
-set CLASSPATH=%CLASSPATH%;%1
-goto :eof
-
-:okClasspath
-goto runDaemon
-
-:runDaemon
 REM echo Starting Lealone Server
 "%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% "%LEALONE_MAIN%"
 goto finally
