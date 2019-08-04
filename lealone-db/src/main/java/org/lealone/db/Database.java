@@ -2477,7 +2477,9 @@ public class Database implements DataHandler, DbObject, IDatabase {
             if (user.isAdmin())
                 return;
         }
-        getSystemSession().prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
+        ServerSession session = getSystemSession();
+        session.prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
+        session.commit(); // 需要提交，否则新创建的用户会丢失
     }
 
     synchronized User createAdminUser(String userName, byte[] userPasswordHash) {
