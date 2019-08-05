@@ -69,6 +69,11 @@ public class NioWritableChannel implements WritableChannel {
     }
 
     @Override
+    public SocketChannel getSocketChannel() {
+        return channel;
+    }
+
+    @Override
     public NetBufferFactory getBufferFactory() {
         return NioBufferFactory.getInstance();
     }

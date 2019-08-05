@@ -1445,4 +1445,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     public byte[] getLobMacSalt() {
         return lobMacSalt;
     }
+
+    @Override
+    public String getUserName() {
+        return user.getName();
+    }
 }

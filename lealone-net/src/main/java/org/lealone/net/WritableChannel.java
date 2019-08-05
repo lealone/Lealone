@@ -17,6 +17,8 @@
  */
 package org.lealone.net;
 
+import java.nio.channels.SocketChannel;
+
 public interface WritableChannel {
 
     void write(Object data);
@@ -26,6 +28,8 @@ public interface WritableChannel {
     String getHost();
 
     int getPort();
+
+    SocketChannel getSocketChannel();
 
     NetBufferFactory getBufferFactory();
 

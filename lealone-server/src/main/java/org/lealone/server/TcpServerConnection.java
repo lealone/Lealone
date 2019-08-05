@@ -75,6 +75,10 @@ public class TcpServerConnection extends TcpConnection {
         this.baseDir = baseDir;
     }
 
+    protected SmallMap getCache() {
+        return cache;
+    }
+
     @Override
     public TransferPacketHandler getPacketHandler() {
         return packetHandler;
@@ -156,7 +160,7 @@ public class TcpServerConnection extends TcpConnection {
         return session;
     }
 
-    private static void setParameters(Transfer transfer, PreparedStatement command) throws IOException {
+    protected static void setParameters(Transfer transfer, PreparedStatement command) throws IOException {
         int len = transfer.readInt();
         List<? extends CommandParameter> params = command.getParameters();
         for (int i = 0; i < len; i++) {
@@ -241,7 +245,7 @@ public class TcpServerConnection extends TcpConnection {
         transfer.writeResponseHeader(id, getStatus(session));
     }
 
-    private static List<PageKey> readPageKeys(Transfer transfer) throws IOException {
+    protected static List<PageKey> readPageKeys(Transfer transfer) throws IOException {
         ArrayList<PageKey> pageKeys;
         int size = transfer.readInt();
         if (size > 0) {
@@ -256,7 +260,7 @@ public class TcpServerConnection extends TcpConnection {
         return pageKeys;
     }
 
-    private void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
+    protected void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
             boolean prepared) throws IOException {
         int resultId = transfer.readInt();
         int maxRows = transfer.readInt();
@@ -285,31 +289,7 @@ public class TcpServerConnection extends TcpConnection {
         PreparedStatement.Yieldable<?> yieldable = command.createYieldableQuery(maxRows, scrollable, pageKeys, res -> {
             if (res.isSucceeded()) {
                 Result result = res.getResult();
-                cache.addObject(resultId, result);
-                try {
-                    transfer.writeResponseHeader(id, getStatus(session));
-                    if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
-                            || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
-                        transfer.writeString(session.getTransaction().getLocalTransactionNames());
-                    }
-                    if (session.isRunModeChanged()) {
-                        transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
-                    }
-                    int columnCount = result.getVisibleColumnCount();
-                    transfer.writeInt(columnCount);
-                    int rowCount = result.getRowCount();
-                    transfer.writeInt(rowCount);
-                    for (int i = 0; i < columnCount; i++) {
-                        writeColumn(transfer, result, i);
-                    }
-                    int fetch = fetchSize;
-                    if (rowCount != -1)
-                        fetch = Math.min(rowCount, fetchSize);
-                    writeRow(transfer, result, fetch);
-                    transfer.flush();
-                } catch (Exception e) {
-                    sendError(transfer, id, e);
-                }
+                sendResult(transfer, session, sessionId, id, operation, result, resultId, fetchSize);
             } else {
                 sendError(transfer, id, res.getCause());
             }
@@ -318,7 +298,40 @@ public class TcpServerConnection extends TcpConnection {
         addPreparedCommandToQueue(pc, sessionId);
     }
 
-    private void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
+    // protected void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
+    // PreparedStatement command, int resultId, int maxRowsint, int fetchSize) throws IOException {
+    // }
+
+    protected void sendResult(Transfer transfer, Session session, int sessionId, int id, int operation, Result result,
+            int resultId, int fetchSize) {
+        cache.addObject(resultId, result);
+        try {
+            transfer.writeResponseHeader(id, getStatus(session));
+            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
+                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
+                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+            }
+            if (session.isRunModeChanged()) {
+                transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
+            }
+            int columnCount = result.getVisibleColumnCount();
+            transfer.writeInt(columnCount);
+            int rowCount = result.getRowCount();
+            transfer.writeInt(rowCount);
+            for (int i = 0; i < columnCount; i++) {
+                writeColumn(transfer, result, i);
+            }
+            int fetch = fetchSize;
+            if (rowCount != -1)
+                fetch = Math.min(rowCount, fetchSize);
+            writeRow(transfer, result, fetch);
+            transfer.flush();
+        } catch (Exception e) {
+            sendError(transfer, id, e);
+        }
+    }
+
+    protected void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
             boolean prepared) throws IOException {
         if (operation == Session.COMMAND_REPLICATION_UPDATE
                 || operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE) {
