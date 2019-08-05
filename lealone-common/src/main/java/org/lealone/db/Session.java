@@ -245,4 +245,8 @@ public interface Session extends Closeable, Transaction.Participant {
     default Session getNestedSession(String hostAndPort, boolean remote) {
         return null;
     }
+
+    default String getUserName() {
+        return null;
+    }
 }

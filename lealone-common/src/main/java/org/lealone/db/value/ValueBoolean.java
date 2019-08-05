@@ -32,8 +32,8 @@ public class ValueBoolean extends Value {
     /**
      * Of type Object so that Tomcat doesn't set it to null.
      */
-    private static final Object TRUE = new ValueBoolean(true);
-    private static final Object FALSE = new ValueBoolean(false);
+    public static final ValueBoolean TRUE = new ValueBoolean(true);
+    public static final ValueBoolean FALSE = new ValueBoolean(false);
 
     private final Boolean value;
 
@@ -58,7 +58,7 @@ public class ValueBoolean extends Value {
 
     @Override
     public Value negate() {
-        return (ValueBoolean) (value.booleanValue() ? FALSE : TRUE);
+        return value.booleanValue() ? FALSE : TRUE;
     }
 
     @Override
@@ -100,7 +100,7 @@ public class ValueBoolean extends Value {
      * @return the value
      */
     public static ValueBoolean get(boolean b) {
-        return (ValueBoolean) (b ? TRUE : FALSE);
+        return b ? TRUE : FALSE;
     }
 
     @Override
