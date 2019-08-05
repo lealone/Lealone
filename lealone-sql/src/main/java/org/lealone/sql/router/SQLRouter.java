@@ -287,56 +287,56 @@ public class SQLRouter {
             Session currentSession = statement.getSession();
             Map<String, List<PageKey>> endpointToPageKeyMap = statement.getEndpointToPageKeyMap();
             int size = endpointToPageKeyMap.size();
-            if (size > 0) {
-                String sql = statement.getPlanSQL(true);
-
-                boolean scrollable = false;
-                Session[] sessions = new Session[size];
-                Command[] commands = new Command[size];
-                ArrayList<Callable<Result>> callables = new ArrayList<>(size);
-                int i = 0;
-                for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
-                    String hostId = e.getKey();
-                    List<PageKey> pageKeys = e.getValue();
-                    sessions[i] = currentSession.getNestedSession(hostId,
-                            !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
-                    commands[i] = sessions[i].createCommand(sql, Integer.MAX_VALUE);
-                    Command c = commands[i];
-                    callables.add(() -> {
-                        return c.executeQuery(maxRows, false, pageKeys);
-                    });
-                    i++;
-                }
-
-                try {
-                    if (!select.isGroupQuery() && select.getSortOrder() == null) {
-                        return new SerializedResult(callables, maxRows, scrollable, select.getLimitRows());
-                    } else {
-                        ArrayList<Future<Result>> futures = new ArrayList<>(size);
-                        ArrayList<Result> results = new ArrayList<>(size);
-                        for (Callable<Result> callable : callables) {
-                            futures.add(executorService.submit(callable));
-                        }
-
-                        for (Future<Result> f : futures) {
-                            results.add(f.get());
-                        }
-
-                        if (!select.isGroupQuery() && select.getSortOrder() != null)
-                            return new SortedResult(maxRows, select.getSession(), select, results);
-
-                        String newSQL = select.getPlanSQL(true, true);
-                        Select newSelect = (Select) select.getSession().prepareStatement(newSQL, true)
-                                .getWrappedStatement();
-                        newSelect.setLocal(true);
-
-                        return new MergedResult(results, newSelect, select);
-                    }
-                } catch (Exception e) {
-                    throw DbException.convert(e);
-                }
+            if (size <= 0) {
+                return new LocalResult();
             }
-            return new LocalResult();
+
+            String sql = statement.getPlanSQL(true);
+            boolean scrollable = false;
+            Session[] sessions = new Session[size];
+            Command[] commands = new Command[size];
+            ArrayList<Callable<Result>> callables = new ArrayList<>(size);
+            int i = 0;
+            for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
+                String hostId = e.getKey();
+                List<PageKey> pageKeys = e.getValue();
+                sessions[i] = currentSession.getNestedSession(hostId,
+                        !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
+                commands[i] = sessions[i].createCommand(sql, Integer.MAX_VALUE);
+                Command c = commands[i];
+                callables.add(() -> {
+                    return c.executeQuery(maxRows, false, pageKeys);
+                });
+                i++;
+            }
+
+            try {
+                if (!select.isGroupQuery() && select.getSortOrder() == null) {
+                    return new SerializedResult(callables, maxRows, scrollable, select.getLimitRows());
+                } else {
+                    ArrayList<Future<Result>> futures = new ArrayList<>(size);
+                    ArrayList<Result> results = new ArrayList<>(size);
+                    for (Callable<Result> callable : callables) {
+                        futures.add(executorService.submit(callable));
+                    }
+
+                    for (Future<Result> f : futures) {
+                        results.add(f.get());
+                    }
+
+                    if (!select.isGroupQuery() && select.getSortOrder() != null)
+                        return new SortedResult(maxRows, select.getSession(), select, results);
+
+                    String newSQL = select.getPlanSQL(true, true);
+                    Select newSelect = (Select) select.getSession().prepareStatement(newSQL, true)
+                            .getWrappedStatement();
+                    newSelect.setLocal(true);
+
+                    return new MergedResult(results, newSelect, select);
+                }
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
         }
         default:
             return statement.query(maxRows);
@@ -369,5 +369,4 @@ public class SQLRouter {
             }
         });
     }
-
 }

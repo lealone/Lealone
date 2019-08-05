@@ -103,12 +103,12 @@ public class HrcStorageModeTest extends TestBase {
         ValueLong key = ValueLong.get(2);
         int columnIndex = 2; // 索引要从0开始算
         TransactionalValue tv = map.get(key);
-        VersionedValue vv = (VersionedValue) tv.value;
+        VersionedValue vv = (VersionedValue) tv.getValue();
         System.out.println(vv.value.getList()[columnIndex]);
         t1 = System.currentTimeMillis();
         key = ValueLong.get(2999);
         tv = map.get(key);
-        vv = (VersionedValue) tv.value;
+        vv = (VersionedValue) tv.getValue();
         t2 = System.currentTimeMillis();
         System.out.println("RowStorage get time: " + (t2 - t1) + " ms");
         System.out.println(vv.value.getList()[columnIndex]);
@@ -147,12 +147,12 @@ public class HrcStorageModeTest extends TestBase {
         ValueLong key = ValueLong.get(2);
         int columnIndex = 2; // 索引要从0开始算
         TransactionalValue tv = map.get(key, columnIndex);
-        VersionedValue vv = (VersionedValue) tv.value;
+        VersionedValue vv = (VersionedValue) tv.getValue();
         System.out.println(vv.value.getList()[columnIndex]);
         t1 = System.currentTimeMillis();
         key = ValueLong.get(2999);
         tv = map.get(key, columnIndex);
-        vv = (VersionedValue) tv.value;
+        vv = (VersionedValue) tv.getValue();
         t2 = System.currentTimeMillis();
         System.out.println("ColumnStorage get time: " + (t2 - t1) + " ms");
         System.out.println(vv.value.getList()[columnIndex]);

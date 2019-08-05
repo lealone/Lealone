@@ -19,6 +19,6 @@ package org.lealone.net;
 
 public interface TransferPacketHandler {
 
-    void handle(Runnable task);
+    void handlePacket(Runnable task);
 
 }

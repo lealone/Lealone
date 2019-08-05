@@ -39,8 +39,8 @@ import org.lealone.net.TcpConnection;
 import org.lealone.net.Transfer;
 import org.lealone.net.TransferPacketHandler;
 import org.lealone.net.WritableChannel;
-import org.lealone.server.CommandHandler.CommandQueue;
-import org.lealone.server.CommandHandler.PreparedCommand;
+import org.lealone.server.Scheduler.CommandQueue;
+import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
@@ -59,7 +59,7 @@ public class TcpServerConnection extends TcpConnection {
     private static final Logger logger = LoggerFactory.getLogger(TcpServerConnection.class);
 
     // 每个sessionId对应一个专有的CommandQueue，所有与这个sessionId相关的命令请求都先放到这个队列，
-    // 然后由CommandHandler根据优先级从多个CommandQueue中依次取出执行
+    // 然后由调度器根据优先级从多个CommandQueue中依次取出执行
     private final ConcurrentHashMap<Integer, CommandQueue> commandQueueMap = new ConcurrentHashMap<>();
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
     private final TransferPacketHandler packetHandler;
@@ -68,7 +68,7 @@ public class TcpServerConnection extends TcpConnection {
 
     public TcpServerConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
-        packetHandler = CommandHandler.getNextCommandHandler();
+        packetHandler = ScheduleService.getScheduler();
     }
 
     void setBaseDir(String baseDir) {
@@ -84,7 +84,7 @@ public class TcpServerConnection extends TcpConnection {
     public void close() {
         super.close();
         for (CommandQueue queue : commandQueueMap.values()) {
-            queue.commandHandler.removeCommandQueue(queue);
+            queue.scheduler.removeCommandQueue(queue);
         }
         commandQueueMap.clear();
     }
@@ -125,14 +125,6 @@ public class TcpServerConnection extends TcpConnection {
         }
     }
 
-    // 为与sessionId对应的客户端请求指派一个处理器
-    private void assignCommandHandler(int sessionId) {
-        CommandHandler commandHandler = CommandHandler.getNextCommandHandler();
-        CommandQueue queue = new CommandQueue(commandHandler);
-        commandQueueMap.put(sessionId, queue);
-        commandHandler.addCommandQueue(queue);
-    }
-
     private Session createSession(Transfer transfer, int sessionId, String originalURL, String dbName, String userName)
             throws IOException {
         ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
@@ -159,7 +151,7 @@ public class TcpServerConnection extends TcpConnection {
         Session session = ci.createSession();
         if (session.isValid()) {
             addSession(sessionId, session);
-            assignCommandHandler(sessionId);
+            assignScheduler(sessionId);
         }
         return session;
     }
@@ -290,43 +282,39 @@ public class TcpServerConnection extends TcpConnection {
 
         List<PageKey> pageKeys = readPageKeys(transfer);
 
-        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
-            @Override
-            public void run() {
-                command.executeQueryAsync(maxRows, scrollable, pageKeys, res -> {
-                    if (res.isSucceeded()) {
-                        Result result = res.getResult();
-                        cache.addObject(resultId, result);
-                        try {
-                            transfer.writeResponseHeader(id, getStatus(session));
-                            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
-                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
-                                transfer.writeString(session.getTransaction().getLocalTransactionNames());
-                            }
-                            if (session.isRunModeChanged()) {
-                                transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
-                            }
-                            int columnCount = result.getVisibleColumnCount();
-                            transfer.writeInt(columnCount);
-                            int rowCount = result.getRowCount();
-                            transfer.writeInt(rowCount);
-                            for (int i = 0; i < columnCount; i++) {
-                                writeColumn(transfer, result, i);
-                            }
-                            int fetch = fetchSize;
-                            if (rowCount != -1)
-                                fetch = Math.min(rowCount, fetchSize);
-                            writeRow(transfer, result, fetch);
-                            transfer.flush();
-                        } catch (Exception e) {
-                            sendError(transfer, id, e);
-                        }
-                    } else {
-                        sendError(transfer, id, res.getCause());
+        PreparedStatement.Yieldable<?> yieldable = command.createYieldableQuery(maxRows, scrollable, pageKeys, res -> {
+            if (res.isSucceeded()) {
+                Result result = res.getResult();
+                cache.addObject(resultId, result);
+                try {
+                    transfer.writeResponseHeader(id, getStatus(session));
+                    if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
+                            || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
+                        transfer.writeString(session.getTransaction().getLocalTransactionNames());
                     }
-                });
+                    if (session.isRunModeChanged()) {
+                        transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
+                    }
+                    int columnCount = result.getVisibleColumnCount();
+                    transfer.writeInt(columnCount);
+                    int rowCount = result.getRowCount();
+                    transfer.writeInt(rowCount);
+                    for (int i = 0; i < columnCount; i++) {
+                        writeColumn(transfer, result, i);
+                    }
+                    int fetch = fetchSize;
+                    if (rowCount != -1)
+                        fetch = Math.min(rowCount, fetchSize);
+                    writeRow(transfer, result, fetch);
+                    transfer.flush();
+                } catch (Exception e) {
+                    sendError(transfer, id, e);
+                }
+            } else {
+                sendError(transfer, id, res.getCause());
             }
         });
+        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, yieldable);
         addPreparedCommandToQueue(pc, sessionId);
     }
 
@@ -353,33 +341,29 @@ public class TcpServerConnection extends TcpConnection {
 
         List<PageKey> pageKeys = readPageKeys(transfer);
 
-        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, new Runnable() {
-            @Override
-            public void run() {
-                command.executeUpdateAsync(pageKeys, res -> {
-                    if (res.isSucceeded()) {
-                        int updateCount = res.getResult();
-                        try {
-                            transfer.writeResponseHeader(id, getStatus(session));
-                            if (session.isRunModeChanged()) {
-                                transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
-                            }
-                            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
-                                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
-                                transfer.writeString(session.getTransaction().getLocalTransactionNames());
-                            }
-                            transfer.writeInt(updateCount);
-                            transfer.writeLong(session.getLastRowKey());
-                            transfer.flush();
-                        } catch (Exception e) {
-                            sendError(transfer, id, e);
-                        }
-                    } else {
-                        sendError(transfer, id, res.getCause());
+        PreparedStatement.Yieldable<?> yieldable = command.createYieldableUpdate(pageKeys, res -> {
+            if (res.isSucceeded()) {
+                int updateCount = res.getResult();
+                try {
+                    transfer.writeResponseHeader(id, getStatus(session));
+                    if (session.isRunModeChanged()) {
+                        transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
                     }
-                });
+                    if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
+                            || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
+                        transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                    }
+                    transfer.writeInt(updateCount);
+                    transfer.writeLong(session.getLastRowKey());
+                    transfer.flush();
+                } catch (Exception e) {
+                    sendError(transfer, id, e);
+                }
+            } else {
+                sendError(transfer, id, res.getCause());
             }
         });
+        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, yieldable);
         addPreparedCommandToQueue(pc, sessionId);
     }
 
@@ -388,11 +372,12 @@ public class TcpServerConnection extends TcpConnection {
         if (queue == null) {
             commandQueueNotFound(sessionId);
         }
-        if (queue.commandHandler == packetHandler) {
+        pc.queue = queue;
+        if (queue.scheduler == packetHandler) {
             pc.execute();
         } else {
             queue.preparedCommands.add(pc);
-            queue.commandHandler.wakeUp();
+            queue.scheduler.wakeUp();
         }
     }
 
@@ -400,6 +385,14 @@ public class TcpServerConnection extends TcpConnection {
         String msg = "CommandQueue is null, may be a bug! sessionId = " + sessionId;
         logger.warn(msg);
         throw DbException.throwInternalError(msg);
+    }
+
+    // 为与sessionId对应的客户端请求指派一个调度器
+    private void assignScheduler(int sessionId) {
+        Scheduler scheduler = ScheduleService.getScheduler();
+        CommandQueue queue = new CommandQueue(scheduler);
+        commandQueueMap.put(sessionId, queue);
+        scheduler.addCommandQueue(queue);
     }
 
     @Override
@@ -738,7 +731,7 @@ public class TcpServerConnection extends TcpConnection {
         case Session.SESSION_CLOSE: {
             CommandQueue queue = commandQueueMap.remove(sessionId);
             if (queue != null) {
-                queue.commandHandler.removeCommandQueue(queue);
+                queue.scheduler.removeCommandQueue(queue);
                 session = removeSession(sessionId);
                 closeSession(session);
             } else {

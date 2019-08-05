@@ -26,6 +26,8 @@ import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.replication.ReplicationMap;
 import org.lealone.storage.type.StorageDataType;
 
@@ -278,5 +280,21 @@ public interface StorageMap<K, V> extends ReplicationMap {
 
     default Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
         return null;
+    }
+
+    default void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        put(key, value);
+    }
+
+    default void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        putIfAbsent(key, value);
+    }
+
+    default void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
+        replace(key, oldValue, newValue);
+    }
+
+    default void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
+        remove(key);
     }
 }

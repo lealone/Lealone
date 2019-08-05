@@ -86,6 +86,13 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public Iterator<K> keyIterator(K from, boolean includeUncommitted);
 
-    public V put(K key, V oldValue, V newValue, int[] columnIndexes);
+    public boolean put(K key, Object oldValue, V newValue, int[] columnIndexes, Transaction.Listener listener);
 
+    public Object[] getUncommitted(K key, int[] columnIndexes);
+
+    public boolean isLocked(Object oldValue, int[] columnIndexes);
+
+    public boolean remove(K key, Object oldValue, Transaction.Listener listener);
+
+    public Object getTransactionalValue(K key);
 }

@@ -39,6 +39,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.IExpression;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageMap;
+import org.lealone.transaction.Transaction;
 
 /**
  * This is the base class for most tables.
@@ -228,7 +229,8 @@ public abstract class Table extends SchemaObjectBase {
      * @param oldRow the old row
      * @param newRow the new row
      */
-    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public boolean updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener listener) {
         throw newUnsupportedException();
     }
 
@@ -239,6 +241,10 @@ public abstract class Table extends SchemaObjectBase {
      * @param row the row
      */
     public void removeRow(ServerSession session, Row row) {
+        throw newUnsupportedException();
+    }
+
+    public void removeRow(ServerSession session, Row row, Transaction.Listener listener) {
         throw newUnsupportedException();
     }
 
@@ -461,26 +467,34 @@ public abstract class Table extends SchemaObjectBase {
      * @param rows a list of row pairs of the form old row, new row, old row,
      *            new row,...
      */
-    public void updateRows(PreparedStatement prepared, ServerSession session, RowList rows,
-            List<Column> updateColumns) {
+    public boolean updateRows(PreparedStatement prepared, ServerSession session, RowList rows,
+            List<Column> updateColumns, Transaction.Listener listener) {
+        boolean yieldIfNeeded = false;
         // in case we need to undo the update
         int savepointId = session.getTransaction().getSavepointId();
         int rowScanCount = 0;
         for (rows.reset(); rows.hasNext();) {
             if ((++rowScanCount & 127) == 0) {
                 prepared.checkCanceled();
+                if (prepared.yieldIfNeeded()) {
+                    yieldIfNeeded = true;
+                }
             }
             Row oldRow = rows.next();
             Row newRow = rows.next();
             try {
-                updateRow(session, oldRow, newRow, updateColumns);
+                yieldIfNeeded = updateRow(session, oldRow, newRow, updateColumns, listener) || yieldIfNeeded;
             } catch (DbException e) {
                 if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
                     session.rollbackTo(savepointId);
                 }
                 throw e;
             }
+            if (yieldIfNeeded) {
+                return true;
+            }
         }
+        return false;
 
         // // in case we need to undo the update
         // int savepointId = session.getTransaction().getSavepointId();

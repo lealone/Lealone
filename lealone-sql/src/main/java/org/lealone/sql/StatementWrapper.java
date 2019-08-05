@@ -163,8 +163,9 @@ public class StatementWrapper extends StatementBase {
     }
 
     @Override
-    public void executeUpdateAsync(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+    public boolean executeUpdateAsync(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
         executeUpdate0(pageKeys, handler);
+        return false;
     }
 
     private Object executeQuery0(int maxRows, List<PageKey> pageKeys, AsyncHandler<AsyncResult<Result>> queryHandler) {

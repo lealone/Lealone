@@ -5,6 +5,7 @@
  */
 package org.lealone.sql;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -14,16 +15,22 @@ import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
+import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
+import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.PageKey;
 
 /**
@@ -368,18 +375,15 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      *
      * @param rowNumber the row number
      */
-    protected void setCurrentRowNumber(int rowNumber) {
+    protected boolean setCurrentRowNumber(int rowNumber) {
+        boolean yieldIfNeeded = false;
         if ((++rowScanCount & 127) == 0) {
             checkCanceled();
-
-            Thread t = Thread.currentThread();
-            if (t instanceof SQLStatementExecutor) {
-                SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
-                sqlStatementExecutor.executeNextStatementIfNeeded(this);
-            }
+            yieldIfNeeded = yieldIfNeeded();
         }
         this.currentRowNumber = rowNumber;
         setProgress();
+        return yieldIfNeeded;
     }
 
     /**
@@ -554,6 +558,9 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     @Override
     public int executeUpdate() {
         return update();
+        // YieldableBase<Integer> update = createYieldableUpdate(null, null);
+        // update.run();
+        // return update.getResult();
     }
 
     @Override
@@ -597,5 +604,307 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
 
     public String getPlanSQL(boolean isDistributed) {
         return getSQL();
+    }
+
+    @Override
+    public boolean isSuspended() {
+        return false;
+    }
+
+    @Override
+    public void suspend() {
+    }
+
+    @Override
+    public void resume() {
+    }
+
+    @Override
+    public YieldableBase<Integer> createYieldableUpdate(List<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Integer>> handler) {
+        return new YieldableUpdate(this, pageKeys, handler);
+    }
+
+    @Override
+    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Result>> handler) {
+        return new YieldableQuery(this, maxRows, scrollable, pageKeys, handler);
+    }
+
+    public static abstract class YieldableBase<T> implements Yieldable<T> {
+
+        protected static enum State {
+            start,
+            execute,
+            stop;
+        }
+
+        private State state = State.start;
+
+        protected StatementBase statement;
+        protected final ServerSession session;
+        protected final Trace trace;
+
+        protected final List<PageKey> pageKeys;
+        protected final AsyncHandler<AsyncResult<T>> asyncHandler;
+        protected AsyncResult<T> asyncResult;
+        protected long startTimeNanos;
+
+        protected T result;
+        protected boolean isUpdate;
+
+        protected boolean callStop = true;
+        private int savepointId = 0;
+        private long lockStartTime;
+
+        public YieldableBase(StatementBase statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<T>> asyncHandler) {
+            this.statement = statement;
+            this.session = statement.getSession();
+            this.trace = session.getDatabase().getTrace(Trace.COMMAND);
+            this.pageKeys = pageKeys;
+            this.asyncHandler = asyncHandler;
+        }
+
+        @Override
+        public T getResult() {
+            return result;
+        }
+
+        public void setResult(T result, int rowCount) {
+            this.result = result;
+            if (result != null) {
+                if (asyncHandler != null) {
+                    asyncResult = new AsyncResult<>();
+                    asyncResult.setResult(result);
+                }
+                statement.trace(startTimeNanos, rowCount);
+                setProgress(DatabaseEventListener.STATE_STATEMENT_END);
+            }
+        }
+
+        @Override
+        public boolean run() {
+            switch (state) {
+            case start:
+                if (start()) {
+                    return true;
+                }
+                state = State.execute;
+            case execute:
+                if (execute()) {
+                    return true;
+                }
+                state = State.stop;
+            case stop:
+                if (callStop) {
+                    stop();
+                }
+                state = State.stop;
+            }
+            return false;
+        }
+
+        protected boolean startInternal() {
+            return false;
+        }
+
+        protected void stopInternal() {
+        }
+
+        protected abstract boolean executeInternal();
+
+        private boolean execute() {
+            Database database = session.getDatabase();
+            try {
+                database.checkPowerOff();
+                try {
+                    return executeInternal();
+                } catch (DbException e) {
+                    filterConcurrentUpdate(e);
+                    return true;
+                } catch (OutOfMemoryError e) {
+                    callStop = false;
+                    // there is a serious problem:
+                    // the transaction may be applied partially
+                    // in this case we need to panic:
+                    // close the database
+                    database.shutdownImmediately();
+                    throw DbException.convert(e);
+                } catch (Throwable e) {
+                    throw DbException.convert(e);
+                }
+            } catch (DbException e) {
+                e = e.addSQL(statement.getSQL());
+                SQLException s = e.getSQLException();
+                database.exceptionThrown(s, statement.getSQL());
+                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
+                    callStop = false;
+                    database.shutdownImmediately();
+                    throw e;
+                }
+                database.checkPowerOff();
+                if (isUpdate) {
+                    if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
+                        session.rollback();
+                    } else {
+                        session.rollbackTo(savepointId);
+                    }
+                }
+                callStop = false;
+                if (asyncHandler != null) {
+                    asyncResult = new AsyncResult<>();
+                    asyncResult.setCause(e);
+                    asyncHandler.handle(asyncResult);
+                    asyncResult = null; // 不需要再回调了
+                    stop();
+                    return false;
+                } else {
+                    stop();
+                    throw e;
+                }
+            }
+        }
+
+        protected boolean start() {
+            if (session.isExclusiveMode())
+                return true;
+            if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
+                startTimeNanos = System.nanoTime();
+            }
+            if (isUpdate)
+                savepointId = session.getTransaction(statement).getSavepointId();
+            else
+                session.getTransaction(statement);
+            session.setCurrentCommand(statement);
+            session.addStatement(statement);
+
+            recompileIfRequired();
+            setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+            statement.checkParameters();
+            return startInternal();
+        }
+
+        protected void setProgress(int state) {
+            session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
+        }
+
+        private void recompileIfRequired() {
+            if (statement.needRecompile()) {
+                // TODO test with 'always recompile'
+                statement.setModificationMetaId(0);
+                String sql = statement.getSQL();
+                ArrayList<Parameter> oldParams = statement.getParameters();
+                Parser parser = new Parser(session);
+                statement = parser.parse(sql);
+                long mod = statement.getModificationMetaId();
+                statement.setModificationMetaId(0);
+                ArrayList<Parameter> newParams = statement.getParameters();
+                for (int i = 0, size = newParams.size(); i < size; i++) {
+                    Parameter old = oldParams.get(i);
+                    if (old.isValueSet()) {
+                        Value v = old.getValue(session);
+                        Parameter p = newParams.get(i);
+                        p.setValue(v);
+                    }
+                }
+                statement.prepare();
+                statement.setModificationMetaId(mod);
+            }
+        }
+
+        private void filterConcurrentUpdate(DbException e) {
+            if (e.getErrorCode() != ErrorCode.CONCURRENT_UPDATE_1) {
+                throw e;
+            }
+            long now = System.nanoTime() / 1000000;
+            if (lockStartTime != 0 && now - lockStartTime > session.getLockTimeout()) {
+                ArrayList<ServerSession> sessions = session.checkDeadlock();
+                if (sessions != null) {
+                    throw DbException.get(ErrorCode.DEADLOCK_1, StandardTable.getDeadlockDetails(sessions));
+                } else {
+                    throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, e.getCause(), "");
+                }
+            }
+            lockStartTime = now;
+        }
+
+        protected void stop() {
+            stopInternal();
+            session.closeTemporaryResults();
+            session.setCurrentCommand(null);
+            if (asyncResult != null) {
+                if (session.isAutoCommit() && session.getReplicationName() == null) { // 在复制模式下不能自动提交
+                    // 等到事务日志写成功后再返回语句的执行结果
+                    session.setRunnable(() -> asyncHandler.handle(asyncResult));
+                    session.prepareCommit();
+                } else {
+                    // 当前语句是在一个手动提交的事务中进行，提前返回语句的执行结果
+                    asyncHandler.handle(asyncResult);
+                }
+            } else {
+                if (session.isAutoCommit() && session.getReplicationName() == null) {
+                    session.commit();
+                }
+            }
+            if (startTimeNanos > 0 && trace.isInfoEnabled()) {
+                long timeMillis = (System.nanoTime() - startTimeNanos) / 1000 / 1000;
+                // 如果一条sql的执行时间大于100毫秒，记下它
+                if (timeMillis > Constants.SLOW_QUERY_LIMIT_MS) {
+                    trace.info("slow query: {0} ms, sql: {1}", timeMillis, statement.getSQL());
+                }
+            }
+        }
+    }
+
+    public static class YieldableUpdate extends YieldableBase<Integer> {
+
+        public YieldableUpdate(StatementBase statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            isUpdate = true;
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            session.setLastScopeIdentity(ValueNull.INSTANCE);
+            int updateCount;
+            if (pageKeys == null)
+                updateCount = SQLRouter.executeUpdate(statement);
+            else
+                updateCount = statement.executeUpdate(pageKeys);
+            if (updateCount >= 0) {
+                setResult(Integer.valueOf(updateCount), updateCount);
+                return false;
+            }
+            // 当前命令未执行完，但是主动让出执行线程了
+            return true;
+        }
+    }
+
+    public static class YieldableQuery extends YieldableBase<Result> {
+
+        private final int maxRows;
+        private final boolean scrollable;
+
+        public YieldableQuery(StatementBase statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Result>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            this.maxRows = maxRows;
+            this.scrollable = scrollable;
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            if (pageKeys == null)
+                result = SQLRouter.executeQuery(statement, maxRows);
+            else
+                result = statement.executeQuery(maxRows, scrollable, pageKeys);
+            if (result != null) {
+                setResult(result, result.getRowCount());
+                return false;
+            }
+            return true;
+        }
     }
 }

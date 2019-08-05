@@ -121,13 +121,14 @@ public interface Command {
         executeUpdateAsync(null, handler);
     }
 
-    default void executeUpdateAsync(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+    default boolean executeUpdateAsync(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
         int updateCount = executeUpdate(pageKeys);
         if (handler != null) {
             AsyncResult<Integer> r = new AsyncResult<>();
             r.setResult(updateCount);
             handler.handle(r);
         }
+        return false;
     }
 
     default Command prepare() {

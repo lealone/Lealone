@@ -165,7 +165,17 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public boolean update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener listener) {
+        int size = updateColumns.size();
+        int[] columnIndexes = new int[size];
+        for (int i = 0; i < size; i++) {
+            columnIndexes[i] = updateColumns.get(i).getColumnId();
+        }
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        if (map.isLocked(oldRow.getRawValue(), columnIndexes))
+            return true;
+
         if (table.getContainsLargeObject()) {
             for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
                 Value v = newRow.getValue(i);
@@ -184,26 +194,21 @@ public class StandardPrimaryIndex extends IndexBase {
                 }
             }
         }
-        TransactionMap<Value, VersionedValue> map = getMap(session);
-        VersionedValue oldValue = new VersionedValue(oldRow.getVersion(), ValueArray.get(oldRow.getValueList()));
+        // VersionedValue oldValue = new VersionedValue(oldRow.getVersion(), ValueArray.get(oldRow.getValueList()));
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
-        int size = updateColumns.size();
-        int[] columnIndexes = new int[size];
-        for (int i = 0; i < size; i++) {
-            columnIndexes[i] = updateColumns.get(i).getColumnId();
-        }
-        try {
-            map.put(key, oldValue, newValue, columnIndexes);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
+        boolean yieldIfNeeded = map.put(key, oldRow.getRawValue(), newValue, columnIndexes, listener);
         session.setLastRow(newRow);
         session.setLastIndex(this);
+        return yieldIfNeeded;
     }
 
     @Override
     public void remove(ServerSession session, Row row) {
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        if (map.isLocked(row.getRawValue(), null))
+            return;
+
         if (table.getContainsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
                 Value v = row.getValue(i);
@@ -212,7 +217,6 @@ public class StandardPrimaryIndex extends IndexBase {
                 }
             }
         }
-        TransactionMap<Value, VersionedValue> map = getMap(session);
         try {
             VersionedValue old = map.remove(ValueLong.get(row.getKey()));
             if (old == null) {
@@ -221,6 +225,31 @@ public class StandardPrimaryIndex extends IndexBase {
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
         }
+    }
+
+    @Override
+    public boolean remove(ServerSession session, Row row, Transaction.Listener listener) {
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        if (map.isLocked(row.getRawValue(), null))
+            return false;
+
+        if (table.getContainsLargeObject()) {
+            for (int i = 0, len = row.getColumnCount(); i < len; i++) {
+                Value v = row.getValue(i);
+                if (v.isLinked()) {
+                    session.unlinkAtCommit(v);
+                }
+            }
+        }
+        try {
+            VersionedValue old = map.remove(ValueLong.get(row.getKey()));
+            if (old == null) {
+                throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
+            }
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+        }
+        return false;
     }
 
     @Override
@@ -242,11 +271,13 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     public Row getRow(ServerSession session, long key, int[] columnIndexes) {
-        VersionedValue v = getMap(session).get(ValueLong.get(key), columnIndexes);
+        Object[] values = getMap(session).getUncommitted(ValueLong.get(key), columnIndexes);
+        VersionedValue v = (VersionedValue) values[0];
         ValueArray array = v.value;
         Row row = new Row(array.getList(), 0);
         row.setKey(key);
         row.setVersion(v.vertion);
+        row.setRawValue(values[1]);
         return row;
     }
 
@@ -472,12 +503,17 @@ public class StandardPrimaryIndex extends IndexBase {
         public Row get() {
             if (row == null) {
                 if (current != null) {
+                    Object rawValue = null;
+                    if (current instanceof DataUtils.MapEntry) {
+                        rawValue = ((DataUtils.MapEntry<Value, VersionedValue>) current).getRawValue();
+                    }
                     VersionedValue value = current.getValue();
                     Value[] data = value.value.getList();
                     int version = value.vertion;
                     row = new Row(data, 0);
                     row.setKey(current.getKey().getLong());
                     row.setVersion(version);
+                    row.setRawValue(rawValue);
 
                     if (table.getVersion() != version) {
                         ArrayList<TableAlterHistoryRecord> records = table.getDatabase()
@@ -491,6 +527,7 @@ public class StandardPrimaryIndex extends IndexBase {
                             row = new Row(newValues, 0);
                             row.setKey(current.getKey().getLong());
                             row.setVersion(table.getVersion());
+                            row.setRawValue(rawValue);
                             index.add(session, row);
                         }
                     }

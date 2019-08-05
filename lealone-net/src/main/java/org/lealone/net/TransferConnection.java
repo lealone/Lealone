@@ -157,6 +157,29 @@ public abstract class TransferConnection extends AsyncConnection {
         }
     }
 
+    public TransferPacketHandler getPacketHandler() {
+        return null;
+    }
+
+    private void handlePacket(Transfer transfer) throws IOException {
+        boolean isRequest = transfer.readByte() == Transfer.REQUEST;
+        int id = transfer.readInt();
+        Runnable task;
+        if (isRequest) {
+            int operation = transfer.readInt();
+            task = new RequestPacketDeliveryTask(this, transfer, id, operation);
+        } else {
+            int status = transfer.readInt();
+            task = new ResponsePacketDeliveryTask(this, transfer, id, status);
+        }
+        TransferPacketHandler packetHandler = getPacketHandler();
+        if (packetHandler == null) {
+            task.run();
+        } else {
+            packetHandler.handlePacket(task);
+        }
+    }
+
     private static abstract class PacketDeliveryTask implements Runnable {
         final TransferConnection conn;
         final Transfer transfer;
@@ -204,29 +227,6 @@ public abstract class TransferConnection extends AsyncConnection {
                 // String msg = "Failed to handle response, id: " + id + ", status: " + status;
                 throw DbException.convert(e);
             }
-        }
-    }
-
-    public TransferPacketHandler getPacketHandler() {
-        return null;
-    }
-
-    private void handlePacket(Transfer transfer) throws IOException {
-        boolean isRequest = transfer.readByte() == Transfer.REQUEST;
-        int id = transfer.readInt();
-        Runnable task;
-        if (isRequest) {
-            int operation = transfer.readInt();
-            task = new RequestPacketDeliveryTask(this, transfer, id, operation);
-        } else {
-            int status = transfer.readInt();
-            task = new ResponsePacketDeliveryTask(this, transfer, id, status);
-        }
-        TransferPacketHandler packetHandler = getPacketHandler();
-        if (packetHandler == null) {
-            task.run();
-        } else {
-            packetHandler.handle(task);
         }
     }
 }

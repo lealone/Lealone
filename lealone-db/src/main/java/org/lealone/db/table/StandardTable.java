@@ -551,7 +551,8 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public boolean updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener listener) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
@@ -560,13 +561,15 @@ public class StandardTable extends Table {
             // 第一个是PrimaryIndex
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                index.update(session, oldRow, newRow, updateColumns);
+                if (index.update(session, oldRow, newRow, updateColumns, listener))
+                    return true;
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
+        return false;
     }
 
     @Override
@@ -578,6 +581,23 @@ public class StandardTable extends Table {
             for (int i = indexes.size() - 1; i >= 0; i--) {
                 Index index = indexes.get(i);
                 index.remove(session, row);
+            }
+        } catch (Throwable e) {
+            t.rollbackToSavepoint(savepointId);
+            throw DbException.convert(e);
+        }
+        analyzeIfRequired(session);
+    }
+
+    @Override
+    public void removeRow(ServerSession session, Row row, Transaction.Listener listener) {
+        lastModificationId = database.getNextModificationDataId();
+        Transaction t = session.getTransaction();
+        int savepointId = t.getSavepointId();
+        try {
+            for (int i = indexes.size() - 1; i >= 0; i--) {
+                Index index = indexes.get(i);
+                index.remove(session, row, listener);
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);

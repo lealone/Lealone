@@ -15,38 +15,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage;
+package org.lealone.test.perf;
 
-import java.util.Iterator;
+import org.lealone.db.value.ValueInt;
+import org.lealone.db.value.ValueString;
 
-import org.lealone.common.util.DataUtils;
+public class BTreeMapPerformanceTest extends StorageMapPerformanceTest {
 
-public interface StorageMapCursor<K, V> extends Iterator<K> {
-
-    /**
-     * Get the last read key if there was one.
-     *
-     * @return the key or null
-     */
-    K getKey();
-
-    /**
-     * Get the last read value if there was one.
-     *
-     * @return the value or null
-     */
-    V getValue();
+    public static void main(String[] args) throws Exception {
+        new BTreeMapPerformanceTest().run();
+    }
 
     @Override
-    default void remove() {
-        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
-    }
-
-    default boolean hasNextBatch() {
-        return false;
-    }
-
-    default V[] nextBatch() {
-        return null;
+    protected void openMap() {
+        if (map == null || map.isClosed()) {
+            map = storage.openBTreeMap(BTreeMapPerformanceTest.class.getSimpleName(), ValueInt.type, ValueString.type,
+                    null);
+        }
     }
 }

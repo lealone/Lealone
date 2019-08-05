@@ -272,13 +272,11 @@ public class Parser implements SQLParser {
 
             s.setPrepareAlways(recompileAlways);
             s.setParameterList(parameters);
-            StatementWrapper sw = new StatementWrapper(session, s);
-            s = sw;
             boolean hasMore = isToken(";");
             if (hasMore) {
                 String remaining = originalSQL.substring(parseIndex);
                 if (remaining.trim().length() != 0) {
-                    s = new StatementWrapperList(session, sw, remaining);
+                    s = new StatementList(session, s, remaining);
                 }
             } else if (currentTokenType != END) {
                 throw getSyntaxError();

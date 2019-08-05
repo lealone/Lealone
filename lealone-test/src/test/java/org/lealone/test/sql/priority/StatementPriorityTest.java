@@ -6,12 +6,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Random;
 
+import org.lealone.common.util.JdbcUtils;
 import org.lealone.test.sql.SqlTestBase;
 
 public class StatementPriorityTest extends SqlTestBase {
 
     public static void main(String[] args) throws Exception {
-        new StatementPriorityTest().run();
+        new StatementPriorityTest().runTest();
     }
 
     static Connection getConn(String url) throws Exception {
@@ -78,11 +79,48 @@ public class StatementPriorityTest extends SqlTestBase {
 
     }
 
-    public void run() throws Exception {
+    @Override
+    // @Test
+    public void test() throws Exception {
         init();
         sql = "select * from StatementPriorityTest where pk = '01'";
         // oneThread();
-        multiThreads();
+        // multiThreads();
+
+        Thread t1 = new Thread(() -> {
+            Connection connection = null;
+            Statement statement = null;
+            try {
+                connection = StatementPriorityTest.this.getConnection();
+                statement = connection.createStatement();
+                statement.executeUpdate("delete from StatementPriorityTest");
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                JdbcUtils.closeSilently(statement);
+                JdbcUtils.closeSilently(connection);
+            }
+        });
+
+        Thread t2 = new Thread(() -> {
+            Connection connection = null;
+            Statement statement = null;
+            try {
+                connection = StatementPriorityTest.this.getConnection();
+                statement = connection.createStatement();
+                String sql = "INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('25', 'a2', 'b', 51)";
+                statement.executeUpdate(sql);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                JdbcUtils.closeSilently(statement);
+                JdbcUtils.closeSilently(connection);
+            }
+        });
+        t1.start();
+        t2.start();
+        t1.join();
+        t2.join();
     }
 
     public void multiThreads() throws Exception {
@@ -141,21 +179,21 @@ public class StatementPriorityTest extends SqlTestBase {
 
     void init() throws Exception {
         createTable("StatementPriorityTest");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 61)");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 61)");
-
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('25', 'a2', 'b', 51)");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('26', 'a2', 'b', 61)");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('27', 'a2', 'b', 61)");
-
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('50', 'a1', 'b', 12)");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('51', 'a2', 'b', 12)");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('52', 'a1', 'b', 12)");
-
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('75', 'a1', 'b', 12)");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('76', 'a2', 'b', 12)");
-        executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('77', 'a1', 'b', 12)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 61)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 61)");
+        //
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('25', 'a2', 'b', 51)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('26', 'a2', 'b', 61)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('27', 'a2', 'b', 61)");
+        //
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('50', 'a1', 'b', 12)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('51', 'a2', 'b', 12)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('52', 'a1', 'b', 12)");
+        //
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('75', 'a1', 'b', 12)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('76', 'a2', 'b', 12)");
+        // executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('77', 'a1', 'b', 12)");
 
         for (int i = 1000; i < 2000; i++)
             executeUpdate("INSERT INTO StatementPriorityTest(pk, f1, f2, f3) VALUES('" + i + "', 'a1', 'b', 51)");

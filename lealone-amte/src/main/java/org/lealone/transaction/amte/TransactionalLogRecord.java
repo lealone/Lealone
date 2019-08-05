@@ -33,17 +33,52 @@ public class TransactionalLogRecord {
     Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
     final TransactionalValue oldValue;
     final TransactionalValue newValue;
+    final TransactionalValue head;
 
-    public TransactionalLogRecord(String mapName, Object key, TransactionalValue oldValue,
-            TransactionalValue newValue) {
+    public TransactionalLogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
+            TransactionalValue head) {
         this.mapName = mapName;
         this.key = key;
         this.oldValue = oldValue;
         this.newValue = newValue;
+        this.head = head;
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
     public void commit(AMTransactionEngine transactionEngine, long tid) {
+        StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
+        if (map == null) {
+            return; // map was later removed
+        }
+        newValue.commit(tid);
+
+        // if (oldValue == null) { // insert
+        // TransactionalValue tv = newValue.commit(tid);
+        // newValue.setRefValue(tv);
+        // } else {
+        // if (oldValue.getValue() == null) { // delete
+        // // 如果还有其他未提交的比当前tid小的旧事务，那么不能直接删除当前key对应的记录
+        // if (transactionEngine.containsUncommittedTransactionLessThan(tid)) {
+        // TransactionalValue tv = oldValue.remove(tid);
+        // oldValue.setRefValue(tv);
+        // } else {
+        // map.remove(key);
+        // }
+        // } else { // update
+        // while (true) { // 多个事务更新同一行的不同列时，允许它们并发运行，这里能避免覆盖彼此创建的TransactionalValue实例
+        // TransactionalValue refValue = oldValue.getRefValue();
+        // TransactionalValue tv = oldValue.commit(tid);
+        // if (oldValue.compareAndSet(refValue, tv))
+        // break;
+        // }
+        // }
+        // }
+
+        // TransactionalValue tv = newValue.commit(tid);
+        // newValue.setRefValue(tv);
+    }
+
+    public void commitOld(AMTransactionEngine transactionEngine, long tid) {
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
         if (map == null) {
             // map was later removed
@@ -51,16 +86,24 @@ public class TransactionalLogRecord {
             TransactionalValue value = map.get(key);
             if (value == null) {
                 // nothing to do
-            } else if (value.value == null) {
+            } else if (value.getValue() == null) {
                 // remove the value
                 map.remove(key);
             } else {
                 // map.put(key, TransactionalValue.createCommitted(value.value));
                 // map.put(key, value.commit());
-                TransactionalValue newValue = value.commit(tid);
-                while (!map.replace(key, value, newValue)) {
-                    value = map.get(key);
-                    newValue = value.commit(tid);
+
+                // TransactionalValue newValue = value.commit(tid);
+                // while (!map.replace(key, value, newValue)) {
+                // value = map.get(key);
+                // newValue = value.commit(tid);
+                // }
+
+                while (true) {
+                    TransactionalValue refValue = value.getRefValue();
+                    TransactionalValue newValue = value.commit(tid);
+                    if (value.compareAndSet(refValue, newValue))
+                        break;
                 }
             }
         }
@@ -71,13 +114,32 @@ public class TransactionalLogRecord {
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map != null) {
-            if (oldValue == null) {
-                // this transaction added the value
-                map.remove(key);
-            } else {
-                // this transaction updated the value
-                map.put(key, oldValue);
-            }
+            newValue.rollback();
+
+            // if (oldValue == null) {
+            // // this transaction added the value
+            // map.remove(key);
+            // } else {
+            // // this transaction updated the value
+            // map.put(key, oldValue);
+            // }
+
+            // TransactionalValue first = head.getRefValue();
+            // if (newValue == first) {
+            // // 在这里也有可能发生其他事务改变head的情况
+            // if (head.compareAndSet(first, newValue.getOldValue())) {
+            // return;
+            // } else {
+            // first = head.getRefValue();
+            // }
+            // }
+            // TransactionalValue last = first;
+            // TransactionalValue next = first.getOldValue();
+            // while (next != null && next != newValue) {
+            // last = next;
+            // next = next.getOldValue();
+            // }
+            // last.setOldValue(next);
         }
     }
 
@@ -95,11 +157,11 @@ public class TransactionalLogRecord {
         writeBuffer.putInt(0);
 
         map.getKeyType().write(writeBuffer, key);
-        if (newValue.value == null)
+        if (newValue.getValue() == null)
             writeBuffer.put((byte) 0);
         else {
             writeBuffer.put((byte) 1);
-            ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, newValue.value);
+            ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, newValue.getValue());
         }
         writeBuffer.putInt(keyValueLengthStartPos, writeBuffer.position() - keyValueLengthStartPos - 4);
 

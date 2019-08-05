@@ -34,7 +34,7 @@ public class TransactionalValueType implements StorageDataType {
     public int getMemory(Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
         // tid最大8字节
-        return (v.isCommitted() ? 1 : 8) + valueType.getMemory(v.value);
+        return (v.isCommitted() ? 1 : 8) + valueType.getMemory(v.getValue());
         // TODO 由于BufferedMap的合并与复制逻辑的验证是并行的，
         // 可能导致split时三个复制节点中某些相同的TransactionalValue有些globalReplicationName为null，有些不为null
         // 这样就会得到不同的内存大小，从而使得splitKey不同
@@ -53,7 +53,7 @@ public class TransactionalValueType implements StorageDataType {
         if (comp == 0) {
             comp = a.getLogId() - b.getLogId();
             if (comp == 0)
-                return valueType.compare(a.value, b.value);
+                return valueType.compare(a.getValue(), b.getValue());
         }
         return Long.signum(comp);
     }
@@ -87,7 +87,7 @@ public class TransactionalValueType implements StorageDataType {
     public void writeMeta(DataBuffer buff, Object obj) {
         TransactionalValue v = (TransactionalValue) obj;
         v.writeMeta(buff);
-        valueType.writeMeta(buff, v.value);
+        valueType.writeMeta(buff, v.getValue());
     }
 
     @Override
@@ -98,13 +98,13 @@ public class TransactionalValueType implements StorageDataType {
     @Override
     public void writeColumn(DataBuffer buff, Object obj, int columnIndex) {
         TransactionalValue v = (TransactionalValue) obj;
-        valueType.writeColumn(buff, v.value, columnIndex);
+        valueType.writeColumn(buff, v.getValue(), columnIndex);
     }
 
     @Override
     public void readColumn(ByteBuffer buff, Object obj, int columnIndex) {
         TransactionalValue v = (TransactionalValue) obj;
-        valueType.readColumn(buff, v.value, columnIndex);
+        valueType.readColumn(buff, v.getValue(), columnIndex);
     }
 
     @Override
@@ -120,6 +120,6 @@ public class TransactionalValueType implements StorageDataType {
     @Override
     public int getMemory(Object obj, int columnIndex) {
         TransactionalValue v = (TransactionalValue) obj;
-        return valueType.getMemory(v.value, columnIndex);
+        return valueType.getMemory(v.getValue(), columnIndex);
     }
 }

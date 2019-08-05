@@ -825,10 +825,18 @@ public class DataUtils {
 
         private final K key;
         private final V value;
+        private final Object rawValue;
 
         public MapEntry(K key, V value) {
             this.key = key;
             this.value = value;
+            this.rawValue = null;
+        }
+
+        public MapEntry(K key, V value, Object rawValue) {
+            this.key = key;
+            this.value = value;
+            this.rawValue = rawValue;
         }
 
         @Override
@@ -839,6 +847,10 @@ public class DataUtils {
         @Override
         public V getValue() {
             return value;
+        }
+
+        public Object getRawValue() {
+            return rawValue;
         }
 
         @Override

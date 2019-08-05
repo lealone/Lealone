@@ -17,7 +17,11 @@
  */
 package org.lealone.transaction.amte;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.sql.Connection;
 import java.util.BitSet;
 import java.util.LinkedList;
 
@@ -28,84 +32,70 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 
-public abstract class TransactionalValue {
+import sun.misc.Unsafe;
 
-    public final Object value;
+@SuppressWarnings("restriction")
+public interface TransactionalValue {
 
-    public TransactionalValue(Object value) {
-        this.value = value;
-    }
+    public Object getValue();
+
+    public TransactionalValue getOldValue();
+
+    public void setOldValue(TransactionalValue oldValue);
+
+    public TransactionalValue getRefValue();
+
+    public void setRefValue(TransactionalValue v);
+
+    public boolean compareAndSet(TransactionalValue expect, TransactionalValue update);
 
     // 如果是0代表事务已经提交，对于已提交事务，只有在写入时才写入tid=0，
     // 读出来的时候为了不占用内存就不加tid字段了，这样每条已提交记录能省8个字节(long)的内存空间
-    public long getTid() {
-        return 0;
-    }
+    public long getTid();
 
-    public int getLogId() {
-        return 0;
-    }
+    public int getLogId();
 
-    public boolean isLocked(int[] columnIndexes) {
-        return false;
-    }
+    public boolean tryLock(AMTransaction transaction, Object value, TransactionalValue oldValue,
+            StorageDataType oldValueType, int[] columnIndexes);
 
-    public String getHostAndPort() {
-        return null;
-    }
+    public boolean isLocked(long tid, int[] columnIndexes);
 
-    public String getGlobalReplicationName() {
-        return null;
-    }
+    public String getHostAndPort();
 
-    public boolean isReplicated() {
-        return false;
-    }
+    public String getGlobalReplicationName();
 
-    public void setReplicated(boolean replicated) {
-    }
+    public boolean isReplicated();
 
-    public void incrementVersion() {
-    }
+    public void setReplicated(boolean replicated);
 
-    public <K> TransactionalValue undo(StorageMap<K, TransactionalValue> map, K key) {
-        return this;
-    }
+    public void incrementVersion();
 
-    public TransactionalValue getCommitted() {
-        return this;
-    }
+    public <K> TransactionalValue undo(StorageMap<K, TransactionalValue> map, K key);
 
-    public TransactionalValue commit(long tid) {
-        return this;
-    }
+    public TransactionalValue getCommitted();
 
-    public boolean isCommitted() {
-        return true;
-    }
+    public TransactionalValue getCommitted(AMTransaction transaction);
 
-    public void write(DataBuffer buff, StorageDataType valueType) {
-        writeMeta(buff);
-        writeValue(buff, valueType);
-    }
+    public TransactionalValue commit(long tid);
 
-    public abstract void writeMeta(DataBuffer buff);
+    public void rollback();
 
-    public void writeValue(DataBuffer buff, StorageDataType valueType) {
-        if (value == null) {
-            buff.put((byte) 0);
-        } else {
-            buff.put((byte) 1);
-            valueType.write(buff, value);
-        }
-    }
+    public TransactionalValue remove(long tid);
+
+    public boolean isCommitted();
+
+    public void write(DataBuffer buff, StorageDataType valueType);
+
+    public void writeMeta(DataBuffer buff);
+
+    public void writeValue(DataBuffer buff, StorageDataType valueType);
 
     public static TransactionalValue readMeta(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType,
             int columnCount) {
         long tid = DataUtils.readVarLong(buff);
         if (tid == 0) {
             Object value = valueType.readMeta(buff, columnCount);
-            return createCommitted(value);
+            return TransactionalValue.createCommitted(value);
         } else {
             return Uncommitted.readMeta(tid, valueType, buff, oldValueType, columnCount);
         }
@@ -122,8 +112,8 @@ public abstract class TransactionalValue {
     public static TransactionalValue read(ByteBuffer buff, StorageDataType valueType, StorageDataType oldValueType) {
         long tid = DataUtils.readVarLong(buff);
         if (tid == 0) {
-            Object value = readValue(buff, valueType);
-            return createCommitted(value);
+            Object value = TransactionalValue.readValue(buff, valueType);
+            return TransactionalValue.createCommitted(value);
         } else {
             return Uncommitted.read(tid, valueType, buff, oldValueType);
         }
@@ -139,13 +129,400 @@ public abstract class TransactionalValue {
         return new Uncommitted(transaction, value, oldValue, oldValueType, columnIndexes);
     }
 
+    public static TransactionalValue create(AMTransaction transaction, Object value, TransactionalValue oldValue,
+            StorageDataType oldValueType, int[] columnIndexes, boolean createRef) {
+        TransactionalValue transactionalValue = new Uncommitted(transaction, value, oldValue, oldValueType,
+                columnIndexes);
+        if (createRef) {
+            transactionalValue = new TransactionalValueRef(transactionalValue);
+        }
+        return transactionalValue;
+    }
+
+    public static TransactionalValue createUncommitted(AMTransaction transaction, Object value,
+            TransactionalValue oldValue, StorageDataType oldValueType, int[] columnIndexes) {
+        return new Uncommitted(transaction, value, oldValue, oldValueType, columnIndexes);
+    }
+
+    public static TransactionalValue createUncommitted(AMTransaction transaction, Object value,
+            TransactionalValue oldValue, StorageDataType oldValueType, int[] columnIndexes, TransactionalValue ref) {
+        boolean rowLock = false;
+        if (oldValue == null || oldValue instanceof Exclusive) { // insert
+            rowLock = true;
+        } else if (value == null) { // delete
+            rowLock = true;
+        } else {
+            if (columnIndexes == null || columnIndexes.length == 0) {
+                rowLock = true;
+            } else {
+                int columnCount = oldValueType.getColumnCount();
+                if (columnIndexes.length >= (columnCount / 2) + 1) {
+                    rowLock = true;
+                }
+            }
+        }
+        if (rowLock)
+            return new Exclusive(transaction, value, oldValue, oldValueType, columnIndexes, ref);
+        else
+            return new Uncommitted(transaction, value, oldValue, oldValueType, columnIndexes, ref);
+    }
+
+    public static TransactionalValue createUncommittedRef(AMTransaction transaction, Object value,
+            TransactionalValue oldValue, StorageDataType oldValueType, int[] columnIndexes) {
+        TransactionalValue tv = new Uncommitted(transaction, value, oldValue, oldValueType, columnIndexes);
+        tv = new TransactionalValueRef(tv);
+        return tv;
+    }
+
+    public static TransactionalValue createRef(TransactionalValue tv) {
+        return new TransactionalValueRef(tv);
+    }
+
     public static TransactionalValue createCommitted(Object value) {
         return new Committed(value);
     }
 
-    static class Committed extends TransactionalValue {
+    // 因为每条记录都对应此类的一个实例，所以为了节约内存没有直接使用java.util.concurrent.atomic.AtomicReference
+    public static class TransactionalValueRef implements TransactionalValue {
+
+        private static final Unsafe unsafe;
+        private static final long valueOffset;
+
+        static {
+            try {
+                // 不能直接调用Unsafe.getUnsafe()，在Eclipse下面运行会有安全异常
+                final Object maybeUnsafe = AccessController.doPrivileged(new PrivilegedAction<Object>() {
+                    @Override
+                    public Object run() {
+                        try {
+                            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+                            unsafeField.setAccessible(true);
+                            return unsafeField.get(null);
+                        } catch (Throwable e) {
+                            return e;
+                        }
+                    }
+                });
+                if (maybeUnsafe instanceof Throwable) {
+                    throw (Throwable) maybeUnsafe;
+                } else {
+                    unsafe = (Unsafe) maybeUnsafe;
+                }
+                valueOffset = unsafe.objectFieldOffset(TransactionalValueRef.class.getDeclaredField("tv"));
+            } catch (Throwable ex) {
+                throw new Error(ex);
+            }
+        }
+
+        private volatile TransactionalValue tv;
+
+        TransactionalValueRef(TransactionalValue transactionalValue) {
+            tv = transactionalValue;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder buff = new StringBuilder("Ref[ ");
+            buff.append(tv).append(" ]");
+            return buff.toString();
+        }
+
+        @Override
+        public Object getValue() {
+            return tv.getValue();
+        }
+
+        @Override
+        public TransactionalValue getOldValue() {
+            return tv.getOldValue();
+        }
+
+        @Override
+        public void setOldValue(TransactionalValue oldValue) {
+            tv.setOldValue(oldValue);
+        }
+
+        @Override
+        public boolean compareAndSet(TransactionalValue expect, TransactionalValue update) {
+            return unsafe.compareAndSwapObject(this, valueOffset, expect, update);
+        }
+
+        @Override
+        public TransactionalValue getRefValue() {
+            return tv;
+        }
+
+        @Override
+        public void setRefValue(TransactionalValue v) {
+            tv = v;
+        }
+
+        @Override
+        public long getTid() {
+            return tv.getTid();
+        }
+
+        @Override
+        public int getLogId() {
+            return tv.getLogId();
+        }
+
+        @Override
+        public boolean tryLock(AMTransaction transaction, Object value, TransactionalValue oldValue,
+                StorageDataType oldValueType, int[] columnIndexes) {
+            return tv.tryLock(transaction, value, oldValue, oldValueType, columnIndexes);
+        }
+
+        @Override
+        public boolean isLocked(long tid, int[] columnIndexes) {
+            return tv.isLocked(tid, columnIndexes);
+        }
+
+        @Override
+        public String getHostAndPort() {
+            return tv.getHostAndPort();
+        }
+
+        @Override
+        public String getGlobalReplicationName() {
+            return tv.getGlobalReplicationName();
+        }
+
+        @Override
+        public boolean isReplicated() {
+            return tv.isReplicated();
+        }
+
+        @Override
+        public void setReplicated(boolean replicated) {
+            tv.setReplicated(replicated);
+        }
+
+        @Override
+        public void incrementVersion() {
+            tv.incrementVersion();
+        }
+
+        @Override
+        public <K> TransactionalValue undo(StorageMap<K, TransactionalValue> map, K key) {
+            return tv.undo(map, key);
+        }
+
+        @Override
+        public TransactionalValue getCommitted() {
+            return tv.getCommitted();
+        }
+
+        @Override
+        public TransactionalValue getCommitted(AMTransaction transaction) {
+            return tv.getCommitted(transaction);
+        }
+
+        @Override
+        public TransactionalValue commit(long tid) {
+            return tv.commit(tid);
+        }
+
+        @Override
+        public void rollback() {
+            tv.rollback();
+        }
+
+        @Override
+        public TransactionalValue remove(long tid) {
+            return tv.remove(tid);
+        }
+
+        @Override
+        public boolean isCommitted() {
+            return tv.isCommitted();
+        }
+
+        @Override
+        public void write(DataBuffer buff, StorageDataType valueType) {
+            tv.write(buff, valueType);
+        }
+
+        @Override
+        public void writeMeta(DataBuffer buff) {
+            tv.writeMeta(buff);
+        }
+
+        @Override
+        public void writeValue(DataBuffer buff, StorageDataType valueType) {
+            tv.writeValue(buff, valueType);
+        }
+    }
+
+    static abstract class TransactionalValueBase implements TransactionalValue {
+
+        public final Object value;
+
+        public TransactionalValueBase(Object value) {
+            this.value = value;
+        }
+
+        @Override
+        public Object getValue() {
+            return value;
+        }
+
+        @Override
+        public boolean compareAndSet(TransactionalValue expect, TransactionalValue update) {
+            return true;
+        }
+
+        @Override
+        public TransactionalValue getRefValue() {
+            return this;
+        }
+
+        @Override
+        public void setRefValue(TransactionalValue v) {
+        }
+
+        // 如果是0代表事务已经提交，对于已提交事务，只有在写入时才写入tid=0，
+        // 读出来的时候为了不占用内存就不加tid字段了，这样每条已提交记录能省8个字节(long)的内存空间
+        @Override
+        public long getTid() {
+            return 0;
+        }
+
+        @Override
+        public int getLogId() {
+            return 0;
+        }
+
+        @Override
+        public boolean tryLock(AMTransaction transaction, Object value, TransactionalValue oldValue,
+                StorageDataType oldValueType, int[] columnIndexes) {
+            // // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可
+            // if (oldValue != null) {
+            // if (oldValue.getTid() == transaction.transactionId && (oldValue instanceof Uncommitted)) {
+            // oldValue = ((Uncommitted) oldValue).oldValue;
+            // } else {
+            // // oldValue = oldValue.getCommitted();
+            // }
+            // }
+            // this.tid = transaction.transactionId;
+            // this.logId = transaction.logId;
+            // this.oldValue = oldValue;
+            // this.oldValueType = oldValueType;
+            // this.hostAndPort = NetEndpoint.getLocalTcpHostAndPort();
+            // this.globalReplicationName = transaction.globalTransactionName;
+            // this.columnIndexes = columnIndexes;
+            //
+            // if (columnIndexes == null || columnIndexes.length == 0) {
+            // rowLock = true;
+            // } else {
+            // int columnCount = oldValueType.getColumnCount();
+            // if (columnIndexes.length < (columnCount / 2)) {
+            // rowLock = false;
+            // lockedColumns = new BitSet(columnCount);
+            // for (int i : columnIndexes) {
+            // lockedColumns.set(i);
+            // }
+            // } else {
+            // rowLock = true;
+            // }
+            // }
+            return false;
+        }
+
+        @Override
+        public boolean isLocked(long tid, int[] columnIndexes) {
+            return false;
+        }
+
+        @Override
+        public String getHostAndPort() {
+            return null;
+        }
+
+        @Override
+        public String getGlobalReplicationName() {
+            return null;
+        }
+
+        @Override
+        public boolean isReplicated() {
+            return false;
+        }
+
+        @Override
+        public void setReplicated(boolean replicated) {
+        }
+
+        @Override
+        public void incrementVersion() {
+        }
+
+        @Override
+        public <K> TransactionalValue undo(StorageMap<K, TransactionalValue> map, K key) {
+            return this;
+        }
+
+        @Override
+        public TransactionalValue getCommitted() {
+            return this;
+        }
+
+        @Override
+        public TransactionalValue getCommitted(AMTransaction transaction) {
+            return this;
+        }
+
+        @Override
+        public TransactionalValue commit(long tid) {
+            return this;
+        }
+
+        @Override
+        public boolean isCommitted() {
+            return true;
+        }
+
+        @Override
+        public void rollback() {
+        }
+
+        @Override
+        public TransactionalValue remove(long tid) {
+            return this;
+        }
+
+        @Override
+        public void write(DataBuffer buff, StorageDataType valueType) {
+            writeMeta(buff);
+            writeValue(buff, valueType);
+        }
+
+        @Override
+        public abstract void writeMeta(DataBuffer buff);
+
+        @Override
+        public void writeValue(DataBuffer buff, StorageDataType valueType) {
+            if (value == null) {
+                buff.put((byte) 0);
+            } else {
+                buff.put((byte) 1);
+                valueType.write(buff, value);
+            }
+        }
+    }
+
+    static class Committed extends TransactionalValueBase {
         Committed(Object value) {
             super(value);
+        }
+
+        @Override
+        public TransactionalValue getOldValue() {
+            return null;
+        }
+
+        @Override
+        public void setOldValue(TransactionalValue oldValue) {
         }
 
         @Override
@@ -161,11 +538,99 @@ public abstract class TransactionalValue {
         }
     }
 
-    static class Uncommitted extends TransactionalValue {
+    // 用于支持REPEATABLE_READ，小于tid的事务只能读取oldValue
+    static class CommittedWithTid extends TransactionalValueBase {
+        private final long tid;
+        private TransactionalValue oldValue;
 
+        CommittedWithTid(long tid, Object value, TransactionalValue oldValue) {
+            super(value);
+            this.tid = tid;
+            this.oldValue = oldValue;
+        }
+
+        @Override
+        public long getTid() {
+            return tid;
+        }
+
+        @Override
+        public TransactionalValue getOldValue() {
+            return oldValue;
+        }
+
+        @Override
+        public void setOldValue(TransactionalValue oldValue) {
+            this.oldValue = oldValue;
+        }
+
+        @Override
+        public TransactionalValue getCommitted(AMTransaction transaction) {
+            switch (transaction.getIsolationLevel()) {
+            case Connection.TRANSACTION_REPEATABLE_READ:
+            case Connection.TRANSACTION_SERIALIZABLE:
+                if (transaction.transactionId >= tid)
+                    return this;
+                else if (oldValue != null) {
+                    return oldValue.getCommitted(transaction);
+                }
+                return null;
+            default:
+                return this;
+            }
+        }
+
+        @Override
+        public void writeMeta(DataBuffer buff) {
+            buff.putVarLong(0);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder buff = new StringBuilder("CommittedWithTid[ ");
+            buff.append("tid = ").append(tid);
+            buff.append(", value = ").append(value).append(", oldValue = ").append(oldValue).append(" ]");
+            return buff.toString();
+        }
+    }
+
+    static class Removed extends TransactionalValueBase {
+        private TransactionalValue oldValue;
+
+        Removed(TransactionalValue oldValue) {
+            super(oldValue.getValue());
+            this.oldValue = oldValue;
+        }
+
+        @Override
+        public TransactionalValue getOldValue() {
+            return oldValue;
+        }
+
+        @Override
+        public void setOldValue(TransactionalValue oldValue) {
+            this.oldValue = oldValue;
+        }
+
+        @Override
+        public void writeMeta(DataBuffer buff) {
+            buff.putVarLong(0);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder buff = new StringBuilder("Removed[ ");
+            buff.append(value).append(" ]");
+            return buff.toString();
+        }
+    }
+
+    static class Uncommitted extends TransactionalValueBase {
+
+        private AMTransaction transaction;
         private final long tid;
         private final int logId;
-        private TransactionalValue oldValue;
+        TransactionalValue oldValue;
         private final StorageDataType oldValueType;
         private final String hostAndPort;
         // 每次修改记录的事务名要全局唯一，
@@ -177,17 +642,57 @@ public abstract class TransactionalValue {
         private BitSet lockedColumns;
         private int[] columnIndexes;
 
-        Uncommitted(AMTransaction transaction, Object value, TransactionalValue oldValue,
-                StorageDataType oldValueType, int[] columnIndexes) {
+        TransactionalValue ref;
+
+        Uncommitted(AMTransaction transaction, Object value, TransactionalValue oldValue, StorageDataType oldValueType,
+                int[] columnIndexes, TransactionalValue ref) {
             super(value);
-            // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可
-            if (oldValue != null) {
-                if (oldValue.getTid() == transaction.transactionId && (oldValue instanceof Uncommitted)) {
-                    oldValue = ((Uncommitted) oldValue).oldValue;
+            // // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可
+            // if (oldValue != null) {
+            // if (oldValue.getTid() == transaction.transactionId && (oldValue instanceof Uncommitted)) {
+            // oldValue = ((Uncommitted) oldValue).oldValue;
+            // } else {
+            // // oldValue = oldValue.getCommitted();
+            // }
+            // }
+            this.transaction = transaction;
+            this.tid = transaction.transactionId;
+            this.logId = transaction.logId;
+            this.oldValue = oldValue;
+            this.oldValueType = oldValueType;
+            this.hostAndPort = NetEndpoint.getLocalTcpHostAndPort();
+            this.globalReplicationName = transaction.globalTransactionName;
+            this.columnIndexes = columnIndexes;
+            this.ref = ref;
+
+            if (columnIndexes == null || columnIndexes.length == 0) {
+                rowLock = true;
+            } else {
+                int columnCount = oldValueType.getColumnCount();
+                if (columnIndexes.length < (columnCount / 2) + 1) {
+                    rowLock = false;
+                    lockedColumns = new BitSet(columnCount);
+                    for (int i : columnIndexes) {
+                        lockedColumns.set(i);
+                    }
                 } else {
-                    // oldValue = oldValue.getCommitted();
+                    rowLock = true;
                 }
             }
+        }
+
+        Uncommitted(AMTransaction transaction, Object value, TransactionalValue oldValue, StorageDataType oldValueType,
+                int[] columnIndexes) {
+            super(value);
+            // // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可
+            // if (oldValue != null) {
+            // if (oldValue.getTid() == transaction.transactionId && (oldValue instanceof Uncommitted)) {
+            // oldValue = ((Uncommitted) oldValue).oldValue;
+            // } else {
+            // // oldValue = oldValue.getCommitted();
+            // }
+            // }
+            this.transaction = transaction;
             this.tid = transaction.transactionId;
             this.logId = transaction.logId;
             this.oldValue = oldValue;
@@ -200,7 +705,7 @@ public abstract class TransactionalValue {
                 rowLock = true;
             } else {
                 int columnCount = oldValueType.getColumnCount();
-                if (columnIndexes.length < (columnCount / 2)) {
+                if (columnIndexes.length < (columnCount / 2) + 1) {
                     rowLock = false;
                     lockedColumns = new BitSet(columnCount);
                     for (int i : columnIndexes) {
@@ -211,6 +716,42 @@ public abstract class TransactionalValue {
                 }
             }
         }
+
+        // Uncommitted(MVCCTransaction transaction, Object value, TransactionalValue oldValue,
+        // StorageDataType oldValueType, int[] columnIndexes) {
+        // super(value);
+        // // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可
+        // if (oldValue != null) {
+        // if (oldValue.getTid() == transaction.transactionId && (oldValue instanceof Uncommitted)) {
+        // oldValue = ((Uncommitted) oldValue).oldValue;
+        // } else {
+        // // oldValue = oldValue.getCommitted();
+        // }
+        // }
+        // this.transaction = transaction;
+        // this.tid = transaction.transactionId;
+        // this.logId = transaction.logId;
+        // this.oldValue = oldValue;
+        // this.oldValueType = oldValueType;
+        // this.hostAndPort = NetEndpoint.getLocalTcpHostAndPort();
+        // this.globalReplicationName = transaction.globalTransactionName;
+        // this.columnIndexes = columnIndexes;
+        //
+        // if (columnIndexes == null || columnIndexes.length == 0) {
+        // rowLock = true;
+        // } else {
+        // int columnCount = oldValueType.getColumnCount();
+        // if (columnIndexes.length < (columnCount / 2) + 1) {
+        // rowLock = false;
+        // lockedColumns = new BitSet(columnCount);
+        // for (int i : columnIndexes) {
+        // lockedColumns.set(i);
+        // }
+        // } else {
+        // rowLock = true;
+        // }
+        // }
+        // }
 
         Uncommitted(long tid, Object value, int logId, TransactionalValue oldValue, StorageDataType oldValueType,
                 String hostAndPort, String globalTransactionName, long version) {
@@ -231,7 +772,18 @@ public abstract class TransactionalValue {
             u.rowLock = rowLock;
             u.lockedColumns = lockedColumns;
             u.columnIndexes = columnIndexes;
+            u.transaction = transaction;
             return u;
+        }
+
+        @Override
+        public TransactionalValue getOldValue() {
+            return oldValue;
+        }
+
+        @Override
+        public void setOldValue(TransactionalValue oldValue) {
+            this.oldValue = oldValue;
         }
 
         @Override
@@ -240,18 +792,29 @@ public abstract class TransactionalValue {
         }
 
         @Override
-        public boolean isLocked(int[] columnIndexes) {
-            if (rowLock)
+        public boolean isLocked(long tid, int[] columnIndexes) {
+            // 1. 当前事务
+            // ----------------------------
+            if (this.tid == tid) {
+                if (oldValue == null)
+                    return false;
+                else
+                    return oldValue.isLocked(tid, columnIndexes); // 递归检查是否存在锁冲突
+            }
+
+            // 2. 不是当前事务
+            // ----------------------------
+            // 之前的事务已经加了行锁或之前的事务没加行锁，但是当前事务想要进行行锁时，都要拒绝当前事务的锁请求
+            if (rowLock || columnIndexes == null)
                 return true;
+            // 如果当前事务跟之前的事务存在冲突的列锁，那么拒绝当前事务的锁请求
             for (int i : columnIndexes) {
                 if (lockedColumns.get(i))
                     return true;
             }
-            // 检查多个未提交事务
-            if (oldValue != null && !oldValue.isCommitted()) {
-                if (oldValue.isLocked(columnIndexes)) {
-                    return true;
-                }
+            // 递归检查是否存在锁冲突
+            if (oldValue != null && oldValue.isLocked(tid, columnIndexes)) {
+                return true;
             }
             return false;
         }
@@ -308,12 +871,81 @@ public abstract class TransactionalValue {
         }
 
         @Override
+        public TransactionalValue getCommitted(AMTransaction transaction) {
+            if (transaction.transactionId == tid)
+                return this;
+            if (oldValue != null) {
+                return oldValue.getCommitted(transaction);
+            }
+            return null;
+        }
+
+        @Override
         public boolean isCommitted() {
-            return false;
+            return transaction.isCommitted();
         }
 
         @Override
         public TransactionalValue commit(long tid) {
+            while (true) {
+                TransactionalValue first = ref.getRefValue();
+                CommittedWithTid committed = new CommittedWithTid(tid, value, oldValue);
+                TransactionalValue next = first;
+                TransactionalValue last = committed;
+                while (next != null) {
+                    if (next.getTid() == tid && (next.getLogId() == logId || next.isCommitted())) {
+                        next = next.getOldValue();
+                        continue;
+                    }
+                    if (next instanceof Uncommitted && next.getTid() != tid) {
+                        Uncommitted u = (Uncommitted) next;
+                        u = u.copy(); // 避免多线程执行时修改原来的链接结构
+                        if (u.value != null)
+                            u.oldValueType.setColumns(u.value, value, columnIndexes);
+                        last.setOldValue(u);
+                        last = u;
+                    } else {
+                        last.setOldValue(next);
+                        last = next;
+                    }
+                    next = next.getOldValue();
+                }
+                last.setOldValue(next);
+                if (ref.compareAndSet(first, committed))
+                    break;
+            }
+            return null;
+        }
+
+        @Override
+        public void rollback() {
+            TransactionalValue first = ref.getRefValue();
+            if (this == first) {
+                // 在这里也有可能发生其他事务改变head的情况
+                if (ref.compareAndSet(first, this.getOldValue())) {
+                    return;
+                }
+            }
+            while (true) {
+                first = ref.getRefValue();
+                TransactionalValue last = first;
+                TransactionalValue next = first.getOldValue();
+                while (next != null) {
+                    if (next.getTid() == tid && next.getLogId() == logId) {
+                        next = next.getOldValue();
+                        break;
+                    }
+                    last = next;
+                    next = next.getOldValue();
+                }
+                last.setOldValue(next);
+                if (ref.compareAndSet(first, first))
+                    break;
+            }
+        }
+
+        // @Override
+        public TransactionalValue commitOld(long tid) {
             int[] commitColumnIndexes = null;
             Object commitValue = null;
             LinkedList<Uncommitted> uncommittedList = new LinkedList<>();
@@ -356,9 +988,16 @@ public abstract class TransactionalValue {
             }
 
             if (ret == null)
-                return createCommitted(value);
+                // return TransactionalValue.createCommitted(value);
+                return new CommittedWithTid(tid, value, oldValue);
             else
                 return ret;
+        }
+
+        @Override
+        public TransactionalValue remove(long tid) {
+            TransactionalValue tv = commit(tid);
+            return new Removed(tv);
         }
 
         private static Uncommitted read(long tid, StorageDataType valueType, ByteBuffer buff,
@@ -395,7 +1034,7 @@ public abstract class TransactionalValue {
             if (meta)
                 value = valueType.readMeta(buff, columnCount);
             else
-                value = readValue(buff, valueType);
+                value = TransactionalValue.readValue(buff, valueType);
             Uncommitted uncommitted = new Uncommitted(tid, value, logId, oldValue, oldValueType, hostAndPort,
                     globalReplicationName, version);
             uncommitted.rowLock = rowLock;
@@ -436,8 +1075,62 @@ public abstract class TransactionalValue {
             buff.append(", logId = ").append(logId);
             // buff.append(", version = ").append(version);
             // buff.append(", globalReplicationName = ").append(globalReplicationName);
-            buff.append(", value = ").append(value).append(" ]");
+            buff.append(", value = ").append(value).append(", oldValue = ").append(oldValue).append(" ]");
             return buff.toString();
+        }
+    }
+
+    static class Exclusive extends Uncommitted {
+
+        Exclusive(AMTransaction transaction, Object value, TransactionalValue oldValue, StorageDataType oldValueType,
+                int[] columnIndexes, TransactionalValue ref) {
+            super(transaction, value, oldValue, oldValueType, columnIndexes, ref);
+        }
+
+        @Override
+        public boolean isLocked(long tid, int[] columnIndexes) {
+            return getTid() != tid;
+        }
+
+        @Override
+        public TransactionalValue commit(long tid) {
+            CommittedWithTid committed = new CommittedWithTid(tid, value, oldValue);
+            TransactionalValue first = ref.getRefValue();
+            if (this == first) {
+                ref.setRefValue(committed);
+            } else {
+                TransactionalValue last = first;
+                TransactionalValue next = first.getOldValue();
+                while (next != null) {
+                    if (next == this) {
+                        last.setOldValue(committed);
+                        break;
+                    }
+                    last = next;
+                    next = next.getOldValue();
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public void rollback() {
+            TransactionalValue first = ref.getRefValue();
+            if (this == first) {
+                ref.setRefValue(this.getOldValue());
+            } else {
+                TransactionalValue last = first;
+                TransactionalValue next = first.getOldValue();
+                while (next != null) {
+                    if (next == this) {
+                        next = next.getOldValue();
+                        break;
+                    }
+                    last = next;
+                    next = next.getOldValue();
+                }
+                last.setOldValue(next);
+            }
         }
     }
 }

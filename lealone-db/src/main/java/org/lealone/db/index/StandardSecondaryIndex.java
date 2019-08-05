@@ -232,14 +232,16 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public boolean update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener listener) {
         // 只有索引字段被更新时才更新索引
         for (Column c : columns) {
             if (updateColumns.contains(c)) {
-                super.update(session, oldRow, newRow, updateColumns);
+                super.update(session, oldRow, newRow, updateColumns, listener);
                 break;
             }
         }
+        return false;
     }
 
     @Override
@@ -254,6 +256,24 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
         }
+    }
+
+    @Override
+    public boolean remove(ServerSession session, Row row, Transaction.Listener listener) {
+        TransactionMap<Value, Value> map = getMap(session);
+        if (map.isLocked(row.getRawValue(), null))
+            return false;
+
+        ValueArray array = convertToKey(row);
+        try {
+            Value old = map.remove(array);
+            if (old == null) {
+                throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
+            }
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+        }
+        return false;
     }
 
     @Override

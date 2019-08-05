@@ -232,6 +232,7 @@ public class Comparison extends Condition {
             }
             return ValueBoolean.get(result);
         }
+        // 对于不是is x或is not x的场景，如果left或right有一个是null，那么返回值也是null
         if (l == ValueNull.INSTANCE) {
             if ((compareType & NULL_SAFE) == 0) {
                 return ValueNull.INSTANCE;

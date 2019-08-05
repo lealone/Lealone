@@ -18,6 +18,7 @@
 package org.lealone.transaction.amte;
 
 import java.nio.ByteBuffer;
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -54,6 +55,7 @@ public class AMTransaction implements Transaction {
     private HashMap<String, Integer> savepoints;
     private Session session;
     private int status;
+    private int isolationLevel = Connection.TRANSACTION_REPEATABLE_READ;
     private boolean autoCommit;
     private boolean prepared;
 
@@ -69,8 +71,14 @@ public class AMTransaction implements Transaction {
         status = Transaction.STATUS_OPEN;
     }
 
+    public void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
+            TransactionalValue head) {
+        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue, head));
+        logId++;
+    }
+
     public void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
-        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue));
+        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue, null));
         logId++;
     }
 
@@ -102,6 +110,10 @@ public class AMTransaction implements Transaction {
         return session != null && !session.isLocal() && session.isShardingMode();
     }
 
+    public boolean isCommitted() {
+        return status == Transaction.STATUS_CLOSED;
+    }
+
     @Override
     public int getStatus() {
         return status;
@@ -110,6 +122,16 @@ public class AMTransaction implements Transaction {
     @Override
     public void setStatus(int status) {
         this.status = status;
+    }
+
+    @Override
+    public void setIsolationLevel(int level) {
+        isolationLevel = level;
+    }
+
+    @Override
+    public int getIsolationLevel() {
+        return isolationLevel;
     }
 
     @Override
@@ -359,7 +381,7 @@ public class AMTransaction implements Transaction {
 
     @Override
     public String toString() {
-        return "AMT[" + transactionName + ", " + autoCommit + "]";
+        return "t[" + transactionName + ", " + autoCommit + "]";
     }
 
     public static String getTransactionName(String hostAndPort, long tid) {

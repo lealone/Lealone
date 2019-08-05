@@ -58,7 +58,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         if (nioEventLoopAdapter == null) {
             try {
                 nioEventLoopAdapter = new NioEventLoopAdapter(config, "client_nio_event_loop_interval", 1000); // 默认1秒
-                ConcurrentUtils.submitTask("Client-Nio-Event-Loop", () -> {
+                ConcurrentUtils.submitTask("ClientNioEventLoopService", () -> {
                     NioNetClient.this.run();
                 });
                 ShutdownHookUtils.addShutdownHook(this, () -> {

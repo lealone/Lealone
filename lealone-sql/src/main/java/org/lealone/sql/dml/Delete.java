@@ -6,9 +6,14 @@
  */
 package org.lealone.sql.dml;
 
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.Trigger;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.RowList;
@@ -20,6 +25,8 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.storage.PageKey;
+import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -159,5 +166,230 @@ public class Delete extends ManipulationStatement {
     @Override
     public TableFilter getTableFilter() {
         return tableFilter;
+    }
+
+    @Override
+    public YieldableUpdate createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+        return new YieldableUpdate(this, pageKeys, handler);
+    }
+
+    @SuppressWarnings("unused")
+    private static class YieldableUpdate2 extends YieldableBase<Integer> implements Transaction.Listener {
+
+        private static enum State {
+            find,
+            update,
+        }
+
+        Delete statement;
+        State state = State.find;
+        Table table;
+        RowList rows;
+        int limitRows;
+        int count;
+
+        AtomicInteger counter = new AtomicInteger();
+
+        public YieldableUpdate2(Delete statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            this.statement = statement;
+            callStop = false;
+        }
+
+        @Override
+        protected boolean startInternal() {
+            statement.tableFilter.startQuery(session);
+            statement.tableFilter.reset();
+            table = statement.tableFilter.getTable();
+            session.getUser().checkRight(table, Right.DELETE);
+            table.fire(session, Trigger.DELETE, true);
+            table.lock(session, true, false);
+            rows = new RowList(session);
+            limitRows = -1;
+            if (statement.limitExpr != null) {
+                Value v = statement.limitExpr.getValue(session);
+                if (v != ValueNull.INSTANCE) {
+                    limitRows = v.getInt();
+                }
+            }
+            statement.setCurrentRowNumber(0);
+            return false;
+        }
+
+        @Override
+        protected void stopInternal() {
+            try {
+                if (table.fireRow()) {
+                    for (rows.reset(); rows.hasNext();) {
+                        Row row = rows.next();
+                        table.fireAfterRow(session, row, null, false);
+                    }
+                }
+                table.fire(session, Trigger.DELETE, false);
+            } finally {
+                rows.close();
+            }
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            switch (state) {
+            case find:
+                if (find()) {
+                    return true;
+                }
+                counter.set(count);
+                rows.reset();
+                state = State.update;
+            case update:
+                if (update()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean find() {
+            while (limitRows != 0 && statement.tableFilter.next()) {
+                boolean yieldIfNeeded = statement.setCurrentRowNumber(rows.size() + 1);
+                if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
+                    Row row = statement.tableFilter.get();
+                    boolean done = false;
+                    if (table.fireRow()) {
+                        done = table.fireBeforeRow(session, row, null);
+                    }
+                    if (!done) {
+                        rows.add(row);
+                    }
+                    count++;
+                    if (limitRows >= 0 && count >= limitRows) {
+                        break;
+                    }
+                }
+                if (yieldIfNeeded) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean update() {
+            boolean yieldIfNeeded = false;
+            int rowScanCount = 0;
+            for (; rows.hasNext();) {
+                if ((++rowScanCount & 127) == 0) {
+                    statement.checkCanceled();
+                    yieldIfNeeded = statement.yieldIfNeeded();
+                }
+                Row row = rows.next();
+                table.removeRow(session, row);
+                if (yieldIfNeeded) {
+                    return true;
+                }
+            }
+            setResult(Integer.valueOf(count), count);
+            return false;
+        }
+
+        @Override
+        public void partialUndo() {
+            state = State.find;
+        }
+
+        @Override
+        public void partialComplete() {
+            if (counter.decrementAndGet() == 0) {
+                stop();
+            }
+        }
+    }
+
+    private static class YieldableUpdate extends YieldableBase<Integer> implements Transaction.Listener {
+        Delete statement;
+        Table table;
+        int limitRows;
+        int count;
+
+        AtomicInteger counter = new AtomicInteger();
+
+        public YieldableUpdate(Delete statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            this.statement = statement;
+            callStop = false;
+        }
+
+        @Override
+        protected boolean startInternal() {
+            statement.tableFilter.startQuery(session);
+            statement.tableFilter.reset();
+            table = statement.tableFilter.getTable();
+            session.getUser().checkRight(table, Right.DELETE);
+            table.fire(session, Trigger.DELETE, true);
+            table.lock(session, true, false);
+            limitRows = -1;
+            if (statement.limitExpr != null) {
+                Value v = statement.limitExpr.getValue(session);
+                if (v != ValueNull.INSTANCE) {
+                    limitRows = v.getInt();
+                }
+            }
+            statement.setCurrentRowNumber(0);
+            return false;
+        }
+
+        @Override
+        protected void stopInternal() {
+            table.fire(session, Trigger.DELETE, false);
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            if (update()) {
+                return true;
+            }
+            counter.set(count);
+            return false;
+        }
+
+        private boolean update() {
+            while (limitRows != 0 && statement.tableFilter.next()) {
+                boolean yieldIfNeeded = statement.setCurrentRowNumber(count + 1);
+                if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
+                    Row row = statement.tableFilter.get();
+                    boolean done = false;
+                    if (table.fireRow()) {
+                        done = table.fireBeforeRow(session, row, null);
+                    }
+                    if (!done) {
+                        table.removeRow(session, row, this);
+                        if (table.fireRow()) {
+                            table.fireAfterRow(session, row, null, false);
+                        }
+                    }
+                    count++;
+                    if (limitRows >= 0 && count >= limitRows) {
+                        break;
+                    }
+                }
+                if (yieldIfNeeded) {
+                    return true;
+                }
+                setResult(Integer.valueOf(count), count);
+            }
+            return false;
+        }
+
+        @Override
+        public void partialUndo() {
+        }
+
+        @Override
+        public void partialComplete() {
+            if (counter.decrementAndGet() == 0) {
+                stop();
+            }
+        }
     }
 }

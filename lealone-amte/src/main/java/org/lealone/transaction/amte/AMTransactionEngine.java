@@ -40,6 +40,7 @@ import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 
+//an async multi-version transaction engine
 public class AMTransactionEngine extends TransactionEngineBase implements StorageEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(AMTransactionEngine.class);
@@ -79,6 +80,10 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
 
     boolean containsTransaction(long tid) {
         return currentTransactions.containsKey(tid);
+    }
+
+    boolean containsUncommittedTransactionLessThan(long tid) {
+        return currentTransactions.lowerKey(tid) != null;
     }
 
     AMTransaction getTransaction(long tid) {

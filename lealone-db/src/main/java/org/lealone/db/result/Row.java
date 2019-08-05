@@ -28,6 +28,7 @@ public class Row implements SearchRow {
     private int version;
     private boolean deleted;
     private Table table;
+    private Object rawValue;
 
     public Row(Value[] data, int memory) {
         this.data = data;
@@ -169,5 +170,13 @@ public class Row implements SearchRow {
     public Row setTable(Table table) {
         this.table = table;
         return this;
+    }
+
+    public Object getRawValue() {
+        return rawValue;
+    }
+
+    public void setRawValue(Object rawValue) {
+        this.rawValue = rawValue;
     }
 }

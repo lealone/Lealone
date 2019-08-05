@@ -20,6 +20,7 @@ import org.lealone.db.table.Table;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
+import org.lealone.transaction.Transaction;
 
 /**
  * An index. Indexes are used to speed up searching data.
@@ -48,9 +49,11 @@ public interface Index extends SchemaObject {
      */
     void add(ServerSession session, Row row);
 
-    default void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    default boolean update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener listener) {
         remove(session, oldRow);
         add(session, newRow);
+        return false;
     }
 
     /**
@@ -60,6 +63,11 @@ public interface Index extends SchemaObject {
      * @param row the row
      */
     void remove(ServerSession session, Row row);
+
+    default boolean remove(ServerSession session, Row row, Transaction.Listener listener) {
+        remove(session, row);
+        return false;
+    }
 
     /**
      * Find a row or a list of rows and create a cursor to iterate over the result.

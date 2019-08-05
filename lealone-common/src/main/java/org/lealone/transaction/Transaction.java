@@ -47,6 +47,10 @@ public interface Transaction {
 
     void setStatus(int status);
 
+    void setIsolationLevel(int level);
+
+    int getIsolationLevel();
+
     long getTransactionId();
 
     boolean isAutoCommit();
@@ -129,5 +133,11 @@ public interface Transaction {
         boolean validate(String localTransactionName);
 
         boolean validate(String hostAndPort, String localTransactionName);
+    }
+
+    interface Listener {
+        void partialUndo();
+
+        void partialComplete();
     }
 }

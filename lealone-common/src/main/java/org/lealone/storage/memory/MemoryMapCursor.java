@@ -23,11 +23,22 @@ import java.util.Map.Entry;
 import org.lealone.storage.StorageMapCursor;
 
 public class MemoryMapCursor<K, V> implements StorageMapCursor<K, V> {
+
     private final Iterator<Entry<K, V>> iterator;
     private Entry<K, V> e;
 
     public MemoryMapCursor(Iterator<Entry<K, V>> iterator) {
         this.iterator = iterator;
+    }
+
+    @Override
+    public K getKey() {
+        return e.getKey();
+    }
+
+    @Override
+    public V getValue() {
+        return e.getValue();
     }
 
     @Override
@@ -44,15 +55,5 @@ public class MemoryMapCursor<K, V> implements StorageMapCursor<K, V> {
     @Override
     public void remove() {
         iterator.remove();
-    }
-
-    @Override
-    public K getKey() {
-        return e.getKey();
-    }
-
-    @Override
-    public V getValue() {
-        return e.getValue();
     }
 }

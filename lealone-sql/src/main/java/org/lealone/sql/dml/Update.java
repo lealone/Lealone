@@ -9,6 +9,8 @@ package org.lealone.sql.dml;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -17,6 +19,8 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.RowList;
@@ -31,6 +35,8 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.storage.PageKey;
+import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -123,6 +129,13 @@ public class Update extends ManipulationStatement {
         return this;
     }
 
+    // @Override
+    // public int update() {
+    // YieldableBase<Integer> update = createYieldableUpdate(null, null);
+    // update.run();
+    // return update.getResult();
+    // }
+
     @Override
     public int update() {
         tableFilter.startQuery(session);
@@ -189,7 +202,7 @@ public class Update extends ManipulationStatement {
             // we need to update all indexes) before row triggers
 
             // the cached row is already updated - we need the old values
-            table.updateRows(this, session, rows, this.columns);
+            table.updateRows(this, session, rows, this.columns, null);
             if (table.fireRow()) {
                 rows.invalidateCache();
                 for (rows.reset(); rows.hasNext();) {
@@ -232,5 +245,276 @@ public class Update extends ManipulationStatement {
 
         priority = NORM_PRIORITY - 1;
         return priority;
+    }
+
+    @Override
+    public YieldableUpdate createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+        return new YieldableUpdate(this, pageKeys, handler);
+    }
+
+    @SuppressWarnings("unused")
+    private static class YieldableUpdate2 extends YieldableBase<Integer> implements Transaction.Listener {
+
+        private static enum State {
+            find,
+            update,
+        }
+
+        Update statement;
+        State state = State.find;
+        Table table;
+        RowList rows;
+        Column[] columns;
+        int columnCount;
+        int limitRows;
+        int updateCount;
+
+        AtomicInteger counter = new AtomicInteger();
+
+        public YieldableUpdate2(Update statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            this.statement = statement;
+            callStop = false;
+        }
+
+        @Override
+        protected boolean startInternal() {
+            statement.tableFilter.startQuery(session);
+            statement.tableFilter.reset();
+            rows = new RowList(session);
+            table = statement.tableFilter.getTable();
+            session.getUser().checkRight(table, Right.UPDATE);
+            table.fire(session, Trigger.UPDATE, true);
+            table.lock(session, true, false);
+            columnCount = table.getColumns().length;
+            // get the old rows, compute the new rows
+            statement.setCurrentRowNumber(0);
+            updateCount = 0;
+            columns = table.getColumns();
+            limitRows = -1;
+            if (statement.limitExpr != null) {
+                Value v = statement.limitExpr.getValue(session);
+                if (v != ValueNull.INSTANCE) {
+                    limitRows = v.getInt();
+                }
+            }
+            return false;
+        }
+
+        @Override
+        protected void stopInternal() {
+            try {
+                if (table.fireRow()) {
+                    rows.invalidateCache();
+                    for (rows.reset(); rows.hasNext();) {
+                        Row o = rows.next();
+                        Row n = rows.next();
+                        table.fireAfterRow(session, o, n, false);
+                    }
+                }
+                table.fire(session, Trigger.UPDATE, false);
+            } finally {
+                rows.close();
+            }
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            switch (state) {
+            case find:
+                if (find()) {
+                    return true;
+                }
+                counter.set(updateCount);
+                state = State.update;
+            case update:
+                if (update()) {
+                    return true;
+                }
+            }
+            setResult(Integer.valueOf(updateCount), updateCount);
+            return false;
+        }
+
+        private boolean find() {
+            while (statement.tableFilter.next()) {
+                boolean yieldIfNeeded = statement.setCurrentRowNumber(updateCount + 1);
+                if (limitRows >= 0 && updateCount >= limitRows) {
+                    break;
+                }
+                if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
+                    Row oldRow = statement.tableFilter.get();
+                    Row newRow = table.getTemplateRow();
+                    newRow.setKey(oldRow.getKey()); // 复用原来的行号
+                    // newRow.setTransactionId(session.getTransaction().getTransactionId());
+                    for (int i = 0; i < columnCount; i++) {
+                        Expression newExpr = statement.expressionMap.get(columns[i]);
+                        Value newValue;
+                        if (newExpr == null) {
+                            newValue = oldRow.getValue(i);
+                        } else if (newExpr == ValueExpression.getDefault()) {
+                            Column column = table.getColumn(i);
+                            newValue = table.getDefaultValue(session, column);
+                        } else {
+                            Column column = table.getColumn(i);
+                            newValue = column.convert(newExpr.getValue(session));
+                        }
+                        newRow.setValue(i, newValue);
+                    }
+                    table.validateConvertUpdateSequence(session, newRow);
+                    boolean done = false;
+                    if (table.fireRow()) {
+                        done = table.fireBeforeRow(session, oldRow, newRow);
+                    }
+                    if (!done) {
+                        rows.add(oldRow);
+                        rows.add(newRow);
+                    }
+                    updateCount++;
+                }
+                if (yieldIfNeeded) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean update() {
+            // TODO self referencing referential integrity constraints
+            // don't work if update is multi-row and 'inversed' the condition!
+            // probably need multi-row triggers with 'deleted' and 'inserted'
+            // at the same time. anyway good for sql compatibility
+            // TODO update in-place (but if the key changes,
+            // we need to update all indexes) before row triggers
+
+            // the cached row is already updated - we need the old values
+            boolean yieldIfNeeded = table.updateRows(statement, session, rows, statement.columns, this);
+            return yieldIfNeeded;
+        }
+
+        @Override
+        public void partialUndo() {
+            state = State.find;
+        }
+
+        @Override
+        public void partialComplete() {
+            if (counter.decrementAndGet() == 0) {
+                stop();
+            }
+        }
+    }
+
+    private static class YieldableUpdate extends YieldableBase<Integer> implements Transaction.Listener {
+        Update statement;
+        Table table;
+        Column[] columns;
+        int columnCount;
+        int limitRows;
+        int updateCount;
+
+        AtomicInteger counter = new AtomicInteger();
+
+        public YieldableUpdate(Update statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            this.statement = statement;
+            callStop = false;
+        }
+
+        @Override
+        protected boolean startInternal() {
+            statement.tableFilter.startQuery(session);
+            statement.tableFilter.reset();
+            table = statement.tableFilter.getTable();
+            session.getUser().checkRight(table, Right.UPDATE);
+            table.fire(session, Trigger.UPDATE, true);
+            table.lock(session, true, false);
+            columnCount = table.getColumns().length;
+            // get the old rows, compute the new rows
+            statement.setCurrentRowNumber(0);
+            updateCount = 0;
+            columns = table.getColumns();
+            limitRows = -1;
+            if (statement.limitExpr != null) {
+                Value v = statement.limitExpr.getValue(session);
+                if (v != ValueNull.INSTANCE) {
+                    limitRows = v.getInt();
+                }
+            }
+            return false;
+        }
+
+        @Override
+        protected void stopInternal() {
+            table.fire(session, Trigger.UPDATE, false);
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            if (update()) {
+                return true;
+            }
+            counter.set(updateCount);
+            setResult(Integer.valueOf(updateCount), updateCount);
+            callStop = true;
+            return false;
+        }
+
+        private boolean update() {
+            while (statement.tableFilter.next()) {
+                boolean yieldIfNeeded = statement.setCurrentRowNumber(updateCount + 1);
+                if (limitRows >= 0 && updateCount >= limitRows) {
+                    break;
+                }
+                if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
+                    Row oldRow = statement.tableFilter.get();
+                    Row newRow = table.getTemplateRow();
+                    newRow.setKey(oldRow.getKey()); // 复用原来的行号
+                    for (int i = 0; i < columnCount; i++) {
+                        Expression newExpr = statement.expressionMap.get(columns[i]);
+                        Value newValue;
+                        if (newExpr == null) {
+                            newValue = oldRow.getValue(i);
+                        } else if (newExpr == ValueExpression.getDefault()) {
+                            Column column = table.getColumn(i);
+                            newValue = table.getDefaultValue(session, column);
+                        } else {
+                            Column column = table.getColumn(i);
+                            newValue = column.convert(newExpr.getValue(session));
+                        }
+                        newRow.setValue(i, newValue);
+                    }
+                    table.validateConvertUpdateSequence(session, newRow);
+                    boolean done = false;
+                    if (table.fireRow()) {
+                        done = table.fireBeforeRow(session, oldRow, newRow);
+                    }
+                    if (!done) {
+                        yieldIfNeeded = table.updateRow(session, oldRow, newRow, statement.columns, this);
+                        if (table.fireRow()) {
+                            table.fireAfterRow(session, oldRow, newRow, false);
+                        }
+                    }
+                    updateCount++;
+                }
+                if (yieldIfNeeded) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public void partialUndo() {
+        }
+
+        @Override
+        public void partialComplete() {
+            if (counter.decrementAndGet() == 0) {
+                stop();
+            }
+        }
     }
 }

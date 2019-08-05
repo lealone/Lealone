@@ -54,13 +54,14 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
         netServer.init(config);
 
         NetEndpoint.setLocalTcpEndpoint(getHost(), getPort());
+        ScheduleService.init(config);
     }
 
     @Override
     public synchronized void start() {
         if (isStarted())
             return;
-        CommandHandler.startCommandHandlers(getConfig());
+        ScheduleService.start();
         super.start();
     }
 
@@ -69,7 +70,7 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
         if (isStopped())
             return;
         super.stop();
-        CommandHandler.stopCommandHandlers();
+        ScheduleService.stop();
     }
 
     @Override

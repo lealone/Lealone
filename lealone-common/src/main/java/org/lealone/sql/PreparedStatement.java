@@ -17,8 +17,13 @@
  */
 package org.lealone.sql;
 
+import java.util.List;
+
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
+import org.lealone.storage.PageKey;
 
 public interface PreparedStatement extends SQLStatement {
 
@@ -69,4 +74,30 @@ public interface PreparedStatement extends SQLStatement {
     Session getSession();
 
     String getSQL();
+
+    boolean isSuspended();
+
+    void suspend();
+
+    void resume();
+
+    Yieldable<Integer> createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler);
+
+    Yieldable<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Result>> handler);
+
+    static interface Yieldable<T> {
+        boolean run();
+
+        T getResult();
+    }
+
+    default boolean yieldIfNeeded() {
+        Thread t = Thread.currentThread();
+        if (t instanceof SQLStatementExecutor) {
+            SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
+            return sqlStatementExecutor.yieldIfNeeded(this);
+        }
+        return false;
+    }
 }

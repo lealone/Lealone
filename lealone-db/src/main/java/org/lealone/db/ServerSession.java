@@ -1050,7 +1050,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
     }
 
-    private boolean isExclusiveMode() {
+    public boolean isExclusiveMode() {
         ServerSession exclusive = database.getExclusiveSession();
         if (exclusive == null || exclusive == this) {
             return false;

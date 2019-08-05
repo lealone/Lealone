@@ -11,6 +11,8 @@ import java.util.Map.Entry;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.DelegatedStorageMap;
 import org.lealone.storage.IterationParameters;
@@ -96,7 +98,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     public V get(K key) {
         TransactionalValue data = map.get(key);
         data = getValue(key, data);
-        return data == null ? null : (V) data.value;
+        return data == null ? null : (V) data.getValue();
     }
 
     @Override
@@ -104,7 +106,25 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     public V get(K key, int[] columnIndexes) {
         TransactionalValue data = map.get(key, columnIndexes);
         data = getValue(key, data);
-        return data == null ? null : (V) data.value;
+        return data == null ? null : (V) data.getValue();
+    }
+
+    @Override
+    public Object getTransactionalValue(K key) {
+        return map.get(key);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Object[] getUncommitted(K key, int[] columnIndexes) {
+        TransactionalValue data = map.get(key, columnIndexes);
+        data = getValue(key, data);
+        return new Object[] { data == null ? null : (V) data.getValue(), data };
+    }
+
+    @Override
+    public boolean isLocked(Object oldValue, int[] columnIndexes) {
+        return ((TransactionalValue) oldValue).isLocked(transaction.transactionId, columnIndexes);
     }
 
     /**
@@ -115,12 +135,37 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
      * @return the value
      */
     protected TransactionalValue getValue(K key, TransactionalValue data) {
+        if (data == null) {
+            // doesn't exist or deleted by a committed transaction
+            return null;
+        }
+        TransactionalValue tv = data.getCommitted(transaction);
+        if (tv != null)
+            return tv;
+
+        // 数据从节点A迁移到节点B的过程中，如果把A中未提交的值也移到B中，
+        // 那么在节点B中会读到不一致的数据，此时需要从节点A读出正确的值
+        // TODO 如何更高效的判断，不用比较字符串
+        if (data.getHostAndPort() != null && !data.getHostAndPort().equals(NetEndpoint.getLocalTcpHostAndPort())) {
+            return getRemoteTransactionalValue(data.getHostAndPort(), key);
+        }
+        long tid = data.getTid();
+        tv = getValue(key, data, tid);
+        if (tv != null)
+            return tv;
+
+        // 底层存储写入了未提交事务的脏数据，并且在事务提交前数据库崩溃了
+        if (!transaction.transactionEngine.containsTransaction(tid)) {
+            return data.undo(map, key);
+        }
+
+        // TODO 删除下面的代码
         while (true) {
             if (data == null) {
                 // doesn't exist or deleted by a committed transaction
                 return null;
             }
-            long tid = data.getTid();
+            tid = data.getTid();
             if (tid == 0) {
                 // it is committed
                 return data;
@@ -191,13 +236,8 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     }
 
     @Override
-    public V put(K key, V oldValue, V newValue, int[] columnIndexes) {
-        TransactionalValue oldTV = TransactionalValue.createCommitted(oldValue);
-        boolean ok = trySet(key, newValue, oldTV, columnIndexes);
-        if (ok) {
-            return oldValue;
-        }
-        throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
+    public boolean put(K key, Object oldValue, V newValue, int[] columnIndexes, Transaction.Listener listener) {
+        return trySetAsync(key, newValue, (TransactionalValue) oldValue, columnIndexes, listener);
     }
 
     @SuppressWarnings("unchecked")
@@ -207,7 +247,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
         boolean ok = trySet(key, value, oldValue);
         if (ok) {
             oldValue = getValue(key, oldValue);
-            return oldValue == null ? null : (V) oldValue.value;
+            return oldValue == null ? null : (V) oldValue.getValue();
         }
         throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
     }
@@ -257,14 +297,62 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
         return trySet(key, value, oldValue, null);
     }
 
+    // 返回true就表示要让出当前线程
+    private boolean trySetAsync(K key, V value, TransactionalValue oldValue, int[] columnIndexes,
+            Transaction.Listener listener) {
+        String mapName = getName();
+        // insert
+        if (oldValue == null) {
+            TransactionalValue ref = TransactionalValue.createRef(null);
+            TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null,
+                    map.getValueType(), columnIndexes, ref);
+            ref.setRefValue(newValue);
+            transaction.log(mapName, key, null, newValue, ref);
+            AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
+                if (ar.isSucceeded()) {
+                    TransactionalValue old = ar.getResult();
+                    if (old != null) {
+                        transaction.logUndo();
+                        listener.partialUndo();
+                    } else {
+                        listener.partialComplete();
+                    }
+                } else {
+                    transaction.logUndo();
+                    listener.partialUndo();
+                }
+            };
+            map.putIfAbsent(key, ref, handler);
+            return true;
+        }
+
+        // update or delete
+        while (!oldValue.isLocked(transaction.transactionId, columnIndexes)) {
+            TransactionalValue refValue = oldValue.getRefValue();
+            TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
+                    map.getValueType(), columnIndexes, oldValue);
+            transaction.log(mapName, key, refValue, newValue, oldValue);
+            if (oldValue.compareAndSet(refValue, newValue))
+                return false;
+            else
+                transaction.logUndo();
+        }
+        // the transaction is not yet committed
+        return true;
+    }
+
     private boolean trySet(K key, V value, TransactionalValue oldValue, int[] columnIndexes) {
         TransactionalValue newValue = TransactionalValue.create(transaction, value, oldValue, map.getValueType(),
                 columnIndexes);
         String mapName = getName();
         if (oldValue == null) {
+            TransactionalValue ref = TransactionalValue.createRef(null);
+            newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(), columnIndexes,
+                    ref);
+            ref.setRefValue(newValue);
             // a new value
             transaction.log(mapName, key, oldValue, newValue);
-            TransactionalValue old = map.putIfAbsent(key, newValue);
+            TransactionalValue old = map.putIfAbsent(key, ref);
             if (old != null) {
                 transaction.logUndo();
                 return false;
@@ -272,7 +360,8 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
             return true;
         }
         long tid = oldValue.getTid();
-        if (tid == 0 || tid == transaction.transactionId || !oldValue.isLocked(columnIndexes)) {
+        if (tid == 0 || tid == transaction.transactionId
+                || !oldValue.isLocked(transaction.transactionId, columnIndexes)) {
             // committed
             transaction.log(mapName, key, oldValue, newValue);
             TransactionalValue current = oldValue;
@@ -280,10 +369,10 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
             // overwrite the value
             while (!map.replace(key, current, newValue)) {
                 current = map.get(key);
-                if (!current.isLocked(columnIndexes)) {
+                if (!current.isLocked(transaction.transactionId, columnIndexes)) {
                     transaction.logUndo();
-                    newValue = TransactionalValue.create(transaction, value, current, map.getValueType(),
-                            columnIndexes);
+                    newValue = TransactionalValue.createUncommitted(transaction, value, current, map.getValueType(),
+                            columnIndexes, oldValue);
                     // 只记录最初的oldValue，而不是current
                     transaction.log(mapName, key, oldValue, newValue);
                     continue;
@@ -331,6 +420,11 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     @Override
     public V remove(K key) {
         return set(key, null);
+    }
+
+    @Override
+    public boolean remove(K key, Object oldValue, Transaction.Listener listener) {
+        return trySetAsync(key, null, (TransactionalValue) oldValue, null, listener);
     }
 
     @Override
@@ -445,7 +539,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
                 K key = cursor.next();
                 TransactionalValue data = cursor.getValue();
                 data = getValue(key, data);
-                if (data != null && data.value != null) {
+                if (data != null && data.getValue() != null) {
                     size++;
                 }
             }
@@ -558,8 +652,11 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     @SuppressWarnings("unchecked")
     @Override
     public K append(V value) { // 追加新记录时不会产生事务冲突
-        TransactionalValue newValue = TransactionalValue.create(transaction, value, null, null);
-        K key = map.append(newValue);
+        TransactionalValue ref = TransactionalValue.createRef(null);
+        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
+                null, ref);
+        ref.setRefValue(newValue);
+        K key = map.append(ref);
         // 记事务log和append新值都是更新内存中的相应数据结构，所以不必把log调用放在append前面
         // 放在前面的话调用log方法时就不知道key是什么，当事务要rollback时就不知道如何修改map的内存数据
         transaction.logAppend((StorageMap<Object, TransactionalValue>) map, key, newValue);
@@ -587,7 +684,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
         DataUtils.checkArgument(value != null, "The value may not be null");
         TransactionalValue newValue = TransactionalValue.createCommitted(value);
         TransactionalValue oldValue = map.put(key, newValue);
-        return (V) (oldValue == null ? null : oldValue.value);
+        return (V) (oldValue == null ? null : oldValue.getValue());
     }
 
     @Override
@@ -644,10 +741,10 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
                     final K key = k;
                     TransactionalValue data = cursor.getValue();
                     data = getValue(key, data);
-                    if (data != null && data.value != null) {
+                    if (data != null && data.getValue() != null) {
                         @SuppressWarnings("unchecked")
-                        final V value = (V) data.value;
-                        current = new DataUtils.MapEntry<K, V>(key, value);
+                        final V value = (V) data.getValue();
+                        current = new DataUtils.MapEntry<K, V>(key, value, data);
                         currentKey = key;
                         return;
                     }

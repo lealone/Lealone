@@ -1554,4 +1554,9 @@ public class Select extends Query {
 
         return columnSet;
     }
+
+    // test only
+    public Expression getCondition() {
+        return condition;
+    }
 }
