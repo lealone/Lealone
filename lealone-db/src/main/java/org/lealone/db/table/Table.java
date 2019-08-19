@@ -18,6 +18,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.ProcessingMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
@@ -89,6 +90,7 @@ public abstract class Table extends SchemaObjectBase {
     private int version = -1;
     private String packageName;
     private String codePath;
+    private ProcessingMode processingMode = ProcessingMode.OLTP;
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
         super(schema, id, name, Trace.TABLE);
@@ -1184,5 +1186,13 @@ public abstract class Table extends SchemaObjectBase {
 
     public void setCodePath(String codePath) {
         this.codePath = codePath;
+    }
+
+    public void setProcessingMode(ProcessingMode mode) {
+        processingMode = mode;
+    }
+
+    public ProcessingMode getProcessingMode() {
+        return processingMode;
     }
 }

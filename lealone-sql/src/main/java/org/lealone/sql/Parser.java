@@ -26,6 +26,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.DbSettings;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Procedure;
+import org.lealone.db.ProcessingMode;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SetTypes;
@@ -5756,6 +5757,7 @@ public class Parser implements SQLParser {
                 parseTableDefinition(schema, command, tableName);
             }
         }
+        command.setProcessingMode(parseProcessingMode());
         if (readIf("ENGINE")) {
             readIf("=");
             command.setStorageEngineName(readUniqueIdentifier());
@@ -5798,6 +5800,23 @@ public class Parser implements SQLParser {
             command.setQuery(parseSelect());
         }
         return command;
+    }
+
+    private ProcessingMode parseProcessingMode() {
+        if (readIf("PROCESSING")) {
+            read("MODE");
+            if (readIf("OLTP"))
+                return ProcessingMode.OLTP;
+            else if (readIf("OLAP"))
+                return ProcessingMode.OLAP;
+            else if (readIf("BP"))
+                return ProcessingMode.BP;
+            else {
+                read("SP");
+                return ProcessingMode.SP;
+            }
+        }
+        return ProcessingMode.OLTP;
     }
 
     private static int getCompareType(int tokenType) {
