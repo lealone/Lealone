@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.exceptions.UnsupportedSchemaException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
@@ -2889,6 +2890,9 @@ public class Parser implements SQLParser {
         schemaName = defaultSchemaName;
         if (readIf(".")) {
             schemaName = s;
+            if (LealoneDatabase.isUnsupportedSchema(schemaName)) {
+                throw new UnsupportedSchemaException(session, originalSQL);
+            }
             if (currentTokenType != IDENTIFIER) {
                 throw DbException.getSyntaxError(sqlCommand, parseIndex, "identifier");
             }

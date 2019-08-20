@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveConcurrentHashMap;
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.api.ErrorCode;
 
 /**
@@ -39,10 +40,19 @@ public class LealoneDatabase extends Database {
     public static final int ID = 0;
     public static final String NAME = Constants.PROJECT_NAME;
 
+    private static final CaseInsensitiveMap<String> UNSUPPORTED_SCHEMA_MAP = new CaseInsensitiveMap<>();
     private static LealoneDatabase INSTANCE = new LealoneDatabase();
 
     public static LealoneDatabase getInstance() {
         return INSTANCE;
+    }
+
+    public static void addUnsupportedSchema(String schemaName) {
+        UNSUPPORTED_SCHEMA_MAP.put(schemaName, schemaName);
+    }
+
+    public static boolean isUnsupportedSchema(String schemaName) {
+        return UNSUPPORTED_SCHEMA_MAP.containsKey(schemaName);
     }
 
     private final ConcurrentHashMap<String, Database> databases;;
