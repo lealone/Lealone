@@ -241,7 +241,7 @@ public class TcpServerConnection extends TcpConnection {
         transfer.flush();
     }
 
-    private static void writeResponseHeader(Transfer transfer, Session session, int id) throws IOException {
+    protected static void writeResponseHeader(Transfer transfer, Session session, int id) throws IOException {
         transfer.writeResponseHeader(id, getStatus(session));
     }
 
@@ -285,7 +285,9 @@ public class TcpServerConnection extends TcpConnection {
         command.setFetchSize(fetchSize);
 
         List<PageKey> pageKeys = readPageKeys(transfer);
-
+        if (executeQueryAsync(session, sessionId, command, transfer, id, operation, resultId, fetchSize)) {
+            return;
+        }
         PreparedStatement.Yieldable<?> yieldable = command.createYieldableQuery(maxRows, scrollable, pageKeys, res -> {
             if (res.isSucceeded()) {
                 Result result = res.getResult();
@@ -298,9 +300,10 @@ public class TcpServerConnection extends TcpConnection {
         addPreparedCommandToQueue(pc, sessionId);
     }
 
-    // protected void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
-    // PreparedStatement command, int resultId, int maxRowsint, int fetchSize) throws IOException {
-    // }
+    protected boolean executeQueryAsync(Session session, int sessionId, PreparedStatement command, Transfer transfer,
+            int id, int operation, int resultId, int fetchSize) throws IOException {
+        return false;
+    }
 
     protected void sendResult(Transfer transfer, Session session, int sessionId, int id, int operation, Result result,
             int resultId, int fetchSize) {

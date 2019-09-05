@@ -472,6 +472,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             transaction.setStatus(Transaction.STATUS_COMMITTING);
             sessionStatus = SessionStatus.COMMITTING_TRANSACTION;
             transaction.prepareCommit();
+        } else {
+            // 在手动提交模式下执行了COMMIT语句，然后再手动提交事务，
+            // 此时transaction为null，但是runnable不为null
+            if (runnable != null)
+                runnable.run();
         }
     }
 
