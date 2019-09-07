@@ -17,8 +17,6 @@
  */
 package org.lealone.storage.aose;
 
-import java.util.Map;
-
 import org.lealone.db.DataHandler;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
@@ -35,17 +33,6 @@ public class AOStorageEngine extends StorageEngineBase {
     }
 
     @Override
-    public void init(Map<String, String> config) {
-        super.init(config);
-        AOStorageService.getInstance().start(config);
-    }
-
-    @Override
-    public void close() {
-        AOStorageService.getInstance().close();
-    }
-
-    @Override
     public StorageBuilder getStorageBuilder() {
         return new AOStorageBuilder(config);
     }
@@ -54,5 +41,4 @@ public class AOStorageEngine extends StorageEngineBase {
     public LobStorage getLobStorage(DataHandler dataHandler, Storage storage) {
         return new AOLobStorage(dataHandler, storage);
     }
-
 }

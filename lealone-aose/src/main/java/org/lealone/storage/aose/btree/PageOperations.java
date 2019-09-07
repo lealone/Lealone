@@ -17,6 +17,7 @@
  */
 package org.lealone.storage.aose.btree;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
@@ -77,8 +78,34 @@ public abstract class PageOperations {
         }
     }
 
-    public static class WriteOperation<K, V> implements PageOperation {
+    public static class CallableOperation implements PageOperation {
+        final Callable<?> callable;
 
+        public CallableOperation(Callable<?> task) {
+            callable = task;
+        }
+
+        @Override
+        public void run() {
+            try {
+                callable.call();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
+    }
+
+    public static class WriteOperation implements PageOperation {
+        final Runnable runnable;
+
+        public WriteOperation(Runnable task) {
+            runnable = task;
+        }
+
+        @Override
+        public void run() {
+            runnable.run();
+        }
     }
 
     public static class Put<K, V, R> implements PageOperation {
@@ -507,6 +534,7 @@ public abstract class PageOperations {
             this.right = right;
             this.key = key;
         }
+
     }
 
     private static TmpNodePage splitPage(BTreePage p) {

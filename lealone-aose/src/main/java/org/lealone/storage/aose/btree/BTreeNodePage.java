@@ -16,7 +16,8 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.aose.AOStorageService;
+import org.lealone.storage.PageOperationHandlerFactory;
+import org.lealone.storage.aose.btree.PageOperations.CallableOperation;
 import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
 
 /**
@@ -461,7 +462,7 @@ public class BTreeNodePage extends BTreeLocalPage {
                     return p;
                 }
             };
-            AOStorageService.submitTask(task);
+            PageOperationHandlerFactory.addPageOperation(new CallableOperation(task));
         }
     }
 
@@ -480,7 +481,7 @@ public class BTreeNodePage extends BTreeLocalPage {
                         return p;
                     }
                 };
-                AOStorageService.submitTask(task);
+                PageOperationHandlerFactory.addPageOperation(new CallableOperation(task));
             } else if (children[i].page != null && children[i].page.isNode()) {
                 readRemotePagesRecursive();
             }

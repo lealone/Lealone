@@ -37,13 +37,13 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
-import org.lealone.storage.aose.AOStorageService;
 import org.lealone.storage.aose.StorageMapBuilder;
 import org.lealone.storage.aose.btree.PageOperations.Get;
 import org.lealone.storage.aose.btree.PageOperations.Put;
 import org.lealone.storage.aose.btree.PageOperations.PutIfAbsent;
 import org.lealone.storage.aose.btree.PageOperations.Remove;
 import org.lealone.storage.aose.btree.PageOperations.Replace;
+import org.lealone.storage.aose.btree.PageOperations.WriteOperation;
 import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.storage.type.StorageDataType;
 
@@ -510,10 +510,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private void moveLeafPageLazy(PageKey pageKey) {
-        AOStorageService.addPendingTask(() -> {
+        WriteOperation operation = new WriteOperation(() -> {
             moveLeafPage(pageKey);
-            return null;
         });
+        PageOperationHandlerFactory.addPageOperation(operation);
     }
 
     private void moveLeafPage(PageKey pageKey) {
@@ -742,7 +742,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private void removeLeafPage(PageKey pageKey, BTreePage leafPage) {
         if (leafPage.getReplicationHostIds().get(0).equals(getLocalHostId())) {
-            AOStorageService.submitTask(() -> {
+            WriteOperation operation = new WriteOperation(() -> {
                 List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(leafPage);
                 Set<NetEndpoint> otherEndpoints = getCandidateEndpoints();
                 otherEndpoints.removeAll(oldReplicationEndpoints);
@@ -752,6 +752,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     c.removeLeafPage(getName(), pageKey);
                 }
             });
+            PageOperationHandlerFactory.addPageOperation(operation);
         }
     }
 
