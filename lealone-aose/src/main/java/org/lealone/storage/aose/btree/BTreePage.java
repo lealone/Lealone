@@ -11,6 +11,8 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
@@ -19,6 +21,10 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.PageOperation;
+import org.lealone.storage.PageOperationHandler;
+import org.lealone.storage.PageOperationHandlerFactory;
+import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
 import org.lealone.storage.fs.FileStorage;
 
 /**
@@ -37,16 +43,107 @@ import org.lealone.storage.fs.FileStorage;
  */
 public class BTreePage {
 
+    public static class DynamicInfo {
+        public final State state;
+        public final BTreePage redirect;
+
+        public DynamicInfo() {
+            this(State.NORMAL, null);
+        }
+
+        public DynamicInfo(State state, BTreePage redirect) {
+            this.state = state;
+            this.redirect = redirect;
+        }
+
+        public static DynamicInfo redirectTo(BTreePage p) {
+            return new DynamicInfo(State.NORMAL, p);
+        }
+    }
+
+    public static enum State {
+        NORMAL,
+        SPLITTING,
+        SPLITTED;
+
+        BTreePage redirect;
+
+        public BTreePage getRedirect() {
+            return redirect;
+        }
+
+        public void setRedirect(BTreePage redirect) {
+            this.redirect = redirect;
+        }
+    }
+
     /**
      * An empty object array.
      */
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
+    private static final AtomicLong ids = new AtomicLong(0);
+
     protected final BTreeMap<?, ?> map;
     protected long pos;
+    protected org.lealone.storage.PageOperationHandler handler;
+    // private final int handlerId;
+
+    // BTreePage parent;
+
+    volatile DynamicInfo dynamicInfo = new DynamicInfo();
+    // AtomicLong counter = new AtomicLong();
+    int size;
+    final long id;
+    final ConcurrentLinkedQueue<PageOperation> tasks = new ConcurrentLinkedQueue<>();
+
+    private boolean splitEnabled = true;
 
     protected BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
+        id = ids.incrementAndGet();
+        if (isNode())
+            handler = PageOperationHandlerFactory.getNodePageOperationHandler();
+        else if (isLeaf())
+            handler = PageOperationHandlerFactory.getHandler(id);
+        // if (handler != null)
+        // handler.addQueue(id, tasks);
+    }
+
+    public boolean isSplitEnabled() {
+        return splitEnabled;
+    }
+
+    public void enableSplit() {
+        splitEnabled = true;
+    }
+
+    public void disableSplit() {
+        splitEnabled = false;
+    }
+
+    public void redirectTo(BTreePage p) {
+        dynamicInfo = DynamicInfo.redirectTo(p);
+    }
+
+    public void setHandler(PageOperationHandler handler) {
+        this.handler = handler;
+    }
+
+    public PageOperationHandler getHandler() {
+        return handler; // PageOperationHandler.getHandler(0); // throw ie();
+    }
+
+    public void addTask(PageOperation task) {
+        if (handler != null) {
+            // tasks.add(task);
+            // handler.addQueue(id, tasks);
+            // handler.wakeUp();
+            handler.handlePageOperation(task);
+        }
+    }
+
+    public void updateCount(long delta) {
     }
 
     /**
@@ -109,6 +206,10 @@ public class BTreePage {
      */
     public long getTotalCount() {
         return 0;
+    }
+
+    public AtomicLong getCounter() {
+        return null;
     }
 
     /**
@@ -225,6 +326,14 @@ public class BTreePage {
         throw ie();
     }
 
+    public void setChild(long childCount) {
+        throw ie();
+    }
+
+    void setAndInsertChild(int index, TmpNodePage tmpNodePage) {
+        throw ie();
+    }
+
     /**
      * Insert a key-value pair into this leaf.
      * 
@@ -315,7 +424,7 @@ public class BTreePage {
     }
 
     public int getRawChildPageCount() {
-        throw ie();
+        return 0;
     }
 
     public int getMemory() {
@@ -569,7 +678,7 @@ public class BTreePage {
      * @return the page
      */
     public static BTreeLocalPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, PageReference[] children,
-            long totalCount, int memory) {
+            AtomicLong totalCount, int memory) {
         if (children != null)
             return BTreeNodePage.create(map, keys, children, totalCount, memory);
         else
@@ -683,5 +792,13 @@ public class BTreePage {
         if (chunk.sumOfPageLength > BTreeChunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", BTreeChunk.MAX_SIZE, chunk.sumOfPageLength);
+    }
+
+    public Object[] getKeys() {
+        throw ie();
+    }
+
+    public Object[] getValues() {
+        throw ie();
     }
 }

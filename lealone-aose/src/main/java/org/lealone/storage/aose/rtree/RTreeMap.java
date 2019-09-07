@@ -8,6 +8,7 @@ package org.lealone.storage.aose.rtree;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.AOStorage;
@@ -203,10 +204,9 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
                 Object k1 = getBounds(p);
                 Object k2 = getBounds(split);
                 Object[] keys = { k1, k2 };
-                PageReference[] children = { new PageReference(p, p.getPos(), p.getTotalCount()),
-                        new PageReference(split, split.getPos(), split.getTotalCount()),
-                        new PageReference(null, 0, 0) };
-                p = BTreePage.create(this, keys, null, children, totalCount, 0);
+                PageReference[] children = { new PageReference(p), new PageReference(split),
+                        new PageReference(null, 0, new AtomicLong(0)) };
+                p = BTreePage.create(this, keys, null, children, new AtomicLong(totalCount), 0);
                 // now p is a node; continues
             }
             add(p, key, value);
@@ -397,9 +397,9 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
             refs = null;
         } else {
             values = null;
-            refs = new PageReference[] { new PageReference(null, 0, 0) };
+            refs = new PageReference[] { new PageReference(null, 0, new AtomicLong(0)) };
         }
-        return BTreePage.create(this, BTreePage.EMPTY_OBJECT_ARRAY, values, refs, 0, 0);
+        return BTreePage.create(this, BTreePage.EMPTY_OBJECT_ARRAY, values, refs, new AtomicLong(0), 0);
     }
 
     private static void move(BTreePage source, BTreePage target, int sourceIndex) {

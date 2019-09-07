@@ -17,16 +17,14 @@
  */
 package org.lealone.storage.aose.btree;
 
-import java.util.Iterator;
 import java.util.List;
 
-import org.lealone.common.util.DataUtils;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
 
 //按page key遍历对应的page
-class PageKeyCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
+class PageKeyCursor<K, V> implements StorageMapCursor<K, V> {
 
     private final List<PageKey> pageKeys;
     private CursorPos pos;
@@ -49,6 +47,16 @@ class PageKeyCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
     }
 
     @Override
+    public K getKey() {
+        return lastKey;
+    }
+
+    @Override
+    public V getValue() {
+        return lastValue;
+    }
+
+    @Override
     public boolean hasNext() {
         return currentKey != null;
     }
@@ -60,31 +68,6 @@ class PageKeyCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
         lastValue = currentValue;
         fetchNext();
         return c;
-    }
-
-    /**
-     * Get the last read key if there was one.
-     * 
-     * @return the key or null
-     */
-    @Override
-    public K getKey() {
-        return lastKey;
-    }
-
-    /**
-     * Get the last read value if there was one.
-     * 
-     * @return the value or null
-     */
-    @Override
-    public V getValue() {
-        return lastValue;
-    }
-
-    @Override
-    public void remove() {
-        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
     }
 
     /**

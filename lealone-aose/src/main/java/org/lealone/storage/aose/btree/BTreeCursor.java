@@ -5,9 +5,6 @@
  */
 package org.lealone.storage.aose.btree;
 
-import java.util.Iterator;
-
-import org.lealone.common.util.DataUtils;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.StorageMapCursor;
 
@@ -20,71 +17,45 @@ import org.lealone.storage.StorageMapCursor;
  * @author H2 Group
  * @author zhh
  */
-class BTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
+class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
 
     private final BTreeMap<K, ?> map;
-    // private final BTreePage root;
-    // private final K from;
+    private final IterationParameters<K> parameters;
+
     private CursorPos pos;
     private K currentKey, lastKey;
     private V currentValue, lastValue;
-    private final IterationParameters<K> parameters;
-    // private boolean initialized;
 
     BTreeCursor(BTreeMap<K, ?> map, BTreePage root, IterationParameters<K> parameters) {
         this.map = map;
         this.parameters = parameters;
-        // this.root = root;
-        // this.from = from;
 
-        // 提前fetch
+        // 定位到>=from的第一个leaf page
         min(root, parameters.from);
         fetchNext();
     }
 
     @Override
-    public boolean hasNext() {
-        // if (!initialized) {
-        // min(root, from);
-        // initialized = true;
-        // fetchNext();
-        // }
-        return currentKey != null;
-    }
-
-    @Override
-    public K next() {
-        // hasNext();
-        K c = currentKey;
-        lastKey = currentKey;
-        lastValue = currentValue;
-        fetchNext();
-        return c;
-    }
-
-    /**
-     * Get the last read key if there was one.
-     * 
-     * @return the key or null
-     */
-    @Override
     public K getKey() {
         return lastKey;
     }
 
-    /**
-     * Get the last read value if there was one.
-     * 
-     * @return the value or null
-     */
     @Override
     public V getValue() {
         return lastValue;
     }
 
     @Override
-    public void remove() {
-        throw DataUtils.newUnsupportedOperationException("Removing is not supported");
+    public boolean hasNext() {
+        return currentKey != null;
+    }
+
+    @Override
+    public K next() {
+        lastKey = currentKey;
+        lastValue = currentValue;
+        fetchNext();
+        return lastKey;
     }
 
     /**
@@ -141,4 +112,22 @@ class BTreeCursor<K, V> implements Iterator<K>, StorageMapCursor<K, V> {
         currentKey = null;
     }
 
+    @Override
+    public boolean hasNextBatch() {
+        return pos != null;
+    }
+
+    @Override
+    public V[] nextBatch() {
+        @SuppressWarnings("unchecked")
+        V[] values = (V[]) pos.page.getValues();
+        pos = pos.parent;
+        if (pos == null) {
+            return values;
+        }
+        if (pos.index < map.getChildPageCount(pos.page)) {
+            min(pos.page.getChildPage(pos.index++), null);
+        }
+        return values;
+    }
 }

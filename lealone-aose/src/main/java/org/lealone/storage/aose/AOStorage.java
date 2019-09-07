@@ -80,12 +80,8 @@ public class AOStorage extends StorageBase {
 
     public <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
             StorageDataType valueType, Map<String, String> parameters) {
-        if (mapType == null || mapType.equalsIgnoreCase("AOMap")) {
-            return openAOMap(name, keyType, valueType, parameters);
-        } else if (mapType.equalsIgnoreCase("BTreeMap")) {
+        if (mapType == null || mapType.equalsIgnoreCase("BTreeMap")) {
             return openBTreeMap(name, keyType, valueType, parameters);
-        } else if (mapType.equalsIgnoreCase("BufferedMap")) {
-            return openBufferedMap(name, keyType, valueType, parameters);
         } else {
             throw DataUtils.newIllegalArgumentException("Unknow map type: {0}", mapType);
         }
@@ -108,24 +104,6 @@ public class AOStorage extends StorageBase {
         builder.dimensions(dimensions);
         builder.valueType(valueType);
         return openMap(name, builder, null);
-    }
-
-    public <K, V> AOMap<K, V> openAOMap(String name, StorageDataType keyType, StorageDataType valueType,
-            Map<String, String> parameters) {
-        BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, parameters);
-        AOMap<K, V> map = new AOMap<>(btreeMap);
-        maps.put(name, map); // 覆盖btreeMap
-        AOStorageService.addAOMap(map);
-        return map;
-    }
-
-    public <K, V> BufferedMap<K, V> openBufferedMap(String name, StorageDataType keyType, StorageDataType valueType,
-            Map<String, String> parameters) {
-        BTreeMap<K, V> btreeMap = openBTreeMap(name, keyType, valueType, parameters);
-        BufferedMap<K, V> map = new BufferedMap<>(btreeMap);
-        maps.put(name, map); // 覆盖btreeMap
-        AOStorageService.addBufferedMap(map);
-        return map;
     }
 
     @SuppressWarnings("unchecked")
@@ -152,12 +130,6 @@ public class AOStorage extends StorageBase {
         return config.containsKey("readOnly");
     }
 
-    @Override
-    public void save() {
-        AOStorageService.forceMerge();
-        super.save();
-    }
-
     private List<NetEndpoint> getReplicationEndpoints(String[] replicationHostIds) {
         return getReplicationEndpoints(Arrays.asList(replicationHostIds));
     }
@@ -182,8 +154,6 @@ public class AOStorage extends StorageBase {
     }
 
     private void replicateRootPages(Object dbObject, String[] oldEndpoints, String[] targetEndpoints, RunMode runMode) {
-        AOStorageService.forceMerge();
-
         List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(targetEndpoints);
         // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
         IDatabase db = (IDatabase) dbObject;

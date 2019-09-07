@@ -197,7 +197,7 @@ public class AMTransaction implements Transaction {
         valueType = new TransactionalValueType(valueType);
         StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
         if (!map.isInMemory()) {
-            TransactionalLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(map.getName()));
+            TransactionalLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(name));
         }
         transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
         boolean isShardingMode = parameters == null ? false : Boolean.parseBoolean(parameters.get("isShardingMode"));

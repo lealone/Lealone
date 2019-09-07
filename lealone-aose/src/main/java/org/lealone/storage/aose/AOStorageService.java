@@ -30,8 +30,6 @@ import org.lealone.common.util.DateTimeUtils;
 
 public class AOStorageService extends Thread {
 
-    private static final CopyOnWriteArrayList<BufferedMap<?, ?>> bufferedMaps = new CopyOnWriteArrayList<>();
-    private static final CopyOnWriteArrayList<AOMap<?, ?>> aoMaps = new CopyOnWriteArrayList<>();
     private static final CopyOnWriteArrayList<Callable<?>> pendingTasks = new CopyOnWriteArrayList<>();
 
     private static final ExecutorService executorService = new DebuggableThreadPoolExecutor("AOStorageServiceThread", 1,
@@ -53,22 +51,6 @@ public class AOStorageService extends Thread {
 
     public static void addPendingTask(Callable<?> task) {
         pendingTasks.add(task);
-    }
-
-    public static void addBufferedMap(BufferedMap<?, ?> map) {
-        bufferedMaps.add(map);
-    }
-
-    public static void removeBufferedMap(BufferedMap<?, ?> map) {
-        bufferedMaps.remove(map);
-    }
-
-    public static void addAOMap(AOMap<?, ?> map) {
-        aoMaps.add(map);
-    }
-
-    public static void removeAOMap(AOMap<?, ?> map) {
-        aoMaps.remove(map);
     }
 
     private long loopInterval;
@@ -106,46 +88,13 @@ public class AOStorageService extends Thread {
                 continue;
             }
 
-            adaptiveOptimization();
             merge();
         }
     }
 
-    private static void adaptiveOptimization() {
-        for (AOMap<?, ?> map : aoMaps) {
-            if (map.getRawMap().isClosed()) {
-                aoMaps.remove(map);
-                continue;
-            }
-            if (map.getReadPercent() > 50)
-                map.switchToNoBufferedMap();
-            else if (map.getWritePercent() > 50)
-                map.switchToBufferedMap();
-        }
-    }
-
     private static void merge() {
-        synchronized (bufferedMaps) {
-            ArrayList<Future<?>> futures = new ArrayList<>(bufferedMaps.size());
-            for (BufferedMap<?, ?> map : bufferedMaps) {
-                if (map.getRawMap().isClosed()) {
-                    bufferedMaps.remove(map);
-                    continue;
-                }
-                if (map.needMerge()) {
-                    Future<?> f = submitTask(map);
-                    futures.add(f);
-                }
-            }
-            for (Future<?> f : futures) {
-                try {
-                    f.get();
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-            futures.clear();
-
+        synchronized (pendingTasks) {
+            ArrayList<Future<?>> futures = new ArrayList<>(pendingTasks.size());
             ArrayList<Callable<?>> list = new ArrayList<>(pendingTasks);
             for (Callable<?> task : list) {
                 Future<?> f = submitTask(task);
@@ -158,19 +107,6 @@ public class AOStorageService extends Thread {
                 } catch (Exception e) {
                     // ignore
                 }
-            }
-        }
-    }
-
-    static void forceMerge() {
-        synchronized (bufferedMaps) {
-            for (BufferedMap<?, ?> map : bufferedMaps) {
-                if (map.getRawMap().isClosed()) {
-                    bufferedMaps.remove(map);
-                    continue;
-                }
-                if (map.needMerge())
-                    map.merge();
             }
         }
     }

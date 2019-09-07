@@ -10,12 +10,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.aose.AOStorageService;
+import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
 
 /**
  * A node page.
@@ -91,14 +93,14 @@ public class BTreeNodePage extends BTreeLocalPage {
 
         long t = 0;
         for (PageReference x : aChildren) {
-            t += x.count;
+            t += x.count.get();
         }
-        totalCount = t;
+        totalCount.set(t);
         t = 0;
         for (PageReference x : bChildren) {
-            t += x.count;
+            t += x.count.get();
         }
-        BTreeNodePage newPage = create(map, bKeys, bChildren, t, 0);
+        BTreeNodePage newPage = create(map, bKeys, bChildren, new AtomicLong(t), 0);
         recalculateMemory();
         return newPage;
     }
@@ -108,14 +110,14 @@ public class BTreeNodePage extends BTreeLocalPage {
         if (ASSERT) {
             long check = 0;
             for (PageReference x : children) {
-                check += x.count;
+                check += x.count.get();
             }
-            if (check != totalCount) {
+            if (check != totalCount.get()) {
                 throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Expected: {0} got: {1}", check,
-                        totalCount);
+                        totalCount.get());
             }
         }
-        return totalCount;
+        return totalCount.get();
     }
 
     @Override
@@ -131,27 +133,55 @@ public class BTreeNodePage extends BTreeLocalPage {
             first = true;
         }
         if (c == null) {
-            long oldCount = children[index].count;
+            long oldCount = children[index].count.get();
             // this is slightly slower:
             // children = Arrays.copyOf(children, children.length);
             children = children.clone();
-            PageReference ref = new PageReference(null, 0, 0, key, first);
+            PageReference ref = new PageReference(null, 0, new AtomicLong(0), key, first);
             children[index] = ref;
-            totalCount -= oldCount;
+            totalCount.addAndGet(-oldCount);
         } else if (c != children[index].page || c.getPos() != children[index].pos) {
-            long oldCount = children[index].count;
+            // long oldCount = children[index].count.get();
             // this is slightly slower:
             // children = Arrays.copyOf(children, children.length);
             children = children.clone();
-            PageReference ref = new PageReference(c, c.pos, c.getTotalCount(), key, first);
+            PageReference ref = new PageReference(c, key, first);
             children[index] = ref;
-            totalCount += c.getTotalCount() - oldCount;
+            // totalCount.addAndGet(c.getTotalCount() - oldCount);
+        } else {
+            long oldCount = children[index].count.get();
+            PageReference ref = new PageReference(c, key, first);
+            children[index] = ref;
+            totalCount.addAndGet(c.getTotalCount() - oldCount);
         }
+    }
+
+    @Override
+    public void setChild(long childCount) {
+        totalCount.addAndGet(childCount);
     }
 
     @Override
     public void setChild(int index, PageReference ref) {
         children[index] = ref;
+    }
+
+    @Override
+    void setAndInsertChild(int index, TmpNodePage tmpNodePage) {
+        children = children.clone();
+        children[index] = tmpNodePage.right;
+        Object[] newKeys = new Object[keys.length + 1];
+        DataUtils.copyWithGap(keys, newKeys, keys.length, index);
+        newKeys[index] = tmpNodePage.key;
+        keys = newKeys;
+
+        int childCount = children.length;
+        PageReference[] newChildren = new PageReference[childCount + 1];
+        DataUtils.copyWithGap(children, newChildren, childCount, index);
+        newChildren[index] = tmpNodePage.left;
+        children = newChildren;
+
+        addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD);
     }
 
     @Override
@@ -164,11 +194,10 @@ public class BTreeNodePage extends BTreeLocalPage {
         int childCount = children.length;
         PageReference[] newChildren = new PageReference[childCount + 1];
         DataUtils.copyWithGap(children, newChildren, childCount, index);
-        newChildren[index] = new PageReference(childPage, childPage.getPos(), childPage.getTotalCount(), key,
-                index == 0);
+        newChildren[index] = new PageReference(childPage, key, index == 0);
         children = newChildren;
 
-        totalCount += childPage.getTotalCount();
+        // totalCount.addAndGet(childPage.getTotalCount());
         addMemory(map.getKeyType().getMemory(key) + PageUtils.PAGE_MEMORY_CHILD);
     }
 
@@ -176,14 +205,14 @@ public class BTreeNodePage extends BTreeLocalPage {
     public void remove(int index) {
         super.remove(index);
         addMemory(-PageUtils.PAGE_MEMORY_CHILD);
-        long countOffset = children[index].count;
+        long countOffset = children[index].count.get();
 
         int childCount = children.length;
         PageReference[] newChildren = new PageReference[childCount - 1];
         DataUtils.copyExcept(children, newChildren, childCount, index);
         children = newChildren;
 
-        totalCount -= countOffset;
+        totalCount.addAndGet(-countOffset);
     }
 
     @Override
@@ -227,11 +256,11 @@ public class BTreeNodePage extends BTreeLocalPage {
                 }
                 long s = DataUtils.readVarLong(buff);
                 total += s;
-                children[i] = new PageReference(null, p[i], s);
+                children[i] = new PageReference(null, p[i], new AtomicLong(s));
                 children[i].replicationHostIds = replicationHostIds; // node page的replicationHostIds为null
             }
         }
-        totalCount = total;
+        totalCount.set(total);
         ByteBuffer oldBuff = buff;
         buff = expandPage(buff, type, start, pageLength);
 
@@ -273,7 +302,7 @@ public class BTreeNodePage extends BTreeLocalPage {
                 } else {
                     buff.put((byte) 1);
                 }
-                buff.putVarLong(children[i].count); // count可能不大，所以用VarLong能节省一些空间
+                buff.putVarLong(children[i].count.get()); // count可能不大，所以用VarLong能节省一些空间
             }
         }
         int compressStart = buff.position();
@@ -323,7 +352,7 @@ public class BTreeNodePage extends BTreeLocalPage {
             BTreePage p = children[i].page;
             if (p != null) {
                 p.writeUnsavedRecursive(chunk, buff);
-                children[i] = new PageReference(p, p.getPos(), p.getTotalCount());
+                children[i] = new PageReference(p);
             }
         }
         setChildrenPageKeys();
@@ -400,7 +429,7 @@ public class BTreeNodePage extends BTreeLocalPage {
         removePage();
     }
 
-    static BTreeNodePage create(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, long totalCount,
+    static BTreeNodePage create(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, AtomicLong totalCount,
             int memory) {
         BTreeNodePage p = new BTreeNodePage(map);
         // the position is 0

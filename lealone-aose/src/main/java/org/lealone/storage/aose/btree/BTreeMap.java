@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -25,16 +26,24 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
+import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageService;
 import org.lealone.storage.aose.StorageMapBuilder;
+import org.lealone.storage.aose.btree.PageOperations.Get;
+import org.lealone.storage.aose.btree.PageOperations.Put;
+import org.lealone.storage.aose.btree.PageOperations.PutIfAbsent;
+import org.lealone.storage.aose.btree.PageOperations.Remove;
+import org.lealone.storage.aose.btree.PageOperations.Replace;
 import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.storage.type.StorageDataType;
 
@@ -126,9 +135,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 isShardingMode = false;
                 root = BTreeLeafPage.createEmpty(this);
             }
+            initRootHandler();
         }
-
         this.isShardingMode = isShardingMode;
+    }
+
+    private void initRootHandler() {
+        disableParallel = true;
     }
 
     private boolean containsLocalEndpoint(String[] replicationEndpoints) {
@@ -235,6 +248,46 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return (V) result;
     }
 
+    public static final Object REDIRECT = new Object();
+
+    synchronized Object put(Object key, Object value, BTreePage oldRoot) {
+        if (!disableParallel) {
+            return REDIRECT;
+        }
+
+        BTreeMap.putCount.incrementAndGet();
+
+        DataUtils.checkArgument(value != null, "The value may not be null");
+
+        beforeWrite();
+        BTreePage p = root;// root.copy();
+
+        boolean split = false;
+        if (p.needSplit()) {
+            p = splitRoot(p);
+            split = true;
+        }
+
+        Object result = put(p, key, value);
+        if (split && isShardingMode && root.isLeaf()) {
+            PageKey pk = new PageKey(p.getKey(0), false); // 移动右边的Page
+            moveLeafPageLazy(pk);
+        }
+        newRoot(p);
+        if (disableParallel
+                && root.getRawChildPageCount() >= PageOperationHandlerFactory.getPageOperationHandlerCount()) {
+            disableParallel = false;
+            root.handler = PageOperationHandlerFactory.getNodePageOperationHandler();
+            oldRoot.redirectTo(root);
+            for (int i = 0, size = root.getRawChildPageCount(); i < size; i++) {
+                root.getChildPage(i).handler = PageOperationHandlerFactory.getPageOperationHandler();
+            }
+            // printPage();
+            // BTreeMap.putCount.addAndGet(root.getTotalCount());
+        }
+        return result;
+    }
+
     /**
      * This method is called before writing to the map. 
      * The default implementation checks whether writing is allowed.
@@ -262,11 +315,26 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Object k = p.getKey(at);
         BTreePage rightChildPage = p.split(at);
         Object[] keys = { k };
-        PageReference[] children = { new PageReference(p, p.getPos(), p.getTotalCount(), k, true),
-                new PageReference(rightChildPage, rightChildPage.getPos(), rightChildPage.getTotalCount(), k, false) };
-        p = BTreePage.create(this, keys, null, children, totalCount, 0);
+        PageReference[] children = { new PageReference(p, k, true), new PageReference(rightChildPage, k, false) };
+        p = BTreePage.create(this, keys, null, children, new AtomicLong(totalCount), 0);
         return p;
     }
+
+    // hash方案
+    // private BTreePage splitRoot(BTreePage p) {
+    // if (p.isLeaf()) {
+    // return ((BTreeLeafPage) p).splitRoot();
+    // }
+    // long totalCount = p.getTotalCount();
+    // int at = p.getKeyCount() / 2;
+    // Object k = p.getKey(at);
+    // BTreePage rightChildPage = p.split(at);
+    // Object[] keys = { k };
+    // PageReference[] children = { new PageReference(p, p.getPos(), p.getTotalCount(), k, true),
+    // new PageReference(rightChildPage, rightChildPage.getPos(), rightChildPage.getTotalCount(), k, false) };
+    // p = BTreePage.create(this, keys, null, children, totalCount, 0);
+    // return p;
+    // }
 
     /**
      * Add or update a key-value pair.
@@ -322,6 +390,63 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    // hash方案
+    // private Object putLocal(BTreePage p, Object key, Object value) {
+    // if (p.isLeaf()) {
+    // return ((BTreeLeafPage) p).put(key, value);
+    // }
+    // int index = p.binarySearch(key);
+    // // if (p.isLeaf()) {
+    // // if (index < 0) {
+    // // index = -index - 1;
+    // // p.insertLeaf(index, key, value);
+    // // setMaxKey(key);
+    // // return null;
+    // // }
+    // // return p.setValue(index, value);
+    // // }
+    // // p is a node
+    // if (index < 0) {
+    // index = -index - 1;
+    // } else {
+    // index++;
+    // }
+    // BTreePage c = p.getChildPage(index);// .copy();
+    // if (c.needSplit()) {
+    // boolean isLeaf = c.isLeaf();
+    // if (isLeaf) {
+    // Object[] a = ((BTreeLeafPage) c).split();
+    // Object k = a[1];
+    // BTreePage rightChildPage = (BTreePage) a[0];
+    // p.setChild(index, rightChildPage);
+    // p.insertNode(index, k, c);
+    // // now we are not sure where to add
+    // Object result = put(p, key, value);
+    // if (isLeaf && isShardingMode) {
+    // PageKey pk = new PageKey(k, false); // 移动右边的Page
+    // moveLeafPageLazy(pk);
+    // }
+    // return result;
+    // }
+    // // split on the way down
+    // int at = c.getKeyCount() / 2;
+    // Object k = c.getKey(at);
+    // BTreePage rightChildPage = c.split(at);
+    // p.setChild(index, rightChildPage);
+    // p.insertNode(index, k, c);
+    // // now we are not sure where to add
+    // Object result = put(p, key, value);
+    // if (isLeaf && isShardingMode) {
+    // PageKey pk = new PageKey(k, false); // 移动右边的Page
+    // moveLeafPageLazy(pk);
+    // }
+    // return result;
+    // }
+    // Object result = put(c, key, value);
+    // p.setChild(index, c);
+    // return result;
+    // }
+
     private Object putLocal(BTreePage p, Object key, Object value) {
         int index = p.binarySearch(key);
         if (p.isLeaf()) {
@@ -357,6 +482,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             return result;
         }
         Object result = put(c, key, value);
+        if (result == null)
+            p.getCounter().incrementAndGet();
         p.setChild(index, c);
         return result;
     }
@@ -786,6 +913,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         beforeWrite();
         root.removeAllRecursive();
         newRoot(BTreeLeafPage.createEmpty(this));
+        initRootHandler();
     }
 
     @Override
@@ -988,9 +1116,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
             BTreePage right = readLeafPage(page, readStreamPage);
 
-            PageReference[] children = { new PageReference(left, left.getPos(), left.getTotalCount(), k, true),
-                    new PageReference(right, right.getPos(), right.getTotalCount(), k, false) };
-            p = BTreePage.create(this, keys, null, children, right.getTotalCount(), 0);
+            PageReference[] children = { new PageReference(left, k, true), new PageReference(right, k, false) };
+            p = BTreePage.create(this, keys, null, children, new AtomicLong(right.getTotalCount()), 0);
             newRoot(p);
         } else {
             BTreePage parent = p;
@@ -1398,7 +1525,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    // test only
     public BTreePage getRootPage() {
         return root;
     }
@@ -1406,4 +1532,41 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void setPageStorageMode(PageStorageMode pageStorageMode) {
         this.pageStorageMode = pageStorageMode;
     }
+
+    public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
+        Get<K, V> get = new Get<>(root, key, handler);
+        PageOperationHandlerFactory.addPageOperation(get);
+    }
+
+    @Override
+    public void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        Put<K, V, V> put = new Put<>(root, key, value, handler);
+        PageOperationHandlerFactory.addPageOperation(put);
+    }
+
+    @Override
+    public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(root, key, value, handler);
+        PageOperationHandlerFactory.addPageOperation(putIfAbsent);
+    }
+
+    @Override
+    public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
+        Replace<K, V> replace = new Replace<>(root, key, oldValue, newValue, handler);
+        PageOperationHandlerFactory.addPageOperation(replace);
+    }
+
+    @Override
+    public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
+        Remove<K, V> remove = new Remove<>(root, key, handler);
+        PageOperationHandlerFactory.addPageOperation(remove);
+    }
+
+    public boolean disableParallel;
+
+    public static AtomicLong splitCount = new AtomicLong();
+    public static AtomicLong putCount = new AtomicLong();
+    public static AtomicLong addUpdateCounterTaskCount = new AtomicLong();
+    public static AtomicLong runUpdateCounterTaskCount = new AtomicLong();
+    public boolean disableSplit = false;
 }

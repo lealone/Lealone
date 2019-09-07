@@ -19,9 +19,14 @@ public abstract class StorageBuilder {
 
     protected final HashMap<String, Object> config = new HashMap<>();
 
+    /**
+     * Open the storage.
+     * 
+     * @return the opened storage
+     */
     public abstract Storage openStorage();
 
-    public StorageBuilder set(String key, Object value) {
+    protected StorageBuilder set(String key, Object value) {
         config.put(key, value);
         return this;
     }

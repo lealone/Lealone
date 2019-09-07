@@ -17,11 +17,11 @@
  */
 package org.lealone.storage.memory;
 
-import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngineBase;
 
 public class MemoryStorageEngine extends StorageEngineBase {
+
     public static final String NAME = "memory";
 
     public MemoryStorageEngine() {
@@ -35,7 +35,7 @@ public class MemoryStorageEngine extends StorageEngineBase {
 
     public static class MemoryStorageBuilder extends StorageBuilder {
         @Override
-        public Storage openStorage() {
+        public MemoryStorage openStorage() {
             return new MemoryStorage();
         }
     }
