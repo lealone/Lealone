@@ -23,7 +23,7 @@ import java.sql.DriverManager;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
 
-public class ConnectionPerformanceTest {
+public class ConnectionPerfTest {
 
     public static void main(String[] args) throws Exception {
         String url = new TestBase().getURL(LealoneDatabase.NAME);

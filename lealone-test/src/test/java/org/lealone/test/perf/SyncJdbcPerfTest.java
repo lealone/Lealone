@@ -25,7 +25,7 @@ import java.util.Random;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
 
-public class SyncPerformanceTest {
+public class SyncJdbcPerfTest {
 
     public static void main(String[] args) throws Exception {
         run();
@@ -69,7 +69,7 @@ public class SyncPerformanceTest {
                 if (!random)
                     rs = stmt.executeQuery("SELECT * FROM test where f1 = " + i);
                 else
-                    rs = stmt.executeQuery("SELECT * FROM test where f1 = " + SyncPerformanceTest.random.nextInt(end));
+                    rs = stmt.executeQuery("SELECT * FROM test where f1 = " + SyncJdbcPerfTest.random.nextInt(end));
                 while (rs.next()) {
                     // System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
                 }

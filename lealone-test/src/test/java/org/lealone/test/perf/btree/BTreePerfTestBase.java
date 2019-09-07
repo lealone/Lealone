@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.perf;
+package org.lealone.test.perf.btree;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,7 +31,7 @@ import org.lealone.test.TestBase;
 
 //以单元测试的方式运行会比通过main方法运行得出稍微慢一些的测试结果，
 //这可能是因为单元测试额外启动了一个ReaderThread占用了一些资源
-public class StorageMapPerformanceTest extends TestBase {
+public class BTreePerfTestBase extends TestBase {
 
     protected AOStorage storage;
     protected String storagePath;

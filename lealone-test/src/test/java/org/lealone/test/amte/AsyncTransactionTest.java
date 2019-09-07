@@ -29,7 +29,7 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueInt;
 import org.lealone.storage.Storage;
 import org.lealone.test.TestBase;
-import org.lealone.test.perf.PageOperationHandlerImpl;
+import org.lealone.test.perf.btree.PageOperationHandlerImpl;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;

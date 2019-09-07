@@ -29,7 +29,7 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.test.TestBase;
 
-public class AsyncPerformanceTest {
+public class AsyncJdbcPerfTest {
 
     public static void main(String[] args) throws Exception {
         run();
@@ -169,7 +169,7 @@ public class AsyncPerformanceTest {
                 if (!random)
                     stmt.executeQueryAsync("SELECT * FROM test where f1 = " + i, handler);
                 else
-                    stmt.executeQueryAsync("SELECT * FROM test where f1 = " + AsyncPerformanceTest.random.nextInt(end),
+                    stmt.executeQueryAsync("SELECT * FROM test where f1 = " + AsyncJdbcPerfTest.random.nextInt(end),
                             handler);
             }
             latch.await();

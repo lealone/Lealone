@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.perf;
+package org.lealone.test.perf.btree;
 
 import java.util.ArrayList;
 import java.util.Map;

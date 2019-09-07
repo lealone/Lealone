@@ -79,7 +79,7 @@ public abstract class BTreeLocalPage extends BTreePage {
 
     @Override
     public AtomicLong getCounter() {
-        return totalCount;
+        return new AtomicLong(totalCount.get());
     }
 
     /**

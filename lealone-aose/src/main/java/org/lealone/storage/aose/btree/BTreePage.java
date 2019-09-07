@@ -322,6 +322,10 @@ public class BTreePage {
         throw ie();
     }
 
+    public void setChild(int index, BTreePage c, boolean updateTotalCount) {
+        throw ie();
+    }
+
     public void setChild(int index, PageReference ref) {
         throw ie();
     }

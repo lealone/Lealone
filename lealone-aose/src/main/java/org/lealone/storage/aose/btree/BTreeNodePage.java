@@ -122,6 +122,11 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     public void setChild(int index, BTreePage c) {
+        setChild(index, c, true);
+    }
+
+    @Override
+    public void setChild(int index, BTreePage c, boolean updateTotalCount) {
         Object key;
         boolean first;
         if (keys.length > 0) {
@@ -141,13 +146,14 @@ public class BTreeNodePage extends BTreeLocalPage {
             children[index] = ref;
             totalCount.addAndGet(-oldCount);
         } else if (c != children[index].page || c.getPos() != children[index].pos) {
-            // long oldCount = children[index].count.get();
+            long oldCount = children[index].count.get();
             // this is slightly slower:
             // children = Arrays.copyOf(children, children.length);
             children = children.clone();
             PageReference ref = new PageReference(c, key, first);
             children[index] = ref;
-            // totalCount.addAndGet(c.getTotalCount() - oldCount);
+            if (updateTotalCount)
+                totalCount.addAndGet(c.getTotalCount() - oldCount);
         } else {
             long oldCount = children[index].count.get();
             PageReference ref = new PageReference(c, key, first);

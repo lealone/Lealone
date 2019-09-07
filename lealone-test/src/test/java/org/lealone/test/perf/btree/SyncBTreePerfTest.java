@@ -15,21 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.perf;
+package org.lealone.test.perf.btree;
 
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueString;
 
-public class BTreeMapPerformanceTest extends StorageMapPerformanceTest {
+public class SyncBTreePerfTest extends BTreePerfTestBase {
 
     public static void main(String[] args) throws Exception {
-        new BTreeMapPerformanceTest().run();
+        new SyncBTreePerfTest().run();
     }
 
     @Override
     protected void openMap() {
         if (map == null || map.isClosed()) {
-            map = storage.openBTreeMap(BTreeMapPerformanceTest.class.getSimpleName(), ValueInt.type, ValueString.type,
+            map = storage.openBTreeMap(SyncBTreePerfTest.class.getSimpleName(), ValueInt.type, ValueString.type,
                     null);
         }
     }

@@ -471,7 +471,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             int at = c.getKeyCount() / 2;
             Object k = c.getKey(at);
             BTreePage rightChildPage = c.split(at);
-            p.setChild(index, rightChildPage);
+            p.setChild(index, rightChildPage, false);
             p.insertNode(index, k, c);
             // now we are not sure where to add
             Object result = put(p, key, value);
@@ -482,8 +482,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             return result;
         }
         Object result = put(c, key, value);
-        if (result == null)
-            p.getCounter().incrementAndGet();
+        // if (result == null)
+        // p.getCounter().incrementAndGet();
         p.setChild(index, c);
         return result;
     }

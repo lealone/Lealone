@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.perf;
+package org.lealone.test.perf.btree;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -27,10 +27,10 @@ import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
 
 // -Xms512M -Xmx512M -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
-public class AsyncParallelMapPerformanceTest extends StorageMapPerformanceTest {
+public class AsyncBTreePerfTest extends BTreePerfTestBase {
 
     public static void main(String[] args) throws Exception {
-        new AsyncParallelMapPerformanceTest().run();
+        new AsyncBTreePerfTest().run();
     }
 
     private BTreeMap<Integer, String> btreeMap;
@@ -71,7 +71,7 @@ public class AsyncParallelMapPerformanceTest extends StorageMapPerformanceTest {
     @Override
     protected void openMap() {
         if (map == null || map.isClosed()) {
-            map = btreeMap = storage.openBTreeMap(AsyncParallelMapPerformanceTest.class.getSimpleName(), ValueInt.type,
+            map = btreeMap = storage.openBTreeMap(AsyncBTreePerfTest.class.getSimpleName(), ValueInt.type,
                     ValueString.type, null);
         }
     }
