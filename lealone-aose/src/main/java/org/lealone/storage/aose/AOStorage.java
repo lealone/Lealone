@@ -37,7 +37,9 @@ import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.BTreeMapBuilder;
 import org.lealone.storage.aose.rtree.RTreeMap;
+import org.lealone.storage.aose.rtree.RTreeMapBuilder;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.replication.ReplicationSession;
@@ -93,26 +95,25 @@ public class AOStorage extends StorageBase {
 
     public <K, V> BTreeMap<K, V> openBTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters) {
-        BTreeMap.Builder<K, V> builder = new BTreeMap.Builder<>();
+        BTreeMapBuilder<K, V> builder = new BTreeMapBuilder<>();
         builder.keyType(keyType);
         builder.valueType(valueType);
         return openMap(name, builder, parameters);
     }
 
     public <V> RTreeMap<V> openRTreeMap(String name, StorageDataType valueType, int dimensions) {
-        RTreeMap.Builder<V> builder = new RTreeMap.Builder<>();
+        RTreeMapBuilder<V> builder = new RTreeMapBuilder<>();
         builder.dimensions(dimensions);
         builder.valueType(valueType);
-        return openMap(name, builder, null);
+        return (RTreeMap<V>) openMap(name, builder, null);
     }
 
     @SuppressWarnings("unchecked")
-    private <M extends StorageMap<K, V>, K, V> M openMap(String name, StorageMapBuilder<M, K, V> builder,
-            Map<String, String> parameters) {
-        M map = (M) maps.get(name);
+    private <K, V> BTreeMap<K, V> openMap(String name, BTreeMapBuilder<K, V> builder, Map<String, String> parameters) {
+        StorageMap<?, ?> map = maps.get(name);
         if (map == null) {
             synchronized (this) {
-                map = (M) maps.get(name);
+                map = maps.get(name);
                 if (map == null) {
                     CaseInsensitiveMap<Object> c = new CaseInsensitiveMap<>(config);
                     if (parameters != null)
@@ -123,7 +124,7 @@ public class AOStorage extends StorageBase {
                 }
             }
         }
-        return map;
+        return (BTreeMap<K, V>) map;
     }
 
     public boolean isReadOnly() {

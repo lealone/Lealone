@@ -15,44 +15,47 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage.aose;
+package org.lealone.storage.aose.btree;
 
 import java.util.Map;
 
-import org.lealone.storage.StorageMap;
+import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.type.StorageDataType;
 
-public abstract class StorageMapBuilder<M extends StorageMap<K, V>, K, V> {
+public class BTreeMapBuilder<K, V> {
+
     protected String name;
     protected StorageDataType keyType;
     protected StorageDataType valueType;
     protected Map<String, Object> config;
     protected AOStorage aoStorage;
 
-    public StorageMapBuilder<M, K, V> name(String name) {
+    public BTreeMapBuilder<K, V> name(String name) {
         this.name = name;
         return this;
     }
 
-    public StorageMapBuilder<M, K, V> keyType(StorageDataType keyType) {
+    public BTreeMapBuilder<K, V> keyType(StorageDataType keyType) {
         this.keyType = keyType;
         return this;
     }
 
-    public StorageMapBuilder<M, K, V> valueType(StorageDataType valueType) {
+    public BTreeMapBuilder<K, V> valueType(StorageDataType valueType) {
         this.valueType = valueType;
         return this;
     }
 
-    public StorageMapBuilder<M, K, V> config(Map<String, Object> config) {
+    public BTreeMapBuilder<K, V> config(Map<String, Object> config) {
         this.config = config;
         return this;
     }
 
-    public StorageMapBuilder<M, K, V> aoStorage(AOStorage aoStorage) {
+    public BTreeMapBuilder<K, V> aoStorage(AOStorage aoStorage) {
         this.aoStorage = aoStorage;
         return this;
     }
 
-    public abstract M openMap();
+    public BTreeMap<K, V> openMap() {
+        return new BTreeMap<K, V>(name, keyType, valueType, config, aoStorage);
+    }
 }

@@ -37,7 +37,6 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
-import org.lealone.storage.aose.StorageMapBuilder;
 import org.lealone.storage.aose.btree.PageOperations.Get;
 import org.lealone.storage.aose.btree.PageOperations.Put;
 import org.lealone.storage.aose.btree.PageOperations.PutIfAbsent;
@@ -66,16 +65,6 @@ import org.lealone.storage.type.StorageDataType;
  * @author zhh
  */
 public class BTreeMap<K, V> extends StorageMapBase<K, V> {
-
-    /**
-     * A builder for this class.
-     */
-    public static class Builder<K, V> extends StorageMapBuilder<BTreeMap<K, V>, K, V> {
-        @Override
-        public BTreeMap<K, V> openMap() {
-            return new BTreeMap<>(name, keyType, valueType, config, aoStorage);
-        }
-    }
 
     protected final boolean readOnly;
     protected final boolean isShardingMode;

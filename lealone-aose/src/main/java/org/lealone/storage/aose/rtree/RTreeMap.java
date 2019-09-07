@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.AOStorage;
-import org.lealone.storage.aose.StorageMapBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
 import org.lealone.storage.aose.btree.CursorPos;
@@ -544,41 +543,10 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
         protected boolean check(boolean leaf, SpatialKey key, SpatialKey test) {
             return true;
         }
-
     }
 
     @Override
     public String getType() {
         return "RTree";
-    }
-
-    /**
-     * A builder for this class.
-     */
-    public static class Builder<V> extends StorageMapBuilder<RTreeMap<V>, SpatialKey, V> {
-        private int dimensions = 2;
-
-        /**
-         * Create a new builder for maps with 2 dimensions.
-         */
-        public Builder() {
-            // default
-        }
-
-        /**
-         * Set the dimensions.
-         *
-         * @param dimensions the dimensions to use
-         * @return this
-         */
-        public Builder<V> dimensions(int dimensions) {
-            this.dimensions = dimensions;
-            return this;
-        }
-
-        @Override
-        public RTreeMap<V> openMap() {
-            return new RTreeMap<V>(name, dimensions, valueType, config, aoStorage);
-        }
     }
 }
