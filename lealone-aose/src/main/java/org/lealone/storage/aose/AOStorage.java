@@ -126,7 +126,7 @@ public class AOStorage extends StorageBase {
         return map;
     }
 
-    boolean isReadOnly() {
+    public boolean isReadOnly() {
         return config.containsKey("readOnly");
     }
 

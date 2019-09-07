@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.storage.aose;
+package org.lealone.storage.aose.lob;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -27,6 +27,7 @@ import org.lealone.db.value.ValueLob;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMapCursor;
+import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 
 /**
