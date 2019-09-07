@@ -21,8 +21,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PageOperationHandlerFactory {
 
+    private static PageOperationHandler DEFAULT_HANDLER = new PageOperationHandler() {
+        @Override
+        public void handlePageOperation(PageOperation po) {
+            po.run(this);
+        }
+    };
+
     private static final AtomicInteger index = new AtomicInteger(0);
-    private static PageOperationHandler[] pageOperationHandlers;
+    private static PageOperationHandler[] pageOperationHandlers = { DEFAULT_HANDLER };
 
     public static void setPageOperationHandlers(PageOperationHandler[] pageOperationHandlers) {
         PageOperationHandlerFactory.pageOperationHandlers = pageOperationHandlers;
