@@ -74,14 +74,13 @@ public class AOStorageTest extends TestBase {
         storage.openRTreeMap("AOStorageTest_map2", ValueString.type, 3);
         storage.openBTreeMap("AOStorageTest_map3", null, null, null);
 
-        assertEquals(4, storage.getMapNames().size());
+        assertEquals(3, storage.getMapNames().size());
         assertTrue(storage.hasMap("AOStorageTest_map1"));
         assertTrue(storage.hasMap("AOStorageTest_map2"));
         assertTrue(storage.hasMap("AOStorageTest_map3"));
-        assertTrue(storage.hasMap("AOStorageTest_map4"));
 
         storage.closeMap("AOStorageTest_map1");
-        assertEquals(3, storage.getMapNames().size());
+        assertEquals(2, storage.getMapNames().size());
         assertFalse(storage.hasMap("AOStorageTest_map1"));
         assertTrue(storage.nextTemporaryMapName().length() > 0);
 
