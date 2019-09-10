@@ -41,32 +41,39 @@ public class Scheduler extends Thread implements SQLStatementExecutor, TransferP
         private final Transfer transfer;
         private final Session session;
         private final PreparedStatement.Yieldable<?> yieldable;
-        CommandQueue queue;
+        private final CommandQueue queue;
 
         PreparedCommand(int id, PreparedStatement stmt, Transfer transfer, Session session,
-                PreparedStatement.Yieldable<?> yieldable) {
+                PreparedStatement.Yieldable<?> yieldable, CommandQueue queue) {
             this.id = id;
             this.stmt = stmt;
             this.transfer = transfer;
             this.session = session;
             this.yieldable = yieldable;
+            this.queue = queue;
         }
 
         void execute() {
+            // 如果因为某些原因导致主动让出CPU，那么先放到队列末尾等待重新从中断处执行。
             if (yieldable.run()) {
                 queue.preparedCommands.add(this);
             }
         }
     }
 
-    // 表示commands由commandHandler处理
+    // preparedCommands中的命令统一由scheduler调度执行
     static class CommandQueue {
         final Scheduler scheduler;
-        final ConcurrentLinkedQueue<PreparedCommand> preparedCommands;
+        private final ConcurrentLinkedQueue<PreparedCommand> preparedCommands;
 
         CommandQueue(Scheduler scheduler) {
             this.scheduler = scheduler;
             this.preparedCommands = new ConcurrentLinkedQueue<>();
+        }
+
+        void addCommand(PreparedCommand command) {
+            preparedCommands.add(command);
+            scheduler.wakeUp();
         }
     }
 

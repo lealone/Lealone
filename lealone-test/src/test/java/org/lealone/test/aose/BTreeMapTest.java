@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 import org.lealone.storage.IterationParameters;
@@ -54,6 +55,7 @@ public class BTreeMapTest extends TestBase {
         testSplit();
         testRemotePage();
         testLeafPageRemove();
+        testAsyncOperations();
     }
 
     private void init() {
@@ -439,5 +441,51 @@ public class BTreeMapTest extends TestBase {
         for (PageKey pageKey : pageKeys)
             map.removeLeafPage(pageKey);
         assertTrue(map.getRootPage().isEmpty());
+    }
+
+    void testAsyncOperations() {
+        map.clear();
+        map.disableParallel = false;
+        int count = 7;
+        CountDownLatch latch = new CountDownLatch(count);
+
+        int key = 10;
+        final String value = "value-10";
+        map.put(key, value, ar -> {
+            latch.countDown();
+        });
+
+        map.get(key, ar -> {
+            latch.countDown();
+            assertEquals(value, ar.getResult());
+        });
+
+        map.putIfAbsent(20, "value-20", ar -> {
+            latch.countDown();
+        });
+
+        map.putIfAbsent(10, "value-30", ar -> {
+            latch.countDown();
+        });
+
+        map.replace(10, "value-20", "value-100", ar -> {
+            latch.countDown();
+        });
+
+        map.replace(10, "value-10", "value-100", ar -> {
+            latch.countDown();
+        });
+
+        map.remove(20, ar -> {
+            latch.countDown();
+        });
+
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        assertEquals(1, map.size());
     }
 }

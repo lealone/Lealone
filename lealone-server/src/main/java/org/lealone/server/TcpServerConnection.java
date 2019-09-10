@@ -296,8 +296,8 @@ public class TcpServerConnection extends TcpConnection {
                 sendError(transfer, id, res.getCause());
             }
         });
-        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, yieldable);
-        addPreparedCommandToQueue(pc, sessionId);
+
+        addPreparedCommandToQueue(id, command, transfer, session, sessionId, yieldable);
     }
 
     protected boolean executeQueryAsync(Session session, int sessionId, PreparedStatement command, Transfer transfer,
@@ -379,21 +379,24 @@ public class TcpServerConnection extends TcpConnection {
                 sendError(transfer, id, res.getCause());
             }
         });
-        PreparedCommand pc = new PreparedCommand(id, command, transfer, session, yieldable);
-        addPreparedCommandToQueue(pc, sessionId);
+
+        addPreparedCommandToQueue(id, command, transfer, session, sessionId, yieldable);
     }
 
-    private void addPreparedCommandToQueue(PreparedCommand pc, int sessionId) {
+    private void addPreparedCommandToQueue(int id, PreparedStatement stmt, Transfer transfer, Session session,
+            int sessionId, PreparedStatement.Yieldable<?> yieldable) {
         CommandQueue queue = commandQueueMap.get(sessionId);
         if (queue == null) {
             commandQueueNotFound(sessionId);
         }
-        pc.queue = queue;
+        PreparedCommand pc = new PreparedCommand(id, stmt, transfer, session, yieldable, queue);
+
+        // packetHandler是执行当前方法的线程，如果即将被执行的命令也被分配到同样的线程中(scheduler)运行，
+        // 那么就不需要放到队列中了直接执行即可。
         if (queue.scheduler == packetHandler) {
             pc.execute();
         } else {
-            queue.preparedCommands.add(pc);
-            queue.scheduler.wakeUp();
+            queue.addCommand(pc);
         }
     }
 
@@ -403,7 +406,9 @@ public class TcpServerConnection extends TcpConnection {
         throw DbException.throwInternalError(msg);
     }
 
-    // 为与sessionId对应的客户端请求指派一个调度器
+    // 每个sessionId对应一个CommandQueue，
+    // 每个调度器可以负责多个CommandQueue，
+    // 但是一个CommandQueue只能由一个调度器负责。
     private void assignScheduler(int sessionId) {
         Scheduler scheduler = ScheduleService.getScheduler();
         CommandQueue queue = new CommandQueue(scheduler);

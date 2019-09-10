@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -126,8 +127,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private TraceSystem traceSystem;
     private Trace trace;
     private Role publicRole;
-    private long modificationDataId;
-    private long modificationMetaId;
+    private final AtomicLong modificationDataId = new AtomicLong();
+    private final AtomicLong modificationMetaId = new AtomicLong();
     private CompareMode compareMode;
     private boolean readOnly;
     private int writeDelay = Constants.DEFAULT_WRITE_DELAY;
@@ -584,22 +585,22 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public long getModificationDataId() {
-        return modificationDataId;
+        return modificationDataId.get();
     }
 
     public long getNextModificationDataId() {
-        return ++modificationDataId;
+        return modificationDataId.incrementAndGet();
     }
 
     public long getModificationMetaId() {
-        return modificationMetaId;
+        return modificationMetaId.get();
     }
 
     public long getNextModificationMetaId() {
         // if the meta data has been modified, the data is modified as well
         // (because MetaTable returns modificationDataId)
-        modificationDataId++;
-        return modificationMetaId++;
+        modificationDataId.incrementAndGet();
+        return modificationMetaId.getAndIncrement();
     }
 
     public void setPowerOffCount(int count) {
