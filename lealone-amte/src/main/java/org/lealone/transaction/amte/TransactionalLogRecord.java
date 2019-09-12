@@ -33,7 +33,7 @@ public class TransactionalLogRecord {
     Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
     final TransactionalValue oldValue;
     final TransactionalValue newValue;
-    final TransactionalValue head;
+    // final TransactionalValue head;
 
     public TransactionalLogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
             TransactionalValue head) {
@@ -41,7 +41,7 @@ public class TransactionalLogRecord {
         this.key = key;
         this.oldValue = oldValue;
         this.newValue = newValue;
-        this.head = head;
+        // this.head = head;
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
@@ -50,7 +50,18 @@ public class TransactionalLogRecord {
         if (map == null) {
             return; // map was later removed
         }
-        newValue.commit(tid);
+        if (oldValue == null) { // insert
+            newValue.commit(tid);
+        } else if (newValue != null && newValue.getValue() == null) { // delete
+            // if (!transactionEngine.containsUncommittedTransactionLessThan(tid)) {
+            // map.remove(key);
+            // } else {
+            // newValue.commit(tid);
+            // }
+            map.remove(key);
+        } else { // update
+            newValue.commit(tid);
+        }
 
         // if (oldValue == null) { // insert
         // TransactionalValue tv = newValue.commit(tid);
@@ -78,43 +89,47 @@ public class TransactionalLogRecord {
         // newValue.setRefValue(tv);
     }
 
-    public void commitOld(AMTransactionEngine transactionEngine, long tid) {
-        StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
-        if (map == null) {
-            // map was later removed
-        } else {
-            TransactionalValue value = map.get(key);
-            if (value == null) {
-                // nothing to do
-            } else if (value.getValue() == null) {
-                // remove the value
-                map.remove(key);
-            } else {
-                // map.put(key, TransactionalValue.createCommitted(value.value));
-                // map.put(key, value.commit());
-
-                // TransactionalValue newValue = value.commit(tid);
-                // while (!map.replace(key, value, newValue)) {
-                // value = map.get(key);
-                // newValue = value.commit(tid);
-                // }
-
-                while (true) {
-                    TransactionalValue refValue = value.getRefValue();
-                    TransactionalValue newValue = value.commit(tid);
-                    if (value.compareAndSet(refValue, newValue))
-                        break;
-                }
-            }
-        }
-    }
+    // public void commitOld(AMTransactionEngine transactionEngine, long tid) {
+    // StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
+    // if (map == null) {
+    // // map was later removed
+    // } else {
+    // TransactionalValue value = map.get(key);
+    // if (value == null) {
+    // // nothing to do
+    // } else if (value.getValue() == null) {
+    // // remove the value
+    // map.remove(key);
+    // } else {
+    // // map.put(key, TransactionalValue.createCommitted(value.value));
+    // // map.put(key, value.commit());
+    //
+    // // TransactionalValue newValue = value.commit(tid);
+    // // while (!map.replace(key, value, newValue)) {
+    // // value = map.get(key);
+    // // newValue = value.commit(tid);
+    // // }
+    //
+    // while (true) {
+    // TransactionalValue refValue = value.getRefValue();
+    // TransactionalValue newValue = value.commit(tid);
+    // if (value.compareAndSet(refValue, newValue))
+    // break;
+    // }
+    // }
+    // }
+    // }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
     public void rollback(AMTransactionEngine transactionEngine) {
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map != null) {
-            newValue.rollback();
+            if (oldValue == null) {
+                map.remove(key);
+            } else {
+                newValue.rollback();
+            }
 
             // if (oldValue == null) {
             // // this transaction added the value

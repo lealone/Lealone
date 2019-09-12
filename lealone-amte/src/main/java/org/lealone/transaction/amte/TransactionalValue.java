@@ -119,26 +119,6 @@ public interface TransactionalValue {
         }
     }
 
-    public static TransactionalValue create(AMTransaction transaction, Object value, TransactionalValue oldValue,
-            StorageDataType oldValueType) {
-        return new Uncommitted(transaction, value, oldValue, oldValueType, null);
-    }
-
-    public static TransactionalValue create(AMTransaction transaction, Object value, TransactionalValue oldValue,
-            StorageDataType oldValueType, int[] columnIndexes) {
-        return new Uncommitted(transaction, value, oldValue, oldValueType, columnIndexes);
-    }
-
-    public static TransactionalValue create(AMTransaction transaction, Object value, TransactionalValue oldValue,
-            StorageDataType oldValueType, int[] columnIndexes, boolean createRef) {
-        TransactionalValue transactionalValue = new Uncommitted(transaction, value, oldValue, oldValueType,
-                columnIndexes);
-        if (createRef) {
-            transactionalValue = new TransactionalValueRef(transactionalValue);
-        }
-        return transactionalValue;
-    }
-
     public static TransactionalValue createUncommitted(AMTransaction transaction, Object value,
             TransactionalValue oldValue, StorageDataType oldValueType, int[] columnIndexes) {
         return new Uncommitted(transaction, value, oldValue, oldValueType, columnIndexes);
@@ -335,7 +315,7 @@ public interface TransactionalValue {
 
         @Override
         public boolean isCommitted() {
-            return tv.isCommitted();
+            return tv == null || tv.isCommitted();
         }
 
         @Override

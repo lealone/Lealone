@@ -288,12 +288,12 @@ public class TcpServerConnection extends TcpConnection {
         if (executeQueryAsync(session, sessionId, command, transfer, id, operation, resultId, fetchSize)) {
             return;
         }
-        PreparedStatement.Yieldable<?> yieldable = command.createYieldableQuery(maxRows, scrollable, pageKeys, res -> {
-            if (res.isSucceeded()) {
-                Result result = res.getResult();
+        PreparedStatement.Yieldable<?> yieldable = command.createYieldableQuery(maxRows, scrollable, pageKeys, ar -> {
+            if (ar.isSucceeded()) {
+                Result result = ar.getResult();
                 sendResult(transfer, session, sessionId, id, operation, result, resultId, fetchSize);
             } else {
-                sendError(transfer, id, res.getCause());
+                sendError(transfer, id, ar.getCause());
             }
         });
 
@@ -357,9 +357,9 @@ public class TcpServerConnection extends TcpConnection {
 
         List<PageKey> pageKeys = readPageKeys(transfer);
 
-        PreparedStatement.Yieldable<?> yieldable = command.createYieldableUpdate(pageKeys, res -> {
-            if (res.isSucceeded()) {
-                int updateCount = res.getResult();
+        PreparedStatement.Yieldable<?> yieldable = command.createYieldableUpdate(pageKeys, ar -> {
+            if (ar.isSucceeded()) {
+                int updateCount = ar.getResult();
                 try {
                     transfer.writeResponseHeader(id, getStatus(session));
                     if (session.isRunModeChanged()) {
@@ -376,7 +376,7 @@ public class TcpServerConnection extends TcpConnection {
                     sendError(transfer, id, e);
                 }
             } else {
-                sendError(transfer, id, res.getCause());
+                sendError(transfer, id, ar.getCause());
             }
         });
 

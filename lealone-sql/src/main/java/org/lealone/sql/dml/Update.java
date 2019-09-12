@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -36,7 +35,6 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.storage.PageKey;
-import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -252,15 +250,13 @@ public class Update extends ManipulationStatement {
         return new YieldableUpdate(this, pageKeys, handler);
     }
 
-    private static class YieldableUpdate extends YieldableBase<Integer> implements Transaction.Listener {
+    private static class YieldableUpdate extends YieldableBase<Integer> {
         Update statement;
         Table table;
         Column[] columns;
         int columnCount;
         int limitRows;
         int updateCount;
-
-        AtomicInteger counter = new AtomicInteger();
 
         public YieldableUpdate(Update statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
@@ -302,7 +298,6 @@ public class Update extends ManipulationStatement {
             if (update()) {
                 return true;
             }
-            counter.set(updateCount);
             setResult(Integer.valueOf(updateCount), updateCount);
             callStop = true;
             return false;
@@ -338,7 +333,7 @@ public class Update extends ManipulationStatement {
                         done = table.fireBeforeRow(session, oldRow, newRow);
                     }
                     if (!done) {
-                        yieldIfNeeded = table.updateRow(session, oldRow, newRow, statement.columns, this);
+                        yieldIfNeeded = table.tryUpdateRow(session, oldRow, newRow, statement.columns);
                         if (table.fireRow()) {
                             table.fireAfterRow(session, oldRow, newRow, false);
                         }
@@ -350,17 +345,6 @@ public class Update extends ManipulationStatement {
                 }
             }
             return false;
-        }
-
-        @Override
-        public void partialUndo() {
-        }
-
-        @Override
-        public void partialComplete() {
-            if (counter.decrementAndGet() == 0) {
-                stop();
-            }
         }
     }
 }

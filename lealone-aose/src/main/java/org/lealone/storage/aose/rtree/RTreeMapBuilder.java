@@ -8,7 +8,7 @@ package org.lealone.storage.aose.rtree;
 import org.lealone.storage.aose.btree.BTreeMapBuilder;
 
 /**
- * A builder for this class.
+ * A builder for r-tree map.
  */
 public class RTreeMapBuilder<V> extends BTreeMapBuilder<SpatialKey, V> {
 

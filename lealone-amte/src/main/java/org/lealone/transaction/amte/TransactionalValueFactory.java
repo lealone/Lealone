@@ -21,9 +21,9 @@ import org.lealone.storage.type.StorageDataType;
 
 public class TransactionalValueFactory {
 
-    public static TransactionalValue create(AMTransaction transaction, Object value, TransactionalValue oldValue,
-            StorageDataType oldValueType) {
-        return TransactionalValue.create(transaction, value, oldValue, oldValueType, null);
+    public static TransactionalValue createUncommitted(AMTransaction transaction, Object value,
+            TransactionalValue oldValue, StorageDataType oldValueType) {
+        return TransactionalValue.createUncommitted(transaction, value, oldValue, oldValueType, null);
     }
 
 }

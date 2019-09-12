@@ -165,8 +165,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public boolean update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
-            Transaction.Listener listener) {
+    public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         int size = updateColumns.size();
         int[] columnIndexes = new int[size];
         for (int i = 0; i < size; i++) {
@@ -197,7 +196,7 @@ public class StandardPrimaryIndex extends IndexBase {
         // VersionedValue oldValue = new VersionedValue(oldRow.getVersion(), ValueArray.get(oldRow.getValueList()));
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
-        boolean yieldIfNeeded = map.put(key, oldRow.getRawValue(), newValue, columnIndexes, listener);
+        boolean yieldIfNeeded = map.tryPut(key, oldRow.getRawValue(), newValue, columnIndexes);
         session.setLastRow(newRow);
         session.setLastIndex(this);
         return yieldIfNeeded;
@@ -228,7 +227,7 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public boolean remove(ServerSession session, Row row, Transaction.Listener listener) {
+    public boolean tryRemove(ServerSession session, Row row) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(row.getRawValue(), null))
             return false;
@@ -241,15 +240,7 @@ public class StandardPrimaryIndex extends IndexBase {
                 }
             }
         }
-        try {
-            VersionedValue old = map.remove(ValueLong.get(row.getKey()));
-            if (old == null) {
-                throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
-            }
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
-        return false;
+        return map.tryRemove(ValueLong.get(row.getKey()), row.getRawValue());
     }
 
     @Override

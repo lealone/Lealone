@@ -29,6 +29,18 @@ public class InsertTest extends SqlTestBase {
     }
 
     void testInsert() {
+        // new Thread(() -> {
+        // try {
+        // Connection conn2 = getConnection();
+        // Statement stmt2 = conn2.createStatement();
+        // String sql2 = "INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)";
+        // stmt2.executeUpdate(sql2);
+        // stmt2.close();
+        // conn2.close();
+        // } catch (Exception e) {
+        // e.printStackTrace();
+        // }
+        // }).start();
         executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)");
         executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 61)");
         executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 61)");

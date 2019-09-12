@@ -48,7 +48,12 @@ public class PageOperationHandlerFactory {
     }
 
     public static void addPageOperation(PageOperation po) {
-        getPageOperationHandler().handlePageOperation(po);
+        PageOperationHandler handler = getPageOperationHandler();
+        if (Thread.currentThread() == handler) {
+            po.run(handler);
+        } else {
+            handler.handlePageOperation(po);
+        }
     }
 
     public static int getPageOperationHandlerCount() {

@@ -55,13 +55,13 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
 
         NetEndpoint.setLocalTcpEndpoint(getHost(), getPort());
         ScheduleService.init(config);
+        ScheduleService.start(); // 提前启动，LealoneDatabase要用到存储引擎
     }
 
     @Override
     public synchronized void start() {
         if (isStarted())
             return;
-        ScheduleService.start();
         super.start();
     }
 

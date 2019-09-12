@@ -50,7 +50,7 @@ protocol_server_engines:
         trace: false,
         allow_others: true,
         daemon: false,
-        scheduler_count: 1,
+        # scheduler_count: 1,
         net_factory_name: nio, # 网络层默认用nio来实现
         ssl: false
     }

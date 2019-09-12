@@ -95,4 +95,9 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public boolean remove(K key, Object oldValue, Transaction.Listener listener);
 
     public Object getTransactionalValue(K key);
+
+    public boolean tryPut(K key, Object oldValue, V newValue, int[] columnIndexes);
+
+    public boolean tryRemove(K key, Object oldValue);
+
 }

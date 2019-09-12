@@ -231,8 +231,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param oldRow the old row
      * @param newRow the new row
      */
-    public boolean updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
-            Transaction.Listener listener) {
+    public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         throw newUnsupportedException();
     }
 
@@ -246,7 +245,7 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
-    public void removeRow(ServerSession session, Row row, Transaction.Listener listener) {
+    public boolean tryRemoveRow(ServerSession session, Row row) {
         throw newUnsupportedException();
     }
 
@@ -485,7 +484,7 @@ public abstract class Table extends SchemaObjectBase {
             Row oldRow = rows.next();
             Row newRow = rows.next();
             try {
-                yieldIfNeeded = updateRow(session, oldRow, newRow, updateColumns, listener) || yieldIfNeeded;
+                yieldIfNeeded = tryUpdateRow(session, oldRow, newRow, updateColumns) || yieldIfNeeded;
             } catch (DbException e) {
                 if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
                     session.rollbackTo(savepointId);

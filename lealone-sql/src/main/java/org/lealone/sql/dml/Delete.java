@@ -7,7 +7,6 @@
 package org.lealone.sql.dml;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
@@ -26,7 +25,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.storage.PageKey;
-import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -173,13 +171,11 @@ public class Delete extends ManipulationStatement {
         return new YieldableUpdate(this, pageKeys, handler);
     }
 
-    private static class YieldableUpdate extends YieldableBase<Integer> implements Transaction.Listener {
+    private static class YieldableUpdate extends YieldableBase<Integer> {
         Delete statement;
         Table table;
         int limitRows;
         int count;
-
-        AtomicInteger counter = new AtomicInteger();
 
         public YieldableUpdate(Delete statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
@@ -217,7 +213,8 @@ public class Delete extends ManipulationStatement {
             if (update()) {
                 return true;
             }
-            counter.set(count);
+            setResult(Integer.valueOf(count), count);
+            callStop = true;
             return false;
         }
 
@@ -231,7 +228,7 @@ public class Delete extends ManipulationStatement {
                         done = table.fireBeforeRow(session, row, null);
                     }
                     if (!done) {
-                        table.removeRow(session, row, this);
+                        yieldIfNeeded = table.tryRemoveRow(session, row) || yieldIfNeeded;
                         if (table.fireRow()) {
                             table.fireAfterRow(session, row, null, false);
                         }
@@ -244,20 +241,8 @@ public class Delete extends ManipulationStatement {
                 if (yieldIfNeeded) {
                     return true;
                 }
-                setResult(Integer.valueOf(count), count);
             }
             return false;
-        }
-
-        @Override
-        public void partialUndo() {
-        }
-
-        @Override
-        public void partialComplete() {
-            if (counter.decrementAndGet() == 0) {
-                stop();
-            }
         }
     }
 }
