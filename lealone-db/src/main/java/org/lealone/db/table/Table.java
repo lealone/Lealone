@@ -224,6 +224,11 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
+    public boolean addRow(ServerSession session, Row row, Transaction.Listener listener) {
+        addRow(session, row);
+        return false;
+    }
+
     /**
      * Update a row from the table and all indexes.
      *

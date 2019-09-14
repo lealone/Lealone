@@ -232,6 +232,48 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
+    public boolean add(ServerSession session, Row row, Transaction.Listener listener) {
+        TransactionMap<Value, Value> map = getMap(session);
+        ValueArray array = convertToKey(row);
+        ValueArray unique = null;
+        if (indexType.isUnique()) {
+            // this will detect committed entries only
+            unique = convertToKey(row);
+            unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+            checkUnique(row, map, unique);
+        }
+        try {
+            listener.beforeOperation();
+            map.put(array, ValueNull.INSTANCE, listener);
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+        }
+        if (indexType.isUnique()) {
+            Iterator<Value> it = map.keyIterator(unique, true);
+            while (it.hasNext()) {
+                ValueArray k = (ValueArray) it.next();
+                SearchRow r2 = convertToSearchRow(k);
+                if (compareRows(row, r2) != 0) {
+                    break;
+                }
+                if (containsNullAndAllowMultipleNull(r2)) {
+                    // this is allowed
+                    continue;
+                }
+                if (map.isSameTransaction(k)) {
+                    continue;
+                }
+                if (map.get(k) != null) {
+                    // committed
+                    throw getDuplicateKeyException(k.toString());
+                }
+                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName());
+            }
+        }
+        return false;
+    }
+
+    @Override
     public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         // 只有索引字段被更新时才更新索引
         for (Column c : columns) {

@@ -49,6 +49,11 @@ public interface Index extends SchemaObject {
      */
     void add(ServerSession session, Row row);
 
+    default boolean add(ServerSession session, Row row, Transaction.Listener listener) {
+        add(session, row);
+        return false;
+    }
+
     default boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         remove(session, oldRow);
         add(session, newRow);

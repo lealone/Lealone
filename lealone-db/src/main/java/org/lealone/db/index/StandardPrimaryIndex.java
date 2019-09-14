@@ -165,6 +165,63 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
+    public boolean add(ServerSession session, Row row, Transaction.Listener listener) {
+        // insert新记录并且由系统自动增加rowKey时，不用每次都调用一次map.get
+        // update原有记录row.getKey()不为0，所以依然要调用map.get
+        boolean checkDuplicateKey = true;
+        if (mainIndexColumn == -1) {
+            if (row.getKey() == 0) {
+                checkDuplicateKey = false;
+            }
+        } else {
+            long k = row.getValue(mainIndexColumn).getLong();
+            row.setKey(k);
+        }
+
+        if (table.getContainsLargeObject()) {
+            for (int i = 0, len = row.getColumnCount(); i < len; i++) {
+                Value v = row.getValue(i);
+                Value v2 = v.link(database, getId());
+                if (v2.isLinked()) {
+                    session.unlinkAtCommitStop(v2);
+                }
+                if (v != v2) {
+                    row.setValue(i, v2);
+                }
+            }
+        }
+
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
+        Value key;
+        if (checkDuplicateKey) {
+            key = ValueLong.get(row.getKey());
+            VersionedValue old = map.get(key);
+            if (old != null) {
+                String sql = "PRIMARY KEY ON " + table.getSQL();
+                if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
+                    sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+                }
+                DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
+                e.setSource(this);
+                throw e;
+            }
+            try {
+                listener.beforeOperation();
+                map.put(key, value, listener);
+            } catch (IllegalStateException e) {
+                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
+            }
+        } else {
+            key = map.append(value);
+            row.setKey(key.getLong());
+        }
+        session.setLastRow(row);
+        session.setLastIndex(this);
+        return false;
+    }
+
+    @Override
     public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         int size = updateColumns.size();
         int[] columnIndexes = new int[size];

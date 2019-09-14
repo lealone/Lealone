@@ -173,14 +173,26 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
         return set(key, value);
     }
 
+    @Override
+    public boolean put(K key, V value, Transaction.Listener listener) {
+        transaction.checkNotClosed();
+        DataUtils.checkArgument(value != null, "The value may not be null");
+        return trySetAsync(key, value, null, null, listener);
+    }
+
     @SuppressWarnings("unchecked")
     private V set(K key, V value) {
         transaction.checkNotClosed();
         TransactionalValue oldValue = map.get(key);
-        boolean ok = trySet(key, value, oldValue);
+        TransactionalValue retValue = null;
+        if (oldValue != null) {
+            retValue = getValue(key, oldValue);
+        }
+        // trySet可能会改变oldValue的内部状态，所以上一步提前拿到返回值
+        boolean ok = trySet(key, value, oldValue, null);
         if (ok) {
-            oldValue = getValue(key, oldValue);
-            return oldValue == null ? null : (V) oldValue.getValue();
+            // oldValue = getValue(key, oldValue);
+            return retValue == null ? null : (V) retValue.getValue();
         }
         throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
     }
@@ -190,20 +202,16 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
         return trySet(key, value, oldValue, null);
     }
 
-    private boolean trySet(K key, V value, TransactionalValue oldValue) {
-        return trySet(key, value, oldValue, null);
-    }
-
     private boolean trySet(K key, V value, TransactionalValue oldValue, int[] columnIndexes) {
         CountDownLatch latch = new CountDownLatch(1);
         Transaction.Listener listener = new Transaction.Listener() {
             @Override
-            public void partialUndo() {
+            public void operationUndo() {
                 latch.countDown();
             }
 
             @Override
-            public void partialComplete() {
+            public void operationComplete() {
                 latch.countDown();
             }
         };
@@ -296,13 +304,13 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
                     TransactionalValue old = ar.getResult();
                     if (old != null) {
                         transaction.logUndo();
-                        listener.partialUndo();
+                        listener.operationUndo();
                     } else {
-                        listener.partialComplete();
+                        listener.operationComplete();
                     }
                 } else {
                     transaction.logUndo();
-                    listener.partialUndo();
+                    listener.operationUndo();
                 }
             };
             map.putIfAbsent(key, ref, handler);
@@ -317,11 +325,11 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
                     map.getValueType(), columnIndexes, oldValue);
             transaction.log(mapName, key, refValue, newValue, oldValue);
             if (oldValue.compareAndSet(refValue, newValue)) {
-                listener.partialComplete();
+                listener.operationComplete();
                 return false;
             } else {
                 transaction.logUndo();
-                listener.partialUndo();
+                listener.operationUndo();
                 if (value == null) {
                     // 两个事务同时删除某一行时，因为删除操作是排它的，
                     // 所以只要一个compareAndSet成功了，另一个就没必要重试了
@@ -329,7 +337,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
                 }
             }
         }
-        listener.partialUndo();
+        listener.operationUndo();
         // the transaction is not yet committed
         return true;
     }

@@ -7,12 +7,16 @@
 package org.lealone.sql.dml;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
@@ -24,6 +28,8 @@ import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.storage.PageKey;
+import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -253,5 +259,146 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         else
             priority = MAX_PRIORITY;
         return priority;
+    }
+
+    @Override
+    public YieldableUpdate createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+        return new YieldableUpdate(this, pageKeys, handler);
+    }
+
+    private static class YieldableUpdate extends YieldableBase<Integer> implements Transaction.Listener {
+
+        Insert statement;
+        Table table;
+        int listSize;
+        int index;
+        int updateCount;
+        Result rows;
+        AtomicInteger counter = new AtomicInteger();
+        boolean loopEnd;
+
+        public YieldableUpdate(Insert statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            this.statement = statement;
+            table = statement.table;
+            callStop = false;
+        }
+
+        @Override
+        protected boolean startInternal() {
+            session.getUser().checkRight(table, Right.INSERT);
+            table.fire(session, Trigger.INSERT, true);
+            listSize = statement.list.size();
+            if (statement.query != null) {
+                table.lock(session, true, false);
+                rows = statement.query.query(0);
+            }
+            return false;
+        }
+
+        @Override
+        protected void stopInternal() {
+            table.fire(session, Trigger.INSERT, false);
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            if (!loopEnd) {
+                if (update()) {
+                    return true;
+                }
+            }
+            if (loopEnd) {
+                if (counter.get() <= 0) {
+                    setResult(Integer.valueOf(updateCount), updateCount);
+                    callStop = true;
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private boolean update() {
+            if (rows == null) {
+                int columnLen = statement.columns.length;
+                for (; index < listSize; index++) {
+                    Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
+
+                    Expression[] expr = statement.list.get(index);
+                    boolean yieldIfNeeded = statement.setCurrentRowNumber(index + 1);
+                    for (int i = 0; i < columnLen; i++) {
+                        Column c = statement.columns[i];
+                        int index = c.getColumnId(); // 从0开始
+                        Expression e = expr[i];
+                        if (e != null) {
+                            // e can be null (DEFAULT)
+                            e = e.optimize(session);
+                            try {
+                                Value v = c.convert(e.getValue(session));
+                                newRow.setValue(index, v);
+                            } catch (DbException ex) {
+                                throw statement.setRow(ex, index, getSQL(expr));
+                            }
+                        }
+                    }
+                    updateCount++;
+                    table.validateConvertUpdateSequence(session, newRow);
+                    boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
+                    if (!done) {
+                        // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
+                        table.lock(session, true, false);
+                        table.addRow(session, newRow, this);
+                        table.fireAfterRow(session, null, newRow, false);
+                    }
+                    if (yieldIfNeeded) {
+                        return true;
+                    }
+                }
+            } else {
+                while (rows.next()) {
+                    Value[] values = rows.currentRow();
+                    Row newRow = table.getTemplateRow();
+                    boolean yieldIfNeeded = statement.setCurrentRowNumber(++updateCount);
+                    for (int j = 0, len = statement.columns.length; j < len; j++) {
+                        Column c = statement.columns[j];
+                        int index = c.getColumnId();
+                        try {
+                            Value v = c.convert(values[j]);
+                            newRow.setValue(index, v);
+                        } catch (DbException ex) {
+                            throw statement.setRow(ex, updateCount, getSQL(values));
+                        }
+                    }
+                    table.validateConvertUpdateSequence(session, newRow);
+                    boolean done = table.fireBeforeRow(session, null, newRow);
+                    if (!done) {
+                        table.addRow(session, newRow, this);
+                        table.fireAfterRow(session, null, newRow, false);
+                    }
+                    if (yieldIfNeeded) {
+                        return true;
+                    }
+                }
+                rows.close();
+            }
+            loopEnd = true;
+            return false;
+        }
+
+        @Override
+        public void beforeOperation() {
+            counter.incrementAndGet();
+        }
+
+        @Override
+        public void operationUndo() {
+            counter.decrementAndGet();
+        }
+
+        @Override
+        public void operationComplete() {
+            counter.decrementAndGet();
+        }
     }
 }

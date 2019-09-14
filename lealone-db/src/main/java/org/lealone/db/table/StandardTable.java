@@ -552,6 +552,26 @@ public class StandardTable extends Table {
     }
 
     @Override
+    public boolean addRow(ServerSession session, Row row, Transaction.Listener listener) {
+        row.setVersion(getVersion());
+        lastModificationId = database.getNextModificationDataId();
+        Transaction t = session.getTransaction();
+        int savepointId = t.getSavepointId();
+        try {
+            // 第一个是PrimaryIndex
+            for (int i = 0, size = indexes.size(); i < size; i++) {
+                Index index = indexes.get(i);
+                index.add(session, row, listener);
+            }
+        } catch (Throwable e) {
+            t.rollbackToSavepoint(savepointId);
+            throw DbException.convert(e);
+        }
+        analyzeIfRequired(session);
+        return false;
+    }
+
+    @Override
     public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();

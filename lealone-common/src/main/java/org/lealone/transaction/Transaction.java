@@ -136,8 +136,11 @@ public interface Transaction {
     }
 
     interface Listener {
-        void partialUndo();
+        default void beforeOperation() {
+        }
 
-        void partialComplete();
+        void operationUndo();
+
+        void operationComplete();
     }
 }

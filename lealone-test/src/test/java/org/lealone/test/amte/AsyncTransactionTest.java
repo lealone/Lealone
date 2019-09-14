@@ -53,14 +53,14 @@ public class AsyncTransactionTest extends TestBase {
         }
 
         @Override
-        public void partialUndo() {
+        public void operationUndo() {
             System.out.println("partialUndo");
             if (latch != null)
                 latch.countDown();
         }
 
         @Override
-        public void partialComplete() {
+        public void operationComplete() {
             System.out.println("partialComplete");
             if (latch != null)
                 latch.countDown();
