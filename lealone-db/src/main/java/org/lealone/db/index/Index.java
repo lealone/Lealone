@@ -77,6 +77,10 @@ public interface Index extends SchemaObject {
         return false;
     }
 
+    default boolean tryLock(ServerSession session, Row row) {
+        return false;
+    }
+
     /**
      * Find a row or a list of rows and create a cursor to iterate over the result.
      *

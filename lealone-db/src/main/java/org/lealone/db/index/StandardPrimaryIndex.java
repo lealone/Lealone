@@ -301,6 +301,15 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
+    public boolean tryLock(ServerSession session, Row row) {
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        if (map.isLocked(row.getRawValue(), null))
+            return false;
+
+        return map.tryLock(ValueLong.get(row.getKey()), row.getRawValue());
+    }
+
+    @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         return find(session, IterationParameters.create(first, last));
     }

@@ -33,19 +33,23 @@ public class TransactionalLogRecord {
     Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
     final TransactionalValue oldValue;
     final TransactionalValue newValue;
-    // final TransactionalValue head;
+    final boolean isForUpdate;
 
     public TransactionalLogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
-            TransactionalValue head) {
+            boolean isForUpdate) {
         this.mapName = mapName;
         this.key = key;
         this.oldValue = oldValue;
         this.newValue = newValue;
-        // this.head = head;
+        this.isForUpdate = isForUpdate;
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
     public void commit(AMTransactionEngine transactionEngine, long tid) {
+        if (isForUpdate) {
+            newValue.rollback();
+            return;
+        }
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
         if (map == null) {
             return; // map was later removed
@@ -122,6 +126,10 @@ public class TransactionalLogRecord {
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
     public void rollback(AMTransactionEngine transactionEngine) {
+        if (isForUpdate) {
+            newValue.rollback();
+            return;
+        }
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map != null) {
@@ -160,6 +168,9 @@ public class TransactionalLogRecord {
 
     // 用于redo时，不关心oldValue
     public void writeForRedo(DataBuffer writeBuffer, AMTransactionEngine transactionEngine) {
+        if (isForUpdate) {
+            return;
+        }
         StorageMap<?, ?> map = transactionEngine.getMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map == null) {

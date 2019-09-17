@@ -29,6 +29,7 @@ public class SelectTest extends SqlTestBase {
         testInsert();
         testSelect();
         testAggregate();
+        testForUpdate();
     }
 
     void testInsert() throws Exception {
@@ -142,5 +143,10 @@ public class SelectTest extends SqlTestBase {
         sql = "select avg(f3) from SelectTest";
         // 因为f3是int，所以内部已进行4舍5入
         assertEquals(34.0, getDoubleValue(1, true), 0.2);
+    }
+
+    void testForUpdate() throws Exception {
+        sql = "SELECT pk FROM SelectTest WHERE f3 = 12 FOR UPDATE";
+        printResultSet();
     }
 }

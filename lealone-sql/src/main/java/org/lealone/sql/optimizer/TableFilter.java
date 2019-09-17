@@ -998,27 +998,13 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
     }
 
     /**
-     * Add the current row to the array, if there is a current row.
-     *
-     * @param rows the rows to lock
+     * Lock the current row.
      */
-    public void lockRowAdd(ArrayList<Row> rows) {
+    public boolean lockRow() {
         if (state == FOUND) {
-            rows.add(get());
+            return table.tryLockRow(session, get());
         }
-    }
-
-    /**
-     * Lock the given rows.
-     *
-     * @param forUpdateRows the rows to lock
-     */
-    public void lockRows(ArrayList<Row> forUpdateRows) {
-        for (Row row : forUpdateRows) {
-            Row newRow = row.getCopy();
-            table.removeRow(session, row);
-            table.addRow(session, newRow);
-        }
+        return false;
     }
 
     public TableFilter getNestedJoin() {

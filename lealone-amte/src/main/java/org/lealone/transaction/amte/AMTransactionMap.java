@@ -298,7 +298,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
             TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null,
                     map.getValueType(), columnIndexes, ref);
             ref.setRefValue(newValue);
-            transaction.log(mapName, key, null, newValue, ref);
+            transaction.log(mapName, key, null, newValue);
             AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
                 if (ar.isSucceeded()) {
                     TransactionalValue old = ar.getResult();
@@ -323,7 +323,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
             TransactionalValue refValue = oldValue.getRefValue();
             TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
                     map.getValueType(), columnIndexes, oldValue);
-            transaction.log(mapName, key, refValue, newValue, oldValue);
+            transaction.log(mapName, key, refValue, newValue);
             if (oldValue.compareAndSet(refValue, newValue)) {
                 listener.operationComplete();
                 return false;
@@ -363,7 +363,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
             TransactionalValue refValue = oldValue.getRefValue();
             TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
                     map.getValueType(), columnIndexes, oldValue);
-            transaction.log(mapName, key, refValue, newValue, oldValue);
+            transaction.log(mapName, key, refValue, newValue);
             if (oldValue.compareAndSet(refValue, newValue)) {
                 return false;
             } else {
@@ -377,6 +377,23 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
         }
         // 当前行已经被其他事务锁住了
         return true;
+    }
+
+    @Override
+    public boolean tryLock(K key, Object oldValue) {
+        TransactionalValue v = (TransactionalValue) oldValue;
+        if (v.isLocked(transaction.transactionId, null))
+            return false;
+
+        TransactionalValue refValue = v.getRefValue();
+        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(), refValue,
+                map.getValueType(), null, v);
+        transaction.log(getName(), key, refValue, newValue, true);
+        if (v.compareAndSet(refValue, newValue)) {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     @Override

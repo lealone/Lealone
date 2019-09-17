@@ -254,6 +254,10 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
+    public boolean tryLockRow(ServerSession session, Row row) {
+        throw newUnsupportedException();
+    }
+
     /**
      * Remove all rows from the table and indexes.
      *

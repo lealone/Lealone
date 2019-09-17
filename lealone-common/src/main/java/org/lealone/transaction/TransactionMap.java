@@ -102,4 +102,5 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public boolean tryRemove(K key, Object oldValue);
 
+    public boolean tryLock(K key, Object oldValue);
 }

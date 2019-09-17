@@ -72,13 +72,13 @@ public class AMTransaction implements Transaction {
     }
 
     public void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
-            TransactionalValue head) {
-        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue, head));
+            boolean isForUpdate) {
+        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue, isForUpdate));
         logId++;
     }
 
     public void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
-        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue, null));
+        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue, false));
         logId++;
     }
 
@@ -319,7 +319,7 @@ public class AMTransaction implements Transaction {
 
     private RedoLogRecord createLocalTransactionRedoLogRecord() {
         ByteBuffer operations = logRecords2redoLogRecordBuffer();
-        if (operations == null)
+        if (operations == null || operations.limit() == 0)
             return null;
         return RedoLogRecord.createLocalTransactionRedoLogRecord(transactionId, operations);
     }

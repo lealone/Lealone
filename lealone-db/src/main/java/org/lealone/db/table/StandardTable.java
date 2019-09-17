@@ -629,6 +629,12 @@ public class StandardTable extends Table {
     }
 
     @Override
+    public boolean tryLockRow(ServerSession session, Row row) {
+        // 只锁主索引即可
+        return primaryIndex.tryLock(session, row);
+    }
+
+    @Override
     public void truncate(ServerSession session) {
         lastModificationId = database.getNextModificationDataId();
         for (int i = indexes.size() - 1; i >= 0; i--) {

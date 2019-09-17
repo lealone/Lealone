@@ -29,7 +29,6 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
-import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
@@ -873,21 +872,17 @@ public class Select extends Query {
         }
         int rowNumber = 0;
         setCurrentRowNumber(0);
-        ArrayList<Row> forUpdateRows = null;
-        if (isForUpdateMvcc) {
-            forUpdateRows = new ArrayList<>();
-        }
         int sampleSize = getSampleSizeValue(session);
         while (topTableFilter.next()) {
             setCurrentRowNumber(rowNumber + 1);
             if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
+                if (isForUpdate) {
+                    topTableFilter.lockRow();
+                }
                 Value[] row = new Value[columnCount];
                 for (int i = 0; i < columnCount; i++) {
                     Expression expr = expressions.get(i);
                     row[i] = expr.getValue(session);
-                }
-                if (isForUpdateMvcc) {
-                    topTableFilter.lockRowAdd(forUpdateRows);
                 }
                 result.addRow(row);
                 rowNumber++;
@@ -898,9 +893,6 @@ public class Select extends Query {
                     break;
                 }
             }
-        }
-        if (isForUpdateMvcc) {
-            topTableFilter.lockRows(forUpdateRows);
         }
     }
 
