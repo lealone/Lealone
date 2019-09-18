@@ -66,7 +66,7 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     private boolean noCache;
     private int lastLimit;
     private long lastEvaluated;
-    private LocalResult lastResult;
+    protected LocalResult lastResult;
     private Value[] lastParameters;
     private boolean cacheableChecked;
 
@@ -563,5 +563,40 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     @Override
     public boolean isDeterministic() {
         return isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR);
+    }
+
+    boolean useCache = false;
+
+    protected void start(int limit, ResultTarget target) {
+        fireBeforeSelectTriggers();
+        if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
+            useCache = false;// return queryWithoutCache(limit, target);
+        } else {
+            Value[] params = getParameterValues();
+            long now = session.getDatabase().getModificationDataId();
+            if (isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)) {
+                if (lastResult != null && !lastResult.isClosed() && limit == lastLimit) {
+                    if (sameResultAsLast(session, params, lastParameters, lastEvaluated)) {
+                        lastResult = lastResult.createShallowCopy(session);
+                        if (lastResult != null) {
+                            lastResult.reset();
+                            useCache = true;
+                        }
+                    }
+                }
+            }
+            if (!useCache) {
+                lastParameters = params;
+                closeLastResult();
+                startInternal(limit, target);
+                // LocalResult r = queryWithoutCache(limit, target);
+                // lastResult = r;
+                this.lastEvaluated = now;
+                lastLimit = limit;
+            }
+        }
+    }
+
+    protected void startInternal(int limit, ResultTarget target) {
     }
 }
