@@ -19,7 +19,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
-import org.lealone.db.result.SortOrder;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -32,7 +31,6 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
-import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
@@ -45,16 +43,15 @@ public class SelectUnion extends Query implements ISelectUnion {
     private int unionType;
     private final Query left;
     private Query right;
-    private ArrayList<Expression> expressions;
-    private Expression[] expressionArray;
-    private ArrayList<SelectOrderBy> orderList;
-    private SortOrder sort;
-    private boolean isPrepared, checkInit;
-    private boolean isForUpdate;
 
     public SelectUnion(ServerSession session, Query query) {
         super(session);
         this.left = query;
+    }
+
+    @Override
+    public int getType() {
+        return SQLStatement.SELECT;
     }
 
     public void setUnionType(int type) {
@@ -71,40 +68,13 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public Query getLeft() {
-        return left;
-    }
-
-    @Override
     public Query getRight() {
         return right;
     }
 
     @Override
-    public void setSQL(String sql) {
-        this.sql = sql;
-    }
-
-    @Override
-    public void setOrder(ArrayList<SelectOrderBy> order) {
-        orderList = order;
-    }
-
-    private Value[] convert(Value[] values, int columnCount) {
-        Value[] newValues;
-        if (columnCount == values.length) {
-            // re-use the array if possible
-            newValues = values;
-        } else {
-            // create a new array if needed,
-            // for the value hash set
-            newValues = new Value[columnCount];
-        }
-        for (int i = 0; i < columnCount; i++) {
-            Expression e = expressions.get(i);
-            newValues[i] = values[i].convertTo(e.getType());
-        }
-        return newValues;
+    public Query getLeft() {
+        return left;
     }
 
     @Override
@@ -122,7 +92,69 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    protected LocalResult queryWithoutCache(int maxRows, ResultTarget target) {
+    public void init() {
+        if (SysProperties.CHECK && checkInit) {
+            DbException.throwInternalError();
+        }
+        checkInit = true;
+        left.init();
+        right.init();
+        int len = left.getColumnCount();
+        if (len != right.getColumnCount()) {
+            throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
+        }
+        ArrayList<Expression> le = left.getExpressions();
+        // set the expressions to get the right column count and names,
+        // but can't validate at this time
+        expressions = new ArrayList<>(len);
+        for (int i = 0; i < len; i++) {
+            Expression l = le.get(i);
+            expressions.add(l);
+        }
+    }
+
+    @Override
+    public PreparedStatement prepare() {
+        if (isPrepared) {
+            // sometimes a subquery is prepared twice (CREATE TABLE AS SELECT)
+            return this;
+        }
+        if (SysProperties.CHECK && !checkInit) {
+            DbException.throwInternalError("not initialized");
+        }
+        isPrepared = true;
+        left.prepare();
+        right.prepare();
+        int len = left.getColumnCount();
+        // set the correct expressions now
+        expressions = new ArrayList<>(len);
+        ArrayList<Expression> le = left.getExpressions();
+        ArrayList<Expression> re = right.getExpressions();
+        for (int i = 0; i < len; i++) {
+            Expression l = le.get(i);
+            Expression r = re.get(i);
+            int type = Value.getHigherOrder(l.getType(), r.getType());
+            long prec = Math.max(l.getPrecision(), r.getPrecision());
+            int scale = Math.max(l.getScale(), r.getScale());
+            int displaySize = Math.max(l.getDisplaySize(), r.getDisplaySize());
+            Column col = new Column(l.getAlias(), type, prec, scale, displaySize);
+            Expression e = new ExpressionColumn(session.getDatabase(), col);
+            expressions.add(e);
+        }
+        if (orderList != null) {
+            initOrder(session, expressions, null, orderList, getColumnCount(), true, null);
+            sort = prepareOrder(session, orderList, expressions.size());
+            orderList = null;
+        }
+        expressionArray = new Expression[expressions.size()];
+        expressions.toArray(expressionArray);
+        return this;
+    }
+
+    @Override
+    public LocalResult query(int maxRows, ResultTarget target) {
+        fireBeforeSelectTriggers();
+        // union doesn't always know the parameter list of the left and right queries
         if (maxRows != 0) {
             // maxRows is set (maxRows 0 means no limit)
             int l;
@@ -242,64 +274,21 @@ public class SelectUnion extends Query implements ISelectUnion {
         return result;
     }
 
-    @Override
-    public void init() {
-        if (SysProperties.CHECK && checkInit) {
-            DbException.throwInternalError();
+    private Value[] convert(Value[] values, int columnCount) {
+        Value[] newValues;
+        if (columnCount == values.length) {
+            // re-use the array if possible
+            newValues = values;
+        } else {
+            // create a new array if needed,
+            // for the value hash set
+            newValues = new Value[columnCount];
         }
-        checkInit = true;
-        left.init();
-        right.init();
-        int len = left.getColumnCount();
-        if (len != right.getColumnCount()) {
-            throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
+        for (int i = 0; i < columnCount; i++) {
+            Expression e = expressions.get(i);
+            newValues[i] = values[i].convertTo(e.getType());
         }
-        ArrayList<Expression> le = left.getExpressions();
-        // set the expressions to get the right column count and names,
-        // but can't validate at this time
-        expressions = new ArrayList<>(len);
-        for (int i = 0; i < len; i++) {
-            Expression l = le.get(i);
-            expressions.add(l);
-        }
-    }
-
-    @Override
-    public PreparedStatement prepare() {
-        if (isPrepared) {
-            // sometimes a subquery is prepared twice (CREATE TABLE AS SELECT)
-            return this;
-        }
-        if (SysProperties.CHECK && !checkInit) {
-            DbException.throwInternalError("not initialized");
-        }
-        isPrepared = true;
-        left.prepare();
-        right.prepare();
-        int len = left.getColumnCount();
-        // set the correct expressions now
-        expressions = new ArrayList<>(len);
-        ArrayList<Expression> le = left.getExpressions();
-        ArrayList<Expression> re = right.getExpressions();
-        for (int i = 0; i < len; i++) {
-            Expression l = le.get(i);
-            Expression r = re.get(i);
-            int type = Value.getHigherOrder(l.getType(), r.getType());
-            long prec = Math.max(l.getPrecision(), r.getPrecision());
-            int scale = Math.max(l.getScale(), r.getScale());
-            int displaySize = Math.max(l.getDisplaySize(), r.getDisplaySize());
-            Column col = new Column(l.getAlias(), type, prec, scale, displaySize);
-            Expression e = new ExpressionColumn(session.getDatabase(), col);
-            expressions.add(e);
-        }
-        if (orderList != null) {
-            initOrder(session, expressions, null, orderList, getColumnCount(), true, null);
-            sort = prepareOrder(session, orderList, expressions.size());
-            orderList = null;
-        }
-        expressionArray = new Expression[expressions.size()];
-        expressions.toArray(expressionArray);
-        return this;
+        return newValues;
     }
 
     @Override
@@ -312,11 +301,6 @@ public class SelectUnion extends Query implements ISelectUnion {
         HashSet<Table> set = left.getTables();
         set.addAll(right.getTables());
         return set;
-    }
-
-    @Override
-    public ArrayList<Expression> getExpressions() {
-        return expressions;
     }
 
     @Override
@@ -404,13 +388,6 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public LocalResult query(int limit, ResultTarget target) {
-        // union doesn't always know the parameter list of the left and right
-        // queries
-        return queryWithoutCache(limit, target);
-    }
-
-    @Override
     public boolean isEverything(ExpressionVisitor visitor) {
         return left.isEverything(visitor) && right.isEverything(visitor);
     }
@@ -425,11 +402,6 @@ public class SelectUnion extends Query implements ISelectUnion {
     public void fireBeforeSelectTriggers() {
         left.fireBeforeSelectTriggers();
         right.fireBeforeSelectTriggers();
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.SELECT;
     }
 
     @Override

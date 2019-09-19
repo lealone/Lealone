@@ -70,28 +70,27 @@ import org.lealone.storage.PageKey;
  * @author Joel Turkel (Group sorted query)
  */
 public class Select extends Query {
+
     private TableFilter topTableFilter;
     private final ArrayList<TableFilter> filters = Utils.newSmallArrayList();
     private final ArrayList<TableFilter> topFilters = Utils.newSmallArrayList();
-    private ArrayList<Expression> expressions;
-    private Expression[] expressionArray;
     private Expression having;
     private Expression condition;
     private int visibleColumnCount, distinctColumnCount;
-    private ArrayList<SelectOrderBy> orderList;
     private ArrayList<Expression> group;
     private int[] groupIndex;
     private boolean[] groupByExpression;
     private HashMap<Expression, Object> currentGroup;
+    private int currentGroupRowId;
     private int havingIndex;
     private boolean isGroupQuery, isGroupSortedQuery;
-    private boolean isForUpdate, isForUpdateMvcc;
+    private boolean isForUpdateMvcc;
     private double cost;
     private boolean isQuickAggregateQuery, isDistinctQuery, isDistinctQueryForMultiFields;
-    private boolean isPrepared, checkInit;
     private boolean sortUsingIndex;
-    private SortOrder sort;
-    private int currentGroupRowId;
+
+    private final ResultCache resultCache = new ResultCache();
+    private QueryOperator queryOperator;
 
     public Select(ServerSession session) {
         super(session);
@@ -111,11 +110,6 @@ public class Select extends Query {
         this.expressions = expressions;
     }
 
-    @Override
-    public ArrayList<Expression> getExpressions() {
-        return expressions;
-    }
-
     /**
      * Called if this query contains aggregate functions.
      */
@@ -133,11 +127,6 @@ public class Select extends Query {
 
     public void setHaving(Expression having) {
         this.having = having;
-    }
-
-    @Override
-    public void setOrder(ArrayList<SelectOrderBy> order) {
-        orderList = order;
     }
 
     public HashMap<Expression, Object> getCurrentGroup() {
@@ -704,8 +693,7 @@ public class Select extends Query {
         return true;
     }
 
-    @Override
-    protected LocalResult queryWithoutCache(int maxRows, ResultTarget target) {
+    private LocalResult queryWithoutCacheOld(int maxRows, ResultTarget target) {
         int limitRows = maxRows == 0 ? -1 : maxRows;
         if (limitExpr != null) {
             Value v = limitExpr.getValue(session);
@@ -1557,65 +1545,17 @@ public class Select extends Query {
     }
 
     @Override
-    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Result>> handler) {
-        return new YieldableQuery(this, maxRows, scrollable, pageKeys, handler);
+    public void disableCache() {
+        resultCache.noCache = true;
     }
-
-    private static class YieldableQuery extends YieldableBase<Result> {
-
-        private final Select statement;
-        private final int maxRows;
-        // private final boolean scrollable;
-
-        public YieldableQuery(Select statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Result>> asyncHandler) {
-            super(statement, pageKeys, asyncHandler);
-            this.statement = statement;
-            this.maxRows = maxRows;
-            // this.scrollable = scrollable;
-        }
-
-        @Override
-        protected boolean startInternal() {
-            statement.start(maxRows, null);
-            return false;
-        }
-
-        @Override
-        protected void stopInternal() {
-            statement.queryOperator.stop();
-        }
-
-        @Override
-        protected boolean executeInternal() {
-            if (statement.useCache) {
-                setResult(statement.lastResult, statement.lastResult.getRowCount());
-                return false;
-            }
-            if (query()) {
-                return true;
-            }
-            if (statement.queryOperator.localResult != null) {
-                setResult(statement.queryOperator.localResult, statement.queryOperator.localResult.getRowCount());
-                statement.lastResult = statement.queryOperator.localResult;
-                return false;
-            }
-            return true;
-        }
-
-        private boolean query() {
-            statement.queryOperator.run();
-            if (statement.queryOperator.loopEnd)
-                return false;
-            return true;
-        }
-    }
-
-    private QueryOperator queryOperator;
 
     @Override
-    protected void startInternal(int maxRows, ResultTarget target) {
+    public Result query(int limit, ResultTarget target) {
+        fireBeforeSelectTriggers();
+        return resultCache.getResult(limit, target, false);
+    }
+
+    private void queryWithoutCache(int maxRows, ResultTarget target) {
         int limitRows = maxRows == 0 ? -1 : maxRows;
         if (limitExpr != null) {
             Value v = limitExpr.getValue(session);
@@ -1715,7 +1655,160 @@ public class Select extends Query {
         return;
     }
 
-    private class QueryOperator {
+    @Override
+    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Result>> handler) {
+        return new YieldableQuery(this, maxRows, scrollable, pageKeys, handler);
+    }
+
+    private class YieldableQuery extends YieldableBase<Result> {
+
+        private final Select statement;
+        private final int maxRows;
+        // private final boolean scrollable;
+
+        public YieldableQuery(Select statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Result>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            this.statement = statement;
+            this.maxRows = maxRows;
+            // this.scrollable = scrollable;
+        }
+
+        @Override
+        protected boolean startInternal() {
+            fireBeforeSelectTriggers();
+            resultCache.getResult(maxRows, null, true);
+            return false;
+        }
+
+        @Override
+        protected void stopInternal() {
+            statement.queryOperator.stop();
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            if (resultCache.useCache) {
+                setResult(resultCache.lastResult, resultCache.lastResult.getRowCount());
+                return false;
+            }
+            if (query()) {
+                return true;
+            }
+            if (statement.queryOperator.localResult != null) {
+                setResult(statement.queryOperator.localResult, statement.queryOperator.localResult.getRowCount());
+                resultCache.lastResult = statement.queryOperator.localResult;
+                return false;
+            }
+            return true;
+        }
+
+        private boolean query() {
+            statement.queryOperator.run();
+            if (statement.queryOperator.loopEnd)
+                return false;
+            return true;
+        }
+    }
+
+    private class ResultCache {
+        private boolean noCache, useCache;
+        private int lastLimit;
+        private long lastEvaluated;
+        protected LocalResult lastResult;
+        private Value[] lastParameters;
+        private boolean cacheableChecked;
+
+        private Value[] getParameterValues() {
+            ArrayList<Parameter> list = getParameters();
+            if (list == null) {
+                list = new ArrayList<>();
+            }
+            int size = list.size();
+            Value[] params = new Value[size];
+            for (int i = 0; i < size; i++) {
+                Value v = list.get(i).getValue();
+                params[i] = v;
+            }
+            return params;
+        }
+
+        private void closeLastResult() {
+            if (lastResult != null) {
+                lastResult.close();
+            }
+        }
+
+        private LocalResult getResult(int limit, ResultTarget target, boolean lazy) {
+            if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
+                useCache = false;
+                if (lazy) {
+                    queryWithoutCache(limit, target);
+                    return null;
+                } else {
+                    return queryWithoutCacheOld(limit, target);
+                }
+            } else {
+                Value[] params = getParameterValues();
+                long now = session.getDatabase().getModificationDataId();
+                if (isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)) {
+                    if (lastResult != null && !lastResult.isClosed() && limit == lastLimit) {
+                        if (sameResultAsLast(session, params, lastParameters, lastEvaluated)) {
+                            lastResult = lastResult.createShallowCopy(session);
+                            if (lastResult != null) {
+                                lastResult.reset();
+                                useCache = true;
+                                return lastResult;
+                            }
+                        }
+                    }
+                }
+
+                lastParameters = params;
+                closeLastResult();
+                LocalResult r = null;
+                if (lazy) {
+                    queryWithoutCache(limit, target);
+                } else {
+                    r = queryWithoutCacheOld(limit, target);
+                    lastResult = r;
+                }
+
+                this.lastEvaluated = now;
+                lastLimit = limit;
+                return r;
+            }
+        }
+
+        private boolean sameResultAsLast(ServerSession s, Value[] params, Value[] lastParams, long lastEval) {
+            if (!cacheableChecked) {
+                long max = getMaxDataModificationId();
+                noCache = max == Long.MAX_VALUE;
+                cacheableChecked = true;
+            }
+            if (noCache) {
+                return false;
+            }
+            Database db = s.getDatabase();
+            for (int i = 0; i < params.length; i++) {
+                Value a = lastParams[i], b = params[i];
+                if (a.getType() != b.getType() || !db.areEqual(a, b)) {
+                    return false;
+                }
+            }
+            if (!isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)
+                    || !isEverything(ExpressionVisitor.INDEPENDENT_VISITOR)) {
+                return false;
+            }
+            if (db.getModificationDataId() > lastEval && getMaxDataModificationId() > lastEval) {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    private abstract class QueryOperator {
         int columnCount;
         ResultTarget target;
         ResultTarget result;

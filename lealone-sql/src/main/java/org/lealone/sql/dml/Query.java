@@ -14,7 +14,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.SortOrder;
@@ -63,27 +62,16 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      */
     protected boolean randomAccessResult;
 
-    private boolean noCache;
-    private int lastLimit;
-    private long lastEvaluated;
-    protected LocalResult lastResult;
-    private Value[] lastParameters;
-    private boolean cacheableChecked;
+    protected ArrayList<Expression> expressions;
+    protected Expression[] expressionArray;
+    protected ArrayList<SelectOrderBy> orderList;
+    protected SortOrder sort;
+    protected boolean isPrepared, checkInit;
+    protected boolean isForUpdate;
 
     Query(ServerSession session) {
         super(session);
     }
-
-    /**
-     * Execute the query without checking the cache. If a target is specified,
-     * the results are written to it, and the method returns null. If no target
-     * is specified, a new LocalResult is created and returned.
-     *
-     * @param limit the limit as specified in the JDBC method call
-     * @param target the target to write results to
-     * @return the result
-     */
-    protected abstract LocalResult queryWithoutCache(int limit, ResultTarget target);
 
     /**
      * Initialize the query.
@@ -97,7 +85,9 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      * @return the list of expressions
      */
     @Override
-    public abstract ArrayList<Expression> getExpressions();
+    public ArrayList<Expression> getExpressions() {
+        return expressions;
+    }
 
     /**
      * Calculate the cost to execute this query.
@@ -133,7 +123,9 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      *
      * @param order the order by list
      */
-    public abstract void setOrder(ArrayList<SelectOrderBy> order);
+    public void setOrder(ArrayList<SelectOrderBy> order) {
+        orderList = order;
+    }
 
     /**
      * Set the 'for update' flag.
@@ -241,47 +233,7 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      */
     @Override
     public void disableCache() {
-        this.noCache = true;
-    }
-
-    private boolean sameResultAsLast(ServerSession s, Value[] params, Value[] lastParams, long lastEval) {
-        if (!cacheableChecked) {
-            long max = getMaxDataModificationId();
-            noCache = max == Long.MAX_VALUE;
-            cacheableChecked = true;
-        }
-        if (noCache) {
-            return false;
-        }
-        Database db = s.getDatabase();
-        for (int i = 0; i < params.length; i++) {
-            Value a = lastParams[i], b = params[i];
-            if (a.getType() != b.getType() || !db.areEqual(a, b)) {
-                return false;
-            }
-        }
-        if (!isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)
-                || !isEverything(ExpressionVisitor.INDEPENDENT_VISITOR)) {
-            return false;
-        }
-        if (db.getModificationDataId() > lastEval && getMaxDataModificationId() > lastEval) {
-            return false;
-        }
-        return true;
-    }
-
-    public final Value[] getParameterValues() {
-        ArrayList<Parameter> list = getParameters();
-        if (list == null) {
-            list = new ArrayList<>();
-        }
-        int size = list.size();
-        Value[] params = new Value[size];
-        for (int i = 0; i < size; i++) {
-            Value v = list.get(i).getValue();
-            params[i] = v;
-        }
-        return params;
+        // do nothing
     }
 
     @Override
@@ -296,50 +248,82 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      * @param target the target result (null will return the result)
      * @return the result set (if the target is not set).
      */
-    public Result query(int limit, ResultTarget target) {
-        fireBeforeSelectTriggers();
-        if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
-            return queryWithoutCache(limit, target);
-        }
-        Value[] params = getParameterValues();
-        long now = session.getDatabase().getModificationDataId();
-        if (isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)) {
-            if (lastResult != null && !lastResult.isClosed() && limit == lastLimit) {
-                if (sameResultAsLast(session, params, lastParameters, lastEvaluated)) {
-                    lastResult = lastResult.createShallowCopy(session);
-                    if (lastResult != null) {
-                        lastResult.reset();
-                        return lastResult;
-                    }
-                }
-            }
-        }
-        lastParameters = params;
-        closeLastResult();
-        LocalResult r = queryWithoutCache(limit, target);
-        lastResult = r;
-        this.lastEvaluated = now;
-        lastLimit = limit;
-        return r;
+    public abstract Result query(int limit, ResultTarget target);
+
+    public void setOffset(Expression offset) {
+        this.offsetExpr = offset;
     }
 
-    private void closeLastResult() {
-        if (lastResult != null) {
-            lastResult.close();
-        }
+    public Expression getOffset() {
+        return offsetExpr;
+    }
+
+    public void setLimit(Expression limit) {
+        this.limitExpr = limit;
+    }
+
+    public Expression getLimit() {
+        return limitExpr;
     }
 
     /**
-     * Initialize the order by list. This call may extend the expressions list.
+     * Add a parameter to the parameter list.
+     *
+     * @param param the parameter to add
+     */
+    void addParameter(Parameter param) {
+        if (parameters == null) {
+            parameters = new ArrayList<>();
+        }
+        parameters.add(param);
+    }
+
+    public void setSampleSize(Expression sampleSize) {
+        this.sampleSizeExpr = sampleSize;
+    }
+
+    /**
+     * Get the sample size, if set.
      *
      * @param session the session
-     * @param expressions the select list expressions
-     * @param expressionSQL the select list SQL snippets
-     * @param orderList the order by list
-     * @param visible the number of visible columns in the select list
-     * @param mustBeInResult all order by expressions must be in the select list
-     * @param filters the table filters
+     * @return the sample size
      */
+    int getSampleSizeValue(ServerSession session) {
+        if (sampleSizeExpr == null) {
+            return 0;
+        }
+        Value v = sampleSizeExpr.optimize(session).getValue(session);
+        if (v == ValueNull.INSTANCE) {
+            return 0;
+        }
+        return v.getInt();
+    }
+
+    @Override
+    public final long getMaxDataModificationId() {
+        ExpressionVisitor visitor = ExpressionVisitor.getMaxModificationIdVisitor();
+        isEverything(visitor);
+        return visitor.getMaxDataModificationId();
+    }
+
+    public abstract List<TableFilter> getTopFilters();
+
+    @Override
+    public boolean isDeterministic() {
+        return isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR);
+    }
+
+    /**
+    * Initialize the order by list. This call may extend the expressions list.
+    *
+    * @param session the session
+    * @param expressions the select list expressions
+    * @param expressionSQL the select list SQL snippets
+    * @param orderList the order by list
+    * @param visible the number of visible columns in the select list
+    * @param mustBeInResult all order by expressions must be in the select list
+    * @param filters the table filters
+    */
     static void initOrder(ServerSession session, ArrayList<Expression> expressions, ArrayList<String> expressionSQL,
             ArrayList<SelectOrderBy> orderList, int visible, boolean mustBeInResult, ArrayList<TableFilter> filters) {
         Database db = session.getDatabase();
@@ -435,14 +419,14 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     }
 
     /**
-     * Create a {@link SortOrder} object given the list of {@link SelectOrderBy}
-     * objects. The expression list is extended if necessary.
-     *
-     * @param session the session
-     * @param orderList a list of {@link SelectOrderBy} elements
-     * @param expressionCount the number of columns in the query
-     * @return the {@link SortOrder} object
-     */
+    * Create a {@link SortOrder} object given the list of {@link SelectOrderBy}
+    * objects. The expression list is extended if necessary.
+    *
+    * @param session the session
+    * @param orderList a list of {@link SelectOrderBy} elements
+    * @param expressionCount the number of columns in the query
+    * @return the {@link SortOrder} object
+    */
     static SortOrder prepareOrder(ServerSession session, ArrayList<SelectOrderBy> orderList, int expressionCount) {
         int size = orderList.size();
         int[] index = new int[size];
@@ -500,103 +484,5 @@ public abstract class Query extends ManipulationStatement implements org.lealone
         }
         ExpressionColumn exprCol = (ExpressionColumn) expr;
         return exprCol.getColumn();
-    }
-
-    public void setOffset(Expression offset) {
-        this.offsetExpr = offset;
-    }
-
-    public Expression getOffset() {
-        return offsetExpr;
-    }
-
-    public void setLimit(Expression limit) {
-        this.limitExpr = limit;
-    }
-
-    public Expression getLimit() {
-        return limitExpr;
-    }
-
-    /**
-     * Add a parameter to the parameter list.
-     *
-     * @param param the parameter to add
-     */
-    void addParameter(Parameter param) {
-        if (parameters == null) {
-            parameters = new ArrayList<>();
-        }
-        parameters.add(param);
-    }
-
-    public void setSampleSize(Expression sampleSize) {
-        this.sampleSizeExpr = sampleSize;
-    }
-
-    /**
-     * Get the sample size, if set.
-     *
-     * @param session the session
-     * @return the sample size
-     */
-    int getSampleSizeValue(ServerSession session) {
-        if (sampleSizeExpr == null) {
-            return 0;
-        }
-        Value v = sampleSizeExpr.optimize(session).getValue(session);
-        if (v == ValueNull.INSTANCE) {
-            return 0;
-        }
-        return v.getInt();
-    }
-
-    @Override
-    public final long getMaxDataModificationId() {
-        ExpressionVisitor visitor = ExpressionVisitor.getMaxModificationIdVisitor();
-        isEverything(visitor);
-        return visitor.getMaxDataModificationId();
-    }
-
-    public abstract List<TableFilter> getTopFilters();
-
-    @Override
-    public boolean isDeterministic() {
-        return isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR);
-    }
-
-    boolean useCache = false;
-
-    protected void start(int limit, ResultTarget target) {
-        fireBeforeSelectTriggers();
-        if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
-            useCache = false;// return queryWithoutCache(limit, target);
-        } else {
-            Value[] params = getParameterValues();
-            long now = session.getDatabase().getModificationDataId();
-            if (isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)) {
-                if (lastResult != null && !lastResult.isClosed() && limit == lastLimit) {
-                    if (sameResultAsLast(session, params, lastParameters, lastEvaluated)) {
-                        lastResult = lastResult.createShallowCopy(session);
-                        if (lastResult != null) {
-                            lastResult.reset();
-                            useCache = true;
-                        }
-                    }
-                }
-            }
-            if (!useCache) {
-                lastParameters = params;
-                closeLastResult();
-                startInternal(limit, target);
-                // LocalResult r = queryWithoutCache(limit, target);
-                // lastResult = r;
-                this.lastEvaluated = now;
-                lastLimit = limit;
-            }
-        }
-    }
-
-    protected void startInternal(int limit, ResultTarget target) {
     }
 }
