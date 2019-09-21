@@ -693,250 +693,6 @@ public class Select extends Query {
         return true;
     }
 
-    private LocalResult queryWithoutCacheOld(int maxRows, ResultTarget target) {
-        int limitRows = maxRows == 0 ? -1 : maxRows;
-        if (limitExpr != null) {
-            Value v = limitExpr.getValue(session);
-            int l = v == ValueNull.INSTANCE ? -1 : v.getInt();
-            if (limitRows < 0) {
-                limitRows = l;
-            } else if (l >= 0) {
-                limitRows = Math.min(l, limitRows);
-            }
-        }
-        int columnCount = expressions.size();
-        LocalResult result = null;
-        if (target == null || !session.getDatabase().getSettings().optimizeInsertFromSelect) {
-            result = createLocalResult(result);
-        }
-        if (sort != null && (!sortUsingIndex || distinct)) {
-            result = createLocalResult(result);
-            result.setSortOrder(sort);
-        }
-        if (distinct && (!isDistinctQuery && !isDistinctQueryForMultiFields)) {
-            result = createLocalResult(result);
-            result.setDistinct();
-        }
-        if (randomAccessResult) {
-            result = createLocalResult(result);
-            // result.setRandomAccess(); //见H2的Mainly MVStore improvements的提交记录
-        }
-        if (isGroupQuery && !isGroupSortedQuery) {
-            result = createLocalResult(result);
-        }
-        if (limitRows >= 0 || offsetExpr != null) {
-            result = createLocalResult(result);
-        }
-        topTableFilter.startQuery(session);
-        topTableFilter.reset();
-        boolean exclusive = isForUpdate && !isForUpdateMvcc;
-        if (isForUpdateMvcc) {
-            if (isGroupQuery) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && GROUP");
-            } else if (distinct) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && DISTINCT");
-            } else if (isQuickAggregateQuery) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && AGGREGATE");
-            } else if (topTableFilter.getJoin() != null) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && JOIN");
-            }
-        }
-        topTableFilter.lock(session, exclusive, exclusive);
-        ResultTarget to = result != null ? result : target;
-        if (limitRows != 0) {
-            if (isQuickAggregateQuery) {
-                queryQuick(columnCount, to);
-            } else if (isGroupQuery) {
-                if (isGroupSortedQuery) {
-                    queryGroupSorted(columnCount, to);
-                } else {
-                    queryGroup(columnCount, result);
-                }
-            } else if (isDistinctQuery) {
-                queryDistinct(to, limitRows);
-            } else if (isDistinctQueryForMultiFields) {
-                queryDistinctForMultiFields(to, limitRows);
-            } else {
-                queryFlat(columnCount, to, limitRows);
-            }
-        }
-        if (offsetExpr != null) {
-            result.setOffset(offsetExpr.getValue(session).getInt());
-        }
-        if (limitRows >= 0) {
-            result.setLimit(limitRows);
-        }
-        if (result != null) {
-            result.done();
-            if (target != null) {
-                while (result.next()) {
-                    target.addRow(result.currentRow());
-                }
-                result.close();
-                return null;
-            }
-            return result;
-        }
-        return null;
-    }
-
-    private LocalResult createLocalResult(LocalResult old) {
-        return old != null ? old : new LocalResult(session, expressionArray, visibleColumnCount);
-    }
-
-    private void queryDistinctForMultiFields(ResultTarget result, long limitRows) {
-        // limitRows must be long, otherwise we get an int overflow
-        // if limitRows is at or near Integer.MAX_VALUE
-        // limitRows is never 0 here
-        if (limitRows > 0 && offsetExpr != null) {
-            int offset = offsetExpr.getValue(session).getInt();
-            if (offset > 0) {
-                limitRows += offset;
-            }
-        }
-        int rowNumber = 0;
-        setCurrentRowNumber(0);
-        Index index = topTableFilter.getIndex();
-        int[] columnIds = index.getColumnIds();
-        int size = columnIds.length;
-        int sampleSize = getSampleSizeValue(session);
-        Cursor cursor = index.findDistinct(session, null, null);
-        while (cursor.next()) {
-            setCurrentRowNumber(rowNumber + 1);
-            SearchRow found = cursor.getSearchRow();
-            Value[] row = new Value[size];
-            for (int i = 0; i < size; i++) {
-                row[i] = found.getValue(columnIds[i]);
-            }
-            result.addRow(row);
-            rowNumber++;
-            if ((sort == null || sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
-                break;
-            }
-            if (sampleSize > 0 && rowNumber >= sampleSize) {
-                break;
-            }
-        }
-    }
-
-    // 单字段distinct
-    private void queryDistinct(ResultTarget result, long limitRows) {
-        // limitRows must be long, otherwise we get an int overflow
-        // if limitRows is at or near Integer.MAX_VALUE
-        // limitRows is never 0 here
-        if (limitRows > 0 && offsetExpr != null) {
-            int offset = offsetExpr.getValue(session).getInt();
-            if (offset > 0) {
-                limitRows += offset;
-            }
-        }
-        int rowNumber = 0;
-        setCurrentRowNumber(0);
-        Index index = topTableFilter.getIndex();
-        int columnIndex = index.getColumns()[0].getColumnId();
-        int sampleSize = getSampleSizeValue(session);
-        Cursor cursor = index.findDistinct(session, null, null);
-        while (cursor.next()) {
-            setCurrentRowNumber(rowNumber + 1);
-            SearchRow found = cursor.getSearchRow();
-            Value value = found.getValue(columnIndex);
-            Value[] row = { value };
-            result.addRow(row);
-            rowNumber++;
-            if ((sort == null || sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
-                break;
-            }
-            if (sampleSize > 0 && rowNumber >= sampleSize) {
-                break;
-            }
-        }
-    }
-
-    private void queryFlat(int columnCount, ResultTarget result, long limitRows) {
-        // limitRows must be long, otherwise we get an int overflow
-        // if limitRows is at or near Integer.MAX_VALUE
-        // limitRows is never 0 here
-        if (limitRows > 0 && offsetExpr != null) {
-            int offset = offsetExpr.getValue(session).getInt();
-            if (offset > 0) {
-                limitRows += offset;
-            }
-        }
-        int rowNumber = 0;
-        setCurrentRowNumber(0);
-        int sampleSize = getSampleSizeValue(session);
-        while (topTableFilter.next()) {
-            setCurrentRowNumber(rowNumber + 1);
-            if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
-                if (isForUpdate) {
-                    topTableFilter.lockRow();
-                }
-                Value[] row = new Value[columnCount];
-                for (int i = 0; i < columnCount; i++) {
-                    Expression expr = expressions.get(i);
-                    row[i] = expr.getValue(session);
-                }
-                result.addRow(row);
-                rowNumber++;
-                if ((sort == null || sortUsingIndex) && limitRows > 0 && result.getRowCount() >= limitRows) {
-                    break;
-                }
-                if (sampleSize > 0 && rowNumber >= sampleSize) {
-                    break;
-                }
-            }
-        }
-    }
-
-    private void queryQuick(int columnCount, ResultTarget result) {
-        Value[] row = new Value[columnCount];
-        for (int i = 0; i < columnCount; i++) {
-            Expression expr = expressions.get(i);
-            row[i] = expr.getValue(session);
-        }
-        result.addRow(row);
-    }
-
-    private void queryGroupSorted(int columnCount, ResultTarget result) {
-        int rowNumber = 0;
-        setCurrentRowNumber(0);
-        currentGroup = null;
-        Value[] previousKeyValues = null;
-        while (topTableFilter.next()) {
-            setCurrentRowNumber(rowNumber + 1);
-            if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
-                rowNumber++;
-                Value[] keyValues = new Value[groupIndex.length];
-                // update group
-                for (int i = 0; i < groupIndex.length; i++) {
-                    int idx = groupIndex[i];
-                    Expression expr = expressions.get(idx);
-                    keyValues[i] = expr.getValue(session);
-                }
-
-                if (previousKeyValues == null) {
-                    previousKeyValues = keyValues;
-                    currentGroup = new HashMap<>();
-                } else if (!Arrays.equals(previousKeyValues, keyValues)) {
-                    addGroupSortedRow(previousKeyValues, columnCount, result);
-                    previousKeyValues = keyValues;
-                    currentGroup = new HashMap<>();
-                }
-                currentGroupRowId++;
-
-                for (int i = 0; i < columnCount; i++) {
-                    if (!groupByExpression[i]) {
-                        Expression expr = expressions.get(i);
-                        expr.updateAggregate(session);
-                    }
-                }
-            }
-        }
-        if (previousKeyValues != null) {
-            addGroupSortedRow(previousKeyValues, columnCount, result);
-        }
-    }
-
     private void addGroupSortedRow(Value[] keyValues, int columnCount, ResultTarget result) {
         Value[] row = new Value[columnCount];
         for (int j = 0; j < groupIndex.length; j++) {
@@ -977,80 +733,6 @@ public class Select extends Query {
         Value[] r2 = new Value[distinctColumnCount];
         System.arraycopy(row, 0, r2, 0, distinctColumnCount);
         return r2;
-    }
-
-    // 除了QuickAggregateQuery和GroupSortedQuery外，其他场景的聚合函数、group by、having都在这里处理
-    // groupIndex和groupByExpression为null的时候，表示没有group by
-    private void queryGroup(int columnCount, LocalResult result) {
-        ValueHashMap<HashMap<Expression, Object>> groups = ValueHashMap.newInstance();
-        int rowNumber = 0;
-        setCurrentRowNumber(0);
-        currentGroup = null;
-        ValueArray defaultGroup = ValueArray.get(new Value[0]);
-        int sampleSize = getSampleSizeValue(session);
-        while (topTableFilter.next()) {
-            setCurrentRowNumber(rowNumber + 1);
-            if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
-                Value key;
-                rowNumber++;
-                if (groupIndex == null) {
-                    key = defaultGroup;
-                } else {
-                    // 避免在ExpressionColumn.getValue中取到旧值
-                    // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
-                    currentGroup = null;
-                    Value[] keyValues = new Value[groupIndex.length];
-                    // update group
-                    for (int i = 0; i < groupIndex.length; i++) {
-                        int idx = groupIndex[i];
-                        Expression expr = expressions.get(idx);
-                        keyValues[i] = expr.getValue(session);
-                    }
-                    key = ValueArray.get(keyValues);
-                }
-                HashMap<Expression, Object> values = groups.get(key);
-                if (values == null) {
-                    values = new HashMap<Expression, Object>();
-                    groups.put(key, values);
-                }
-                currentGroup = values;
-                currentGroupRowId++;
-                for (int i = 0; i < columnCount; i++) {
-                    if (groupByExpression == null || !groupByExpression[i]) {
-                        Expression expr = expressions.get(i);
-                        expr.updateAggregate(session);
-                    }
-                }
-                if (sampleSize > 0 && rowNumber >= sampleSize) {
-                    break;
-                }
-            }
-        }
-        if (groupIndex == null && groups.size() == 0) {
-            groups.put(defaultGroup, new HashMap<Expression, Object>());
-        }
-        ArrayList<Value> keys = groups.keys();
-        for (Value v : keys) {
-            ValueArray key = (ValueArray) v;
-            currentGroup = groups.get(key);
-            Value[] keyValues = key.getList();
-            Value[] row = new Value[columnCount];
-            for (int j = 0; groupIndex != null && j < groupIndex.length; j++) {
-                row[groupIndex[j]] = keyValues[j];
-            }
-            for (int j = 0; j < columnCount; j++) {
-                if (groupByExpression != null && groupByExpression[j]) {
-                    continue;
-                }
-                Expression expr = expressions.get(j);
-                row[j] = expr.getValue(session);
-            }
-            if (isHavingNullOrFalse(row)) {
-                continue;
-            }
-            row = keepOnlyDistinct(row, columnCount);
-            result.addRow(row);
-        }
     }
 
     public Result queryGroupMerge() {
@@ -1550,14 +1232,19 @@ public class Select extends Query {
     }
 
     @Override
-    public Result query(int limit, ResultTarget target) {
+    public Result query(int maxRows, ResultTarget target) {
         fireBeforeSelectTriggers();
-        return resultCache.getResult(limit, target, false);
+        return resultCache.getResult(maxRows, target, false);
     }
 
-    private void queryWithoutCache(int maxRows, ResultTarget target) {
+    private LocalResult queryWithoutCache(int maxRows, ResultTarget target, boolean async) {
+        // 按JDBC规范的要求，当调用java.sql.Statement.setMaxRows时，
+        // 如果maxRows是0，表示不限制行数，相当于没有调用过setMaxRows一样，
+        // 如果小余0，已经在客户端抛了无效参数异常，所以这里统一处理: 当limitRows小于0时表示不限制行数。
         int limitRows = maxRows == 0 ? -1 : maxRows;
         if (limitExpr != null) {
+            // 如果在select语句中又指定了limit子句，那么用它覆盖maxRows
+            // 注意limit 0表示不取任何记录，跟maxRows为0时刚好相反
             Value v = limitExpr.getValue(session);
             int l = v == ValueNull.INSTANCE ? -1 : v.getInt();
             if (limitRows < 0) {
@@ -1608,51 +1295,37 @@ public class Select extends Query {
         if (limitRows != 0) {
             if (isQuickAggregateQuery) {
                 queryOperator = new QueryQuick();
-                // queryQuick(columnCount, to);
             } else if (isGroupQuery) {
                 if (isGroupSortedQuery) {
                     queryOperator = new QueryGroupSorted();
-                    // queryGroupSorted(columnCount, to);
                 } else {
                     queryOperator = new QueryGroup();
-                    // queryGroup(columnCount, result);
                     to = result;
                 }
             } else if (isDistinctQuery) {
                 queryOperator = new QueryDistinct();
-                // queryDistinct(to, limitRows);
             } else if (isDistinctQueryForMultiFields) {
                 queryOperator = new QueryDistinctForMultiFields();
-                // queryDistinctForMultiFields(to, limitRows);
             } else {
                 queryOperator = new QueryFlat();
-                // queryFlat(columnCount, to, limitRows);
             }
         }
         queryOperator.columnCount = columnCount;
-        queryOperator.limitRows = limitRows;
+        queryOperator.maxRows = limitRows;
         queryOperator.result = to;
         queryOperator.localResult = result;
+        queryOperator.async = async;
         queryOperator.start();
+        if (!async) {
+            queryOperator.run();
+            queryOperator.stop();
+            return queryOperator.localResult;
+        }
+        return null;
+    }
 
-        // if (offsetExpr != null) {
-        // result.setOffset(offsetExpr.getValue(session).getInt());
-        // }
-        // if (limitRows >= 0) {
-        // result.setLimit(limitRows);
-        // }
-        // if (result != null) {
-        // result.done();
-        // if (target != null) {
-        // while (result.next()) {
-        // target.addRow(result.currentRow());
-        // }
-        // result.close();
-        // return;
-        // }
-        // return;
-        // }
-        return;
+    private LocalResult createLocalResult(LocalResult old) {
+        return old != null ? old : new LocalResult(session, expressionArray, visibleColumnCount);
     }
 
     @Override
@@ -1740,15 +1413,10 @@ public class Select extends Query {
             }
         }
 
-        private LocalResult getResult(int limit, ResultTarget target, boolean lazy) {
+        private LocalResult getResult(int limit, ResultTarget target, boolean async) {
             if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
                 useCache = false;
-                if (lazy) {
-                    queryWithoutCache(limit, target);
-                    return null;
-                } else {
-                    return queryWithoutCacheOld(limit, target);
-                }
+                return queryWithoutCache(limit, target, async);
             } else {
                 Value[] params = getParameterValues();
                 long now = session.getDatabase().getModificationDataId();
@@ -1764,17 +1432,12 @@ public class Select extends Query {
                         }
                     }
                 }
-
                 lastParameters = params;
                 closeLastResult();
-                LocalResult r = null;
-                if (lazy) {
-                    queryWithoutCache(limit, target);
-                } else {
-                    r = queryWithoutCacheOld(limit, target);
+                LocalResult r = queryWithoutCache(limit, target, async);
+                if (!async) {
                     lastResult = r;
                 }
-
                 this.lastEvaluated = now;
                 lastLimit = limit;
                 return r;
@@ -1813,12 +1476,17 @@ public class Select extends Query {
         ResultTarget target;
         ResultTarget result;
         LocalResult localResult;
-        int limitRows;
+        int maxRows; // 实际返回的最大行数
+        long limitRows; // 有可能超过maxRows
         int rowNumber;
         int sampleSize;
         boolean loopEnd;
+        boolean async;
 
         void start() {
+            limitRows = maxRows;
+            // 并不会按offset先跳过前面的行数，而是limitRows加上offset，读够limitRows+offset行，然后再从result中跳
+            // 因为可能需要排序，offset是相对于最后的结果来说的，而不是排序前的结果
             // limitRows must be long, otherwise we get an int overflow
             // if limitRows is at or near Integer.MAX_VALUE
             // limitRows is never 0 here
@@ -1826,6 +1494,10 @@ public class Select extends Query {
                 int offset = offsetExpr.getValue(session).getInt();
                 if (offset > 0) {
                     limitRows += offset;
+                }
+                if (limitRows < 0) {
+                    // Overflow
+                    limitRows = Long.MAX_VALUE;
                 }
             }
             rowNumber = 0;
@@ -1840,8 +1512,8 @@ public class Select extends Query {
             if (offsetExpr != null) {
                 localResult.setOffset(offsetExpr.getValue(session).getInt());
             }
-            if (limitRows >= 0) {
-                localResult.setLimit(limitRows);
+            if (maxRows >= 0) {
+                localResult.setLimit(maxRows);
             }
             if (localResult != null) {
                 localResult.done();
@@ -1873,7 +1545,7 @@ public class Select extends Query {
                     }
                     result.addRow(row);
                     rowNumber++;
-                    if (yieldIfNeeded)
+                    if (async && yieldIfNeeded)
                         return;
                     if ((sort == null || sortUsingIndex) && limitRows > 0 && result.getRowCount() >= limitRows) {
                         break;
@@ -1887,6 +1559,7 @@ public class Select extends Query {
         }
     }
 
+    // 单字段distinct
     private class QueryDistinct extends QueryOperator {
         Index index;
         int columnIndex;
@@ -1909,7 +1582,7 @@ public class Select extends Query {
                 Value[] row = { value };
                 result.addRow(row);
                 rowNumber++;
-                if (yieldIfNeeded)
+                if (async && yieldIfNeeded)
                     return;
                 if ((sort == null || sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
                     break;
@@ -1948,7 +1621,7 @@ public class Select extends Query {
                 }
                 result.addRow(row);
                 rowNumber++;
-                if (yieldIfNeeded)
+                if (async && yieldIfNeeded)
                     return;
                 if ((sort == null || sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
                     break;
@@ -1979,6 +1652,8 @@ public class Select extends Query {
         }
     }
 
+    // 除了QuickAggregateQuery和GroupSortedQuery外，其他场景的聚合函数、group by、having都在这里处理
+    // groupIndex和groupByExpression为null的时候，表示没有group by
     private class QueryGroup extends QueryOperator {
         ValueHashMap<HashMap<Expression, Object>> groups;
         ValueArray defaultGroup;
@@ -2026,7 +1701,7 @@ public class Select extends Query {
                             expr.updateAggregate(session);
                         }
                     }
-                    if (yieldIfNeeded)
+                    if (async && yieldIfNeeded)
                         return;
                     if (sampleSize > 0 && rowNumber >= sampleSize) {
                         break;
@@ -2101,7 +1776,7 @@ public class Select extends Query {
                             expr.updateAggregate(session);
                         }
                     }
-                    if (yieldIfNeeded)
+                    if (async && yieldIfNeeded)
                         return;
                 }
             }

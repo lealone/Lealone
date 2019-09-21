@@ -244,11 +244,11 @@ public abstract class Query extends ManipulationStatement implements org.lealone
     /**
      * Execute the query, writing the result to the target result.
      *
-     * @param limit the maximum number of rows to return
+     * @param maxRows the maximum number of rows to return
      * @param target the target result (null will return the result)
      * @return the result set (if the target is not set).
      */
-    public abstract Result query(int limit, ResultTarget target);
+    public abstract Result query(int maxRows, ResultTarget target);
 
     public void setOffset(Expression offset) {
         this.offsetExpr = offset;
