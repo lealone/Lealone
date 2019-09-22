@@ -97,7 +97,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
                     keys.clear();
                 }
             } catch (Throwable e) {
-                logger.warn(Thread.currentThread().getName() + " run exception", e);
+                logger.warn(Thread.currentThread().getName() + " run exception: " + e.getMessage());
             }
         }
     }

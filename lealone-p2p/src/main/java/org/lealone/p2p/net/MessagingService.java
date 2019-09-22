@@ -296,7 +296,8 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         }
 
         P2pConnection conn = getConnection(to);
-        conn.enqueue(message, id);
+        if (conn != null)
+            conn.enqueue(message, id);
     }
 
     public P2pConnection getConnection(NetEndpoint remoteEndpoint) {
@@ -317,10 +318,14 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                     conn.initTransfer(remoteEndpoint, localHostAndPort);
                     // connections.put(remoteHostAndPort, conn); //调用initTransfer成功后已经加到connections
                 } catch (Exception e) {
+                    String msg = "Failed to connect " + remoteEndpoint;
                     // TODO 是否不应该立刻移除节点
-                    Gossiper.instance.removeEndpoint(remoteEndpoint);
-                    logger.error("Failed to connect " + remoteEndpoint, e);
-                    throw DbException.convert(e);
+                    if (Gossiper.instance.tryRemoveEndpoint(remoteEndpoint)) {
+                        logger.error(msg, e);
+                        throw DbException.convert(e);
+                    } else {
+                        logger.warn(msg);
+                    }
                 }
             }
         }

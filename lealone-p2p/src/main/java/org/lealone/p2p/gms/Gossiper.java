@@ -523,6 +523,16 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
             logger.debug("removing endpoint {}", endpoint);
     }
 
+    // 在启动阶段，如果种子节点没有启动成功并且又没有其他活跃节点时，如果无法连接到种子节点，先不删除
+    public boolean tryRemoveEndpoint(NetEndpoint endpoint) {
+        if (seeds.contains(endpoint) && liveEndpoints.isEmpty()) {
+            return false;
+        } else {
+            removeEndpoint(endpoint);
+            return true;
+        }
+    }
+
     /**
      * Quarantines the endpoint for QUARANTINE_DELAY
      *

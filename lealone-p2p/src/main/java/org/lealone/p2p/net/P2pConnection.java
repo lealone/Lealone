@@ -26,7 +26,6 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.db.Session;
-import org.lealone.net.AsyncCallback;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.Transfer;
 import org.lealone.net.TransferConnection;
@@ -90,10 +89,10 @@ public class P2pConnection extends TransferConnection {
         transfer.writeInt(MessagingService.PROTOCOL_MAGIC);
         transfer.writeInt(version);
         transfer.writeString(localHostAndPort);
-        AsyncCallback<Void> ac = new AsyncCallback<>();
-        transfer.addAsyncCallback(packetId, ac);
+        // AsyncCallback<Void> ac = new AsyncCallback<>();
+        // transfer.addAsyncCallback(packetId, ac);
         transfer.flush();
-        ac.await();
+        // ac.await();
     }
 
     private void readInitPacket(Transfer transfer, int packetId) {
@@ -104,8 +103,8 @@ public class P2pConnection extends TransferConnection {
             remoteEndpoint = NetEndpoint.createP2P(hostAndPort);
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
             metrics = new ConnectionMetrics(remoteEndpoint);
-            transfer.writeResponseHeader(packetId, Session.STATUS_OK);
-            transfer.flush();
+            // transfer.writeResponseHeader(packetId, Session.STATUS_OK);
+            // transfer.flush();
             MessagingService.instance().addConnection(this);
         } catch (Throwable e) {
             sendError(transfer, packetId, e);
