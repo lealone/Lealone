@@ -15,21 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.p2p.config;
+package org.lealone.test.main;
 
-import org.lealone.common.exceptions.ConfigException;
+import org.lealone.main.Lealone;
 
-public interface ConfigLoader {
+public class LealoneTest {
 
-    /**
-     * Loads a {@link Config} object to use to configure a node.
-     *
-     * @return the {@link Config} to use.
-     * @throws ConfigException if the configuration cannot be properly loaded.
-     */
-    Config loadConfig() throws ConfigException;
-
-    default Config loadConfig(boolean lazyApply) throws ConfigException {
-        return loadConfig();
+    public static void main(String[] args) {
+        System.setProperty("lealone.config", "lealone-test.yaml");
+        String[] args2 = { "-cluster", "1" };
+        Lealone.main(args2);
     }
+
 }

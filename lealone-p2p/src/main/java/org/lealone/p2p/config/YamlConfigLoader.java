@@ -74,8 +74,14 @@ public class YamlConfigLoader implements ConfigLoader {
 
     @Override
     public Config loadConfig() throws ConfigException {
+        return loadConfig(false);
+    }
+
+    @Override
+    public Config loadConfig(boolean lazyApply) throws ConfigException {
         Config config = loadConfig(getConfigURL());
-        applyConfig(config);
+        if (!lazyApply)
+            applyConfig(config);
         return config;
     }
 

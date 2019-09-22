@@ -32,6 +32,7 @@ import org.lealone.db.PluggableEngine;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.Config.PluggableEngineDef;
+import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.config.ConfigLoader;
 import org.lealone.p2p.config.YamlConfigLoader;
 import org.lealone.p2p.server.ClusterMetaData;
@@ -57,7 +58,7 @@ public class Lealone {
         try {
             long t = System.currentTimeMillis();
 
-            loadConfig();
+            loadConfig(args);
 
             long t1 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
@@ -78,7 +79,7 @@ public class Lealone {
         }
     }
 
-    private static void loadConfig() {
+    private static void loadConfig(String[] args) {
         ConfigLoader loader;
         String loaderClass = Config.getProperty("config.loader");
         if (loaderClass != null && Lealone.class.getResource("/" + loaderClass.replace('.', '/') + ".class") != null) {
@@ -86,7 +87,20 @@ public class Lealone {
         } else {
             loader = new YamlConfigLoader();
         }
-        config = loader.loadConfig();
+        if (args != null && args.length >= 2 && args[0].equalsIgnoreCase("-cluster")) {
+            String nodeId = args[1];
+            config = loader.loadConfig(true);
+            config.base_dir = config.base_dir + "/node" + nodeId;
+            config.listen_address = "127.0.0." + nodeId;
+            for (PluggableEngineDef e : config.protocol_server_engines) {
+                if (P2pServerEngine.NAME.equalsIgnoreCase(e.name)) {
+                    e.enabled = true;
+                }
+            }
+            ConfigDescriptor.applyConfig(config);
+        } else {
+            config = loader.loadConfig();
+        }
     }
 
     private static void init() {
