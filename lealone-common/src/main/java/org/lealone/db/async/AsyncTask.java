@@ -15,36 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage;
+package org.lealone.db.async;
 
-import org.lealone.db.async.AsyncTask;
+public interface AsyncTask extends Runnable {
 
-public interface PageOperation extends AsyncTask {
+    public final static int MIN_PRIORITY = 1;
+    public final static int NORM_PRIORITY = 5;
+    public final static int MAX_PRIORITY = 10;
 
-    public static enum PageOperationResult {
-        SPLITTING,
-        SUCCEEDED,
-        SHIFTED,
-        FAILED;
-    }
+    int getPriority();
 
-    @Override
-    default int getPriority() {
-        return MAX_PRIORITY;
-    }
-
-    @Override
-    default void run() {
-        // Thread t = Thread.currentThread();
-        // if (t instanceof PageOperationHandler) {
-        // run((PageOperationHandler) t);
-        // } else {
-        // run(null);
-        // }
-    }
-
-    default PageOperationResult run(PageOperationHandler currentHandler) {
-        run();
-        return PageOperationResult.SUCCEEDED;
+    default boolean isPeriodic() {
+        return false;
     }
 }

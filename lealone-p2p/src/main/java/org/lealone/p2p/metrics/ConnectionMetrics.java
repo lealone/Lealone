@@ -29,9 +29,9 @@ import com.yammer.metrics.core.Meter;
  */
 public class ConnectionMetrics {
     /** Total number of timeouts happened on this node */
-    public static final Meter totalTimeouts = Metrics.newMeter(
-            DefaultNameFactory.createMetricName("Connection", "TotalTimeouts", null), "total timeouts",
-            TimeUnit.SECONDS);
+    // public static final Meter totalTimeouts = Metrics.newMeter(
+    // DefaultNameFactory.createMetricName("Connection", "TotalTimeouts", null), "total timeouts",
+    // TimeUnit.SECONDS);
 
     /** Number of timeouts for specific IP */
     public final Meter timeouts;

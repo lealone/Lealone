@@ -15,36 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage;
+package org.lealone.db.async;
 
-import org.lealone.db.async.AsyncTask;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
-public interface PageOperation extends AsyncTask {
-
-    public static enum PageOperationResult {
-        SPLITTING,
-        SUCCEEDED,
-        SHIFTED,
-        FAILED;
-    }
+public interface AsyncTaskHandler extends AsyncHandler<AsyncTask> {
 
     @Override
-    default int getPriority() {
-        return MAX_PRIORITY;
-    }
+    void handle(AsyncTask task);
 
-    @Override
-    default void run() {
-        // Thread t = Thread.currentThread();
-        // if (t instanceof PageOperationHandler) {
-        // run((PageOperationHandler) t);
-        // } else {
-        // run(null);
-        // }
-    }
-
-    default PageOperationResult run(PageOperationHandler currentHandler) {
-        run();
-        return PageOperationResult.SUCCEEDED;
-    }
+    ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay, TimeUnit unit);
 }

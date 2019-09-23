@@ -20,20 +20,23 @@ package org.lealone.server;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.Session;
 import org.lealone.db.SessionStatus;
+import org.lealone.db.async.AsyncTask;
+import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.net.Transfer;
-import org.lealone.net.TransferPacketHandler;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
 
-public class Scheduler extends Thread implements SQLStatementExecutor, TransferPacketHandler, PageOperationHandler {
+public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler {
 
     static class PreparedCommand {
         private final int id;
@@ -78,8 +81,15 @@ public class Scheduler extends Thread implements SQLStatementExecutor, TransferP
     }
 
     private final ConcurrentLinkedQueue<PageOperation> pageOperationQueue = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<Runnable> packetQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<AsyncTask> packetQueue = new ConcurrentLinkedQueue<>();
     private final CopyOnWriteArrayList<CommandQueue> commandQueues = new CopyOnWriteArrayList<>();
+
+    private final ConcurrentLinkedQueue<AsyncTask> minPriorityQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<AsyncTask> normPriorityQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<AsyncTask> maxPriorityQueue = new ConcurrentLinkedQueue<>();
+
+    // 这个只增不删所以用CopyOnWriteArrayList
+    private final CopyOnWriteArrayList<AsyncTask> periodicQueue = new CopyOnWriteArrayList<>();
 
     private final Semaphore haveWork = new Semaphore(1);
     private final long loopInterval;
@@ -106,11 +116,10 @@ public class Scheduler extends Thread implements SQLStatementExecutor, TransferP
     public void run() {
         // SQLEngineManager.getInstance().setSQLStatementExecutor(this);
         while (!stop) {
-            Runnable task = packetQueue.poll();
-            while (task != null) {
-                task.run();
-                task = packetQueue.poll();
-            }
+            runQueueTasks(packetQueue);
+            runQueueTasks(maxPriorityQueue);
+            runQueueTasks(normPriorityQueue);
+            runQueueTasks(minPriorityQueue);
 
             PageOperation po = pageOperationQueue.poll();
             while (po != null) {
@@ -119,6 +128,18 @@ public class Scheduler extends Thread implements SQLStatementExecutor, TransferP
             }
 
             executeNextStatement();
+
+            // for (int i = 0, size = periodicQueue.size(); i < size; i++) {
+            // periodicQueue.get(i).run();
+            // }
+        }
+    }
+
+    private void runQueueTasks(ConcurrentLinkedQueue<AsyncTask> queue) {
+        Runnable task = queue.poll();
+        while (task != null) {
+            task.run();
+            task = queue.poll();
         }
     }
 
@@ -134,9 +155,30 @@ public class Scheduler extends Thread implements SQLStatementExecutor, TransferP
     }
 
     @Override
-    public void handlePacket(Runnable task) {
-        packetQueue.add(task);
+    public void handle(AsyncTask task) {
+        if (task.isPeriodic()) {
+            periodicQueue.add(task);
+        } else {
+            switch (task.getPriority()) {
+            case AsyncTask.NORM_PRIORITY:
+                normPriorityQueue.add(task);
+                break;
+            case AsyncTask.MAX_PRIORITY:
+                maxPriorityQueue.add(task);
+                break;
+            case AsyncTask.MIN_PRIORITY:
+                minPriorityQueue.add(task);
+                break;
+            default:
+                normPriorityQueue.add(task);
+            }
+        }
         wakeUp();
+    }
+
+    @Override
+    public ScheduledFuture<?> scheduleWithFixedDelay(AsyncTask task, long initialDelay, long delay, TimeUnit unit) {
+        return ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(task, initialDelay, delay, unit);
     }
 
     @Override

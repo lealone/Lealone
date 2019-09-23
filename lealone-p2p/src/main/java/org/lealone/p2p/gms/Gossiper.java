@@ -42,14 +42,12 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.lealone.common.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
+import org.lealone.db.async.AsyncPeriodicTask;
+import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetEndpoint;
-import org.lealone.p2p.concurrent.MetricsEnabledThreadPoolExecutor;
-import org.lealone.p2p.concurrent.Stage;
-import org.lealone.p2p.concurrent.StageManager;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.net.IAsyncCallback;
@@ -77,8 +75,8 @@ import org.lealone.p2p.util.Utils;
 public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     private static final Logger logger = LoggerFactory.getLogger(Gossiper.class);
 
-    private static final DebuggableScheduledThreadPoolExecutor executor = new DebuggableScheduledThreadPoolExecutor(
-            "GossipTasks");
+    // private static final DebuggableScheduledThreadPoolExecutor executor = new DebuggableScheduledThreadPoolExecutor(
+    // "GossipTasks");
     private static final ReentrantLock taskLock = new ReentrantLock();
 
     private static final List<String> DEAD_STATES = Arrays.asList(VersionedValue.REMOVING_TOKEN,
@@ -141,9 +139,9 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
 
     private boolean inShadowRound = false;
 
-    private volatile long lastProcessedMessageAt = System.currentTimeMillis();
+    // private volatile long lastProcessedMessageAt = System.currentTimeMillis();
 
-    private class GossipTask implements Runnable {
+    private class GossipTask implements AsyncPeriodicTask {
         @Override
         public void run() {
             try {
@@ -229,8 +227,11 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         if (logger.isTraceEnabled())
             logger.trace("gossip started with generation {}", localState.getHeartBeatState().getGeneration());
 
-        scheduledGossipTask = executor.scheduleWithFixedDelay(new GossipTask(), Gossiper.INTERVAL_IN_MILLIS,
-                Gossiper.INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
+        // scheduledGossipTask = executor.scheduleWithFixedDelay(new GossipTask(), Gossiper.INTERVAL_IN_MILLIS,
+        // Gossiper.INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
+
+        AsyncTaskHandlerFactory.getAsyncTaskHandler().scheduleWithFixedDelay(new GossipTask(),
+                Gossiper.INTERVAL_IN_MILLIS, Gossiper.INTERVAL_IN_MILLIS, TimeUnit.MILLISECONDS);
     }
 
     private void buildSeedsList() {
@@ -351,18 +352,18 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
         long now = System.currentTimeMillis();
         long nowNano = System.nanoTime();
 
-        long pending = ((MetricsEnabledThreadPoolExecutor) StageManager.getStage(Stage.GOSSIP)).getPendingTasks();
-        if (pending > 0 && lastProcessedMessageAt < now - 1000) {
-            // if some new messages just arrived, give the executor some time to work on them
-            Uninterruptibles.sleepUninterruptibly(100, TimeUnit.MILLISECONDS);
-
-            // still behind? something's broke
-            if (lastProcessedMessageAt < now - 1000) {
-                logger.warn("Gossip stage has {} pending tasks; skipping status check (no nodes will be marked down)",
-                        pending);
-                return;
-            }
-        }
+        // long pending = ((MetricsEnabledThreadPoolExecutor) StageManager.getStage(Stage.GOSSIP)).getPendingTasks();
+        // if (pending > 0 && lastProcessedMessageAt < now - 1000) {
+        // // if some new messages just arrived, give the executor some time to work on them
+        // Uninterruptibles.sleepUninterruptibly(100, TimeUnit.MILLISECONDS);
+        //
+        // // still behind? something's broke
+        // if (lastProcessedMessageAt < now - 1000) {
+        // logger.warn("Gossip stage has {} pending tasks; skipping status check (no nodes will be marked down)",
+        // pending);
+        // return;
+        // }
+        // }
 
         Set<NetEndpoint> eps = endpointStateMap.keySet();
         for (NetEndpoint endpoint : eps) {
@@ -406,7 +407,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     }
 
     public void setLastProcessedMessageAt(long timeInMillis) {
-        this.lastProcessedMessageAt = timeInMillis;
+        // this.lastProcessedMessageAt = timeInMillis;
     }
 
     /**
@@ -1179,7 +1180,7 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean {
     }
 
     public boolean isEnabled() {
-        return (scheduledGossipTask != null) && (!scheduledGossipTask.isCancelled());
+        return true; // (scheduledGossipTask != null) && (!scheduledGossipTask.isCancelled());
     }
 
     public void addExpireTimeForEndpoint(NetEndpoint endpoint, long expireTime) {

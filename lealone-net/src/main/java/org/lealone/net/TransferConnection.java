@@ -28,6 +28,8 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncTask;
+import org.lealone.db.async.AsyncTaskHandler;
 
 public abstract class TransferConnection extends AsyncConnection {
 
@@ -157,14 +159,14 @@ public abstract class TransferConnection extends AsyncConnection {
         }
     }
 
-    public TransferPacketHandler getPacketHandler() {
+    public AsyncTaskHandler getAsyncTaskHandler() {
         return null;
     }
 
     private void handlePacket(Transfer transfer) throws IOException {
         boolean isRequest = transfer.readByte() == Transfer.REQUEST;
         int id = transfer.readInt();
-        Runnable task;
+        AsyncTask task;
         if (isRequest) {
             int operation = transfer.readInt();
             task = new RequestPacketDeliveryTask(this, transfer, id, operation);
@@ -172,15 +174,15 @@ public abstract class TransferConnection extends AsyncConnection {
             int status = transfer.readInt();
             task = new ResponsePacketDeliveryTask(this, transfer, id, status);
         }
-        TransferPacketHandler packetHandler = getPacketHandler();
-        if (packetHandler == null) {
+        AsyncTaskHandler handler = getAsyncTaskHandler();
+        if (handler == null) {
             task.run();
         } else {
-            packetHandler.handlePacket(task);
+            handler.handle(task);
         }
     }
 
-    private static abstract class PacketDeliveryTask implements Runnable {
+    private static abstract class PacketDeliveryTask implements AsyncTask {
         final TransferConnection conn;
         final Transfer transfer;
         final int id;
@@ -189,6 +191,11 @@ public abstract class TransferConnection extends AsyncConnection {
             this.conn = conn;
             this.transfer = transfer;
             this.id = id;
+        }
+
+        @Override
+        public int getPriority() {
+            return NORM_PRIORITY;
         }
     }
 

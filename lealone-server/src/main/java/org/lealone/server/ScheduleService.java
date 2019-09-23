@@ -20,6 +20,7 @@ package org.lealone.server;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.storage.PageOperationHandlerFactory;
 
@@ -42,6 +43,7 @@ public class ScheduleService {
 
         SQLEngineManager.getInstance().setSQLStatementExecutors(schedulers);
         PageOperationHandlerFactory.setPageOperationHandlers(schedulers);
+        AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);
     }
 
     static void start() {

@@ -37,10 +37,11 @@ import java.util.function.Function;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.async.AsyncPeriodicTask;
+import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetEndpoint;
@@ -52,7 +53,6 @@ import org.lealone.p2p.concurrent.StageManager;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.locator.ILatencySubscriber;
-import org.lealone.p2p.metrics.ConnectionMetrics;
 import org.lealone.p2p.metrics.DroppedMessageMetrics;
 import org.lealone.p2p.server.ClusterMetaData;
 import org.lealone.p2p.server.P2pServer;
@@ -145,17 +145,17 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     private MessagingService() {
         for (Verb verb : DROPPABLE_VERBS) {
-            droppedMessages.put(verb, new DroppedMessageMetrics(verb));
+            // droppedMessages.put(verb, new DroppedMessageMetrics(verb));
             lastDroppedInternal.put(verb, 0);
         }
 
-        Runnable logDropped = new Runnable() {
+        AsyncPeriodicTask logDropped = new AsyncPeriodicTask() {
             @Override
             public void run() {
                 logDroppedMessages();
             }
         };
-        ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(logDropped, LOG_DROPPED_INTERVAL_IN_MS,
+        AsyncTaskHandlerFactory.getAsyncTaskHandler().scheduleWithFixedDelay(logDropped, LOG_DROPPED_INTERVAL_IN_MS,
                 LOG_DROPPED_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
 
         Function<Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>>, ?> timeoutReporter = //
@@ -164,7 +164,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                     public Object apply(Pair<Integer, ExpiringMap.CacheableObject<CallbackInfo>> pair) {
                         final CallbackInfo expiredCallbackInfo = pair.right.value;
                         maybeAddLatency(expiredCallbackInfo.callback, expiredCallbackInfo.target, pair.right.timeout);
-                        ConnectionMetrics.totalTimeouts.mark();
+                        // ConnectionMetrics.totalTimeouts.mark();
                         getConnection(expiredCallbackInfo.target).incrementTimeout();
                         if (expiredCallbackInfo.isFailureCallback()) {
                             StageManager.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable() {
@@ -464,7 +464,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     @Override
     public long getTotalTimeouts() {
-        return ConnectionMetrics.totalTimeouts.count();
+        return 0; // ConnectionMetrics.totalTimeouts.count();
     }
 
     @Override

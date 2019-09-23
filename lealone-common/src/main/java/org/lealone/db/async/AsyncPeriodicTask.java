@@ -15,10 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.net;
+package org.lealone.db.async;
 
-public interface TransferPacketHandler {
+public interface AsyncPeriodicTask extends AsyncTask {
 
-    void handlePacket(Runnable task);
+    @Override
+    default boolean isPeriodic() {
+        return true;
+    }
 
+    @Override
+    default int getPriority() {
+        return MIN_PRIORITY;
+    }
 }

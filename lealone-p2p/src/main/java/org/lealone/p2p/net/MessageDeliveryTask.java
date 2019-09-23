@@ -21,10 +21,11 @@ import java.util.EnumSet;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.p2p.gms.Gossiper;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
-class MessageDeliveryTask implements Runnable {
+class MessageDeliveryTask implements AsyncTask {
     private static final Logger logger = LoggerFactory.getLogger(MessageDeliveryTask.class);
 
     private static final EnumSet<Verb> GOSSIP_VERBS = EnumSet.of(Verb.GOSSIP_DIGEST_ACK, Verb.GOSSIP_DIGEST_ACK2,
@@ -39,6 +40,11 @@ class MessageDeliveryTask implements Runnable {
         this.message = message;
         this.id = id;
         constructionTime = timestamp;
+    }
+
+    @Override
+    public int getPriority() {
+        return MIN_PRIORITY; // 集群之间的消息处理不急迫，所以优先级最低
     }
 
     @Override

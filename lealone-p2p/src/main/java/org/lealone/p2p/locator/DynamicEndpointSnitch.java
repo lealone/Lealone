@@ -31,7 +31,8 @@ import java.util.concurrent.TimeUnit;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.lealone.common.concurrent.ScheduledExecutors;
+import org.lealone.db.async.AsyncPeriodicTask;
+import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.net.MessagingService;
@@ -73,24 +74,8 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
         if (instance != null)
             mbeanName += ",instance=" + instance;
         subsnitch = snitch;
-        Runnable update = new Runnable() {
-            @Override
-            public void run() {
-                updateScores();
-            }
-        };
-        Runnable reset = new Runnable() {
-            @Override
-            public void run() {
-                // we do this so that a host considered bad has a chance to recover, otherwise would we never try
-                // to read from it, which would cause its score to never change
-                reset();
-            }
-        };
-        ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(update, UPDATE_INTERVAL_IN_MS, UPDATE_INTERVAL_IN_MS,
-                TimeUnit.MILLISECONDS);
-        ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(reset, RESET_INTERVAL_IN_MS, RESET_INTERVAL_IN_MS,
-                TimeUnit.MILLISECONDS);
+
+        // scheduledTasks(); //放在gossiper启动时调度，提前调度找会不到调度器，调度器还没初始化
         registerMBean();
     }
 
@@ -112,9 +97,31 @@ public class DynamicEndpointSnitch extends AbstractEndpointSnitch
         }
     }
 
+    private void scheduledTasks() {
+        AsyncPeriodicTask update = new AsyncPeriodicTask() {
+            @Override
+            public void run() {
+                updateScores();
+            }
+        };
+        AsyncPeriodicTask reset = new AsyncPeriodicTask() {
+            @Override
+            public void run() {
+                // we do this so that a host considered bad has a chance to recover, otherwise would we never try
+                // to read from it, which would cause its score to never change
+                reset();
+            }
+        };
+        AsyncTaskHandlerFactory.getAsyncTaskHandler().scheduleWithFixedDelay(update, UPDATE_INTERVAL_IN_MS,
+                UPDATE_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
+        AsyncTaskHandlerFactory.getAsyncTaskHandler().scheduleWithFixedDelay(reset, RESET_INTERVAL_IN_MS,
+                RESET_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
+    }
+
     @Override
     public void gossiperStarting() {
         subsnitch.gossiperStarting();
+        scheduledTasks();
     }
 
     @Override

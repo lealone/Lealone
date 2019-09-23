@@ -23,9 +23,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.async.AsyncPeriodicTask;
+import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.gms.ApplicationState;
 import org.lealone.p2p.gms.EndpointState;
@@ -49,7 +50,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
         // send the first broadcast "right away"
         // (i.e., in 2 gossip heartbeats, when we should have someone to talk to);
         // after that send every BROADCAST_INTERVAL.
-        Runnable runnable = new Runnable() {
+        AsyncPeriodicTask task = new AsyncPeriodicTask() {
             @Override
             public void run() {
                 if (logger.isDebugEnabled())
@@ -58,7 +59,7 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
                         P2pServer.valueFactory.load(P2pServer.instance.getLoad()));
             }
         };
-        ScheduledExecutors.scheduledTasks.scheduleWithFixedDelay(runnable, 2 * Gossiper.INTERVAL_IN_MILLIS,
+        AsyncTaskHandlerFactory.getAsyncTaskHandler().scheduleWithFixedDelay(task, 2 * Gossiper.INTERVAL_IN_MILLIS,
                 BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
     }
 

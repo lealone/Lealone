@@ -31,13 +31,13 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.TcpConnection;
 import org.lealone.net.Transfer;
-import org.lealone.net.TransferPacketHandler;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.Scheduler.CommandQueue;
 import org.lealone.server.Scheduler.PreparedCommand;
@@ -62,13 +62,13 @@ public class TcpServerConnection extends TcpConnection {
     // 然后由调度器根据优先级从多个CommandQueue中依次取出执行
     private final ConcurrentHashMap<Integer, CommandQueue> commandQueueMap = new ConcurrentHashMap<>();
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
-    private final TransferPacketHandler packetHandler;
+    private final AsyncTaskHandler asyncTaskHandler;
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
     private String baseDir;
 
     public TcpServerConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
-        packetHandler = ScheduleService.getScheduler();
+        asyncTaskHandler = ScheduleService.getScheduler();
     }
 
     void setBaseDir(String baseDir) {
@@ -80,8 +80,8 @@ public class TcpServerConnection extends TcpConnection {
     }
 
     @Override
-    public TransferPacketHandler getPacketHandler() {
-        return packetHandler;
+    public AsyncTaskHandler getAsyncTaskHandler() {
+        return asyncTaskHandler;
     }
 
     @Override
@@ -391,9 +391,9 @@ public class TcpServerConnection extends TcpConnection {
         }
         PreparedCommand pc = new PreparedCommand(id, stmt, transfer, session, yieldable, queue);
 
-        // packetHandler是执行当前方法的线程，如果即将被执行的命令也被分配到同样的线程中(scheduler)运行，
+        // asyncTaskHandler是执行当前方法的线程，如果即将被执行的命令也被分配到同样的线程中(scheduler)运行，
         // 那么就不需要放到队列中了直接执行即可。
-        if (queue.scheduler == packetHandler) {
+        if (queue.scheduler == asyncTaskHandler) {
             pc.execute();
         } else {
             queue.addCommand(pc);

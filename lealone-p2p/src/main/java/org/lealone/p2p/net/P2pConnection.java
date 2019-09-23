@@ -21,18 +21,16 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import org.lealone.common.concurrent.LealoneExecutorService;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.Transfer;
 import org.lealone.net.TransferConnection;
 import org.lealone.net.WritableChannel;
-import org.lealone.p2p.concurrent.StageManager;
 import org.lealone.p2p.config.ConfigDescriptor;
-import org.lealone.p2p.metrics.ConnectionMetrics;
 import org.lealone.p2p.server.ClusterMetaData;
 
 public class P2pConnection extends TransferConnection {
@@ -42,7 +40,7 @@ public class P2pConnection extends TransferConnection {
     private String hostAndPort;
     private NetEndpoint remoteEndpoint;
     private NetEndpoint resetEndpoint; // pointer to the reset Address.
-    private ConnectionMetrics metrics;
+    // private ConnectionMetrics metrics;
     private int version;
 
     public P2pConnection(WritableChannel writableChannel, boolean isServer) {
@@ -74,7 +72,7 @@ public class P2pConnection extends TransferConnection {
         if (this.remoteEndpoint == null) {
             this.remoteEndpoint = remoteEndpoint;
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-            metrics = new ConnectionMetrics(remoteEndpoint);
+            // metrics = new ConnectionMetrics(remoteEndpoint);
             hostAndPort = remoteEndpoint.getHostAndPort();
             version = MessagingService.instance().getVersion(ConfigDescriptor.getLocalEndpoint());
             writeInitPacket(localHostAndPort);
@@ -102,7 +100,7 @@ public class P2pConnection extends TransferConnection {
             hostAndPort = transfer.readString();
             remoteEndpoint = NetEndpoint.createP2P(hostAndPort);
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-            metrics = new ConnectionMetrics(remoteEndpoint);
+            // metrics = new ConnectionMetrics(remoteEndpoint);
             // transfer.writeResponseHeader(packetId, Session.STATUS_OK);
             // transfer.flush();
             MessagingService.instance().addConnection(this);
@@ -146,21 +144,22 @@ public class P2pConnection extends TransferConnection {
 
         MessageIn<?> message = MessageIn.read(in, version, id);
         if (message != null) {
-            Runnable runnable = new MessageDeliveryTask(message, id, timestamp);
-            LealoneExecutorService stage = StageManager.getStage(message.getMessageType());
-            assert stage != null : "No stage for message type " + message.verb;
-            stage.execute(runnable);
+            MessageDeliveryTask task = new MessageDeliveryTask(message, id, timestamp);
+            AsyncTaskHandlerFactory.getAsyncTaskHandler().handle(task);
+            // LealoneExecutorService stage = StageManager.getStage(message.getMessageType());
+            // assert stage != null : "No stage for message type " + message.verb;
+            // stage.execute(task);
         }
         // message == null
         // callback expired; nothing to do
     }
 
     long getTimeouts() {
-        return metrics.timeouts.count();
+        return 0; // metrics.timeouts.count();
     }
 
     void incrementTimeout() {
-        metrics.timeouts.mark();
+        // metrics.timeouts.mark();
     }
 
     NetEndpoint endpoint() {
@@ -176,7 +175,7 @@ public class P2pConnection extends TransferConnection {
     }
 
     void reset() {
-        metrics.release();
+        // metrics.release();
     }
 
     void reset(NetEndpoint remoteEndpoint) {
@@ -184,8 +183,8 @@ public class P2pConnection extends TransferConnection {
         resetEndpoint = remoteEndpoint;
 
         // release previous metrics and create new one with reset address
-        metrics.release();
-        metrics = new ConnectionMetrics(resetEndpoint);
+        // metrics.release();
+        // metrics = new ConnectionMetrics(resetEndpoint);
     }
 
     /** messages that have not been retried yet */

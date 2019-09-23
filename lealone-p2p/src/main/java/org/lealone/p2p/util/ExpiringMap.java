@@ -21,13 +21,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-import org.lealone.common.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.async.AsyncPeriodicTask;
+import org.lealone.db.async.AsyncTaskHandlerFactory;
 
 public class ExpiringMap<K, V> {
     private static final Logger logger = LoggerFactory.getLogger(ExpiringMap.class);
@@ -51,8 +51,8 @@ public class ExpiringMap<K, V> {
     }
 
     // if we use more ExpiringMaps we may want to add multiple threads to this executor
-    private static final ScheduledExecutorService service = new DebuggableScheduledThreadPoolExecutor(
-            "EXPIRING-MAP-REAPER");
+    // private static final ScheduledExecutorService service = new DebuggableScheduledThreadPoolExecutor(
+    // "EXPIRING-MAP-REAPER");
 
     private final ConcurrentMap<K, CacheableObject<V>> cache = new ConcurrentHashMap<K, CacheableObject<V>>();
     private final long defaultExpiration;
@@ -72,7 +72,7 @@ public class ExpiringMap<K, V> {
             throw new IllegalArgumentException("Argument specified must be a positive number");
         }
 
-        Runnable runnable = new Runnable() {
+        AsyncPeriodicTask task = new AsyncPeriodicTask() {
             @Override
             public void run() {
                 long start = System.nanoTime();
@@ -89,16 +89,19 @@ public class ExpiringMap<K, V> {
                 logger.trace("Expired {} entries", n);
             }
         };
-        service.scheduleWithFixedDelay(runnable, defaultExpiration / 2, defaultExpiration / 2, TimeUnit.MILLISECONDS);
+        // service.scheduleWithFixedDelay(task, defaultExpiration / 2, defaultExpiration / 2,
+        // TimeUnit.MILLISECONDS);
+        AsyncTaskHandlerFactory.getAsyncTaskHandler().scheduleWithFixedDelay(task, defaultExpiration / 2,
+                defaultExpiration / 2, TimeUnit.MILLISECONDS);
     }
 
     public void shutdownBlocking() {
-        service.shutdown();
-        try {
-            service.awaitTermination(defaultExpiration * 2, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            throw new AssertionError(e);
-        }
+        // service.shutdown();
+        // try {
+        // service.awaitTermination(defaultExpiration * 2, TimeUnit.MILLISECONDS);
+        // } catch (InterruptedException e) {
+        // throw new AssertionError(e);
+        // }
     }
 
     public void reset() {
