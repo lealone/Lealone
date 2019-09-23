@@ -119,7 +119,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
                 removeConnection(conn);
             }
             closeChannel(channel);
-            logger.warn(getName(), e);
+            logger.warn(getName() + " failed to accept", e);
         }
     }
 

@@ -19,6 +19,7 @@ package org.lealone.server;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
@@ -37,6 +38,9 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     protected boolean isDaemon;
     protected boolean stopped;
     protected boolean started;
+
+    // 如果allowOthers为false，那么可以指定具体的白名单，只有在白名单中的客户端才可以连进来
+    protected HashSet<String> whiteList;
 
     protected ServerEncryptionOptions serverEncryptionOptions;
 
@@ -60,6 +64,14 @@ public abstract class ProtocolServerBase implements ProtocolServer {
         ssl = Boolean.parseBoolean(config.get("ssl"));
         allowOthers = Boolean.parseBoolean(config.get("allow_others"));
         isDaemon = Boolean.parseBoolean(config.get("daemon"));
+
+        if (config.containsKey("white_list")) {
+            String[] hosts = config.get("white_list").split(",");
+            whiteList = new HashSet<>(hosts.length);
+            for (String host : hosts) {
+                whiteList.add(host);
+            }
+        }
     }
 
     @Override
@@ -160,6 +172,9 @@ public abstract class ProtocolServerBase implements ProtocolServer {
             return true;
         }
         try {
+            if (whiteList != null && whiteList.contains(testHost))
+                return true;
+
             InetAddress localhost = InetAddress.getLocalHost();
             // localhost.getCanonicalHostName() is very very slow
             String host = localhost.getHostAddress();
@@ -168,7 +183,7 @@ public abstract class ProtocolServerBase implements ProtocolServer {
             }
 
             for (InetAddress addr : InetAddress.getAllByName(host)) {
-                if (testHost.equals(addr)) {
+                if (testHost.equals(addr.getHostAddress())) {
                     return true;
                 }
             }

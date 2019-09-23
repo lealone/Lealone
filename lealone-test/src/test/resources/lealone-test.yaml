@@ -49,6 +49,7 @@ protocol_server_engines:
         port: 7210,
         trace: false,
         allow_others: true,
+        # white_list: "127.0.0.4,127.0.0.2",
         daemon: false,
         # scheduler_count: 1,
         net_factory_name: nio, # 网络层默认用nio来实现
