@@ -71,7 +71,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
     }
 
     private void run() {
-        while (!isClosed()) {
+        for (;;) {
             try {
                 nioEventLoopAdapter.select();
                 if (isClosed())
@@ -79,16 +79,18 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
                 Set<SelectionKey> keys = nioEventLoopAdapter.getSelector().selectedKeys();
                 try {
                     for (SelectionKey key : keys) {
-                        if (!key.isValid())
-                            continue;
-                        int readyOps = key.readyOps();
-                        if ((readyOps & SelectionKey.OP_READ) != 0) {
-                            read(key);
-                        } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
-                            write(key);
-                        } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
-                            Object att = key.attachment();
-                            connectionEstablished(key, att);
+                        if (key.isValid()) {
+                            int readyOps = key.readyOps();
+                            if ((readyOps & SelectionKey.OP_READ) != 0) {
+                                read(key);
+                            } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
+                                write(key);
+                            } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
+                                Object att = key.attachment();
+                                connectionEstablished(key, att);
+                            } else {
+                                key.cancel();
+                            }
                         } else {
                             key.cancel();
                         }
@@ -96,6 +98,8 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
                 } finally {
                     keys.clear();
                 }
+                if (isClosed())
+                    break;
             } catch (Throwable e) {
                 logger.warn(Thread.currentThread().getName() + " run exception: " + e.getMessage());
             }

@@ -81,7 +81,6 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     }
 
     private final ConcurrentLinkedQueue<PageOperation> pageOperationQueue = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<AsyncTask> packetQueue = new ConcurrentLinkedQueue<>();
     private final CopyOnWriteArrayList<CommandQueue> commandQueues = new CopyOnWriteArrayList<>();
 
     private final ConcurrentLinkedQueue<AsyncTask> minPriorityQueue = new ConcurrentLinkedQueue<>();
@@ -116,7 +115,6 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     public void run() {
         // SQLEngineManager.getInstance().setSQLStatementExecutor(this);
         while (!stop) {
-            runQueueTasks(packetQueue);
             runQueueTasks(maxPriorityQueue);
             runQueueTasks(normPriorityQueue);
             runQueueTasks(minPriorityQueue);

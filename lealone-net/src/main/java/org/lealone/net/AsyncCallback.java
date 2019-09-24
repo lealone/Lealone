@@ -96,6 +96,9 @@ public class AsyncCallback<T> {
 
     @SuppressWarnings("unchecked")
     public final void run(Transfer transfer) {
+        // 放在最前面，不能放在最后面，
+        // 否则调用了countDown，但是在设置runEnd为true前，调用await的线程读到的是false就会抛异常
+        runEnd = true;
         if (e == null) {
             this.transfer.setDataInputStream(transfer.getDataInputStream());
             runInternal();
@@ -104,13 +107,10 @@ public class AsyncCallback<T> {
             r.setCause(e);
             ah.handle(r);
         }
-
         if (ah == null)
             latch.countDown();
-        runEnd = true;
     }
 
     protected void runInternal() {
     }
-
 }

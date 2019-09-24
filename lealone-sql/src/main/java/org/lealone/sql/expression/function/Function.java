@@ -891,7 +891,7 @@ public class Function extends Expression implements FunctionCall {
             int i = 0;
             for (; i < args.length; i++) {
                 Value when = getNullOrValue(session, args, values, i++);
-                if (Boolean.TRUE.equals(when)) {
+                if (when.getBoolean()) {
                     result = getNullOrValue(session, args, values, i);
                     break;
                 }
