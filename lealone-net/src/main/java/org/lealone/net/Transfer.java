@@ -209,7 +209,7 @@ public class Transfer implements NetSerializer {
     }
 
     public boolean isClosed() {
-        return writableChannel == null;
+        return writableChannel == null || (conn != null && conn.isClosed());
     }
 
     /**

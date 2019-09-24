@@ -84,7 +84,9 @@ public abstract class NetClientBase implements NetClient {
     @Override
     public void removeConnection(InetSocketAddress inetSocketAddress) {
         checkClosed();
-        asyncConnections.remove(inetSocketAddress);
+        AsyncConnection conn = asyncConnections.remove(inetSocketAddress);
+        if (conn != null && !conn.isClosed())
+            conn.close();
     }
 
     protected AsyncConnection getConnection(InetSocketAddress inetSocketAddress) {

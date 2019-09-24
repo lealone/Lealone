@@ -103,6 +103,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
     }
 
     // 交由上层去解析协议包是否完整收到更好一点，因为这里假设前4个字节是包的长度，网络层不应该关心具体协议格式
+    @Deprecated
     static ByteBuffer handle(ByteBuffer buffer, ByteBuffer lastBuffer, AsyncConnection conn) throws EOFException {
         if (lastBuffer != null) {
             ByteBuffer buffer2 = ByteBuffer.allocate(lastBuffer.limit() + buffer.limit());
@@ -145,15 +146,28 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
     }
 
     private void read(SelectionKey key) {
-        AsyncConnection conn = (AsyncConnection) key.attachment();
+        Attachment attachment = (Attachment) key.attachment();
+        AsyncConnection conn = attachment.conn;
         SocketChannel channel = (SocketChannel) key.channel();
         try {
             while (true) {
                 DataBuffer dataBuffer = DataBuffer.create(Transfer.BUFFER_SIZE);
                 ByteBuffer buffer = dataBuffer.getBuffer();
                 int count = channel.read(buffer);
-                if (count <= 0)
+                if (count > 0) {
+                    attachment.endOfStreamCount = 0;
+                } else {
+                    // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
+                    // netty框架在下面这个方法的代码中有自己的不同解决方案
+                    // io.netty.channel.nio.NioEventLoop.processSelectedKey
+                    if (count < 0) {
+                        attachment.endOfStreamCount++;
+                        if (attachment.endOfStreamCount > 3) {
+                            closeChannel(channel);
+                        }
+                    }
                     break;
+                }
                 buffer.flip();
                 NioBuffer nioBuffer = new NioBuffer(dataBuffer);
                 conn.handle(nioBuffer);
@@ -181,7 +195,8 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             }
             conn.setInetSocketAddress(attachment.inetSocketAddress);
             addConnection(attachment.inetSocketAddress, conn);
-            channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, conn);
+            attachment.conn = conn;
+            channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
         } finally {
             attachment.latch.countDown();
         }
@@ -191,6 +206,8 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         AsyncConnectionManager connectionManager;
         InetSocketAddress inetSocketAddress;
         CountDownLatch latch;
+        AsyncConnection conn;
+        int endOfStreamCount;
     }
 
     @Override

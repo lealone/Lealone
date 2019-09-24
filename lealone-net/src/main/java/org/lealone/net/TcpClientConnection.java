@@ -56,6 +56,19 @@ public class TcpClientConnection extends TcpConnection {
     }
 
     @Override
+    public void close() {
+        // 如果还有回调未处理需要设置异常，避免等待回调结果的线程一直死等
+        if (!callbackMap.isEmpty()) {
+            DbException e = DbException.get(ErrorCode.CONNECTION_BROKEN_1,
+                    "unexpected status " + Session.STATUS_CLOSED);
+            for (AsyncCallback<?> callback : callbackMap.values()) {
+                callback.setDbException(e, true);
+            }
+        }
+        super.close();
+    }
+
+    @Override
     public Session removeSession(int sessionId) {
         Session session = super.removeSession(sessionId);
         if (netClient != null && getSessions().isEmpty()) {
@@ -69,6 +82,7 @@ public class TcpClientConnection extends TcpConnection {
     }
 
     public void writeInitPacket(Session session, Transfer transfer, ConnectionInfo ci) throws Exception {
+        checkClosed();
         int id = session.getNextId();
         transfer.setSSL(ci.isSSL());
         transfer.writeRequestHeader(id, Session.SESSION_INIT);
@@ -108,6 +122,7 @@ public class TcpClientConnection extends TcpConnection {
 
     @Override
     protected void handleResponse(Transfer transfer, int id, int status) throws IOException {
+        checkClosed();
         String newTargetEndpoints = null;
         Session session = null;
         DbException e = null;

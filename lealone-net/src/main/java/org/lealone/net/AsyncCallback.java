@@ -18,6 +18,7 @@
 package org.lealone.net;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
@@ -52,6 +53,12 @@ public class AsyncCallback<T> {
         this.e = e;
     }
 
+    public void setDbException(DbException e, boolean cancel) {
+        this.e = e;
+        if (cancel)
+            latch.countDown();
+    }
+
     public void setResult(T result) {
         this.result = result;
     }
@@ -63,9 +70,13 @@ public class AsyncCallback<T> {
 
     public void await() {
         try {
-            latch.await();
+            latch.await(3000, TimeUnit.MILLISECONDS);
             if (e != null)
                 throw e;
+            if (transfer != null && transfer.isClosed())
+                throw new RuntimeException("transfer is closed");
+            if (result == null)
+                throw new RuntimeException("time out");
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }
