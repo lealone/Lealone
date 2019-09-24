@@ -117,7 +117,7 @@ public class TcpClientConnection extends TcpConnection {
         };
         transfer.addAsyncCallback(id, ac);
         transfer.flush();
-        ac.await();
+        ac.await(ci.getNetworkTimeout());
     }
 
     @Override

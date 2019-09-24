@@ -29,13 +29,14 @@ import org.lealone.storage.fs.FileUtils;
 public class ConnectionInfo implements Cloneable {
 
     private static final HashSet<String> KNOWN_SETTINGS = new HashSet<>();
+    private static final int DEFAULT_NETWORK_TIMEOUT = 5000; // 默认5秒无响应就超时
 
     static {
         KNOWN_SETTINGS.addAll(DbSettings.getDefaultSettings().getSettings().keySet());
         KNOWN_SETTINGS.addAll(SetTypes.getTypes());
 
         String[] connectionSettings = { "IGNORE_UNKNOWN_SETTINGS", "INIT", "USER", "PASSWORD", "PASSWORD_HASH",
-                "IS_LOCAL", Constants.NET_FACTORY_NAME_KEY };
+                "IS_LOCAL", Constants.NET_FACTORY_NAME_KEY, "NETWORK_TIMEOUT" };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
@@ -71,6 +72,7 @@ public class ConnectionInfo implements Cloneable {
     private Boolean persistent; // 首次调用isPersistent()时才初始化
 
     private String netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
+    private int networkTimeout = DEFAULT_NETWORK_TIMEOUT;
 
     public ConnectionInfo() {
     }
@@ -125,6 +127,8 @@ public class ConnectionInfo implements Cloneable {
             }
         }
         netFactoryName = removeProperty(Constants.NET_FACTORY_NAME_KEY, Constants.DEFAULT_NET_FACTORY_NAME);
+        networkTimeout = getProperty("NETWORK_TIMEOUT", DEFAULT_NETWORK_TIMEOUT);
+        removeProperty("NETWORK_TIMEOUT", "");
     }
 
     private void checkURL() {
@@ -727,5 +731,9 @@ public class ConnectionInfo implements Cloneable {
 
     public String getNetFactoryName() {
         return netFactoryName;
+    }
+
+    public int getNetworkTimeout() {
+        return networkTimeout;
     }
 }

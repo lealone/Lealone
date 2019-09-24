@@ -33,6 +33,7 @@ public class AsyncCallback<T> {
     protected CountDownLatch latch = new CountDownLatch(1);
 
     protected AsyncHandler ah;
+    protected boolean runEnd;
 
     public AsyncCallback() {
     }
@@ -69,14 +70,25 @@ public class AsyncCallback<T> {
     }
 
     public void await() {
+        await(-1);
+    }
+
+    public void await(long timeoutMillis) {
         try {
-            latch.await(3000, TimeUnit.MILLISECONDS);
+            if (timeoutMillis > 0)
+                latch.await(timeoutMillis, TimeUnit.MILLISECONDS);
+            else
+                latch.await();
             if (e != null)
                 throw e;
-            if (transfer != null && transfer.isClosed())
-                throw new RuntimeException("transfer is closed");
-            // if (result == null)
-            // throw new RuntimeException("time out");
+
+            // 如果没有执行过run，抛出合适的异常
+            if (!runEnd) {
+                if (transfer != null && transfer.isClosed())
+                    throw new RuntimeException("transfer is closed");
+                else
+                    throw new RuntimeException("time out");
+            }
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }
@@ -95,6 +107,7 @@ public class AsyncCallback<T> {
 
         if (ah == null)
             latch.countDown();
+        runEnd = true;
     }
 
     protected void runInternal() {
