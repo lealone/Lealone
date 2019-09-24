@@ -52,13 +52,26 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
             serverChannel.configureBlocking(false);
             serverChannel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_ACCEPT);
             super.start();
-
-            ConcurrentUtils.submitTask("ServerNioEventLoopService-" + getPort(), () -> {
-                NioNetServer.this.run();
-            });
+            String name = "ServerNioEventLoopService-" + getPort();
+            if (runInMainThread()) {
+                Thread t = Thread.currentThread();
+                if (t.getName().equals("main"))
+                    t.setName(name);
+            } else {
+                ConcurrentUtils.submitTask(name, () -> {
+                    NioNetServer.this.run();
+                });
+            }
         } catch (Exception e) {
             checkBindException(e, "Failed to start nio net server");
         }
+    }
+
+    @Override
+    public Runnable getRunnable() {
+        return () -> {
+            NioNetServer.this.run();
+        };
     }
 
     private void run() {

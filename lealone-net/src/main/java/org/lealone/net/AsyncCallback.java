@@ -75,8 +75,8 @@ public class AsyncCallback<T> {
                 throw e;
             if (transfer != null && transfer.isClosed())
                 throw new RuntimeException("transfer is closed");
-            if (result == null)
-                throw new RuntimeException("time out");
+            // if (result == null)
+            // throw new RuntimeException("time out");
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }

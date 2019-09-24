@@ -68,11 +68,15 @@ public class Lealone {
             long t2 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
 
-            start();
+            ProtocolServer mainProtocolServer = start();
 
             long t3 = (System.currentTimeMillis() - t);
             logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", (t1 + t2 + t3), t1, t2,
                     t3);
+
+            // 在主线程中运行，避免出现DestroyJavaVM线程
+            if (mainProtocolServer != null)
+                mainProtocolServer.getRunnable().run();
         } catch (Exception e) {
             logger.error("Fatal error: unable to start lealone. See log for stacktrace.", e);
             System.exit(1);
@@ -261,20 +265,24 @@ public class Lealone {
         pe.init(parameters);
     }
 
-    private static void start() throws Exception {
-        startProtocolServers();
+    private static ProtocolServer start() throws Exception {
+        return startProtocolServers();
     }
 
-    private static void startProtocolServers() throws Exception {
+    private static ProtocolServer startProtocolServers() throws Exception {
+        ProtocolServer mainProtocolServer = null;
         if (config.protocol_server_engines != null) {
             for (PluggableEngineDef def : config.protocol_server_engines) {
                 if (def.enabled) {
                     ProtocolServerEngine pse = ProtocolServerEngineManager.getInstance().getEngine(def.name);
                     ProtocolServer protocolServer = pse.getProtocolServer();
+                    if (protocolServer.runInMainThread())
+                        mainProtocolServer = protocolServer;
                     startProtocolServer(protocolServer);
                 }
             }
         }
+        return mainProtocolServer;
     }
 
     private static void startProtocolServer(final ProtocolServer server) throws Exception {

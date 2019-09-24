@@ -117,4 +117,12 @@ public interface ProtocolServer {
      * @return true if this client may connect
      */
     boolean allow(String testHost);
+
+    default boolean runInMainThread() {
+        return false;
+    }
+
+    default Runnable getRunnable() {
+        return null;
+    }
 }

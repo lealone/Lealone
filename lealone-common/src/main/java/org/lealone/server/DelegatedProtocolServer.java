@@ -129,4 +129,9 @@ public class DelegatedProtocolServer implements ProtocolServer {
     public boolean allow(String testHost) {
         return protocolServer.allow(testHost);
     }
+
+    @Override
+    public Runnable getRunnable() {
+        return protocolServer.getRunnable();
+    }
 }

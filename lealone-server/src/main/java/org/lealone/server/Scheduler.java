@@ -99,7 +99,7 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
 
     Scheduler(int id, Map<String, String> config) {
         super(ScheduleService.class.getSimpleName() + "-" + id);
-        setDaemon(false);
+        setDaemon(true);
         // 默认100毫秒
         loopInterval = DateTimeUtils.getLoopInterval(config, "scheduler_loop_interval", 100);
     }

@@ -49,6 +49,7 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
     public void init(Map<String, String> config) {
         if (!config.containsKey("port"))
             config.put("port", String.valueOf(Constants.DEFAULT_TCP_PORT));
+        config.put("__runInMainThread__", "true");
 
         NetFactory factory = NetFactoryManager.getFactory(config);
         NetServer netServer = factory.createNetServer();
@@ -59,6 +60,11 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
         NetEndpoint.setLocalTcpEndpoint(getHost(), getPort());
         ScheduleService.init(config);
         ScheduleService.start(); // 提前启动，LealoneDatabase要用到存储引擎
+    }
+
+    @Override
+    public boolean runInMainThread() {
+        return true;
     }
 
     @Override
