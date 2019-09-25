@@ -1331,16 +1331,16 @@ public class Select extends Query {
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Result>> handler) {
-        return new YieldableQuery(this, maxRows, scrollable, pageKeys, handler);
+        return new YieldableSelect(this, maxRows, scrollable, pageKeys, handler);
     }
 
-    private class YieldableQuery extends YieldableBase<Result> {
+    private class YieldableSelect extends YieldableBase<Result> {
 
         private final Select statement;
         private final int maxRows;
         // private final boolean scrollable;
 
-        public YieldableQuery(Select statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
+        public YieldableSelect(Select statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Result>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;

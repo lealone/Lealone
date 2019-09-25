@@ -39,19 +39,19 @@ import org.lealone.storage.PageOperationHandler;
 public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler {
 
     static class PreparedCommand {
-        private final int id;
-        private final PreparedStatement stmt;
         private final Transfer transfer;
+        private final int id;
         private final Session session;
+        private final PreparedStatement stmt;
         private final PreparedStatement.Yieldable<?> yieldable;
         private final CommandQueue queue;
 
-        PreparedCommand(int id, PreparedStatement stmt, Transfer transfer, Session session,
+        PreparedCommand(Transfer transfer, int id, Session session, PreparedStatement stmt,
                 PreparedStatement.Yieldable<?> yieldable, CommandQueue queue) {
-            this.id = id;
-            this.stmt = stmt;
             this.transfer = transfer;
+            this.id = id;
             this.session = session;
+            this.stmt = stmt;
             this.yieldable = yieldable;
             this.queue = queue;
         }
@@ -66,17 +66,30 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
 
     // preparedCommands中的命令统一由scheduler调度执行
     static class CommandQueue {
-        final Scheduler scheduler;
+        private final Scheduler scheduler;
         private final ConcurrentLinkedQueue<PreparedCommand> preparedCommands;
 
         CommandQueue(Scheduler scheduler) {
             this.scheduler = scheduler;
             this.preparedCommands = new ConcurrentLinkedQueue<>();
+            scheduler.addCommandQueue(this);
         }
 
-        void addCommand(PreparedCommand command) {
-            preparedCommands.add(command);
-            scheduler.wakeUp();
+        void addCommand(PreparedCommand command, AsyncTaskHandler currentAsyncTaskHandler) {
+            // currentAsyncTaskHandler是执行当前方法的线程，
+            // 如果即将被执行的命令也被分配到同样的线程中(scheduler)运行，
+            // 那么就不需要放到队列中了直接执行即可。
+            // TODO 如果command的优先级很低，立即执行它是否合适？
+            if (scheduler == currentAsyncTaskHandler) {
+                command.execute();
+            } else {
+                preparedCommands.add(command);
+                scheduler.wakeUp();
+            }
+        }
+
+        void close() {
+            scheduler.removeCommandQueue(this);
         }
     }
 
@@ -103,11 +116,11 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         loopInterval = DateTimeUtils.getLoopInterval(config, "scheduler_loop_interval", 100);
     }
 
-    void addCommandQueue(CommandQueue queue) {
+    private void addCommandQueue(CommandQueue queue) {
         commandQueues.add(queue);
     }
 
-    void removeCommandQueue(CommandQueue queue) {
+    private void removeCommandQueue(CommandQueue queue) {
         commandQueues.remove(queue);
     }
 

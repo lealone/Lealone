@@ -622,38 +622,35 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     @Override
     public YieldableBase<Integer> createYieldableUpdate(List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> handler) {
-        return new YieldableUpdate(this, pageKeys, handler);
+        return new DefaultYieldableUpdate(this, pageKeys, handler);
     }
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Result>> handler) {
-        return new YieldableQuery(this, maxRows, scrollable, pageKeys, handler);
+        return new DefaultYieldableQuery(this, maxRows, scrollable, pageKeys, handler);
     }
 
     public static abstract class YieldableBase<T> implements Yieldable<T> {
 
-        protected static enum State {
+        private static enum State {
             start,
             execute,
             stop;
         }
 
-        private State state = State.start;
-
         protected StatementBase statement;
         protected final ServerSession session;
         protected final Trace trace;
-
         protected final List<PageKey> pageKeys;
         protected final AsyncHandler<AsyncResult<T>> asyncHandler;
         protected AsyncResult<T> asyncResult;
-        protected long startTimeNanos;
-
         protected T result;
+        protected long startTimeNanos;
         protected boolean isUpdate;
-
         protected boolean callStop = true;
+
+        private State state = State.start;
         private int savepointId = 0;
         private long lockStartTime;
 
@@ -666,12 +663,17 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
             this.asyncHandler = asyncHandler;
         }
 
-        @Override
-        public T getResult() {
-            return result;
+        // 子类通常只需要实现以下三个方法
+        protected boolean startInternal() {
+            return false;
         }
 
-        public void setResult(T result, int rowCount) {
+        protected void stopInternal() {
+        }
+
+        protected abstract boolean executeInternal();
+
+        protected void setResult(T result, int rowCount) {
             this.result = result;
             if (result != null) {
                 if (asyncHandler != null) {
@@ -684,7 +686,12 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         }
 
         @Override
-        public boolean run() {
+        public T getResult() {
+            return result;
+        }
+
+        @Override
+        public final boolean run() {
             switch (state) {
             case start:
                 if (start()) {
@@ -705,14 +712,52 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
             return false;
         }
 
-        protected boolean startInternal() {
-            return false;
+        private boolean start() {
+            if (session.isExclusiveMode())
+                return true;
+            if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
+                startTimeNanos = System.nanoTime();
+            }
+            if (isUpdate)
+                savepointId = session.getTransaction(statement).getSavepointId();
+            else
+                session.getTransaction(statement);
+            session.setCurrentCommand(statement);
+            session.addStatement(statement);
+
+            recompileIfRequired();
+            setProgress(DatabaseEventListener.STATE_STATEMENT_START);
+            statement.checkParameters();
+            return startInternal();
         }
 
-        protected void stopInternal() {
+        private void recompileIfRequired() {
+            if (statement.needRecompile()) {
+                // TODO test with 'always recompile'
+                statement.setModificationMetaId(0);
+                String sql = statement.getSQL();
+                ArrayList<Parameter> oldParams = statement.getParameters();
+                Parser parser = new Parser(session);
+                statement = parser.parse(sql);
+                long mod = statement.getModificationMetaId();
+                statement.setModificationMetaId(0);
+                ArrayList<Parameter> newParams = statement.getParameters();
+                for (int i = 0, size = newParams.size(); i < size; i++) {
+                    Parameter old = oldParams.get(i);
+                    if (old.isValueSet()) {
+                        Value v = old.getValue(session);
+                        Parameter p = newParams.get(i);
+                        p.setValue(v);
+                    }
+                }
+                statement.prepare();
+                statement.setModificationMetaId(mod);
+            }
         }
 
-        protected abstract boolean executeInternal();
+        private void setProgress(int state) {
+            session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
+        }
 
         private boolean execute() {
             Database database = session.getDatabase();
@@ -766,53 +811,6 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
             }
         }
 
-        protected boolean start() {
-            if (session.isExclusiveMode())
-                return true;
-            if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
-                startTimeNanos = System.nanoTime();
-            }
-            if (isUpdate)
-                savepointId = session.getTransaction(statement).getSavepointId();
-            else
-                session.getTransaction(statement);
-            session.setCurrentCommand(statement);
-            session.addStatement(statement);
-
-            recompileIfRequired();
-            setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-            statement.checkParameters();
-            return startInternal();
-        }
-
-        protected void setProgress(int state) {
-            session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
-        }
-
-        private void recompileIfRequired() {
-            if (statement.needRecompile()) {
-                // TODO test with 'always recompile'
-                statement.setModificationMetaId(0);
-                String sql = statement.getSQL();
-                ArrayList<Parameter> oldParams = statement.getParameters();
-                Parser parser = new Parser(session);
-                statement = parser.parse(sql);
-                long mod = statement.getModificationMetaId();
-                statement.setModificationMetaId(0);
-                ArrayList<Parameter> newParams = statement.getParameters();
-                for (int i = 0, size = newParams.size(); i < size; i++) {
-                    Parameter old = oldParams.get(i);
-                    if (old.isValueSet()) {
-                        Value v = old.getValue(session);
-                        Parameter p = newParams.get(i);
-                        p.setValue(v);
-                    }
-                }
-                statement.prepare();
-                statement.setModificationMetaId(mod);
-            }
-        }
-
         private void filterConcurrentUpdate(DbException e) {
             if (e.getErrorCode() != ErrorCode.CONCURRENT_UPDATE_1) {
                 throw e;
@@ -829,7 +827,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
             lockStartTime = now;
         }
 
-        protected void stop() {
+        private void stop() {
             stopInternal();
             session.closeTemporaryResults();
             session.setCurrentCommand(null);
@@ -857,9 +855,9 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         }
     }
 
-    public static class YieldableUpdate extends YieldableBase<Integer> {
+    public static class DefaultYieldableUpdate extends YieldableBase<Integer> {
 
-        public YieldableUpdate(StatementBase statement, List<PageKey> pageKeys,
+        public DefaultYieldableUpdate(StatementBase statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             isUpdate = true;
@@ -882,12 +880,12 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         }
     }
 
-    public static class YieldableQuery extends YieldableBase<Result> {
+    public static class DefaultYieldableQuery extends YieldableBase<Result> {
 
         private final int maxRows;
         private final boolean scrollable;
 
-        public YieldableQuery(StatementBase statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
+        public DefaultYieldableQuery(StatementBase statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Result>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.maxRows = maxRows;

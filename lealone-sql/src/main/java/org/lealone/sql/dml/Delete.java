@@ -167,17 +167,17 @@ public class Delete extends ManipulationStatement {
     }
 
     @Override
-    public YieldableUpdate createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
-        return new YieldableUpdate(this, pageKeys, handler);
+    public YieldableDelete createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+        return new YieldableDelete(this, pageKeys, handler);
     }
 
-    private static class YieldableUpdate extends YieldableBase<Integer> {
+    private static class YieldableDelete extends YieldableBase<Integer> {
         Delete statement;
         Table table;
         int limitRows;
         int count;
 
-        public YieldableUpdate(Delete statement, List<PageKey> pageKeys,
+        public YieldableDelete(Delete statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;

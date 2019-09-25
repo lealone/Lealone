@@ -34,7 +34,6 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.SmallMap;
-import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
@@ -63,6 +62,9 @@ import org.lealone.storage.type.StorageDataType;
  * 这里只处理客户端通过TCP连到服务器端后的协议，可以在一个TCP连接中打开多个session
  * 
  */
+// 注意: 以下代码中出现的sessionId都表示客户端session的id，
+// 调用createSession创建的是服务器端的session，这个session的id有可能跟客户端session的id不一样，
+// 但是可以把客户端session的id跟服务器端的session做一个影射，这样两端的session就对上了。
 public class TcpServerConnection extends TcpConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpServerConnection.class);
@@ -71,6 +73,7 @@ public class TcpServerConnection extends TcpConnection {
     // 然后由调度器根据优先级从多个CommandQueue中依次取出执行
     private final ConcurrentHashMap<Integer, CommandQueue> commandQueueMap = new ConcurrentHashMap<>();
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
+    // 解析数据包只由asyncTaskHandler处理，执行executeQueryAsync或executeQueryAsync得到的命令会重新分配调度器
     private final AsyncTaskHandler asyncTaskHandler;
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
     private String baseDir;
@@ -97,11 +100,14 @@ public class TcpServerConnection extends TcpConnection {
     public void close() {
         super.close();
         for (CommandQueue queue : commandQueueMap.values()) {
-            queue.scheduler.removeCommandQueue(queue);
+            queue.close();
         }
         commandQueueMap.clear();
     }
 
+    /**
+     * @see org.lealone.net.TcpClientConnection#writeInitPacket
+     */
     private void readInitPacket(Transfer transfer, int id, int sessionId) {
         try {
             int minClientVersion = transfer.readInt();
@@ -120,11 +126,10 @@ public class TcpServerConnection extends TcpConnection {
                 clientVersion = minClientVersion;
             }
             transfer.setVersion(clientVersion);
-            String dbName = transfer.readString();
-            String originalURL = transfer.readString();
-            String userName = transfer.readString();
-            userName = StringUtils.toUpperEnglish(userName);
-            Session session = createSession(transfer, sessionId, originalURL, dbName, userName);
+
+            ConnectionInfo ci = createConnectionInfo(transfer);
+            Session session = createSession(ci, sessionId);
+
             transfer.setSession(session);
             transfer.writeResponseHeader(id, Session.STATUS_OK);
             transfer.writeInt(clientVersion);
@@ -138,9 +143,12 @@ public class TcpServerConnection extends TcpConnection {
         }
     }
 
-    private Session createSession(Transfer transfer, int sessionId, String originalURL, String dbName, String userName)
-            throws IOException {
+    private ConnectionInfo createConnectionInfo(Transfer transfer) throws IOException {
+        String dbName = transfer.readString();
+        String originalURL = transfer.readString();
+        String userName = transfer.readString();
         ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
+
         ci.setUserName(userName);
         ci.setUserPasswordHash(transfer.readBytes());
         ci.setFilePasswordHash(transfer.readBytes());
@@ -156,17 +164,33 @@ public class TcpServerConnection extends TcpConnection {
         if (baseDir == null) {
             baseDir = SysProperties.getBaseDirSilently();
         }
-
-        // override client's requested properties with server settings
+        // 强制使用服务器端的基目录
         if (baseDir != null) {
             ci.setBaseDir(baseDir);
         }
+        return ci;
+    }
+
+    private Session createSession(ConnectionInfo ci, int sessionId) {
         Session session = ci.createSession();
+        // 在复制模式和sharding模式下，客户端可以从任何一个节点接入，
+        // 如果接入节点不是客户端想要访问的数据库的所在节点，就会给客户端返回数据库的所有节点，
+        // 此时，这样的session就是无效的，客户端会自动重定向到正确的节点。
         if (session.isValid()) {
             addSession(sessionId, session);
             assignScheduler(sessionId);
         }
         return session;
+    }
+
+    // 每个sessionId对应一个CommandQueue，每个调度器可以负责多个CommandQueue， 但是一个CommandQueue只能由一个调度器负责。
+    // commandQueueMap这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
+    // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
+    // 把commandQueueMap这个字段放在连接实例中可以减少并发访问的冲突。
+    private void assignScheduler(int sessionId) {
+        Scheduler scheduler = ScheduleService.getScheduler();
+        CommandQueue queue = new CommandQueue(scheduler);
+        commandQueueMap.put(sessionId, queue);
     }
 
     protected static void setParameters(Transfer transfer, PreparedStatement command) throws IOException {
@@ -269,7 +293,7 @@ public class TcpServerConnection extends TcpConnection {
         return pageKeys;
     }
 
-    protected void executeQueryAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
+    protected void executeQueryAsync(Transfer transfer, int id, int operation, Session session, int sessionId,
             boolean prepared) throws IOException {
         int resultId = transfer.readInt();
         int maxRows = transfer.readInt();
@@ -282,39 +306,39 @@ public class TcpServerConnection extends TcpConnection {
             session.setRoot(false);
         }
 
-        PreparedStatement command;
+        PreparedStatement stmt;
         if (prepared) {
-            command = (PreparedStatement) cache.getObject(id, false);
-            setParameters(transfer, command);
+            stmt = (PreparedStatement) cache.getObject(id, false);
+            setParameters(transfer, stmt);
         } else {
             String sql = transfer.readString();
-            command = session.prepareStatement(sql, fetchSize);
-            cache.addObject(id, command);
+            stmt = session.prepareStatement(sql, fetchSize);
+            cache.addObject(id, stmt);
         }
-        command.setFetchSize(fetchSize);
+        stmt.setFetchSize(fetchSize);
 
         List<PageKey> pageKeys = readPageKeys(transfer);
-        if (executeQueryAsync(session, sessionId, command, transfer, id, operation, resultId, fetchSize)) {
+        if (executeQueryAsync(transfer, id, operation, session, sessionId, stmt, resultId, fetchSize)) {
             return;
         }
-        PreparedStatement.Yieldable<?> yieldable = command.createYieldableQuery(maxRows, scrollable, pageKeys, ar -> {
+        PreparedStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, pageKeys, ar -> {
             if (ar.isSucceeded()) {
                 Result result = ar.getResult();
-                sendResult(transfer, session, sessionId, id, operation, result, resultId, fetchSize);
+                sendResult(transfer, id, operation, session, sessionId, result, resultId, fetchSize);
             } else {
                 sendError(transfer, id, ar.getCause());
             }
         });
 
-        addPreparedCommandToQueue(id, command, transfer, session, sessionId, yieldable);
+        addPreparedCommandToQueue(transfer, id, session, sessionId, stmt, yieldable);
     }
 
-    protected boolean executeQueryAsync(Session session, int sessionId, PreparedStatement command, Transfer transfer,
-            int id, int operation, int resultId, int fetchSize) throws IOException {
+    protected boolean executeQueryAsync(Transfer transfer, int id, int operation, Session session, int sessionId,
+            PreparedStatement stmt, int resultId, int fetchSize) throws IOException {
         return false;
     }
 
-    protected void sendResult(Transfer transfer, Session session, int sessionId, int id, int operation, Result result,
+    protected void sendResult(Transfer transfer, int id, int operation, Session session, int sessionId, Result result,
             int resultId, int fetchSize) {
         cache.addObject(resultId, result);
         try {
@@ -343,7 +367,7 @@ public class TcpServerConnection extends TcpConnection {
         }
     }
 
-    protected void executeUpdateAsync(Transfer transfer, Session session, int sessionId, int id, int operation,
+    protected void executeUpdateAsync(Transfer transfer, int id, int operation, Session session, int sessionId,
             boolean prepared) throws IOException {
         if (operation == Session.COMMAND_REPLICATION_UPDATE
                 || operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE) {
@@ -354,19 +378,19 @@ public class TcpServerConnection extends TcpConnection {
             session.setRoot(false);
         }
 
-        PreparedStatement command;
+        PreparedStatement stmt;
         if (prepared) {
-            command = (PreparedStatement) cache.getObject(id, false);
-            setParameters(transfer, command);
+            stmt = (PreparedStatement) cache.getObject(id, false);
+            setParameters(transfer, stmt);
         } else {
             String sql = transfer.readString();
-            command = session.prepareStatement(sql, -1);
-            cache.addObject(id, command);
+            stmt = session.prepareStatement(sql, -1);
+            cache.addObject(id, stmt);
         }
 
         List<PageKey> pageKeys = readPageKeys(transfer);
 
-        PreparedStatement.Yieldable<?> yieldable = command.createYieldableUpdate(pageKeys, ar -> {
+        PreparedStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(pageKeys, ar -> {
             if (ar.isSucceeded()) {
                 int updateCount = ar.getResult();
                 try {
@@ -389,24 +413,17 @@ public class TcpServerConnection extends TcpConnection {
             }
         });
 
-        addPreparedCommandToQueue(id, command, transfer, session, sessionId, yieldable);
+        addPreparedCommandToQueue(transfer, id, session, sessionId, stmt, yieldable);
     }
 
-    private void addPreparedCommandToQueue(int id, PreparedStatement stmt, Transfer transfer, Session session,
-            int sessionId, PreparedStatement.Yieldable<?> yieldable) {
+    private void addPreparedCommandToQueue(Transfer transfer, int id, Session session, int sessionId,
+            PreparedStatement stmt, PreparedStatement.Yieldable<?> yieldable) {
         CommandQueue queue = commandQueueMap.get(sessionId);
         if (queue == null) {
             commandQueueNotFound(sessionId);
         }
-        PreparedCommand pc = new PreparedCommand(id, stmt, transfer, session, yieldable, queue);
-
-        // asyncTaskHandler是执行当前方法的线程，如果即将被执行的命令也被分配到同样的线程中(scheduler)运行，
-        // 那么就不需要放到队列中了直接执行即可。
-        if (queue.scheduler == asyncTaskHandler) {
-            pc.execute();
-        } else {
-            queue.addCommand(pc);
-        }
+        PreparedCommand pc = new PreparedCommand(transfer, id, session, stmt, yieldable, queue);
+        queue.addCommand(pc, asyncTaskHandler);
     }
 
     private void commandQueueNotFound(int sessionId) {
@@ -415,18 +432,9 @@ public class TcpServerConnection extends TcpConnection {
         throw DbException.throwInternalError(msg);
     }
 
-    // 每个sessionId对应一个CommandQueue，
-    // 每个调度器可以负责多个CommandQueue，
-    // 但是一个CommandQueue只能由一个调度器负责。
-    private void assignScheduler(int sessionId) {
-        Scheduler scheduler = ScheduleService.getScheduler();
-        CommandQueue queue = new CommandQueue(scheduler);
-        commandQueueMap.put(sessionId, queue);
-        scheduler.addCommandQueue(queue);
-    }
-
     @Override
     protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
+        // 参数id是数据包的id，而这里的sessionId是客户端session的id，每个数据包都会带这两个字段
         int sessionId = transfer.readInt();
         Session session = getSession(sessionId);
         // 初始化时，肯定是不存在session的
@@ -460,24 +468,24 @@ public class TcpServerConnection extends TcpConnection {
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY:
         case Session.COMMAND_QUERY: {
-            executeQueryAsync(transfer, session, sessionId, id, operation, false);
+            executeQueryAsync(transfer, id, operation, session, sessionId, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
         case Session.COMMAND_PREPARED_QUERY: {
-            executeQueryAsync(transfer, session, sessionId, id, operation, true);
+            executeQueryAsync(transfer, id, operation, session, sessionId, true);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
         case Session.COMMAND_UPDATE:
         case Session.COMMAND_REPLICATION_UPDATE: {
-            executeUpdateAsync(transfer, session, sessionId, id, operation, false);
+            executeUpdateAsync(transfer, id, operation, session, sessionId, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
-            executeUpdateAsync(transfer, session, sessionId, id, operation, true);
+            executeUpdateAsync(transfer, id, operation, session, sessionId, true);
             break;
         }
         case Session.COMMAND_REPLICATION_COMMIT: {
@@ -761,7 +769,7 @@ public class TcpServerConnection extends TcpConnection {
         case Session.SESSION_CLOSE: {
             CommandQueue queue = commandQueueMap.remove(sessionId);
             if (queue != null) {
-                queue.scheduler.removeCommandQueue(queue);
+                queue.close();
                 session = removeSession(sessionId);
                 closeSession(session);
             } else {

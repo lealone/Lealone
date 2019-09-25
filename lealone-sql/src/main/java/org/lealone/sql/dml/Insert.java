@@ -262,11 +262,11 @@ public class Insert extends ManipulationStatement implements ResultTarget {
     }
 
     @Override
-    public YieldableUpdate createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
-        return new YieldableUpdate(this, pageKeys, handler);
+    public YieldableInsert createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+        return new YieldableInsert(this, pageKeys, handler);
     }
 
-    private static class YieldableUpdate extends YieldableBase<Integer> implements Transaction.Listener {
+    private static class YieldableInsert extends YieldableBase<Integer> implements Transaction.Listener {
 
         Insert statement;
         Table table;
@@ -277,7 +277,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         AtomicInteger counter = new AtomicInteger();
         boolean loopEnd;
 
-        public YieldableUpdate(Insert statement, List<PageKey> pageKeys,
+        public YieldableInsert(Insert statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
