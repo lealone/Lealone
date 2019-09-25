@@ -250,41 +250,34 @@ public class Update extends ManipulationStatement {
         return new YieldableUpdate(this, pageKeys, handler);
     }
 
-    private static class YieldableUpdate extends YieldableBase<Integer> {
-        Update statement;
-        Table table;
-        Column[] columns;
-        int columnCount;
-        int limitRows;
-        int updateCount;
+    private static class YieldableUpdate extends YieldableUpdateBase {
+
+        final Update statement;
+        final TableFilter tableFilter;
+        final Table table;
+        final int limitRows; // 如果是0，表示不更新任何记录；如果小于0，表示没有限制
+        final Column[] columns;
+        final int columnCount;
 
         public YieldableUpdate(Update statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
-            callStop = false;
+            tableFilter = statement.tableFilter;
+            table = tableFilter.getTable();
+            limitRows = getLimitRows(statement.limitExpr, session);
+            columns = table.getColumns();
+            columnCount = columns.length;
         }
 
         @Override
         protected boolean startInternal() {
-            statement.tableFilter.startQuery(session);
-            statement.tableFilter.reset();
-            table = statement.tableFilter.getTable();
+            tableFilter.startQuery(session);
+            tableFilter.reset();
             session.getUser().checkRight(table, Right.UPDATE);
             table.fire(session, Trigger.UPDATE, true);
             table.lock(session, true, false);
-            columnCount = table.getColumns().length;
-            // get the old rows, compute the new rows
             statement.setCurrentRowNumber(0);
-            updateCount = 0;
-            columns = table.getColumns();
-            limitRows = -1;
-            if (statement.limitExpr != null) {
-                Value v = statement.limitExpr.getValue(session);
-                if (v != ValueNull.INSTANCE) {
-                    limitRows = v.getInt();
-                }
-            }
             return false;
         }
 
@@ -298,19 +291,18 @@ public class Update extends ManipulationStatement {
             if (update()) {
                 return true;
             }
-            setResult(Integer.valueOf(updateCount), updateCount);
-            callStop = true;
+            setResult(Integer.valueOf(affectedRows), affectedRows);
             return false;
         }
 
         private boolean update() {
-            while (statement.tableFilter.next()) {
-                boolean yieldIfNeeded = statement.setCurrentRowNumber(updateCount + 1);
-                if (limitRows >= 0 && updateCount >= limitRows) {
+            while (tableFilter.next()) {
+                boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
+                if (limitRows >= 0 && affectedRows >= limitRows) {
                     break;
                 }
                 if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
-                    Row oldRow = statement.tableFilter.get();
+                    Row oldRow = tableFilter.get();
                     Row newRow = table.getTemplateRow();
                     newRow.setKey(oldRow.getKey()); // 复用原来的行号
                     for (int i = 0; i < columnCount; i++) {
@@ -338,7 +330,7 @@ public class Update extends ManipulationStatement {
                             table.fireAfterRow(session, oldRow, newRow, false);
                         }
                     }
-                    updateCount++;
+                    affectedRows++;
                 }
                 if (yieldIfNeeded) {
                     return true;

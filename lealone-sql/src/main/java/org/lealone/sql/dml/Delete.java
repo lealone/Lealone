@@ -171,34 +171,29 @@ public class Delete extends ManipulationStatement {
         return new YieldableDelete(this, pageKeys, handler);
     }
 
-    private static class YieldableDelete extends YieldableBase<Integer> {
-        Delete statement;
-        Table table;
-        int limitRows;
-        int count;
+    private static class YieldableDelete extends YieldableUpdateBase {
+
+        final Delete statement;
+        final TableFilter tableFilter;
+        final Table table;
+        final int limitRows; // 如果是0，表示不删除任何记录；如果小于0，表示没有限制
 
         public YieldableDelete(Delete statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
-            callStop = false;
+            tableFilter = statement.tableFilter;
+            table = tableFilter.getTable();
+            limitRows = getLimitRows(statement.limitExpr, session);
         }
 
         @Override
         protected boolean startInternal() {
-            statement.tableFilter.startQuery(session);
-            statement.tableFilter.reset();
-            table = statement.tableFilter.getTable();
+            tableFilter.startQuery(session);
+            tableFilter.reset();
             session.getUser().checkRight(table, Right.DELETE);
             table.fire(session, Trigger.DELETE, true);
             table.lock(session, true, false);
-            limitRows = -1;
-            if (statement.limitExpr != null) {
-                Value v = statement.limitExpr.getValue(session);
-                if (v != ValueNull.INSTANCE) {
-                    limitRows = v.getInt();
-                }
-            }
             statement.setCurrentRowNumber(0);
             return false;
         }
@@ -210,19 +205,18 @@ public class Delete extends ManipulationStatement {
 
         @Override
         protected boolean executeInternal() {
-            if (update()) {
+            if (delete()) {
                 return true;
             }
-            setResult(Integer.valueOf(count), count);
-            callStop = true;
+            setResult(Integer.valueOf(affectedRows), affectedRows);
             return false;
         }
 
-        private boolean update() {
-            while (limitRows != 0 && statement.tableFilter.next()) {
-                boolean yieldIfNeeded = statement.setCurrentRowNumber(count + 1);
+        private boolean delete() {
+            while (limitRows != 0 && tableFilter.next()) {
+                boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
                 if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
-                    Row row = statement.tableFilter.get();
+                    Row row = tableFilter.get();
                     boolean done = false;
                     if (table.fireRow()) {
                         done = table.fireBeforeRow(session, row, null);
@@ -233,8 +227,8 @@ public class Delete extends ManipulationStatement {
                             table.fireAfterRow(session, row, null, false);
                         }
                     }
-                    count++;
-                    if (limitRows >= 0 && count >= limitRows) {
+                    affectedRows++;
+                    if (limitRows >= 0 && affectedRows >= limitRows) {
                         break;
                     }
                 }

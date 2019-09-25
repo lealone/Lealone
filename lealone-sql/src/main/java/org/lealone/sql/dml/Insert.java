@@ -266,15 +266,15 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         return new YieldableInsert(this, pageKeys, handler);
     }
 
-    private static class YieldableInsert extends YieldableBase<Integer> implements Transaction.Listener {
+    private static class YieldableInsert extends YieldableUpdateBase implements Transaction.Listener {
 
-        Insert statement;
-        Table table;
-        int listSize;
+        final AtomicInteger counter = new AtomicInteger();
+        final Insert statement;
+        final Table table;
+        final int listSize;
+
         int index;
-        int updateCount;
         Result rows;
-        AtomicInteger counter = new AtomicInteger();
         boolean loopEnd;
 
         public YieldableInsert(Insert statement, List<PageKey> pageKeys,
@@ -282,6 +282,10 @@ public class Insert extends ManipulationStatement implements ResultTarget {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
             table = statement.table;
+            listSize = statement.list.size();
+
+            // 执行insert操作时每增加一条记录都是异步的，
+            // 当所有异步操作完成时才能调用stop方法给客户端发回响应结果
             callStop = false;
         }
 
@@ -289,7 +293,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         protected boolean startInternal() {
             session.getUser().checkRight(table, Right.INSERT);
             table.fire(session, Trigger.INSERT, true);
-            listSize = statement.list.size();
+            statement.setCurrentRowNumber(0);
             if (statement.query != null) {
                 table.lock(session, true, false);
                 rows = statement.query.query(0);
@@ -305,13 +309,13 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         @Override
         protected boolean executeInternal() {
             if (!loopEnd) {
-                if (update()) {
+                if (insert()) {
                     return true;
                 }
             }
             if (loopEnd) {
                 if (counter.get() <= 0) {
-                    setResult(Integer.valueOf(updateCount), updateCount);
+                    setResult(Integer.valueOf(affectedRows), affectedRows);
                     callStop = true;
                     return false;
                 }
@@ -319,7 +323,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
             return true;
         }
 
-        private boolean update() {
+        private boolean insert() {
             if (rows == null) {
                 int columnLen = statement.columns.length;
                 for (; index < listSize; index++) {
@@ -342,7 +346,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                             }
                         }
                     }
-                    updateCount++;
+                    affectedRows++;
                     table.validateConvertUpdateSequence(session, newRow);
                     boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
                     if (!done) {
@@ -359,7 +363,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                 while (rows.next()) {
                     Value[] values = rows.currentRow();
                     Row newRow = table.getTemplateRow();
-                    boolean yieldIfNeeded = statement.setCurrentRowNumber(++updateCount);
+                    boolean yieldIfNeeded = statement.setCurrentRowNumber(++affectedRows);
                     for (int j = 0, len = statement.columns.length; j < len; j++) {
                         Column c = statement.columns[j];
                         int index = c.getColumnId();
@@ -367,7 +371,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                             Value v = c.convert(values[j]);
                             newRow.setValue(index, v);
                         } catch (DbException ex) {
-                            throw statement.setRow(ex, updateCount, getSQL(values));
+                            throw statement.setRow(ex, affectedRows, getSQL(values));
                         }
                     }
                     table.validateConvertUpdateSequence(session, newRow);

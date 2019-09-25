@@ -636,7 +636,8 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         private static enum State {
             start,
             execute,
-            stop;
+            stop,
+            stopped;
         }
 
         protected StatementBase statement;
@@ -707,7 +708,6 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
                 if (callStop) {
                     stop();
                 }
-                state = State.stop;
             }
             return false;
         }
@@ -737,8 +737,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
                 statement.setModificationMetaId(0);
                 String sql = statement.getSQL();
                 ArrayList<Parameter> oldParams = statement.getParameters();
-                Parser parser = new Parser(session);
-                statement = parser.parse(sql);
+                statement = (StatementBase) session.parseStatement(sql);
                 long mod = statement.getModificationMetaId();
                 statement.setModificationMetaId(0);
                 ArrayList<Parameter> newParams = statement.getParameters();
@@ -852,27 +851,51 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
                     trace.info("slow query: {0} ms, sql: {1}", timeMillis, statement.getSQL());
                 }
             }
+            state = State.stopped;
         }
     }
 
-    public static class DefaultYieldableUpdate extends YieldableBase<Integer> {
+    public static abstract class YieldableUpdateBase extends YieldableBase<Integer> {
+
+        protected int affectedRows;
+
+        public YieldableUpdateBase(StatementBase statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            isUpdate = true;
+        }
+    }
+
+    public static abstract class YieldableQueryBase extends YieldableBase<Result> {
+
+        protected final int maxRows;
+        protected final boolean scrollable;
+
+        public YieldableQueryBase(StatementBase statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Result>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+            this.maxRows = maxRows;
+            this.scrollable = scrollable;
+            isUpdate = false;
+        }
+    }
+
+    private static class DefaultYieldableUpdate extends YieldableUpdateBase {
 
         public DefaultYieldableUpdate(StatementBase statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
-            isUpdate = true;
         }
 
         @Override
         protected boolean executeInternal() {
             session.setLastScopeIdentity(ValueNull.INSTANCE);
-            int updateCount;
             if (pageKeys == null)
-                updateCount = SQLRouter.executeUpdate(statement);
+                affectedRows = SQLRouter.executeUpdate(statement);
             else
-                updateCount = statement.executeUpdate(pageKeys);
-            if (updateCount >= 0) {
-                setResult(Integer.valueOf(updateCount), updateCount);
+                affectedRows = statement.executeUpdate(pageKeys);
+            if (affectedRows >= 0) {
+                setResult(Integer.valueOf(affectedRows), affectedRows);
                 return false;
             }
             // 当前命令未执行完，但是主动让出执行线程了
@@ -880,16 +903,11 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         }
     }
 
-    public static class DefaultYieldableQuery extends YieldableBase<Result> {
-
-        private final int maxRows;
-        private final boolean scrollable;
+    private static class DefaultYieldableQuery extends YieldableQueryBase {
 
         public DefaultYieldableQuery(StatementBase statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Result>> asyncHandler) {
-            super(statement, pageKeys, asyncHandler);
-            this.maxRows = maxRows;
-            this.scrollable = scrollable;
+            super(statement, maxRows, scrollable, pageKeys, asyncHandler);
         }
 
         @Override
