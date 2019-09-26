@@ -262,8 +262,9 @@ public class Insert extends ManipulationStatement implements ResultTarget {
     }
 
     @Override
-    public YieldableInsert createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
-        return new YieldableInsert(this, pageKeys, handler);
+    public YieldableInsert createYieldableUpdate(List<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        return new YieldableInsert(this, pageKeys, asyncHandler);
     }
 
     private static class YieldableInsert extends YieldableUpdateBase implements Transaction.Listener {

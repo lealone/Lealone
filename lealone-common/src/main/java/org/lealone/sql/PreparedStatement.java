@@ -81,10 +81,10 @@ public interface PreparedStatement extends SQLStatement {
 
     void resume();
 
-    Yieldable<Integer> createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler);
+    Yieldable<Integer> createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> asyncHandler);
 
     Yieldable<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Result>> handler);
+            AsyncHandler<AsyncResult<Result>> asyncHandler);
 
     static interface Yieldable<T> {
         boolean run();

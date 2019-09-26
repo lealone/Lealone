@@ -621,14 +621,14 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
 
     @Override
     public YieldableBase<Integer> createYieldableUpdate(List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Integer>> handler) {
-        return new DefaultYieldableUpdate(this, pageKeys, handler);
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        return new DefaultYieldableUpdate(this, pageKeys, asyncHandler);
     }
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Result>> handler) {
-        return new DefaultYieldableQuery(this, maxRows, scrollable, pageKeys, handler);
+            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+        return new DefaultYieldableQuery(this, maxRows, scrollable, pageKeys, asyncHandler);
     }
 
     public static abstract class YieldableBase<T> implements Yieldable<T> {

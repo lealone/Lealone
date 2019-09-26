@@ -83,6 +83,14 @@ public class Delete extends ManipulationStatement {
 
     @Override
     public int update() {
+        // 以同步的方式运行
+        YieldableDelete yieldable = new YieldableDelete(this, null, null, false);
+        yieldable.run();
+        return yieldable.getResult();
+    }
+
+    @Deprecated
+    public int updateOld() {
         tableFilter.startQuery(session);
         tableFilter.reset();
         Table table = tableFilter.getTable();
@@ -167,8 +175,9 @@ public class Delete extends ManipulationStatement {
     }
 
     @Override
-    public YieldableDelete createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
-        return new YieldableDelete(this, pageKeys, handler);
+    public YieldableDelete createYieldableUpdate(List<PageKey> pageKeys,
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        return new YieldableDelete(this, pageKeys, asyncHandler, true);
     }
 
     private static class YieldableDelete extends YieldableUpdateBase {
@@ -177,14 +186,16 @@ public class Delete extends ManipulationStatement {
         final TableFilter tableFilter;
         final Table table;
         final int limitRows; // 如果是0，表示不删除任何记录；如果小于0，表示没有限制
+        final boolean async;
 
         public YieldableDelete(Delete statement, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+                AsyncHandler<AsyncResult<Integer>> asyncHandler, boolean async) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
             tableFilter = statement.tableFilter;
             table = tableFilter.getTable();
             limitRows = getLimitRows(statement.limitExpr, session);
+            this.async = async;
         }
 
         @Override
@@ -213,7 +224,9 @@ public class Delete extends ManipulationStatement {
         }
 
         private boolean delete() {
-            while (limitRows != 0 && tableFilter.next()) {
+            if (limitRows == 0)
+                return false;
+            while (tableFilter.next()) {
                 boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
                 if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
                     Row row = tableFilter.get();
@@ -222,17 +235,20 @@ public class Delete extends ManipulationStatement {
                         done = table.fireBeforeRow(session, row, null);
                     }
                     if (!done) {
-                        yieldIfNeeded = table.tryRemoveRow(session, row) || yieldIfNeeded;
+                        if (async)
+                            yieldIfNeeded = table.tryRemoveRow(session, row) || yieldIfNeeded;
+                        else
+                            table.removeRow(session, row);
                         if (table.fireRow()) {
                             table.fireAfterRow(session, row, null, false);
                         }
                     }
                     affectedRows++;
-                    if (limitRows >= 0 && affectedRows >= limitRows) {
-                        break;
+                    if (limitRows > 0 && affectedRows >= limitRows) {
+                        return false;
                     }
                 }
-                if (yieldIfNeeded) {
+                if (async && yieldIfNeeded) {
                     return true;
                 }
             }
