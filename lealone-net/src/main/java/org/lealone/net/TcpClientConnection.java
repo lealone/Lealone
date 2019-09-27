@@ -69,6 +69,17 @@ public class TcpClientConnection extends TcpConnection {
     }
 
     @Override
+    protected void closeSession(Session session) {
+        // if (session != null && !session.isClosed()) {
+        // try {
+        // session.close();
+        // } catch (Exception e) {
+        // logger.error("Failed to close session", e);
+        // }
+        // }
+    }
+
+    @Override
     public Session removeSession(int sessionId) {
         Session session = super.removeSession(sessionId);
         if (netClient != null && getSessions().isEmpty()) {

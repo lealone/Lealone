@@ -158,6 +158,10 @@ public interface TransactionalValue {
         return new TransactionalValueRef(tv);
     }
 
+    public static TransactionalValue createRef() {
+        return new TransactionalValueRef(null);
+    }
+
     public static TransactionalValue createCommitted(Object value) {
         return new Committed(value);
     }

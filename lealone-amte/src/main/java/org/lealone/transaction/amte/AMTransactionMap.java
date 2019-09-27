@@ -175,9 +175,43 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
 
     @Override
     public boolean put(K key, V value, Transaction.Listener listener) {
+        check(value);
+        return trySetAsync(key, value, null, null, listener);
+    }
+
+    private void check(V value) {
         transaction.checkNotClosed();
         DataUtils.checkArgument(value != null, "The value may not be null");
-        return trySetAsync(key, value, null, null, listener);
+    }
+
+    @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get
+    public void addIfAbsent(K key, V value, Transaction.Listener listener) {
+        check(value);
+        TransactionalValue ref = TransactionalValue.createRef();
+        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
+                null, ref);
+        ref.setRefValue(newValue);
+        String mapName = getName();
+        final TransactionalLogRecord r = transaction.log(mapName, key, null, newValue);
+        AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
+            if (ar.isSucceeded()) {
+                TransactionalValue old = ar.getResult();
+                if (old != null) {
+                    // 不能用logUndo()，因为它不是线程安全的，
+                    // 在logUndo()中执行removeLast()在逻辑上也是不对的，
+                    // 因为这里的异步回调函数可能是在不同线程中执行的，顺序也没有保证。
+                    // transaction.logUndo();
+                    r.undone = true;
+                    listener.operationUndo();
+                } else {
+                    listener.operationComplete();
+                }
+            } else {
+                r.undone = true;
+                listener.operationUndo();
+            }
+        };
+        map.putIfAbsent(key, ref, handler);
     }
 
     @SuppressWarnings("unchecked")

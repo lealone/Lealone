@@ -40,6 +40,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.value.ValueLong;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
@@ -1556,6 +1557,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
         Remove<K, V> remove = new Remove<>(root, key, handler);
         PageOperationHandlerFactory.addPageOperation(remove);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public K append(V value, AsyncHandler<AsyncResult<V>> handler) {
+        K key = (K) ValueLong.get(maxKey.incrementAndGet());
+        put(key, value, handler);
+        return key;
     }
 
     public boolean disableParallel;

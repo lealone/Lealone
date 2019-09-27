@@ -277,6 +277,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         int index;
         Result rows;
         boolean loopEnd;
+        volatile RuntimeException exception;
 
         public YieldableInsert(Insert statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
@@ -315,6 +316,8 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                 }
             }
             if (loopEnd) {
+                if (exception != null)
+                    throw exception;
                 if (counter.get() <= 0) {
                     setResult(Integer.valueOf(affectedRows), affectedRows);
                     callStop = true;
@@ -327,7 +330,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         private boolean insert() {
             if (rows == null) {
                 int columnLen = statement.columns.length;
-                for (; index < listSize; index++) {
+                for (; exception == null && index < listSize; index++) {
                     Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
 
                     Expression[] expr = statement.list.get(index);
@@ -353,7 +356,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                     if (!done) {
                         // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
                         table.lock(session, true, false);
-                        table.addRow(session, newRow, this);
+                        table.tryAddRow(session, newRow, this);
                         table.fireAfterRow(session, null, newRow, false);
                     }
                     if (yieldIfNeeded) {
@@ -361,7 +364,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                     }
                 }
             } else {
-                while (rows.next()) {
+                while (exception == null && rows.next()) {
                     Value[] values = rows.currentRow();
                     Row newRow = table.getTemplateRow();
                     boolean yieldIfNeeded = statement.setCurrentRowNumber(++affectedRows);
@@ -378,7 +381,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                     table.validateConvertUpdateSequence(session, newRow);
                     boolean done = table.fireBeforeRow(session, null, newRow);
                     if (!done) {
-                        table.addRow(session, newRow, this);
+                        table.tryAddRow(session, newRow, this);
                         table.fireAfterRow(session, null, newRow, false);
                     }
                     if (yieldIfNeeded) {
@@ -404,6 +407,11 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         @Override
         public void operationComplete() {
             counter.decrementAndGet();
+        }
+
+        @Override
+        public void setException(RuntimeException e) {
+            exception = e;
         }
     }
 }

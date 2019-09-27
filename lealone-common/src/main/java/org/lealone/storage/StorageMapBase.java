@@ -75,8 +75,8 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         return storage;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
+    @SuppressWarnings("unchecked")
     public K append(V value) {
         K key = (K) ValueLong.get(maxKey.incrementAndGet());
         put(key, value);

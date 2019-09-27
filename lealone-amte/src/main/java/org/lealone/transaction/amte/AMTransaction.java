@@ -71,15 +71,20 @@ public class AMTransaction implements Transaction {
         status = Transaction.STATUS_OPEN;
     }
 
-    public void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
-            boolean isForUpdate) {
-        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue, isForUpdate));
+    public TransactionalLogRecord log(String mapName, Object key, TransactionalValue oldValue,
+            TransactionalValue newValue, boolean isForUpdate) {
+        TransactionalLogRecord r = new TransactionalLogRecord(mapName, key, oldValue, newValue, isForUpdate);
+        logRecords.add(r);
         logId++;
+        return r;
     }
 
-    public void log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
-        logRecords.add(new TransactionalLogRecord(mapName, key, oldValue, newValue, false));
+    public TransactionalLogRecord log(String mapName, Object key, TransactionalValue oldValue,
+            TransactionalValue newValue) {
+        TransactionalLogRecord r = new TransactionalLogRecord(mapName, key, oldValue, newValue, false);
+        logRecords.add(r);
         logId++;
+        return r;
     }
 
     public void logUndo() {

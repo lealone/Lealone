@@ -49,9 +49,14 @@ public interface Index extends SchemaObject {
      */
     void add(ServerSession session, Row row);
 
-    default boolean add(ServerSession session, Row row, Transaction.Listener listener) {
+    default boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
         add(session, row);
         return false;
+    }
+
+    default void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        remove(session, oldRow);
+        add(session, newRow);
     }
 
     default boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
@@ -67,11 +72,6 @@ public interface Index extends SchemaObject {
      * @param row the row
      */
     void remove(ServerSession session, Row row);
-
-    default boolean remove(ServerSession session, Row row, Transaction.Listener listener) {
-        remove(session, row);
-        return false;
-    }
 
     default boolean tryRemove(ServerSession session, Row row) {
         return false;
@@ -92,18 +92,6 @@ public interface Index extends SchemaObject {
     Cursor find(ServerSession session, SearchRow first, SearchRow last);
 
     Cursor find(ServerSession session, IterationParameters<SearchRow> parameters);
-
-    // /**
-    // * Find a row or a list of rows and create a cursor to iterate over the result.
-    // *
-    // * @param filter the table filter (which possibly knows about additional conditions)
-    // * @param first the first row, or null for no limit
-    // * @param last the last row, or null for no limit
-    // * @return the cursor to iterate over the results
-    // */
-    // Cursor find(TableFilter filter, SearchRow first, SearchRow last);
-    //
-    // Cursor find(TableFilter filter, SearchRow first, SearchRow last, List<PageKey> pageKeys);
 
     /**
      * Estimate the cost to search for rows given the search mask.

@@ -165,9 +165,8 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public boolean add(ServerSession session, Row row, Transaction.Listener listener) {
-        // insert新记录并且由系统自动增加rowKey时，不用每次都调用一次map.get
-        // update原有记录row.getKey()不为0，所以依然要调用map.get
+    public boolean tryAdd(ServerSession session, Row row, final Transaction.Listener globalListener) {
+        // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
         boolean checkDuplicateKey = true;
         if (mainIndexColumn == -1) {
             if (row.getKey() == 0) {
@@ -195,23 +194,27 @@ public class StandardPrimaryIndex extends IndexBase {
         VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
         Value key;
         if (checkDuplicateKey) {
-            key = ValueLong.get(row.getKey());
-            VersionedValue old = map.get(key);
-            if (old != null) {
-                String sql = "PRIMARY KEY ON " + table.getSQL();
-                if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
-                    sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+            Transaction.Listener localListener = new Transaction.Listener() {
+                @Override
+                public void operationUndo() {
+                    String sql = "PRIMARY KEY ON " + table.getSQL();
+                    if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
+                        sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
+                    }
+                    DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
+                    e.setSource(StandardPrimaryIndex.this);
+                    globalListener.setException(e);
+                    globalListener.operationUndo();
                 }
-                DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-                e.setSource(this);
-                throw e;
-            }
-            try {
-                listener.beforeOperation();
-                map.put(key, value, listener);
-            } catch (IllegalStateException e) {
-                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-            }
+
+                @Override
+                public void operationComplete() {
+                    globalListener.operationComplete();
+                }
+            };
+            key = ValueLong.get(row.getKey());
+            globalListener.beforeOperation();
+            map.addIfAbsent(key, value, localListener);
         } else {
             key = map.append(value);
             row.setKey(key.getLong());

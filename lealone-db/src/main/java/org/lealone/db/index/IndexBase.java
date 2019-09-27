@@ -145,16 +145,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         throw DbException.throwInternalError();
     }
 
-    // @Override
-    // public Cursor find(TableFilter filter, SearchRow first, SearchRow last) {
-    // return find(filter.getSession(), first, last);
-    // }
-    //
-    // @Override
-    // public Cursor find(TableFilter filter, SearchRow first, SearchRow last, List<PageKey> pageKeys) {
-    // return find(filter.getSession(), first, last, pageKeys);
-    // }
-
     @Override
     public Cursor find(ServerSession session, IterationParameters<SearchRow> parameters) {
         return find(session, parameters.from, parameters.to);

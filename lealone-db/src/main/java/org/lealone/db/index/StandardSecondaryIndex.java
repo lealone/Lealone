@@ -231,46 +231,71 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         }
     }
 
+    private void checkUniqueAfterAdd(SearchRow row, TransactionMap<Value, Value> map, ValueArray unique,
+            Transaction.Listener globalListener) {
+        Iterator<Value> it = map.keyIterator(unique, true);
+        while (it.hasNext()) {
+            ValueArray k = (ValueArray) it.next();
+            SearchRow r2 = convertToSearchRow(k);
+            if (compareRows(row, r2) != 0) {
+                break;
+            }
+            if (containsNullAndAllowMultipleNull(r2)) {
+                // this is allowed
+                continue;
+            }
+            if (map.isSameTransaction(k)) {
+                continue;
+            }
+            if (map.get(k) != null) {
+                // committed
+                globalListener.setException(getDuplicateKeyException(k.toString()));
+                return;
+            }
+            globalListener.setException(DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName()));
+            return;
+        }
+    }
+
     @Override
-    public boolean add(ServerSession session, Row row, Transaction.Listener listener) {
-        TransactionMap<Value, Value> map = getMap(session);
-        ValueArray array = convertToKey(row);
-        ValueArray unique = null;
-        if (indexType.isUnique()) {
-            // this will detect committed entries only
-            unique = convertToKey(row);
-            unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-            checkUnique(row, map, unique);
-        }
-        try {
-            listener.beforeOperation();
-            map.put(array, ValueNull.INSTANCE, listener);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
-        if (indexType.isUnique()) {
-            Iterator<Value> it = map.keyIterator(unique, true);
-            while (it.hasNext()) {
-                ValueArray k = (ValueArray) it.next();
-                SearchRow r2 = convertToSearchRow(k);
-                if (compareRows(row, r2) != 0) {
-                    break;
+    public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
+        final TransactionMap<Value, Value> map = getMap(session);
+        final ValueArray array = convertToKey(row);
+        // 以下代码只在最后才检测唯一性
+        Transaction.Listener localListener = new Transaction.Listener() {
+            @Override
+            public void operationUndo() {
+                // short/int/long类型的primary key + unique约束字段构成的索引
+                DbException e = getDuplicateKeyException(array.toString());
+                globalListener.setException(e);
+                globalListener.operationUndo();
+            }
+
+            @Override
+            public void operationComplete() {
+                if (indexType.isUnique()) {
+                    ValueArray unique = convertToKey(row);
+                    unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+                    checkUniqueAfterAdd(row, map, unique, globalListener);
                 }
-                if (containsNullAndAllowMultipleNull(r2)) {
-                    // this is allowed
-                    continue;
-                }
-                if (map.isSameTransaction(k)) {
-                    continue;
-                }
-                if (map.get(k) != null) {
-                    // committed
-                    throw getDuplicateKeyException(k.toString());
-                }
-                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName());
+                globalListener.operationComplete();
+            }
+        };
+        globalListener.beforeOperation();
+        map.addIfAbsent(array, ValueNull.INSTANCE, localListener);
+        return false;
+    }
+
+    @Override
+    public void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        // 只有索引字段被更新时才更新索引
+        for (Column c : columns) {
+            if (updateColumns.contains(c)) {
+                remove(session, oldRow);
+                add(session, newRow);
+                break;
             }
         }
-        return false;
     }
 
     @Override

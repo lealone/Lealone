@@ -17,6 +17,9 @@
  */
 package org.lealone.test.sql.dml;
 
+import java.sql.Connection;
+import java.sql.Statement;
+
 import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
@@ -26,21 +29,74 @@ public class InsertTest extends SqlTestBase {
         createTable("InsertTest");
         createTable("InsertTest2");
         testInsert();
+        testDuplicateKey();
+        testUnique();
+        testPrimaryKeyUniqueIndex();
+    }
+
+    // 测试short/int/long类型的primary key + unique约束字段构成的索引
+    void testPrimaryKeyUniqueIndex() {
+        executeUpdate("DROP TABLE IF EXISTS testUnique");
+        executeUpdate("CREATE TABLE testUnique (pk int PRIMARY KEY, f1 int UNIQUE)");
+        Thread t1 = startThread("INSERT INTO testUnique(pk, f1) VALUES(100, 10)");
+        Thread t2 = startThread("INSERT INTO testUnique(pk, f1) VALUES(100, 10)");
+        Thread t3 = startThread("INSERT INTO testUnique(pk, f1) VALUES(100, 10)");
+        try {
+            t1.join();
+            t2.join();
+            t3.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void testUnique() {
+        executeUpdate("DROP TABLE IF EXISTS testUnique");
+        executeUpdate("CREATE TABLE testUnique (pk varchar(100) PRIMARY KEY, f1 int)");
+        Thread t1 = startThread("INSERT INTO testUnique(pk, f1) VALUES('a', 10)");
+        Thread t2 = startThread("INSERT INTO testUnique(pk, f1) VALUES('a', 20)");
+        Thread t3 = startThread("INSERT INTO testUnique(pk, f1) VALUES('a', 30)");
+        try {
+            t1.join();
+            t2.join();
+            t3.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    void testDuplicateKey() {
+        executeUpdate("DROP TABLE IF EXISTS testDuplicateKey");
+        executeUpdate("CREATE TABLE testDuplicateKey (pk int PRIMARY KEY, f1 int)");
+        Thread t1 = startThread("INSERT INTO testDuplicateKey(pk, f1) VALUES(1, 10)");
+        Thread t2 = startThread("INSERT INTO testDuplicateKey(pk, f1) VALUES(1, 20)");
+        Thread t3 = startThread("INSERT INTO testDuplicateKey(pk, f1) VALUES(1, 30)");
+        try {
+            t1.join();
+            t2.join();
+            t3.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    Thread startThread(String sql) {
+        Thread t = new Thread(() -> {
+            try {
+                Connection conn = getConnection();
+                Statement stmt = conn.createStatement();
+                stmt.executeUpdate(sql);
+                stmt.close();
+                conn.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        t.start();
+        return t;
     }
 
     void testInsert() {
-        // new Thread(() -> {
-        // try {
-        // Connection conn2 = getConnection();
-        // Statement stmt2 = conn2.createStatement();
-        // String sql2 = "INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)";
-        // stmt2.executeUpdate(sql2);
-        // stmt2.close();
-        // conn2.close();
-        // } catch (Exception e) {
-        // e.printStackTrace();
-        // }
-        // }).start();
         executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('01', 'a1', 'b', 51)");
         executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('02', 'a1', 'b', 61)");
         executeUpdate("INSERT INTO InsertTest(pk, f1, f2, f3) VALUES('03', 'a1', 'b', 61)");

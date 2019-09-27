@@ -552,7 +552,7 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean addRow(ServerSession session, Row row, Transaction.Listener listener) {
+    public boolean tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
         row.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
@@ -561,7 +561,7 @@ public class StandardTable extends Table {
             // 第一个是PrimaryIndex
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                index.add(session, row, listener);
+                index.tryAdd(session, row, globalListener);
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
@@ -569,6 +569,25 @@ public class StandardTable extends Table {
         }
         analyzeIfRequired(session);
         return false;
+    }
+
+    @Override
+    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        newRow.setVersion(getVersion());
+        lastModificationId = database.getNextModificationDataId();
+        Transaction t = session.getTransaction();
+        int savepointId = t.getSavepointId();
+        try {
+            // 第一个是PrimaryIndex
+            for (int i = 0, size = indexes.size(); i < size; i++) {
+                Index index = indexes.get(i);
+                index.update(session, oldRow, newRow, updateColumns);
+            }
+        } catch (Throwable e) {
+            t.rollbackToSavepoint(savepointId);
+            throw DbException.convert(e);
+        }
+        analyzeIfRequired(session);
     }
 
     @Override

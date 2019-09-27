@@ -132,12 +132,7 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
             runQueueTasks(normPriorityQueue);
             runQueueTasks(minPriorityQueue);
 
-            PageOperation po = pageOperationQueue.poll();
-            while (po != null) {
-                po.run(this);
-                po = pageOperationQueue.poll();
-            }
-
+            runPageOperationTasks();
             executeNextStatement();
 
             // for (int i = 0, size = periodicQueue.size(); i < size; i++) {
@@ -151,6 +146,14 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         while (task != null) {
             task.run();
             task = queue.poll();
+        }
+    }
+
+    private void runPageOperationTasks() {
+        PageOperation po = pageOperationQueue.poll();
+        while (po != null) {
+            po.run(this);
+            po = pageOperationQueue.poll();
         }
     }
 
@@ -195,6 +198,7 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     @Override
     public void executeNextStatement() {
         int priority = PreparedStatement.MIN_PRIORITY;
+        PreparedCommand last = null;
         while (true) {
             PreparedCommand c;
             if (nextBestCommand != null) {
@@ -214,6 +218,13 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
             }
             try {
                 c.execute();
+                // 说明没有新的命令了，一直在轮循
+                if (last == c) {
+                    runPageOperationTasks();
+                    runQueueTasks(maxPriorityQueue);
+                    runQueueTasks(normPriorityQueue);
+                }
+                last = c;
             } catch (Throwable e) {
                 c.transfer.getTransferConnection().sendError(c.transfer, c.id, e);
             }

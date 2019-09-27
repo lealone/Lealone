@@ -34,6 +34,7 @@ public class TransactionalLogRecord {
     final TransactionalValue oldValue;
     final TransactionalValue newValue;
     final boolean isForUpdate;
+    volatile boolean undone;
 
     public TransactionalLogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
             boolean isForUpdate) {
@@ -46,6 +47,8 @@ public class TransactionalLogRecord {
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值
     public void commit(AMTransactionEngine transactionEngine, long tid) {
+        if (undone)
+            return;
         if (isForUpdate) {
             newValue.rollback();
             return;
@@ -126,6 +129,8 @@ public class TransactionalLogRecord {
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
     public void rollback(AMTransactionEngine transactionEngine) {
+        if (undone)
+            return;
         if (isForUpdate) {
             newValue.rollback();
             return;
@@ -168,7 +173,7 @@ public class TransactionalLogRecord {
 
     // 用于redo时，不关心oldValue
     public void writeForRedo(DataBuffer writeBuffer, AMTransactionEngine transactionEngine) {
-        if (isForUpdate) {
+        if (isForUpdate || undone) {
             return;
         }
         StorageMap<?, ?> map = transactionEngine.getMap(mapName);

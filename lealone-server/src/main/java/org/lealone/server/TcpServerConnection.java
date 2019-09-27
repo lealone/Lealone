@@ -80,7 +80,9 @@ public class TcpServerConnection extends TcpConnection {
 
     public TcpServerConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
-        asyncTaskHandler = ScheduleService.getScheduler();
+        // 固定分配一个调度器会导致这个调度器太忙，所有跟这个TCP连接相关的数据包都由它处理
+        // asyncTaskHandler = ScheduleService.getScheduler();
+        asyncTaskHandler = null;
     }
 
     void setBaseDir(String baseDir) {
@@ -93,7 +95,7 @@ public class TcpServerConnection extends TcpConnection {
 
     @Override
     public AsyncTaskHandler getAsyncTaskHandler() {
-        return asyncTaskHandler;
+        return ScheduleService.getScheduler();
     }
 
     @Override

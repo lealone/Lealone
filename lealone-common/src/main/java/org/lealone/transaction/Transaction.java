@@ -139,6 +139,9 @@ public interface Transaction {
         default void beforeOperation() {
         }
 
+        default void setException(RuntimeException e) {
+        }
+
         void operationUndo();
 
         void operationComplete();

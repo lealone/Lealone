@@ -297,4 +297,8 @@ public interface StorageMap<K, V> extends ReplicationMap {
     default void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
         remove(key);
     }
+
+    default K append(V value, AsyncHandler<AsyncResult<V>> handler) {
+        return append(value);
+    }
 }

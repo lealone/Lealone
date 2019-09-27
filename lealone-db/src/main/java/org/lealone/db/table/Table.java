@@ -224,9 +224,13 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
-    public boolean addRow(ServerSession session, Row row, Transaction.Listener listener) {
+    public boolean tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
         addRow(session, row);
         return false;
+    }
+
+    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        throw newUnsupportedException();
     }
 
     /**
@@ -238,6 +242,73 @@ public abstract class Table extends SchemaObjectBase {
      */
     public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         throw newUnsupportedException();
+    }
+
+    /**
+     * Update a list of rows in this table.
+     *
+     * @param prepared the prepared statement
+     * @param session the session
+     * @param rows a list of row pairs of the form old row, new row, old row,
+     *            new row,...
+     */
+    public boolean updateRows(PreparedStatement prepared, ServerSession session, RowList rows,
+            List<Column> updateColumns, Transaction.Listener listener) {
+        boolean yieldIfNeeded = false;
+        // in case we need to undo the update
+        int savepointId = session.getTransaction().getSavepointId();
+        int rowScanCount = 0;
+        for (rows.reset(); rows.hasNext();) {
+            if ((++rowScanCount & 127) == 0) {
+                prepared.checkCanceled();
+                if (prepared.yieldIfNeeded()) {
+                    yieldIfNeeded = true;
+                }
+            }
+            Row oldRow = rows.next();
+            Row newRow = rows.next();
+            try {
+                yieldIfNeeded = tryUpdateRow(session, oldRow, newRow, updateColumns) || yieldIfNeeded;
+            } catch (DbException e) {
+                if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
+                    session.rollbackTo(savepointId);
+                }
+                throw e;
+            }
+            if (yieldIfNeeded) {
+                return true;
+            }
+        }
+        return false;
+
+        // // in case we need to undo the update
+        // int savepointId = session.getTransaction().getSavepointId();
+        // // remove the old rows
+        // int rowScanCount = 0;
+        // for (rows.reset(); rows.hasNext();) {
+        // if ((++rowScanCount & 127) == 0) {
+        // prepared.checkCanceled();
+        // }
+        // Row o = rows.next();
+        // rows.next();
+        // removeRow(session, o);
+        // }
+        // // add the new rows
+        // for (rows.reset(); rows.hasNext();) {
+        // if ((++rowScanCount & 127) == 0) {
+        // prepared.checkCanceled();
+        // }
+        // rows.next();
+        // Row n = rows.next();
+        // try {
+        // addRow(session, n);
+        // } catch (DbException e) {
+        // if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
+        // session.rollbackTo(savepointId);
+        // }
+        // throw e;
+        // }
+        // }
     }
 
     /**
@@ -467,73 +538,6 @@ public abstract class Table extends SchemaObjectBase {
         columnMap.remove(column.getName());
         column.rename(newName);
         columnMap.put(newName, column);
-    }
-
-    /**
-     * Update a list of rows in this table.
-     *
-     * @param prepared the prepared statement
-     * @param session the session
-     * @param rows a list of row pairs of the form old row, new row, old row,
-     *            new row,...
-     */
-    public boolean updateRows(PreparedStatement prepared, ServerSession session, RowList rows,
-            List<Column> updateColumns, Transaction.Listener listener) {
-        boolean yieldIfNeeded = false;
-        // in case we need to undo the update
-        int savepointId = session.getTransaction().getSavepointId();
-        int rowScanCount = 0;
-        for (rows.reset(); rows.hasNext();) {
-            if ((++rowScanCount & 127) == 0) {
-                prepared.checkCanceled();
-                if (prepared.yieldIfNeeded()) {
-                    yieldIfNeeded = true;
-                }
-            }
-            Row oldRow = rows.next();
-            Row newRow = rows.next();
-            try {
-                yieldIfNeeded = tryUpdateRow(session, oldRow, newRow, updateColumns) || yieldIfNeeded;
-            } catch (DbException e) {
-                if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
-                    session.rollbackTo(savepointId);
-                }
-                throw e;
-            }
-            if (yieldIfNeeded) {
-                return true;
-            }
-        }
-        return false;
-
-        // // in case we need to undo the update
-        // int savepointId = session.getTransaction().getSavepointId();
-        // // remove the old rows
-        // int rowScanCount = 0;
-        // for (rows.reset(); rows.hasNext();) {
-        // if ((++rowScanCount & 127) == 0) {
-        // prepared.checkCanceled();
-        // }
-        // Row o = rows.next();
-        // rows.next();
-        // removeRow(session, o);
-        // }
-        // // add the new rows
-        // for (rows.reset(); rows.hasNext();) {
-        // if ((++rowScanCount & 127) == 0) {
-        // prepared.checkCanceled();
-        // }
-        // rows.next();
-        // Row n = rows.next();
-        // try {
-        // addRow(session, n);
-        // } catch (DbException e) {
-        // if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
-        // session.rollbackTo(savepointId);
-        // }
-        // throw e;
-        // }
-        // }
     }
 
     public ArrayList<TableView> getViews() {
