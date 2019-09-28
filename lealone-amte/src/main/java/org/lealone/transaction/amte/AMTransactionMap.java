@@ -774,12 +774,12 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
                         }
                     }
                     final K key = k;
-                    TransactionalValue data = cursor.getValue();
-                    data = getValue(key, data);
+                    TransactionalValue ref = cursor.getValue();
+                    TransactionalValue data = getValue(key, ref);
                     if (data != null && data.getValue() != null) {
                         @SuppressWarnings("unchecked")
                         final V value = (V) data.getValue();
-                        current = new DataUtils.MapEntry<K, V>(key, value, data);
+                        current = new DataUtils.MapEntry<K, V>(key, value, ref);
                         currentKey = key;
                         return;
                     }

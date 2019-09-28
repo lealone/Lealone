@@ -231,8 +231,10 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         }
     }
 
-    private void checkUniqueAfterAdd(SearchRow row, TransactionMap<Value, Value> map, ValueArray unique,
+    private void checkUniqueAfterAdd(TransactionMap<Value, Value> map, SearchRow row,
             Transaction.Listener globalListener) {
+        ValueArray unique = convertToKey(row);
+        unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
         Iterator<Value> it = map.keyIterator(unique, true);
         while (it.hasNext()) {
             ValueArray k = (ValueArray) it.next();
@@ -274,9 +276,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             @Override
             public void operationComplete() {
                 if (indexType.isUnique()) {
-                    ValueArray unique = convertToKey(row);
-                    unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-                    checkUniqueAfterAdd(row, map, unique, globalListener);
+                    checkUniqueAfterAdd(map, row, globalListener);
                 }
                 globalListener.operationComplete();
             }
@@ -299,11 +299,12 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener globalListener) {
         // 只有索引字段被更新时才更新索引
         for (Column c : columns) {
             if (updateColumns.contains(c)) {
-                super.tryUpdate(session, oldRow, newRow, updateColumns);
+                super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
                 break;
             }
         }

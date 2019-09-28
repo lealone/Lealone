@@ -225,7 +225,23 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener globalListener) {
+        if (mainIndexColumn != -1) {
+            Column c = columns[mainIndexColumn];
+            if (updateColumns.contains(c)) {
+                Value oldKey = oldRow.getValue(mainIndexColumn);
+                Value newKey = newRow.getValue(mainIndexColumn);
+                // 修改了主键字段并且新值与旧值不同时才会册除原有的并增加新的，因为这种场景下性能慢一些
+                if (!oldKey.equals(newKey)) {
+                    super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
+                    return false;
+                } else if (updateColumns.size() == 1) { // 新值与旧值相同，并且只更新主键时什么都不用做
+                    return false;
+                }
+            }
+        }
+
         int size = updateColumns.size();
         int[] columnIndexes = new int[size];
         for (int i = 0; i < size; i++) {

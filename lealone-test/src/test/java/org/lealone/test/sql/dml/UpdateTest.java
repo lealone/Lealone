@@ -30,7 +30,38 @@ public class UpdateTest extends SqlTestBase {
         createTable("UpdateTest");
         testInsert();
         testUpdate();
+        testUpdatePrimaryKey();
+        testUpdateIndex();
         // testColumnLock();
+    }
+
+    void testUpdatePrimaryKey() {
+        executeUpdate("DROP TABLE IF EXISTS testUpdatePrimaryKey");
+        executeUpdate("CREATE TABLE testUpdatePrimaryKey (pk int PRIMARY KEY, f1 int)");
+        executeUpdate("INSERT INTO testUpdatePrimaryKey(pk, f1) VALUES(1, 10)");
+        executeUpdate("INSERT INTO testUpdatePrimaryKey(pk, f1) VALUES(2, 20)");
+        sql = "UPDATE testUpdatePrimaryKey SET pk=3 WHERE pk = 1";
+        assertEquals(1, executeUpdate(sql));
+        sql = "UPDATE testUpdatePrimaryKey SET pk=2 WHERE pk = 2";
+        assertEquals(1, executeUpdate(sql));
+    }
+
+    void testUpdateIndex() {
+        executeUpdate("DROP TABLE IF EXISTS testUpdateIndex");
+        executeUpdate("CREATE TABLE testUpdateIndex (pk int PRIMARY KEY, f1 int, f2 int)");
+        executeUpdate("CREATE INDEX i_f1 ON testUpdateIndex(f2)");
+        executeUpdate("INSERT INTO testUpdateIndex(pk, f1, f2) VALUES(1, 10, 100)");
+        executeUpdate("INSERT INTO testUpdateIndex(pk, f1, f2) VALUES(2, 20, 200)");
+        sql = "UPDATE testUpdateIndex SET f1=11 WHERE pk = 1";
+        assertEquals(1, executeUpdate(sql));
+        sql = "UPDATE testUpdateIndex SET f2=201 WHERE pk = 2";
+        assertEquals(1, executeUpdate(sql));
+        sql = "SELECT f2 FROM testUpdateIndex WHERE pk = 2";
+        try {
+            assertEquals(201, getIntValue(1, true));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     void testInsert() {

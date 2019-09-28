@@ -591,7 +591,8 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener globalListener) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
@@ -600,7 +601,7 @@ public class StandardTable extends Table {
             // 第一个是PrimaryIndex
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                if (index.tryUpdate(session, oldRow, newRow, updateColumns))
+                if (index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener))
                     return true;
             }
         } catch (Throwable e) {

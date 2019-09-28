@@ -240,7 +240,8 @@ public abstract class Table extends SchemaObjectBase {
      * @param oldRow the old row
      * @param newRow the new row
      */
-    public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener globalListener) {
         throw newUnsupportedException();
     }
 
@@ -268,7 +269,7 @@ public abstract class Table extends SchemaObjectBase {
             Row oldRow = rows.next();
             Row newRow = rows.next();
             try {
-                yieldIfNeeded = tryUpdateRow(session, oldRow, newRow, updateColumns) || yieldIfNeeded;
+                yieldIfNeeded = tryUpdateRow(session, oldRow, newRow, updateColumns, null) || yieldIfNeeded;
             } catch (DbException e) {
                 if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
                     session.rollbackTo(savepointId);
