@@ -110,61 +110,6 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public void add(ServerSession session, Row row) {
-        // insert新记录并且由系统自动增加rowKey时，不用每次都调用一次map.get
-        // update原有记录row.getKey()不为0，所以依然要调用map.get
-        boolean checkDuplicateKey = true;
-        if (mainIndexColumn == -1) {
-            if (row.getKey() == 0) {
-                checkDuplicateKey = false;
-            }
-        } else {
-            long k = row.getValue(mainIndexColumn).getLong();
-            row.setKey(k);
-        }
-
-        if (table.getContainsLargeObject()) {
-            for (int i = 0, len = row.getColumnCount(); i < len; i++) {
-                Value v = row.getValue(i);
-                Value v2 = v.link(database, getId());
-                if (v2.isLinked()) {
-                    session.unlinkAtCommitStop(v2);
-                }
-                if (v != v2) {
-                    row.setValue(i, v2);
-                }
-            }
-        }
-
-        TransactionMap<Value, VersionedValue> map = getMap(session);
-        VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
-        Value key;
-        if (checkDuplicateKey) {
-            key = ValueLong.get(row.getKey());
-            VersionedValue old = map.get(key);
-            if (old != null) {
-                String sql = "PRIMARY KEY ON " + table.getSQL();
-                if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
-                    sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
-                }
-                DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-                e.setSource(this);
-                throw e;
-            }
-            try {
-                map.put(key, value);
-            } catch (IllegalStateException e) {
-                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-            }
-        } else {
-            key = map.append(value);
-            row.setKey(key.getLong());
-        }
-        session.setLastRow(row);
-        session.setLastIndex(this);
-    }
-
-    @Override
     public boolean tryAdd(ServerSession session, Row row, final Transaction.Listener globalListener) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
         boolean checkDuplicateKey = true;
@@ -272,41 +217,17 @@ public class StandardPrimaryIndex extends IndexBase {
         // VersionedValue oldValue = new VersionedValue(oldRow.getVersion(), ValueArray.get(oldRow.getValueList()));
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
-        boolean yieldIfNeeded = map.tryPut(key, oldRow.getRawValue(), newValue, columnIndexes);
+        boolean yieldIfNeeded = map.tryUpdate(key, oldRow.getRawValue(), newValue, columnIndexes);
         session.setLastRow(newRow);
         session.setLastIndex(this);
         return yieldIfNeeded;
     }
 
     @Override
-    public void remove(ServerSession session, Row row) {
-        TransactionMap<Value, VersionedValue> map = getMap(session);
-        if (map.isLocked(row.getRawValue(), null))
-            return;
-
-        if (table.getContainsLargeObject()) {
-            for (int i = 0, len = row.getColumnCount(); i < len; i++) {
-                Value v = row.getValue(i);
-                if (v.isLinked()) {
-                    session.unlinkAtCommit(v);
-                }
-            }
-        }
-        try {
-            VersionedValue old = map.remove(ValueLong.get(row.getKey()));
-            if (old == null) {
-                throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
-            }
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
-    }
-
-    @Override
     public boolean tryRemove(ServerSession session, Row row) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(row.getRawValue(), null))
-            return false;
+            return true;
 
         if (table.getContainsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {

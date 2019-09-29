@@ -8,7 +8,6 @@ package org.lealone.sql.dml;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -29,7 +28,6 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.storage.PageKey;
-import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -123,6 +121,14 @@ public class Insert extends ManipulationStatement implements ResultTarget {
 
     @Override
     public int update() {
+        // 以同步的方式运行
+        YieldableInsert yieldable = new YieldableInsert(this, null, null, false);
+        yieldable.run();
+        return yieldable.getResult();
+    }
+
+    @Deprecated
+    public int updateOld() {
         session.getUser().checkRight(table, Right.INSERT);
         setCurrentRowNumber(0);
         table.fire(session, Trigger.INSERT, true);
@@ -264,31 +270,26 @@ public class Insert extends ManipulationStatement implements ResultTarget {
     @Override
     public YieldableInsert createYieldableUpdate(List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableInsert(this, pageKeys, asyncHandler);
+        return new YieldableInsert(this, pageKeys, asyncHandler, true);
     }
 
-    private static class YieldableInsert extends YieldableUpdateBase implements Transaction.Listener {
+    private static class YieldableInsert extends YieldableListenableUpdateBase {
 
-        final AtomicInteger counter = new AtomicInteger();
         final Insert statement;
         final Table table;
         final int listSize;
+        final boolean async;
 
         int index;
         Result rows;
-        boolean loopEnd;
-        volatile RuntimeException exception;
 
         public YieldableInsert(Insert statement, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+                AsyncHandler<AsyncResult<Integer>> asyncHandler, boolean async) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
             table = statement.table;
             listSize = statement.list.size();
-
-            // 执行insert操作时每增加一条记录都是异步的，
-            // 当所有异步操作完成时才能调用stop方法给客户端发回响应结果
-            callStop = false;
+            this.async = async;
         }
 
         @Override
@@ -309,28 +310,10 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         }
 
         @Override
-        protected boolean executeInternal() {
-            if (!loopEnd) {
-                if (insert()) {
-                    return true;
-                }
-            }
-            if (loopEnd) {
-                if (exception != null)
-                    throw exception;
-                if (counter.get() <= 0) {
-                    setResult(Integer.valueOf(affectedRows), affectedRows);
-                    callStop = true;
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private boolean insert() {
+        protected boolean executeAndListen() {
             if (rows == null) {
                 int columnLen = statement.columns.length;
-                for (; exception == null && index < listSize; index++) {
+                for (; pendingOperationException == null && index < listSize; index++) {
                     Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
 
                     Expression[] expr = statement.list.get(index);
@@ -356,15 +339,18 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                     if (!done) {
                         // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
                         table.lock(session, true, false);
-                        table.tryAddRow(session, newRow, this);
+                        if (async)
+                            table.tryAddRow(session, newRow, this);
+                        else
+                            table.addRow(session, newRow);
                         table.fireAfterRow(session, null, newRow, false);
                     }
-                    if (yieldIfNeeded) {
+                    if (async && yieldIfNeeded) {
                         return true;
                     }
                 }
             } else {
-                while (exception == null && rows.next()) {
+                while (pendingOperationException == null && rows.next()) {
                     Value[] values = rows.currentRow();
                     Row newRow = table.getTemplateRow();
                     boolean yieldIfNeeded = statement.setCurrentRowNumber(++affectedRows);
@@ -381,10 +367,13 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                     table.validateConvertUpdateSequence(session, newRow);
                     boolean done = table.fireBeforeRow(session, null, newRow);
                     if (!done) {
-                        table.tryAddRow(session, newRow, this);
+                        if (async)
+                            table.tryAddRow(session, newRow, this);
+                        else
+                            table.addRow(session, newRow);
                         table.fireAfterRow(session, null, newRow, false);
                     }
-                    if (yieldIfNeeded) {
+                    if (async && yieldIfNeeded) {
                         return true;
                     }
                 }
@@ -392,26 +381,6 @@ public class Insert extends ManipulationStatement implements ResultTarget {
             }
             loopEnd = true;
             return false;
-        }
-
-        @Override
-        public void beforeOperation() {
-            counter.incrementAndGet();
-        }
-
-        @Override
-        public void operationUndo() {
-            counter.decrementAndGet();
-        }
-
-        @Override
-        public void operationComplete() {
-            counter.decrementAndGet();
-        }
-
-        @Override
-        public void setException(RuntimeException e) {
-            exception = e;
         }
     }
 }

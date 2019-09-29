@@ -225,11 +225,6 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     public boolean tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
-        addRow(session, row);
-        return false;
-    }
-
-    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         throw newUnsupportedException();
     }
 
@@ -240,6 +235,10 @@ public abstract class Table extends SchemaObjectBase {
      * @param oldRow the old row
      * @param newRow the new row
      */
+    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        throw newUnsupportedException();
+    }
+
     public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
         throw newUnsupportedException();
@@ -250,9 +249,9 @@ public abstract class Table extends SchemaObjectBase {
      *
      * @param prepared the prepared statement
      * @param session the session
-     * @param rows a list of row pairs of the form old row, new row, old row,
-     *            new row,...
+     * @param rows a list of row pairs of the form old row, new row, old row, new row,...
      */
+    @Deprecated
     public boolean updateRows(PreparedStatement prepared, ServerSession session, RowList rows,
             List<Column> updateColumns, Transaction.Listener listener) {
         boolean yieldIfNeeded = false;
@@ -706,33 +705,6 @@ public abstract class Table extends SchemaObjectBase {
     public boolean doesColumnExist(String columnName) {
         return columnMap.containsKey(columnName);
     }
-
-    // /**
-    // * Get the best plan for the given search mask.
-    // *
-    // * @param session the session
-    // * @param masks per-column comparison bit masks, null means 'always false',
-    // * see constants in IndexCondition
-    // * @param sortOrder the sort order
-    // * @return the plan item
-    // */
-    // public PlanItem getBestPlanItem(ServerSession session, int[] masks, TableFilter filter, SortOrder sortOrder) {
-    // PlanItem item = new PlanItem();
-    // item.setIndex(getScanIndex(session));
-    // item.cost = item.getIndex().getCost(session, null, null, null);
-    // ArrayList<Index> indexes = getIndexes();
-    // if (indexes != null && masks != null) {
-    // for (int i = 1, size = indexes.size(); i < size; i++) {
-    // Index index = indexes.get(i);
-    // double cost = index.getCost(session, masks, filter, sortOrder);
-    // if (cost < item.cost) {
-    // item.cost = cost;
-    // item.setIndex(index);
-    // }
-    // }
-    // }
-    // return item;
-    // }
 
     /**
      * Get the primary key index if there is one, or null if there is none.

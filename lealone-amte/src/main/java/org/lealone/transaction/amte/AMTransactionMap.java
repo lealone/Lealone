@@ -173,12 +173,6 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
         return set(key, value);
     }
 
-    @Override
-    public boolean put(K key, V value, Transaction.Listener listener) {
-        check(value);
-        return trySetAsync(key, value, null, null, listener);
-    }
-
     private void check(V value) {
         transaction.checkNotClosed();
         DataUtils.checkArgument(value != null, "The value may not be null");
@@ -377,7 +371,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     }
 
     @Override
-    public boolean tryPut(K key, Object oldValue, V newValue, int[] columnIndexes) {
+    public boolean tryUpdate(K key, Object oldValue, V newValue, int[] columnIndexes) {
         return tryPutOrRemove(key, newValue, (TransactionalValue) oldValue, columnIndexes);
     }
 

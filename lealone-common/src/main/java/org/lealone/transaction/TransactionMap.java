@@ -88,8 +88,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public boolean put(K key, Object oldValue, V newValue, int[] columnIndexes, Transaction.Listener listener);
 
-    public boolean put(K key, V value, Transaction.Listener listener);
-
     public void addIfAbsent(K key, V value, Transaction.Listener listener);
 
     public Object[] getUncommitted(K key, int[] columnIndexes);
@@ -100,7 +98,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public Object getTransactionalValue(K key);
 
-    public boolean tryPut(K key, Object oldValue, V newValue, int[] columnIndexes);
+    public boolean tryUpdate(K key, Object oldValue, V newValue, int[] columnIndexes);
 
     public boolean tryRemove(K key, Object oldValue);
 

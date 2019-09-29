@@ -534,21 +534,7 @@ public class StandardTable extends Table {
 
     @Override
     public void addRow(ServerSession session, Row row) {
-        row.setVersion(getVersion());
-        lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
-        try {
-            // 第一个是PrimaryIndex
-            for (int i = 0, size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                index.add(session, row);
-            }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
-        }
-        analyzeIfRequired(session);
+        tryAddRow(session, row, null);
     }
 
     @Override
@@ -561,7 +547,10 @@ public class StandardTable extends Table {
             // 第一个是PrimaryIndex
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                index.tryAdd(session, row, globalListener);
+                if (globalListener == null) // 如果是null就用同步api
+                    index.add(session, row);
+                else
+                    index.tryAdd(session, row, globalListener);
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
@@ -573,21 +562,7 @@ public class StandardTable extends Table {
 
     @Override
     public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
-        newRow.setVersion(getVersion());
-        lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
-        try {
-            // 第一个是PrimaryIndex
-            for (int i = 0, size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                index.update(session, oldRow, newRow, updateColumns);
-            }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
-        }
-        analyzeIfRequired(session);
+        tryUpdateRow(session, oldRow, newRow, updateColumns, null);
     }
 
     @Override
@@ -601,8 +576,12 @@ public class StandardTable extends Table {
             // 第一个是PrimaryIndex
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                if (index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener))
-                    return true;
+                if (globalListener == null) {
+                    index.update(session, oldRow, newRow, updateColumns);
+                } else {
+                    if (index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener))
+                        return true;
+                }
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
@@ -614,31 +593,27 @@ public class StandardTable extends Table {
 
     @Override
     public void removeRow(ServerSession session, Row row) {
-        lastModificationId = database.getNextModificationDataId();
-        Transaction t = session.getTransaction();
-        int savepointId = t.getSavepointId();
-        try {
-            for (int i = indexes.size() - 1; i >= 0; i--) {
-                Index index = indexes.get(i);
-                index.remove(session, row);
-            }
-        } catch (Throwable e) {
-            t.rollbackToSavepoint(savepointId);
-            throw DbException.convert(e);
-        }
-        analyzeIfRequired(session);
+        tryRemoveRow(session, row, false);
     }
 
     @Override
     public boolean tryRemoveRow(ServerSession session, Row row) {
+        return tryRemoveRow(session, row, true);
+    }
+
+    private boolean tryRemoveRow(ServerSession session, Row row, boolean async) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         int savepointId = t.getSavepointId();
         try {
             for (int i = indexes.size() - 1; i >= 0; i--) {
                 Index index = indexes.get(i);
-                if (index.tryRemove(session, row))
-                    return true;
+                if (async) {
+                    if (index.tryRemove(session, row))
+                        return true;
+                } else {
+                    index.remove(session, row);
+                }
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);

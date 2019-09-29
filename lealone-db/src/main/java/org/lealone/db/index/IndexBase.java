@@ -410,16 +410,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public void add(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("add row");
-    }
-
-    @Override
-    public void remove(ServerSession session, Row row) {
-        throw DbException.getUnsupportedException("remove row");
-    }
-
-    @Override
     public void truncate(ServerSession session) {
         throw DbException.getUnsupportedException("truncate index");
     }

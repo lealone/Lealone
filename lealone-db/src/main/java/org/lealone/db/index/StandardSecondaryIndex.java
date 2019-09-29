@@ -175,46 +175,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         // ok
     }
 
-    @Override
-    public void add(ServerSession session, Row row) {
-        TransactionMap<Value, Value> map = getMap(session);
-        ValueArray array = convertToKey(row);
-        ValueArray unique = null;
-        if (indexType.isUnique()) {
-            // this will detect committed entries only
-            unique = convertToKey(row);
-            unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-            checkUnique(row, map, unique);
-        }
-        try {
-            map.put(array, ValueNull.INSTANCE);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
-        if (indexType.isUnique()) {
-            Iterator<Value> it = map.keyIterator(unique, true);
-            while (it.hasNext()) {
-                ValueArray k = (ValueArray) it.next();
-                SearchRow r2 = convertToSearchRow(k);
-                if (compareRows(row, r2) != 0) {
-                    break;
-                }
-                if (containsNullAndAllowMultipleNull(r2)) {
-                    // this is allowed
-                    continue;
-                }
-                if (map.isSameTransaction(k)) {
-                    continue;
-                }
-                if (map.get(k) != null) {
-                    // committed
-                    throw getDuplicateKeyException(k.toString());
-                }
-                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName());
-            }
-        }
-    }
-
     private void checkUnique(SearchRow row, TransactionMap<Value, Value> map, ValueArray unique) {
         Iterator<Value> it = map.keyIterator(unique, true);
         while (it.hasNext()) {
@@ -263,6 +223,14 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
         final TransactionMap<Value, Value> map = getMap(session);
         final ValueArray array = convertToKey(row);
+
+        // 有没有必要提前检查?
+        // if (indexType.isUnique()) {
+        // ValueArray unique = convertToKey(row);
+        // unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+        // checkUnique(row, map, unique);
+        // }
+
         // 以下代码只在最后才检测唯一性
         Transaction.Listener localListener = new Transaction.Listener() {
             @Override
@@ -287,18 +255,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
-        // 只有索引字段被更新时才更新索引
-        for (Column c : columns) {
-            if (updateColumns.contains(c)) {
-                remove(session, oldRow);
-                add(session, newRow);
-                break;
-            }
-        }
-    }
-
-    @Override
     public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
         // 只有索引字段被更新时才更新索引
@@ -312,24 +268,10 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public void remove(ServerSession session, Row row) {
-        ValueArray array = convertToKey(row);
-        TransactionMap<Value, Value> map = getMap(session);
-        try {
-            Value old = map.remove(array);
-            if (old == null) {
-                throw DbException.get(ErrorCode.ROW_NOT_FOUND_WHEN_DELETING_1, getSQL() + ": " + row.getKey());
-            }
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, e, table.getName());
-        }
-    }
-
-    @Override
     public boolean tryRemove(ServerSession session, Row row) {
         TransactionMap<Value, Value> map = getMap(session);
         if (map.isLocked(row.getRawValue(), null))
-            return false;
+            return true;
 
         ValueArray array = convertToKey(row);
         return map.tryRemove(array, row.getRawValue());

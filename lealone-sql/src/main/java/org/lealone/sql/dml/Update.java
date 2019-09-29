@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -36,7 +35,6 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.storage.PageKey;
-import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -129,16 +127,16 @@ public class Update extends ManipulationStatement {
         return this;
     }
 
-    @Deprecated
-    public int updateOld() {
+    @Override
+    public int update() {
         // 以同步的方式运行
         YieldableUpdate yieldable = new YieldableUpdate(this, null, null, false);
         yieldable.run();
         return yieldable.getResult();
     }
 
-    @Override
-    public int update() {
+    @Deprecated
+    public int updateOld() {
         tableFilter.startQuery(session);
         tableFilter.reset();
         RowList rows = new RowList(session);
@@ -254,9 +252,8 @@ public class Update extends ManipulationStatement {
         return new YieldableUpdate(this, pageKeys, asyncHandler, true);
     }
 
-    private static class YieldableUpdate extends YieldableUpdateBase implements Transaction.Listener {
+    private static class YieldableUpdate extends YieldableListenableUpdateBase {
 
-        final AtomicInteger counter = new AtomicInteger();
         final Update statement;
         final TableFilter tableFilter;
         final Table table;
@@ -264,9 +261,6 @@ public class Update extends ManipulationStatement {
         final Column[] columns;
         final int columnCount;
         final boolean async;
-
-        boolean loopEnd;
-        volatile RuntimeException exception;
 
         public YieldableUpdate(Update statement, List<PageKey> pageKeys,
                 AsyncHandler<AsyncResult<Integer>> asyncHandler, boolean async) {
@@ -278,10 +272,6 @@ public class Update extends ManipulationStatement {
             columns = table.getColumns();
             columnCount = columns.length;
             this.async = async;
-
-            // 执行update操作时每修改一条记录可能是异步的，
-            // 当所有异步操作完成时才能调用stop方法给客户端发回响应结果
-            callStop = false;
         }
 
         @Override
@@ -301,34 +291,10 @@ public class Update extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeInternal() {
-            // if (update()) {
-            // return true;
-            // }
-            // setResult(Integer.valueOf(affectedRows), affectedRows);
-            // return false;
-
-            if (!loopEnd) {
-                if (update()) {
-                    return true;
-                }
-            }
-            if (loopEnd) {
-                if (exception != null)
-                    throw exception;
-                if (counter.get() <= 0) {
-                    setResult(Integer.valueOf(affectedRows), affectedRows);
-                    callStop = true;
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private boolean update() {
+        protected boolean executeAndListen() {
             if (limitRows == 0)
                 return false;
-            while (exception == null && tableFilter.next()) {
+            while (pendingOperationException == null && tableFilter.next()) {
                 boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
                 if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
                     Row oldRow = tableFilter.get();
@@ -374,26 +340,6 @@ public class Update extends ManipulationStatement {
             }
             loopEnd = true;
             return false;
-        }
-
-        @Override
-        public void beforeOperation() {
-            counter.incrementAndGet();
-        }
-
-        @Override
-        public void operationUndo() {
-            counter.decrementAndGet();
-        }
-
-        @Override
-        public void operationComplete() {
-            counter.decrementAndGet();
-        }
-
-        @Override
-        public void setException(RuntimeException e) {
-            exception = e;
         }
     }
 }

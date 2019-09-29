@@ -9,6 +9,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -32,6 +33,7 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.PageKey;
+import org.lealone.transaction.Transaction;
 
 /**
  * A parsed and prepared statement.
@@ -863,6 +865,64 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
                 AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             isUpdate = true;
+        }
+    }
+
+    public static abstract class YieldableListenableUpdateBase extends YieldableUpdateBase
+            implements Transaction.Listener {
+
+        protected final AtomicInteger pendingOperationCounter = new AtomicInteger();
+        protected volatile RuntimeException pendingOperationException;
+        protected boolean loopEnd;
+
+        public YieldableListenableUpdateBase(StatementBase statement, List<PageKey> pageKeys,
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, pageKeys, asyncHandler);
+
+            // 执行操作时都是异步的，
+            // 当所有异步操作完成时才能调用stop方法给客户端发回响应结果
+            callStop = false;
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            if (!loopEnd) {
+                if (executeAndListen()) {
+                    return true;
+                }
+            }
+            if (loopEnd) {
+                if (pendingOperationException != null)
+                    throw pendingOperationException;
+                if (pendingOperationCounter.get() <= 0) {
+                    setResult(Integer.valueOf(affectedRows), affectedRows);
+                    callStop = true;
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        protected abstract boolean executeAndListen();
+
+        @Override
+        public void beforeOperation() {
+            pendingOperationCounter.incrementAndGet();
+        }
+
+        @Override
+        public void operationUndo() {
+            pendingOperationCounter.decrementAndGet();
+        }
+
+        @Override
+        public void operationComplete() {
+            pendingOperationCounter.decrementAndGet();
+        }
+
+        @Override
+        public void setException(RuntimeException e) {
+            pendingOperationException = e;
         }
     }
 

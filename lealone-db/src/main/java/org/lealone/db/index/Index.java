@@ -9,7 +9,9 @@ package org.lealone.db.index;
 import java.util.List;
 import java.util.Map;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ServerSession;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -47,16 +49,20 @@ public interface Index extends SchemaObject {
      * @param session the session to use
      * @param row the row to add
      */
-    void add(ServerSession session, Row row);
+    default void add(ServerSession session, Row row) {
+        Transaction.SyncListener listener = new Transaction.SyncListener();
+        tryAdd(session, row, listener);
+        listener.await();
+    }
 
     default boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
-        add(session, row);
-        return false;
+        throw DbException.getUnsupportedException("add row");
     }
 
     default void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
-        remove(session, oldRow);
-        add(session, newRow);
+        Transaction.SyncListener listener = new Transaction.SyncListener();
+        tryUpdate(session, oldRow, newRow, updateColumns, listener);
+        listener.await();
     }
 
     default boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
@@ -72,10 +78,13 @@ public interface Index extends SchemaObject {
      * @param session the session
      * @param row the row
      */
-    void remove(ServerSession session, Row row);
+    default void remove(ServerSession session, Row row) {
+        if (tryRemove(session, row))
+            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, getTable().getName());
+    }
 
     default boolean tryRemove(ServerSession session, Row row) {
-        return false;
+        throw DbException.getUnsupportedException("remove row");
     }
 
     default boolean tryLock(ServerSession session, Row row) {

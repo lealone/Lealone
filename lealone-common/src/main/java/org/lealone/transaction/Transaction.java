@@ -18,7 +18,9 @@
 package org.lealone.transaction;
 
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Session;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.StorageDataType;
@@ -139,11 +141,50 @@ public interface Transaction {
         default void beforeOperation() {
         }
 
-        default void setException(RuntimeException e) {
-        }
-
         void operationUndo();
 
         void operationComplete();
+
+        default void setException(RuntimeException e) {
+        }
+
+        default RuntimeException getException() {
+            return null;
+        }
+    }
+
+    class SyncListener implements Listener {
+        private final CountDownLatch latch = new CountDownLatch(1);
+        private volatile RuntimeException e;
+
+        @Override
+        public void operationUndo() {
+            latch.countDown();
+        }
+
+        @Override
+        public void operationComplete() {
+            latch.countDown();
+        }
+
+        @Override
+        public void setException(RuntimeException e) {
+            this.e = e;
+        }
+
+        @Override
+        public RuntimeException getException() {
+            return e;
+        }
+
+        public void await() {
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                setException(DbException.convert(e));
+            }
+            if (e != null)
+                throw e;
+        }
     }
 }
