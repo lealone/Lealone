@@ -214,7 +214,6 @@ public class StandardPrimaryIndex extends IndexBase {
                 }
             }
         }
-        // VersionedValue oldValue = new VersionedValue(oldRow.getVersion(), ValueArray.get(oldRow.getValueList()));
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
         boolean yieldIfNeeded = map.tryUpdate(key, oldRow.getRawValue(), newValue, columnIndexes);

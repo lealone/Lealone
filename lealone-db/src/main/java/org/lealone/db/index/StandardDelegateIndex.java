@@ -19,6 +19,7 @@ import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
+import org.lealone.transaction.Transaction;
 
 /**
  * An index that delegates indexing to another index.
@@ -50,6 +51,35 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     @Override
     public void add(ServerSession session, Row row) {
         // nothing to do
+    }
+
+    @Override
+    public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
+        // nothing to do
+        return false;
+    }
+
+    @Override
+    public void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        // nothing to do
+    }
+
+    @Override
+    public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener globalListener) {
+        // nothing to do
+        return false;
+    }
+
+    @Override
+    public void remove(ServerSession session, Row row) {
+        // nothing to do
+    }
+
+    @Override
+    public boolean tryRemove(ServerSession session, Row row) {
+        // nothing to do
+        return false;
     }
 
     @Override
@@ -97,11 +127,6 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     @Override
     public boolean needRebuild() {
         return false;
-    }
-
-    @Override
-    public void remove(ServerSession session, Row row) {
-        // nothing to do
     }
 
     @Override

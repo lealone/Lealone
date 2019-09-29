@@ -84,7 +84,6 @@ public class UpdateTest extends SqlTestBase {
 
     void testUpdate() {
         sql = "UPDATE UpdateTest SET f1 = 'a1', f3 = 61+LENGTH(f2) WHERE pk = '01'";
-        sql = "DELETE FROM UpdateTest WHERE pk = '01'";
         assertEquals(1, executeUpdate(sql));
 
         try {

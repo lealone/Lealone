@@ -109,9 +109,9 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     @Override
     @SuppressWarnings("unchecked")
     public Object[] getUncommitted(K key, int[] columnIndexes) {
-        TransactionalValue data = map.get(key, columnIndexes);
-        data = getValue(key, data);
-        return new Object[] { data == null ? null : (V) data.getValue(), data };
+        TransactionalValue ref = map.get(key, columnIndexes);
+        TransactionalValue data = getValue(key, ref);
+        return new Object[] { data == null ? null : (V) data.getValue(), ref };
     }
 
     @Override
@@ -372,18 +372,18 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
 
     @Override
     public boolean tryUpdate(K key, Object oldValue, V newValue, int[] columnIndexes) {
-        return tryPutOrRemove(key, newValue, (TransactionalValue) oldValue, columnIndexes);
+        return tryUpdateOrRemove(key, newValue, (TransactionalValue) oldValue, columnIndexes);
     }
 
     @Override
     public boolean tryRemove(K key, Object oldValue) {
-        return tryPutOrRemove(key, null, (TransactionalValue) oldValue, null);
+        return tryUpdateOrRemove(key, null, (TransactionalValue) oldValue, null);
     }
 
     // 在SQL层对应update或delete语句，如果当前行已经被其他事务锁住了那么返回true，当前事务要让出当前线程。
     // 当value为null时代表delete
     // 当value和oldValue都不为null时代表update
-    private boolean tryPutOrRemove(K key, V value, TransactionalValue oldValue, int[] columnIndexes) {
+    private boolean tryUpdateOrRemove(K key, V value, TransactionalValue oldValue, int[] columnIndexes) {
         transaction.checkNotClosed();
         String mapName = getName();
         // 不同事务更新不同字段时，在循环里重试是可以的
