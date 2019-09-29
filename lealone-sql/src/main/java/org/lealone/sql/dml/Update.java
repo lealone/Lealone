@@ -9,7 +9,6 @@ package org.lealone.sql.dml;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -34,7 +33,6 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.PageKey;
 
 /**
  * This class represents the statement
@@ -130,7 +128,7 @@ public class Update extends ManipulationStatement {
     @Override
     public int update() {
         // 以同步的方式运行
-        YieldableUpdate yieldable = new YieldableUpdate(this, null, null);
+        YieldableUpdate yieldable = new YieldableUpdate(this, null);
         yieldable.run();
         return yieldable.getResult();
     }
@@ -247,9 +245,8 @@ public class Update extends ManipulationStatement {
     }
 
     @Override
-    public YieldableUpdate createYieldableUpdate(List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableUpdate(this, pageKeys, asyncHandler);
+    public YieldableUpdate createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        return new YieldableUpdate(this, asyncHandler);
     }
 
     private static class YieldableUpdate extends YieldableListenableUpdateBase {
@@ -261,9 +258,8 @@ public class Update extends ManipulationStatement {
         final Column[] columns;
         final int columnCount;
 
-        public YieldableUpdate(Update statement, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, pageKeys, asyncHandler);
+        public YieldableUpdate(Update statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, asyncHandler);
             this.statement = statement;
             tableFilter = statement.tableFilter;
             table = tableFilter.getTable();

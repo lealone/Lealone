@@ -6,8 +6,6 @@
  */
 package org.lealone.sql.dml;
 
-import java.util.List;
-
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.Trigger;
@@ -24,7 +22,6 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.PageKey;
 
 /**
  * This class represents the statement
@@ -84,7 +81,7 @@ public class Delete extends ManipulationStatement {
     @Override
     public int update() {
         // 以同步的方式运行
-        YieldableDelete yieldable = new YieldableDelete(this, null, null);
+        YieldableDelete yieldable = new YieldableDelete(this, null);
         yieldable.run();
         return yieldable.getResult();
     }
@@ -175,9 +172,8 @@ public class Delete extends ManipulationStatement {
     }
 
     @Override
-    public YieldableDelete createYieldableUpdate(List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableDelete(this, pageKeys, asyncHandler);
+    public YieldableDelete createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        return new YieldableDelete(this, asyncHandler);
     }
 
     private static class YieldableDelete extends YieldableUpdateBase {
@@ -187,9 +183,8 @@ public class Delete extends ManipulationStatement {
         final Table table;
         final int limitRows; // 如果是0，表示不删除任何记录；如果小于0，表示没有限制
 
-        public YieldableDelete(Delete statement, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, pageKeys, asyncHandler);
+        public YieldableDelete(Delete statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, asyncHandler);
             this.statement = statement;
             tableFilter = statement.tableFilter;
             table = tableFilter.getTable();

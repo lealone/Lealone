@@ -7,7 +7,6 @@
 package org.lealone.sql.dml;
 
 import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -27,7 +26,6 @@ import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
-import org.lealone.storage.PageKey;
 
 /**
  * This class represents the statement
@@ -122,7 +120,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
     @Override
     public int update() {
         // 以同步的方式运行
-        YieldableInsert yieldable = new YieldableInsert(this, null, null);
+        YieldableInsert yieldable = new YieldableInsert(this, null);
         yieldable.run();
         return yieldable.getResult();
     }
@@ -268,9 +266,8 @@ public class Insert extends ManipulationStatement implements ResultTarget {
     }
 
     @Override
-    public YieldableInsert createYieldableUpdate(List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableInsert(this, pageKeys, asyncHandler);
+    public YieldableInsert createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        return new YieldableInsert(this, asyncHandler);
     }
 
     private static class YieldableInsert extends YieldableListenableUpdateBase {
@@ -282,9 +279,8 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         int index;
         Result rows;
 
-        public YieldableInsert(Insert statement, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, pageKeys, asyncHandler);
+        public YieldableInsert(Insert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, asyncHandler);
             this.statement = statement;
             table = statement.table;
             listSize = statement.list.size();

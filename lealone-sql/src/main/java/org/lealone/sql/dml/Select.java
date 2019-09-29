@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -54,7 +53,6 @@ import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.Optimizer;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.storage.PageKey;
 
 /**
  * This class represents a simple SELECT statement.
@@ -1329,18 +1327,18 @@ public class Select extends Query {
     }
 
     @Override
-    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
+    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
-        return new YieldableSelect(this, maxRows, scrollable, pageKeys, asyncHandler);
+        return new YieldableSelect(this, maxRows, scrollable, asyncHandler);
     }
 
     private class YieldableSelect extends YieldableQueryBase {
 
         private final Select statement;
 
-        public YieldableSelect(Select statement, int maxRows, boolean scrollable, List<PageKey> pageKeys,
+        public YieldableSelect(Select statement, int maxRows, boolean scrollable,
                 AsyncHandler<AsyncResult<Result>> asyncHandler) {
-            super(statement, maxRows, scrollable, pageKeys, asyncHandler);
+            super(statement, maxRows, scrollable, asyncHandler);
             this.statement = statement;
         }
 

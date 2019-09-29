@@ -75,21 +75,17 @@ public interface PreparedStatement extends SQLStatement {
 
     String getSQL();
 
-    boolean isSuspended();
+    Yieldable<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler);
 
-    void suspend();
-
-    void resume();
-
-    Yieldable<Integer> createYieldableUpdate(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> asyncHandler);
-
-    Yieldable<Result> createYieldableQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys,
+    Yieldable<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler);
 
     static interface Yieldable<T> {
         boolean run();
 
         T getResult();
+
+        void setPageKeys(List<PageKey> pageKeys);
     }
 
     default boolean yieldIfNeeded() {
