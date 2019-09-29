@@ -122,7 +122,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
     @Override
     public int update() {
         // 以同步的方式运行
-        YieldableInsert yieldable = new YieldableInsert(this, null, null, false);
+        YieldableInsert yieldable = new YieldableInsert(this, null, null);
         yieldable.run();
         return yieldable.getResult();
     }
@@ -270,7 +270,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
     @Override
     public YieldableInsert createYieldableUpdate(List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableInsert(this, pageKeys, asyncHandler, true);
+        return new YieldableInsert(this, pageKeys, asyncHandler);
     }
 
     private static class YieldableInsert extends YieldableListenableUpdateBase {
@@ -278,18 +278,16 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         final Insert statement;
         final Table table;
         final int listSize;
-        final boolean async;
 
         int index;
         Result rows;
 
         public YieldableInsert(Insert statement, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler, boolean async) {
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
             table = statement.table;
             listSize = statement.list.size();
-            this.async = async;
         }
 
         @Override

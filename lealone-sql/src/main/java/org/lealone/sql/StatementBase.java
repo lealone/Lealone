@@ -647,6 +647,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         protected final Trace trace;
         protected final List<PageKey> pageKeys;
         protected final AsyncHandler<AsyncResult<T>> asyncHandler;
+        protected final boolean async;
         protected AsyncResult<T> asyncResult;
         protected T result;
         protected long startTimeNanos;
@@ -664,6 +665,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
             this.trace = session.getDatabase().getTrace(Trace.COMMAND);
             this.pageKeys = pageKeys;
             this.asyncHandler = asyncHandler;
+            this.async = asyncHandler != null;
         }
 
         // 子类通常只需要实现以下三个方法

@@ -84,7 +84,7 @@ public class Delete extends ManipulationStatement {
     @Override
     public int update() {
         // 以同步的方式运行
-        YieldableDelete yieldable = new YieldableDelete(this, null, null, false);
+        YieldableDelete yieldable = new YieldableDelete(this, null, null);
         yieldable.run();
         return yieldable.getResult();
     }
@@ -177,7 +177,7 @@ public class Delete extends ManipulationStatement {
     @Override
     public YieldableDelete createYieldableUpdate(List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableDelete(this, pageKeys, asyncHandler, true);
+        return new YieldableDelete(this, pageKeys, asyncHandler);
     }
 
     private static class YieldableDelete extends YieldableUpdateBase {
@@ -186,16 +186,14 @@ public class Delete extends ManipulationStatement {
         final TableFilter tableFilter;
         final Table table;
         final int limitRows; // 如果是0，表示不删除任何记录；如果小于0，表示没有限制
-        final boolean async;
 
         public YieldableDelete(Delete statement, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler, boolean async) {
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
             tableFilter = statement.tableFilter;
             table = tableFilter.getTable();
             limitRows = getLimitRows(statement.limitExpr, session);
-            this.async = async;
         }
 
         @Override

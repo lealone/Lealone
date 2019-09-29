@@ -130,7 +130,7 @@ public class Update extends ManipulationStatement {
     @Override
     public int update() {
         // 以同步的方式运行
-        YieldableUpdate yieldable = new YieldableUpdate(this, null, null, false);
+        YieldableUpdate yieldable = new YieldableUpdate(this, null, null);
         yieldable.run();
         return yieldable.getResult();
     }
@@ -249,7 +249,7 @@ public class Update extends ManipulationStatement {
     @Override
     public YieldableUpdate createYieldableUpdate(List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableUpdate(this, pageKeys, asyncHandler, true);
+        return new YieldableUpdate(this, pageKeys, asyncHandler);
     }
 
     private static class YieldableUpdate extends YieldableListenableUpdateBase {
@@ -260,10 +260,9 @@ public class Update extends ManipulationStatement {
         final int limitRows; // 如果是0，表示不更新任何记录；如果小于0，表示没有限制
         final Column[] columns;
         final int columnCount;
-        final boolean async;
 
         public YieldableUpdate(Update statement, List<PageKey> pageKeys,
-                AsyncHandler<AsyncResult<Integer>> asyncHandler, boolean async) {
+                AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, pageKeys, asyncHandler);
             this.statement = statement;
             tableFilter = statement.tableFilter;
@@ -271,7 +270,6 @@ public class Update extends ManipulationStatement {
             limitRows = getLimitRows(statement.limitExpr, session);
             columns = table.getColumns();
             columnCount = columns.length;
-            this.async = async;
         }
 
         @Override
