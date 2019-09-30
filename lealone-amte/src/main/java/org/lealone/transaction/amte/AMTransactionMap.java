@@ -717,17 +717,6 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     }
 
     @Override
-    public boolean isSameTransaction(K key) {
-        TransactionalValue data = map.get(key);
-        if (data == null) {
-            // doesn't exist or deleted by a committed transaction
-            return false;
-        }
-
-        return data.getTid() == transaction.transactionId;
-    }
-
-    @Override
     public Iterator<Entry<K, V>> entryIterator(K from) {
         return entryIterator(IterationParameters.create(from));
     }

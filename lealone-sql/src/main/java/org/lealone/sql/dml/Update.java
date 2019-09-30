@@ -21,11 +21,9 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
-import org.lealone.db.result.RowList;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -37,6 +35,9 @@ import org.lealone.sql.optimizer.TableFilter;
 /**
  * This class represents the statement
  * UPDATE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Update extends ManipulationStatement {
 
@@ -131,88 +132,6 @@ public class Update extends ManipulationStatement {
         YieldableUpdate yieldable = new YieldableUpdate(this, null);
         yieldable.run();
         return yieldable.getResult();
-    }
-
-    @Deprecated
-    public int updateOld() {
-        tableFilter.startQuery(session);
-        tableFilter.reset();
-        RowList rows = new RowList(session);
-        try {
-            Table table = tableFilter.getTable();
-            session.getUser().checkRight(table, Right.UPDATE);
-            table.fire(session, Trigger.UPDATE, true);
-            table.lock(session, true, false);
-            int columnCount = table.getColumns().length;
-            // get the old rows, compute the new rows
-            setCurrentRowNumber(0);
-            int count = 0;
-            Column[] columns = table.getColumns();
-            int limitRows = -1;
-            if (limitExpr != null) {
-                Value v = limitExpr.getValue(session);
-                if (v != ValueNull.INSTANCE) {
-                    limitRows = v.getInt();
-                }
-            }
-            while (tableFilter.next()) {
-                setCurrentRowNumber(count + 1);
-                if (limitRows >= 0 && count >= limitRows) {
-                    break;
-                }
-                if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
-                    Row oldRow = tableFilter.get();
-                    Row newRow = table.getTemplateRow();
-                    newRow.setKey(oldRow.getKey()); // 复用原来的行号
-                    // newRow.setTransactionId(session.getTransaction().getTransactionId());
-                    for (int i = 0; i < columnCount; i++) {
-                        Expression newExpr = expressionMap.get(columns[i]);
-                        Value newValue;
-                        if (newExpr == null) {
-                            newValue = oldRow.getValue(i);
-                        } else if (newExpr == ValueExpression.getDefault()) {
-                            Column column = table.getColumn(i);
-                            newValue = table.getDefaultValue(session, column);
-                        } else {
-                            Column column = table.getColumn(i);
-                            newValue = column.convert(newExpr.getValue(session));
-                        }
-                        newRow.setValue(i, newValue);
-                    }
-                    table.validateConvertUpdateSequence(session, newRow);
-                    boolean done = false;
-                    if (table.fireRow()) {
-                        done = table.fireBeforeRow(session, oldRow, newRow);
-                    }
-                    if (!done) {
-                        rows.add(oldRow);
-                        rows.add(newRow);
-                    }
-                    count++;
-                }
-            }
-            // TODO self referencing referential integrity constraints
-            // don't work if update is multi-row and 'inversed' the condition!
-            // probably need multi-row triggers with 'deleted' and 'inserted'
-            // at the same time. anyway good for sql compatibility
-            // TODO update in-place (but if the key changes,
-            // we need to update all indexes) before row triggers
-
-            // the cached row is already updated - we need the old values
-            table.updateRows(this, session, rows, this.columns, null);
-            if (table.fireRow()) {
-                rows.invalidateCache();
-                for (rows.reset(); rows.hasNext();) {
-                    Row o = rows.next();
-                    Row n = rows.next();
-                    table.fireAfterRow(session, o, n, false);
-                }
-            }
-            table.fire(session, Trigger.UPDATE, false);
-            return count;
-        } finally {
-            rows.close();
-        }
     }
 
     @Override

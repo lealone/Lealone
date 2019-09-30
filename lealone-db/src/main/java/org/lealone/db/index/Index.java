@@ -26,6 +26,9 @@ import org.lealone.transaction.Transaction;
 
 /**
  * An index. Indexes are used to speed up searching data.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public interface Index extends SchemaObject {
 

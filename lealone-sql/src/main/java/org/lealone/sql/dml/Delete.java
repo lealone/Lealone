@@ -13,10 +13,7 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
-import org.lealone.db.result.RowList;
 import org.lealone.db.table.Table;
-import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -26,6 +23,9 @@ import org.lealone.sql.optimizer.TableFilter;
 /**
  * This class represents the statement
  * DELETE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Delete extends ManipulationStatement {
 
@@ -84,63 +84,6 @@ public class Delete extends ManipulationStatement {
         YieldableDelete yieldable = new YieldableDelete(this, null);
         yieldable.run();
         return yieldable.getResult();
-    }
-
-    @Deprecated
-    public int updateOld() {
-        tableFilter.startQuery(session);
-        tableFilter.reset();
-        Table table = tableFilter.getTable();
-        session.getUser().checkRight(table, Right.DELETE);
-        table.fire(session, Trigger.DELETE, true);
-        table.lock(session, true, false);
-        RowList rows = new RowList(session);
-        int limitRows = -1;
-        if (limitExpr != null) {
-            Value v = limitExpr.getValue(session);
-            if (v != ValueNull.INSTANCE) {
-                limitRows = v.getInt();
-            }
-        }
-        try {
-            setCurrentRowNumber(0);
-            int count = 0;
-            while (limitRows != 0 && tableFilter.next()) {
-                setCurrentRowNumber(rows.size() + 1);
-                if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
-                    Row row = tableFilter.get();
-                    boolean done = false;
-                    if (table.fireRow()) {
-                        done = table.fireBeforeRow(session, row, null);
-                    }
-                    if (!done) {
-                        rows.add(row);
-                    }
-                    count++;
-                    if (limitRows >= 0 && count >= limitRows) {
-                        break;
-                    }
-                }
-            }
-            int rowScanCount = 0;
-            for (rows.reset(); rows.hasNext();) {
-                if ((++rowScanCount & 127) == 0) {
-                    checkCanceled();
-                }
-                Row row = rows.next();
-                table.removeRow(session, row);
-            }
-            if (table.fireRow()) {
-                for (rows.reset(); rows.hasNext();) {
-                    Row row = rows.next();
-                    table.fireAfterRow(session, row, null, false);
-                }
-            }
-            table.fire(session, Trigger.DELETE, false);
-            return count;
-        } finally {
-            rows.close();
-        }
     }
 
     @Override

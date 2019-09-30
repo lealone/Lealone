@@ -48,6 +48,10 @@ import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
+/**
+ * @author H2 Group
+ * @author zhh
+ */
 public class StandardTable extends Table {
 
     private final ConcurrentHashMap<ServerSession, ServerSession> sharedSessions = new ConcurrentHashMap<>();

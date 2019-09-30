@@ -30,6 +30,9 @@ import org.lealone.sql.expression.Parameter;
 /**
  * This class represents the statement
  * INSERT
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Insert extends ManipulationStatement implements ResultTarget {
 

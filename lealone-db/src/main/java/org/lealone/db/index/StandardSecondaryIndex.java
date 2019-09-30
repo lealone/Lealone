@@ -31,6 +31,10 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
+/**
+ * @author H2 Group
+ * @author zhh
+ */
 public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     private final StandardTable table;
@@ -195,49 +199,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         }
     }
 
-    @Deprecated
-    @SuppressWarnings("unused")
-    private void checkUniqueAfterAdd(TransactionMap<Value, Value> map, SearchRow row,
-            Transaction.Listener globalListener) {
-        ValueArray unique = convertToKey(row);
-        unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-        Iterator<Value> it = map.keyIterator(unique, true);
-        while (it.hasNext()) {
-            ValueArray k = (ValueArray) it.next();
-            SearchRow r2 = convertToSearchRow(k);
-            if (compareRows(row, r2) != 0) {
-                break;
-            }
-            if (containsNullAndAllowMultipleNull(r2)) {
-                // this is allowed
-                continue;
-            }
-            if (map.isSameTransaction(k)) {
-                continue;
-            }
-            if (map.get(k) != null) {
-                // committed
-                globalListener.setException(getDuplicateKeyException(k.toString()));
-                return;
-            }
-            globalListener.setException(DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName()));
-            return;
-        }
-    }
-
     @Override
     public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
         final TransactionMap<Value, Value> map = getMap(session);
         final ValueArray array = convertToKey(row);
 
-        // 有没有必要提前检查?
-        // if (indexType.isUnique()) {
-        // ValueArray unique = convertToKey(row);
-        // unique.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-        // checkUnique(row, map, unique);
-        // }
-
-        // 以下代码只在最后才检测唯一性
         Transaction.Listener localListener = new Transaction.Listener() {
             @Override
             public void operationUndo() {
@@ -253,9 +219,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
             @Override
             public void operationComplete() {
-                // if (indexType.isUnique()) {
-                // checkUniqueAfterAdd(map, row, globalListener);
-                // }
                 globalListener.operationComplete();
             }
         };
@@ -513,7 +476,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         public boolean previous() {
             throw DbException.getUnsupportedException("previous");
         }
-
     }
 
     private class StandardSecondaryIndexDistinctCursor implements Cursor {
@@ -587,6 +549,5 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         public boolean previous() {
             throw DbException.getUnsupportedException("previous");
         }
-
     }
 }

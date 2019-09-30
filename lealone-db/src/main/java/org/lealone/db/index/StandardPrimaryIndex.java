@@ -37,6 +37,10 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
+/**
+ * @author H2 Group
+ * @author zhh
+ */
 public class StandardPrimaryIndex extends IndexBase {
 
     /**
@@ -553,7 +557,5 @@ public class StandardPrimaryIndex extends IndexBase {
         public boolean previous() {
             throw DbException.getUnsupportedException("previous");
         }
-
     }
-
 }

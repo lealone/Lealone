@@ -66,6 +66,8 @@ import org.lealone.sql.optimizer.TableFilter;
  *
  * @author Thomas Mueller
  * @author Joel Turkel (Group sorted query)
+ * @author H2 Group
+ * @author zhh
  */
 public class Select extends Query {
 

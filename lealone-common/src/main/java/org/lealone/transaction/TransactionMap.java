@@ -52,14 +52,6 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public V putCommitted(K key, V value);
 
     /**
-     * Whether the entry for this key was added or removed from this session.
-     *
-     * @param key the key
-     * @return true if yes
-     */
-    public boolean isSameTransaction(K key);
-
-    /**
      * Iterate over entries.
      *
      * @param from the first key to return
