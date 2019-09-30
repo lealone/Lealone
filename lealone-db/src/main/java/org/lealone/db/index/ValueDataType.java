@@ -32,6 +32,10 @@ public class ValueDataType implements StorageDataType {
         this.sortTypes = sortTypes;
     }
 
+    protected boolean isUniqueKey() {
+        return false;
+    }
+
     @Override
     public int compare(Object a, Object b) {
         if (a == b) {
@@ -43,7 +47,9 @@ public class ValueDataType implements StorageDataType {
             int al = ax.length;
             int bl = bx.length;
             int len = Math.min(al, bl);
-            for (int i = 0; i < len; i++) {
+            // 唯一索引key不需要比较最后的rowId
+            int size = isUniqueKey() ? len - 1 : len;
+            for (int i = 0; i < size; i++) {
                 int sortType = sortTypes[i];
                 int comp = compareValues(ax[i], bx[i], sortType);
                 if (comp != 0) {

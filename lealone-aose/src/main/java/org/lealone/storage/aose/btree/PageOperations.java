@@ -197,6 +197,10 @@ public abstract class PageOperations {
             asyncResultHandler.handle(ar);
         }
 
+        protected Object putSync() {
+            return p.map.put(key, value, p);
+        }
+
         @Override
         public PageOperationResult run(PageOperationHandler currentHandler) {
             // 在BTree刚创建时，因为只有一个root page，不适合并行化，
@@ -205,7 +209,7 @@ public abstract class PageOperations {
             // 所以只有BTree的leaf page数大于等于线程数时才是并行化的最佳时机。
             if (p.map.disableParallel) {
                 // 当进入这个if分支准备进行put时，可能其他线程已经完成并行化阶段前的写入了，所以put会返回REDIRECT
-                Object result = p.map.put(key, value, p);
+                Object result = putSync();
                 if (result != BTreeMap.REDIRECT) {
                     handleAsyncResult(result);
                     return PageOperationResult.SUCCEEDED;
@@ -351,6 +355,11 @@ public abstract class PageOperations {
 
         public PutIfAbsent(BTreePage p, K key, V value, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
             super(p, key, value, asyncResultHandler);
+        }
+
+        @Override
+        protected Object putSync() {
+            return p.map.putIfAbsent(key, value, p);
         }
 
         @Override

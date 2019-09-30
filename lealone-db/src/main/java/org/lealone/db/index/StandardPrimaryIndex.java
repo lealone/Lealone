@@ -161,7 +161,9 @@ public class StandardPrimaryIndex extends IndexBase {
             globalListener.beforeOperation();
             map.addIfAbsent(key, value, localListener);
         } else {
+            globalListener.beforeOperation();
             key = map.append(value);
+            globalListener.operationComplete();
             row.setKey(key.getLong());
         }
         session.setLastRow(row);

@@ -65,7 +65,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         }
         sortTypes[keyColumns - 1] = SortOrder.ASCENDING;
 
-        ValueDataType keyType = new ValueDataType(database, database.getCompareMode(), sortTypes);
+        ValueDataType keyType;
+        if (indexType.isUnique())
+            keyType = new UniqueKeyDataType(database, database.getCompareMode(), sortTypes);
+        else
+            keyType = new ValueDataType(database, database.getCompareMode(), sortTypes);
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(table.getStorageEngine());
@@ -191,6 +195,8 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         }
     }
 
+    @Deprecated
+    @SuppressWarnings("unused")
     private void checkUniqueAfterAdd(TransactionMap<Value, Value> map, SearchRow row,
             Transaction.Listener globalListener) {
         ValueArray unique = convertToKey(row);
@@ -235,7 +241,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         Transaction.Listener localListener = new Transaction.Listener() {
             @Override
             public void operationUndo() {
-                // short/int/long类型的primary key + unique约束字段构成的索引
+                // 违反了唯一性，
+                // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
+                // 因为StandardPrimaryIndex和StandardSecondaryIndex的tryAdd是异步并行执行的，
+                // 有可能先跑StandardSecondaryIndex先，所以可能得到相同的索引key，
+                // 这时StandardPrimaryIndex和StandardSecondaryIndex都会检测到重复key的异常。
                 DbException e = getDuplicateKeyException(array.toString());
                 globalListener.setException(e);
                 globalListener.operationUndo();
@@ -243,9 +253,9 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
             @Override
             public void operationComplete() {
-                if (indexType.isUnique()) {
-                    checkUniqueAfterAdd(map, row, globalListener);
-                }
+                // if (indexType.isUnique()) {
+                // checkUniqueAfterAdd(map, row, globalListener);
+                // }
                 globalListener.operationComplete();
             }
         };

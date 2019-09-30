@@ -246,6 +246,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public static final Object REDIRECT = new Object();
 
+    synchronized Object putIfAbsent(Object key, Object value, BTreePage oldRoot) {
+        Object old = binarySearch(root, key, true);
+        if (old == null) {
+            old = put(key, value, oldRoot);
+        }
+        return old;
+    }
+
     synchronized Object put(Object key, Object value, BTreePage oldRoot) {
         if (!disableParallel) {
             return REDIRECT;
