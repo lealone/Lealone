@@ -28,8 +28,6 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncTask;
-import org.lealone.db.async.AsyncTaskHandler;
 
 public abstract class TransferConnection extends AsyncConnection {
 
@@ -159,81 +157,15 @@ public abstract class TransferConnection extends AsyncConnection {
         }
     }
 
-    public AsyncTaskHandler getAsyncTaskHandler() {
-        return null;
-    }
-
     private void handlePacket(Transfer transfer) throws IOException {
         boolean isRequest = transfer.readByte() == Transfer.REQUEST;
         int id = transfer.readInt();
-        AsyncTask task;
         if (isRequest) {
             int operation = transfer.readInt();
-            task = new RequestPacketDeliveryTask(this, transfer, id, operation);
+            handleRequest(transfer, id, operation);
         } else {
             int status = transfer.readInt();
-            task = new ResponsePacketDeliveryTask(this, transfer, id, status);
-        }
-        AsyncTaskHandler handler = getAsyncTaskHandler();
-        if (handler == null) {
-            task.run();
-        } else {
-            handler.handle(task);
-        }
-    }
-
-    private static abstract class PacketDeliveryTask implements AsyncTask {
-        final TransferConnection conn;
-        final Transfer transfer;
-        final int id;
-
-        public PacketDeliveryTask(TransferConnection conn, Transfer transfer, int id) {
-            this.conn = conn;
-            this.transfer = transfer;
-            this.id = id;
-        }
-
-        @Override
-        public int getPriority() {
-            return NORM_PRIORITY;
-        }
-    }
-
-    private static class RequestPacketDeliveryTask extends PacketDeliveryTask {
-        final int operation;
-
-        public RequestPacketDeliveryTask(TransferConnection conn, Transfer transfer, int id, int operation) {
-            super(conn, transfer, id);
-            this.operation = operation;
-        }
-
-        @Override
-        public void run() {
-            try {
-                conn.handleRequest(transfer, id, operation);
-            } catch (Throwable e) {
-                logger.error("Failed to handle request, id: " + id + ", operation: " + operation, e);
-                conn.sendError(transfer, id, e);
-            }
-        }
-    }
-
-    private static class ResponsePacketDeliveryTask extends PacketDeliveryTask {
-        final int status;
-
-        public ResponsePacketDeliveryTask(TransferConnection conn, Transfer transfer, int id, int status) {
-            super(conn, transfer, id);
-            this.status = status;
-        }
-
-        @Override
-        public void run() {
-            try {
-                conn.handleResponse(transfer, id, status);
-            } catch (Throwable e) {
-                // String msg = "Failed to handle response, id: " + id + ", status: " + status;
-                throw DbException.convert(e);
-            }
+            handleResponse(transfer, id, status);
         }
     }
 }

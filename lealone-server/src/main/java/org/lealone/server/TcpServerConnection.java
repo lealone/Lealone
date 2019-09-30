@@ -41,7 +41,7 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncTaskHandler;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
@@ -73,16 +73,11 @@ public class TcpServerConnection extends TcpConnection {
     // 然后由调度器根据优先级从多个CommandQueue中依次取出执行
     private final ConcurrentHashMap<Integer, CommandQueue> commandQueueMap = new ConcurrentHashMap<>();
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
-    // 解析数据包只由asyncTaskHandler处理，执行executeQueryAsync或executeQueryAsync得到的命令会重新分配调度器
-    private final AsyncTaskHandler asyncTaskHandler;
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
     private String baseDir;
 
     public TcpServerConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
-        // 固定分配一个调度器会导致这个调度器太忙，所有跟这个TCP连接相关的数据包都由它处理
-        // asyncTaskHandler = ScheduleService.getScheduler();
-        asyncTaskHandler = null;
     }
 
     void setBaseDir(String baseDir) {
@@ -91,11 +86,6 @@ public class TcpServerConnection extends TcpConnection {
 
     protected SmallMap getCache() {
         return cache;
-    }
-
-    @Override
-    public AsyncTaskHandler getAsyncTaskHandler() {
-        return ScheduleService.getScheduler();
     }
 
     @Override
@@ -427,7 +417,7 @@ public class TcpServerConnection extends TcpConnection {
             commandQueueNotFound(sessionId);
         }
         PreparedCommand pc = new PreparedCommand(transfer, id, session, stmt, yieldable, queue);
-        queue.addCommand(pc, asyncTaskHandler);
+        queue.addCommand(pc);
     }
 
     private void commandQueueNotFound(int sessionId) {
@@ -438,15 +428,65 @@ public class TcpServerConnection extends TcpConnection {
 
     @Override
     protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
+        Scheduler scheduler;
         // 参数id是数据包的id，而这里的sessionId是客户端session的id，每个数据包都会带这两个字段
         int sessionId = transfer.readInt();
         Session session = getSession(sessionId);
-        // 初始化时，肯定是不存在session的
-        if (session == null && operation != Session.SESSION_INIT) {
-            throw DbException.convert(new RuntimeException("session not found: " + sessionId));
+        if (session == null) {
+            // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
+            // 之后此session相关的请求包和命令都由固定的调度器负责处理。
+            if (operation == Session.SESSION_INIT)
+                scheduler = ScheduleService.getScheduler();
+            else
+                throw DbException.convert(new RuntimeException("session not found: " + sessionId));
+        } else {
+            CommandQueue queue = commandQueueMap.get(sessionId);
+            if (queue == null) {
+                commandQueueNotFound(sessionId);
+            }
+            scheduler = queue.getScheduler();
+            transfer.setSession(session);
         }
-        transfer.setSession(session);
+        AsyncTask task = new RequestPacketDeliveryTask(this, transfer, id, operation, session, sessionId);
+        scheduler.handle(task);
+    }
 
+    private static class RequestPacketDeliveryTask implements AsyncTask {
+        final TcpServerConnection conn;
+        final Transfer transfer;
+        final int id;
+        final int operation;
+        final Session session;
+        final int sessionId;
+
+        public RequestPacketDeliveryTask(TcpServerConnection conn, Transfer transfer, int id, int operation,
+                Session session, int sessionId) {
+            this.conn = conn;
+            this.transfer = transfer;
+            this.id = id;
+            this.operation = operation;
+            this.session = session;
+            this.sessionId = sessionId;
+        }
+
+        @Override
+        public int getPriority() {
+            return NORM_PRIORITY;
+        }
+
+        @Override
+        public void run() {
+            try {
+                conn.handleRequest(transfer, id, operation, session, sessionId);
+            } catch (Throwable e) {
+                logger.error("Failed to handle request, id: " + id + ", operation: " + operation, e);
+                conn.sendError(transfer, id, e);
+            }
+        }
+    }
+
+    private void handleRequest(Transfer transfer, int id, int operation, Session session, int sessionId)
+            throws IOException {
         switch (operation) {
         case Session.SESSION_INIT: {
             readInitPacket(transfer, id, sessionId);

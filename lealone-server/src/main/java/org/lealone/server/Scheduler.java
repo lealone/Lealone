@@ -25,6 +25,8 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.ScheduledExecutors;
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.Session;
 import org.lealone.db.SessionStatus;
@@ -37,6 +39,8 @@ import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
 
 public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
     static class PreparedCommand {
         private final Transfer transfer;
@@ -75,21 +79,24 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
             scheduler.addCommandQueue(this);
         }
 
-        void addCommand(PreparedCommand command, AsyncTaskHandler currentAsyncTaskHandler) {
-            // currentAsyncTaskHandler是执行当前方法的线程，
+        void addCommand(PreparedCommand command) {
             // 如果即将被执行的命令也被分配到同样的线程中(scheduler)运行，
             // 那么就不需要放到队列中了直接执行即可。
             // TODO 如果command的优先级很低，立即执行它是否合适？
-            if (scheduler == currentAsyncTaskHandler) {
+            if (scheduler == Thread.currentThread()) {
                 command.execute();
-            } else {
-                preparedCommands.add(command);
-                scheduler.wakeUp();
+                return;
             }
+            preparedCommands.add(command);
+            scheduler.wakeUp();
         }
 
         void close() {
             scheduler.removeCommandQueue(this);
+        }
+
+        Scheduler getScheduler() {
+            return scheduler;
         }
     }
 
@@ -144,7 +151,11 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     private void runQueueTasks(ConcurrentLinkedQueue<AsyncTask> queue) {
         Runnable task = queue.poll();
         while (task != null) {
-            task.run();
+            try {
+                task.run();
+            } catch (Throwable e) {
+                logger.warn("Failed to run async task: " + task, e);
+            }
             task = queue.poll();
         }
     }
@@ -152,7 +163,11 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     private void runPageOperationTasks() {
         PageOperation po = pageOperationQueue.poll();
         while (po != null) {
-            po.run(this);
+            try {
+                po.run(this);
+            } catch (Throwable e) {
+                logger.warn("Failed to run page operation: " + po, e);
+            }
             po = pageOperationQueue.poll();
         }
     }
