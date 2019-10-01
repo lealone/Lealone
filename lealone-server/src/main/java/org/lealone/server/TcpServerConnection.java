@@ -46,11 +46,11 @@ import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
-import org.lealone.net.TcpConnection;
 import org.lealone.net.Transfer;
+import org.lealone.net.TransferConnection;
 import org.lealone.net.WritableChannel;
-import org.lealone.server.Scheduler.CommandQueue;
 import org.lealone.server.Scheduler.PreparedCommand;
+import org.lealone.server.Scheduler.SessionInfo;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
@@ -65,36 +65,25 @@ import org.lealone.storage.type.StorageDataType;
 // 注意: 以下代码中出现的sessionId都表示客户端session的id，
 // 调用createSession创建的是服务器端的session，这个session的id有可能跟客户端session的id不一样，
 // 但是可以把客户端session的id跟服务器端的session做一个影射，这样两端的session就对上了。
-public class TcpServerConnection extends TcpConnection {
+public class TcpServerConnection extends TransferConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpServerConnection.class);
 
-    // 每个sessionId对应一个专有的CommandQueue，所有与这个sessionId相关的命令请求都先放到这个队列，
-    // 然后由调度器根据优先级从多个CommandQueue中依次取出执行
-    private final ConcurrentHashMap<Integer, CommandQueue> commandQueueMap = new ConcurrentHashMap<>();
+    // 每个sessionId对应一个专有的SessionInfo，
+    // 所有与这个sessionId相关的命令请求都先放到SessionInfo中的队列，
+    // 然后由调度器根据优先级从多个队列中依次取出执行。
+    private final ConcurrentHashMap<Integer, SessionInfo> sessions = new ConcurrentHashMap<>();
     private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
+    private final TcpServer tcpServer;
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
-    private String baseDir;
 
-    public TcpServerConnection(WritableChannel writableChannel, boolean isServer) {
+    public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
-    }
-
-    void setBaseDir(String baseDir) {
-        this.baseDir = baseDir;
+        this.tcpServer = tcpServer;
     }
 
     protected SmallMap getCache() {
         return cache;
-    }
-
-    @Override
-    public void close() {
-        super.close();
-        for (CommandQueue queue : commandQueueMap.values()) {
-            queue.close();
-        }
-        commandQueueMap.clear();
     }
 
     /**
@@ -153,6 +142,7 @@ public class TcpServerConnection extends TcpConnection {
             ci.addProperty(key, value, true); // 一些不严谨的client driver可能会发送重复的属性名
         }
 
+        String baseDir = tcpServer.getBaseDir();
         if (baseDir == null) {
             baseDir = SysProperties.getBaseDirSilently();
         }
@@ -169,20 +159,56 @@ public class TcpServerConnection extends TcpConnection {
         // 如果接入节点不是客户端想要访问的数据库的所在节点，就会给客户端返回数据库的所有节点，
         // 此时，这样的session就是无效的，客户端会自动重定向到正确的节点。
         if (session.isValid()) {
-            addSession(sessionId, session);
-            assignScheduler(sessionId);
+            // 每个sessionId对应一个SessionInfo，每个调度器可以负责多个SessionInfo， 但是一个SessionInfo只能由一个调度器负责。
+            // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
+            // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
+            // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
+            SessionInfo si = new SessionInfo(this, session, sessionId, tcpServer.getSessionTimeout());
+            sessions.put(sessionId, si);
         }
         return session;
     }
 
-    // 每个sessionId对应一个CommandQueue，每个调度器可以负责多个CommandQueue， 但是一个CommandQueue只能由一个调度器负责。
-    // commandQueueMap这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
-    // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
-    // 把commandQueueMap这个字段放在连接实例中可以减少并发访问的冲突。
-    private void assignScheduler(int sessionId) {
-        Scheduler scheduler = ScheduleService.getScheduler();
-        CommandQueue queue = new CommandQueue(scheduler);
-        commandQueueMap.put(sessionId, queue);
+    private SessionInfo getSessionInfo(int sessionId) {
+        return sessions.get(sessionId);
+    }
+
+    private void sessionNotFound(Transfer transfer, int id, int sessionId) {
+        String msg = "Server session not found, maybe closed or timeout. client session id: " + sessionId;
+        RuntimeException e = new RuntimeException(msg);
+        // logger.warn(msg, e); //打印错误堆栈不是很大必要
+        logger.warn(msg);
+        sendError(transfer, id, e);
+    }
+
+    private void closeSession(Transfer transfer, int id, int sessionId) {
+        SessionInfo si = getSessionInfo(sessionId);
+        if (si != null) {
+            closeSession(si);
+        } else {
+            sessionNotFound(transfer, id, sessionId);
+        }
+    }
+
+    void closeSession(SessionInfo si) {
+        try {
+            si.session.prepareStatement("ROLLBACK", -1).executeUpdate();
+            si.session.close();
+        } catch (Exception e) {
+            logger.error("Failed to close session", e);
+        } finally {
+            si.remove();
+            sessions.remove(si.sessionId);
+        }
+    }
+
+    @Override
+    public void close() {
+        super.close();
+        for (SessionInfo si : sessions.values()) {
+            closeSession(si);
+        }
+        sessions.clear();
     }
 
     protected static void setParameters(Transfer transfer, PreparedStatement command) throws IOException {
@@ -412,39 +438,37 @@ public class TcpServerConnection extends TcpConnection {
 
     private void addPreparedCommandToQueue(Transfer transfer, int id, Session session, int sessionId,
             PreparedStatement stmt, PreparedStatement.Yieldable<?> yieldable) {
-        CommandQueue queue = commandQueueMap.get(sessionId);
-        if (queue == null) {
-            commandQueueNotFound(sessionId);
+        SessionInfo si = getSessionInfo(sessionId);
+        if (si == null) {
+            sessionNotFound(transfer, id, sessionId);
+            return;
         }
-        PreparedCommand pc = new PreparedCommand(transfer, id, session, stmt, yieldable, queue);
-        queue.addCommand(pc);
-    }
-
-    private void commandQueueNotFound(int sessionId) {
-        String msg = "CommandQueue is null, may be a bug! sessionId = " + sessionId;
-        logger.warn(msg);
-        throw DbException.throwInternalError(msg);
+        PreparedCommand pc = new PreparedCommand(transfer, id, session, stmt, yieldable, si);
+        si.addCommand(pc);
     }
 
     @Override
     protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
         Scheduler scheduler;
+        Session session;
+
         // 参数id是数据包的id，而这里的sessionId是客户端session的id，每个数据包都会带这两个字段
         int sessionId = transfer.readInt();
-        Session session = getSession(sessionId);
-        if (session == null) {
+        SessionInfo si = getSessionInfo(sessionId);
+        if (si == null) {
             // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
             // 之后此session相关的请求包和命令都由固定的调度器负责处理。
-            if (operation == Session.SESSION_INIT)
+            if (operation == Session.SESSION_INIT) {
                 scheduler = ScheduleService.getScheduler();
-            else
-                throw DbException.convert(new RuntimeException("session not found: " + sessionId));
-        } else {
-            CommandQueue queue = commandQueueMap.get(sessionId);
-            if (queue == null) {
-                commandQueueNotFound(sessionId);
+            } else {
+                sessionNotFound(transfer, id, sessionId);
+                return;
             }
-            scheduler = queue.getScheduler();
+            session = null;
+        } else {
+            si.updateLastTime();
+            scheduler = si.getScheduler();
+            session = si.session;
             transfer.setSession(session);
         }
         AsyncTask task = new RequestPacketDeliveryTask(this, transfer, id, operation, session, sessionId);
@@ -811,14 +835,7 @@ public class TcpServerConnection extends TcpConnection {
             break;
         }
         case Session.SESSION_CLOSE: {
-            CommandQueue queue = commandQueueMap.remove(sessionId);
-            if (queue != null) {
-                queue.close();
-                session = removeSession(sessionId);
-                closeSession(session);
-            } else {
-                commandQueueNotFound(sessionId);
-            }
+            closeSession(transfer, id, sessionId);
             break;
         }
         case Session.SESSION_CANCEL_STATEMENT: {

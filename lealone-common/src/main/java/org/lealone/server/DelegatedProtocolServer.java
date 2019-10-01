@@ -134,4 +134,9 @@ public class DelegatedProtocolServer implements ProtocolServer {
     public Runnable getRunnable() {
         return protocolServer.getRunnable();
     }
+
+    @Override
+    public int getSessionTimeout() {
+        return protocolServer.getSessionTimeout();
+    }
 }

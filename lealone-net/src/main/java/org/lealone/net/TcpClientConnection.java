@@ -33,10 +33,11 @@ import org.lealone.db.api.ErrorCode;
 /**
  * An async tcp client connection.
  */
-public class TcpClientConnection extends TcpConnection {
+public class TcpClientConnection extends TransferConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TcpClientConnection.class);
 
+    private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
     private final NetClient netClient;
@@ -68,21 +69,17 @@ public class TcpClientConnection extends TcpConnection {
         super.close();
     }
 
-    @Override
-    protected void closeSession(Session session) {
-        // if (session != null && !session.isClosed()) {
-        // try {
-        // session.close();
-        // } catch (Exception e) {
-        // logger.error("Failed to close session", e);
-        // }
-        // }
+    private Session getSession(int sessionId) {
+        return sessions.get(sessionId);
     }
 
-    @Override
+    public void addSession(int sessionId, Session session) {
+        sessions.put(sessionId, session);
+    }
+
     public Session removeSession(int sessionId) {
-        Session session = super.removeSession(sessionId);
-        if (netClient != null && getSessions().isEmpty()) {
+        Session session = sessions.remove(sessionId);
+        if (netClient != null && sessions.isEmpty()) {
             netClient.removeConnection(inetSocketAddress);
         }
         return session;

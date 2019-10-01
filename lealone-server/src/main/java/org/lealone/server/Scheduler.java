@@ -48,35 +48,49 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         private final Session session;
         private final PreparedStatement stmt;
         private final PreparedStatement.Yieldable<?> yieldable;
-        private final CommandQueue queue;
+        private final SessionInfo si;
 
         PreparedCommand(Transfer transfer, int id, Session session, PreparedStatement stmt,
-                PreparedStatement.Yieldable<?> yieldable, CommandQueue queue) {
+                PreparedStatement.Yieldable<?> yieldable, SessionInfo si) {
             this.transfer = transfer;
             this.id = id;
             this.session = session;
             this.stmt = stmt;
             this.yieldable = yieldable;
-            this.queue = queue;
+            this.si = si;
         }
 
         void execute() {
             // 如果因为某些原因导致主动让出CPU，那么先放到队列末尾等待重新从中断处执行。
             if (yieldable.run()) {
-                queue.preparedCommands.add(this);
+                si.preparedCommands.add(this);
             }
         }
     }
 
-    // preparedCommands中的命令统一由scheduler调度执行
-    static class CommandQueue {
+    static class SessionInfo {
+        // preparedCommands中的命令统一由scheduler调度执行
         private final Scheduler scheduler;
         private final ConcurrentLinkedQueue<PreparedCommand> preparedCommands;
+        private final TcpServerConnection conn;
+        private final int sessionTimeout;
+        final Session session;
+        final int sessionId;
+        long last;
 
-        CommandQueue(Scheduler scheduler) {
-            this.scheduler = scheduler;
-            this.preparedCommands = new ConcurrentLinkedQueue<>();
-            scheduler.addCommandQueue(this);
+        SessionInfo(TcpServerConnection conn, Session session, int sessionId, int sessionTimeout) {
+            scheduler = ScheduleService.getScheduler();
+            preparedCommands = new ConcurrentLinkedQueue<>();
+            this.conn = conn;
+            this.session = session;
+            this.sessionId = sessionId;
+            this.sessionTimeout = sessionTimeout;
+            updateLastTime();
+            scheduler.addSessionInfo(this);
+        }
+
+        void updateLastTime() {
+            last = System.currentTimeMillis();
         }
 
         void addCommand(PreparedCommand command) {
@@ -91,17 +105,26 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
             scheduler.wakeUp();
         }
 
-        void close() {
-            scheduler.removeCommandQueue(this);
+        void remove() {
+            scheduler.removeSessionInfo(this);
         }
 
         Scheduler getScheduler() {
             return scheduler;
         }
+
+        void checkSessionTimeout(long currentTime) {
+            if (sessionTimeout <= 0)
+                return;
+            if (last + sessionTimeout < currentTime) {
+                conn.closeSession(this);
+                logger.warn("Client session timeout, session id: " + sessionId);
+            }
+        }
     }
 
     private final ConcurrentLinkedQueue<PageOperation> pageOperationQueue = new ConcurrentLinkedQueue<>();
-    private final CopyOnWriteArrayList<CommandQueue> commandQueues = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<SessionInfo> sessions = new CopyOnWriteArrayList<>();
 
     private final ConcurrentLinkedQueue<AsyncTask> minPriorityQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<AsyncTask> normPriorityQueue = new ConcurrentLinkedQueue<>();
@@ -123,12 +146,12 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         loopInterval = DateTimeUtils.getLoopInterval(config, "scheduler_loop_interval", 100);
     }
 
-    private void addCommandQueue(CommandQueue queue) {
-        commandQueues.add(queue);
+    private void addSessionInfo(SessionInfo si) {
+        sessions.add(si);
     }
 
-    private void removeCommandQueue(CommandQueue queue) {
-        commandQueues.remove(queue);
+    private void removeSessionInfo(SessionInfo si) {
+        sessions.remove(si);
     }
 
     @Override
@@ -223,13 +246,20 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
                 c = getNextBestCommand(priority, true);
             }
             if (c == null) {
-                try {
-                    haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                    haveWork.drainPermits();
-                } catch (InterruptedException e) {
-                    throw new AssertionError();
+                checkSessionTimeout();
+                runPageOperationTasks();
+                runQueueTasks(maxPriorityQueue);
+                runQueueTasks(normPriorityQueue);
+                c = getNextBestCommand(priority, true);
+                if (c == null) {
+                    try {
+                        haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
+                        haveWork.drainPermits();
+                    } catch (InterruptedException e) {
+                        throw new AssertionError();
+                    }
+                    break;
                 }
-                break;
             }
             try {
                 c.execute();
@@ -287,13 +317,13 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     }
 
     private PreparedCommand getNextBestCommand(int priority, boolean checkStatus) {
-        if (commandQueues.isEmpty())
+        if (sessions.isEmpty())
             return null;
 
         ConcurrentLinkedQueue<PreparedCommand> bestQueue = null;
 
-        for (CommandQueue commandQueue : commandQueues) {
-            ConcurrentLinkedQueue<PreparedCommand> preparedCommands = commandQueue.preparedCommands;
+        for (SessionInfo si : sessions) {
+            ConcurrentLinkedQueue<PreparedCommand> preparedCommands = si.preparedCommands;
             PreparedCommand pc = preparedCommands.peek();
             if (pc == null)
                 continue;
@@ -328,5 +358,14 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
     @Override
     public void wakeUp() {
         haveWork.release(1);
+    }
+
+    private void checkSessionTimeout() {
+        if (sessions.isEmpty())
+            return;
+        long currentTime = System.currentTimeMillis();
+        for (SessionInfo si : sessions) {
+            si.checkSessionTimeout(currentTime);
+        }
     }
 }

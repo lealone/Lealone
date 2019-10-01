@@ -125,4 +125,8 @@ public interface ProtocolServer {
     default Runnable getRunnable() {
         return null;
     }
+
+    default int getSessionTimeout() {
+        return -1;
+    }
 }

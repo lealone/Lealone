@@ -36,7 +36,6 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.TcpClientConnection;
-import org.lealone.net.TcpConnection;
 import org.lealone.net.Transfer;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
@@ -77,7 +76,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         this.parent = parent;
     }
 
-    TcpConnection getTcpConnection() {
+    TcpClientConnection getTcpConnection() {
         return tcpConnection;
     }
 

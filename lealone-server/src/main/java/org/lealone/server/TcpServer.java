@@ -85,8 +85,7 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
     @Override
     public AsyncConnection createConnection(WritableChannel writableChannel, boolean isServer) {
         if (getAllowOthers() || allow(writableChannel.getHost())) {
-            TcpServerConnection conn = new TcpServerConnection(writableChannel, isServer);
-            conn.setBaseDir(getBaseDir());
+            TcpServerConnection conn = new TcpServerConnection(this, writableChannel, isServer);
             connections.add(conn);
             return conn;
         } else {
