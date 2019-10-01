@@ -151,6 +151,9 @@ public interface Transaction {
         default RuntimeException getException() {
             return null;
         }
+
+        default void await() {
+        }
     }
 
     class SyncListener implements Listener {
@@ -177,6 +180,7 @@ public interface Transaction {
             return e;
         }
 
+        @Override
         public void await() {
             try {
                 latch.await();

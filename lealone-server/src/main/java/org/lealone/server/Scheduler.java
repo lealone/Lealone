@@ -23,6 +23,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.concurrent.ScheduledExecutors;
 import org.lealone.common.logging.Logger;
@@ -37,8 +38,10 @@ import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
+import org.lealone.transaction.Transaction;
 
-public class Scheduler extends Thread implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler {
+public class Scheduler extends Thread
+        implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler, Transaction.Listener {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
@@ -367,5 +370,56 @@ public class Scheduler extends Thread implements SQLStatementExecutor, PageOpera
         for (SessionInfo si : sessions) {
             si.checkSessionTimeout(currentTime);
         }
+    }
+
+    // 以下使用同步方式执行
+    private AtomicInteger counter;
+    private volatile RuntimeException e;
+
+    @Override
+    public void beforeOperation() {
+        counter = new AtomicInteger(1);
+    }
+
+    @Override
+    public void operationUndo() {
+        counter.decrementAndGet();
+    }
+
+    @Override
+    public void operationComplete() {
+        counter.decrementAndGet();
+    }
+
+    @Override
+    public void setException(RuntimeException e) {
+        this.e = e;
+    }
+
+    @Override
+    public RuntimeException getException() {
+        return e;
+    }
+
+    @Override
+    public void await() {
+        for (;;) {
+            if (counter.get() < 1)
+                break;
+            runQueueTasks(maxPriorityQueue);
+            runQueueTasks(normPriorityQueue);
+            runQueueTasks(minPriorityQueue);
+            runPageOperationTasks();
+            if (counter.get() < 1)
+                break;
+            try {
+                haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
+                haveWork.drainPermits();
+            } catch (InterruptedException e) {
+                throw new AssertionError();
+            }
+        }
+        if (e != null)
+            throw e;
     }
 }
