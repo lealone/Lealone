@@ -30,6 +30,7 @@ public class PageOperationHandlerFactory {
 
     private static final AtomicInteger index = new AtomicInteger(0);
     private static PageOperationHandler[] pageOperationHandlers = { DEFAULT_HANDLER };
+    private static PageOperationHandler nodePageOperationHandler;
 
     public static void setPageOperationHandlers(PageOperationHandler[] pageOperationHandlers) {
         PageOperationHandlerFactory.pageOperationHandlers = pageOperationHandlers;
@@ -40,12 +41,23 @@ public class PageOperationHandlerFactory {
     }
 
     public static PageOperationHandler getNodePageOperationHandler() {
-        return pageOperationHandlers[0];
+        return nodePageOperationHandler != null ? nodePageOperationHandler : pageOperationHandlers[0];
+    }
+
+    public static void setNodePageOperationHandler(PageOperationHandler handler) {
+        nodePageOperationHandler = handler;
     }
 
     public static PageOperationHandler getHandler(long key) {
+        // Random
+        // int index = random.nextInt(pageOperationHandlers.length);
+        // return pageOperationHandlers[index];
+
+        // Round Robin
         return pageOperationHandlers[(int) (key % pageOperationHandlers.length)];
     }
+
+    static java.util.Random random = new java.util.Random();
 
     public static void addPageOperation(PageOperation po) {
         PageOperationHandler handler = getPageOperationHandler();

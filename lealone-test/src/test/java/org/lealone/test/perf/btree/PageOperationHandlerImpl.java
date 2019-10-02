@@ -59,14 +59,16 @@ public class PageOperationHandlerImpl extends Thread implements PageOperationHan
     }
 
     public static synchronized void pauseAll() {
-        nodePageHandler.pause2();
+        if (nodePageHandler != null)
+            nodePageHandler.pause2();
         for (int i = 0; i < pageOperationHandlerCount; i++) {
             pageOperationHandlers[i].pause2();
         }
     }
 
     public static synchronized void resumeAll() {
-        nodePageHandler.resume2();
+        if (nodePageHandler != null)
+            nodePageHandler.resume2();
         for (int i = 0; i < pageOperationHandlerCount; i++) {
             pageOperationHandlers[i].resume2();
         }
@@ -87,6 +89,7 @@ public class PageOperationHandlerImpl extends Thread implements PageOperationHan
         }
 
         PageOperationHandlerFactory.setPageOperationHandlers(pageOperationHandlers);
+        PageOperationHandlerFactory.setNodePageOperationHandler(nodePageHandler);
 
         for (int i = 0; i < pageOperationHandlerCount; i++) {
             pageOperationHandlers[i].start();

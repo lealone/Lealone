@@ -121,7 +121,8 @@ public class Scheduler extends Thread
                 return;
             if (last + sessionTimeout < currentTime) {
                 conn.closeSession(this);
-                logger.warn("Client session timeout, session id: " + sessionId);
+                logger.warn("Client session timeout, session id: " + sessionId + ", host: "
+                        + conn.getWritableChannel().getHost() + ", port: " + conn.getWritableChannel().getPort());
             }
         }
     }
@@ -378,6 +379,7 @@ public class Scheduler extends Thread
 
     @Override
     public void beforeOperation() {
+        e = null;
         counter = new AtomicInteger(1);
     }
 

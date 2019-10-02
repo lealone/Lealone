@@ -490,7 +490,7 @@ public abstract class PageOperations {
                 p = c;
             }
             if (context == null) {
-                // 因为前题已经保证只有在root page为node page时才运行并行化操作了，所以肯定能得到一个context
+                // 因为前提已经保证只有在root page为node page时才运行并行化操作了，所以肯定能得到一个context
                 throw DbException.throwInternalError("context is null");
             }
             return context;

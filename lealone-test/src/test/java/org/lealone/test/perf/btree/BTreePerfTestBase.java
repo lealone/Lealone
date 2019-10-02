@@ -52,17 +52,19 @@ public class BTreePerfTestBase extends TestBase {
         for (int i = 1; i <= loop; i++) {
             // map.clear();
 
-            singleThreadRandomWrite();
+            // singleThreadRandomWrite();
             // singleThreadSerialWrite();
 
             // singleThreadRandomRead();
             // singleThreadSerialRead();
 
-            // multiThreadsRandomWrite(i);
-            // multiThreadsSerialWrite(i);
+            multiThreadsRandomWrite(i);
+            multiThreadsSerialWrite(i);
 
-            // multiThreadsRandomRead(i);
-            // multiThreadsSerialRead(i);
+            multiThreadsRandomRead(i);
+            multiThreadsSerialRead(i);
+
+            System.out.println();
         }
 
         // testSystemArraycopy();
@@ -78,6 +80,7 @@ public class BTreePerfTestBase extends TestBase {
         // }
 
         // testConcurrentSkipListMap();
+        System.out.println("map size: " + map.size());
     }
 
     protected void init() {
@@ -338,14 +341,17 @@ public class BTreePerfTestBase extends TestBase {
                 timeSum += threads[i].writeTime;
             }
         }
-        System.out.println();
-        System.out.println("loop: " + loop + ", threads: " + threadsCount + ", count: " + count);
-        System.out.println("==========================================================");
-        for (int i = 0; i < threadsCount; i++) {
-            System.out.println(threads[i].timeStr);
-        }
-        System.out.println("multi-threads" + (random ? " random " : " serial ") + (read ? "read" : "write")
-                + " time, sum: " + timeSum + " ms, avg: " + (timeSum / threadsCount) + " ms");
-        System.out.println("==========================================================");
+        // System.out.println();
+        // System.out.println("loop: " + loop + ", threads: " + threadsCount + ", count: " + count);
+        // System.out.println("==========================================================");
+        // for (int i = 0; i < threadsCount; i++) {
+        // System.out.println(threads[i].timeStr);
+        // }
+        // System.out.println("multi-threads" + (random ? " random " : " serial ") + (read ? "read" : "write")
+        // + " time, sum: " + timeSum + " ms, avg: " + (timeSum / threadsCount) + " ms");
+        // System.out.println("==========================================================");
+
+        System.out.println("multi-threads" + (random ? " random " : " serial ") + (read ? "read" : "write") + " time: "
+                + (timeSum / threadsCount) + " ms");
     }
 }

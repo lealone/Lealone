@@ -39,25 +39,27 @@ public class AsyncBTreePerfTest extends BTreePerfTestBase {
     public void run() {
         init();
 
-        // asyncRandomWrite();
-        // singleThreadSerialWrite();
-        // btreeMap.disableParallel = false;
-        // btreeMap.disableSplit = true;
+        singleThreadSerialWrite(); // 先生成初始数据
+        System.out.println("map size: " + map.size());
+        btreeMap.disableParallel = false;
+        btreeMap.disableSplit = true;
 
         int loop = 20;
         for (int i = 1; i <= loop; i++) {
             // testWakeUp();
 
-            map.clear();
+            // map.clear();
             asyncRandomWrite();
-            // asyncSerialWrite();
+            asyncSerialWrite();
 
-            // asyncSerialRead();
+            multiThreadsRandomRead(i);
+            multiThreadsSerialRead(i);
+
             // asyncRandomRead();
+            // asyncSerialRead();
 
-            // multiThreadsRandomWrite(i);
+            System.out.println();
         }
-        loop = 20;
     }
 
     @Override
@@ -102,6 +104,41 @@ public class AsyncBTreePerfTest extends BTreePerfTestBase {
     }
 
     void asyncRandomWrite() {
+        asyncRandomWrite1();
+        // asyncRandomWrite2();
+    }
+
+    void asyncRandomWrite1() {
+        PageOperationHandlerImpl.pauseAll();
+        CountDownLatch latch = new CountDownLatch(count);
+        // long t11 = System.currentTimeMillis();
+        int[] keys = randomKeys;
+        // 这个循环只是给PageOperationHandler的队列准备Put操作任务，所以还不算写时间
+        for (int i = 0; i < count; i++) {
+            int key = keys[i];
+            String value = "value-";// "value-" + key;
+            btreeMap.put(key, value, ar -> {
+                latch.countDown();
+            });
+        }
+        // long t21 = System.currentTimeMillis();
+        // System.out.println("async put time: " + (t21 - t11) + " ms, count: " + btreeMap.size());
+        PageOperationHandlerImpl.resumeAll(); // 唤醒线程，让它开始处理Put操作任务
+        long t1 = System.currentTimeMillis();
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        long t2 = System.currentTimeMillis();
+        System.out.println("async random write time: " + (t2 - t1) + " ms, count: " + btreeMap.size());
+
+        // System.out.println("async random write time: " + (t2 - t1) + " ms, put time: " + (t21 - t11) + " ms, count: "
+        // + btreeMap.size());
+        // // btreeMap.printPage();
+    }
+
+    void asyncRandomWrite2() {
         // // count = 1000;
         // // count = 5000;
         // // count = 20000;
@@ -109,33 +146,8 @@ public class AsyncBTreePerfTest extends BTreePerfTestBase {
         // // count = 5;
         // // count = 13;
         //
-        // PageOperationHandler.pauseAll();
-        // CountDownLatch latch = new CountDownLatch(count);
-        // long t11 = System.currentTimeMillis();
-        // int[] keys = randomKeys;
-        // for (int i = 0; i < count; i++) {
-        // int key = keys[i];
-        // String value = "value-";// "value-" + key;
-        // btreeMap.put(key, value, ar -> {
-        // latch.countDown();
-        // });
-        // }
-        // long t21 = System.currentTimeMillis();
-        // PageOperationHandler.resumeAll();
-        // long t1 = System.currentTimeMillis();
-        // try {
-        // latch.await();
-        // } catch (InterruptedException e) {
-        // e.printStackTrace();
-        // }
-        // long t2 = System.currentTimeMillis();
-        // // System.out.println("async random write time: " + (t2 - t1) + " ms, count: " + btreeMap.size());
-        //
-        // System.out.println("async random write time: " + (t2 - t1) + " ms, put time: " + (t21 - t11) + " ms, count: "
-        // + btreeMap.size());
-        // // btreeMap.printPage();
-
         CountDownLatch latch = new CountDownLatch(count);
+        long t1 = System.currentTimeMillis();
         int[] keys = randomKeys;
         for (int i = 0; i < count; i++) {
             int key = keys[i];
@@ -145,7 +157,6 @@ public class AsyncBTreePerfTest extends BTreePerfTestBase {
                 latch.countDown();
             });
         }
-        long t1 = System.currentTimeMillis();
         try {
             latch.await();
         } catch (InterruptedException e) {
@@ -168,6 +179,47 @@ public class AsyncBTreePerfTest extends BTreePerfTestBase {
     }
 
     void asyncSerialWrite() {
+        asyncSerialWrite1();
+        // asyncSerialWrite2();
+    }
+
+    void asyncSerialWrite1() {
+        CountDownLatch latch = new CountDownLatch(count);
+        PageOperationHandlerImpl.pauseAll();
+        for (int i = 0; i < count; i++) {
+            int key = i;
+            String value = "value-";// "value-" + key;
+            btreeMap.put(key, value, ar -> {
+                latch.countDown();
+            });
+
+            // btreeMap.put(i, "value-" + i);
+            // latch.countDown();
+        }
+        PageOperationHandlerImpl.resumeAll();
+        long t1 = System.currentTimeMillis();
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        long t2 = System.currentTimeMillis();
+        while (true) {
+            if (!PageOperationHandlerImpl.getNodePageOperationHandler().getTasks().isEmpty()) {
+                try {
+                    Thread.sleep(10L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                break;
+            }
+        }
+        System.out.println("async serial write time: " + (t2 - t1) + " ms, count: " + btreeMap.size());
+        // btreeMap.printPage();
+    }
+
+    void asyncSerialWrite2() {
         CountDownLatch latch = new CountDownLatch(count);
         long t1 = System.currentTimeMillis();
         for (int i = 0; i < count; i++) {
@@ -186,40 +238,59 @@ public class AsyncBTreePerfTest extends BTreePerfTestBase {
             e.printStackTrace();
         }
         long t2 = System.currentTimeMillis();
+        while (true) {
+            if (!PageOperationHandlerImpl.getNodePageOperationHandler().getTasks().isEmpty()) {
+                try {
+                    Thread.sleep(10L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            } else {
+                break;
+            }
+        }
         System.out.println("async serial write time: " + (t2 - t1) + " ms, count: " + btreeMap.size());
         // btreeMap.printPage();
     }
 
     void asyncRandomRead() {
-        CountDownLatch latch = new CountDownLatch(count);
         int[] keys = randomKeys;
+        // CountDownLatch latch = new CountDownLatch(count);
+        // long t1 = System.currentTimeMillis();
+        // for (int i = 0; i < count; i++) {
+        // btreeMap.get(keys[i], ar -> {
+        // latch.countDown();
+        // });
+        // }
+        // try {
+        // latch.await();
+        // } catch (InterruptedException e) {
+        // e.printStackTrace();
+        // }
         long t1 = System.currentTimeMillis();
         for (int i = 0; i < count; i++) {
-            btreeMap.get(keys[i], ar -> {
-                latch.countDown();
-            });
-        }
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            btreeMap.get(keys[i]);
         }
         long t2 = System.currentTimeMillis();
         System.out.println("async random read time: " + (t2 - t1) + " ms, count: " + btreeMap.size());
     }
 
     void asyncSerialRead() {
-        CountDownLatch latch = new CountDownLatch(count);
+        // CountDownLatch latch = new CountDownLatch(count);
+        // long t1 = System.currentTimeMillis();
+        // for (int i = 0; i < count; i++) {
+        // btreeMap.get(i, ar -> {
+        // latch.countDown();
+        // });
+        // }
+        // try {
+        // latch.await();
+        // } catch (InterruptedException e) {
+        // e.printStackTrace();
+        // }
         long t1 = System.currentTimeMillis();
         for (int i = 0; i < count; i++) {
-            btreeMap.get(i, ar -> {
-                latch.countDown();
-            });
-        }
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            btreeMap.get(i);
         }
         long t2 = System.currentTimeMillis();
         System.out.println("async serial read time: " + (t2 - t1) + " ms, count: " + btreeMap.size());
