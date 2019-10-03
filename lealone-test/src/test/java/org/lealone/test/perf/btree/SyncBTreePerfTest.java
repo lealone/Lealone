@@ -20,7 +20,7 @@ package org.lealone.test.perf.btree;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueString;
 
-public class SyncBTreePerfTest extends BTreePerfTestBase {
+public class SyncBTreePerfTest extends StorageMapPerfTestBase {
 
     public static void main(String[] args) throws Exception {
         new SyncBTreePerfTest().run();

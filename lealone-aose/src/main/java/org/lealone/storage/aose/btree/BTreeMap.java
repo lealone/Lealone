@@ -1579,6 +1579,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public static AtomicLong splitCount = new AtomicLong();
     public static AtomicLong putCount = new AtomicLong();
+    public static AtomicLong addCount = new AtomicLong();
     public static AtomicLong addUpdateCounterTaskCount = new AtomicLong();
     public static AtomicLong runUpdateCounterTaskCount = new AtomicLong();
     public boolean disableSplit = false;

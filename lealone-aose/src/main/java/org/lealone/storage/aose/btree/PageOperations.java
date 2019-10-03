@@ -335,7 +335,7 @@ public abstract class PageOperations {
                 index = -index - 1;
                 p.insertLeaf(index, key, value);
                 p.map.setMaxKey(key);
-                BTreeMap.putCount.incrementAndGet();
+                BTreeMap.addCount.incrementAndGet();
                 // 新增数据时才需要更新父节点的计数器
                 PageOperationHandlerFactory.getNodePageOperationHandler()
                         .handlePageOperation(new UpdateParentCounter(p, key, true));
@@ -346,6 +346,7 @@ public abstract class PageOperations {
                 // }
             } else {
                 result = p.setValue(index, value);
+                BTreeMap.putCount.incrementAndGet();
             }
             return result;
         }

@@ -21,7 +21,7 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.memory.MemoryStorage;
 
-public class SkipListPerfTest extends BTreePerfTestBase {
+public class SkipListPerfTest extends StorageMapPerfTestBase {
 
     public static void main(String[] args) throws Exception {
         new SkipListPerfTest().run();

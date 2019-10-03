@@ -31,14 +31,14 @@ import org.lealone.test.TestBase;
 
 //以单元测试的方式运行会比通过main方法运行得出稍微慢一些的测试结果，
 //这可能是因为单元测试额外启动了一个ReaderThread占用了一些资源
-public class BTreePerfTestBase extends TestBase {
+public class StorageMapPerfTestBase extends TestBase {
 
     protected AOStorage storage;
     protected String storagePath;
     protected StorageMap<Integer, String> map;
 
     static int threadsCount = 3; // Runtime.getRuntime().availableProcessors() * 4;
-    static int count = 90000 * 1;// 50000;
+    static int count = 50000 * 10;
 
     int[] randomKeys = getRandomKeys();
 
@@ -90,7 +90,7 @@ public class BTreePerfTestBase extends TestBase {
         int pageSplitSize = 16 * 1024;
         // pageSplitSize = 2 * 1024;
         // pageSplitSize = 4 * 1024;
-        pageSplitSize = 1 * 1024;
+        // pageSplitSize = 1 * 1024;
         // pageSplitSize = 1024 / 2 / 2;
         // pageSplitSize = 32 * 1024;
         // pageSplitSize = 512 * 1024;
@@ -351,7 +351,8 @@ public class BTreePerfTestBase extends TestBase {
         // + " time, sum: " + timeSum + " ms, avg: " + (timeSum / threadsCount) + " ms");
         // System.out.println("==========================================================");
 
-        System.out.println("multi-threads" + (random ? " random " : " serial ") + (read ? "read" : "write") + " time: "
-                + (timeSum / threadsCount) + " ms");
+        System.out.println(map.getName() + " loop: " + loop + ", rows: " + count + ", multi-threads"
+                + (random ? " random " : " serial ") + (read ? "read" : "write") + " time: " + (timeSum / threadsCount)
+                + " ms");
     }
 }
