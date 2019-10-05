@@ -23,7 +23,6 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
-import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
 import org.lealone.storage.fs.FileStorage;
 
@@ -103,9 +102,9 @@ public class BTreePage {
         this.map = map;
         id = ids.incrementAndGet();
         if (isNode())
-            handler = PageOperationHandlerFactory.getNodePageOperationHandler();
+            handler = map.pohFactory.getNodePageOperationHandler();
         else if (isLeaf())
-            handler = PageOperationHandlerFactory.getHandler(id);
+            handler = map.pohFactory.getPageOperationHandler(id);
         // if (handler != null)
         // handler.addQueue(id, tasks);
     }

@@ -41,6 +41,7 @@ public class AMTransactionEngineTest extends TestBase {
 
         StorageBuilder storageBuilder = se.getStorageBuilder();
         storageBuilder.storagePath(joinDirs("amte", "data"));
+        storageBuilder.getPageOperationHandlerFactory().startHandlers();
         Storage storage = storageBuilder.openStorage();
         return storage;
     }

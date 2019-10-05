@@ -29,7 +29,6 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueInt;
 import org.lealone.storage.Storage;
 import org.lealone.test.TestBase;
-import org.lealone.test.perf.btree.PageOperationHandlerImpl;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
@@ -66,6 +65,7 @@ public class AsyncTransactionTest extends TestBase {
                 latch.countDown();
         }
 
+        @Override
         public void await() {
             if (latch != null) {
                 try {
@@ -86,8 +86,6 @@ public class AsyncTransactionTest extends TestBase {
 
     @Test
     public void run() {
-        PageOperationHandlerImpl.setPageOperationHandlersCount(3);
-        PageOperationHandlerImpl.startPageOperationHandlers(null);
         TransactionEngine te = AMTransactionEngineTest.getTransactionEngine(false);
         Storage storage = AMTransactionEngineTest.getStorage();
 
@@ -215,8 +213,6 @@ public class AsyncTransactionTest extends TestBase {
 
     // @Test
     public void testAsyncTransaction() {
-        PageOperationHandlerImpl.setPageOperationHandlersCount(3);
-        PageOperationHandlerImpl.startPageOperationHandlers(null);
         TransactionEngine te = AMTransactionEngineTest.getTransactionEngine(false);
         Storage storage = AMTransactionEngineTest.getStorage();
 

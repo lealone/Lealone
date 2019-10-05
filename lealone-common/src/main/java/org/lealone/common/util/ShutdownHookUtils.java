@@ -25,10 +25,16 @@ public class ShutdownHookUtils {
 
     public static synchronized void addShutdownHook(Object object, Runnable hook) {
         String hookName = object.getClass().getSimpleName() + "-ShutdownHook-" + hooks.size();
-        addShutdownHook(hookName, hook);
+        addShutdownHook(hookName, hook, false);
     }
 
     public static synchronized void addShutdownHook(String hookName, Runnable hook) {
+        addShutdownHook(hookName, hook, true);
+    }
+
+    public static synchronized void addShutdownHook(String hookName, Runnable hook, boolean addPostfix) {
+        if (addPostfix)
+            hookName += "-ShutdownHook";
         Thread t = new Thread(hook, hookName);
         addShutdownHook(t);
     }

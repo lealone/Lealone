@@ -19,6 +19,7 @@ package org.lealone.storage;
 
 public interface PageOperationHandler {
 
-    void handlePageOperation(PageOperation po);
+    long getLoad();
 
+    void handlePageOperation(PageOperation po);
 }

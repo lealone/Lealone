@@ -33,6 +33,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetEndpoint;
+import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
@@ -56,10 +57,12 @@ public class AOStorage extends StorageBase {
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
 
     private final IDatabase db;
+    private final PageOperationHandlerFactory pohFactory;
 
-    AOStorage(Map<String, Object> config) {
+    AOStorage(Map<String, Object> config, PageOperationHandlerFactory pohFactory) {
         super(config);
         this.db = (IDatabase) config.get("db");
+        this.pohFactory = pohFactory;
         String storagePath = getStoragePath();
         DataUtils.checkArgument(storagePath != null, "The storage path may not be null");
         if (!FileUtils.exists(storagePath))
@@ -71,6 +74,10 @@ public class AOStorage extends StorageBase {
                 fp.delete();
             }
         }
+    }
+
+    public PageOperationHandlerFactory getPageOperationHandlerFactory() {
+        return pohFactory;
     }
 
     @Override

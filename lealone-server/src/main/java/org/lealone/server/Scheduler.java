@@ -205,6 +205,12 @@ public class Scheduler extends Thread
     }
 
     @Override
+    public long getLoad() {
+        return maxPriorityQueue.size() + minPriorityQueue.size() + normPriorityQueue.size() + pageOperationQueue.size()
+                + sessions.size();
+    }
+
+    @Override
     public void handlePageOperation(PageOperation po) {
         pageOperationQueue.add(po);
         wakeUp();
@@ -260,7 +266,7 @@ public class Scheduler extends Thread
                         haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
                         haveWork.drainPermits();
                     } catch (InterruptedException e) {
-                        throw new AssertionError();
+                        handleInterruptedException(e);
                     }
                     break;
                 }
@@ -373,6 +379,11 @@ public class Scheduler extends Thread
         }
     }
 
+    private void handleInterruptedException(InterruptedException e) {
+        logger.warn(getName() + " is interrupted");
+        end();
+    }
+
     // 以下使用同步方式执行
     private AtomicInteger counter;
     private volatile RuntimeException e;
@@ -418,7 +429,7 @@ public class Scheduler extends Thread
                 haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
                 haveWork.drainPermits();
             } catch (InterruptedException e) {
-                throw new AssertionError();
+                handleInterruptedException(e);
             }
         }
         if (e != null)

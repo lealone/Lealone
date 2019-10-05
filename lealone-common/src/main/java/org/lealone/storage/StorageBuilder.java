@@ -170,6 +170,10 @@ public abstract class StorageBuilder {
         return set("db", db);
     }
 
+    public PageOperationHandlerFactory getPageOperationHandlerFactory() {
+        return null;
+    }
+
     @Override
     public String toString() {
         return DataUtils.appendMap(new StringBuilder(), config).toString();

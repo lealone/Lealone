@@ -119,7 +119,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         Object old = values[index];
         // this is slightly slower:
         // values = Arrays.copyOf(values, values.length);
-        // values = values.clone(); // 在我的电脑上实测，copyOf实际上要把clone快一点点
+        // values = values.clone(); // 在我的电脑上实测，copyOf实际上要比clone快一点点
         StorageDataType valueType = map.getValueType();
         addMemory(valueType.getMemory(value) - valueType.getMemory(old));
         values[index] = value;

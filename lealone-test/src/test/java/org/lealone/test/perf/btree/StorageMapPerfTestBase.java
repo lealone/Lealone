@@ -19,53 +19,71 @@ package org.lealone.test.perf.btree;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.lealone.storage.PageOperation;
+import org.lealone.storage.PageOperationHandler;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageBuilder;
+import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.BTreePage;
 import org.lealone.test.TestBase;
 
 //以单元测试的方式运行会比通过main方法运行得出稍微慢一些的测试结果，
 //这可能是因为单元测试额外启动了一个ReaderThread占用了一些资源
-public class StorageMapPerfTestBase extends TestBase {
+public class StorageMapPerfTestBase {
 
     protected AOStorage storage;
     protected String storagePath;
     protected StorageMap<Integer, String> map;
 
-    static int threadsCount = 3; // Runtime.getRuntime().availableProcessors() * 4;
-    static int count = 50000 * 10;
+    static int threadCount = 4; // Runtime.getRuntime().availableProcessors() * 4;
+    static int rowCount = 10000 * 10 * 10 * 1; // 总记录数
+    static int loopCount = 10; // 重复测试次数
+    static int[] randomKeys = getRandomKeys();
 
-    int[] randomKeys = getRandomKeys();
+    protected void testWrite(int loop) {
+        // singleThreadRandomWrite();
+        // singleThreadSerialWrite();
+        multiThreadsRandomWrite(loop);
+        multiThreadsSerialWrite(loop);
+    }
+
+    protected void testRead(int loop) {
+        // singleThreadRandomRead();
+        // singleThreadSerialRead();
+
+        multiThreadsRandomRead(loop);
+        multiThreadsSerialRead(loop);
+    }
 
     // @Test
     public void run() {
         init();
-        singleThreadSerialWrite();
-        // singleThreadRandomWrite();
+        singleThreadSerialWrite();// 先生成初始数据
+        // System.out.println("map size: " + map.size());
 
-        int loop = 20;
-        for (int i = 1; i <= loop; i++) {
+        // singleThreadRandomWrite();
+        // multiThreadsSerialWrite(0);
+
+        long t1 = System.currentTimeMillis();
+        for (int i = 1; i <= loopCount; i++) {
             // map.clear();
 
-            // singleThreadRandomWrite();
-            // singleThreadSerialWrite();
-
-            // singleThreadRandomRead();
-            // singleThreadSerialRead();
-
-            multiThreadsRandomWrite(i);
-            multiThreadsSerialWrite(i);
-
-            multiThreadsRandomRead(i);
-            multiThreadsSerialRead(i);
+            testWrite(i);
+            testRead(i);
 
             System.out.println();
         }
+        long t2 = System.currentTimeMillis();
+        System.out.println("total time: " + (t2 - t1) + "ms");
+        System.out.println("map size: " + map.size());
 
         // testSystemArraycopy();
 
@@ -80,13 +98,17 @@ public class StorageMapPerfTestBase extends TestBase {
         // }
 
         // testConcurrentSkipListMap();
-        System.out.println("map size: " + map.size());
     }
 
     protected void init() {
-        // PageOperationHandler.startPageOperationHandlers(null);
-        AOStorageBuilder builder = new AOStorageBuilder();
-        storagePath = joinDirs("aose");
+        HashMap<String, String> config = new HashMap<>();
+        String factoryType = "RoundRobin";
+        // factoryType = "Random";
+        // factoryType = "LoadBalance";
+        config.put("page_operation_handler_factory_type", factoryType);
+        config.put("page_operation_handler_count", (threadCount + 1) + "");
+        AOStorageBuilder builder = new AOStorageBuilder(config);
+        storagePath = TestBase.joinDirs("aose");
         int pageSplitSize = 16 * 1024;
         // pageSplitSize = 2 * 1024;
         // pageSplitSize = 4 * 1024;
@@ -106,12 +128,12 @@ public class StorageMapPerfTestBase extends TestBase {
         Object[] src = new Object[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         int len = src.length;
         long t1 = System.currentTimeMillis();
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < rowCount; i++) {
             Object[] dest = new Object[len];
             System.arraycopy(src, 0, dest, 0, len);
         }
         long t2 = System.currentTimeMillis();
-        System.out.println("SystemArraycopy time: " + (t2 - t1) + " ms, count: " + count);
+        System.out.println("SystemArraycopy time: " + (t2 - t1) + " ms, count: " + rowCount);
     }
 
     void testConcurrentLinkedQueue() {
@@ -157,39 +179,53 @@ public class StorageMapPerfTestBase extends TestBase {
         System.out.println("CountDownLatch time: " + (t2 - t1) + " ms, count: " + count);
     }
 
-    private final ConcurrentSkipListMap<Integer, String> skipListMap = new ConcurrentSkipListMap<>();
+    void testCopy() {
+        int count = 50000;
+        BTreePage root = ((BTreeMap<Integer, String>) map).getRootPage();
+        long t1 = System.currentTimeMillis();
+        for (int i = 0; i < count; i++) {
+            root.copy();
+        }
+        long t2 = System.currentTimeMillis();
+        System.out.println("write time: " + (t2 - t1) + " ms, count: " + count);
+    }
 
     void testConcurrentSkipListMap() {
+        ConcurrentSkipListMap<Integer, Integer> skipListMap = new ConcurrentSkipListMap<>();
+        skipListMap.put(1, 10);
+        skipListMap.put(2, 20);
+        skipListMap.put(2, 200);
+
         for (int loop = 0; loop < 20; loop++) {
             // skipListMap.clear();
             long t1 = System.currentTimeMillis();
-            for (int i = 0; i < count; i++) {
-                skipListMap.put(i, "valueaaa");
+            for (int i = 0; i < rowCount; i++) {
+                skipListMap.put(i, i * 100);
             }
             long t2 = System.currentTimeMillis();
-            System.out.println("ConcurrentSkipListMap serial write time: " + (t2 - t1) + " ms, count: " + count);
+            System.out.println("ConcurrentSkipListMap serial write time: " + (t2 - t1) + " ms, count: " + rowCount);
         }
         System.out.println();
         int[] keys = getRandomKeys();
         for (int loop = 0; loop < 20; loop++) {
             // skipListMap.clear(); //不clear时更快一些
             long t1 = System.currentTimeMillis();
-            for (int i = 0; i < count; i++) {
-                skipListMap.put(keys[i], "valueaaa");
+            for (int i = 0; i < rowCount; i++) {
+                skipListMap.put(keys[i], i * 100);
             }
             long t2 = System.currentTimeMillis();
-            System.out.println("ConcurrentSkipListMap random write time: " + (t2 - t1) + " ms, count: " + count);
+            System.out.println("ConcurrentSkipListMap random write time: " + (t2 - t1) + " ms, count: " + rowCount);
         }
     }
 
-    int[] getRandomKeys() {
-        ArrayList<Integer> list = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
+    static int[] getRandomKeys() {
+        ArrayList<Integer> list = new ArrayList<>(rowCount);
+        for (int i = 0; i < rowCount; i++) {
             list.add(i);
         }
         Collections.shuffle(list);
-        int[] keys = new int[count];
-        for (int i = 0; i < count; i++) {
+        int[] keys = new int[rowCount];
+        for (int i = 0; i < rowCount; i++) {
             keys[i] = list.get(i);
         }
         return keys;
@@ -197,16 +233,16 @@ public class StorageMapPerfTestBase extends TestBase {
 
     void singleThreadSerialWrite() {
         long t1 = System.currentTimeMillis();
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < rowCount; i++) {
             map.put(i, "valueaaa");
         }
         long t2 = System.currentTimeMillis();
-        System.out.println("single-thread serial write time: " + (t2 - t1) + " ms, count: " + count);
+        System.out.println("single-thread serial write time: " + (t2 - t1) + " ms, count: " + rowCount);
     }
 
     void singleThreadRandomWrite() {
         long t1 = System.currentTimeMillis();
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < rowCount; i++) {
             map.put(randomKeys[i], "valueaaa");
         }
         long t2 = System.currentTimeMillis();
@@ -215,41 +251,57 @@ public class StorageMapPerfTestBase extends TestBase {
 
     void singleThreadSerialRead() {
         long t1 = System.currentTimeMillis();
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < rowCount; i++) {
             map.get(i);
         }
         long t2 = System.currentTimeMillis();
-        System.out.println("single-thread serial read time: " + (t2 - t1) + " ms, count: " + count);
+        System.out.println("single-thread serial read time: " + (t2 - t1) + " ms, count: " + rowCount);
     }
 
     void singleThreadRandomRead() {
         long t1 = System.currentTimeMillis();
-        for (int i = 0; i < count; i++) {
+        for (int i = 0; i < rowCount; i++) {
             map.get(randomKeys[i]);
         }
         long t2 = System.currentTimeMillis();
-        System.out.println("single-thread random read time: " + (t2 - t1) + " ms, count: " + count);
+        System.out.println("single-thread random read time: " + (t2 - t1) + " ms, count: " + rowCount);
     }
 
-    class MyThread extends Thread {
+    protected Thread getThread(PageOperation pageOperation, int index, int start) {
+        return new Thread(pageOperation, "MyThread-" + start);
+    }
+
+    class PageOperationPerfTestThread implements Runnable, PageOperation {
+        final Thread thread;
         int start;
         int end;
         boolean read;
         boolean random;
+        boolean async;
+        final AtomicLong rows;
 
         long readTime;
         long writeTime;
         String timeStr;
+        long asyncStartTime;
+        final AtomicLong asyncEndTime = new AtomicLong(0);
 
-        MyThread(int start, int end, boolean read, boolean random) {
-            super("MyThread-" + start);
+        final CountDownLatch topLatch;
+        long shiftCount;
+
+        PageOperationPerfTestThread(int threadIndex, int start, int end, boolean read, boolean random, boolean async,
+                CountDownLatch topLatch) {
+            thread = getThread(this, threadIndex, start);
             this.start = start;
             this.end = end;
             this.read = read;
             this.random = random;
+            this.async = async;
+            this.topLatch = topLatch;
+            rows = new AtomicLong(end - start);
         }
 
-        void write() throws Exception {
+        void write(PageOperationHandler currentHandler) throws Exception {
             for (int i = start; i < end; i++) {
                 int key;
                 if (random)
@@ -257,73 +309,150 @@ public class StorageMapPerfTestBase extends TestBase {
                 else
                     key = i;
                 String value = "value-";// "value-" + key;
-                map.put(key, value);
+
+                if (async) {
+                    PageOperation po = map.createPutOperation(key, value, ar -> {
+                        if (rows.decrementAndGet() <= 0) {
+                            asyncEndTime.set(System.currentTimeMillis());
+                            topLatch.countDown();
+                        }
+                    });
+                    PageOperationResult result = po.run(currentHandler);
+                    if (result == PageOperationResult.SHIFTED) {
+                        shiftCount++;
+                    }
+                } else {
+                    map.put(key, value);
+                }
             }
         }
 
         void read() throws Exception {
             for (int i = start; i < end; i++) {
+                int key;
                 if (random)
-                    map.get(randomKeys[i]);
+                    key = randomKeys[i];
                 else
+                    key = i;
+                if (async) {
+                    map.get(key, ar -> {
+                        if (rows.decrementAndGet() <= 0) {
+                            asyncEndTime.set(System.currentTimeMillis());
+                            topLatch.countDown();
+                        }
+                    });
+                } else {
                     map.get(i);
+                }
             }
         }
 
         @Override
         public void run() {
+            run(null);
+        }
+
+        @Override
+        public PageOperationResult run(PageOperationHandler currentHandler) {
             try {
                 long t1 = System.currentTimeMillis();
+                asyncStartTime = t1;
                 if (read) {
                     read();
                 } else {
-                    write();
+                    write(currentHandler);
                 }
-                long t2 = System.currentTimeMillis();
-                if (read) {
-                    readTime = t2 - t1;
-                } else {
-                    writeTime = t2 - t1;
+                if (!async) {
+                    long t2 = System.currentTimeMillis();
+                    if (read) {
+                        readTime = t2 - t1;
+                    } else {
+                        writeTime = t2 - t1;
+                    }
+                    timeStr = (getName() + (random ? " random " : " serial ") + (read ? "read" : "write")
+                            + " end, time: " + (t2 - t1) + " ms, count: " + (end - start));
+                    topLatch.countDown();
                 }
-                timeStr = (getName() + (random ? " random " : " serial ") + (read ? "read" : "write") + " end, time: "
-                        + (t2 - t1) + " ms, count: " + (end - start));
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            return PageOperationResult.SUCCEEDED;
+        }
+
+        void start() {
+            thread.start();
+        }
+
+        void join() throws InterruptedException {
+            thread.join();
+        }
+
+        void interrupt() {
+            thread.interrupt();
+        }
+
+        String getName() {
+            return thread.getName();
         }
     }
 
     void multiThreadsSerialRead(int loop) {
-        multiThreads(loop, true, false);
+        multiThreads(loop, true, false, false);
     }
 
     void multiThreadsRandomRead(int loop) {
-        multiThreads(loop, true, true);
+        multiThreads(loop, true, true, false);
     }
 
     void multiThreadsSerialWrite(int loop) {
-        multiThreads(loop, false, false);
+        multiThreads(loop, false, false, false);
     }
 
     void multiThreadsRandomWrite(int loop) {
-        multiThreads(loop, false, true);
+        multiThreads(loop, false, true, false);
     }
 
-    void multiThreads(int loop, boolean read, boolean random) {
-        int avg = count / threadsCount;
-        MyThread[] threads = new MyThread[threadsCount];
-        for (int i = 0; i < threadsCount; i++) {
+    void multiThreadsSerialReadAsync(int loop) {
+        multiThreads(loop, true, false, true);
+    }
+
+    void multiThreadsRandomReadAsync(int loop) {
+        multiThreads(loop, true, true, true);
+    }
+
+    void multiThreadsSerialWriteAsync(int loop) {
+        multiThreads(loop, false, false, true);
+    }
+
+    void multiThreadsRandomWriteAsync(int loop) {
+        multiThreads(loop, false, true, true);
+    }
+
+    void multiThreads(int loop, boolean read, boolean random, boolean async) {
+        int avg = rowCount / threadCount;
+        PageOperationPerfTestThread[] threads = new PageOperationPerfTestThread[threadCount];
+        CountDownLatch topLatch = new CountDownLatch(threadCount);
+        for (int i = 0; i < threadCount; i++) {
             int start = i * avg;
             int end = (i + 1) * avg;
-            if (i == threadsCount - 1)
-                end = count;
-            threads[i] = new MyThread(start, end, read, random);
+            if (i == threadCount - 1)
+                end = rowCount;
+            threads[i] = new PageOperationPerfTestThread(i, start, end, read, random, async, topLatch);
         }
 
-        for (int i = 0; i < threadsCount; i++) {
+        for (int i = 0; i < threadCount; i++) {
             threads[i].start();
         }
-        for (int i = 0; i < threadsCount; i++) {
+        try {
+            topLatch.await();
+        } catch (InterruptedException e1) {
+            e1.printStackTrace();
+        }
+
+        for (int i = 0; i < threadCount; i++) {
+            threads[i].interrupt();
+        }
+        for (int i = 0; i < threadCount; i++) {
             try {
                 threads[i].join();
             } catch (InterruptedException e) {
@@ -332,27 +461,28 @@ public class StorageMapPerfTestBase extends TestBase {
         }
 
         long timeSum = 0;
-        if (read) {
-            for (int i = 0; i < threadsCount; i++) {
-                timeSum += threads[i].readTime;
+        if (async) {
+            for (int i = 0; i < threadCount; i++) {
+                timeSum += threads[i].asyncEndTime.get() - threads[i].asyncStartTime;
             }
         } else {
-            for (int i = 0; i < threadsCount; i++) {
-                timeSum += threads[i].writeTime;
+            if (read) {
+                for (int i = 0; i < threadCount; i++) {
+                    timeSum += threads[i].readTime;
+                }
+            } else {
+                for (int i = 0; i < threadCount; i++) {
+                    timeSum += threads[i].writeTime;
+                }
             }
         }
-        // System.out.println();
-        // System.out.println("loop: " + loop + ", threads: " + threadsCount + ", count: " + count);
-        // System.out.println("==========================================================");
-        // for (int i = 0; i < threadsCount; i++) {
-        // System.out.println(threads[i].timeStr);
-        // }
-        // System.out.println("multi-threads" + (random ? " random " : " serial ") + (read ? "read" : "write")
-        // + " time, sum: " + timeSum + " ms, avg: " + (timeSum / threadsCount) + " ms");
-        // System.out.println("==========================================================");
 
-        System.out.println(map.getName() + " loop: " + loop + ", rows: " + count + ", multi-threads"
-                + (random ? " random " : " serial ") + (read ? "read" : "write") + " time: " + (timeSum / threadsCount)
-                + " ms");
+        long shiftSum = 0;
+        for (int i = 0; i < threadCount; i++) {
+            shiftSum += threads[i].shiftCount;
+        }
+        System.out.println(map.getName() + " loop: " + loop + ", rows: " + rowCount + ", shift: " + shiftSum
+                + ", multi-threads" + (async ? " async " : " sync ") + (random ? "random " : "serial ")
+                + (read ? "read" : "write") + " time: " + (timeSum / threadCount) + " ms");
     }
 }

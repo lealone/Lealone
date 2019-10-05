@@ -31,7 +31,6 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
-import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.PageOperations.CallableOperation;
 import org.lealone.storage.cache.CacheLongKeyLIRS;
@@ -379,7 +378,7 @@ public class BTreeStorage {
 
             if (sqlStatementExecutor != null && (Thread.currentThread() == sqlStatementExecutor)) {
                 if (!taskInQueue) {
-                    PageOperationHandlerFactory.addPageOperation(new CallableOperation(task));
+                    map.pohFactory.addPageOperation(new CallableOperation(task));
                     taskInQueue = true;
                 }
                 sqlStatementExecutor.executeNextStatement();

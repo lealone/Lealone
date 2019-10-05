@@ -25,7 +25,6 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
-import org.lealone.storage.PageOperationHandlerFactory;
 
 public abstract class PageOperations {
 
@@ -187,7 +186,7 @@ public abstract class PageOperations {
             // 把AddChild操作放入父节点的处理器队列中，等候处理。
             // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
             AddChild task = new AddChild(tmp);
-            PageOperationHandlerFactory.getNodePageOperationHandler().handlePageOperation(task);
+            p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
         }
 
         @SuppressWarnings("unchecked")
@@ -337,7 +336,7 @@ public abstract class PageOperations {
                 p.map.setMaxKey(key);
                 BTreeMap.addCount.incrementAndGet();
                 // 新增数据时才需要更新父节点的计数器
-                PageOperationHandlerFactory.getNodePageOperationHandler()
+                p.map.pohFactory.getNodePageOperationHandler()
                         .handlePageOperation(new UpdateParentCounter(p, key, true));
                 result = null;
 

@@ -45,6 +45,7 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
+import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
@@ -78,6 +79,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     protected final Map<String, Object> config;
     protected final BTreeStorage btreeStorage;
+    protected final PageOperationHandlerFactory pohFactory;
     protected PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
     protected IDatabase db;
 
@@ -101,6 +103,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             isShardingMode = Boolean.parseBoolean(config.get("isShardingMode").toString());
         this.config = config;
         this.db = (IDatabase) config.get("db");
+        this.pohFactory = aoStorage.getPageOperationHandlerFactory();
 
         Object mode = config.get("pageStorageMode");
         if (mode != null) {
@@ -131,13 +134,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 isShardingMode = false;
                 root = BTreeLeafPage.createEmpty(this);
             }
-            initRootHandler();
         }
         this.isShardingMode = isShardingMode;
+        disableParallelIfNeeded();
     }
 
-    private void initRootHandler() {
-        disableParallel = true;
+    private void disableParallelIfNeeded() {
+        if (root.getRawChildPageCount() < pohFactory.getPageOperationHandlerCount())
+            disableParallel = true;
     }
 
     private boolean containsLocalEndpoint(String[] replicationEndpoints) {
@@ -278,13 +282,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             moveLeafPageLazy(pk);
         }
         newRoot(p);
-        if (disableParallel
-                && root.getRawChildPageCount() >= PageOperationHandlerFactory.getPageOperationHandlerCount()) {
+        if (disableParallel && root.getRawChildPageCount() >= pohFactory.getPageOperationHandlerCount()) {
             disableParallel = false;
-            root.handler = PageOperationHandlerFactory.getNodePageOperationHandler();
+            root.handler = pohFactory.getNodePageOperationHandler();
             oldRoot.redirectTo(root);
             for (int i = 0, size = root.getRawChildPageCount(); i < size; i++) {
-                root.getChildPage(i).handler = PageOperationHandlerFactory.getPageOperationHandler();
+                root.getChildPage(i).handler = pohFactory.getPageOperationHandler();
             }
             // printPage();
             // BTreeMap.putCount.addAndGet(root.getTotalCount());
@@ -517,7 +520,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         WriteOperation operation = new WriteOperation(() -> {
             moveLeafPage(pageKey);
         });
-        PageOperationHandlerFactory.addPageOperation(operation);
+        pohFactory.addPageOperation(operation);
     }
 
     private void moveLeafPage(PageKey pageKey) {
@@ -756,7 +759,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     c.removeLeafPage(getName(), pageKey);
                 }
             });
-            PageOperationHandlerFactory.addPageOperation(operation);
+            pohFactory.addPageOperation(operation);
         }
     }
 
@@ -918,7 +921,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         beforeWrite();
         root.removeAllRecursive();
         newRoot(BTreeLeafPage.createEmpty(this));
-        initRootHandler();
+        disableParallelIfNeeded();
     }
 
     @Override
@@ -1538,33 +1541,39 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         this.pageStorageMode = pageStorageMode;
     }
 
+    @Override
     public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
         Get<K, V> get = new Get<>(root, key, handler);
-        PageOperationHandlerFactory.addPageOperation(get);
+        pohFactory.addPageOperation(get);
     }
 
     @Override
     public void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         Put<K, V, V> put = new Put<>(root, key, value, handler);
-        PageOperationHandlerFactory.addPageOperation(put);
+        pohFactory.addPageOperation(put);
+    }
+
+    @Override
+    public PageOperation createPutOperation(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        return new Put<>(root, key, value, handler);
     }
 
     @Override
     public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(root, key, value, handler);
-        PageOperationHandlerFactory.addPageOperation(putIfAbsent);
+        pohFactory.addPageOperation(putIfAbsent);
     }
 
     @Override
     public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
         Replace<K, V> replace = new Replace<>(root, key, oldValue, newValue, handler);
-        PageOperationHandlerFactory.addPageOperation(replace);
+        pohFactory.addPageOperation(replace);
     }
 
     @Override
     public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
         Remove<K, V> remove = new Remove<>(root, key, handler);
-        PageOperationHandlerFactory.addPageOperation(remove);
+        pohFactory.addPageOperation(remove);
     }
 
     @Override
@@ -1576,11 +1585,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public boolean disableParallel;
+    public boolean disableSplit;
 
     public static AtomicLong splitCount = new AtomicLong();
     public static AtomicLong putCount = new AtomicLong();
     public static AtomicLong addCount = new AtomicLong();
     public static AtomicLong addUpdateCounterTaskCount = new AtomicLong();
     public static AtomicLong runUpdateCounterTaskCount = new AtomicLong();
-    public boolean disableSplit = false;
 }

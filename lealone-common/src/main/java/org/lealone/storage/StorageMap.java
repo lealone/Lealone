@@ -282,6 +282,14 @@ public interface StorageMap<K, V> extends ReplicationMap {
         return null;
     }
 
+    default void get(K key, AsyncHandler<AsyncResult<V>> handler) {
+        throw DbException.getUnsupportedException("async get");
+    }
+
+    default PageOperation createPutOperation(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        throw DbException.getUnsupportedException("createPutOperation");
+    }
+
     default void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         put(key, value);
     }

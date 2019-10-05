@@ -48,13 +48,13 @@ public class BTreeMapTest extends TestBase {
     @Test
     public void run() {
         init();
-        testMapOperations();
-        testGetEndpointToKeyMap();
-        testCompact();
-        // testTransfer(); //TODO 还有bug
-        testSplit();
-        testRemotePage();
-        testLeafPageRemove();
+        // testMapOperations();
+        // testGetEndpointToKeyMap();
+        // testCompact();
+        // // testTransfer(); //TODO 还有bug
+        // testSplit();
+        // testRemotePage();
+        // testLeafPageRemove();
         testAsyncOperations();
     }
 
@@ -444,17 +444,24 @@ public class BTreeMapTest extends TestBase {
     }
 
     void testAsyncOperations() {
+        storage.getPageOperationHandlerFactory().startHandlers();
         map.clear();
         map.disableParallel = false;
         int count = 7;
         CountDownLatch latch = new CountDownLatch(count);
+        CountDownLatch latch2 = new CountDownLatch(1);
 
         int key = 10;
         final String value = "value-10";
         map.put(key, value, ar -> {
             latch.countDown();
+            latch2.countDown();
         });
-
+        try {
+            latch2.await();
+        } catch (InterruptedException e1) {
+            e1.printStackTrace();
+        }
         map.get(key, ar -> {
             latch.countDown();
             assertEquals(value, ar.getResult());
