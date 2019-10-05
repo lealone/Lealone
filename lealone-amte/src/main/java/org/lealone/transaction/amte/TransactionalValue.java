@@ -17,24 +17,19 @@
  */
 package org.lealone.transaction.amte;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.sql.Connection;
 import java.util.BitSet;
 import java.util.LinkedList;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.common.util.UnsafeUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 
-import sun.misc.Unsafe;
-
-@SuppressWarnings("restriction")
 public interface TransactionalValue {
 
     public Object getValue();
@@ -169,34 +164,7 @@ public interface TransactionalValue {
     // 因为每条记录都对应此类的一个实例，所以为了节约内存没有直接使用java.util.concurrent.atomic.AtomicReference
     public static class TransactionalValueRef implements TransactionalValue {
 
-        private static final Unsafe unsafe;
-        private static final long valueOffset;
-
-        static {
-            try {
-                // 不能直接调用Unsafe.getUnsafe()，在Eclipse下面运行会有安全异常
-                final Object maybeUnsafe = AccessController.doPrivileged(new PrivilegedAction<Object>() {
-                    @Override
-                    public Object run() {
-                        try {
-                            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-                            unsafeField.setAccessible(true);
-                            return unsafeField.get(null);
-                        } catch (Throwable e) {
-                            return e;
-                        }
-                    }
-                });
-                if (maybeUnsafe instanceof Throwable) {
-                    throw (Throwable) maybeUnsafe;
-                } else {
-                    unsafe = (Unsafe) maybeUnsafe;
-                }
-                valueOffset = unsafe.objectFieldOffset(TransactionalValueRef.class.getDeclaredField("tv"));
-            } catch (Throwable ex) {
-                throw new Error(ex);
-            }
-        }
+        private static final long valueOffset = UnsafeUtils.objectFieldOffset(TransactionalValueRef.class, "tv");
 
         private volatile TransactionalValue tv;
 
@@ -228,7 +196,7 @@ public interface TransactionalValue {
 
         @Override
         public boolean compareAndSet(TransactionalValue expect, TransactionalValue update) {
-            return unsafe.compareAndSwapObject(this, valueOffset, expect, update);
+            return UnsafeUtils.compareAndSwapObject(this, valueOffset, expect, update);
         }
 
         @Override
