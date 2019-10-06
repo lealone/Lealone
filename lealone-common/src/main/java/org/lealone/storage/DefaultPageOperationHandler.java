@@ -39,6 +39,7 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
     private final long loopInterval;
     private Thread thread;
     private boolean stopped;
+    private long shiftCount;
 
     public DefaultPageOperationHandler(int id, Map<String, String> config) {
         this(DefaultPageOperationHandler.class.getSimpleName() + "-" + id, config);
@@ -62,15 +63,23 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
         wakeUp();
     }
 
+    @Override
+    public String toString() {
+        return name;
+    }
+
     public String getName() {
         return name;
     }
 
-    public void reset() {
+    public void reset(boolean clearTasks) {
         thread = null;
         stopped = false;
-        size.set(0);
-        tasks.clear();
+        shiftCount = 0;
+        if (clearTasks) {
+            size.set(0);
+            tasks.clear();
+        }
     }
 
     public void start() {
@@ -94,15 +103,22 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
         haveWork.release(1);
     }
 
+    public long getShiftCount() {
+        return shiftCount;
+    }
+
     @Override
     public void run() {
-        // SQLEngineManager.getInstance().setSQLStatementExecutor(this);
         while (!stopped) {
             PageOperation task = tasks.poll();
             while (task != null) {
                 size.decrementAndGet();
                 try {
                     task.run(this);
+                    // PageOperationResult result = task.run(this);
+                    // if (result == PageOperationResult.SHIFTED) {
+                    // shiftCount++;
+                    // }
                 } catch (Throwable e) {
                     logger.warn("Failed to run page operation: " + task, e);
                 }

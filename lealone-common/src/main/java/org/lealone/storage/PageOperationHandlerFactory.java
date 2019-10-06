@@ -68,6 +68,10 @@ public abstract class PageOperationHandlerFactory {
         return leafPageOperationHandlers;
     }
 
+    public void setLeafPageOperationHandlers(PageOperationHandler[] leafPageOperationHandlers) {
+        this.leafPageOperationHandlers = leafPageOperationHandlers;
+    }
+
     public void setNodePageOperationHandler(PageOperationHandler handler) {
         nodePageOperationHandler = handler;
     }
@@ -88,6 +92,13 @@ public abstract class PageOperationHandlerFactory {
             PageOperationHandler handler = getPageOperationHandler();
             po.run(handler);
         }
+
+        // PageOperationHandler handler = getPageOperationHandler();
+        // if (Thread.currentThread() == handler) {
+        // po.run(handler);
+        // } else {
+        // handler.handlePageOperation(po);
+        // }
     }
 
     public int getPageOperationHandlerCount() {

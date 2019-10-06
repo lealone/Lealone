@@ -21,7 +21,6 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.DefaultPageOperationHandler;
 import org.lealone.storage.PageOperation;
-import org.lealone.storage.PageOperationHandler;
 import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.aose.btree.BTreeMap;
 
@@ -39,7 +38,6 @@ public class AsyncBTreePerfTest extends StorageMapPerfTestBase {
     protected void testWrite(int loop) {
         btreeMap.disableParallel = false;
         btreeMap.disableSplit = true;
-
         multiThreadsRandomWriteAsync(loop);
         multiThreadsSerialWriteAsync(loop);
     }
@@ -56,13 +54,16 @@ public class AsyncBTreePerfTest extends StorageMapPerfTestBase {
     @Override
     protected void init() {
         super.init();
-        PageOperationHandlerFactory f = storage.getPageOperationHandlerFactory();
-        PageOperationHandler[] leafPageOperationHandlers = f.getLeafPageOperationHandlers();
-        int handlerCount = leafPageOperationHandlers.length;
-        handlers = new DefaultPageOperationHandler[handlerCount];
-        for (int i = 0; i < handlerCount; i++) {
-            handlers[i] = (DefaultPageOperationHandler) leafPageOperationHandlers[i];
+    }
+
+    @Override
+    protected void createPageOperationHandlers() {
+        handlers = new DefaultPageOperationHandler[threadCount];
+        for (int i = 0; i < threadCount; i++) {
+            handlers[i] = new DefaultPageOperationHandler(i, config);
         }
+        PageOperationHandlerFactory f = storage.getPageOperationHandlerFactory();
+        f.setLeafPageOperationHandlers(handlers);
     }
 
     @Override
@@ -76,8 +77,13 @@ public class AsyncBTreePerfTest extends StorageMapPerfTestBase {
     @Override
     protected Thread getThread(PageOperation pageOperation, int index, int start) {
         DefaultPageOperationHandler h = handlers[index];
-        h.reset();
+        h.reset(false);
         h.handlePageOperation(pageOperation);
         return new Thread(h, h.getName());
+    }
+
+    @Override
+    public DefaultPageOperationHandler getDefaultPageOperationHandler(int index) {
+        return handlers[index];
     }
 }

@@ -48,13 +48,13 @@ public class BTreeMapTest extends TestBase {
     @Test
     public void run() {
         init();
-        // testMapOperations();
-        // testGetEndpointToKeyMap();
-        // testCompact();
-        // // testTransfer(); //TODO 还有bug
-        // testSplit();
-        // testRemotePage();
-        // testLeafPageRemove();
+        testMapOperations();
+        testGetEndpointToKeyMap();
+        testCompact();
+        // testTransfer(); //TODO 还有bug
+        testSplit();
+        testRemotePage();
+        testLeafPageRemove();
         testAsyncOperations();
     }
 

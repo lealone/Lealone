@@ -108,7 +108,6 @@ public abstract class PageOperations {
     }
 
     public static class Put<K, V, R> implements PageOperation {
-
         BTreePage root;
         BTreePage p;
         final K key;
@@ -122,6 +121,11 @@ public abstract class PageOperations {
             this.key = key;
             this.value = value;
             this.asyncResultHandler = asyncResultHandler;
+        }
+
+        @Override
+        public PageOperationType getType() {
+            return PageOperationType.Put;
         }
 
         private void binarySearchLeafPage() {
@@ -138,28 +142,6 @@ public abstract class PageOperations {
             }
             searched = true;
         }
-
-        // private boolean binarySearchLeafPage(PageOperationHandler currentHandler) {
-        // root = p.map.getRootPage();
-        // p = root;
-        // while (p.isNode()) {
-        // int index = p.binarySearch(key);
-        // if (index < 0) {
-        // index = -index - 1;
-        // } else {
-        // index++;
-        // }
-        // p = p.getChildPage(index);
-        // }
-        //
-        // searched = true;
-        // if (currentHandler != p.getHandler()) {
-        // p.addTask(this);
-        // return false;
-        // } else {
-        // return true;
-        // }
-        // }
 
         private static void splitLeafPage(BTreePage p) {
             BTreeMap.splitCount.incrementAndGet();
@@ -326,28 +308,31 @@ public abstract class PageOperations {
         protected Object put(int index) {
             Object result;
             if (index < 0) {
-                if (p.dynamicInfo.state != BTreePage.State.NORMAL) {
-                    String str = "aaa";
-                    new Error(str + " " + p.dynamicInfo.state).printStackTrace();
-                    System.exit(-1);
-                }
-                index = -index - 1;
-                p.insertLeaf(index, key, value);
-                p.map.setMaxKey(key);
-                BTreeMap.addCount.incrementAndGet();
-                // 新增数据时才需要更新父节点的计数器
-                p.map.pohFactory.getNodePageOperationHandler()
-                        .handlePageOperation(new UpdateParentCounter(p, key, true));
-                result = null;
-
-                // if (!p.isSplitEnabled() && p.getCounter().get() > 20) {
-                // System.out.println("leaf page keys: " + p.getCounter().get());
-                // }
+                addValue(index);
+                return null;
             } else {
                 result = p.setValue(index, value);
                 BTreeMap.putCount.incrementAndGet();
+                return result;
             }
-            return result;
+        }
+
+        protected void addValue(int index) {
+            if (p.dynamicInfo.state != BTreePage.State.NORMAL) {
+                String str = "aaa";
+                new Error(str + " " + p.dynamicInfo.state).printStackTrace();
+                System.exit(-1);
+            }
+            index = -index - 1;
+            p.insertLeaf(index, key, value);
+            p.map.setMaxKey(key);
+            BTreeMap.addCount.incrementAndGet();
+            // 新增数据时才需要更新父节点的计数器
+            p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(new UpdateParentCounter(p, key, true));
+
+            // if (!p.isSplitEnabled() && p.getCounter().get() > 20) {
+            // System.out.println("leaf page keys: " + p.getCounter().get());
+            // }
         }
     }
 
@@ -365,7 +350,8 @@ public abstract class PageOperations {
         @Override
         protected Object put(int index) {
             if (index < 0) {
-                return super.put(index);
+                addValue(index);
+                return null;
             }
             return p.getValue(index);
         }
@@ -382,9 +368,13 @@ public abstract class PageOperations {
 
         @Override
         protected Boolean put(int index) {
+            // 对应的key不存在，直接返回false
+            if (index < 0) {
+                return Boolean.FALSE;
+            }
             Object old = p.getValue(index);
-            if (index < 0 || p.map.areValuesEqual(old, oldValue)) {
-                super.put(index);
+            if (p.map.areValuesEqual(old, oldValue)) {
+                p.setValue(index, value);
                 return Boolean.TRUE;
             }
             return Boolean.FALSE;

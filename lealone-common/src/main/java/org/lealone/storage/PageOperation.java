@@ -25,7 +25,23 @@ public interface PageOperation extends AsyncTask {
         SPLITTING,
         SUCCEEDED,
         SHIFTED,
-        FAILED;
+        FAILED,
+        LOCKED;
+    }
+
+    public static enum PageOperationType {
+        Get,
+        Put,
+        PutIfAbsent,
+        Replace,
+        Remove,
+        UpdateParentCounter,
+        AddChild,
+        Other;
+    }
+
+    default PageOperationType getType() {
+        return PageOperationType.Other;
     }
 
     @Override
