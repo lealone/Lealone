@@ -52,6 +52,13 @@ public class AsyncBTreePerfTest extends StorageMapPerfTestBase {
     }
 
     @Override
+    protected void testConflict(int loop) {
+        btreeMap.disableParallel = false;
+        btreeMap.disableSplit = true;
+        testConflict(loop, true);
+    }
+
+    @Override
     protected void init() {
         super.init();
     }

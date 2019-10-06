@@ -533,7 +533,6 @@ public abstract class PageOperations {
             this.right = right;
             this.key = key;
         }
-
     }
 
     private static TmpNodePage splitPage(BTreePage p) {
