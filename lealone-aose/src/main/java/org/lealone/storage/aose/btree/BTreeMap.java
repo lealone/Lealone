@@ -53,6 +53,7 @@ import org.lealone.storage.type.StorageDataType;
  */
 public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
+    protected final AtomicLong size = new AtomicLong(0);
     protected final boolean readOnly;
     protected final Map<String, Object> config;
     protected final BTreeStorage btreeStorage;
@@ -222,13 +223,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      * @return the new root page
      */
     private BTreePage splitRoot(BTreePage p) {
-        long totalCount = p.getTotalCount();
         int at = p.getKeyCount() / 2;
         Object k = p.getKey(at);
         BTreePage rightChildPage = p.split(at);
         Object[] keys = { k };
         PageReference[] children = { new PageReference(p, k, true), new PageReference(rightChildPage, k, false) };
-        p = BTreePage.create(this, keys, null, children, new AtomicLong(totalCount), 0);
+        p = BTreePage.createNode(this, keys, children, 0);
         return p;
     }
 
@@ -281,7 +281,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             int at = c.getKeyCount() / 2;
             Object k = c.getKey(at);
             BTreePage rightChildPage = c.split(at);
-            p.setChild(index, rightChildPage, false);
+            p.setChild(index, rightChildPage);
             p.insertNode(index, k, c);
             // now we are not sure where to add
             Object result = put(p, key, value);
@@ -508,7 +508,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public long sizeAsLong() {
-        return root.getTotalCount();
+        return size.get();
     }
 
     @Override
@@ -543,6 +543,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public synchronized void clear() {
         beforeWrite();
         root.removeAllRecursive();
+        size.set(0);
         newRoot(BTreeLeafPage.createEmpty(this));
         disableParallelIfNeeded();
     }

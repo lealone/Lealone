@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -97,42 +96,23 @@ public class BTreeNodePage extends BTreeLocalPage {
         System.arraycopy(children, a + 1, bChildren, 0, b);
         children = aChildren;
 
-        long t = 0;
-        for (PageReference x : aChildren) {
-            t += x.count.get();
-        }
-        totalCount.set(t);
-        t = 0;
-        for (PageReference x : bChildren) {
-            t += x.count.get();
-        }
-        BTreeNodePage newPage = create(map, bKeys, bChildren, new AtomicLong(t), 0);
+        BTreeNodePage newPage = create(map, bKeys, bChildren, 0);
         recalculateMemory();
         return newPage;
     }
 
     @Override
+    @Deprecated
     public long getTotalCount() {
-        if (ASSERT) {
-            long check = 0;
-            for (PageReference x : children) {
-                check += x.count.get();
-            }
-            if (check != totalCount.get()) {
-                throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Expected: {0} got: {1}", check,
-                        totalCount.get());
-            }
+        long totalCount = 0;
+        for (PageReference x : children) {
+            totalCount += x.page.getTotalCount();
         }
-        return totalCount.get();
+        return totalCount;
     }
 
     @Override
     public void setChild(int index, BTreePage c) {
-        setChild(index, c, true);
-    }
-
-    @Override
-    public void setChild(int index, BTreePage c, boolean updateTotalCount) {
         Object key;
         boolean first;
         if (keys.length > 0) {
@@ -144,33 +124,21 @@ public class BTreeNodePage extends BTreeLocalPage {
             first = true;
         }
         if (c == null) {
-            long oldCount = children[index].count.get();
             // this is slightly slower:
             // children = Arrays.copyOf(children, children.length);
             children = children.clone();
-            PageReference ref = new PageReference(null, 0, new AtomicLong(0), key, first);
+            PageReference ref = new PageReference(null, 0, key, first);
             children[index] = ref;
-            totalCount.addAndGet(-oldCount);
         } else if (c != children[index].page || c.getPos() != children[index].pos) {
-            long oldCount = children[index].count.get();
             // this is slightly slower:
             // children = Arrays.copyOf(children, children.length);
             children = children.clone();
             PageReference ref = new PageReference(c, key, first);
             children[index] = ref;
-            if (updateTotalCount)
-                totalCount.addAndGet(c.getTotalCount() - oldCount);
         } else {
-            long oldCount = children[index].count.get();
             PageReference ref = new PageReference(c, key, first);
             children[index] = ref;
-            totalCount.addAndGet(c.getTotalCount() - oldCount);
         }
-    }
-
-    @Override
-    public void setChild(long childCount) {
-        totalCount.addAndGet(childCount);
     }
 
     @Override
@@ -217,14 +185,10 @@ public class BTreeNodePage extends BTreeLocalPage {
     public void remove(int index) {
         super.remove(index);
         addMemory(-PageUtils.PAGE_MEMORY_CHILD);
-        long countOffset = children[index].count.get();
-
         int childCount = children.length;
         PageReference[] newChildren = new PageReference[childCount - 1];
         DataUtils.copyExcept(children, newChildren, childCount, index);
         children = newChildren;
-
-        totalCount.addAndGet(-countOffset);
     }
 
     @Override
@@ -246,7 +210,6 @@ public class BTreeNodePage extends BTreeLocalPage {
         for (int i = 0; i <= keyLength; i++) {
             p[i] = buff.getLong();
         }
-        long total = 0;
         List<String> defaultReplicationHostIds = map.db == null ? null : Arrays.asList(map.db.getHostIds());
         for (int i = 0; i <= keyLength; i++) {
             int pageType = buff.get();
@@ -266,13 +229,10 @@ public class BTreeNodePage extends BTreeLocalPage {
                         replicationHostIds = defaultReplicationHostIds;
                     }
                 }
-                long s = DataUtils.readVarLong(buff);
-                total += s;
-                children[i] = new PageReference(null, p[i], new AtomicLong(s));
+                children[i] = new PageReference(null, p[i]);
                 children[i].replicationHostIds = replicationHostIds; // node page的replicationHostIds为null
             }
         }
-        totalCount.set(total);
         ByteBuffer oldBuff = buff;
         buff = expandPage(buff, type, start, pageLength);
 
@@ -314,7 +274,6 @@ public class BTreeNodePage extends BTreeLocalPage {
                 } else {
                     buff.put((byte) 1);
                 }
-                buff.putVarLong(children[i].count.get()); // count可能不大，所以用VarLong能节省一些空间
             }
         }
         int compressStart = buff.position();
@@ -383,7 +342,7 @@ public class BTreeNodePage extends BTreeLocalPage {
                     throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page not written");
                 }
                 ref.page.writeEnd();
-                children[i] = new PageReference(null, ref.pos, ref.count);
+                children[i] = new PageReference(null, ref.pos);
                 children[i].replicationHostIds = ref.page.getReplicationHostIds();
             }
         }
@@ -408,7 +367,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     private BTreeNodePage copy(boolean removePage) {
-        BTreeNodePage newPage = create(map, keys, children, totalCount, getMemory());
+        BTreeNodePage newPage = create(map, keys, children, getMemory());
         newPage.cachedCompare = cachedCompare;
         if (removePage) {
             // mark the old as deleted
@@ -441,13 +400,11 @@ public class BTreeNodePage extends BTreeLocalPage {
         removePage();
     }
 
-    static BTreeNodePage create(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, AtomicLong totalCount,
-            int memory) {
+    static BTreeNodePage create(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
         BTreeNodePage p = new BTreeNodePage(map);
         // the position is 0
         p.keys = keys;
         p.children = children;
-        p.totalCount = totalCount;
         if (memory == 0) {
             p.recalculateMemory();
         } else {
@@ -567,5 +524,15 @@ public class BTreeNodePage extends BTreeLocalPage {
                 }
             }
         }
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return children == null || children.length == 0;
+    }
+
+    @Override
+    public boolean isNotEmpty() {
+        return !isEmpty();
     }
 }

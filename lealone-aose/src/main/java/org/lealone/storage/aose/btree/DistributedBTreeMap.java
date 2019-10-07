@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -39,11 +38,9 @@ import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.DistributedStorageMap;
-import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
-import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.PageOperations.WriteOperation;
 import org.lealone.storage.replication.ReplicationSession;
@@ -310,47 +307,6 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         }
     }
 
-    /**
-     * Use the new root page from now on.
-     * 
-     * @param newRoot the new root page
-     */
-    @Override
-    protected void newRoot(BTreePage newRoot) {
-        if (root != newRoot) {
-            root = newRoot;
-        }
-    }
-
-    @Override
-    public synchronized V putIfAbsent(K key, V value) {
-        V old = get(key);
-        if (old == null) {
-            put(key, value);
-        }
-        return old;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public V remove(K key) {
-        beforeWrite();
-        V result = get(key);
-        if (result == null) {
-            return null;
-        }
-        synchronized (this) {
-            BTreePage p = root.copy();
-            result = (V) remove(p, key);
-            if (p.isNode() && p.isEmpty()) {
-                p.removePage();
-                p = BTreeLeafPage.createEmpty(this);
-            }
-            newRoot(p);
-        }
-        return result;
-    }
-
     @Override
     protected void fireLeafPageRemove(PageKey pageKey, BTreePage leafPage) {
         removeLeafPage(pageKey, leafPage);
@@ -370,161 +326,6 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
             });
             pohFactory.addPageOperation(operation);
         }
-    }
-
-    @Override
-    public synchronized boolean replace(K key, V oldValue, V newValue) {
-        V old = get(key);
-        if (areValuesEqual(old, oldValue)) {
-            put(key, newValue);
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public K firstKey() {
-        return getFirstLast(true);
-    }
-
-    @Override
-    public K lastKey() {
-        return getFirstLast(false);
-    }
-
-    /**
-     * Get the first (lowest) or last (largest) key.
-     * 
-     * @param first whether to retrieve the first key
-     * @return the key, or null if the map is empty
-     */
-    @Override
-    @SuppressWarnings("unchecked")
-    protected K getFirstLast(boolean first) {
-        if (sizeAsLong() == 0) {
-            return null;
-        }
-        BTreePage p = root;
-        while (true) {
-            if (p.isLeaf()) {
-                return (K) p.getKey(first ? 0 : p.getKeyCount() - 1);
-            }
-            p = p.getChildPage(first ? 0 : getChildPageCount(p) - 1);
-        }
-    }
-
-    @Override
-    public K lowerKey(K key) {
-        return getMinMax(key, true, true);
-    }
-
-    @Override
-    public K floorKey(K key) {
-        return getMinMax(key, true, false);
-    }
-
-    @Override
-    public K higherKey(K key) {
-        return getMinMax(key, false, true);
-    }
-
-    @Override
-    public K ceilingKey(K key) {
-        return getMinMax(key, false, false);
-    }
-
-    /**
-     * Get the smallest or largest key using the given bounds.
-     * 
-     * @param key the key
-     * @param min whether to retrieve the smallest key
-     * @param excluding if the given upper/lower bound is exclusive
-     * @return the key, or null if no such key exists
-     */
-    @Override
-    protected K getMinMax(K key, boolean min, boolean excluding) {
-        return getMinMax(root, key, min, excluding);
-    }
-
-    @SuppressWarnings("unchecked")
-    private K getMinMax(BTreePage p, K key, boolean min, boolean excluding) {
-        if (p.isLeaf()) {
-            int x = p.binarySearch(key);
-            if (x < 0) {
-                x = -x - (min ? 2 : 1);
-            } else if (excluding) {
-                x += min ? -1 : 1;
-            }
-            if (x < 0 || x >= p.getKeyCount()) {
-                return null;
-            }
-            return (K) p.getKey(x);
-        }
-        int x = p.binarySearch(key);
-        if (x < 0) {
-            x = -x - 1;
-        } else {
-            x++;
-        }
-        while (true) {
-            if (x < 0 || x >= getChildPageCount(p)) {
-                return null;
-            }
-            K k = getMinMax(p.getChildPage(x), key, min, excluding);
-            if (k != null) {
-                return k;
-            }
-            x += min ? -1 : 1;
-        }
-    }
-
-    @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        if (a == b) {
-            return true;
-        } else if (a == null || b == null) {
-            return false;
-        }
-        return valueType.compare(a, b) == 0;
-    }
-
-    @Override
-    public int size() {
-        long size = sizeAsLong();
-        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
-    }
-
-    @Override
-    public long sizeAsLong() {
-        return root.getTotalCount();
-    }
-
-    @Override
-    public boolean containsKey(K key) {
-        return get(key) != null;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return sizeAsLong() == 0;
-    }
-
-    @Override
-    public boolean isInMemory() {
-        return false;
-    }
-
-    @Override
-    public StorageMapCursor<K, V> cursor(K from) {
-        return cursor(IterationParameters.create(from));
-    }
-
-    @Override
-    public StorageMapCursor<K, V> cursor(IterationParameters<K> parameters) {
-        if (parameters.pageKeys == null)
-            return new BTreeCursor<>(this, root, parameters);
-        else
-            return new PageKeyCursor<>(root, parameters);
     }
 
     @Override
@@ -581,7 +382,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
             BTreePage right = readLeafPage(page, readStreamPage);
 
             PageReference[] children = { new PageReference(left, k, true), new PageReference(right, k, false) };
-            p = BTreePage.create(this, keys, null, children, new AtomicLong(right.getTotalCount()), 0);
+            p = BTreePage.createNode(this, keys, children, 0);
             newRoot(p);
         } else {
             BTreePage parent = p;

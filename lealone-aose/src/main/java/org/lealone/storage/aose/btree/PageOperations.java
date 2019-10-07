@@ -18,7 +18,6 @@
 package org.lealone.storage.aose.btree;
 
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
@@ -242,8 +241,6 @@ public abstract class PageOperations {
             p.insertLeaf(index, key, value);
             map.setMaxKey(key);
             BTreeMap.addCount.incrementAndGet();
-            // 新增数据时才需要更新父节点的计数器
-            map.pohFactory.getNodePageOperationHandler().handlePageOperation(new UpdateParentCounter(p, key, true));
         }
     }
 
@@ -306,39 +303,6 @@ public abstract class PageOperations {
             Object old = p.getValue(index);
             p.remove(index);
             return old;
-        }
-    }
-
-    public static class UpdateParentCounter implements PageOperation {
-        final BTreePage p;
-        final Object key;
-        final boolean increment;
-
-        public UpdateParentCounter(BTreePage p, Object key, boolean increment) {
-            BTreeMap.addUpdateCounterTaskCount.incrementAndGet();
-            this.p = p;
-            this.key = key;
-            this.increment = increment;
-        }
-
-        @Override
-        public void run() {
-            BTreeMap.runUpdateCounterTaskCount.incrementAndGet();
-            BTreePage p = this.p.map.getRootPage();
-            while (p.isNode()) {
-                // System.out.println(p.getCounter().get());
-                if (increment)
-                    p.getCounter().getAndIncrement();
-                else
-                    p.getCounter().getAndDecrement();
-                int index = p.binarySearch(key);
-                if (index < 0) {
-                    index = -index - 1;
-                } else {
-                    index++;
-                }
-                p = p.getChildPage(index);
-            }
         }
     }
 
@@ -460,11 +424,6 @@ public abstract class PageOperations {
 
     private static TmpNodePage splitPage(BTreePage p) {
         // 注意: 在这里被切割的页面可能是node page或leaf page
-        // 如果是leaf page，那么totalCount和getKeyCount是一样的，
-        // 如果是node page，那么totalCount和getKeyCount是不一样的，
-        // 此时totalCount是归属于当前node page的所有leaf page中的记录总数，
-        // 而getKeyCount只是当前node page中包含的key的个数，也就是它的直接child个数减一。
-        long totalCount = p.getTotalCount();
         int at = p.getKeyCount() / 2;
         Object k = p.getKey(at);
         // 切割前必须copy当前被切割的页面，否则其他读线程可能读到切割过程中不一致的数据
@@ -477,7 +436,7 @@ public abstract class PageOperations {
         PageReference rightRef = new PageReference(rightChildPage, k, false);
         Object[] keys = { k };
         PageReference[] children = { leftRef, rightRef };
-        BTreePage parent = BTreePage.create(p.map, keys, null, children, new AtomicLong(totalCount), 0);
+        BTreePage parent = BTreePage.createNode(p.map, keys, children, 0);
         return new TmpNodePage(parent, old, leftRef, rightRef, k);
     }
 }

@@ -19,7 +19,6 @@ package org.lealone.storage.aose.btree;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
@@ -32,30 +31,20 @@ public class PageReference {
     private static final long REMOTE_PAGE_POS = -1;
 
     static PageReference createRemotePageReference(Object key, boolean first) {
-        return new PageReference(null, REMOTE_PAGE_POS, new AtomicLong(0), key, first);
+        return new PageReference(null, REMOTE_PAGE_POS, key, first);
     }
 
     static PageReference createRemotePageReference() {
-        return new PageReference(null, REMOTE_PAGE_POS, new AtomicLong(0));
+        return new PageReference(null, REMOTE_PAGE_POS);
     }
 
     BTreePage page;
     PageKey pageKey;
     long pos;
-    AtomicLong count;
     List<String> replicationHostIds;
 
-    public PageReference(long pos, AtomicLong count) {
+    public PageReference(long pos) {
         this.pos = pos;
-    }
-
-    public PageReference(BTreePage page, long pos, AtomicLong count) {
-        this.page = page;
-        this.pos = pos;
-        this.count = count;
-        if (page != null) {
-            replicationHostIds = page.getReplicationHostIds();
-        }
     }
 
     public PageReference(BTreePage page, long pos) {
@@ -63,7 +52,6 @@ public class PageReference {
         this.pos = pos;
         if (page != null) {
             replicationHostIds = page.getReplicationHostIds();
-            count = page.getCounter();
         }
     }
 
@@ -71,13 +59,12 @@ public class PageReference {
         this.page = page;
         if (page != null) {
             pos = page.getPos();
-            count = page.getCounter();
             replicationHostIds = page.getReplicationHostIds();
         }
     }
 
-    PageReference(BTreePage page, long pos, AtomicLong count, Object key, boolean first) {
-        this(page, pos, count);
+    PageReference(BTreePage page, long pos, Object key, boolean first) {
+        this(page, pos);
         setPageKey(key, first);
     }
 
@@ -90,18 +77,13 @@ public class PageReference {
         this.page = page;
         if (page != null) {
             pos = page.getPos();
-            count = page.getCounter();
             replicationHostIds = page.getReplicationHostIds();
         }
     }
 
-    public void setCount(AtomicLong count) {
-        this.count = count;
-    }
-
     @Override
     public String toString() {
-        return "PageReference[ pos=" + pos + ", count=" + count + " ]";
+        return "PageReference[ pos=" + pos + "]";
     }
 
     void setPageKey(Object key, boolean first) {

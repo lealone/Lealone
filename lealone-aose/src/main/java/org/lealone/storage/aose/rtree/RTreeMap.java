@@ -8,7 +8,6 @@ package org.lealone.storage.aose.rtree;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.aose.AOStorage;
@@ -122,6 +121,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     }
 
     @Override
+    @Deprecated
     protected synchronized Object remove(BTreePage p, Object key) {
         Object result = null;
         if (p.isLeaf()) {
@@ -198,14 +198,13 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
             if (p.getMemory() > btreeStorage.getPageSplitSize() && p.getKeyCount() > 3) {
                 // only possible if this is the root, else we would have
                 // split earlier (this requires pageSplitSize is fixed)
-                long totalCount = p.getTotalCount();
                 BTreePage split = split(p);
                 Object k1 = getBounds(p);
                 Object k2 = getBounds(split);
                 Object[] keys = { k1, k2 };
                 PageReference[] children = { new PageReference(p), new PageReference(split),
-                        new PageReference(null, 0, new AtomicLong(0)) };
-                p = BTreePage.create(this, keys, null, children, new AtomicLong(totalCount), 0);
+                        new PageReference(null, 0) };
+                p = BTreePage.createNode(this, keys, children, 0);
                 // now p is a node; continues
             }
             add(p, key, value);
@@ -389,16 +388,12 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     }
 
     private BTreePage newPage(boolean leaf) {
-        Object[] values;
-        PageReference[] refs;
         if (leaf) {
-            values = BTreePage.EMPTY_OBJECT_ARRAY;
-            refs = null;
+            return BTreePage.createLeaf(this, BTreePage.EMPTY_OBJECT_ARRAY, BTreePage.EMPTY_OBJECT_ARRAY, 0, 0);
         } else {
-            values = null;
-            refs = new PageReference[] { new PageReference(null, 0, new AtomicLong(0)) };
+            PageReference[] refs = new PageReference[] { new PageReference(null, 0) };
+            return BTreePage.createNode(this, BTreePage.EMPTY_OBJECT_ARRAY, refs, 0);
         }
-        return BTreePage.create(this, BTreePage.EMPTY_OBJECT_ARRAY, values, refs, new AtomicLong(0), 0);
     }
 
     private static void move(BTreePage source, BTreePage target, int sourceIndex) {

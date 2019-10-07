@@ -35,7 +35,6 @@ public interface PageOperation extends AsyncTask {
         PutIfAbsent,
         Replace,
         Remove,
-        UpdateParentCounter,
         AddChild,
         Other;
     }

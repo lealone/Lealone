@@ -20,10 +20,8 @@ package org.lealone.storage.aose.btree;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
@@ -166,24 +164,21 @@ public class BTreePage {
     }
 
     public boolean isEmpty() {
-        return getTotalCount() <= 0;
+        throw ie();
     }
 
     public boolean isNotEmpty() {
-        return getTotalCount() > 0;
+        return !isEmpty();
     }
 
     /**
-     * Get the total number of key-value pairs, including child pages.
-     * 
-     * @return the number of key-value pairs
-     */
+    * Get the total number of key-value pairs, including child pages.
+    *
+    * @return the number of key-value pairs
+    */
+    @Deprecated
     public long getTotalCount() {
         return 0;
-    }
-
-    public AtomicLong getCounter() {
-        return null;
     }
 
     /**
@@ -296,15 +291,7 @@ public class BTreePage {
         throw ie();
     }
 
-    public void setChild(int index, BTreePage c, boolean updateTotalCount) {
-        throw ie();
-    }
-
     public void setChild(int index, PageReference ref) {
-        throw ie();
-    }
-
-    public void setChild(long childCount) {
         throw ie();
     }
 
@@ -489,50 +476,6 @@ public class BTreePage {
         return p;
     }
 
-    @Deprecated
-    void transferTo(WritableByteChannel target, Object firstKey, Object lastKey) throws IOException {
-        BTreePage firstPage = binarySearchLeafPage(firstKey);
-        BTreePage lastPage = binarySearchLeafPage(lastKey);
-
-        BTreeChunk chunk = map.btreeStorage.getChunk(firstPage.pos);
-        long firstPos = firstPage.pos;
-        long lastPos = lastPage.pos;
-
-        map.btreeStorage.readPagePositions(chunk);
-        ArrayList<long[]> pairs = new ArrayList<>();
-        long pos;
-        long pageLength;
-        int index = 0;
-        long[] pair;
-        for (int i = 0, size = chunk.pagePositions.size(); i < size; i++) {
-            pos = chunk.pagePositions.get(i);
-            if (PageUtils.getPageType(pos) == PageUtils.PAGE_TYPE_LEAF) {
-                if (firstPos <= pos && pos <= lastPos) {
-                    pos = PageUtils.getPageOffset(pos);
-                    pageLength = chunk.pageLengths.get(i);
-                    if (index > 0) {
-                        pair = pairs.get(index - 1);
-                        if (pair[0] + pair[1] == pos) {
-                            pair[1] += pageLength;
-                            continue;
-                        }
-                    }
-                    pair = new long[] { pos, pageLength };
-                    pairs.add(pair);
-                    index++;
-                }
-            }
-        }
-
-        long filePos;
-        ByteBuffer buffer;
-        for (long[] p : pairs) {
-            filePos = BTreeStorage.getFilePos((int) p[0]);
-            buffer = chunk.fileStorage.readFully(filePos, (int) p[1]);
-            target.write(buffer);
-        }
-    }
-
     // 返回key所在的leaf page
     BTreePage binarySearchLeafPage(Object key) {
         BTreePage p = this;
@@ -659,23 +602,13 @@ public class BTreePage {
         return replicationHostIds;
     }
 
-    /**
-     * Create a new page. The arrays are not cloned.
-     * 
-     * @param map the map
-     * @param keys the keys
-     * @param values the values
-     * @param children the child page positions
-     * @param totalCount the total number of keys
-     * @param memory the memory used in bytes
-     * @return the page
-     */
-    public static BTreeLocalPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, PageReference[] children,
-            AtomicLong totalCount, int memory) {
-        if (children != null)
-            return BTreeNodePage.create(map, keys, children, totalCount, memory);
-        else
-            return BTreeLeafPage.create(map, keys, values, totalCount, memory);
+    public static BTreeLocalPage createLeaf(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount,
+            int memory) {
+        return BTreeLeafPage.create(map, keys, values, totalCount, memory);
+    }
+
+    public static BTreeLocalPage createNode(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
+        return BTreeNodePage.create(map, keys, children, memory);
     }
 
     static class PrettyPageInfo {

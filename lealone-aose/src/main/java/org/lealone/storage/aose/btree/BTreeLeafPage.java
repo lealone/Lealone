@@ -20,8 +20,6 @@ package org.lealone.storage.aose.btree;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
@@ -41,6 +39,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     private List<String> replicationHostIds;
     private LeafPageMovePlan leafPageMovePlan;
     private ColumnPageReference[] columnPages;
+    private volatile long totalCount;
 
     static class ColumnPageReference {
         BTreeColumnPage page;
@@ -144,8 +143,8 @@ public class BTreeLeafPage extends BTreeLocalPage {
         System.arraycopy(values, 0, aValues, 0, a);
         System.arraycopy(values, a, bValues, 0, b);
         values = aValues;
-        totalCount.set(a);
-        BTreeLeafPage newPage = create(map, bKeys, bValues, new AtomicLong(bKeys.length), 0);
+        totalCount = a;
+        BTreeLeafPage newPage = create(map, bKeys, bValues, bKeys.length, 0);
         newPage.replicationHostIds = replicationHostIds;
         recalculateMemory();
         return newPage;
@@ -170,29 +169,17 @@ public class BTreeLeafPage extends BTreeLocalPage {
         // return newPage;
     }
 
-    static BTreeLeafPage create(BTreeMap<?, ?> map, ConcurrentSkipListMap<Object, Object> hashMap,
-            AtomicLong totalCount, int memory) {
-        BTreeLeafPage p = new BTreeLeafPage(map);
-        // the position is 0
-        p.totalCount = totalCount;
-        if (memory == 0) {
-            p.recalculateMemory();
-        } else {
-            p.addMemory(memory);
-        }
-        return p;
-    }
-
     @Override
+    @Deprecated
     public long getTotalCount() {
         if (ASSERT) {
             long check = keys.length;
-            if (check != totalCount.get()) {
+            if (check != totalCount) {
                 throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Expected: {0} got: {1}", check,
-                        totalCount.get());
+                        totalCount);
             }
         }
-        return totalCount.get();
+        return totalCount;
     }
 
     // 这里的实现虽然会copy数组，但并不是影响性能的地方，因为数组通常较小，System.arraycopy的性能较快，
@@ -208,7 +195,8 @@ public class BTreeLeafPage extends BTreeLocalPage {
         values = newValues;
         keys[index] = key;
         values[index] = value;
-        totalCount.incrementAndGet();
+        totalCount++;
+        map.size.incrementAndGet();// 累加全局计数器
         addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
     }
 
@@ -231,7 +219,8 @@ public class BTreeLeafPage extends BTreeLocalPage {
         Object[] newValues = new Object[keyLength - 1];
         DataUtils.copyExcept(values, newValues, keyLength, index);
         values = newValues;
-        totalCount.decrementAndGet();
+        totalCount--;
+        map.size.decrementAndGet(); // 递减全局计数器
     }
 
     void readRowStorage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
@@ -254,7 +243,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         map.getKeyType().read(buff, keys, keyLength);
         values = new Object[keyLength];
         map.getValueType().read(buff, values, keyLength);
-        totalCount.set(keyLength);
+        totalCount = keyLength;
         replicationHostIds = readReplicationHostIds(buff);
         recalculateMemory();
         oldBuff.limit(oldLimit);
@@ -297,7 +286,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
                 valueType.readColumn(columnPageBuff, values[row], col);
             }
         }
-        totalCount.set(keyLength);
+        totalCount = keyLength;
         recalculateMemory();
         oldBuff.limit(oldLimit);
     }
@@ -347,7 +336,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         // values = page.values;
         // }
         // }
-        totalCount.set(keyLength);
+        totalCount = keyLength;
         recalculateMemory();
         oldBuff.limit(oldLimit);
     }
@@ -412,7 +401,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
                 keys[i] = kt.read(page);
                 values[i] = vt.read(page);
             }
-            p = BTreeLeafPage.create(map, keys, values, new AtomicLong(length), 0);
+            p = BTreeLeafPage.create(map, keys, values, length, 0);
         }
 
         p.replicationHostIds = replicationHostIds;
@@ -651,7 +640,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     private BTreeLeafPage copy(boolean removePage) {
-        BTreeLeafPage newPage = create(map, keys, values, new AtomicLong(totalCount.get()), getMemory());
+        BTreeLeafPage newPage = create(map, keys, values, totalCount, getMemory());
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
         newPage.leafPageMovePlan = leafPageMovePlan;
@@ -674,10 +663,10 @@ public class BTreeLeafPage extends BTreeLocalPage {
      * @return the new page
      */
     static BTreeLeafPage createEmpty(BTreeMap<?, ?> map) {
-        return create(map, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, new AtomicLong(0), PageUtils.PAGE_MEMORY);
+        return create(map, EMPTY_OBJECT_ARRAY, EMPTY_OBJECT_ARRAY, 0, PageUtils.PAGE_MEMORY);
     }
 
-    static BTreeLeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, AtomicLong totalCount, int memory) {
+    static BTreeLeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount, int memory) {
         BTreeLeafPage p = new BTreeLeafPage(map);
         // the position is 0
         p.keys = keys;
@@ -736,5 +725,15 @@ public class BTreeLeafPage extends BTreeLocalPage {
     @Override
     public Object[] getValues() {
         return values;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return totalCount < 1;
+    }
+
+    @Override
+    public boolean isNotEmpty() {
+        return totalCount > 0;
     }
 }

@@ -17,8 +17,6 @@
  */
 package org.lealone.storage.aose.btree;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.type.StorageDataType;
 
@@ -29,13 +27,6 @@ public abstract class BTreeLocalPage extends BTreePage {
      */
     public static final boolean ASSERT = false;
     public static final boolean DEBUG = true;
-
-    /**
-     * The total entry count of this page and all children.
-     */
-    // protected volatile long totalCount;
-
-    protected AtomicLong totalCount = new AtomicLong();
 
     /**
      * The last result of a find operation is cached.
@@ -64,11 +55,6 @@ public abstract class BTreeLocalPage extends BTreePage {
 
     protected BTreeLocalPage(BTreeMap<?, ?> map) {
         super(map);
-    }
-
-    @Override
-    public AtomicLong getCounter() {
-        return new AtomicLong(totalCount.get());
     }
 
     /**
@@ -305,7 +291,7 @@ public abstract class BTreeLocalPage extends BTreePage {
         buff.append(indent).append("type: ").append(isLeaf() ? "leaf" : "node").append('\n');
         buff.append(indent).append("pos: ").append(pos).append('\n');
         buff.append(indent).append("chunkId: ").append(PageUtils.getPageChunkId(pos)).append('\n');
-        buff.append(indent).append("totalCount: ").append(totalCount.get()).append('\n');
+        // buff.append(indent).append("totalCount: ").append(getTotalCount()).append('\n');
         buff.append(indent).append("memory: ").append(memory).append('\n');
         buff.append(indent).append("keyLength: ").append(keys.length).append('\n');
 
