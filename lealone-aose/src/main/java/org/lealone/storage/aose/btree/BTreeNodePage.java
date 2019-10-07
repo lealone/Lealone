@@ -495,7 +495,7 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
-        Set<NetEndpoint> candidateEndpoints = BTreeMap.getCandidateEndpoints(map.db, newEndpoints);
+        Set<NetEndpoint> candidateEndpoints = DistributedBTreeMap.getCandidateEndpoints(map.db, newEndpoints);
         for (int i = 0, len = keys.length; i <= len; i++) {
             if (!children[i].isRemotePage()) {
                 BTreePage p = getChildPage(i);
@@ -511,7 +511,8 @@ public class BTreeNodePage extends BTreeLocalPage {
                         replicationHostIds.toArray(oldEndpoints);
                     }
                     PageKey pk = new PageKey(key, i == 0);
-                    map.replicateOrMovePage(pk, p, this, i, oldEndpoints, false, candidateEndpoints);
+                    ((DistributedBTreeMap<?, ?>) map).replicateOrMovePage(pk, p, this, i, oldEndpoints, false,
+                            candidateEndpoints);
                 }
             }
         }

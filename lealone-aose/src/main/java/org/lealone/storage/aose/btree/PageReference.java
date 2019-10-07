@@ -136,7 +136,7 @@ public class PageReference {
 
         // TODO 支持多节点容错
         String remoteHostId = replicationHostIds.get(0);
-        List<NetEndpoint> replicationEndpoints = BTreeMap.getReplicationEndpoints(map.db,
+        List<NetEndpoint> replicationEndpoints = DistributedBTreeMap.getReplicationEndpoints(map.db,
                 new String[] { remoteHostId });
         Session session = map.db.createInternalSession(true);
         ReplicationSession rs = map.db.createReplicationSession(session, replicationEndpoints);
