@@ -56,6 +56,7 @@ public class BTreeMapTest extends TestBase {
         testRemotePage();
         testLeafPageRemove();
         testAsyncOperations();
+        testAsyncSplit();
     }
 
     private void init() {
@@ -65,6 +66,7 @@ public class BTreeMapTest extends TestBase {
         // pageSplitSize = 32 * 1024;
         storage = AOStorageTest.openStorage(pageSplitSize);
         storagePath = storage.getStoragePath();
+        storage.getPageOperationHandlerFactory().startHandlers();
         openMap();
     }
 
@@ -444,7 +446,6 @@ public class BTreeMapTest extends TestBase {
     }
 
     void testAsyncOperations() {
-        storage.getPageOperationHandlerFactory().startHandlers();
         map.clear();
         map.disableParallel = false;
         int count = 7;
@@ -494,5 +495,26 @@ public class BTreeMapTest extends TestBase {
         }
 
         assertEquals(1, map.size());
+    }
+
+    void testAsyncSplit() {
+        map.clear();
+        map.disableParallel = false;
+        int count = 10000;
+        CountDownLatch latch = new CountDownLatch(count);
+        for (int i = 1; i <= count; i++) {
+            Integer key = i;
+            String value = "value-" + i;
+            map.put(key, value, ar -> {
+                latch.countDown();
+            });
+        }
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        assertEquals(count, map.size());
     }
 }

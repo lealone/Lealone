@@ -104,7 +104,7 @@ public class BTreePage {
         if (isNode())
             handler = map.pohFactory.getNodePageOperationHandler();
         else if (isLeaf())
-            handler = map.pohFactory.getPageOperationHandler(id);
+            handler = map.pohFactory.getPageOperationHandler();
         // if (handler != null)
         // handler.addQueue(id, tasks);
     }
@@ -575,6 +575,21 @@ public class BTreePage {
                 p = p.getChildPage(index);
             }
         }
+    }
+
+    // 只找到key对应的LeafPage就行了，不关心key是否存在
+    public BTreePage gotoLeafPage(Object key) {
+        BTreePage p = this;
+        while (p.isNode()) {
+            int index = p.binarySearch(key);
+            if (index < 0) {
+                index = -index - 1;
+            } else {
+                index++;
+            }
+            p = p.getChildPage(index);
+        }
+        return p;
     }
 
     @Deprecated

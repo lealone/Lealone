@@ -17,12 +17,18 @@
  */
 package org.lealone.test.perf.btree;
 
+import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.DefaultPageOperationHandler;
 import org.lealone.storage.PageOperation;
+import org.lealone.storage.PageOperationHandler;
 import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.aose.btree.BTreeMap;
+import org.lealone.storage.aose.btree.BTreePage;
+import org.lealone.storage.aose.btree.PageReference;
 
 // -Xms512M -Xmx512M -XX:+PrintGCDetails -XX:+PrintGCTimeStamps
 public class AsyncBTreePerfTest extends StorageMapPerfTestBase {
@@ -59,18 +65,86 @@ public class AsyncBTreePerfTest extends StorageMapPerfTestBase {
     }
 
     @Override
-    protected void init() {
-        super.init();
+    protected void beforeRun() {
+        createPageOperationHandlers();
+        super.beforeRun();
+        // printLeafPageOperationHandlerPercent();
+        // printShiftCount(conflictKeys);
     }
 
-    @Override
-    protected void createPageOperationHandlers() {
+    private void createPageOperationHandlers() {
         handlers = new DefaultPageOperationHandler[threadCount];
         for (int i = 0; i < threadCount; i++) {
             handlers[i] = new DefaultPageOperationHandler(i, config);
         }
         PageOperationHandlerFactory f = storage.getPageOperationHandlerFactory();
         f.setLeafPageOperationHandlers(handlers);
+    }
+
+    void printShiftCount(int[] keys) {
+        HashMap<PageOperationHandler, Integer> map = new HashMap<>();
+        for (int key : keys) {
+            BTreePage p = btreeMap.getRootPage().gotoLeafPage(key);
+            PageOperationHandler handler = p.getHandler();
+            Integer count = map.get(handler);
+            if (count == null)
+                count = 1;
+            else
+                count++;
+            map.put(handler, count);
+        }
+
+        System.out.println("key count: " + keys.length);
+        for (HashMap.Entry<PageOperationHandler, Integer> e : map.entrySet()) {
+            String percent = String.format("%#.2f", (e.getValue() * 1.0 / keys.length * 100));
+            System.out.println(e.getKey() + " percent: " + percent + "%");
+        }
+        System.out.println();
+    }
+
+    void printLeafPageOperationHandlerPercent() {
+        BTreePage root = btreeMap.getRootPage();
+        HashMap<PageOperationHandler, Integer> map = new HashMap<>();
+        AtomicLong leafPageCount = new AtomicLong(0);
+        if (root.isLeaf()) {
+            map.put(root.getHandler(), 1);
+            leafPageCount.incrementAndGet();
+        } else {
+            findLeafPage(root, map, leafPageCount);
+        }
+        System.out.println("leaf page count: " + leafPageCount.get());
+        System.out.println("handler factory: " + storage.getPageOperationHandlerFactory().getClass().getSimpleName());
+        for (HashMap.Entry<PageOperationHandler, Integer> e : map.entrySet()) {
+            String percent = String.format("%#.2f", (e.getValue() * 1.0 / leafPageCount.get() * 100));
+            System.out.println(e.getKey() + " percent: " + percent + "%");
+        }
+        System.out.println();
+    }
+
+    private void findLeafPage(BTreePage p, HashMap<PageOperationHandler, Integer> map, AtomicLong leafPageCount) {
+        if (p.isNode()) {
+            for (PageReference ref : p.getChildren()) {
+                BTreePage child = ref.getPage();
+                if (child.isLeaf()) {
+                    PageOperationHandler handler = child.getHandler();
+                    // System.out.println("handler: " + handler);
+                    Integer count = map.get(handler);
+                    if (count == null)
+                        count = 1;
+                    else
+                        count++;
+                    map.put(handler, count);
+                    leafPageCount.incrementAndGet();
+                } else {
+                    findLeafPage(child, map, leafPageCount);
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void init() {
+        super.init();
     }
 
     @Override

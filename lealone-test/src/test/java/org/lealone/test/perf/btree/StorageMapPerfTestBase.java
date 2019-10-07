@@ -58,6 +58,7 @@ public class StorageMapPerfTestBase {
     final AtomicLong endTime = new AtomicLong(0);
     final AtomicLong pendingPageOperations = new AtomicLong(0);
     final HashMap<String, String> config = new HashMap<>();
+    boolean testConflictOnly;
 
     protected void testWrite(int loop) {
         // singleThreadRandomWrite();
@@ -81,7 +82,6 @@ public class StorageMapPerfTestBase {
     // @Test
     public void run() {
         init();
-
         loopCount = 5;
 
         int availableProcessors = Runtime.getRuntime().availableProcessors();
@@ -96,10 +96,21 @@ public class StorageMapPerfTestBase {
 
         threadCount = 100;
         run0();
+
+        // 同样是完成500万次更新操作，
+        // 对于高并发高冲突的场景，只开availableProcessors个线程多循环几次效果更好
+        threadCount = availableProcessors;
+        loopCount = 100 / threadCount;
+        testConflictOnly = true;
+        run0();
     }
 
-    public void run0() {
-        createPageOperationHandlers();
+    private void run0() {
+        beforeRun();
+        loop();
+    }
+
+    protected void beforeRun() {
         map.clear();
         singleThreadSerialWrite();// 先生成初始数据
         // System.out.println("map size: " + map.size());
@@ -107,12 +118,16 @@ public class StorageMapPerfTestBase {
         // singleThreadRandomWrite();
         // multiThreadsRandomRead(0);
         // multiThreadsSerialWrite(0);
+    }
 
+    private void loop() {
         long t1 = System.currentTimeMillis();
         for (int i = 1; i <= loopCount; i++) {
             // map.clear();
-            testWrite(i);
-            testRead(i);
+            if (!testConflictOnly) {
+                testWrite(i);
+                testRead(i);
+            }
             testConflict(i);
 
             System.out.println();
@@ -139,7 +154,7 @@ public class StorageMapPerfTestBase {
 
     protected void init() {
         String factoryType = "RoundRobin";
-        // factoryType = "Random";
+        factoryType = "Random";
         // factoryType = "LoadBalance";
         config.put("page_operation_handler_factory_type", factoryType);
         config.put("page_operation_handler_count", (threadCount + 1) + "");
@@ -155,9 +170,6 @@ public class StorageMapPerfTestBase {
         builder.storagePath(storagePath).compress().reuseSpace().pageSplitSize(pageSplitSize).minFillRate(30);
         storage = builder.openStorage();
         openMap();
-    }
-
-    protected void createPageOperationHandlers() {
     }
 
     protected void openMap() {

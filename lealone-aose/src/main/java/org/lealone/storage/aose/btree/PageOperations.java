@@ -130,16 +130,7 @@ public abstract class PageOperations {
 
         private void binarySearchLeafPage() {
             root = p.map.getRootPage();
-            p = root;
-            while (p.isNode()) {
-                int index = p.binarySearch(key);
-                if (index < 0) {
-                    index = -index - 1;
-                } else {
-                    index++;
-                }
-                p = p.getChildPage(index);
-            }
+            p = root.gotoLeafPage(key);
             searched = true;
         }
 
