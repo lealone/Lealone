@@ -17,18 +17,10 @@
  */
 package org.lealone.storage;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
-import org.lealone.net.NetEndpoint;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 
@@ -102,16 +94,6 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     }
 
     @Override
-    public long getMaxKeyAsLong() {
-        return maxKey.get();
-    }
-
-    @Override
-    public long incrementAndGetMaxKeyAsLong() {
-        return maxKey.incrementAndGet();
-    }
-
-    @Override
     public long getDiskSpaceUsed() {
         return 0;
     }
@@ -121,59 +103,9 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         return 0;
     }
 
-    @Override
-    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
-        throw DbException.getUnsupportedException("transferTo");
-    }
-
-    @Override
-    public void transferFrom(ReadableByteChannel src) throws IOException {
-        throw DbException.getUnsupportedException("transferFrom");
-    }
-
-    @Override
-    public void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
-        throw DbException.getUnsupportedException("addLeafPage");
-    }
-
-    @Override
-    public void removeLeafPage(PageKey pageKey) {
-        throw DbException.getUnsupportedException("removeLeafPage");
-    }
-
-    @Override
-    public LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
-        throw DbException.getUnsupportedException("prepareMoveLeafPage");
-    }
-
-    @Override
-    public List<NetEndpoint> getReplicationEndpoints(Object key) {
-        throw DbException.getUnsupportedException("getReplicationEndpoints");
-    }
-
-    @Override
-    public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
-        throw DbException.getUnsupportedException("put");
-    }
-
-    @Override
-    public Object replicationGet(Session session, Object key) {
-        throw DbException.getUnsupportedException("get");
-    }
-
-    @Override
-    public Object replicationAppend(Session session, Object value, StorageDataType valueType) {
-        throw DbException.getUnsupportedException("append");
-    }
-
     @SuppressWarnings("unchecked")
     @Override
     public StorageMap<Object, Object> getRawMap() {
         return (StorageMap<Object, Object>) this;
-    }
-
-    @Override
-    public void setRootPage(ByteBuffer buff) {
-        throw DbException.getUnsupportedException("setRootPage");
     }
 }

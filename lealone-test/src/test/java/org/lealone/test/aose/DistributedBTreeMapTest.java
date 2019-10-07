@@ -18,9 +18,6 @@
 package org.lealone.test.aose;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,15 +38,14 @@ import org.lealone.storage.aose.btree.PageReference;
 import org.lealone.test.TestBase;
 
 public class DistributedBTreeMapTest extends TestBase {
+
     private AOStorage storage;
     private String storagePath;
-    private BTreeMap<Integer, String> map;
 
     @Test
     public void run() {
         init();
         testGetEndpointToKeyMap();
-        // testTransfer(); //TODO 还有bug
         testRemotePage();
         testLeafPageRemove();
     }
@@ -124,7 +120,7 @@ public class DistributedBTreeMapTest extends TestBase {
         // map.close();
     }
 
-    void testGetEndpointToKeyMap(BTreeMap<Integer, String> map) {
+    void testGetEndpointToKeyMap(DistributedBTreeMap<Integer, String> map) {
         BTreePage root = map.getRootPage();
         Random random = new Random();
         String[] ids = { "a", "b", "c", "d", "e", "f" };
@@ -187,53 +183,6 @@ public class DistributedBTreeMapTest extends TestBase {
         page.setReplicationHostIds(replicationHostIds);
         if (pf != null)
             pf.setReplicationHostIds(replicationHostIds);
-    }
-
-    void testTransfer() {
-        String file = storagePath + File.separator + map.getName() + "TransferTo" + AOStorage.SUFFIX_AO_FILE;
-        deleteFileRecursive(file);
-        testTransferTo(file);
-        testTransferFrom(file);
-    }
-
-    void testTransferTo(String file) {
-        BTreeMap<Integer, String> map = storage.openBTreeMap("transfer_test_1");
-        map.clear();
-        for (int i = 1000; i < 4000; i++) {
-            map.put(i, "value" + i);
-        }
-        map.save();
-
-        try {
-            RandomAccessFile raf = new RandomAccessFile(file, "rw");
-            FileChannel channel = raf.getChannel();
-            int firstKey = 2000;
-            int lastKey = 3000;
-            raf.seek(raf.length());
-            map.transferTo(channel, firstKey, lastKey);
-            raf.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    void testTransferFrom(String file) {
-        DistributedBTreeMap<Integer, String> map = openDistributedBTreeMap("transfer_test_2");
-        map.clear();
-        try {
-            RandomAccessFile raf = new RandomAccessFile(file, "rw");
-            FileChannel channel = raf.getChannel();
-
-            map.transferFrom(channel, 0, raf.length());
-            raf.close();
-
-            // 会传输完整的一个Page，所以如果firstKey是在Page的中间，那么就会多出来前面的记录
-            assertTrue(map.size() >= ((3000 - 2000 + 1)));
-            assertTrue(map.containsKey(2000));
-            assertTrue(map.containsKey(3000));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     void testRemotePage() {

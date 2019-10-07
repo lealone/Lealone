@@ -52,6 +52,7 @@ import org.lealone.net.WritableChannel;
 import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.server.Scheduler.SessionInfo;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.PageKey;
@@ -658,7 +659,8 @@ public class TcpServerConnection extends TransferConnection {
             String mapName = transfer.readString();
             LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(transfer);
 
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
+                    .getStorageMap(mapName);
             leafPageMovePlan = map.prepareMoveLeafPage(leafPageMovePlan);
             writeResponseHeader(transfer, session, id);
             leafPageMovePlan.serialize(transfer);
@@ -670,7 +672,8 @@ public class TcpServerConnection extends TransferConnection {
             PageKey pageKey = transfer.readPageKey();
             ByteBuffer page = transfer.readByteBuffer();
             boolean addPage = transfer.readBoolean();
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
+                    .getStorageMap(mapName);
             ConcurrentUtils.submitTask("Add Leaf Page", () -> {
                 map.addLeafPage(pageKey, page, addPage);
             });
@@ -695,7 +698,8 @@ public class TcpServerConnection extends TransferConnection {
         case Session.COMMAND_STORAGE_READ_PAGE: {
             String mapName = transfer.readString();
             PageKey pageKey = transfer.readPageKey();
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
+                    .getStorageMap(mapName);
             ByteBuffer page = map.readPage(pageKey);
             writeResponseHeader(transfer, session, id);
             transfer.writeByteBuffer(page);
@@ -706,7 +710,8 @@ public class TcpServerConnection extends TransferConnection {
             String mapName = transfer.readString();
             PageKey pageKey = transfer.readPageKey();
 
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
+                    .getStorageMap(mapName);
             map.removeLeafPage(pageKey);
             writeResponseHeader(transfer, session, id);
             transfer.flush();

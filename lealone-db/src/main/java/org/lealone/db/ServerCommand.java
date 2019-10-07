@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.ValueLong;
+import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
@@ -87,13 +88,15 @@ public class ServerCommand implements StorageCommand {
 
     @Override
     public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
+                .getStorageMap(mapName);
         return map.prepareMoveLeafPage(leafPageMovePlan);
     }
 
     @Override
     public void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
+                .getStorageMap(mapName);
         map.addLeafPage(pageKey, page, addPage);
     }
 

@@ -34,6 +34,7 @@ import org.lealone.db.value.ValueString;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLParser;
+import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
@@ -1362,7 +1363,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         int size = rootPages.getInt();
         for (int i = 0; i < size; i++) {
             String mapName = ValueString.type.read(rootPages);
-            StorageMap<?, ?> map = database.getStorageMap(mapName);
+            DistributedStorageMap<?, ?> map = (DistributedStorageMap<?, ?>) database.getStorageMap(mapName);
             map.setRootPage(rootPages);
             if (i == 0) {
                 database = database.copy();

@@ -26,6 +26,7 @@ import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.test.TestBase;
 
 public class BTreeMapTest extends TestBase {
+
     private AOStorage storage;
     private BTreeMap<Integer, String> map;
 
@@ -52,22 +53,6 @@ public class BTreeMapTest extends TestBase {
     private void openMap() {
         if (map == null || map.isClosed())
             map = storage.openBTreeMap("BTreeMapTest");
-    }
-
-    void testSplit() {
-        openMap();
-        map.clear();
-        for (int i = 1; i <= 40; i += 2) {
-            map.put(i, "value" + i);
-        }
-
-        map.save();
-
-        for (int i = 1; i <= 40; i += 2) {
-            map.remove(i);
-        }
-
-        map.printPage();
     }
 
     void testMapOperations() {
@@ -180,6 +165,22 @@ public class BTreeMapTest extends TestBase {
             map.put(i, "value" + i);
 
         map.save();
+    }
+
+    void testSplit() {
+        openMap();
+        map.clear();
+        for (int i = 1; i <= 40; i += 2) {
+            map.put(i, "value" + i);
+        }
+
+        map.save();
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.remove(i);
+        }
+
+        map.printPage();
     }
 
     void testAsyncOperations() {

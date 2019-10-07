@@ -15,15 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage.replication;
+package org.lealone.storage;
 
+import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.type.StorageDataType;
 
-public interface ReplicationMap {
+public interface DistributedStorageMap<K, V> extends StorageMap<K, V> {
 
     List<NetEndpoint> getReplicationEndpoints(Object key);
 
@@ -33,4 +36,19 @@ public interface ReplicationMap {
 
     Object replicationAppend(Session session, Object value, StorageDataType valueType);
 
+    void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage);
+
+    void removeLeafPage(PageKey pageKey);
+
+    LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan);
+
+    public default ByteBuffer readPage(PageKey pageKey) {
+        throw DbException.getUnsupportedException("readPage");
+    }
+
+    void setRootPage(ByteBuffer buff);
+
+    default Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
+        return null;
+    }
 }

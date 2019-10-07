@@ -28,7 +28,7 @@ import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.net.NetEndpoint;
-import org.lealone.storage.DelegatedStorageMap;
+import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
@@ -38,15 +38,17 @@ import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 
-public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements TransactionMap<K, V> {
+public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     static class AMReplicationMap<K, V> extends AMTransactionMap<K, V> {
 
+        private final DistributedStorageMap<K, TransactionalValue> map;
         private final Session session;
         private final StorageDataType valueType;
 
         AMReplicationMap(AMTransaction transaction, StorageMap<K, TransactionalValue> map) {
             super(transaction, map);
+            this.map = (DistributedStorageMap<K, TransactionalValue>) map;
             session = transaction.getSession();
             valueType = getValueType();
         }
@@ -73,9 +75,7 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     private final AMTransaction transaction;
     protected final StorageMap<K, TransactionalValue> map;
 
-    @SuppressWarnings("unchecked")
     public AMTransactionMap(AMTransaction transaction, StorageMap<K, TransactionalValue> map) {
-        super((StorageMap<K, V>) map);
         this.transaction = transaction;
         this.map = map;
     }
@@ -534,11 +534,6 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     }
 
     @Override
-    public boolean areValuesEqual(Object a, Object b) {
-        return map.areValuesEqual(a, b);
-    }
-
-    @Override
     public int size() {
         long size = sizeAsLong();
         return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
@@ -621,11 +616,6 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
     }
 
     @Override
-    public boolean isInMemory() {
-        return map.isInMemory();
-    }
-
-    @Override
     public StorageMapCursor<K, V> cursor(K from) {
         final Iterator<Entry<K, V>> i = entryIterator(from);
         return new StorageMapCursor<K, V>() {
@@ -657,15 +647,6 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
                 return e.getValue();
             }
         };
-    }
-
-    /**
-     * Clear the map.
-     */
-    @Override
-    public void clear() {
-        // TODO truncate transactionally?
-        map.clear();
     }
 
     @Override
@@ -857,4 +838,72 @@ public class AMTransactionMap<K, V> extends DelegatedStorageMap<K, V> implements
             }
         };
     }
+
+    ///////////////////////// 以下是直接委派的StorageMap接口API /////////////////////////
+    @Override
+    public void clear() {
+        // TODO 可以rollback吗?
+        map.clear();
+    }
+
+    @Override
+    public String getName() {
+        return map.getName();
+    }
+
+    @Override
+    public StorageDataType getKeyType() {
+        return map.getKeyType();
+    }
+
+    @Override
+    public Storage getStorage() {
+        return map.getStorage();
+    }
+
+    @Override
+    public boolean areValuesEqual(Object a, Object b) {
+        return map.areValuesEqual(a, b);
+    }
+
+    @Override
+    public boolean isInMemory() {
+        return map.isInMemory();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return map.isClosed();
+    }
+
+    @Override
+    public void close() {
+        map.close();
+    }
+
+    @Override
+    public void save() {
+        map.save();
+    }
+
+    @Override
+    public void setMaxKey(Object key) {
+        map.setMaxKey(key);
+    }
+
+    @Override
+    public long getDiskSpaceUsed() {
+        return map.getDiskSpaceUsed();
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        return map.getMemorySpaceUsed();
+    }
+
+    @Override
+    public StorageMap<Object, Object> getRawMap() {
+        return map.getRawMap();
+    }
+
 }

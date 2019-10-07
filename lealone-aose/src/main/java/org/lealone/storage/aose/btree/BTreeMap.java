@@ -60,9 +60,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     protected IDatabase db;
     protected PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
-    /**
-     * The current root page (may not be null).
-     */
+    // btree的root page，最开始是一个leaf page，随时都会指向新的page
     protected volatile BTreePage root;
 
     @SuppressWarnings("unchecked")
@@ -99,73 +97,34 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public V get(K key) {
-        return get(key, true);
+        return binarySearch(key, true);
     }
 
-    @SuppressWarnings("unchecked")
     public V get(K key, boolean allColumns) {
-        return (V) binarySearch(root, key, allColumns);
+        return binarySearch(key, allColumns);
     }
 
     public V get(K key, int columnIndex) {
-        return get(key, new int[] { columnIndex });
+        return binarySearch(key, new int[] { columnIndex });
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public V get(K key, int[] columnIndexes) {
-        return (V) binarySearch(root, key, columnIndexes);
+        return binarySearch(key, columnIndexes);
     }
 
-    /**
-     * Get the value for the given key, or null if not found.
-     * 
-     * @param p the page
-     * @param key the key
-     * @return the value or null
-     */
-    private Object binarySearch(BTreePage p, Object key, boolean allColumns) {
-        while (true) {
-            int index = p.binarySearch(key);
-            if (p.isLeaf()) {
-                return index >= 0 ? p.getValue(index, allColumns) : null;
-            } else {
-                if (index < 0) {
-                    index = -index - 1;
-                } else {
-                    index++;
-                }
-                p = p.getChildPage(index);
-            }
-        }
-        // 递归版本
-        // int index = p.binarySearch(key);
-        // if (p.isNode()) {
-        // if (index < 0) {
-        // index = -index - 1;
-        // } else {
-        // index++;
-        // }
-        // p = p.getChildPage(index);
-        // return binarySearch(p, key);
-        // }
-        // return index >= 0 ? p.getValue(index) : null;
+    @SuppressWarnings("unchecked")
+    private V binarySearch(Object key, boolean allColumns) {
+        BTreePage p = root.gotoLeafPage(key);
+        int index = p.binarySearch(key);
+        return index >= 0 ? (V) p.getValue(index, allColumns) : null;
     }
 
-    private Object binarySearch(BTreePage p, Object key, int[] columnIndexes) {
-        while (true) {
-            int index = p.binarySearch(key);
-            if (p.isLeaf()) {
-                return index >= 0 ? p.getValue(index, columnIndexes) : null;
-            } else {
-                if (index < 0) {
-                    index = -index - 1;
-                } else {
-                    index++;
-                }
-                p = p.getChildPage(index);
-            }
-        }
+    @SuppressWarnings("unchecked")
+    private V binarySearch(Object key, int[] columnIndexes) {
+        BTreePage p = root.gotoLeafPage(key);
+        int index = p.binarySearch(key);
+        return index >= 0 ? (V) p.getValue(index, columnIndexes) : null;
     }
 
     @Override
@@ -198,7 +157,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public static final Object REDIRECT = new Object();
 
     synchronized Object putIfAbsent(Object key, Object value, BTreePage oldRoot) {
-        Object old = binarySearch(root, key, true);
+        Object old = binarySearch(key, true);
         if (old == null) {
             old = put(key, value, oldRoot);
         }
@@ -382,13 +341,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return result;
     }
 
-    /**
-     * Remove a key-value pair.
-     * 
-     * @param p the page (may not be null)
-     * @param key the key
-     * @return the old value, or null if the key did not exist
-     */
     protected Object remove(BTreePage p, Object key) {
         int index = p.binarySearch(key);
         Object result = null;
@@ -596,7 +548,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void remove() {
+    public synchronized void remove() {
         btreeStorage.remove();
         closeMap();
     }
@@ -607,7 +559,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void close() {
+    public synchronized void close() {
         closeMap();
         btreeStorage.close();
     }
@@ -691,6 +643,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         this.pageStorageMode = pageStorageMode;
     }
 
+    public BTreePage gotoLeafPage(Object key) {
+        return root.gotoLeafPage(key);
+    }
+
+    //////////////////// 以下是异步API的实现////////////////////////////////
     @Override
     public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
         Get<K, V> get = new Get<>(root, key, handler);
@@ -732,10 +689,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         K key = (K) ValueLong.get(maxKey.incrementAndGet());
         put(key, value, handler);
         return key;
-    }
-
-    public BTreePage gotoLeafPage(Object key) {
-        return root.gotoLeafPage(key);
     }
 
     public boolean disableParallel;

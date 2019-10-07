@@ -20,7 +20,6 @@ package org.lealone.storage.aose.btree;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -39,6 +38,7 @@ import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
+import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
@@ -52,7 +52,7 @@ import org.lealone.storage.type.StorageDataType;
 /**
  * 在单机版BTree的基础上支持复制和sharding
  */
-public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> {
+public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements DistributedStorageMap<K, V> {
 
     protected final boolean isShardingMode;
     private RunMode runMode;
@@ -532,74 +532,6 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> {
         return "DistributedBTree";
     }
 
-    @Deprecated
-    public void transferToOld(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
-        if (firstKey == null)
-            firstKey = firstKey();
-        else
-            firstKey = ceilingKey(firstKey);
-
-        if (firstKey == null)
-            return;
-
-        if (lastKey == null)
-            lastKey = lastKey();
-        else
-            lastKey = floorKey(lastKey);
-
-        if (keyType.compare(firstKey, lastKey) > 0)
-            return;
-
-        BTreePage p = root;
-        if (p.getTotalCount() > 0) {
-            p.transferTo(target, firstKey, lastKey);
-        }
-    }
-
-    @Override
-    public void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException {
-        ArrayList<PageKey> pageKeys = new ArrayList<>();
-        getEndpointToPageKeyMap(null, firstKey, lastKey, pageKeys);
-
-        int size = pageKeys.size();
-        for (int i = 0; i < size; i++) {
-            PageKey pk = pageKeys.get(i);
-            long pos = pk.pos;
-            try (DataBuffer buff = DataBuffer.create()) {
-                keyType.write(buff, pk.key);
-                buff.put((byte) (pk.first ? 1 : 0));
-                ByteBuffer pageBuff = null;
-                if (pos > 0) {
-                    pageBuff = readPageBuff(pos);
-                    int start = pageBuff.position();
-                    int pageLength = pageBuff.getInt();
-                    pageBuff.position(start);
-                    pageBuff.limit(start + pageLength);
-                } else {
-                    BTreePage p = root.binarySearchLeafPage(pk.key);
-                    p.replicatePage(buff, null);
-                }
-
-                ByteBuffer dataBuff = buff.getAndFlipBuffer();
-                target.write(dataBuff);
-                if (pageBuff != null)
-                    target.write(pageBuff);
-            }
-        }
-    }
-
-    private ByteBuffer readPageBuff(long pos) {
-        BTreeChunk chunk = btreeStorage.getChunk(pos);
-        long filePos = BTreeStorage.getFilePos(PageUtils.getPageOffset(pos));
-        long maxPos = chunk.blockCount * BTreeStorage.BLOCK_SIZE;
-        int maxLength = PageUtils.getPageMaxLength(pos);
-        return BTreePage.readPageBuff(chunk.fileStorage, maxLength, filePos, maxPos);
-    }
-
-    @Override
-    public void transferFrom(ReadableByteChannel src) throws IOException {
-    }
-
     // 1.root为空时怎么处理；2.不为空时怎么处理
     public void transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
         ByteBuffer buff = ByteBuffer.allocateDirect((int) count);
@@ -615,12 +547,6 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> {
             // pos += pageLength;
             // buff.position(pos);
         }
-    }
-
-    @Deprecated
-    public void transferFromOld(ReadableByteChannel src, long position, long count) throws IOException {
-        BTreePage p = root;
-        p.transferFrom(src, position, count);
     }
 
     @Override

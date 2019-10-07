@@ -17,21 +17,12 @@
  */
 package org.lealone.storage;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.WritableByteChannel;
-import java.util.List;
-import java.util.Map;
-
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.storage.replication.ReplicationMap;
 import org.lealone.storage.type.StorageDataType;
 
-public interface StorageMap<K, V> extends ReplicationMap {
+public interface StorageMap<K, V> {
 
     /**
      * Get the map name.
@@ -206,7 +197,6 @@ public interface StorageMap<K, V> extends ReplicationMap {
      * @param from the first key to return
      * @return the cursor
      */
-
     StorageMapCursor<K, V> cursor(K from);
 
     default StorageMapCursor<K, V> cursor() {
@@ -247,40 +237,15 @@ public interface StorageMap<K, V> extends ReplicationMap {
 
     K append(V value);
 
-    default void setMaxKey(Object key) {
-    }
-
-    default long getMaxKeyAsLong() {
-        return 0;
-    }
-
-    long incrementAndGetMaxKeyAsLong();
+    void setMaxKey(Object key);
 
     long getDiskSpaceUsed();
 
     long getMemorySpaceUsed();
 
-    void transferTo(WritableByteChannel target, K firstKey, K lastKey) throws IOException;
-
-    void transferFrom(ReadableByteChannel src) throws IOException;
-
-    void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage);
-
-    void removeLeafPage(PageKey pageKey);
-
-    LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan);
-
     StorageMap<Object, Object> getRawMap();
 
-    public default ByteBuffer readPage(PageKey pageKey) {
-        throw DbException.getUnsupportedException("readPage");
-    }
-
-    void setRootPage(ByteBuffer buff);
-
-    default Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
-        return null;
-    }
+    //////////////////// 以下是异步API////////////////////////////////
 
     default void get(K key, AsyncHandler<AsyncResult<V>> handler) {
         throw DbException.getUnsupportedException("async get");
