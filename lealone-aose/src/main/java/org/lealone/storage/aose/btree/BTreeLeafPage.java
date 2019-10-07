@@ -1,13 +1,24 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0, and the
- * EPL 1.0 (http://h2database.com/html/license.html). Initial Developer: H2
- * Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.storage.aose.btree;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -18,12 +29,6 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.type.StorageDataType;
 
-/**
- * A leaf page.
- * 
- * @author H2 Group
- * @author zhh
- */
 public class BTreeLeafPage extends BTreeLocalPage {
 
     /**
@@ -126,99 +131,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         return old;
     }
 
-    // ConcurrentSkipListMap版本
-    BTreePage splitRoot() {
-        int at = size / 2;
-        int a = at, b = size - a;
-        ConcurrentSkipListMap<Object, Object> leftMap = new ConcurrentSkipListMap<>();
-        int count = 0;
-        Object splitKey = null;
-        for (Entry<Object, Object> e : hashMap.entrySet()) {
-            Object key = e.getKey();
-            if (++count > at) {
-                splitKey = key;
-                break;
-            }
-            leftMap.put(key, e.getValue());
-            hashMap.remove(key);
-        }
-        AtomicLong rootTotalCount = new AtomicLong(totalCount.get());
-        totalCount.set(a);
-        size = a;
-        BTreeLeafPage newPage = create(map, hashMap, new AtomicLong(b), 0);
-        newPage.replicationHostIds = replicationHostIds;
-        this.hashMap = leftMap;
-        recalculateMemory();
-
-        Object[] keys = { splitKey };
-        PageReference[] children = { new PageReference(this, splitKey, true),
-                new PageReference(newPage, splitKey, false) };
-        BTreePage p = BTreePage.create(this.map, keys, null, children, rootTotalCount, 0);
-        return p;
-    }
-
-    // BTreePage splitRoot() {
-    // int at = size / 2;
-    // int a = at, b = size - a;
-    // TreeMap<Object, Object> treeMap = new TreeMap<>(hashMap);
-    // HashMap<Object, Object> leftMap = new HashMap<>(b);
-    // int count = 0;
-    // Object splitKey = null;
-    // for (Entry<Object, Object> e : treeMap.entrySet()) {
-    // Object key = e.getKey();
-    // if (++count > at) {
-    // splitKey = key;
-    // break;
-    // }
-    // leftMap.put(key, e.getValue());
-    // hashMap.remove(key);
-    // }
-    // long rootTotalCount = totalCount;
-    // totalCount = a;
-    // size = a;
-    // BTreeLeafPage newPage = create(map, hashMap, b, 0);
-    // newPage.replicationHostIds = replicationHostIds;
-    // this.hashMap = leftMap;
-    // recalculateMemory();
-    //
-    // Object[] keys = { splitKey };
-    // PageReference[] children = { new PageReference(this, getPos(), size, splitKey, true),
-    // new PageReference(newPage, newPage.getPos(), newPage.getTotalCount(), splitKey, false) };
-    // BTreePage p = BTreePage.create(this.map, keys, null, children, rootTotalCount, 0);
-    // return p;
-    // }
-
-    // BTreePage splitRoot() {
-    // int at = size / 2;
-    // int a = at, b = size - a;
-    // TreeMap<Object, Object> treeMap = new TreeMap<>(hashMap);
-    // TreeMap<Object, Object> leftMap = new TreeMap<>();
-    // int count = 0;
-    // Object splitKey = null;
-    // for (Entry<Object, Object> e : treeMap.entrySet()) {
-    // Object key = e.getKey();
-    // if (++count > at) {
-    // splitKey = key;
-    // break;
-    // }
-    // leftMap.put(key, e.getValue());
-    // hashMap.remove(key);
-    // }
-    // long rootTotalCount = totalCount;
-    // totalCount = a;
-    // size = a;
-    // BTreeLeafPage newPage = create(map, hashMap, b, 0);
-    // newPage.replicationHostIds = replicationHostIds;
-    // this.hashMap = leftMap;
-    // recalculateMemory();
-    //
-    // Object[] keys = { splitKey };
-    // PageReference[] children = { new PageReference(this, getPos(), size, splitKey, true),
-    // new PageReference(newPage, newPage.getPos(), newPage.getTotalCount(), splitKey, false) };
-    // BTreePage p = BTreePage.create(this.map, keys, null, children, rootTotalCount, 0);
-    // return p;
-    // }
-
     @Override
     BTreeLeafPage split(int at) { // 小于split key的放在左边，大于等于split key放在右边
         int a = at, b = keys.length - a;
@@ -256,154 +168,13 @@ public class BTreeLeafPage extends BTreeLocalPage {
         // newPage.length = bValues.length;
         // recalculateMemory();
         // return newPage;
-
-        // int a = at, b = size - a;
-        // TreeMap<Object, Object> treeMap = new TreeMap<>(hashMap);
-        // HashMap<Object, Object> leftMap = new HashMap<>(b);
-        // int count = 0;
-        // for (Entry<Object, Object> e : treeMap.entrySet()) {
-        // leftMap.put(e.getKey(), e.getValue());
-        // hashMap.remove(e.getKey());
-        // if (++count > at)
-        // break;
-        // }
-        //
-        // totalCount = a;
-        // size = a;
-        // BTreeLeafPage newPage = create(map, hashMap, b, 0);
-        // newPage.replicationHostIds = replicationHostIds;
-        // // this.hashMap = leftMap;
-        // recalculateMemory();
-        // return newPage;
     }
-
-    // Object[] split() { // 小于split key的放在左边，大于等于split key放在右边
-    //
-    // // int a = at, b = keys.length - a;
-    // // Object[] aKeys = new Object[a];
-    // // Object[] bKeys = new Object[b];
-    // // System.arraycopy(keys, 0, aKeys, 0, a);
-    // // System.arraycopy(keys, a, bKeys, 0, b);
-    // // keys = aKeys;
-    // // Object[] aValues = new Object[a];
-    // // Object[] bValues = new Object[b];
-    // // System.arraycopy(values, 0, aValues, 0, a);
-    // // System.arraycopy(values, a, bValues, 0, b);
-    // // values = aValues;
-    // // totalCount = a;
-    // // BTreeLeafPage newPage = create(map, bKeys, bValues, bKeys.length, 0);
-    // // newPage.replicationHostIds = replicationHostIds;
-    // // recalculateMemory();
-    // // return newPage;
-    //
-    // // int a = at, b = size - a;
-    // // // Object[] aKeys = new Object[a];
-    // // Object[] bKeys = new Object[b + initLength]; // 预分配空间
-    // // // System.arraycopy(keys, 0, aKeys, 0, a);
-    // // System.arraycopy(keys, a, bKeys, 0, b);
-    // // // keys = aKeys;
-    // // // Object[] aValues = new Object[a];
-    // // Object[] bValues = new Object[b + initLength];
-    // // // System.arraycopy(values, 0, aValues, 0, a);
-    // // System.arraycopy(values, a, bValues, 0, b);
-    // // // values = aValues;
-    // // totalCount = a;
-    // // size = a;
-    // // BTreeLeafPage newPage = create(map, bKeys, bValues, b, 0);
-    // // newPage.replicationHostIds = replicationHostIds;
-    // // newPage.length = bValues.length;
-    // // recalculateMemory();
-    // // return newPage;
-    //
-    // int at = size / 2;
-    // int a = at, b = size - a;
-    // TreeMap<Object, Object> treeMap = new TreeMap<>(hashMap);
-    // HashMap<Object, Object> leftMap = new HashMap<>(b);
-    // int count = 0;
-    // Object splitKey = null;
-    // for (Entry<Object, Object> e : treeMap.entrySet()) {
-    // Object key = e.getKey();
-    // if (++count > at) {
-    // splitKey = key;
-    // break;
-    // }
-    // leftMap.put(key, e.getValue());
-    // hashMap.remove(key);
-    // }
-    // totalCount = a;
-    // size = a;
-    // BTreeLeafPage newPage = create(map, hashMap, b, 0);
-    // newPage.replicationHostIds = replicationHostIds;
-    // this.hashMap = leftMap;
-    // recalculateMemory();
-    // return new Object[] { newPage, splitKey };
-    // }
-
-    // ConcurrentSkipListMap版本
-    Object[] split() { // 小于split key的放在左边，大于等于split key放在右边
-        int at = size / 2;
-        int a = at, b = size - a;
-        ConcurrentSkipListMap<Object, Object> leftMap = new ConcurrentSkipListMap<>();
-        int count = 0;
-        Object splitKey = null;
-        for (Entry<Object, Object> e : hashMap.entrySet()) {
-            Object key = e.getKey();
-            if (++count > at) {
-                splitKey = key;
-                break;
-            }
-            leftMap.put(key, e.getValue());
-            hashMap.remove(key);
-        }
-        totalCount.set(a);
-        size = a;
-        BTreeLeafPage newPage = create(map, hashMap, new AtomicLong(b), 0);
-        newPage.replicationHostIds = replicationHostIds;
-        this.hashMap = leftMap;
-        recalculateMemory();
-        return new Object[] { newPage, splitKey };
-    }
-
-    // Object[] split() { // 小于split key的放在左边，大于等于split key放在右边
-    //
-    // int at = size / 2;
-    // int a = at, b = size - a;
-    // // subMap和tailMap更慢
-    // // TreeMap<Object, Object> treeMap = new TreeMap<>(hashMap);
-    // TreeMap<Object, Object> rightMap = new TreeMap<>();
-    // TreeMap<Object, Object> leftMap = new TreeMap<>();
-    // int count = 0;
-    // Object splitKey = null;
-    // for (Entry<Object, Object> e : hashMap.entrySet()) {
-    // Object key = e.getKey();
-    // if (splitKey == null) {
-    // if (++count > at) {
-    // splitKey = key;
-    // rightMap.put(key, e.getValue());
-    // continue;
-    // // break;
-    // }
-    // leftMap.put(key, e.getValue());
-    // } else
-    // rightMap.put(key, e.getValue());
-    // }
-    // totalCount = a;
-    // size = a;
-    // BTreeLeafPage newPage = create(map, rightMap, b, 0);
-    // newPage.replicationHostIds = replicationHostIds;
-    // this.hashMap = leftMap;
-    // recalculateMemory();
-    // return new Object[] { newPage, splitKey };
-    // }
 
     static BTreeLeafPage create(BTreeMap<?, ?> map, ConcurrentSkipListMap<Object, Object> hashMap,
             AtomicLong totalCount, int memory) {
         BTreeLeafPage p = new BTreeLeafPage(map);
         // the position is 0
-        p.hashMap = hashMap;
         p.totalCount = totalCount;
-        p.size = (int) totalCount.get();
-        p.length = p.size;
         if (memory == 0) {
             p.recalculateMemory();
         } else {
@@ -424,103 +195,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         return totalCount.get();
     }
 
-    int initLength = 2;
-    int length;
-
-    // @Override
-    // public void insertLeaf(int index, Object key, Object value) {
-    // int len = keys.length + 1;
-    // Object[] newKeys = new Object[len];
-    // DataUtils.copyWithGap(keys, newKeys, len - 1, index);
-    // keys = newKeys;
-    // Object[] newValues = new Object[len];
-    // DataUtils.copyWithGap(values, newValues, len - 1, index);
-    // values = newValues;
-    // keys[index] = key;
-    // values[index] = value;
-    // totalCount++;
-    // addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
-    // size++;
-    //
-    // // if (size >= length) {
-    // // int newLength = length < initLength ? initLength : length + length / 2;
-    // // // keys = Arrays.copyOf(keys, newLength);
-    // // // values = Arrays.copyOf(values, newLength);
-    // // Object[] keys2 = new Object[newLength];
-    // // System.arraycopy(keys, 0, keys2, 0, length);
-    // // keys = keys2;
-    // //
-    // // Object[] values2 = new Object[newLength];
-    // // System.arraycopy(values, 0, values2, 0, length);
-    // // values = values2;
-    // // length = newLength;
-    // // }
-    // // if (size > 0 && index != size) {
-    // // System.arraycopy(keys, index, keys, index + 1, size - index);
-    // // System.arraycopy(values, index, values, index + 1, size - index);
-    // // }
-    // // keys[index] = key;
-    // // values[index] = value;
-    // // totalCount++;
-    // // size++;
-    // // addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
-    // }
-
-    // @Override
-    // boolean needSplit() {
-    // return memory > map.btreeStorage.getPageSplitSize() && size > 1;
-    // }
-    //
-    // @Override
-    // public int getKeyCount() {
-    // return size;
-    // }
-    //
-    // @Override
-    // public int binarySearch(Object key) {
-    // int low = 0, high = size - 1;
-    // // the cached index minus one, so that
-    // // for the first time (when cachedCompare is 0),
-    // // the default value is used
-    // int x = cachedCompare - 1;
-    // if (x < 0 || x > high) {
-    // x = high >>> 1;
-    // }
-    // Object[] k = keys;
-    // StorageDataType keyType = map.getKeyType();
-    // while (low <= high) {
-    // int compare = keyType.compare(key, k[x]);
-    // if (compare > 0) {
-    // low = x + 1;
-    // } else if (compare < 0) {
-    // high = x - 1;
-    // } else {
-    // cachedCompare = x + 1;
-    // return x;
-    // }
-    // x = (low + high) >>> 1;
-    // }
-    // cachedCompare = low;
-    // return -(low + 1);
-    // }
-
-    // HashMap<Object, Object> hashMap = new HashMap<>();
-    // TreeMap<Object, Object> hashMap = new TreeMap<>();
-    ConcurrentSkipListMap<Object, Object> hashMap = new ConcurrentSkipListMap<>();
-
-    public Object put(Object key, Object value) {
-        Object old = hashMap.put(key, value);
-        StorageDataType valueType = map.getValueType();
-        if (old == null) {
-            size++;
-            totalCount.incrementAndGet();
-            addMemory(map.getKeyType().getMemory(key) + valueType.getMemory(value));
-        } else {
-            addMemory(valueType.getMemory(value) - valueType.getMemory(old));
-        }
-        return old;
-    }
-
     // 这里的实现虽然会copy数组，但并不是影响性能的地方，因为数组通常较小，System.arraycopy的性能较快，
     // 给数组预分配额外的空间能提升的性能并不大，已经测过
     @Override
@@ -535,32 +209,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         keys[index] = key;
         values[index] = value;
         totalCount.incrementAndGet();
-        size++;
         addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
-        // hashMap.put(key, value);
-
-        // if (size >= length) {
-        // int newLength = length < initLength ? initLength : length + length / 2;
-        // // keys = Arrays.copyOf(keys, newLength);
-        // // values = Arrays.copyOf(values, newLength);
-        // Object[] keys2 = new Object[newLength];
-        // System.arraycopy(keys, 0, keys2, 0, length);
-        // keys = keys2;
-        //
-        // Object[] values2 = new Object[newLength];
-        // System.arraycopy(values, 0, values2, 0, length);
-        // values = values2;
-        // length = newLength;
-        // }
-        // if (size > 0 && index != size) {
-        // System.arraycopy(keys, index, keys, index + 1, size - index);
-        // System.arraycopy(values, index, values, index + 1, size - index);
-        // }
-        // keys[index] = key;
-        // values[index] = value;
-        // totalCount++;
-        // size++;
-        // addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
     }
 
     @Override
@@ -1006,8 +655,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
         newPage.leafPageMovePlan = leafPageMovePlan;
-        newPage.hashMap = hashMap;
-        newPage.size = size;
         if (removePage) {
             // mark the old as deleted
             removePage();
@@ -1036,8 +683,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         p.keys = keys;
         p.values = values;
         p.totalCount = totalCount;
-        p.size = (int) totalCount.get();
-        p.length = p.size;
         if (memory == 0) {
             p.recalculateMemory();
         } else {

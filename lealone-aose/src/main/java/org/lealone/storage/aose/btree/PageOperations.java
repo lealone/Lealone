@@ -28,6 +28,8 @@ import org.lealone.storage.PageOperationHandler;
 
 public abstract class PageOperations {
 
+    public static final boolean ASSERT = false;
+
     private PageOperations() {
     }
 
@@ -108,16 +110,14 @@ public abstract class PageOperations {
     }
 
     public static class Put<K, V, R> implements PageOperation {
-        BTreePage root;
-        BTreePage p;
+        final BTreeMap<K, V> map;
         final K key;
         final V value;
         final AsyncHandler<AsyncResult<R>> asyncResultHandler;
-        boolean searched;
+        BTreePage p;
 
-        public Put(BTreePage p, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
-            this.root = p.map.root;
-            this.p = p;
+        public Put(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
+            this.map = map;
             this.key = key;
             this.value = value;
             this.asyncResultHandler = asyncResultHandler;
@@ -126,12 +126,6 @@ public abstract class PageOperations {
         @Override
         public PageOperationType getType() {
             return PageOperationType.Put;
-        }
-
-        private void binarySearchLeafPage() {
-            root = p.map.getRootPage();
-            p = root.gotoLeafPage(key);
-            searched = true;
         }
 
         private static void splitLeafPage(BTreePage p) {
@@ -170,7 +164,7 @@ public abstract class PageOperations {
         }
 
         protected Object putSync() {
-            return p.map.put(key, value, p);
+            return map.put(key, value, map.getRootPage());
         }
 
         @Override
@@ -179,7 +173,7 @@ public abstract class PageOperations {
             // 也不适合把所有的put操作都转入root page的处理器队列，
             // 这样会导致root page的处理器队列变得更长，反而不适合并行化了，
             // 所以只有BTree的leaf page数大于等于线程数时才是并行化的最佳时机。
-            if (p.map.disableParallel) {
+            if (map.disableParallel) {
                 // 当进入这个if分支准备进行put时，可能其他线程已经完成并行化阶段前的写入了，所以put会返回REDIRECT
                 Object result = putSync();
                 if (result != BTreeMap.REDIRECT) {
@@ -187,9 +181,9 @@ public abstract class PageOperations {
                     return PageOperationResult.SUCCEEDED;
                 }
             }
-            if (!searched) {
-                binarySearchLeafPage();
-
+            if (p == null) {
+                // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
+                p = map.gotoLeafPage(key);
                 // 当前处理器不是leaf page的处理器时需要移交给leaf page的处理器处理
                 if (currentHandler != p.getHandler()) {
                     p.addTask(this);
@@ -197,97 +191,32 @@ public abstract class PageOperations {
                 }
             }
 
-            // if (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
-            // if (root != p.map.root) {
-            // binarySearchLeafPage();
-            // if (currentHandler != p.getHandler()) {
-            // new Error("currentHandler: " + currentHandler + ", leafPageHandler: " + p.getHandler())
-            // .printStackTrace();
-            // System.exit(-1);
-            // }
-            //
-            // if (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
-            // // new Error("dynamicInfo: " + p.dynamicInfo.state).printStackTrace();
-            // // System.exit(-1);
-            //
-            // p = p.dynamicInfo.redirect;
-            // int index;
-            // if (p.map.getKeyType().compare(key, p.getKey(0)) < 0)
-            // index = 0;
-            // else
-            // index = 1;
-            // p = p.getChildPage(index);
-            // }
-            // } else {
-            // p = p.dynamicInfo.redirect;
-            // int index;
-            // if (p.map.getKeyType().compare(key, p.getKey(0)) < 0)
-            // index = 0;
-            // else
-            // index = 1;
-            // p = p.getChildPage(index);
-            // }
-            // }
-
-            int count = 0;
+            // 这种情况发生在leaf page的处理器队列中有过期的由其他处理器移交过来的Put操作，
+            // 但是当前处理器已经把原来的leaf page切割了，此时需要从一个重定向后的临时node page找到最新的leaf page，
+            // 有可能发生多次切割，所以需要用循环来遍历
             while (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
-                // leaf page处在切割状态时，重定向到临时的node page了
                 p = p.dynamicInfo.redirect;
                 int index;
-                if (p.map.getKeyType().compare(key, p.getKey(0)) < 0)
+                if (map.getKeyType().compare(key, p.getKey(0)) < 0)
                     index = 0;
                 else
                     index = 1;
                 p = p.getChildPage(index);
-                count++;
-            }
-            if (count > 7) {
-                // System.out.println("redirect count: " + count);
             }
 
-            // if (p.isNode() || root != p.map.root) {
-            // if (!binarySearchLeafPage(currentHandler)) {
-            // return PageOperationResult.SUCCEEDED;
-            // }
-            // }
-            //
-            // String str = "";
-            // switch (p.dynamicInfo.state) {
-            // case SPLITTING:
-            // BTreePage redirect = p.dynamicInfo.redirect;
-            // int index;
-            // if (p.map.getKeyType().compare(key, redirect.getKey(0)) < 0)
-            // index = 0;
-            // else
-            // index = 1;
-            // p = redirect.getChildPage(index);
-            // str = "aaa";
-            // while (p.dynamicInfo.state == BTreePage.State.SPLITTING) {
-            // // leaf page处在切割状态时，重定向到临时的node page了
-            // redirect = p.dynamicInfo.redirect;
-            // if (p.map.getKeyType().compare(key, redirect.getKey(0)) < 0)
-            // index = 0;
-            // else
-            // index = 1;
-            // p = redirect.getChildPage(index);
-            // str += "aaa";
-            //
-            // new Error(str + " " + p.dynamicInfo.state).printStackTrace();
-            // }
-            // break;
-            // case SPLITTED:
-            // if (!binarySearchLeafPage(currentHandler)) {
-            // return PageOperationResult.SUCCEEDED;
-            // }
-            // str = "bbb";
-            // }
+            if (ASSERT) {
+                if (!p.isLeaf() || p.dynamicInfo.state != BTreePage.State.NORMAL || currentHandler != p.getHandler()) {
+                    DbException.throwInternalError();
+                }
+            }
 
             int index = p.binarySearch(key);
             Object result = put(index);
-            handleAsyncResult(result);
+            handleAsyncResult(result); // 可以提前执行回调函数了，不需要考虑后续的代码
 
+            // 看看当前leaf page是否需要进行切割
             PageOperationResult rageOperationResult;
-            if (!p.map.disableSplit && p.isSplitEnabled() && p.needSplit()) {
+            if (!map.disableSplit && p.isSplitEnabled() && p.needSplit()) {
                 splitLeafPage(p);
                 rageOperationResult = PageOperationResult.SPLITTING;
             } else {
@@ -309,33 +238,24 @@ public abstract class PageOperations {
         }
 
         protected void addValue(int index) {
-            if (p.dynamicInfo.state != BTreePage.State.NORMAL) {
-                String str = "aaa";
-                new Error(str + " " + p.dynamicInfo.state).printStackTrace();
-                System.exit(-1);
-            }
             index = -index - 1;
             p.insertLeaf(index, key, value);
-            p.map.setMaxKey(key);
+            map.setMaxKey(key);
             BTreeMap.addCount.incrementAndGet();
             // 新增数据时才需要更新父节点的计数器
-            p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(new UpdateParentCounter(p, key, true));
-
-            // if (!p.isSplitEnabled() && p.getCounter().get() > 20) {
-            // System.out.println("leaf page keys: " + p.getCounter().get());
-            // }
+            map.pohFactory.getNodePageOperationHandler().handlePageOperation(new UpdateParentCounter(p, key, true));
         }
     }
 
     public static class PutIfAbsent<K, V> extends Put<K, V, V> {
 
-        public PutIfAbsent(BTreePage p, K key, V value, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
-            super(p, key, value, asyncResultHandler);
+        public PutIfAbsent(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
+            super(map, key, value, asyncResultHandler);
         }
 
         @Override
         protected Object putSync() {
-            return p.map.putIfAbsent(key, value, p);
+            return map.putIfAbsent(key, value, p);
         }
 
         @Override
@@ -351,9 +271,9 @@ public abstract class PageOperations {
     public static class Replace<K, V> extends Put<K, V, Boolean> {
         final V oldValue;
 
-        public Replace(BTreePage p, K key, V oldValue, V newValue,
+        public Replace(BTreeMap<K, V> map, K key, V oldValue, V newValue,
                 AsyncHandler<AsyncResult<Boolean>> asyncResultHandler) {
-            super(p, key, newValue, asyncResultHandler);
+            super(map, key, newValue, asyncResultHandler);
             this.oldValue = oldValue;
         }
 
@@ -364,7 +284,7 @@ public abstract class PageOperations {
                 return Boolean.FALSE;
             }
             Object old = p.getValue(index);
-            if (p.map.areValuesEqual(old, oldValue)) {
+            if (map.areValuesEqual(old, oldValue)) {
                 p.setValue(index, value);
                 return Boolean.TRUE;
             }
@@ -374,8 +294,8 @@ public abstract class PageOperations {
 
     public static class Remove<K, V> extends Put<K, V, V> {
 
-        public Remove(BTreePage p, K key, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
-            super(p, key, null, asyncResultHandler);
+        public Remove(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
+            super(map, key, null, asyncResultHandler);
         }
 
         @Override
@@ -450,7 +370,12 @@ public abstract class PageOperations {
         }
 
         private PageReferenceContext findParentNode(boolean copy) {
-            BTreePage p = tmpNodePage.old.map.getRootPage();
+            BTreePage root = tmpNodePage.old.map.getRootPage();
+            // root page是一个准备切割的leaf page
+            if (root.isLeaf())
+                return null;
+
+            BTreePage p = root;
             if (copy)
                 p = p.copy();
             Object key = tmpNodePage.key;
@@ -481,6 +406,13 @@ public abstract class PageOperations {
         public void run() {
             // long t1 = System.currentTimeMillis();
             PageReferenceContext parentContext = findParentNode(true);
+            // root page是一个准备切割的leaf page，直接用临时node page替换它
+            if (parentContext == null) {
+                tmpNodePage.old.map.newRoot(tmpNodePage.parent);
+                tmpNodePage.left.page.enableSplit();
+                tmpNodePage.right.page.enableSplit();
+                return;
+            }
             BTreePage parent = parentContext.parent;
 
             // 先看看父节点是否需要切割

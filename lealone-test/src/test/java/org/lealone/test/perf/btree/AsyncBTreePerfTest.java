@@ -84,7 +84,7 @@ public class AsyncBTreePerfTest extends StorageMapPerfTestBase {
     void printShiftCount(int[] keys) {
         HashMap<PageOperationHandler, Integer> map = new HashMap<>();
         for (int key : keys) {
-            BTreePage p = btreeMap.getRootPage().gotoLeafPage(key);
+            BTreePage p = btreeMap.gotoLeafPage(key);
             PageOperationHandler handler = p.getHandler();
             Integer count = map.get(handler);
             if (count == null)

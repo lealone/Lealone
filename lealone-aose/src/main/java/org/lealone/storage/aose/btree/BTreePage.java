@@ -1,7 +1,19 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0, and the
- * EPL 1.0 (http://h2database.com/html/license.html). Initial Developer: H2
- * Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.storage.aose.btree;
 
@@ -11,7 +23,6 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.compress.Compressor;
@@ -26,20 +37,6 @@ import org.lealone.storage.PageOperationHandler;
 import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
 import org.lealone.storage.fs.FileStorage;
 
-/**
- * A page (a node or a leaf).
- * <p>
- * For b-tree nodes, the key at a given index is larger than the largest key of
- * the child at the same index.
- * <p>
- * File format: page length (including length): int check value:
- * varInt number of keys: varInt type: byte (0: leaf, 1: node; +2: compressed)
- * compressed: bytes saved (varInt) keys leaf: values (one for each key) node:
- * children (1 more than keys)
- * 
- * @author H2 Group
- * @author zhh
- */
 public class BTreePage {
 
     public static class DynamicInfo {
@@ -76,37 +73,21 @@ public class BTreePage {
         }
     }
 
-    /**
-     * An empty object array.
-     */
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
-
-    private static final AtomicLong ids = new AtomicLong(0);
 
     protected final BTreeMap<?, ?> map;
     protected long pos;
-    protected org.lealone.storage.PageOperationHandler handler;
-    // private final int handlerId;
-
-    // BTreePage parent;
-
-    volatile DynamicInfo dynamicInfo = new DynamicInfo();
-    // AtomicLong counter = new AtomicLong();
-    int size;
-    final long id;
-    final ConcurrentLinkedQueue<PageOperation> tasks = new ConcurrentLinkedQueue<>();
+    protected PageOperationHandler handler;
 
     private boolean splitEnabled = true;
+    volatile DynamicInfo dynamicInfo = new DynamicInfo();
 
     protected BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
-        id = ids.incrementAndGet();
         if (isNode())
             handler = map.pohFactory.getNodePageOperationHandler();
         else if (isLeaf())
             handler = map.pohFactory.getPageOperationHandler();
-        // if (handler != null)
-        // handler.addQueue(id, tasks);
     }
 
     public boolean isSplitEnabled() {
@@ -130,19 +111,13 @@ public class BTreePage {
     }
 
     public PageOperationHandler getHandler() {
-        return handler; // PageOperationHandler.getHandler(0); // throw ie();
+        return handler;
     }
 
     public void addTask(PageOperation task) {
         if (handler != null) {
-            // tasks.add(task);
-            // handler.addQueue(id, tasks);
-            // handler.wakeUp();
             handler.handlePageOperation(task);
         }
-    }
-
-    public void updateCount(long delta) {
     }
 
     /**
@@ -578,7 +553,7 @@ public class BTreePage {
     }
 
     // 只找到key对应的LeafPage就行了，不关心key是否存在
-    public BTreePage gotoLeafPage(Object key) {
+    BTreePage gotoLeafPage(Object key) {
         BTreePage p = this;
         while (p.isNode()) {
             int index = p.binarySearch(key);

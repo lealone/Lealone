@@ -1,7 +1,19 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0, and the
- * EPL 1.0 (http://h2database.com/html/license.html). Initial Developer: H2
- * Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.storage.aose.btree;
 
@@ -10,20 +22,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.lealone.common.util.DataUtils;
 import org.lealone.storage.type.StorageDataType;
 
-/**
- * A page (a node or a leaf).
- * <p>
- * For b-tree nodes, the key at a given index is larger than the largest key of
- * the child at the same index.
- * <p>
- * File format: page length (including length): int check value:
- * varInt number of keys: varInt type: byte (0: leaf, 1: node; +2: compressed)
- * compressed: bytes saved (varInt) keys leaf: values (one for each key) node:
- * children (1 more than keys)
- * 
- * @author H2 Group
- * @author zhh
- */
 public abstract class BTreeLocalPage extends BTreePage {
 
     /**
@@ -31,15 +29,6 @@ public abstract class BTreeLocalPage extends BTreePage {
      */
     public static final boolean ASSERT = false;
     public static final boolean DEBUG = true;
-
-    // private static final AtomicLongFieldUpdater<BTreeLocalPage> totalCountUpdater = AtomicLongFieldUpdater
-    // .newUpdater(BTreeLocalPage.class, "totalCount");
-
-    @Override
-    public void updateCount(long delta) {
-        // totalCountUpdater.addAndGet(this, delta);
-        totalCount.addAndGet(delta);
-    }
 
     /**
      * The total entry count of this page and all children.

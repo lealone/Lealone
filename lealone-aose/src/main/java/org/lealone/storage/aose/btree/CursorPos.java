@@ -33,5 +33,4 @@ public class CursorPos {
         this.index = index;
         this.parent = parent;
     }
-
 }

@@ -397,63 +397,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    // hash方案
-    // private Object putLocal(BTreePage p, Object key, Object value) {
-    // if (p.isLeaf()) {
-    // return ((BTreeLeafPage) p).put(key, value);
-    // }
-    // int index = p.binarySearch(key);
-    // // if (p.isLeaf()) {
-    // // if (index < 0) {
-    // // index = -index - 1;
-    // // p.insertLeaf(index, key, value);
-    // // setMaxKey(key);
-    // // return null;
-    // // }
-    // // return p.setValue(index, value);
-    // // }
-    // // p is a node
-    // if (index < 0) {
-    // index = -index - 1;
-    // } else {
-    // index++;
-    // }
-    // BTreePage c = p.getChildPage(index);// .copy();
-    // if (c.needSplit()) {
-    // boolean isLeaf = c.isLeaf();
-    // if (isLeaf) {
-    // Object[] a = ((BTreeLeafPage) c).split();
-    // Object k = a[1];
-    // BTreePage rightChildPage = (BTreePage) a[0];
-    // p.setChild(index, rightChildPage);
-    // p.insertNode(index, k, c);
-    // // now we are not sure where to add
-    // Object result = put(p, key, value);
-    // if (isLeaf && isShardingMode) {
-    // PageKey pk = new PageKey(k, false); // 移动右边的Page
-    // moveLeafPageLazy(pk);
-    // }
-    // return result;
-    // }
-    // // split on the way down
-    // int at = c.getKeyCount() / 2;
-    // Object k = c.getKey(at);
-    // BTreePage rightChildPage = c.split(at);
-    // p.setChild(index, rightChildPage);
-    // p.insertNode(index, k, c);
-    // // now we are not sure where to add
-    // Object result = put(p, key, value);
-    // if (isLeaf && isShardingMode) {
-    // PageKey pk = new PageKey(k, false); // 移动右边的Page
-    // moveLeafPageLazy(pk);
-    // }
-    // return result;
-    // }
-    // Object result = put(c, key, value);
-    // p.setChild(index, c);
-    // return result;
-    // }
-
     private Object putLocal(BTreePage p, Object key, Object value) {
         int index = p.binarySearch(key);
         if (p.isLeaf()) {
@@ -1549,30 +1492,30 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        Put<K, V, V> put = new Put<>(root, key, value, handler);
+        Put<K, V, V> put = new Put<>(this, key, value, handler);
         pohFactory.addPageOperation(put);
     }
 
     @Override
     public PageOperation createPutOperation(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        return new Put<>(root, key, value, handler);
+        return new Put<>(this, key, value, handler);
     }
 
     @Override
     public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(root, key, value, handler);
+        PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(this, key, value, handler);
         pohFactory.addPageOperation(putIfAbsent);
     }
 
     @Override
     public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
-        Replace<K, V> replace = new Replace<>(root, key, oldValue, newValue, handler);
+        Replace<K, V> replace = new Replace<>(this, key, oldValue, newValue, handler);
         pohFactory.addPageOperation(replace);
     }
 
     @Override
     public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
-        Remove<K, V> remove = new Remove<>(root, key, handler);
+        Remove<K, V> remove = new Remove<>(this, key, handler);
         pohFactory.addPageOperation(remove);
     }
 
@@ -1582,6 +1525,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         K key = (K) ValueLong.get(maxKey.incrementAndGet());
         put(key, value, handler);
         return key;
+    }
+
+    public BTreePage gotoLeafPage(Object key) {
+        return root.gotoLeafPage(key);
     }
 
     public boolean disableParallel;
