@@ -17,6 +17,10 @@
  */
 package org.lealone.storage;
 
+import java.util.concurrent.CountDownLatch;
+
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.AsyncTask;
 
 public interface PageOperation extends AsyncTask {
@@ -61,5 +65,37 @@ public interface PageOperation extends AsyncTask {
     default PageOperationResult run(PageOperationHandler currentHandler) {
         run();
         return PageOperationResult.SUCCEEDED;
+    }
+
+    interface Listener<V> extends AsyncHandler<AsyncResult<V>> {
+        V await();
+    }
+
+    class SyncListener<V> implements Listener<V> {
+
+        private final CountDownLatch latch = new CountDownLatch(1);
+        private volatile RuntimeException e;
+        private volatile V result;
+
+        @Override
+        public V await() {
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                this.e = new RuntimeException(e);
+            }
+            if (e != null)
+                throw e;
+            return result;
+        }
+
+        @Override
+        public void handle(AsyncResult<V> ar) {
+            if (ar.isSucceeded())
+                result = ar.getResult();
+            else
+                e = new RuntimeException(ar.getCause());
+            latch.countDown();
+        }
     }
 }

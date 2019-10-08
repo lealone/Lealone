@@ -57,6 +57,11 @@ public abstract class BTreeLocalPage extends BTreePage {
         super(map);
     }
 
+    @Override
+    public Object[] getKeys() {
+        return keys;
+    }
+
     /**
     * Get the key at the given index.
     * 
@@ -308,9 +313,4 @@ public abstract class BTreeLocalPage extends BTreePage {
     }
 
     protected abstract void getPrettyPageInfoRecursive(StringBuilder buff, String indent, PrettyPageInfo info);
-
-    @Override
-    public Object[] getKeys() {
-        return keys;
-    }
 }

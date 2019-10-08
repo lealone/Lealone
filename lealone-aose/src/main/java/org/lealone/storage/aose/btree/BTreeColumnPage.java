@@ -23,6 +23,7 @@ import org.lealone.db.DataBuffer;
 import org.lealone.storage.type.StorageDataType;
 
 class BTreeColumnPage extends BTreePage {
+
     Object[] values;
     int columnIndex;
     ByteBuffer buff;

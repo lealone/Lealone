@@ -17,9 +17,7 @@
  */
 package org.lealone.storage.aose.btree;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,6 +33,8 @@ import org.lealone.storage.PageOperationHandler;
 import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
 import org.lealone.storage.fs.FileStorage;
 
+//所有的子类都不是多线程安全的，但是设计层面会保证对每个Page的更新都只由一个线程负责，
+//每个Page对应一个PageOperationHandler，由它处理对Page产生的操作。
 public class BTreePage {
 
     public static class DynamicInfo {
@@ -129,6 +129,14 @@ public class BTreePage {
 
     private static RuntimeException ie() {
         return DbException.throwInternalError();
+    }
+
+    public Object[] getKeys() {
+        throw ie();
+    }
+
+    public Object[] getValues() {
+        throw ie();
     }
 
     /**
@@ -510,22 +518,6 @@ public class BTreePage {
         return p;
     }
 
-    @Deprecated
-    void transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
-        ByteBuffer buff = ByteBuffer.allocateDirect((int) count);
-        src.read(buff);
-        buff.position((int) position);
-
-        int pos = 0;
-        while (buff.remaining() > 0) {
-            int pageLength = buff.getInt();
-            Object firstKey = map.getKeyType().read(buff);
-            System.out.println("pageLength=" + pageLength + ", firstKey=" + firstKey);
-            pos += pageLength;
-            buff.position(pos);
-        }
-    }
-
     void readRemotePages() {
         throw ie();
     }
@@ -718,13 +710,5 @@ public class BTreePage {
         if (chunk.sumOfPageLength > BTreeChunk.MAX_SIZE)
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
                     "Chunk too large, max size: {0}, current size: {1}", BTreeChunk.MAX_SIZE, chunk.sumOfPageLength);
-    }
-
-    public Object[] getKeys() {
-        throw ie();
-    }
-
-    public Object[] getValues() {
-        throw ie();
     }
 }

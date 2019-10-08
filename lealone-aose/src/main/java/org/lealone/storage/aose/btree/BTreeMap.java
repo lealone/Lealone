@@ -128,9 +128,42 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return index >= 0 ? (V) p.getValue(index, columnIndexes) : null;
     }
 
-    @Override
+    // 如果map是只读的或者已经关闭了就不能再写了，并且不允许值为null
+    private void checkWrite(V value) {
+        DataUtils.checkArgument(value != null, "The value may not be null");
+        checkWrite();
+    }
+
+    private void checkWrite() {
+        if (btreeStorage.isClosed()) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
+        }
+        if (readOnly) {
+            throw DataUtils.newUnsupportedOperationException("This map is read-only");
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    public synchronized V put(K key, V value) {
+    private <R> PageOperation.Listener<R> getPageOperationListener() {
+        Object object = Thread.currentThread();
+        PageOperation.Listener<R> listener;
+        if (object instanceof PageOperation.Listener)
+            listener = (PageOperation.Listener<R>) object;
+        else
+            listener = new PageOperation.SyncListener<R>();
+        return listener;
+    }
+
+    @Override
+    public V put(K key, V value) {
+        PageOperation.Listener<V> listener = getPageOperationListener();
+        put(key, value, listener);
+        return listener.await();
+    }
+
+    @Deprecated
+    @SuppressWarnings("unchecked")
+    public synchronized V putOld(K key, V value) {
         DataUtils.checkArgument(value != null, "The value may not be null");
 
         beforeWrite();
@@ -313,7 +346,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized V putIfAbsent(K key, V value) {
+    public V putIfAbsent(K key, V value) {
+        PageOperation.Listener<V> listener = getPageOperationListener();
+        putIfAbsent(key, value, listener);
+        return listener.await();
+    }
+
+    @Deprecated
+    public synchronized V putIfAbsentOld(K key, V value) {
         V old = get(key);
         if (old == null) {
             put(key, value);
@@ -322,8 +362,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public V remove(K key) {
+        PageOperation.Listener<V> listener = getPageOperationListener();
+        remove(key, listener);
+        return listener.await();
+    }
+
+    @Deprecated
+    @SuppressWarnings("unchecked")
+    public V removeOld(K key) {
         beforeWrite();
         V result = get(key);
         if (result == null) {
@@ -387,7 +434,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized boolean replace(K key, V oldValue, V newValue) {
+    public boolean replace(K key, V oldValue, V newValue) {
+        PageOperation.Listener<Boolean> listener = getPageOperationListener();
+        replace(key, oldValue, newValue, listener);
+        return listener.await();
+    }
+
+    @Deprecated
+    public synchronized boolean replaceOld(K key, V oldValue, V newValue) {
         V old = get(key);
         if (areValuesEqual(old, oldValue)) {
             put(key, newValue);
@@ -657,29 +711,34 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        checkWrite(value);
         Put<K, V, V> put = new Put<>(this, key, value, handler);
         pohFactory.addPageOperation(put);
     }
 
     @Override
     public PageOperation createPutOperation(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        checkWrite(value);
         return new Put<>(this, key, value, handler);
     }
 
     @Override
     public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
+        checkWrite(value);
         PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(this, key, value, handler);
         pohFactory.addPageOperation(putIfAbsent);
     }
 
     @Override
     public void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
+        checkWrite(newValue);
         Replace<K, V> replace = new Replace<>(this, key, oldValue, newValue, handler);
         pohFactory.addPageOperation(replace);
     }
 
     @Override
     public void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
+        checkWrite();
         Remove<K, V> remove = new Remove<>(this, key, handler);
         pohFactory.addPageOperation(remove);
     }
@@ -687,6 +746,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     @SuppressWarnings("unchecked")
     public K append(V value, AsyncHandler<AsyncResult<V>> handler) {
+        checkWrite(value);
         K key = (K) ValueLong.get(maxKey.incrementAndGet());
         put(key, value, handler);
         return key;

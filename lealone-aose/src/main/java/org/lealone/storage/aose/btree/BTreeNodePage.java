@@ -32,11 +32,7 @@ import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
 
 public class BTreeNodePage extends BTreeLocalPage {
 
-    /**
-     * The child page references.
-     * <p>
-     * The array might be larger than needed, to avoid frequent re-sizing.
-     */
+    // 对子page的引用，数组长度比keys的长度多一个
     private PageReference[] children;
 
     BTreeNodePage(BTreeMap<?, ?> map) {
@@ -61,6 +57,11 @@ public class BTreeNodePage extends BTreeLocalPage {
     @Override
     boolean isLeafChildPage(int index) {
         return getChildPageReference(index).isLeafPage();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return children == null || children.length == 0;
     }
 
     @Override
@@ -130,8 +131,6 @@ public class BTreeNodePage extends BTreeLocalPage {
             PageReference ref = new PageReference(null, 0, key, first);
             children[index] = ref;
         } else if (c != children[index].page || c.getPos() != children[index].pos) {
-            // this is slightly slower:
-            // children = Arrays.copyOf(children, children.length);
             children = children.clone();
             PageReference ref = new PageReference(c, key, first);
             children[index] = ref;
@@ -177,7 +176,6 @@ public class BTreeNodePage extends BTreeLocalPage {
         newChildren[index] = new PageReference(childPage, key, index == 0);
         children = newChildren;
 
-        // totalCount.addAndGet(childPage.getTotalCount());
         addMemory(map.getKeyType().getMemory(key) + PageUtils.PAGE_MEMORY_CHILD);
     }
 
@@ -524,15 +522,5 @@ public class BTreeNodePage extends BTreeLocalPage {
                 }
             }
         }
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return children == null || children.length == 0;
-    }
-
-    @Override
-    public boolean isNotEmpty() {
-        return !isEmpty();
     }
 }

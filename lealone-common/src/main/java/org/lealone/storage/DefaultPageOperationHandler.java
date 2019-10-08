@@ -27,8 +27,9 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.db.async.AsyncResult;
 
-public class DefaultPageOperationHandler implements PageOperationHandler, Runnable {
+public class DefaultPageOperationHandler implements PageOperationHandler, Runnable, PageOperation.Listener<Object> {
 
     private static final Logger logger = LoggerFactory.getLogger(DefaultPageOperationHandler.class);
     // LinkedBlockingQueue测出的性能不如ConcurrentLinkedQueue好
@@ -110,27 +111,63 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
     @Override
     public void run() {
         while (!stopped) {
-            PageOperation task = tasks.poll();
-            while (task != null) {
-                size.decrementAndGet();
-                try {
-                    task.run(this);
-                    // PageOperationResult result = task.run(this);
-                    // if (result == PageOperationResult.SHIFTED) {
-                    // shiftCount++;
-                    // }
-                } catch (Throwable e) {
-                    logger.warn("Failed to run page operation: " + task, e);
-                }
-                task = tasks.poll();
-            }
+            runTasks();
             try {
                 haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
                 haveWork.drainPermits();
             } catch (InterruptedException e) {
+                stopped = true;
                 // logger.warn(getName() + " is interrupted");
                 break;
             }
         }
+    }
+
+    private void runTasks() {
+        PageOperation task = tasks.poll();
+        while (task != null) {
+            size.decrementAndGet();
+            try {
+                task.run(this);
+                // PageOperationResult result = task.run(this);
+                // if (result == PageOperationResult.SHIFTED) {
+                // shiftCount++;
+                // }
+            } catch (Throwable e) {
+                logger.warn("Failed to run page operation: " + task, e);
+            }
+            task = tasks.poll();
+        }
+    }
+
+    // 以下使用同步方式执行
+    private volatile RuntimeException e;
+    private volatile Object result;
+
+    @Override
+    public Object await() {
+        e = null;
+        result = null;
+        while (result == null || e == null) {
+            runTasks();
+            try {
+                haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
+                haveWork.drainPermits();
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+        if (e != null)
+            throw e;
+        return result;
+    }
+
+    @Override
+    public void handle(AsyncResult<Object> ar) {
+        if (ar.isSucceeded())
+            result = ar.getResult();
+        else
+            e = new RuntimeException(ar.getCause());
+        wakeUp();
     }
 }

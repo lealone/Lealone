@@ -397,11 +397,13 @@ public class Scheduler extends Thread
     @Override
     public void operationUndo() {
         counter.decrementAndGet();
+        wakeUp();
     }
 
     @Override
     public void operationComplete() {
         counter.decrementAndGet();
+        wakeUp();
     }
 
     @Override

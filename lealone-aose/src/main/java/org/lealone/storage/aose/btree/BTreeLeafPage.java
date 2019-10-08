@@ -60,6 +60,16 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     @Override
+    public Object[] getValues() {
+        return values;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return totalCount < 1;
+    }
+
+    @Override
     public List<String> getReplicationHostIds() {
         return replicationHostIds;
     }
@@ -720,20 +730,5 @@ public class BTreeLeafPage extends BTreeLocalPage {
             buff.append(values[i]);
         }
         buff.append('\n');
-    }
-
-    @Override
-    public Object[] getValues() {
-        return values;
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return totalCount < 1;
-    }
-
-    @Override
-    public boolean isNotEmpty() {
-        return totalCount > 0;
     }
 }
