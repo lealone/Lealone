@@ -191,7 +191,7 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     }
 
     private synchronized Object putOrAdd(SpatialKey key, V value, boolean alwaysAdd) {
-        beforeWrite();
+        checkWrite();
         BTreePage p = root.copy();
         Object result;
         if (alwaysAdd || get(key) == null) {

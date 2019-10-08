@@ -128,7 +128,6 @@ public abstract class PageOperations {
         }
 
         private static void splitLeafPage(BTreePage p) {
-            BTreeMap.splitCount.incrementAndGet();
             // 第一步:
             // 切开page，得到一个临时的父节点和两个新的leaf page
             // 临时父节点只能通过被切割的page重定向访问
@@ -153,6 +152,12 @@ public abstract class PageOperations {
             // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
             AddChild task = new AddChild(tmp);
             p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
+
+            if (p == p.map.getRootPage()) {
+                p.map.fireRootLeafPageSplit(tmp.parent);
+            } else {
+                p.map.fireLeafPageSplit(tmp.key);
+            }
         }
 
         @SuppressWarnings("unchecked")
@@ -184,6 +189,13 @@ public abstract class PageOperations {
             if (p == null) {
                 // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
                 p = map.gotoLeafPage(key);
+
+                // TODO 处理分布式场景
+                if (p.getLeafPageMovePlan() != null) {
+                    map.putRemote(p, key, value, asyncResultHandler);
+                    return PageOperationResult.SHIFTED;
+                }
+
                 // 当前处理器不是leaf page的处理器时需要移交给leaf page的处理器处理
                 if (isShiftEnabled && currentHandler != p.getHandler()) {
                     p.addTask(this);
@@ -232,7 +244,6 @@ public abstract class PageOperations {
                 return null;
             } else {
                 result = p.setValue(index, value);
-                BTreeMap.putCount.incrementAndGet();
                 return result;
             }
         }
@@ -241,7 +252,6 @@ public abstract class PageOperations {
             index = -index - 1;
             p.insertLeaf(index, key, value);
             map.setMaxKey(key);
-            BTreeMap.addCount.incrementAndGet();
         }
     }
 
@@ -310,7 +320,6 @@ public abstract class PageOperations {
         }
 
         private static void splitNodePage(BTreePage p, PageReferenceContext context) {
-            BTreeMap.splitCount.incrementAndGet();
             if (context == null) { // 说明是root page要切割了
                 BTreePage root = splitPage(p).parent;
                 p.map.newRoot(root);

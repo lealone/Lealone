@@ -36,6 +36,8 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
@@ -104,7 +106,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     }
 
     @Override
-    protected Object putRemote(BTreePage p, Object key, Object value) {
+    protected <R> Object putRemote(BTreePage p, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
         if (p.getLeafPageMovePlan().moverHostId.equals(getLocalHostId())) {
             int size = p.getLeafPageMovePlan().replicationEndpoints.size();
             List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
@@ -124,7 +126,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
             }
             // 如果新的复制节点中还包含本地节点，那么还需要put到本地节点中
             if (containsLocalEndpoint) {
-                return putLocal(p, key, value);
+                return put(key, value); // TODO 可能还有bug
             } else {
                 return returnValue;
             }
@@ -414,7 +416,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
 
     @Override
     public synchronized void removeLeafPage(PageKey pageKey) {
-        beforeWrite();
+        checkWrite();
         BTreePage p;
         if (pageKey == null) { // 说明删除的是root leaf page
             p = BTreeLeafPage.createEmpty(this);

@@ -49,7 +49,6 @@ import org.lealone.storage.type.StorageDataType;
  * 
  * @param <K> the key class
  * @param <V> the value class
- * 
  */
 public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
@@ -144,7 +143,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         checkWrite();
     }
 
-    private void checkWrite() {
+    // 有子类用到
+    protected void checkWrite() {
         if (btreeStorage.isClosed()) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
         }
@@ -171,131 +171,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return listener.await();
     }
 
-    @Deprecated
-    @SuppressWarnings("unchecked")
-    public synchronized V putOld(K key, V value) {
-        DataUtils.checkArgument(value != null, "The value may not be null");
-
-        beforeWrite();
-        BTreePage p = root.copy();
-
-        boolean split = false;
-        if (p.needSplit()) {
-            p = splitRoot(p);
-            split = true;
-        }
-
-        Object result = put(p, key, value);
-        if (split && root.isLeaf()) {
-            fireRootLeafPageSplit(p);
-        }
-
-        newRoot(p);
-        return (V) result;
-    }
-
+    // 以下三个API子类会覆盖
     protected void fireRootLeafPageSplit(BTreePage p) {
-        // 子类会覆盖
-    }
-
-    /**
-     * This method is called before writing to the map. 
-     * The default implementation checks whether writing is allowed.
-     * 
-     * @throws UnsupportedOperationException if the map is read-only.
-     */
-    protected void beforeWrite() {
-        if (btreeStorage.isClosed()) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This map is closed");
-        }
-        if (readOnly) {
-            throw DataUtils.newUnsupportedOperationException("This map is read-only");
-        }
-    }
-
-    /**
-     * Split the root page.
-     * 
-     * @param p the page
-     * @return the new root page
-     */
-    private BTreePage splitRoot(BTreePage p) {
-        int at = p.getKeyCount() / 2;
-        Object k = p.getKey(at);
-        BTreePage rightChildPage = p.split(at);
-        Object[] keys = { k };
-        PageReference[] children = { new PageReference(p, k, true), new PageReference(rightChildPage, k, false) };
-        p = BTreePage.createNode(this, keys, children, 0);
-        return p;
-    }
-
-    /**
-     * Add or update a key-value pair.
-     * 
-     * @param p the page
-     * @param key the key (may not be null)
-     * @param value the value (may not be null)
-     * @return the old value, or null
-     */
-    private Object put(BTreePage p, Object key, Object value) {
-        // 本地后台批量put时(比如通过BufferedMap执行)，可能会发生leafPage切割，
-        // 这时复制节点就发生改变了，需要重定向到新的复制节点
-        // 比如下面这样的场景就会发生:
-        // AOStorageService执行完merge后，正准备执行page move，此时又有新数据写入BufferedMap，
-        // 当下次merge执行到put时，page所在节点就可能不是当前节点了
-        if (p.getLeafPageMovePlan() != null) {
-            return putRemote(p, key, value);
-        } else {
-            return putLocal(p, key, value);
-        }
-    }
-
-    protected Object putRemote(BTreePage p, Object key, Object value) {
-        return null;
-    }
-
-    protected Object putLocal(BTreePage p, Object key, Object value) {
-        int index = p.binarySearch(key);
-        if (p.isLeaf()) {
-            if (index < 0) {
-                index = -index - 1;
-                p.insertLeaf(index, key, value);
-                setMaxKey(key);
-                return null;
-            }
-            return p.setValue(index, value);
-        }
-        // p is a node
-        if (index < 0) {
-            index = -index - 1;
-        } else {
-            index++;
-        }
-        BTreePage c = p.getChildPage(index).copy();
-        if (c.needSplit()) {
-            boolean isLeaf = c.isLeaf();
-            // split on the way down
-            int at = c.getKeyCount() / 2;
-            Object k = c.getKey(at);
-            BTreePage rightChildPage = c.split(at);
-            p.setChild(index, rightChildPage);
-            p.insertNode(index, k, c);
-            // now we are not sure where to add
-            Object result = put(p, key, value);
-            if (isLeaf) {
-                fireLeafPageSplit(k);
-            }
-            return result;
-        }
-        Object result = put(c, key, value);
-        // if (result == null)
-        // p.getCounter().incrementAndGet();
-        p.setChild(index, c);
-        return result;
     }
 
     protected void fireLeafPageSplit(Object k) {
-        // 子类会覆盖
+    }
+
+    protected <R> Object putRemote(BTreePage p, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
+        return null;
     }
 
     /**
@@ -316,15 +200,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return listener.await();
     }
 
-    @Deprecated
-    public synchronized V putIfAbsentOld(K key, V value) {
-        V old = get(key);
-        if (old == null) {
-            put(key, value);
-        }
-        return old;
-    }
-
     @Override
     public V remove(K key) {
         PageOperation.Listener<V> listener = getPageOperationListener();
@@ -335,7 +210,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Deprecated
     @SuppressWarnings("unchecked")
     public V removeOld(K key) {
-        beforeWrite();
+        checkWrite();
         V result = get(key);
         if (result == null) {
             return null;
@@ -402,16 +277,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         PageOperation.Listener<Boolean> listener = getPageOperationListener();
         replace(key, oldValue, newValue, listener);
         return listener.await();
-    }
-
-    @Deprecated
-    public synchronized boolean replaceOld(K key, V oldValue, V newValue) {
-        V old = get(key);
-        if (areValuesEqual(old, oldValue)) {
-            put(key, newValue);
-            return true;
-        }
-        return false;
     }
 
     @Override
@@ -559,7 +424,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public synchronized void clear() {
-        beforeWrite();
+        checkWrite();
         root.removeAllRecursive();
         size.set(0);
         newRoot(BTreeLeafPage.createEmpty(this));
@@ -588,7 +453,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public void save() {
+    public synchronized void save() {
         btreeStorage.save();
     }
 
@@ -718,8 +583,4 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     public volatile boolean disableParallel;
     public volatile boolean disableSplit;
-
-    public static AtomicLong splitCount = new AtomicLong();
-    public static AtomicLong putCount = new AtomicLong();
-    public static AtomicLong addCount = new AtomicLong();
 }
