@@ -162,10 +162,6 @@ public abstract class PageOperations {
             asyncResultHandler.handle(ar);
         }
 
-        protected Object putSync() {
-            return map.put(key, value, map.getRootPage());
-        }
-
         @Override
         public PageOperationResult run(PageOperationHandler currentHandler) {
             // 在BTree刚创建时，因为只有一个root page，不适合并行化，
@@ -173,18 +169,23 @@ public abstract class PageOperations {
             // 这样会导致root page的处理器队列变得更长，反而不适合并行化了，
             // 所以只有BTree的leaf page数大于等于线程数时才是并行化的最佳时机。
             if (map.disableParallel) {
-                // 当进入这个if分支准备进行put时，可能其他线程已经完成并行化阶段前的写入了，所以put会返回REDIRECT
-                Object result = putSync();
-                if (result != BTreeMap.REDIRECT) {
-                    handleAsyncResult(result);
-                    return PageOperationResult.SUCCEEDED;
+                synchronized (map) {
+                    if (map.disableParallel) { // 需要再判断一次，上一个线程会修改这个字段
+                        PageOperationResult rageOperationResult = run(currentHandler, false);
+                        map.enableParallelIfNeeded();
+                        return rageOperationResult;
+                    }
                 }
             }
+            return run(currentHandler, true);
+        }
+
+        private PageOperationResult run(PageOperationHandler currentHandler, boolean isShiftEnabled) {
             if (p == null) {
                 // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
                 p = map.gotoLeafPage(key);
                 // 当前处理器不是leaf page的处理器时需要移交给leaf page的处理器处理
-                if (currentHandler != p.getHandler()) {
+                if (isShiftEnabled && currentHandler != p.getHandler()) {
                     p.addTask(this);
                     return PageOperationResult.SHIFTED;
                 }
@@ -248,11 +249,6 @@ public abstract class PageOperations {
 
         public PutIfAbsent(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
             super(map, key, value, asyncResultHandler);
-        }
-
-        @Override
-        protected Object putSync() {
-            return map.putIfAbsent(key, value, p);
         }
 
         @Override

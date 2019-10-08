@@ -96,6 +96,16 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             disableParallel = true;
     }
 
+    void enableParallelIfNeeded() {
+        if (disableParallel && root.getRawChildPageCount() >= pohFactory.getPageOperationHandlerCount()) {
+            disableParallel = false;
+            root.handler = pohFactory.getNodePageOperationHandler();
+            for (int i = 0, size = root.getRawChildPageCount(); i < size; i++) {
+                root.getChildPage(i).handler = pohFactory.getPageOperationHandler();
+            }
+        }
+    }
+
     @Override
     public V get(K key) {
         return binarySearch(key, true);
@@ -186,52 +196,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     protected void fireRootLeafPageSplit(BTreePage p) {
         // 子类会覆盖
-    }
-
-    public static final Object REDIRECT = new Object();
-
-    synchronized Object putIfAbsent(Object key, Object value, BTreePage oldRoot) {
-        Object old = binarySearch(key, true);
-        if (old == null) {
-            old = put(key, value, oldRoot);
-        }
-        return old;
-    }
-
-    synchronized Object put(Object key, Object value, BTreePage oldRoot) {
-        if (!disableParallel) {
-            return REDIRECT;
-        }
-
-        BTreeMap.putCount.incrementAndGet();
-
-        DataUtils.checkArgument(value != null, "The value may not be null");
-
-        beforeWrite();
-        BTreePage p = root;// root.copy();
-
-        boolean split = false;
-        if (p.needSplit()) {
-            p = splitRoot(p);
-            split = true;
-        }
-
-        Object result = put(p, key, value);
-        if (split && root.isLeaf()) {
-            fireRootLeafPageSplit(p);
-        }
-        newRoot(p);
-        if (disableParallel && root.getRawChildPageCount() >= pohFactory.getPageOperationHandlerCount()) {
-            disableParallel = false;
-            root.handler = pohFactory.getNodePageOperationHandler();
-            oldRoot.redirectTo(root);
-            for (int i = 0, size = root.getRawChildPageCount(); i < size; i++) {
-                root.getChildPage(i).handler = pohFactory.getPageOperationHandler();
-            }
-            // printPage();
-            // BTreeMap.putCount.addAndGet(root.getTotalCount());
-        }
-        return result;
     }
 
     /**
@@ -752,12 +716,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return key;
     }
 
-    public boolean disableParallel;
-    public boolean disableSplit;
+    public volatile boolean disableParallel;
+    public volatile boolean disableSplit;
 
     public static AtomicLong splitCount = new AtomicLong();
     public static AtomicLong putCount = new AtomicLong();
     public static AtomicLong addCount = new AtomicLong();
-    public static AtomicLong addUpdateCounterTaskCount = new AtomicLong();
-    public static AtomicLong runUpdateCounterTaskCount = new AtomicLong();
 }
