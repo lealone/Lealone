@@ -239,7 +239,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
      */
     @SuppressWarnings("unchecked")
     protected K getFirstLast(boolean first) {
-        if (sizeAsLong() == 0) {
+        if (size() == 0) {
             return null;
         }
         BTreePage p = root;
@@ -326,13 +326,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public int size() {
-        long size = sizeAsLong();
-        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
-    }
-
-    @Override
-    public long sizeAsLong() {
+    public long size() {
         return size.get();
     }
 
@@ -343,7 +337,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public boolean isEmpty() {
-        return sizeAsLong() == 0;
+        return size() == 0;
     }
 
     @Override
@@ -473,7 +467,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return root.gotoLeafPage(key);
     }
 
-    //////////////////// 以下是异步API的实现////////////////////////////////
+    //////////////////// 以下是异步API的实现 ////////////////////////////////
 
     @Override
     public void get(K key, AsyncHandler<AsyncResult<V>> handler) {

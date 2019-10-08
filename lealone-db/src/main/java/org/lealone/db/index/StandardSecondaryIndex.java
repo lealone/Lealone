@@ -355,7 +355,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
     @Override
     public long getRowCount(ServerSession session) {
-        return getMap(session).sizeAsLong();
+        return getMap(session).size();
     }
 
     @Override

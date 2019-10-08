@@ -147,13 +147,8 @@ public class MemoryMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public int size() {
+    public long size() {
         return skipListMap.size();
-    }
-
-    @Override
-    public long sizeAsLong() {
-        return size();
     }
 
     @Override

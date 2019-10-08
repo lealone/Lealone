@@ -533,20 +533,14 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         }
     }
 
-    @Override
-    public int size() {
-        long size = sizeAsLong();
-        return size > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) size;
-    }
-
     /**
      * Get the size of the map as seen by this transaction.
      *
      * @return the size
      */
     @Override
-    public long sizeAsLong() {
-        long sizeRaw = map.sizeAsLong();
+    public long size() {
+        long sizeRaw = map.size();
         long undoLogSize = 0;
         for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
             undoLogSize += t.logRecords.size();
@@ -572,7 +566,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         // the undo log is smaller than the map -
         // scan the undo log and subtract invisible entries
         // re-fetch in case any transaction was committed now
-        long size = map.sizeAsLong();
+        long size = map.size();
         String mapName = getName();
         Storage storage = map.getStorage();
         String tmpMapName = storage.nextTemporaryMapName();
@@ -612,7 +606,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public boolean isEmpty() {
-        return sizeAsLong() == 0;
+        return size() == 0;
     }
 
     @Override
@@ -676,7 +670,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     ///////////////////////// 以下是TransactionMap接口API的实现 /////////////////////////
     @Override
     public long rawSize() {
-        return map.sizeAsLong();
+        return map.size();
     }
 
     @Override

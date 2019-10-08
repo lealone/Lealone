@@ -344,7 +344,7 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public long getRowCount(ServerSession session) {
-        return getMap(session).sizeAsLong();
+        return getMap(session).size();
     }
 
     /**

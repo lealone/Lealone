@@ -160,14 +160,7 @@ public interface StorageMap<K, V> {
      *
      * @return the number of entries
      */
-    int size();
-
-    /**
-     * Get the number of entries, as a long.
-     *
-     * @return the number of entries
-     */
-    long sizeAsLong();
+    long size();
 
     /**
      * Whether the map contains the key.
@@ -245,7 +238,7 @@ public interface StorageMap<K, V> {
 
     StorageMap<Object, Object> getRawMap();
 
-    //////////////////// 以下是异步API////////////////////////////////
+    //////////////////// 以下是异步API ////////////////////////////////
 
     default void get(K key, AsyncHandler<AsyncResult<V>> handler) {
         throw DbException.getUnsupportedException("async get");
