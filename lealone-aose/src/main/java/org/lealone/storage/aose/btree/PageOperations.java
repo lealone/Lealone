@@ -22,6 +22,7 @@ import java.util.concurrent.Callable;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
 
@@ -308,6 +309,10 @@ public abstract class PageOperations {
             }
             Object old = p.getValue(index);
             p.remove(index);
+            if (p.isEmpty() && p != p.map.getRootPage()) { // 删除leaf page，但是root leaf page除外
+                RemoveChild task = new RemoveChild(p, key);
+                p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
+            }
             return old;
         }
     }
@@ -408,6 +413,60 @@ public abstract class PageOperations {
             tmpNodePage.right.page.enableSplit();
             // long t2 = System.currentTimeMillis();
             // System.out.println("add child time: " + (t2 - t1) + " ms");
+        }
+    }
+
+    // 不处理root leaf page的场景，Remove类那里已经保证不会删除root leaf page
+    public static class RemoveChild implements PageOperation {
+        final BTreePage old;
+        final Object key;
+
+        public RemoveChild(BTreePage old, Object key) {
+            this.old = old;
+            this.key = key;
+        }
+
+        @Override
+        public void run() {
+            BTreePage root = old.map.getRootPage();
+            BTreePage p = root.copy();
+            remove(p, key);
+            if (p.isNode() && p.isEmpty()) {
+                p.removePage();
+                p = BTreeLeafPage.createEmpty(old.map);
+                old.map.size.set(0);
+            }
+            old.map.newRoot(p);
+        }
+
+        protected void remove(BTreePage p, Object key) {
+            if (p.isLeaf()) {
+                return;
+            }
+            int index = p.binarySearch(key);
+            if (index < 0) {
+                index = -index - 1;
+            } else {
+                index++;
+            }
+            BTreePage cOld = p.getChildPage(index);
+            BTreePage c = cOld.copy();
+            remove(c, key);
+            if (c.isNotEmpty()) {
+                // no change, or there are more nodes
+                p.setChild(index, c);
+            } else {
+                PageKey pageKey = p.getChildPageReference(index).pageKey;
+                // this child was deleted
+                if (p.getKeyCount() == 0) { // 如果p的子节点只剩一个叶子节点时，keyCount为0
+                    p.setChild(index, c);
+                    c.removePage(); // 直接删除最后一个子节点，父节点在remove(Object)那里删除
+                } else {
+                    p.remove(index); // 删除没有记录的子节点
+                }
+                if (c.isLeaf())
+                    old.map.fireLeafPageRemove(pageKey, c);
+            }
         }
     }
 

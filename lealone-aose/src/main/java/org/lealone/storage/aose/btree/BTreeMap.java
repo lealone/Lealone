@@ -43,9 +43,9 @@ import org.lealone.storage.type.StorageDataType;
  * 支持同步和异步风格的BTree.
  * 
  * <p>
- * 使用同步风格的API时只允许一个线程更新BTree，异步风格的API允许多线程写.
+ * 对于写操作，使用同步风格的API时会阻塞线程，异步风格的API不阻塞线程.
  * <p>
- * 允许多线程对BTree进行读取操作.
+ * 对于读操作，不阻塞线程，允许多线程对BTree进行读取操作.
  * 
  * @param <K> the key class
  * @param <V> the value class
@@ -171,11 +171,35 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return listener.await();
     }
 
-    // 以下三个API子类会覆盖
+    @Override
+    public V putIfAbsent(K key, V value) {
+        PageOperation.Listener<V> listener = getPageOperationListener();
+        putIfAbsent(key, value, listener);
+        return listener.await();
+    }
+
+    @Override
+    public V remove(K key) {
+        PageOperation.Listener<V> listener = getPageOperationListener();
+        remove(key, listener);
+        return listener.await();
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue) {
+        PageOperation.Listener<Boolean> listener = getPageOperationListener();
+        replace(key, oldValue, newValue, listener);
+        return listener.await();
+    }
+
+    // 以下4个API子类会覆盖
     protected void fireRootLeafPageSplit(BTreePage p) {
     }
 
     protected void fireLeafPageSplit(Object k) {
+    }
+
+    protected void fireLeafPageRemove(PageKey pageKey, BTreePage leafPage) {
     }
 
     protected <R> Object putRemote(BTreePage p, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
@@ -193,90 +217,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    @Override
-    public V putIfAbsent(K key, V value) {
-        PageOperation.Listener<V> listener = getPageOperationListener();
-        putIfAbsent(key, value, listener);
-        return listener.await();
-    }
-
-    @Override
-    public V remove(K key) {
-        PageOperation.Listener<V> listener = getPageOperationListener();
-        remove(key, listener);
-        return listener.await();
-    }
-
-    @Deprecated
-    @SuppressWarnings("unchecked")
-    public V removeOld(K key) {
-        checkWrite();
-        V result = get(key);
-        if (result == null) {
-            return null;
-        }
-        synchronized (this) {
-            BTreePage p = root.copy();
-            result = (V) remove(p, key);
-            if (p.isNode() && p.isEmpty()) {
-                p.removePage();
-                p = BTreeLeafPage.createEmpty(this);
-            }
-            newRoot(p);
-        }
-        return result;
-    }
-
-    protected Object remove(BTreePage p, Object key) {
-        int index = p.binarySearch(key);
-        Object result = null;
-        if (p.isLeaf()) {
-            if (index >= 0) {
-                result = p.getValue(index);
-                p.remove(index);
-            }
-            return result;
-        }
-        // node
-        if (index < 0) {
-            index = -index - 1;
-        } else {
-            index++;
-        }
-        BTreePage cOld = p.getChildPage(index);
-        BTreePage c = cOld.copy();
-        result = remove(c, key);
-        if (result == null || c.isNotEmpty()) {
-            // no change, or there are more nodes
-            p.setChild(index, c);
-        } else {
-            PageKey pageKey = p.getChildPageReference(index).pageKey;
-            // this child was deleted
-            if (p.getKeyCount() == 0) { // 如果p的子节点只剩一个叶子节点时，keyCount为0
-                p.setChild(index, c);
-                c.removePage(); // 直接删除最后一个子节点，父节点在remove(Object)那里删除
-            } else {
-                p.remove(index); // 删除没有记录的子节点
-            }
-            if (c.isLeaf())
-                fireLeafPageRemove(pageKey, c);
-        }
-        return result;
-    }
-
-    protected void fireLeafPageRemove(PageKey pageKey, BTreePage leafPage) {
-        // 子类会覆盖
-    }
-
     boolean isShardingMode() {
         return false;
-    }
-
-    @Override
-    public boolean replace(K key, V oldValue, V newValue) {
-        PageOperation.Listener<Boolean> listener = getPageOperationListener();
-        replace(key, oldValue, newValue, listener);
-        return listener.await();
     }
 
     @Override
@@ -532,6 +474,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     //////////////////// 以下是异步API的实现////////////////////////////////
+
     @Override
     public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
         Get<K, V> get = new Get<>(root, key, handler);
@@ -575,7 +518,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     @SuppressWarnings("unchecked")
     public K append(V value, AsyncHandler<AsyncResult<V>> handler) {
-        checkWrite(value);
+        // 先得到一个long类型的key，再调用put
         K key = (K) ValueLong.get(maxKey.incrementAndGet());
         put(key, value, handler);
         return key;

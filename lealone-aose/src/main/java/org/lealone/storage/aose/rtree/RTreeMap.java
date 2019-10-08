@@ -22,6 +22,7 @@ import org.lealone.storage.type.StorageDataType;
  *
  * @param <V> the value class
  */
+// 此类目前未使用，并且还有一些bug
 public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     /**
@@ -120,7 +121,6 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
         return null;
     }
 
-    @Override
     @Deprecated
     protected synchronized Object remove(BTreePage p, Object key) {
         Object result = null;
