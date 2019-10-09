@@ -205,6 +205,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return null;
     }
 
+    protected <R> Object removeRemote(BTreePage p, K key, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
+        return null;
+    }
+
     /**
      * Use the new root page from now on.
      * 
@@ -482,7 +486,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public void get(K key, AsyncHandler<AsyncResult<V>> handler) {
-        Get<K, V> get = new Get<>(root, key, handler);
+        Get<K, V> get = new Get<>(this, key, handler);
         pohFactory.addPageOperation(get);
     }
 

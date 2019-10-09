@@ -33,54 +33,8 @@ public abstract class PageOperations {
     private PageOperations() {
     }
 
-    public static class Get<K, V> implements PageOperation {
-        BTreePage p;
-        K key;
-        AsyncHandler<AsyncResult<V>> handler;
-
-        public Get(BTreePage p, K key, AsyncHandler<AsyncResult<V>> handler) {
-            this.p = p;
-            this.key = key;
-            this.handler = handler;
-        }
-
-        @Override
-        public void run() {
-            while (true) {
-                int index = p.binarySearch(key);
-                if (p.isLeaf()) {
-                    @SuppressWarnings("unchecked")
-                    V result = (V) (index >= 0 ? p.getValue(index, true) : null);
-                    AsyncResult<V> ar = new AsyncResult<>();
-                    ar.setResult(result);
-                    handler.handle(ar);
-                    break;
-                } else {
-                    if (index < 0) {
-                        index = -index - 1;
-                    } else {
-                        index++;
-                    }
-                    p = p.getChildPage(index);
-                }
-            }
-        }
-    }
-
-    private static class PageReferenceContext {
-        final BTreePage parent;
-        final int index;
-        final PageReferenceContext next;
-
-        public PageReferenceContext(BTreePage parent, int index, PageReferenceContext next) {
-            this.parent = parent;
-            this.index = index;
-            this.next = next;
-        }
-    }
-
     public static class CallableOperation implements PageOperation {
-        final Callable<?> callable;
+        private final Callable<?> callable;
 
         public CallableOperation(Callable<?> task) {
             callable = task;
@@ -96,10 +50,10 @@ public abstract class PageOperations {
         }
     }
 
-    public static class WriteOperation implements PageOperation {
-        final Runnable runnable;
+    public static class RunnableOperation implements PageOperation {
+        private final Runnable runnable;
 
-        public WriteOperation(Runnable task) {
+        public RunnableOperation(Runnable task) {
             runnable = task;
         }
 
@@ -109,93 +63,79 @@ public abstract class PageOperations {
         }
     }
 
-    public static class Put<K, V, R> implements PageOperation {
-        final BTreeMap<K, V> map;
-        final K key;
-        final V value;
-        final AsyncHandler<AsyncResult<R>> asyncResultHandler;
-        BTreePage p;
+    // BTree的读操作是不阻塞线程的，所以其实这个类没什么用处
+    public static class Get<K, V> implements PageOperation {
+        private final BTreeMap<K, V> map;
+        private final K key;
+        private final AsyncHandler<AsyncResult<V>> handler;
+        private BTreePage p;
 
-        public Put(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
+        public Get(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<V>> handler) {
             this.map = map;
             this.key = key;
-            this.value = value;
+            this.handler = handler;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public PageOperationResult run(PageOperationHandler currentHandler) {
+            if (p == null) {
+                p = map.gotoLeafPage(key);
+                if (currentHandler != p.getHandler()) {
+                    p.addPageOperation(this);
+                    return PageOperationResult.SHIFTED;
+                }
+            }
+            int index = p.binarySearch(key);
+            V result = (V) (index >= 0 ? p.getValue(index, true) : null);
+            AsyncResult<V> ar = new AsyncResult<>();
+            ar.setResult(result);
+            handler.handle(ar);
+            return PageOperationResult.SUCCEEDED;
+        }
+    }
+
+    // 只针对单Key的写操作，包括: Put、PutIfAbsent、Replace、Remove
+    public static abstract class SingleWrite<K, V, R> implements PageOperation {
+        final BTreeMap<K, V> map;
+        final K key;
+        final AsyncHandler<AsyncResult<R>> asyncResultHandler;
+
+        // 最终要操作的leaf page
+        BTreePage p;
+
+        public SingleWrite(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
+            this.map = map;
+            this.key = key;
             this.asyncResultHandler = asyncResultHandler;
         }
 
         @Override
-        public PageOperationType getType() {
-            return PageOperationType.Put;
-        }
-
-        private static void splitLeafPage(BTreePage p) {
-            // 第一步:
-            // 切开page，得到一个临时的父节点和两个新的leaf page
-            // 临时父节点只能通过被切割的page重定向访问
-            TmpNodePage tmp = splitPage(p);
-
-            // 第二步:
-            // 如果是对root leaf page进行切割，因为当前只有一个线程在处理，所以直接替换root即可，这是安全的
-            if (p == p.map.getRootPage()) {
-                p.map.newRoot(tmp.parent);
-                return;
-            }
-
-            // 第三步:
-            // 禁用新leaf page的切割功能，
-            // 避免在父节点完成AddChild操作前又产生出新的page，这会引入不必要的复杂性
-            tmp.left.page.disableSplit();
-            tmp.right.page.disableSplit();
-
-            // 第四步:
-            // 先重定向到临时的父节点，等实际的父节点完成AddChild操作后再修正
-            BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.SPLITTED, tmp.parent);
-            p.dynamicInfo = dynamicInfo;
-
-            // 第五步:
-            // 把AddChild操作放入父节点的处理器队列中，等候处理。
-            // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
-            AddChild task = new AddChild(tmp);
-            p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
-
-            // 第六步:
-            // 对于分布式场景，通知发生切割了，需要选一个leaf page来移动
-            p.map.fireLeafPageSplit(tmp.key);
-        }
-
-        @SuppressWarnings("unchecked")
-        private void handleAsyncResult(Object result) {
-            AsyncResult<R> ar = new AsyncResult<>();
-            ar.setResult((R) result);
-            asyncResultHandler.handle(ar);
-        }
-
-        @Override
         public PageOperationResult run(PageOperationHandler currentHandler) {
-            // 在BTree刚创建时，因为只有一个root page，不适合并行化，
-            // 也不适合把所有的put操作都转入root page的处理器队列，
-            // 这样会导致root page的处理器队列变得更长，反而不适合并行化了，
-            // 所以只有BTree的leaf page数大于等于线程数时才是并行化的最佳时机。
+            // 在BTree刚创建时，因为只有一个root leaf page，不适合并行化，
+            // 也不适合把所有的写操作都转入root leaf page的处理器队列，
+            // 这样会导致root leaf page的处理器队列变得更长，反而不适合并行化了，
+            // 所以只有BTree的root page是一个node page，并且子节点数至少大于2时才是并行化的最佳时机。
             if (map.parallelDisabled) {
                 synchronized (map) {
                     if (map.parallelDisabled) { // 需要再判断一次，上一个线程会修改这个字段
-                        PageOperationResult rageOperationResult = run(currentHandler, false);
+                        PageOperationResult rageOperationResult = write(currentHandler, false);
                         map.enableParallelIfNeeded();
                         return rageOperationResult;
                     }
                 }
             }
-            return run(currentHandler, true);
+            return write(currentHandler, true);
         }
 
-        private PageOperationResult run(PageOperationHandler currentHandler, boolean isShiftEnabled) {
+        private PageOperationResult write(PageOperationHandler currentHandler, boolean isShiftEnabled) {
             if (p == null) {
                 // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
                 p = map.gotoLeafPage(key);
 
-                // TODO 处理分布式场景
+                // 处理分布式场景
                 if (p.getLeafPageMovePlan() != null) {
-                    map.putRemote(p, key, value, asyncResultHandler);
+                    writeRemote();
                     return PageOperationResult.SHIFTED;
                 }
 
@@ -226,25 +166,54 @@ public abstract class PageOperations {
             }
 
             int index = p.binarySearch(key);
-            Object result = put(index);
+            Object result = writeLocal(index);
             handleAsyncResult(result); // 可以提前执行回调函数了，不需要考虑后续的代码
 
             // 看看当前leaf page是否需要进行切割
             // 当index<0时说明是要增加新值，其他操作不切割(暂时不考虑被更新的值过大，导致超过page size的情况)
-            PageOperationResult rageOperationResult;
             if (index < 0 && p.needSplit()) {
                 splitLeafPage(p);
-                rageOperationResult = PageOperationResult.SPLITTING;
+                return PageOperationResult.SPLITTING;
             } else {
-                rageOperationResult = PageOperationResult.SUCCEEDED;
+                return PageOperationResult.SUCCEEDED;
             }
-            return rageOperationResult;
         }
 
-        protected Object put(int index) {
+        @SuppressWarnings("unchecked")
+        private void handleAsyncResult(Object result) {
+            AsyncResult<R> ar = new AsyncResult<>();
+            ar.setResult((R) result);
+            asyncResultHandler.handle(ar);
+        }
+
+        // 这里的index是key所在的leaf page的索引，
+        // 可能是新增的key所要插入的index，也可能是将要修改或删除的index
+        protected abstract Object writeLocal(int index);
+
+        // 在分布式场景，当前leaf page已经被移到其他节点了
+        protected void writeRemote() {
+        }
+
+        protected void insertLeaf(int index, V value) {
+            index = -index - 1;
+            p.insertLeaf(index, key, value);
+            map.setMaxKey(key);
+        }
+    }
+
+    public static class Put<K, V, R> extends SingleWrite<K, V, R> {
+        final V value;
+
+        public Put(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
+            super(map, key, asyncResultHandler);
+            this.value = value;
+        }
+
+        @Override
+        protected Object writeLocal(int index) {
             Object result;
             if (index < 0) {
-                addValue(index);
+                insertLeaf(index, value);
                 return null;
             } else {
                 result = p.setValue(index, value);
@@ -252,10 +221,9 @@ public abstract class PageOperations {
             }
         }
 
-        protected void addValue(int index) {
-            index = -index - 1;
-            p.insertLeaf(index, key, value);
-            map.setMaxKey(key);
+        @Override
+        protected void writeRemote() {
+            map.putRemote(p, key, value, asyncResultHandler);
         }
     }
 
@@ -266,9 +234,9 @@ public abstract class PageOperations {
         }
 
         @Override
-        protected Object put(int index) {
+        protected Object writeLocal(int index) {
             if (index < 0) {
-                addValue(index);
+                insertLeaf(index, value);
                 return null;
             }
             return p.getValue(index);
@@ -285,7 +253,7 @@ public abstract class PageOperations {
         }
 
         @Override
-        protected Boolean put(int index) {
+        protected Boolean writeLocal(int index) {
             // 对应的key不存在，直接返回false
             if (index < 0) {
                 return Boolean.FALSE;
@@ -299,14 +267,14 @@ public abstract class PageOperations {
         }
     }
 
-    public static class Remove<K, V> extends Put<K, V, V> {
+    public static class Remove<K, V> extends SingleWrite<K, V, V> {
 
         public Remove(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<V>> asyncResultHandler) {
-            super(map, key, null, asyncResultHandler);
+            super(map, key, asyncResultHandler);
         }
 
         @Override
-        protected Object put(int index) {
+        protected Object writeLocal(int index) {
             if (index < 0) {
                 return null;
             }
@@ -317,6 +285,23 @@ public abstract class PageOperations {
                 p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
             }
             return old;
+        }
+
+        @Override
+        protected void writeRemote() {
+            map.removeRemote(p, key, asyncResultHandler);
+        }
+    }
+
+    private static class PageReferenceContext {
+        final BTreePage parent;
+        final int index;
+        final PageReferenceContext next;
+
+        public PageReferenceContext(BTreePage parent, int index, PageReferenceContext next) {
+            this.parent = parent;
+            this.index = index;
+            this.next = next;
         }
     }
 
@@ -473,6 +458,41 @@ public abstract class PageOperations {
             this.right = right;
             this.key = key;
         }
+    }
+
+    private static void splitLeafPage(BTreePage p) {
+        // 第一步:
+        // 切开page，得到一个临时的父节点和两个新的leaf page
+        // 临时父节点只能通过被切割的page重定向访问
+        TmpNodePage tmp = splitPage(p);
+
+        // 第二步:
+        // 如果是对root leaf page进行切割，因为当前只有一个线程在处理，所以直接替换root即可，这是安全的
+        if (p == p.map.getRootPage()) {
+            p.map.newRoot(tmp.parent);
+            return;
+        }
+
+        // 第三步:
+        // 禁用新leaf page的切割功能，
+        // 避免在父节点完成AddChild操作前又产生出新的page，这会引入不必要的复杂性
+        tmp.left.page.disableSplit();
+        tmp.right.page.disableSplit();
+
+        // 第四步:
+        // 先重定向到临时的父节点，等实际的父节点完成AddChild操作后再修正
+        BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.SPLITTED, tmp.parent);
+        p.dynamicInfo = dynamicInfo;
+
+        // 第五步:
+        // 把AddChild操作放入父节点的处理器队列中，等候处理。
+        // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
+        AddChild task = new AddChild(tmp);
+        p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
+
+        // 第六步:
+        // 对于分布式场景，通知发生切割了，需要选一个leaf page来移动
+        p.map.fireLeafPageSplit(tmp.key);
     }
 
     private static TmpNodePage splitPage(BTreePage p) {

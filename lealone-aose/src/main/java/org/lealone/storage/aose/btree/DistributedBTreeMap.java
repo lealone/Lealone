@@ -44,7 +44,7 @@ import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.aose.AOStorage;
-import org.lealone.storage.aose.btree.PageOperations.WriteOperation;
+import org.lealone.storage.aose.btree.PageOperations.RunnableOperation;
 import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.storage.type.StorageDataType;
 
@@ -161,7 +161,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     }
 
     private void moveLeafPageLazy(PageKey pageKey) {
-        WriteOperation operation = new WriteOperation(() -> {
+        RunnableOperation operation = new RunnableOperation(() -> {
             moveLeafPage(pageKey);
         });
         pohFactory.addPageOperation(operation);
@@ -314,7 +314,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
 
     private void removeLeafPage(PageKey pageKey, BTreePage leafPage) {
         if (leafPage.getReplicationHostIds().get(0).equals(getLocalHostId())) {
-            WriteOperation operation = new WriteOperation(() -> {
+            RunnableOperation operation = new RunnableOperation(() -> {
                 List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(leafPage);
                 Set<NetEndpoint> otherEndpoints = getCandidateEndpoints();
                 otherEndpoints.removeAll(oldReplicationEndpoints);

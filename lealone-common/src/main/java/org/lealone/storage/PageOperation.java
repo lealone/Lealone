@@ -33,20 +33,6 @@ public interface PageOperation extends AsyncTask {
         LOCKED;
     }
 
-    public static enum PageOperationType {
-        Get,
-        Put,
-        PutIfAbsent,
-        Replace,
-        Remove,
-        AddChild,
-        Other;
-    }
-
-    default PageOperationType getType() {
-        return PageOperationType.Other;
-    }
-
     @Override
     default int getPriority() {
         return MAX_PRIORITY;
