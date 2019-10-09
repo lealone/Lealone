@@ -230,7 +230,7 @@ public abstract class PageOperations {
             // 看看当前leaf page是否需要进行切割
             // 当index<0时说明是要增加新值，其他操作不切割(暂时不考虑被更新的值过大，导致超过page size的情况)
             PageOperationResult rageOperationResult;
-            if (index < 0 && p.isSplitEnabled() && p.needSplit()) {
+            if (index < 0 && p.needSplit()) {
                 splitLeafPage(p);
                 rageOperationResult = PageOperationResult.SPLITTING;
             } else {

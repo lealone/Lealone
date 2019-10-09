@@ -211,11 +211,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     @Override
-    boolean needSplit() {
-        return memory > map.btreeStorage.getPageSplitSize() && keys.length > 1;
-    }
-
-    @Override
     public int getKeyCount() {
         return keys.length;
     }

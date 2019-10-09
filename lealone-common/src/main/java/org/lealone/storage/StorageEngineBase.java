@@ -25,8 +25,8 @@ import org.lealone.db.DataHandler;
 public abstract class StorageEngineBase implements StorageEngine {
 
     protected final String name;
-
     protected Map<String, String> config;
+    protected PageOperationHandlerFactory pohFactory;
 
     public StorageEngineBase(String name) {
         this.name = name;
@@ -51,5 +51,15 @@ public abstract class StorageEngineBase implements StorageEngine {
     @Override
     public LobStorage getLobStorage(DataHandler dataHandler, Storage storage) {
         throw DbException.getUnsupportedException("getLobStorage");
+    }
+
+    @Override
+    public void setPageOperationHandlerFactory(PageOperationHandlerFactory pohFactory) {
+        this.pohFactory = pohFactory;
+    }
+
+    @Override
+    public PageOperationHandlerFactory getPageOperationHandlerFactory() {
+        return pohFactory;
     }
 }

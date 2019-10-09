@@ -29,11 +29,17 @@ public class AOStorageBuilder extends StorageBuilder {
     private final PageOperationHandlerFactory pohFactory;
 
     public AOStorageBuilder() {
-        this(new HashMap<>(0));
+        this(new HashMap<>(0), null);
     }
 
     public AOStorageBuilder(Map<String, String> defaultConfig) {
-        pohFactory = PageOperationHandlerFactory.create(defaultConfig);
+        this(defaultConfig, null);
+    }
+
+    public AOStorageBuilder(Map<String, String> defaultConfig, PageOperationHandlerFactory pohFactory) {
+        if (pohFactory == null)
+            pohFactory = PageOperationHandlerFactory.create(defaultConfig);
+        this.pohFactory = pohFactory;
         if (defaultConfig != null)
             config.putAll(defaultConfig);
     }

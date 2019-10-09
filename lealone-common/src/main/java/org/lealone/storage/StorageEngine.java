@@ -26,4 +26,8 @@ public interface StorageEngine extends PluggableEngine {
 
     LobStorage getLobStorage(DataHandler dataHandler, Storage storage);
 
+    void setPageOperationHandlerFactory(PageOperationHandlerFactory pohFactory);
+
+    PageOperationHandlerFactory getPageOperationHandlerFactory();
+
 }

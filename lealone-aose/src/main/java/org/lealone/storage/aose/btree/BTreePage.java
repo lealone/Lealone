@@ -594,12 +594,12 @@ public class BTreePage {
         return replicationHostIds;
     }
 
-    public static BTreeLocalPage createLeaf(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount,
+    public static BTreeLeafPage createLeaf(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount,
             int memory) {
         return BTreeLeafPage.create(map, keys, values, totalCount, memory);
     }
 
-    public static BTreeLocalPage createNode(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
+    public static BTreeNodePage createNode(BTreeMap<?, ?> map, Object[] keys, PageReference[] children, int memory) {
         return BTreeNodePage.create(map, keys, children, memory);
     }
 

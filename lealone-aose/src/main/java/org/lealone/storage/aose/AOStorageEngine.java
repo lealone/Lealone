@@ -34,7 +34,7 @@ public class AOStorageEngine extends StorageEngineBase {
 
     @Override
     public StorageBuilder getStorageBuilder() {
-        return new AOStorageBuilder(config);
+        return new AOStorageBuilder(config, pohFactory);
     }
 
     @Override

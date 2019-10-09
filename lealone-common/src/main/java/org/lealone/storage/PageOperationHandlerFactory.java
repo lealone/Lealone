@@ -26,7 +26,12 @@ public abstract class PageOperationHandlerFactory {
     protected PageOperationHandler nodePageOperationHandler;
     protected PageOperationHandler[] leafPageOperationHandlers;;
 
-    protected PageOperationHandlerFactory(Map<String, String> config) {
+    protected PageOperationHandlerFactory(Map<String, String> config, PageOperationHandler[] handlers) {
+        if (handlers != null) {
+            setPageOperationHandlers(handlers);
+            return;
+        }
+        // 如果未指定处理器集，那么使用默认的
         int handlerCount;
         if (config.containsKey("page_operation_handler_count"))
             handlerCount = Integer.parseInt(config.get("page_operation_handler_count"));
@@ -125,17 +130,21 @@ public abstract class PageOperationHandlerFactory {
     }
 
     public static PageOperationHandlerFactory create(Map<String, String> config) {
+        return create(config, null);
+    }
+
+    public static PageOperationHandlerFactory create(Map<String, String> config, PageOperationHandler[] handlers) {
         PageOperationHandlerFactory factory = null;
         String key = "page_operation_handler_factory_type";
         String type = null;
         if (config.containsKey(key))
             type = config.get(key);
         if (type == null || type.equalsIgnoreCase("RoundRobin"))
-            factory = new RoundRobinFactory(config);
+            factory = new RoundRobinFactory(config, handlers);
         else if (type.equalsIgnoreCase("Random"))
-            factory = new RandomFactory(config);
+            factory = new RandomFactory(config, handlers);
         else if (type.equalsIgnoreCase("LoadBalance"))
-            factory = new LoadBalanceFactory(config);
+            factory = new LoadBalanceFactory(config, handlers);
         else {
             throw new RuntimeException("Unknow " + key + ": " + type);
         }
@@ -146,8 +155,8 @@ public abstract class PageOperationHandlerFactory {
 
         private static final Random random = new Random();
 
-        protected RandomFactory(Map<String, String> config) {
-            super(config);
+        protected RandomFactory(Map<String, String> config, PageOperationHandler[] handlers) {
+            super(config, handlers);
         }
 
         @Override
@@ -161,8 +170,8 @@ public abstract class PageOperationHandlerFactory {
 
         private static final AtomicInteger index = new AtomicInteger(0);
 
-        protected RoundRobinFactory(Map<String, String> config) {
-            super(config);
+        protected RoundRobinFactory(Map<String, String> config, PageOperationHandler[] handlers) {
+            super(config, handlers);
         }
 
         @Override
@@ -173,8 +182,8 @@ public abstract class PageOperationHandlerFactory {
 
     private static class LoadBalanceFactory extends PageOperationHandlerFactory {
 
-        protected LoadBalanceFactory(Map<String, String> config) {
-            super(config);
+        protected LoadBalanceFactory(Map<String, String> config, PageOperationHandler[] handlers) {
+            super(config, handlers);
         }
 
         @Override

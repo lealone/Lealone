@@ -45,11 +45,9 @@ public class ScheduleService {
 
         SQLEngineManager.getInstance().setSQLStatementExecutors(schedulers);
         AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);
-
+        PageOperationHandlerFactory pohFactory = PageOperationHandlerFactory.create(config, schedulers);
         for (StorageEngine e : StorageEngineManager.getInstance().getEngines()) {
-            PageOperationHandlerFactory f = e.getStorageBuilder().getPageOperationHandlerFactory();
-            if (f != null)
-                f.setPageOperationHandlers(schedulers);
+            e.setPageOperationHandlerFactory(pohFactory);
         }
     }
 

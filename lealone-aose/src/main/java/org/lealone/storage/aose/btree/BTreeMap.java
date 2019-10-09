@@ -91,17 +91,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private void disableParallelIfNeeded() {
-        if (root.getRawChildPageCount() < pohFactory.getPageOperationHandlerCount())
+        if (root.isLeaf())
             parallelDisabled = true;
     }
 
     void enableParallelIfNeeded() {
-        if (parallelDisabled && root.getRawChildPageCount() >= pohFactory.getPageOperationHandlerCount()) {
+        if (parallelDisabled && root.isNode() && root.getRawChildPageCount() >= 2) {
             parallelDisabled = false;
-            root.handler = pohFactory.getNodePageOperationHandler();
-            for (int i = 0, size = root.getRawChildPageCount(); i < size; i++) {
-                root.getChildPage(i).handler = pohFactory.getPageOperationHandler();
-            }
         }
     }
 
