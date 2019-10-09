@@ -60,6 +60,7 @@ public class BTreeChunk {
     public int pageLengthsOffset;
 
     public FileStorage fileStorage;
+    public long mapSize;
 
     BTreeChunk(int id) {
         this.id = id;
@@ -109,6 +110,7 @@ public class BTreeChunk {
         DataUtils.appendMap(buff, "pageLengthsOffset", pageLengthsOffset);
 
         DataUtils.appendMap(buff, "blockSize", BTreeStorage.BLOCK_SIZE);
+        DataUtils.appendMap(buff, "mapSize", mapSize);
         DataUtils.appendMap(buff, "format", FORMAT_VERSION);
         return buff;
     }
@@ -133,6 +135,8 @@ public class BTreeChunk {
         c.pagePositionsOffset = DataUtils.readHexInt(map, "pagePositionsOffset", 0);
         c.pageLengthsOffset = DataUtils.readHexInt(map, "pageLengthsOffset", 0);
 
+        c.mapSize = DataUtils.readHexLong(map, "mapSize", 0);
+
         long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {
             throw DataUtils.newIllegalStateException(
@@ -140,7 +144,6 @@ public class BTreeChunk {
                             + "than the supported format {1}, " + "and the file was not opened in read-only mode",
                     format, FORMAT_VERSION);
         }
-
         return c;
     }
 }

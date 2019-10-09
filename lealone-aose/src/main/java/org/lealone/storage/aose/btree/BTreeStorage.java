@@ -636,6 +636,7 @@ public class BTreeStorage {
 
         c.blockCount = chunkBodyLength / BLOCK_SIZE + CHUNK_HEADER_BLOCKS; // include chunk header(2 blocks).
         c.fileStorage = getFileStorage(c.id);
+        c.mapSize = map.size();
 
         // chunk header
         writeChunkHeader(c);

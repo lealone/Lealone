@@ -33,11 +33,12 @@ public class BTreeMapTest extends TestBase {
     @Test
     public void run() {
         init();
-        testMapOperations();
+        testSyncOperations();
+        testRemove();
         testCompact();
         testSplit();
         testAsyncOperations();
-        // testAsyncSplit();
+        testAsyncSplit();
     }
 
     private void init() {
@@ -51,13 +52,16 @@ public class BTreeMapTest extends TestBase {
     }
 
     private void openMap() {
-        if (map == null || map.isClosed())
+        if (map == null || map.isClosed()) {
             map = storage.openBTreeMap("BTreeMapTest");
+            map.disableParallel = false;
+        }
     }
 
-    void testMapOperations() {
+    void testSyncOperations() {
         Object v = null;
         map.clear();
+        map.disableParallel = false;
 
         v = map.put(10, "a");
         assertNull(v);
@@ -142,6 +146,30 @@ public class BTreeMapTest extends TestBase {
         } catch (IllegalStateException e) {
             // e.printStackTrace();
         }
+        // 重新打开，看看size这个参数是否保存正确
+        openMap();
+        assertEquals(199, map.size());
+        map.close();
+    }
+
+    // remove相对比较复杂，单独拿来重点测
+    void testRemove() {
+        openMap();
+        map.clear();
+        map.put(1, "a");
+        map.put(2, "b");
+        map.remove(1);
+        map.remove(2);
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.put(i, "value" + i);
+        }
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.remove(i);
+        }
+
+        map.printPage();
     }
 
     void testCompact() {
@@ -237,7 +265,7 @@ public class BTreeMapTest extends TestBase {
 
     void testAsyncSplit() {
         map.clear();
-        map.disableParallel = false;
+        // map.disableParallel = false;
         int count = 10000;
         CountDownLatch latch = new CountDownLatch(count);
         for (int i = 1; i <= count; i++) {

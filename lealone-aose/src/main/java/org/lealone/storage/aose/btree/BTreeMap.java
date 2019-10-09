@@ -84,6 +84,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         if (btreeStorage.lastChunk != null) {
             root = btreeStorage.readPage(btreeStorage.lastChunk.rootPagePos);
             setMaxKey(lastKey());
+            size.set(btreeStorage.lastChunk.mapSize);
         } else {
             root = BTreeLeafPage.createEmpty(this);
         }
