@@ -148,35 +148,18 @@ public class BTreeLeafPage extends BTreeLocalPage {
         System.arraycopy(keys, 0, aKeys, 0, a);
         System.arraycopy(keys, a, bKeys, 0, b);
         keys = aKeys;
+
         Object[] aValues = new Object[a];
         Object[] bValues = new Object[b];
         System.arraycopy(values, 0, aValues, 0, a);
         System.arraycopy(values, a, bValues, 0, b);
         values = aValues;
+
         totalCount = a;
         BTreeLeafPage newPage = create(map, bKeys, bValues, bKeys.length, 0);
         newPage.replicationHostIds = replicationHostIds;
         recalculateMemory();
         return newPage;
-
-        // int a = at, b = size - a;
-        // // Object[] aKeys = new Object[a];
-        // Object[] bKeys = new Object[b + initLength]; // 预分配空间
-        // // System.arraycopy(keys, 0, aKeys, 0, a);
-        // System.arraycopy(keys, a, bKeys, 0, b);
-        // // keys = aKeys;
-        // // Object[] aValues = new Object[a];
-        // Object[] bValues = new Object[b + initLength];
-        // // System.arraycopy(values, 0, aValues, 0, a);
-        // System.arraycopy(values, a, bValues, 0, b);
-        // // values = aValues;
-        // totalCount = a;
-        // size = a;
-        // BTreeLeafPage newPage = create(map, bKeys, bValues, b, 0);
-        // newPage.replicationHostIds = replicationHostIds;
-        // newPage.length = bValues.length;
-        // recalculateMemory();
-        // return newPage;
     }
 
     @Override
@@ -206,7 +189,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         keys[index] = key;
         values[index] = value;
         totalCount++;
-        map.size.incrementAndGet();// 累加全局计数器
+        map.incrementSize();// 累加全局计数器
         addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
     }
 
@@ -225,7 +208,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         DataUtils.copyExcept(values, newValues, keyLength, index);
         values = newValues;
         totalCount--;
-        map.size.decrementAndGet(); // 递减全局计数器
+        map.decrementSize(); // 递减全局计数器
     }
 
     void readRowStorage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {

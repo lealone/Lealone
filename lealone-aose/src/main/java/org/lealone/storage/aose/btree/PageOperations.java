@@ -135,30 +135,32 @@ public abstract class PageOperations {
             TmpNodePage tmp = splitPage(p);
 
             // 第二步:
-            // 把临时父节点和两个leaf page的处理器重置为原先page的处理器，并且禁用新leaf page的切割功能，
+            // 如果是对root leaf page进行切割，因为当前只有一个线程在处理，所以直接替换root即可，这是安全的
+            if (p == p.map.getRootPage()) {
+                p.map.newRoot(tmp.parent);
+                return;
+            }
+
+            // 第三步:
+            // 禁用新leaf page的切割功能，
             // 避免在父节点完成AddChild操作前又产生出新的page，这会引入不必要的复杂性
-            tmp.parent.handler = p.handler;
-            tmp.left.page.handler = p.handler;
-            tmp.right.page.handler = p.handler;
             tmp.left.page.disableSplit();
             tmp.right.page.disableSplit();
 
-            // 第三步:
+            // 第四步:
             // 先重定向到临时的父节点，等实际的父节点完成AddChild操作后再修正
             BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.SPLITTED, tmp.parent);
             p.dynamicInfo = dynamicInfo;
 
-            // 第四步:
+            // 第五步:
             // 把AddChild操作放入父节点的处理器队列中，等候处理。
             // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
             AddChild task = new AddChild(tmp);
             p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
 
-            if (p == p.map.getRootPage()) {
-                p.map.fireRootLeafPageSplit(tmp.parent);
-            } else {
-                p.map.fireLeafPageSplit(tmp.key);
-            }
+            // 第六步:
+            // 对于分布式场景，通知发生切割了，需要选一个leaf page来移动
+            p.map.fireLeafPageSplit(tmp.key);
         }
 
         @SuppressWarnings("unchecked")
@@ -199,7 +201,7 @@ public abstract class PageOperations {
 
                 // 当前处理器不是leaf page的处理器时需要移交给leaf page的处理器处理
                 if (isShiftEnabled && currentHandler != p.getHandler()) {
-                    p.addTask(this);
+                    p.addPageOperation(this);
                     return PageOperationResult.SHIFTED;
                 }
             }
@@ -318,6 +320,8 @@ public abstract class PageOperations {
         }
     }
 
+    // 这个类不处理root leaf page被切割的场景，在执行Put操作时已经直接处理，
+    // 也就是说此时的btree至少有两层
     public static class AddChild implements PageOperation {
         final TmpNodePage tmpNodePage;
 
@@ -346,10 +350,6 @@ public abstract class PageOperations {
 
         private PageReferenceContext findParentNode(boolean copy) {
             BTreePage root = tmpNodePage.old.map.getRootPage();
-            // root page是一个准备切割的leaf page
-            if (root.isLeaf())
-                return null;
-
             BTreePage p = root;
             if (copy)
                 p = p.copy();
@@ -371,7 +371,7 @@ public abstract class PageOperations {
                 p = c;
             }
             if (context == null) {
-                // 因为前提已经保证只有在root page为node page时才运行并行化操作了，所以肯定能得到一个context
+                // 此时的btree至少有两层，所以肯定能得到一个context
                 throw DbException.throwInternalError("context is null");
             }
             return context;
@@ -379,15 +379,7 @@ public abstract class PageOperations {
 
         @Override
         public void run() {
-            // long t1 = System.currentTimeMillis();
             PageReferenceContext parentContext = findParentNode(true);
-            // root page是一个准备切割的leaf page，直接用临时node page替换它
-            if (parentContext == null) {
-                tmpNodePage.old.map.newRoot(tmpNodePage.parent);
-                tmpNodePage.left.page.enableSplit();
-                tmpNodePage.right.page.enableSplit();
-                return;
-            }
             BTreePage parent = parentContext.parent;
 
             // 先看看父节点是否需要切割
@@ -408,12 +400,8 @@ public abstract class PageOperations {
                 parentContext.parent.setChild(parentContext.index, parent);
                 parent.map.newRoot(parentContext.parent);
             }
-            // BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.SPLITTED, parent);
-            // tmpNodePage.old.dynamicInfo = dynamicInfo;
             tmpNodePage.left.page.enableSplit();
             tmpNodePage.right.page.enableSplit();
-            // long t2 = System.currentTimeMillis();
-            // System.out.println("add child time: " + (t2 - t1) + " ms");
         }
     }
 
@@ -435,7 +423,7 @@ public abstract class PageOperations {
             if (p.isNode() && p.isEmpty()) {
                 p.removePage();
                 p = BTreeLeafPage.createEmpty(old.map);
-                old.map.size.set(0);
+                old.map.resetSize();
             }
             old.map.newRoot(p);
         }

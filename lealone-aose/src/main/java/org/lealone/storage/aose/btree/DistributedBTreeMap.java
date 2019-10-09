@@ -100,8 +100,8 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     }
 
     @Override
-    protected void fireRootLeafPageSplit(BTreePage p) {
-        PageKey pk = new PageKey(p.getKey(0), false); // 移动右边的Page
+    protected void fireLeafPageSplit(Object splitKey) {
+        PageKey pk = new PageKey(splitKey, false); // 移动右边的Page
         moveLeafPageLazy(pk);
     }
 
@@ -137,12 +137,6 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         } else {
             return null; // 不是由当前节点移动的，那么put操作就可以忽略了
         }
-    }
-
-    @Override
-    protected void fireLeafPageSplit(Object k) {
-        PageKey pk = new PageKey(k, false); // 移动右边的Page
-        moveLeafPageLazy(pk);
     }
 
     private Set<NetEndpoint> getCandidateEndpoints() {

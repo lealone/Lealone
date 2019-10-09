@@ -214,11 +214,10 @@ public abstract class BTreeLocalPage extends BTreePage {
      */
     @Override
     public void removePage() {
-        long p = pos;
-        if (p == 0) {
+        if (pos == 0) {
             removedInMemory = true;
         }
-        map.btreeStorage.removePage(p, memory);
+        map.btreeStorage.removePage(pos, memory);
     }
 
     @Override

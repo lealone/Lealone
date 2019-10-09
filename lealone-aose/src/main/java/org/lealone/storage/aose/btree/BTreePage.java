@@ -50,8 +50,9 @@ public class BTreePage {
             this.redirect = redirect;
         }
 
-        public static DynamicInfo redirectTo(BTreePage p) {
-            return new DynamicInfo(State.NORMAL, p);
+        @Override
+        public String toString() {
+            return "DynamicInfo[" + state + "]";
         }
     }
 
@@ -74,18 +75,20 @@ public class BTreePage {
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
     protected final BTreeMap<?, ?> map;
+    protected final PageOperationHandler handler;
     protected long pos;
-    protected PageOperationHandler handler;
 
     private boolean splitEnabled = true;
     volatile DynamicInfo dynamicInfo = new DynamicInfo();
 
     protected BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
-        if (isNode())
-            handler = map.pohFactory.getNodePageOperationHandler();
-        else if (isLeaf())
+        if (isLeaf())
             handler = map.pohFactory.getPageOperationHandler();
+        else if (isNode())
+            handler = map.pohFactory.getNodePageOperationHandler();
+        else
+            handler = null;
     }
 
     public boolean isSplitEnabled() {
@@ -100,21 +103,13 @@ public class BTreePage {
         splitEnabled = false;
     }
 
-    public void redirectTo(BTreePage p) {
-        dynamicInfo = DynamicInfo.redirectTo(p);
-    }
-
-    public void setHandler(PageOperationHandler handler) {
-        this.handler = handler;
-    }
-
     public PageOperationHandler getHandler() {
         return handler;
     }
 
-    public void addTask(PageOperation task) {
+    void addPageOperation(PageOperation po) {
         if (handler != null) {
-            handler.handlePageOperation(task);
+            handler.handlePageOperation(po);
         }
     }
 

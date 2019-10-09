@@ -83,7 +83,6 @@ public class BTreeNodePage extends BTreeLocalPage {
     @Override
     BTreeNodePage split(int at) { // at对应的key只放在父节点中
         int a = at, b = keys.length - a;
-
         Object[] aKeys = new Object[a];
         Object[] bKeys = new Object[b - 1];
         System.arraycopy(keys, 0, aKeys, 0, a);

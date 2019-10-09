@@ -52,7 +52,9 @@ import org.lealone.storage.type.StorageDataType;
  */
 public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
-    protected final AtomicLong size = new AtomicLong(0);
+    // 只允许通过成员方法访问这个特殊的字段
+    private final AtomicLong size = new AtomicLong(0);
+
     protected final boolean readOnly;
     protected final Map<String, Object> config;
     protected final BTreeStorage btreeStorage;
@@ -193,10 +195,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return null;
     }
 
-    protected void fireRootLeafPageSplit(BTreePage p) {
-    }
-
-    protected void fireLeafPageSplit(Object k) {
+    protected void fireLeafPageSplit(Object splitKey) {
     }
 
     protected void fireLeafPageRemove(PageKey pageKey, BTreePage leafPage) {
@@ -328,6 +327,18 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public long size() {
         return size.get();
+    }
+
+    void incrementSize() {
+        size.incrementAndGet();
+    }
+
+    void decrementSize() {
+        size.decrementAndGet();
+    }
+
+    void resetSize() {
+        size.set(0);
     }
 
     @Override
