@@ -57,11 +57,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     protected final Map<String, Object> config;
     protected final BTreeStorage btreeStorage;
     protected final PageOperationHandlerFactory pohFactory;
-    protected IDatabase db;
     protected PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
     // btree的root page，最开始是一个leaf page，随时都会指向新的page
     protected volatile BTreePage root;
+    protected volatile boolean parallelDisabled;
 
     @SuppressWarnings("unchecked")
     protected BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
@@ -72,7 +72,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         this.readOnly = config.containsKey("readOnly");
         this.config = config;
         this.pohFactory = aoStorage.getPageOperationHandlerFactory();
-        this.db = (IDatabase) config.get("db");
 
         Object mode = config.get("pageStorageMode");
         if (mode != null) {
@@ -93,12 +92,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private void disableParallelIfNeeded() {
         if (root.getRawChildPageCount() < pohFactory.getPageOperationHandlerCount())
-            disableParallel = true;
+            parallelDisabled = true;
     }
 
     void enableParallelIfNeeded() {
-        if (disableParallel && root.getRawChildPageCount() >= pohFactory.getPageOperationHandlerCount()) {
-            disableParallel = false;
+        if (parallelDisabled && root.getRawChildPageCount() >= pohFactory.getPageOperationHandlerCount()) {
+            parallelDisabled = false;
             root.handler = pohFactory.getNodePageOperationHandler();
             for (int i = 0, size = root.getRawChildPageCount(); i < size; i++) {
                 root.getChildPage(i).handler = pohFactory.getPageOperationHandler();
@@ -193,7 +192,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return listener.await();
     }
 
-    // 以下4个API子类会覆盖
+    // 以下API子类会覆盖
+    protected IDatabase getDatabase() {
+        return null;
+    }
+
     protected void fireRootLeafPageSplit(BTreePage p) {
     }
 
@@ -518,7 +521,4 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         put(key, value, handler);
         return key;
     }
-
-    public volatile boolean disableParallel;
-    public volatile boolean disableSplit;
 }

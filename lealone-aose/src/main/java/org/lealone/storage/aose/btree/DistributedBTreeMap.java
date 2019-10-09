@@ -54,6 +54,7 @@ import org.lealone.storage.type.StorageDataType;
 public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements DistributedStorageMap<K, V> {
 
     protected final boolean isShardingMode;
+    protected IDatabase db;
     private RunMode runMode;
     private String[] oldEndpoints;
 
@@ -61,29 +62,27 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
             Map<String, Object> config, AOStorage aoStorage) {
         super(name, keyType, valueType, config, aoStorage);
 
-        boolean isShardingMode = false;
         if (config.containsKey("isShardingMode"))
             isShardingMode = Boolean.parseBoolean(config.get("isShardingMode").toString());
+        else
+            isShardingMode = false;
+        db = (IDatabase) config.get("db");
 
-        if (btreeStorage.lastChunk == null) {
-            if (isShardingMode) {
-                String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
-                DataUtils.checkArgument(initReplicationEndpoints != null,
-                        "The initReplicationEndpoints may not be null");
-                String[] replicationEndpoints = StringUtils.arraySplit(initReplicationEndpoints, '&');
-                if (containsLocalEndpoint(replicationEndpoints)) {
-                    root = BTreeLeafPage.createEmpty(this);
-                } else {
-                    root = new BTreeRemotePage(this);
-                }
-                root.setReplicationHostIds(Arrays.asList(replicationEndpoints));
-                btreeStorage.addHostIds(replicationEndpoints);
-                // 强制把replicationHostIds持久化
-                btreeStorage.forceSave();
-                disableParallel = true;
+        if (btreeStorage.lastChunk == null && isShardingMode) {
+            String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
+            DataUtils.checkArgument(initReplicationEndpoints != null, "The initReplicationEndpoints may not be null");
+            String[] replicationEndpoints = StringUtils.arraySplit(initReplicationEndpoints, '&');
+            if (containsLocalEndpoint(replicationEndpoints)) {
+                root = BTreeLeafPage.createEmpty(this);
+            } else {
+                root = new BTreeRemotePage(this);
             }
+            root.setReplicationHostIds(Arrays.asList(replicationEndpoints));
+            btreeStorage.addHostIds(replicationEndpoints);
+            // 强制把replicationHostIds持久化
+            btreeStorage.forceSave();
+            parallelDisabled = true;
         }
-        this.isShardingMode = isShardingMode;
     }
 
     private boolean containsLocalEndpoint(String[] replicationEndpoints) {
@@ -93,6 +92,11 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
                 return true;
         }
         return false;
+    }
+
+    @Override
+    protected IDatabase getDatabase() {
+        return db;
     }
 
     @Override

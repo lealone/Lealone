@@ -20,6 +20,7 @@ package org.lealone.storage.aose.btree;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import org.lealone.db.IDatabase;
 import org.lealone.db.Session;
 import org.lealone.net.NetEndpoint;
 import org.lealone.storage.PageKey;
@@ -115,13 +116,13 @@ public class PageReference {
         if (page != null) {
             return page;
         }
-
+        IDatabase db = map.getDatabase();
         // TODO 支持多节点容错
         String remoteHostId = replicationHostIds.get(0);
-        List<NetEndpoint> replicationEndpoints = DistributedBTreeMap.getReplicationEndpoints(map.db,
+        List<NetEndpoint> replicationEndpoints = DistributedBTreeMap.getReplicationEndpoints(db,
                 new String[] { remoteHostId });
-        Session session = map.db.createInternalSession(true);
-        ReplicationSession rs = map.db.createReplicationSession(session, replicationEndpoints);
+        Session session = db.createInternalSession(true);
+        ReplicationSession rs = db.createReplicationSession(session, replicationEndpoints);
         try (StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer pageBuffer = c.readRemotePage(map.getName(), pageKey);
             page = BTreePage.readReplicatedPage(map, pageBuffer);

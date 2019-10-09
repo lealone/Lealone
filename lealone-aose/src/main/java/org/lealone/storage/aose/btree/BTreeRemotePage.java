@@ -137,9 +137,9 @@ public class BTreeRemotePage extends BTreePage {
 
     @Override
     void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
+        DistributedBTreeMap<?, ?> map = (DistributedBTreeMap<?, ?>) this.map;
         Set<NetEndpoint> candidateEndpoints = DistributedBTreeMap.getCandidateEndpoints(map.db, newEndpoints);
-        ((DistributedBTreeMap<?, ?>) map).replicateOrMovePage(null, null, this, 0, oldEndpoints, false,
-                candidateEndpoints);
+        map.replicateOrMovePage(null, null, this, 0, oldEndpoints, false, candidateEndpoints);
     }
 
     @Override

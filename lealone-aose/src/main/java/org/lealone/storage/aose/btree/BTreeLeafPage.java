@@ -612,16 +612,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         write(chunk, buff, false);
     }
 
-    // @Override
-    // protected int recalculateKeysMemory() {
-    // int mem = PageUtils.PAGE_MEMORY;
-    // StorageDataType keyType = map.getKeyType();
-    // for (int i = 0; i < size; i++) {
-    // mem += keyType.getMemory(keys[i]);
-    // }
-    // return mem;
-    // }
-
     @Override
     protected void recalculateMemory() {
         int mem = recalculateKeysMemory();
@@ -631,18 +621,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         }
         addMemory(mem - memory);
     }
-
-    // @Override
-    // protected void recalculateMemory() {
-    // StorageDataType keyType = map.getKeyType();
-    // StorageDataType valueType = map.getValueType();
-    // int mem = PageUtils.PAGE_MEMORY;
-    // for (Entry<Object, Object> e : hashMap.entrySet()) {
-    // mem += keyType.getMemory(e.getKey());
-    // mem += valueType.getMemory(e.getValue());
-    // }
-    // addMemory(mem - memory);
-    // }
 
     @Override
     public BTreeLeafPage copy() {
@@ -692,9 +670,9 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     @Override
     void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
+        DistributedBTreeMap<?, ?> map = (DistributedBTreeMap<?, ?>) this.map;
         Set<NetEndpoint> candidateEndpoints = DistributedBTreeMap.getCandidateEndpoints(map.db, newEndpoints);
-        ((DistributedBTreeMap<?, ?>) map).replicateOrMovePage(null, null, this, 0, oldEndpoints, false,
-                candidateEndpoints);
+        map.replicateOrMovePage(null, null, this, 0, oldEndpoints, false, candidateEndpoints);
     }
 
     @Override

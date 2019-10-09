@@ -174,9 +174,9 @@ public abstract class PageOperations {
             // 也不适合把所有的put操作都转入root page的处理器队列，
             // 这样会导致root page的处理器队列变得更长，反而不适合并行化了，
             // 所以只有BTree的leaf page数大于等于线程数时才是并行化的最佳时机。
-            if (map.disableParallel) {
+            if (map.parallelDisabled) {
                 synchronized (map) {
-                    if (map.disableParallel) { // 需要再判断一次，上一个线程会修改这个字段
+                    if (map.parallelDisabled) { // 需要再判断一次，上一个线程会修改这个字段
                         PageOperationResult rageOperationResult = run(currentHandler, false);
                         map.enableParallelIfNeeded();
                         return rageOperationResult;
@@ -228,8 +228,9 @@ public abstract class PageOperations {
             handleAsyncResult(result); // 可以提前执行回调函数了，不需要考虑后续的代码
 
             // 看看当前leaf page是否需要进行切割
+            // 当index<0时说明是要增加新值，其他操作不切割(暂时不考虑被更新的值过大，导致超过page size的情况)
             PageOperationResult rageOperationResult;
-            if (!map.disableSplit && p.isSplitEnabled() && p.needSplit()) {
+            if (index < 0 && p.isSplitEnabled() && p.needSplit()) {
                 splitLeafPage(p);
                 rageOperationResult = PageOperationResult.SPLITTING;
             } else {

@@ -34,11 +34,10 @@ public class BTreeMapTest extends TestBase {
     public void run() {
         init();
         testSyncOperations();
-        testRemove();
+        testAsyncOperations();
         testCompact();
         testSplit();
-        testAsyncOperations();
-        testAsyncSplit();
+        testRemove();
     }
 
     private void init() {
@@ -54,14 +53,12 @@ public class BTreeMapTest extends TestBase {
     private void openMap() {
         if (map == null || map.isClosed()) {
             map = storage.openBTreeMap("BTreeMapTest");
-            map.disableParallel = false;
         }
     }
 
     void testSyncOperations() {
         Object v = null;
         map.clear();
-        map.disableParallel = false;
 
         v = map.put(10, "a");
         assertNull(v);
@@ -152,68 +149,8 @@ public class BTreeMapTest extends TestBase {
         map.close();
     }
 
-    // remove相对比较复杂，单独拿来重点测
-    void testRemove() {
-        openMap();
-        map.clear();
-        map.put(1, "a");
-        map.put(2, "b");
-        map.remove(1);
-        map.remove(2);
-
-        for (int i = 1; i <= 40; i += 2) {
-            map.put(i, "value" + i);
-        }
-
-        for (int i = 1; i <= 40; i += 2) {
-            map.remove(i);
-        }
-
-        map.printPage();
-    }
-
-    void testCompact() {
-        map = storage.openBTreeMap("BTreeMapTest");
-
-        map.clear();
-
-        map.put(1, "v1");
-        map.put(50, "v50");
-        map.put(100, "v100");
-
-        map.save();
-
-        for (int i = 1; i <= 200; i++)
-            map.put(i, "value" + i);
-        map.save();
-
-        // map.printPage();
-
-        for (int i = 50; i <= 200; i++)
-            map.put(i, "value" + i);
-
-        map.save();
-    }
-
-    void testSplit() {
-        openMap();
-        map.clear();
-        for (int i = 1; i <= 40; i += 2) {
-            map.put(i, "value" + i);
-        }
-
-        map.save();
-
-        for (int i = 1; i <= 40; i += 2) {
-            map.remove(i);
-        }
-
-        map.printPage();
-    }
-
     void testAsyncOperations() {
         map.clear();
-        map.disableParallel = false;
         int count = 7;
         CountDownLatch latch = new CountDownLatch(count);
         CountDownLatch latch2 = new CountDownLatch(1);
@@ -263,24 +200,71 @@ public class BTreeMapTest extends TestBase {
         assertEquals(1, map.size());
     }
 
-    void testAsyncSplit() {
+    void testCompact() {
+        map = storage.openBTreeMap("BTreeMapTest");
+
         map.clear();
-        // map.disableParallel = false;
+
+        map.put(1, "v1");
+        map.put(50, "v50");
+        map.put(100, "v100");
+
+        map.save();
+
+        for (int i = 1; i <= 200; i++)
+            map.put(i, "value" + i);
+        map.save();
+
+        // map.printPage();
+
+        for (int i = 50; i <= 200; i++)
+            map.put(i, "value" + i);
+
+        map.save();
+    }
+
+    void testSplit() {
+        openMap();
+        map.clear();
         int count = 10000;
-        CountDownLatch latch = new CountDownLatch(count);
         for (int i = 1; i <= count; i++) {
             Integer key = i;
-            String value = "value-" + i + "-testAsyncSplit";
-            map.put(key, value, ar -> {
-                latch.countDown();
-            });
-        }
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            String value = "value-" + i;
+            map.put(key, value);
         }
 
         assertEquals(count, map.size());
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.put(i, "value" + i);
+        }
+
+        map.save();
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.remove(i);
+        }
+
+        map.printPage();
+    }
+
+    // remove相对比较复杂，单独拿来重点测
+    void testRemove() {
+        openMap();
+        map.clear();
+        map.put(1, "a");
+        map.put(2, "b");
+        map.remove(1);
+        map.remove(2);
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.put(i, "value" + i);
+        }
+
+        for (int i = 1; i <= 40; i += 2) {
+            map.remove(i);
+        }
+
+        map.printPage();
     }
 }
