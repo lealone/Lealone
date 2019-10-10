@@ -17,6 +17,7 @@
  */
 package org.lealone.storage;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -51,6 +52,7 @@ public abstract class PageOperationHandlerFactory {
                 leafPageOperationHandlers[i] = new DefaultPageOperationHandler("LeafPageOperationHandler-" + i, config);
             }
         }
+        startHandlers();
     }
 
     public abstract PageOperationHandler getPageOperationHandler();
@@ -134,6 +136,8 @@ public abstract class PageOperationHandlerFactory {
     }
 
     public static PageOperationHandlerFactory create(Map<String, String> config, PageOperationHandler[] handlers) {
+        if (config == null)
+            config = new HashMap<>(0);
         PageOperationHandlerFactory factory = null;
         String key = "page_operation_handler_factory_type";
         String type = null;

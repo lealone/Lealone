@@ -90,7 +90,7 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
             stop();
         });
         thread = new Thread(this, name);
-        // thread.setDaemon(true);
+        thread.setDaemon(true);
         thread.start();
     }
 

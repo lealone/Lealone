@@ -224,6 +224,8 @@ public class StandardPrimaryIndex extends IndexBase {
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
         boolean yieldIfNeeded = map.tryUpdate(key, oldRow.getRawValue(), newValue, columnIndexes);
+        if (!yieldIfNeeded && globalListener != null)
+            globalListener.operationComplete();
         session.setLastRow(newRow);
         session.setLastIndex(this);
         return yieldIfNeeded;

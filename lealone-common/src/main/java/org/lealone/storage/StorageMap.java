@@ -249,22 +249,34 @@ public interface StorageMap<K, V> {
     }
 
     default void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        put(key, value);
+        V v = put(key, value);
+        handleAsyncResult(handler, v);
     }
 
     default void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        putIfAbsent(key, value);
+        V v = putIfAbsent(key, value);
+        handleAsyncResult(handler, v);
     }
 
     default void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
-        replace(key, oldValue, newValue);
+        Boolean b = replace(key, oldValue, newValue);
+        handleAsyncResult(handler, b);
     }
 
     default void remove(K key, AsyncHandler<AsyncResult<V>> handler) {
-        remove(key);
+        V v = remove(key);
+        handleAsyncResult(handler, v);
     }
 
     default K append(V value, AsyncHandler<AsyncResult<V>> handler) {
-        return append(value);
+        K k = append(value);
+        handleAsyncResult(handler, value);
+        return k;
+    }
+
+    static <R> void handleAsyncResult(AsyncHandler<AsyncResult<R>> handler, R result) {
+        AsyncResult<R> ar = new AsyncResult<>();
+        ar.setResult(result);
+        handler.handle(ar);
     }
 }
