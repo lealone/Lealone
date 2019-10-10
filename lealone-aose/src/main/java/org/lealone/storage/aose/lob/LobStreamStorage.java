@@ -5,8 +5,7 @@
  */
 package org.lealone.storage.aose.lob;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
@@ -14,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -37,25 +37,23 @@ import org.lealone.storage.aose.btree.BTreeMap;
  * @author H2 Group
  * @author zhh
  */
-public class AOLobStorage implements LobStorage {
+// 把所有的大对象(BLOB/CLOB)变成流，然后通过三个BTreeMap配合完成对大对象的存储
+public class LobStreamStorage implements LobStorage {
 
     private static final boolean TRACE = false;
 
     private final DataHandler dataHandler;
     private final AOStorage storage;
-    private StreamStorage streamStore;
-    private boolean init;
 
     private final Object nextLobIdSync = new Object();
     private long nextLobId;
 
     /**
-     * The lob metadata map. It contains the mapping from the lob id
-     * (which is a long) to the stream store id (which is a byte array).
+     * The lob metadata map. It contains the mapping from the lob id(which is a long) 
+     * to the stream store id (which is a byte array).
      *
      * Key: lobId (long)
-     * Value: { streamStoreId (byte[]), tableId (int),
-     * byteCount (long), hash (long) }.
+     * Value: { streamStoreId (byte[]), tableId (int), byteCount (long), hash (long) }.
      */
     private BTreeMap<Long, Object[]> lobMap;
 
@@ -69,34 +67,33 @@ public class AOLobStorage implements LobStorage {
      */
     private BTreeMap<Object[], Boolean> refMap;
 
-    /**
-     * The stream store data map.
-     *
-     * Key: stream store block id (long).
-     * Value: data (byte[]).
-     */
-    private BTreeMap<Long, byte[]> dataMap;
+    // 这个字段才是实际存放大对象字节流的，上面两个只是放引用
+    private LobStreamMap lobStreamMap;
 
-    public AOLobStorage(DataHandler dataHandler, Storage storage) {
+    public LobStreamStorage(DataHandler dataHandler, Storage storage) {
         this.dataHandler = dataHandler;
         this.storage = (AOStorage) storage;
     }
 
     @Override
     public void init() {
-        if (init) {
+        if (lobMap == null)
+            lazyInit();
+    }
+
+    // 不是每个数据库都用到大对象字段的，所以只有实际用到时才创建相应的BTreeMap
+    private synchronized void lazyInit() {
+        if (lobMap != null)
             return;
-        }
-        init = true;
         lobMap = storage.openBTreeMap("lobMap");
         refMap = storage.openBTreeMap("lobRef");
-        dataMap = storage.openBTreeMap("lobData");
-        streamStore = new StreamStorage(dataMap);
+        lobStreamMap = new LobStreamMap(storage.openBTreeMap("lobData"));
+
         // garbage collection of the last blocks
         if (storage.isReadOnly()) {
             return;
         }
-        if (dataMap.isEmpty()) {
+        if (lobStreamMap.isEmpty()) {
             return;
         }
         // search the last referenced block
@@ -107,19 +104,30 @@ public class AOLobStorage implements LobStorage {
         while (lobId != null) {
             Object[] v = lobMap.get(lobId);
             byte[] id = (byte[]) v[0];
-            lastUsedKey = streamStore.getMaxBlockKey(id);
+            lastUsedKey = lobStreamMap.getMaxBlockKey(id);
             if (lastUsedKey >= 0) {
                 break;
             }
             lobId = lobMap.floorKey(lobId);
         }
+        if (TRACE) {
+            trace("lastUsedKey=" + lastUsedKey);
+        }
         // delete all blocks that are newer
         while (true) {
-            Long last = dataMap.lastKey();
+            Long last = lobStreamMap.lastKey();
             if (last == null || last <= lastUsedKey) {
                 break;
             }
-            dataMap.remove(last);
+            if (TRACE) {
+                trace("gc " + last);
+            }
+            lobStreamMap.remove(last);
+        }
+        // don't re-use block ids, except at the very end
+        Long last = lobStreamMap.lastKey();
+        if (last != null) {
+            lobStreamMap.setNextKey(last + 1);
         }
     }
 
@@ -129,27 +137,23 @@ public class AOLobStorage implements LobStorage {
     }
 
     @Override
-    public Value createBlob(InputStream in, long maxLength) {
+    public ValueLob createBlob(InputStream in, long maxLength) {
         init();
         int type = Value.BLOB;
-        if (maxLength < 0) {
-            maxLength = Long.MAX_VALUE;
-        }
-        int max = (int) Math.min(maxLength, dataHandler.getMaxLengthInplaceLob());
         try {
-            if (max != 0 && max < Integer.MAX_VALUE) {
-                BufferedInputStream b = new BufferedInputStream(in, max);
-                b.mark(max);
-                byte[] small = new byte[max];
-                int len = IOUtils.readFully(b, small, max);
-                if (len < max) {
-                    if (len < small.length) {
-                        small = Arrays.copyOf(small, len);
-                    }
-                    return ValueLob.createSmallLob(type, small);
+            if (maxLength != -1 && maxLength <= dataHandler.getMaxLengthInplaceLob()) {
+                byte[] small = new byte[(int) maxLength];
+                int len = IOUtils.readFully(in, small, (int) maxLength);
+                if (len > maxLength) {
+                    throw new IllegalStateException("len > blobLength, " + len + " > " + maxLength);
                 }
-                b.reset();
-                in = b;
+                if (len < small.length) {
+                    small = Arrays.copyOf(small, len);
+                }
+                return ValueLob.createSmallLob(type, small);
+            }
+            if (maxLength != -1) {
+                in = new RangeInputStream(in, 0L, maxLength);
             }
             return createLob(in, type);
         } catch (IllegalStateException e) {
@@ -160,28 +164,26 @@ public class AOLobStorage implements LobStorage {
     }
 
     @Override
-    public Value createClob(Reader reader, long maxLength) {
+    public ValueLob createClob(Reader reader, long maxLength) {
         init();
         int type = Value.CLOB;
-        if (maxLength < 0) {
-            maxLength = Long.MAX_VALUE;
-        }
-        int max = (int) Math.min(maxLength, dataHandler.getMaxLengthInplaceLob());
         try {
-            if (max != 0 && max < Integer.MAX_VALUE) {
-                BufferedReader b = new BufferedReader(reader, max);
-                b.mark(max);
-                char[] small = new char[max];
-                int len = IOUtils.readFully(b, small, max);
-                if (len < max) {
-                    if (len < small.length) {
-                        small = Arrays.copyOf(small, len);
-                    }
-                    byte[] utf8 = new String(small, 0, len).getBytes(Constants.UTF8);
-                    return ValueLob.createSmallLob(type, utf8);
+            // we multiple by 3 here to get the worst-case size in bytes
+            if (maxLength != -1 && maxLength * 3 <= dataHandler.getMaxLengthInplaceLob()) {
+                char[] small = new char[(int) maxLength];
+                int len = IOUtils.readFully(reader, small, (int) maxLength);
+                if (len > maxLength) {
+                    throw new IllegalStateException("len > blobLength, " + len + " > " + maxLength);
                 }
-                b.reset();
-                reader = b;
+                byte[] utf8 = new String(small, 0, len).getBytes(StandardCharsets.UTF_8);
+                if (utf8.length > dataHandler.getMaxLengthInplaceLob()) {
+                    throw new IllegalStateException(
+                            "len > maxinplace, " + utf8.length + " > " + dataHandler.getMaxLengthInplaceLob());
+                }
+                return ValueLob.createSmallLob(type, utf8);
+            }
+            if (maxLength < 0) {
+                maxLength = Long.MAX_VALUE;
             }
             CountingReaderInputStream in = new CountingReaderInputStream(reader, maxLength);
             ValueLob lob = createLob(in, type);
@@ -198,16 +200,16 @@ public class AOLobStorage implements LobStorage {
     private ValueLob createLob(InputStream in, int type) throws IOException {
         byte[] streamStoreId;
         try {
-            streamStoreId = streamStore.put(in);
+            streamStoreId = lobStreamMap.put(in);
         } catch (Exception e) {
             throw DbException.convertToIOException(e);
         }
         long lobId = generateLobId();
-        long length = streamStore.length(streamStoreId);
+        long length = lobStreamMap.length(streamStoreId);
         int tableId = LobStorage.TABLE_TEMP;
-        Object[] value = new Object[] { streamStoreId, tableId, length, 0 };
+        Object[] value = { streamStoreId, tableId, length, 0 };
         lobMap.put(lobId, value);
-        Object[] key = new Object[] { streamStoreId, lobId };
+        Object[] key = { streamStoreId, lobId };
         refMap.put(key, Boolean.TRUE);
         ValueLob lob = ValueLob.create(type, dataHandler, tableId, lobId, null, length);
         if (TRACE) {
@@ -258,7 +260,7 @@ public class AOLobStorage implements LobStorage {
             throw DbException.throwInternalError("Lob not found: " + lob.getLobId());
         }
         byte[] streamStoreId = (byte[]) value[0];
-        return streamStore.get(streamStoreId);
+        return lobStreamMap.get(streamStoreId);
     }
 
     @Override
@@ -331,7 +333,7 @@ public class AOLobStorage implements LobStorage {
             }
         }
         if (!hasMoreEntries) {
-            streamStore.remove(streamStoreId);
+            lobStreamMap.remove(streamStoreId);
         }
     }
 
@@ -414,8 +416,7 @@ public class AOLobStorage implements LobStorage {
         }
 
         /**
-         * The number of characters read so far (but there might still be some bytes
-         * in the buffer).
+         * The number of characters read so far (but there might still be some bytes in the buffer).
          *
          * @return the number of characters
          */
@@ -426,6 +427,96 @@ public class AOLobStorage implements LobStorage {
         @Override
         public void close() throws IOException {
             reader.close();
+        }
+    }
+
+    /**
+    * Input stream that reads only a specified range from the source stream.
+    */
+    private static class RangeInputStream extends FilterInputStream {
+        private long limit;
+
+        /**
+         * Creates new instance of range input stream.
+         *
+         * @param in
+         *            source stream
+         * @param offset
+         *            offset of the range
+         * @param limit
+         *            length of the range
+         * @throws IOException
+         *             on I/O exception during seeking to the specified offset
+         */
+        public RangeInputStream(InputStream in, long offset, long limit) throws IOException {
+            super(in);
+            this.limit = limit;
+            IOUtils.skipFully(in, offset);
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (limit <= 0) {
+                return -1;
+            }
+            int b = in.read();
+            if (b >= 0) {
+                limit--;
+            }
+            return b;
+        }
+
+        @Override
+        public int read(byte b[], int off, int len) throws IOException {
+            if (limit <= 0) {
+                return -1;
+            }
+            if (len > limit) {
+                len = (int) limit;
+            }
+            int cnt = in.read(b, off, len);
+            if (cnt > 0) {
+                limit -= cnt;
+            }
+            return cnt;
+        }
+
+        @Override
+        public long skip(long n) throws IOException {
+            if (n > limit) {
+                n = (int) limit;
+            }
+            n = in.skip(n);
+            limit -= n;
+            return n;
+        }
+
+        @Override
+        public int available() throws IOException {
+            int cnt = in.available();
+            if (cnt > limit) {
+                return (int) limit;
+            }
+            return cnt;
+        }
+
+        @Override
+        public void close() throws IOException {
+            in.close();
+        }
+
+        @Override
+        public void mark(int readlimit) {
+        }
+
+        @Override
+        public synchronized void reset() throws IOException {
+            throw new IOException("mark/reset not supported");
+        }
+
+        @Override
+        public boolean markSupported() {
+            return false;
         }
     }
 }

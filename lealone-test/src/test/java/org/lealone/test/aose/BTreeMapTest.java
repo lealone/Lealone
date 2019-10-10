@@ -46,7 +46,6 @@ public class BTreeMapTest extends TestBase {
         pageSplitSize = 1 * 1024;
         // pageSplitSize = 32 * 1024;
         storage = AOStorageTest.openStorage(pageSplitSize);
-        storage.getPageOperationHandlerFactory().startHandlers();
         openMap();
     }
 

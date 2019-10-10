@@ -633,7 +633,7 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
      * @param small the byte array
      * @return the LOB
      */
-    public static Value createSmallLob(int type, byte[] small) {
+    public static ValueLob createSmallLob(int type, byte[] small) {
         int precision;
         if (type == Value.CLOB) {
             precision = new String(small, Constants.UTF8).length();

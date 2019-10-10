@@ -174,6 +174,5 @@ public class ClientLobStorage implements LobStorage {
             pos += n;
             return n;
         }
-
     }
 }

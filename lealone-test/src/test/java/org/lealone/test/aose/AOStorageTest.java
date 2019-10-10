@@ -113,6 +113,8 @@ public class AOStorageTest extends TestBase {
         String storagePath = joinDirs("aose");
         builder.compressHigh();
         builder.storagePath(storagePath).reuseSpace().minFillRate(30);
-        return builder.openStorage();
+        AOStorage storage = builder.openStorage();
+        storage.getPageOperationHandlerFactory().startHandlers();
+        return storage;
     }
 }

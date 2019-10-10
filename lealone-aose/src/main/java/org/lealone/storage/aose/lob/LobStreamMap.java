@@ -39,8 +39,14 @@ import org.lealone.storage.StorageMap;
  * @author H2 Group
  * @author zhh
  */
-public class StreamStorage {
+public class LobStreamMap {
 
+    /**
+     * The stream store data map.
+     *
+     * Key: stream store block id (long).
+     * Value: data (byte[]).
+     */
     private final StorageMap<Long, byte[]> map;
     private final AtomicLong nextKey = new AtomicLong();
     private final AtomicReference<byte[]> nextBuffer = new AtomicReference<>();
@@ -53,12 +59,16 @@ public class StreamStorage {
      *
      * @param map the map to store blocks of data
      */
-    public StreamStorage(StorageMap<Long, byte[]> map) {
+    public LobStreamMap(StorageMap<Long, byte[]> map) {
         this.map = map;
     }
 
-    public StorageMap<Long, byte[]> getMap() {
+    public StorageMap<Long, byte[]> getStorageMap() {
         return map;
+    }
+
+    public boolean isEmpty() {
+        return map.isEmpty();
     }
 
     public void setNextKey(long nextKey) {
@@ -67,6 +77,14 @@ public class StreamStorage {
 
     public long getNextKey() {
         return nextKey.get();
+    }
+
+    public Long lastKey() {
+        return map.lastKey();
+    }
+
+    public byte[] remove(Long key) {
+        return map.remove(key);
     }
 
     /**
@@ -429,7 +447,7 @@ public class StreamStorage {
      * @param key the key
      * @return the block
      */
-    byte[] getBlock(long key) {
+    private byte[] getBlock(long key) {
         byte[] data = map.get(key);
         if (data == null) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_BLOCK_NOT_FOUND, "Block {0} not found", key);
@@ -440,9 +458,9 @@ public class StreamStorage {
     /**
      * A stream backed by a map.
      */
-    static class Stream extends InputStream {
+    private static class Stream extends InputStream {
 
-        private final StreamStorage store;
+        private final LobStreamMap lobStreamMap;
         private final long length;
         private ByteBuffer idBuffer;
         private ByteArrayInputStream buffer;
@@ -450,9 +468,9 @@ public class StreamStorage {
         private long skip;
         private long pos;
 
-        Stream(StreamStorage store, byte[] id) {
-            this.store = store;
-            this.length = store.length(id);
+        Stream(LobStreamMap lobStreamMap, byte[] id) {
+            this.lobStreamMap = lobStreamMap;
+            this.length = lobStreamMap.length(id);
             this.idBuffer = ByteBuffer.wrap(id);
         }
 
@@ -543,7 +561,7 @@ public class StreamStorage {
                         skip -= len;
                         continue;
                     }
-                    byte[] data = store.getBlock(key);
+                    byte[] data = lobStreamMap.getBlock(key);
                     int s = (int) skip;
                     skip = 0;
                     return new ByteArrayInputStream(data, s, data.length - s);
@@ -555,7 +573,7 @@ public class StreamStorage {
                         skip -= len;
                         continue;
                     }
-                    byte[] k = store.getBlock(key);
+                    byte[] k = lobStreamMap.getBlock(key);
                     ByteBuffer newBuffer = ByteBuffer.allocate(k.length + idBuffer.limit() - idBuffer.position());
                     newBuffer.put(k);
                     newBuffer.put(idBuffer);
@@ -570,7 +588,5 @@ public class StreamStorage {
             }
             return null;
         }
-
     }
-
 }

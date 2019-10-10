@@ -160,7 +160,8 @@ public abstract class PageOperations {
             }
 
             if (ASSERT) {
-                if (!p.isLeaf() || p.dynamicInfo.state != BTreePage.State.NORMAL || currentHandler != p.getHandler()) {
+                if (!p.isLeaf() || p.dynamicInfo.state != BTreePage.State.NORMAL
+                        || (isShiftEnabled && currentHandler != p.getHandler())) {
                     DbException.throwInternalError();
                 }
             }
