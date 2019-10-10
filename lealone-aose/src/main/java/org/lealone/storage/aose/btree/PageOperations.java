@@ -86,6 +86,7 @@ public abstract class PageOperations {
                     return PageOperationResult.SHIFTED;
                 }
             }
+            p = p.redirectIfSplited(key);
             int index = p.binarySearch(key);
             V result = (V) (index >= 0 ? p.getValue(index, true) : null);
             AsyncResult<V> ar = new AsyncResult<>();
@@ -146,18 +147,7 @@ public abstract class PageOperations {
                 }
             }
 
-            // 这种情况发生在leaf page的处理器队列中有过期的由其他处理器移交过来的Put操作，
-            // 但是当前处理器已经把原来的leaf page切割了，此时需要从一个重定向后的临时node page找到最新的leaf page，
-            // 有可能发生多次切割，所以需要用循环来遍历
-            while (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
-                p = p.dynamicInfo.redirect;
-                int index;
-                if (map.getKeyType().compare(key, p.getKey(0)) < 0)
-                    index = 0;
-                else
-                    index = 1;
-                p = p.getChildPage(index);
-            }
+            p = p.redirectIfSplited(key);
 
             if (ASSERT) {
                 if (!p.isLeaf() || p.dynamicInfo.state != BTreePage.State.NORMAL

@@ -149,6 +149,7 @@ public class BTreeMapTest extends TestBase {
     }
 
     void testAsyncOperations() {
+        openMap();
         map.clear();
         int count = 7;
         CountDownLatch latch = new CountDownLatch(count);
