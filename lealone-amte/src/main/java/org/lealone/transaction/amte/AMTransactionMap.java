@@ -27,7 +27,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.net.NetEndpoint;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.Storage;
@@ -86,19 +85,21 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public V get(K key) {
-        TransactionalValue data = map.get(key);
-        data = getValue(key, data);
-        return data == null ? null : (V) data.getValue();
+        TransactionalValue ref = map.get(key);
+        return getUnwrapValue(key, ref);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public V get(K key, int[] columnIndexes) {
-        TransactionalValue data = map.get(key, columnIndexes);
-        data = getValue(key, data);
-        return data == null ? null : (V) data.getValue();
+        TransactionalValue ref = map.get(key, columnIndexes);
+        return getUnwrapValue(key, ref);
+    }
+
+    @Override
+    public Object[] getValueAndRef(K key, int[] columnIndexes) {
+        TransactionalValue ref = map.get(key, columnIndexes);
+        return new Object[] { getUnwrapValue(key, ref), ref };
     }
 
     @Override
@@ -107,52 +108,46 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public Object[] getUncommitted(K key, int[] columnIndexes) {
-        TransactionalValue ref = map.get(key, columnIndexes);
-        TransactionalValue data = getValue(key, ref);
-        return new Object[] { data == null ? null : (V) data.getValue(), ref };
-    }
-
-    @Override
     public boolean isLocked(Object oldValue, int[] columnIndexes) {
         return ((TransactionalValue) oldValue).isLocked(transaction.transactionId, columnIndexes);
     }
 
+    // 外部传进来的值被包装成TransactionalValue了，所以需要拆出来
+    @SuppressWarnings("unchecked")
+    private V getUnwrapValue(K key, TransactionalValue data) {
+        TransactionalValue tv = getValue(key, data);
+        return tv == null ? null : (V) tv.getValue();
+    }
+
     // 获得当前事务能看到的值，依据不同的隔离级别看到的值是不一样的
     protected TransactionalValue getValue(K key, TransactionalValue data) {
+        // data为null说明记录不存在，data.getRefValue()为null说明是一个删除标记
         if (data == null || data.getRefValue() == null) {
-            // doesn't exist or deleted by a committed transaction
             return null;
         }
+
+        // 如果data是未提交的，并且就是当前事务，那么这里也会返回未提交的值
         TransactionalValue tv = data.getCommitted(transaction);
         if (tv != null)
             return tv;
 
-        // 数据从节点A迁移到节点B的过程中，如果把A中未提交的值也移到B中，
-        // 那么在节点B中会读到不一致的数据，此时需要从节点A读出正确的值
-        // TODO 如何更高效的判断，不用比较字符串
-        if (data.getHostAndPort() != null && !data.getHostAndPort().equals(NetEndpoint.getLocalTcpHostAndPort())) {
-            return getRemoteTransactionalValue(data.getHostAndPort(), key);
-        }
-        long tid = data.getTid();
-        tv = getValue(key, data, tid);
+        // 复制和分布式事务的场景
+        tv = getDistributedValue(key, data);
         if (tv != null)
             return tv;
 
-        // 底层存储写入了未提交事务的脏数据，并且在事务提交前数据库崩溃了
-        if (!transaction.transactionEngine.containsTransaction(tid)) {
+        // 有些底层存储引擎可能会在事务提交前就把脏数据存盘了，
+        // 然后还没等事务提交，数据库又崩溃了，那么在这里需要撤销才能得到正确的值，
+        // 这一过程被称为: 读时撤销
+        if (!transaction.transactionEngine.containsTransaction(data.getTid())) {
             return data.undo(map, key);
         }
-
+        // 运行到这里时，当前事务看不到任何值，可能是事务隔离级别太高了
         return null;
     }
 
-    protected TransactionalValue getValue(K key, TransactionalValue data, long tid) {
-        return null;
-    }
-
-    protected TransactionalValue getRemoteTransactionalValue(String hostAndPort, K key) {
+    // AMTE是单机版的事务引擎，不支持这个功能
+    protected TransactionalValue getDistributedValue(K key, TransactionalValue data) {
         return null;
     }
 
@@ -899,5 +894,4 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     public StorageMap<Object, Object> getRawMap() {
         return map.getRawMap();
     }
-
 }

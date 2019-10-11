@@ -80,7 +80,7 @@ public class AMTransactionEngineTest extends TestBase {
         return config;
     }
 
-    @Test
+    // @Test
     public void testCheckpoint() {
         Map<String, String> config = getDefaultConfig();
         config.put("committed_data_cache_size_in_mb", "1");

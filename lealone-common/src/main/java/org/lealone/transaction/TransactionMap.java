@@ -82,7 +82,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public void addIfAbsent(K key, V value, Transaction.Listener listener);
 
-    public Object[] getUncommitted(K key, int[] columnIndexes);
+    public Object[] getValueAndRef(K key, int[] columnIndexes);
 
     public boolean isLocked(Object oldValue, int[] columnIndexes);
 

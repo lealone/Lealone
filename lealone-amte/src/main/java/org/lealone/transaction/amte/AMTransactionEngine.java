@@ -40,7 +40,7 @@ import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 
-//an async multi-version transaction engine
+//async multi-version transaction engine
 public class AMTransactionEngine extends TransactionEngineBase implements StorageEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(AMTransactionEngine.class);

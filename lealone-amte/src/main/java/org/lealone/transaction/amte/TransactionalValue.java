@@ -834,7 +834,7 @@ public interface TransactionalValue {
 
         @Override
         public boolean isCommitted() {
-            return transaction.isCommitted();
+            return transaction != null && transaction.isCommitted();
         }
 
         @Override

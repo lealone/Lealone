@@ -276,13 +276,13 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     public Row getRow(ServerSession session, long key, int[] columnIndexes) {
-        Object[] values = getMap(session).getUncommitted(ValueLong.get(key), columnIndexes);
-        VersionedValue v = (VersionedValue) values[0];
+        Object[] valueAndRef = getMap(session).getValueAndRef(ValueLong.get(key), columnIndexes);
+        VersionedValue v = (VersionedValue) valueAndRef[0];
         ValueArray array = v.value;
         Row row = new Row(array.getList(), 0);
         row.setKey(key);
         row.setVersion(v.vertion);
-        row.setRawValue(values[1]);
+        row.setRawValue(valueAndRef[1]);
         return row;
     }
 

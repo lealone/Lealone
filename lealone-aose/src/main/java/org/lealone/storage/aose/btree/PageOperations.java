@@ -427,7 +427,7 @@ public abstract class PageOperations {
             if (old.updateDynamicInfo(oldDynamicInfo, newDynamicInfo)) {
                 // 虽然先更新old的dynamicInfo字段再更新map的root字段不是原子操作，但依然是安全的，
                 // 此时其他线程依然从旧的root page开始找，然后又找到old这个page，
-                // 看到它的dynamicInfo字段变成REMOVED了，会继续从root page找，只是多循环了几次，直到这里设置新的root page为止步
+                // 看到它的dynamicInfo字段变成REMOVED了，会继续从root page找，只是多循环了几次，直到这里设置新的root page为止
                 old.map.newRoot(p);
             }
         }
