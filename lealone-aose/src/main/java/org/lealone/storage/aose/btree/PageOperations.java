@@ -25,6 +25,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
+import org.lealone.storage.aose.btree.BTreePage.DynamicInfo;
 
 public abstract class PageOperations {
 
@@ -147,7 +148,22 @@ public abstract class PageOperations {
                 }
             }
 
+            // 看看是否被切割了
             p = p.redirectIfSplited(key);
+
+            // 如果已经被删除，重新从root page开始
+            DynamicInfo oldDynamicInfo = p.dynamicInfo;
+            if (oldDynamicInfo.isRemoved()) {
+                p = null;
+                return write(currentHandler, true);
+            } else if (oldDynamicInfo.isRemoving()) {
+                // 如果正在删除中，尝试让它变回正常状态，如果失败了，重新从root page开始
+                DynamicInfo newDynamicInfo = new DynamicInfo(BTreePage.State.NORMAL);
+                if (!p.updateDynamicInfo(oldDynamicInfo, newDynamicInfo)) {
+                    p = null;
+                    return write(currentHandler, true);
+                }
+            }
 
             if (ASSERT) {
                 if (!p.isLeaf() || p.dynamicInfo.state != BTreePage.State.NORMAL
@@ -272,6 +288,7 @@ public abstract class PageOperations {
             Object old = p.getValue(index);
             p.remove(index);
             if (p.isEmpty() && p != p.map.getRootPage()) { // 删除leaf page，但是root leaf page除外
+                p.dynamicInfo = new DynamicInfo(BTreePage.State.REMOVING);
                 RemoveChild task = new RemoveChild(p, key);
                 p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
             }
@@ -393,18 +410,29 @@ public abstract class PageOperations {
 
         @Override
         public void run() {
+            DynamicInfo oldDynamicInfo = old.dynamicInfo;
+            // 对于先remove然后put的场景，会快速从Removing状态过度到Normal状态，
+            // 可能造成不必要的RemoveChild操作，所以直接忽视RemoveChild操作了
+            if (!oldDynamicInfo.isRemoving())
+                return;
             BTreePage root = old.map.getRootPage();
             BTreePage p = root.copy();
             remove(p, key);
             if (p.isNode() && p.isEmpty()) {
                 p.removePage();
                 p = BTreeLeafPage.createEmpty(old.map);
-                old.map.resetSize();
             }
-            old.map.newRoot(p);
+            DynamicInfo newDynamicInfo = new DynamicInfo(BTreePage.State.REMOVED);
+            // 状态改变了，可能又有新的数据加到old page中了，那么就放弃这次删除子节点的操作
+            if (old.updateDynamicInfo(oldDynamicInfo, newDynamicInfo)) {
+                // 虽然先更新old的dynamicInfo字段再更新map的root字段不是原子操作，但依然是安全的，
+                // 此时其他线程依然从旧的root page开始找，然后又找到old这个page，
+                // 看到它的dynamicInfo字段变成REMOVED了，会继续从root page找，只是多循环了几次，直到这里设置新的root page为止步
+                old.map.newRoot(p);
+            }
         }
 
-        protected void remove(BTreePage p, Object key) {
+        private void remove(BTreePage p, Object key) {
             if (p.isLeaf()) {
                 return;
             }

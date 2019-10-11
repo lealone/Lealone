@@ -257,13 +257,36 @@ public class BTreeMapTest extends TestBase {
         map.remove(1);
         map.remove(2);
 
-        for (int i = 1; i <= 40; i += 2) {
-            map.put(i, "value" + i);
+        int count = 20;
+        for (int i = 1; i <= count; i++) {
+            Integer key = i;
+            String value = "value-" + i;
+            map.put(key, value);
+        }
+        map.printPage();
+
+        for (int i = count; i >= 9; i--) {
+            Integer key = i;
+            map.remove(key);
+        }
+        map.printPage();
+        map.remove(8, ar -> {
+        });
+        CountDownLatch latch = new CountDownLatch(count - 8);
+        for (int i = 8; i <= count; i++) {
+            Integer key = i;
+            String value = "value-" + i;
+            map.put(key, value, ar -> {
+                latch.countDown();
+            });
+        }
+        try {
+            latch.await();
+        } catch (InterruptedException e1) {
+            e1.printStackTrace();
         }
 
-        for (int i = 1; i <= 40; i += 2) {
-            map.remove(i);
-        }
+        assertEquals(count, map.size());
 
         map.printPage();
     }

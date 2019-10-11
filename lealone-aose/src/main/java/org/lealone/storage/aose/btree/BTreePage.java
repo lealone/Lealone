@@ -20,6 +20,7 @@ package org.lealone.storage.aose.btree;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
@@ -45,6 +46,10 @@ public class BTreePage {
             this(State.NORMAL, null);
         }
 
+        public DynamicInfo(State state) {
+            this(state, null);
+        }
+
         public DynamicInfo(State state, BTreePage redirect) {
             this.state = state;
             this.redirect = redirect;
@@ -54,12 +59,27 @@ public class BTreePage {
         public String toString() {
             return "DynamicInfo[" + state + "]";
         }
+
+        boolean isSplitted() {
+            return state == State.SPLITTED;
+        }
+
+        boolean isRemoving() {
+            return state == State.REMOVING;
+        }
+
+        boolean isRemoved() {
+            return state == State.REMOVED;
+        }
+
     }
 
     public static enum State {
         NORMAL,
         SPLITTING,
-        SPLITTED;
+        SPLITTED,
+        REMOVING,
+        REMOVED;
 
         BTreePage redirect;
 
@@ -74,6 +94,8 @@ public class BTreePage {
 
     public static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
 
+    private static final AtomicReferenceFieldUpdater<BTreePage, DynamicInfo> dynamicInfoUpdater = AtomicReferenceFieldUpdater
+            .newUpdater(BTreePage.class, DynamicInfo.class, "dynamicInfo");
     protected final BTreeMap<?, ?> map;
     protected final PageOperationHandler handler;
     protected long pos;
@@ -136,6 +158,10 @@ public class BTreePage {
             p = p.dynamicInfo.redirect.getChildPage(first ? 0 : 1);
         }
         return p;
+    }
+
+    boolean updateDynamicInfo(DynamicInfo expect, DynamicInfo update) {
+        return dynamicInfoUpdater.compareAndSet(this, expect, update);
     }
 
     /**
