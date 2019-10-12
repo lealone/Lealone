@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 import javax.management.MBeanServer;
@@ -41,6 +42,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncPeriodicTask;
+import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
@@ -48,12 +50,9 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.WritableChannel;
-import org.lealone.p2p.concurrent.Stage;
-import org.lealone.p2p.concurrent.StageManager;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.locator.ILatencySubscriber;
-import org.lealone.p2p.metrics.DroppedMessageMetrics;
 import org.lealone.p2p.server.ClusterMetaData;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.ExpiringMap;
@@ -167,13 +166,19 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                         // ConnectionMetrics.totalTimeouts.mark();
                         getConnection(expiredCallbackInfo.target).incrementTimeout();
                         if (expiredCallbackInfo.isFailureCallback()) {
-                            StageManager.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable() {
+                            AsyncTask task = new AsyncTask() {
                                 @Override
                                 public void run() {
                                     ((IAsyncCallbackWithFailure) expiredCallbackInfo.callback)
                                             .onFailure(expiredCallbackInfo.target);
                                 }
-                            });
+
+                                @Override
+                                public int getPriority() {
+                                    return MIN_PRIORITY;
+                                }
+                            };
+                            AsyncTaskHandlerFactory.getAsyncTaskHandler().handle(task);
                         }
                         return null;
                     }
@@ -204,12 +209,12 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
 
     public void incrementDroppedMessages(Verb verb) {
         assert DROPPABLE_VERBS.contains(verb) : "Verb " + verb + " should not legally be dropped";
-        droppedMessages.get(verb).dropped.mark();
+        droppedMessages.get(verb).dropped.incrementAndGet();
     }
 
     private void logDroppedMessages() {
         for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet()) {
-            int dropped = (int) entry.getValue().dropped.count();
+            int dropped = (int) entry.getValue().dropped.get();
             Verb verb = entry.getKey();
             int recent = dropped - lastDroppedInternal.get(verb);
             if (recent > 0) {
@@ -458,7 +463,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     public Map<String, Integer> getDroppedMessages() {
         Map<String, Integer> map = new HashMap<>(droppedMessages.size());
         for (Map.Entry<Verb, DroppedMessageMetrics> entry : droppedMessages.entrySet())
-            map.put(entry.getKey().toString(), (int) entry.getValue().dropped.count());
+            map.put(entry.getKey().toString(), (int) entry.getValue().dropped.get());
         return map;
     }
 
@@ -474,5 +479,9 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
             result.put(conn.endpoint().getHostAddress(), conn.getTimeouts());
         }
         return result;
+    }
+
+    private static class DroppedMessageMetrics {
+        AtomicLong dropped = new AtomicLong();
     }
 }

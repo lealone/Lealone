@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * is useful to give Java threads meaningful names which is useful when using
  * a tool like JConsole.
  */
-
 public class NamedThreadFactory implements ThreadFactory {
     protected final String id;
     private final int priority;

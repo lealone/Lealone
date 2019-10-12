@@ -25,7 +25,6 @@ import java.util.Map;
 
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.Transfer;
-import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.config.ConfigDescriptor;
 
 public class MessageOut<T extends Message<T>> {
@@ -56,10 +55,6 @@ public class MessageOut<T extends Message<T>> {
         return new MessageOut<>(verb, payload, map);
     }
 
-    public Stage getStage() {
-        return verb.stage;
-    }
-
     public long getTimeout() {
         return ConfigDescriptor.getTimeout(verb);
     }
@@ -67,7 +62,7 @@ public class MessageOut<T extends Message<T>> {
     @Override
     public String toString() {
         StringBuilder sbuf = new StringBuilder();
-        sbuf.append("TYPE:").append(getStage()).append(" VERB:").append(verb);
+        sbuf.append(" VERB:").append(verb);
         return sbuf.toString();
     }
 

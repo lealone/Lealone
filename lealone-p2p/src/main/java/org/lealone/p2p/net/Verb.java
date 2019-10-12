@@ -17,7 +17,6 @@
  */
 package org.lealone.p2p.net;
 
-import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.gms.EchoMessage;
 import org.lealone.p2p.gms.EchoVerbHandler;
 import org.lealone.p2p.gms.GossipDigestAck;
@@ -33,38 +32,31 @@ import org.lealone.p2p.net.MessagingService.CallbackDeterminedSerializer;
 public enum Verb {
     // client-initiated reads and writes
     REQUEST_RESPONSE(
-            Stage.REQUEST_RESPONSE, //
             CallbackDeterminedSerializer.instance, //
             new ResponseVerbHandler()),
 
     // responses to internal calls
     INTERNAL_RESPONSE(
-            Stage.INTERNAL_RESPONSE, //
             CallbackDeterminedSerializer.instance, //
             new ResponseVerbHandler()),
 
     GOSSIP_DIGEST_SYN(
-            Stage.GOSSIP, //
             GossipDigestSyn.serializer, //
             new GossipDigestSynVerbHandler()),
 
     GOSSIP_DIGEST_ACK(
-            Stage.GOSSIP, //
             GossipDigestAck.serializer, //
             new GossipDigestAckVerbHandler()),
 
     GOSSIP_DIGEST_ACK2(
-            Stage.GOSSIP, //
             GossipDigestAck2.serializer, //
             new GossipDigestAck2VerbHandler()),
 
     GOSSIP_SHUTDOWN(
-            Stage.GOSSIP, //
             null, //
             new GossipShutdownVerbHandler()),
 
     ECHO(
-            Stage.GOSSIP, //
             EchoMessage.serializer, //
             new EchoVerbHandler()),
 
@@ -73,16 +65,14 @@ public enum Verb {
     UNUSED_2,
     UNUSED_3;
 
-    public final Stage stage;
     public final IVersionedSerializer<?> serializer;
     public final IVerbHandler<?> verbHandler;
 
     private Verb() {
-        this(Stage.INTERNAL_RESPONSE, null, null);
+        this(null, null);
     }
 
-    private Verb(Stage stage, IVersionedSerializer<?> serializer, IVerbHandler<?> verbHandler) {
-        this.stage = stage;
+    private Verb(IVersionedSerializer<?> serializer, IVerbHandler<?> verbHandler) {
         this.serializer = serializer;
         this.verbHandler = verbHandler;
     }

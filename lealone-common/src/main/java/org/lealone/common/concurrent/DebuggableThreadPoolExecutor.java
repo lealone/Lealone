@@ -49,7 +49,7 @@ import org.lealone.common.logging.LoggerFactory;
  *   threads and the queue is full, we want the enqueuer to block.  But to allow the number of threads to drop if a
  *   stage is less busy, core thread timeout is enabled.
  */
-public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements LealoneExecutorService {
+public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor {
     protected static final Logger logger = LoggerFactory.getLogger(DebuggableThreadPoolExecutor.class);
     public static final RejectedExecutionHandler blockingExecutionHandler = new RejectedExecutionHandler() {
         @Override
@@ -149,11 +149,6 @@ public class DebuggableThreadPoolExecutor extends ThreadPoolExecutor implements 
     }
 
     protected void onFinalRejection(Runnable task) {
-    }
-
-    @Override
-    public void maybeExecuteImmediately(Runnable command) {
-        execute(command);
     }
 
     @Override

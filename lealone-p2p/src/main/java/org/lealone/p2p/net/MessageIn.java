@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.net.NetEndpoint;
-import org.lealone.p2p.concurrent.Stage;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.util.FileUtils;
 
@@ -43,10 +42,6 @@ public class MessageIn<T> {
         this.version = version;
     }
 
-    public Stage getMessageType() {
-        return verb.stage;
-    }
-
     public boolean doCallbackOnFailure() {
         return parameters.containsKey(MessagingService.FAILURE_CALLBACK_PARAM);
     }
@@ -62,7 +57,7 @@ public class MessageIn<T> {
     @Override
     public String toString() {
         StringBuilder sbuf = new StringBuilder();
-        sbuf.append("FROM:").append(from).append(" TYPE:").append(getMessageType()).append(" VERB:").append(verb);
+        sbuf.append("FROM:").append(from).append(" VERB:").append(verb);
         return sbuf.toString();
     }
 
