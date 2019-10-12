@@ -583,8 +583,8 @@ public class StandardTable extends Table {
                 if (globalListener == null) {
                     index.update(session, oldRow, newRow, updateColumns);
                 } else {
-                    if (index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener))
-                        return true;
+                    if (!index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener))
+                        return false;
                 }
             }
         } catch (Throwable e) {
@@ -613,8 +613,8 @@ public class StandardTable extends Table {
             for (int i = indexes.size() - 1; i >= 0; i--) {
                 Index index = indexes.get(i);
                 if (async) {
-                    if (index.tryRemove(session, row))
-                        return true;
+                    if (!index.tryRemove(session, row))
+                        return false;
                 } else {
                     index.remove(session, row);
                 }

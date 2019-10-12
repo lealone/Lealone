@@ -233,11 +233,10 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         // 只有索引字段被更新时才更新索引
         for (Column c : columns) {
             if (updateColumns.contains(c)) {
-                super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
-                break;
+                return super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
             }
         }
-        return false;
+        return true;
     }
 
     @Override

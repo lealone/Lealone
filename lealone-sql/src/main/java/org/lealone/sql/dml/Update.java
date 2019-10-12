@@ -234,7 +234,7 @@ public class Update extends ManipulationStatement {
                     }
                     if (!done) {
                         if (async)
-                            yieldIfNeeded = table.tryUpdateRow(session, oldRow, newRow, statement.columns, this);
+                            yieldIfNeeded = !table.tryUpdateRow(session, oldRow, newRow, statement.columns, this);
                         else
                             table.updateRow(session, oldRow, newRow, statement.columns);
                         if (table.fireRow()) {

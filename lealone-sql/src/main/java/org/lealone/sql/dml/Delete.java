@@ -172,7 +172,7 @@ public class Delete extends ManipulationStatement {
                     }
                     if (!done) {
                         if (async)
-                            yieldIfNeeded = table.tryRemoveRow(session, row) || yieldIfNeeded;
+                            yieldIfNeeded = !table.tryRemoveRow(session, row) || yieldIfNeeded;
                         else
                             table.removeRow(session, row);
                         if (table.fireRow()) {

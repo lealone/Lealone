@@ -81,9 +81,9 @@ public interface Index extends SchemaObject {
 
     default boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
-        tryRemove(session, oldRow);
-        tryAdd(session, newRow, globalListener);
-        return false;
+        boolean ok = tryRemove(session, oldRow);
+        ok = ok && tryAdd(session, newRow, globalListener);
+        return ok;
     }
 
     /**
@@ -93,7 +93,7 @@ public interface Index extends SchemaObject {
      * @param row the row
      */
     default void remove(ServerSession session, Row row) {
-        if (tryRemove(session, row))
+        if (!tryRemove(session, row))
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, getTable().getName());
     }
 

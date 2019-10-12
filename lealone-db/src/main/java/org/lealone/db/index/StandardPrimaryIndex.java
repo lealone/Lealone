@@ -186,10 +186,9 @@ public class StandardPrimaryIndex extends IndexBase {
                 Value newKey = newRow.getValue(mainIndexColumn);
                 // 修改了主键字段并且新值与旧值不同时才会册除原有的并增加新的，因为这种场景下性能慢一些
                 if (!oldKey.equals(newKey)) {
-                    super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
-                    return false;
+                    return super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
                 } else if (updateColumns.size() == 1) { // 新值与旧值相同，并且只更新主键时什么都不用做
-                    return false;
+                    return true;
                 }
             }
         }
@@ -223,7 +222,7 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
-        boolean yieldIfNeeded = map.tryUpdate(key, oldRow.getRawValue(), newValue, columnIndexes);
+        boolean yieldIfNeeded = map.tryUpdate(key, newValue, columnIndexes, oldRow.getRawValue());
         if (!yieldIfNeeded && globalListener != null)
             globalListener.operationComplete();
         session.setLastRow(newRow);

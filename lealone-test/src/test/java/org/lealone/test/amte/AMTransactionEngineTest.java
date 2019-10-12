@@ -80,7 +80,7 @@ public class AMTransactionEngineTest extends TestBase {
         return config;
     }
 
-    // @Test
+    @Test
     public void testCheckpoint() {
         Map<String, String> config = getDefaultConfig();
         config.put("committed_data_cache_size_in_mb", "1");
@@ -116,78 +116,5 @@ public class AMTransactionEngineTest extends TestBase {
 
         te.checkpoint();
         assertTrue(map.getDiskSpaceUsed() > 0);
-    }
-
-    @Test
-    public void run() {
-        TransactionEngine te = getTransactionEngine(false);
-        Storage storage = getStorage();
-
-        Transaction t = te.beginTransaction(false, false);
-        TransactionMap<String, String> map = t.openMap("test", storage);
-        map.clear();
-        map.put("1", "a");
-        map.put("2", "b");
-
-        assertEquals("a", map.get("1"));
-        assertEquals("b", map.get("2"));
-        assertEquals(2, map.size());
-
-        t.rollback();
-        assertEquals(0, map.size());
-        try {
-            map.put("1", "a"); // 事务rollback或commit后就自动关闭了，java.lang.IllegalStateException: Transaction is closed
-            fail();
-        } catch (IllegalStateException e) {
-        }
-
-        t = te.beginTransaction(false, false);
-        map = map.getInstance(t);
-
-        assertNull(map.get("1"));
-        assertNull(map.get("2"));
-        map.put("1", "a");
-        map.put("2", "b");
-        t.commit();
-
-        map.get("1"); // 虽然事务commit后就自动关闭了，但是读操作还是允许的
-
-        try {
-            map.put("1", "a"); // 事务rollback或commit后就自动关闭了，java.lang.IllegalStateException: Transaction is closed
-            fail();
-        } catch (IllegalStateException e) {
-        }
-
-        assertEquals(2, map.size());
-
-        Transaction t2 = te.beginTransaction(false, false);
-        map = map.getInstance(t2);
-        map.put("3", "c");
-        map.put("4", "d");
-        assertEquals(4, map.size());
-
-        Transaction t3 = te.beginTransaction(false, false);
-        map = map.getInstance(t3);
-        map.put("5", "f");
-        assertEquals(3, map.size()); // t2未提交，所以读不到它put的数据
-
-        Transaction t4 = te.beginTransaction(false, false);
-        map = map.getInstance(t4);
-        map.remove("1");
-        assertEquals(1, map.size());
-        t4.commit();
-
-        Transaction t5 = te.beginTransaction(false, false);
-        map = map.getInstance(t5);
-        map.put("6", "g");
-        assertEquals(2, map.size());
-        t5.prepareCommit(); // 提交到后台，由LogSyncService线程在sync完事务日志后自动提交事务
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-        }
-        assertEquals(Transaction.STATUS_CLOSED, t5.getStatus());
-
-        te.close();
     }
 }

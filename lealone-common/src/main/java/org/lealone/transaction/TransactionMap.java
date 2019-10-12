@@ -78,21 +78,41 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public Iterator<K> keyIterator(K from, boolean includeUncommitted);
 
-    public boolean put(K key, Object oldValue, V newValue, int[] columnIndexes, Transaction.Listener listener);
-
     public void addIfAbsent(K key, V value, Transaction.Listener listener);
+
+    public default boolean tryUpdate(K key, V newValue) {
+        Object oldTransactionalValue = getTransactionalValue(key);
+        return tryUpdate(key, newValue, null, oldTransactionalValue);
+    }
+
+    public default boolean tryUpdate(K key, V newValue, Object oldTransactionalValue) {
+        return tryUpdate(key, newValue, null, oldTransactionalValue);
+    }
+
+    public default boolean tryUpdate(K key, V newValue, int[] columnIndexes) {
+        Object oldTransactionalValue = getTransactionalValue(key);
+        return tryUpdate(key, newValue, columnIndexes, oldTransactionalValue);
+    }
+
+    public boolean tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue);
+
+    public default boolean tryRemove(K key) {
+        Object oldTransactionalValue = getTransactionalValue(key);
+        return tryRemove(key, oldTransactionalValue);
+    }
+
+    public boolean tryRemove(K key, Object oldTransactionalValue);
+
+    public default boolean tryLock(K key) {
+        Object oldTransactionalValue = getTransactionalValue(key);
+        return tryLock(key, oldTransactionalValue);
+    }
+
+    public boolean tryLock(K key, Object oldTransactionalValue);
+
+    public boolean isLocked(Object oldTransactionalValue, int[] columnIndexes);
 
     public Object[] getValueAndRef(K key, int[] columnIndexes);
 
-    public boolean isLocked(Object oldValue, int[] columnIndexes);
-
-    public boolean remove(K key, Object oldValue, Transaction.Listener listener);
-
     public Object getTransactionalValue(K key);
-
-    public boolean tryUpdate(K key, Object oldValue, V newValue, int[] columnIndexes);
-
-    public boolean tryRemove(K key, Object oldValue);
-
-    public boolean tryLock(K key, Object oldValue);
 }
