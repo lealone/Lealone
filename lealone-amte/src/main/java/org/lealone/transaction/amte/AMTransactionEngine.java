@@ -35,6 +35,7 @@ import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
+import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.amte.log.LogSyncService;
@@ -84,6 +85,15 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
 
     boolean containsUncommittedTransactionLessThan(long tid) {
         return currentTransactions.lowerKey(tid) != null;
+    }
+
+    // 看看是否有REPEATABLE_READ和SERIALIZABLE隔离级别的事务，并且事务id小于给定值tid的
+    boolean containsUncommittedRepeatableReadTransactionLessThan(long tid) {
+        for (AMTransaction t : currentTransactions.headMap(tid).values()) {
+            if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ)
+                return true;
+        }
+        return false;
     }
 
     AMTransaction getTransaction(long tid) {

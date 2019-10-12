@@ -42,5 +42,4 @@ class NoLogSyncService extends LogSyncService {
             t.getSession().commit(null);
         }
     }
-
 }

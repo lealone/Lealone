@@ -89,7 +89,7 @@ public class AMTransactionEngineTest extends TestBase {
         TransactionEngine te = getTransactionEngine(config);
         Storage storage = getStorage();
 
-        Transaction t1 = te.beginTransaction(false, false);
+        Transaction t1 = te.beginTransaction(false);
         TransactionMap<String, String> map = t1.openMap("testCheckpoint", storage);
         map.remove();
         map = t1.openMap("testCheckpoint", storage);
@@ -108,7 +108,7 @@ public class AMTransactionEngineTest extends TestBase {
         assertTrue(map.getDiskSpaceUsed() > 0);
 
         map.remove();
-        Transaction t2 = te.beginTransaction(false, false);
+        Transaction t2 = te.beginTransaction(false);
         map = t2.openMap("testCheckpoint", storage);
         assertEquals(0, map.getDiskSpaceUsed());
         map.put("abc", "value123");

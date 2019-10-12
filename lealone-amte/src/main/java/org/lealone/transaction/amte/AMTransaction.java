@@ -55,7 +55,7 @@ public class AMTransaction implements Transaction {
     private HashMap<String, Integer> savepoints;
     private Session session;
     private int status;
-    private int isolationLevel = Connection.TRANSACTION_REPEATABLE_READ;
+    private int isolationLevel = Connection.TRANSACTION_READ_COMMITTED; // 默认是读已提交级别
     private boolean autoCommit;
     private boolean prepared;
 

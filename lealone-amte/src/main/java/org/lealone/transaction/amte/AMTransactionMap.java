@@ -115,8 +115,13 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
         // 如果data是未提交的，并且就是当前事务，那么这里也会返回未提交的值
         TransactionalValue tv = data.getCommitted(transaction);
-        if (tv != null)
-            return tv;
+        if (tv != null) {
+            // 前面的事务已经提交了，但是因为当前事务隔离级别的原因它看不到
+            if (tv == TransactionalValue.SIGHTLESS)
+                return null;
+            else
+                return tv;
+        }
 
         // 复制和分布式事务的场景
         tv = getDistributedValue(key, data);

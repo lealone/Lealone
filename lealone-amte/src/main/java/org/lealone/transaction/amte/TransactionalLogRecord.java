@@ -50,7 +50,7 @@ public class TransactionalLogRecord {
         if (undone)
             return;
         if (isForUpdate) {
-            newValue.rollback();
+            newValue.rollback(); // 解锁而已，不用提交的
             return;
         }
         StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
@@ -60,72 +60,15 @@ public class TransactionalLogRecord {
         if (oldValue == null) { // insert
             newValue.commit(tid);
         } else if (newValue != null && newValue.getValue() == null) { // delete
-            // if (!transactionEngine.containsUncommittedTransactionLessThan(tid)) {
-            // map.remove(key);
-            // } else {
-            // newValue.commit(tid);
-            // }
-            map.remove(key);
+            if (!transactionEngine.containsUncommittedRepeatableReadTransactionLessThan(tid)) {
+                map.remove(key);
+            } else {
+                newValue.commit(tid);
+            }
         } else { // update
             newValue.commit(tid);
         }
-
-        // if (oldValue == null) { // insert
-        // TransactionalValue tv = newValue.commit(tid);
-        // newValue.setRefValue(tv);
-        // } else {
-        // if (oldValue.getValue() == null) { // delete
-        // // 如果还有其他未提交的比当前tid小的旧事务，那么不能直接删除当前key对应的记录
-        // if (transactionEngine.containsUncommittedTransactionLessThan(tid)) {
-        // TransactionalValue tv = oldValue.remove(tid);
-        // oldValue.setRefValue(tv);
-        // } else {
-        // map.remove(key);
-        // }
-        // } else { // update
-        // while (true) { // 多个事务更新同一行的不同列时，允许它们并发运行，这里能避免覆盖彼此创建的TransactionalValue实例
-        // TransactionalValue refValue = oldValue.getRefValue();
-        // TransactionalValue tv = oldValue.commit(tid);
-        // if (oldValue.compareAndSet(refValue, tv))
-        // break;
-        // }
-        // }
-        // }
-
-        // TransactionalValue tv = newValue.commit(tid);
-        // newValue.setRefValue(tv);
     }
-
-    // public void commitOld(AMTransactionEngine transactionEngine, long tid) {
-    // StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
-    // if (map == null) {
-    // // map was later removed
-    // } else {
-    // TransactionalValue value = map.get(key);
-    // if (value == null) {
-    // // nothing to do
-    // } else if (value.getValue() == null) {
-    // // remove the value
-    // map.remove(key);
-    // } else {
-    // // map.put(key, TransactionalValue.createCommitted(value.value));
-    // // map.put(key, value.commit());
-    //
-    // // TransactionalValue newValue = value.commit(tid);
-    // // while (!map.replace(key, value, newValue)) {
-    // // value = map.get(key);
-    // // newValue = value.commit(tid);
-    // // }
-    //
-    // while (true) {
-    // TransactionalValue refValue = value.getRefValue();
-    // TransactionalValue newValue = value.commit(tid);
-    // if (value.compareAndSet(refValue, newValue))
-    // break;
-    // }
-    // }
-    // }
-    // }
 
     // 当前事务开始rollback了，调用这个方法在内存中撤销之前的更新
     public void rollback(AMTransactionEngine transactionEngine) {
@@ -143,31 +86,6 @@ public class TransactionalLogRecord {
             } else {
                 newValue.rollback();
             }
-
-            // if (oldValue == null) {
-            // // this transaction added the value
-            // map.remove(key);
-            // } else {
-            // // this transaction updated the value
-            // map.put(key, oldValue);
-            // }
-
-            // TransactionalValue first = head.getRefValue();
-            // if (newValue == first) {
-            // // 在这里也有可能发生其他事务改变head的情况
-            // if (head.compareAndSet(first, newValue.getOldValue())) {
-            // return;
-            // } else {
-            // first = head.getRefValue();
-            // }
-            // }
-            // TransactionalValue last = first;
-            // TransactionalValue next = first.getOldValue();
-            // while (next != null && next != newValue) {
-            // last = next;
-            // next = next.getOldValue();
-            // }
-            // last.setOldValue(next);
         }
     }
 

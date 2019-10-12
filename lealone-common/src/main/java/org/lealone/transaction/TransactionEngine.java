@@ -21,6 +21,10 @@ import org.lealone.db.PluggableEngine;
 
 public interface TransactionEngine extends PluggableEngine {
 
+    default Transaction beginTransaction(boolean autoCommit) {
+        return beginTransaction(autoCommit, false);
+    }
+
     Transaction beginTransaction(boolean autoCommit, boolean isShardingMode);
 
     boolean validateTransaction(String localTransactionName);

@@ -17,6 +17,7 @@
  */
 package org.lealone.transaction;
 
+import java.sql.Connection;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
@@ -26,6 +27,14 @@ import org.lealone.storage.Storage;
 import org.lealone.storage.type.StorageDataType;
 
 public interface Transaction {
+
+    int IL_READ_UNCOMMITTED = Connection.TRANSACTION_READ_UNCOMMITTED;
+
+    int IL_READ_COMMITTED = Connection.TRANSACTION_READ_COMMITTED;
+
+    int IL_REPEATABLE_READ = Connection.TRANSACTION_REPEATABLE_READ;
+
+    int IL_SERIALIZABLE = Connection.TRANSACTION_SERIALIZABLE;
 
     /**
      * The status of a closed transaction (committed or rolled back).

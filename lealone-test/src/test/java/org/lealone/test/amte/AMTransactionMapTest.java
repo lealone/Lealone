@@ -41,7 +41,7 @@ public class AMTransactionMapTest extends TestBase {
 
     @Test
     public void run() {
-        te = AMTransactionEngineTest.getTransactionEngine(false);
+        te = AMTransactionEngineTest.getTransactionEngine();
         storage = AMTransactionEngineTest.getStorage();
 
         testSyncOperations();
@@ -56,7 +56,7 @@ public class AMTransactionMapTest extends TestBase {
     }
 
     void testSyncOperations() {
-        Transaction t = te.beginTransaction(false, false);
+        Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap(createMapName("testSyncOperations"), storage);
         map.clear();
         assertTrue(map.getValueType() instanceof ObjectDataType);
@@ -76,7 +76,7 @@ public class AMTransactionMapTest extends TestBase {
         } catch (IllegalStateException e) {
         }
 
-        t = te.beginTransaction(false, false);
+        t = te.beginTransaction(false);
         map = map.getInstance(t);
 
         assertNull(map.get("1"));
@@ -95,24 +95,24 @@ public class AMTransactionMapTest extends TestBase {
 
         assertEquals(2, map.size());
 
-        Transaction t2 = te.beginTransaction(false, false);
+        Transaction t2 = te.beginTransaction(false);
         map = map.getInstance(t2);
         map.put("3", "c");
         map.put("4", "d");
         assertEquals(4, map.size());
 
-        Transaction t3 = te.beginTransaction(false, false);
+        Transaction t3 = te.beginTransaction(false);
         map = map.getInstance(t3);
         map.put("5", "f");
         assertEquals(3, map.size()); // t2未提交，所以读不到它put的数据
 
-        Transaction t4 = te.beginTransaction(false, false);
+        Transaction t4 = te.beginTransaction(false);
         map = map.getInstance(t4);
         map.remove("1");
         assertEquals(1, map.size());
         t4.commit();
 
-        Transaction t5 = te.beginTransaction(false, false);
+        Transaction t5 = te.beginTransaction(false);
         map = map.getInstance(t5);
         map.put("6", "g");
         assertEquals(2, map.size());
@@ -125,7 +125,7 @@ public class AMTransactionMapTest extends TestBase {
     }
 
     void testTryOperations() {
-        Transaction t = te.beginTransaction(false, false);
+        Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap(createMapName("testTryOperations"), storage);
         map.clear();
         MyTransactionListener listener = new MyTransactionListener();
@@ -135,12 +135,12 @@ public class AMTransactionMapTest extends TestBase {
         t.commit();
         assertNotNull(map.get("1"));
 
-        Transaction t2 = te.beginTransaction(false, false);
+        Transaction t2 = te.beginTransaction(false);
         map = map.getInstance(t2);
         assertTrue(map.tryUpdate("1", "a2"));
         assertEquals("a2", map.get("1"));
 
-        Transaction t3 = te.beginTransaction(false, false);
+        Transaction t3 = te.beginTransaction(false);
         map = map.getInstance(t3);
         assertFalse(map.tryUpdate("1", "a3"));
         assertEquals("a", map.get("1"));
@@ -148,11 +148,11 @@ public class AMTransactionMapTest extends TestBase {
         t2.commit();
         t3.rollback();
 
-        Transaction t4 = te.beginTransaction(false, false);
+        Transaction t4 = te.beginTransaction(false);
         map = map.getInstance(t4);
         assertTrue(map.tryRemove("1"));
 
-        Transaction t5 = te.beginTransaction(false, false);
+        Transaction t5 = te.beginTransaction(false);
         map = map.getInstance(t5);
         assertFalse(map.tryRemove("1"));
 
@@ -171,7 +171,7 @@ public class AMTransactionMapTest extends TestBase {
         ValueDataType valueType = new ValueDataType(null, null, sortTypes);
         VersionedValueType vvType = new VersionedValueType(valueType, columns);
 
-        Transaction t = te.beginTransaction(false, false);
+        Transaction t = te.beginTransaction(false);
         TransactionMap<String, VersionedValue> map = t.openMap(mapName, null, vvType, storage);
         map.clear();
 
@@ -186,13 +186,13 @@ public class AMTransactionMapTest extends TestBase {
         t.commit();
 
         // int[] columnIndexes1 = { 0 };
-        Transaction t1 = te.beginTransaction(false, false);
+        Transaction t1 = te.beginTransaction(false);
         TransactionMap<String, VersionedValue> map1 = t1.openMap(mapName, storage);
         // int[] columnIndexes2 = { 1 };
-        Transaction t2 = te.beginTransaction(false, false);
+        Transaction t2 = te.beginTransaction(false);
         TransactionMap<String, VersionedValue> map2 = t2.openMap(mapName, storage);
 
-        Transaction t3 = te.beginTransaction(false, false);
+        Transaction t3 = te.beginTransaction(false);
         TransactionMap<String, VersionedValue> map3 = t3.openMap(mapName, storage);
 
         // vv = map1.get(key);
