@@ -28,8 +28,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.storage.fs.FileUtils;
 
 /**
- * This class allows to convert source code to a class. It uses one class loader
- * per class.
+ * This class allows to convert source code to a class. It uses one class loader per class.
  */
 public class SourceCompiler {
 

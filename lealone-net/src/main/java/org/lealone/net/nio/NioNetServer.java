@@ -191,4 +191,9 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
     public NioEventLoop getDefaultNioEventLoopImpl() {
         return nioEventLoopAdapter;
     }
+
+    @Override
+    public boolean runInMainThread() {
+        return true;
+    }
 }

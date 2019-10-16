@@ -56,7 +56,7 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     @Override
     public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
         // nothing to do
-        return false;
+        return true;
     }
 
     @Override
@@ -68,7 +68,7 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
         // nothing to do
-        return false;
+        return true;
     }
 
     @Override
@@ -79,7 +79,7 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     @Override
     public boolean tryRemove(ServerSession session, Row row) {
         // nothing to do
-        return false;
+        return true;
     }
 
     @Override

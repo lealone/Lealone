@@ -64,7 +64,7 @@ public class TcpServer extends DelegatedProtocolServer implements AsyncConnectio
 
     @Override
     public boolean runInMainThread() {
-        return true;
+        return protocolServer.runInMainThread();
     }
 
     @Override

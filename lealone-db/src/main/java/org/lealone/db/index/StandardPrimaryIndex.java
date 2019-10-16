@@ -200,7 +200,7 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(oldRow.getRawValue(), columnIndexes))
-            return true;
+            return false;
 
         if (table.getContainsLargeObject()) {
             for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
@@ -222,12 +222,10 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
-        boolean yieldIfNeeded = map.tryUpdate(key, newValue, columnIndexes, oldRow.getRawValue());
-        if (!yieldIfNeeded && globalListener != null)
-            globalListener.operationComplete();
+        boolean ok = map.tryUpdate(key, newValue, columnIndexes, oldRow.getRawValue());
         session.setLastRow(newRow);
         session.setLastIndex(this);
-        return yieldIfNeeded;
+        return ok;
     }
 
     @Override
@@ -278,6 +276,7 @@ public class StandardPrimaryIndex extends IndexBase {
         Object[] valueAndRef = getMap(session).getValueAndRef(ValueLong.get(key), columnIndexes);
         VersionedValue v = (VersionedValue) valueAndRef[0];
         ValueArray array = v.value;
+        array = v.value;
         Row row = new Row(array.getList(), 0);
         row.setKey(key);
         row.setVersion(v.vertion);

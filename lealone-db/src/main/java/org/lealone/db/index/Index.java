@@ -75,7 +75,12 @@ public interface Index extends SchemaObject {
 
     default void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         Transaction.Listener listener = getTransactionListener();
-        tryUpdate(session, oldRow, newRow, updateColumns, listener);
+
+        boolean ok = tryUpdate(session, oldRow, newRow, updateColumns, listener);
+        if (ok)
+            listener.operationComplete();
+        else
+            listener.operationUndo();
         listener.await();
     }
 

@@ -559,7 +559,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
 
     @Override
     public int executeUpdate() {
-        return update();
+        return executeUpdate(null);
     }
 
     @Override
@@ -567,7 +567,12 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         TableFilter tf = getTableFilter();
         if (tf != null)
             tf.setPageKeys(pageKeys);
-        return update();
+
+        // 以同步的方式运行
+        YieldableBase<Integer> yieldable = createYieldableUpdate(null);
+        yieldable.setPageKeys(pageKeys);
+        yieldable.run();
+        return yieldable.getResult();
     }
 
     @Override
@@ -603,6 +608,11 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
 
     public String getPlanSQL(boolean isDistributed) {
         return getSQL();
+    }
+
+    @Override
+    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        createYieldableUpdate(asyncHandler).run();
     }
 
     @Override

@@ -857,7 +857,5 @@ public class DataUtils {
         public V setValue(V value) {
             throw DataUtils.newUnsupportedOperationException("Updating the value is not supported");
         }
-
     }
-
 }

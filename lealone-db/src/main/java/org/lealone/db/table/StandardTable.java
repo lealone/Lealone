@@ -592,7 +592,7 @@ public class StandardTable extends Table {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        return false;
+        return true;
     }
 
     @Override

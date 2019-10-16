@@ -2479,8 +2479,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 return;
         }
         ServerSession session = getSystemSession();
+        // executeUpdate()会自动提交，所以不需要再调用一次commit
         session.prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
-        session.commit(); // 需要提交，否则新创建的用户会丢失
     }
 
     synchronized User createAdminUser(String userName, byte[] userPasswordHash) {
