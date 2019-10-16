@@ -35,6 +35,7 @@ import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.amte.AMTransactionMap.AMReplicationMap;
+import org.lealone.transaction.amte.log.LazyLog;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 
@@ -235,11 +236,13 @@ public class AMTransaction implements Transaction {
         checkNotClosed();
         prepared = true;
 
-        RedoLogRecord r = createLocalTransactionRedoLogRecord();
-        // 事务没有进行任何操作时不用同步日志
-        if (r != null) {
-            // 先写redoLog
-            logSyncService.addRedoLogRecord(r);
+        if (logSyncService.needSync()) {
+            RedoLogRecord r = createLocalTransactionRedoLogRecord();
+            // 事务没有进行任何操作时不用同步日志
+            if (r != null) {
+                // 先写redoLog
+                logSyncService.addRedoLogRecord(r);
+            }
         }
         logSyncService.prepareCommit(this);
     }
@@ -271,10 +274,20 @@ public class AMTransaction implements Transaction {
                 }
             }
         } else {
-            RedoLogRecord r = createLocalTransactionRedoLogRecord();
-            if (r != null) { // 事务没有进行任何操作时不用同步日志
-                // 先写redoLog
-                logSyncService.addAndMaybeWaitForSync(r);
+            if (logSyncService.needSync()) {
+                // 如果需要立即做事务日志同步，那么把redo log的生成工作放在当前线程，减轻日志同步线程的工作量
+                if (logSyncService.isInstantSync()) {
+                    RedoLogRecord r = createLocalTransactionRedoLogRecord();
+                    if (r != null) { // 事务没有进行任何操作时不用同步日志
+                        // 先写redoLog
+                        logSyncService.addAndMaybeWaitForSync(r);
+                    }
+                } else {
+                    if (!logRecords.isEmpty()) {
+                        LazyLog lazyLog = new LazyLog(transactionEngine, transactionId, logRecords);
+                        logSyncService.addLazyLog(lazyLog);
+                    }
+                }
             }
             // 分布式事务推迟提交
             if (isLocal()) {
@@ -306,20 +319,31 @@ public class AMTransaction implements Transaction {
         transactionEngine.removeTransaction(transactionId);
     }
 
+    private int lastCapacity = 1024;
+
     // 将当前一系列的事务操作日志转换成单条RedoLogRecord
     protected ByteBuffer logRecords2redoLogRecordBuffer() {
         if (logRecords.isEmpty())
             return null;
-        try (DataBuffer writeBuffer = DataBuffer.create()) {
-            for (TransactionalLogRecord r : logRecords) {
-                r.writeForRedo(writeBuffer, transactionEngine);
-            }
-            ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
-            ByteBuffer operations = ByteBuffer.allocateDirect(buffer.limit());
-            operations.put(buffer);
-            operations.flip();
-            return operations;
+        // try (DataBuffer writeBuffer = DataBuffer.create()) {
+        // for (TransactionalLogRecord r : logRecords) {
+        // r.writeForRedo(writeBuffer, transactionEngine);
+        // }
+        // ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
+        // ByteBuffer operations = ByteBuffer.allocateDirect(buffer.limit());
+        // operations.put(buffer);
+        // operations.flip();
+        // return operations;
+        // }
+
+        DataBuffer writeBuffer = DataBuffer.create(lastCapacity);
+        for (TransactionalLogRecord r : logRecords) {
+            r.writeForRedo(writeBuffer, transactionEngine);
         }
+        lastCapacity = writeBuffer.position();
+        if (lastCapacity > 1024)
+            lastCapacity = 1024;
+        return writeBuffer.getAndFlipBuffer();
     }
 
     private RedoLogRecord createLocalTransactionRedoLogRecord() {

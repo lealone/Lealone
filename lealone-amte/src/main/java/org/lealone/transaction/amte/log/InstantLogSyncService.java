@@ -32,6 +32,11 @@ class InstantLogSyncService extends LogSyncService {
     }
 
     @Override
+    public boolean isInstantSync() {
+        return true;
+    }
+
+    @Override
     public void maybeWaitForSync(RedoLogRecord r) {
         haveWork.release();
         if (!r.isSynced() && running) {

@@ -717,35 +717,72 @@ public interface TransactionalValue {
 
         @Override
         public TransactionalValue commit(long tid) {
+            int nextCount = 0;
             while (true) {
                 TransactionalValue first = ref.getRefValue();
-                CommittedWithTid committed = new CommittedWithTid(tid, value, oldValue);
-                TransactionalValue next = first;
-                TransactionalValue last = committed;
-                while (next != null) {
-                    if (next.getTid() == tid && (next.getLogId() == logId || next.isCommitted())) {
-                        next = next.getOldValue();
-                        continue;
-                    }
-                    if (next instanceof Uncommitted && next.getTid() != tid) {
-                        Uncommitted u = (Uncommitted) next;
-                        u = u.copy(); // 避免多线程执行时修改原来的链接结构
-                        if (u.value != null)
-                            u.oldValueType.setColumns(u.value, value, columnIndexes);
-                        last.setOldValue(u);
-                        last = u;
-                    } else {
-                        last.setOldValue(next);
-                        last = next;
-                    }
-                    next = next.getOldValue();
-                }
-                last.setOldValue(next);
+                CommittedWithTid committed = new CommittedWithTid(tid, value, null);
+                // TransactionalValue next = first;
+                // TransactionalValue last = committed;
+                // while (next != null) {
+                // if (next.getTid() == tid && (next.getLogId() == logId || next.isCommitted())) {
+                // next = next.getOldValue();
+                // continue;
+                // }
+                // if (next instanceof Uncommitted && next.getTid() != tid) {
+                // Uncommitted u = (Uncommitted) next;
+                // u = u.copy(); // 避免多线程执行时修改原来的链接结构
+                // if (u.value != null)
+                // u.oldValueType.setColumns(u.value, value, columnIndexes);
+                // last.setOldValue(u);
+                // last = u;
+                // } else {
+                // last.setOldValue(next);
+                // last = next;
+                // }
+                // nextCount++;
+                // next = next.getOldValue();
+                // }
+                // last.setOldValue(next);
                 if (ref.compareAndSet(first, committed))
                     break;
             }
+            if (nextCount > 3)
+                System.out.println("next:" + nextCount);
             return null;
         }
+
+        // next链表太长了会导致OOM
+        // @Override
+        // public TransactionalValue commit(long tid) {
+        // while (true) {
+        // TransactionalValue first = ref.getRefValue();
+        // CommittedWithTid committed = new CommittedWithTid(tid, value, oldValue);
+        // TransactionalValue next = first;
+        // TransactionalValue last = committed;
+        // while (next != null) {
+        // if (next.getTid() == tid && (next.getLogId() == logId || next.isCommitted())) {
+        // next = next.getOldValue();
+        // continue;
+        // }
+        // if (next instanceof Uncommitted && next.getTid() != tid) {
+        // Uncommitted u = (Uncommitted) next;
+        // u = u.copy(); // 避免多线程执行时修改原来的链接结构
+        // if (u.value != null)
+        // u.oldValueType.setColumns(u.value, value, columnIndexes);
+        // last.setOldValue(u);
+        // last = u;
+        // } else {
+        // last.setOldValue(next);
+        // last = next;
+        // }
+        // next = next.getOldValue();
+        // }
+        // last.setOldValue(next);
+        // if (ref.compareAndSet(first, committed))
+        // break;
+        // }
+        // return null;
+        // }
 
         @Override
         public void rollback() {

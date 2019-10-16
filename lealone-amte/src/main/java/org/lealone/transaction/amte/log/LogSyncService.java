@@ -118,6 +118,11 @@ public abstract class LogSyncService extends Thread {
         maybeWaitForSync(r);
     }
 
+    public void addLazyLog(LazyLog lazyLog) {
+        redoLog.addLazyLog(lazyLog);
+        haveWork.release();
+    }
+
     public void checkpoint(long checkpointId) {
         RedoLogRecord r = RedoLogRecord.createCheckpoint(checkpointId);
         addRedoLogRecord(r);
@@ -134,6 +139,14 @@ public abstract class LogSyncService extends Thread {
 
     public List<ByteBuffer> getAndRemovePendingRedoLog(String mapName) {
         return pendingRedoLog.remove(mapName);
+    }
+
+    public boolean isInstantSync() {
+        return false;
+    }
+
+    public boolean needSync() {
+        return true;
     }
 
     public static LogSyncService create(Map<String, String> config) {

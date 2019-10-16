@@ -44,6 +44,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     private final FileStorage fileStorage;
     private final Map<String, String> config;
     private LinkedTransferQueue<RedoLogRecord> queue;
+    private LinkedTransferQueue<LazyLog> lazyLogQueue;
     private long pos;
 
     RedoLogChunk(int id, Map<String, String> config) {
@@ -53,6 +54,7 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         fileStorage = new FileStorage();
         fileStorage.open(chunkFileName, config);
         queue = new LinkedTransferQueue<>();
+        lazyLogQueue = new LinkedTransferQueue<>();
         pos = fileStorage.size();
         if (pos > 0)
             read();
@@ -76,10 +78,20 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         queue.add(r);
     }
 
+    void addLazyLog(LazyLog lazyLog) {
+        lazyLogQueue.add(lazyLog);
+    }
+
     LinkedTransferQueue<RedoLogRecord> getAndResetRedoLogRecords() {
         LinkedTransferQueue<RedoLogRecord> oldQueue = this.queue;
         this.queue = new LinkedTransferQueue<>();
         return oldQueue;
+    }
+
+    LinkedTransferQueue<LazyLog> getAndResetLazyLogs() {
+        LinkedTransferQueue<LazyLog> lazyLogQueue = this.lazyLogQueue;
+        this.lazyLogQueue = new LinkedTransferQueue<>();
+        return lazyLogQueue;
     }
 
     void close() {
@@ -110,6 +122,31 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
                 }
                 for (RedoLogRecord r : oldQueue) {
                     r.setSynced(true);
+                }
+            }
+        }
+
+        LinkedTransferQueue<LazyLog> lazyLogQueue = getAndResetLazyLogs();
+        if (!lazyLogQueue.isEmpty()) {
+            try (DataBuffer buff = DataBuffer.create()) {
+                for (LazyLog log : lazyLogQueue) {
+                    RedoLogRecord r = log.createRedoLogRecord(buff);
+                    if (r == null)
+                        continue;
+                    if (r.isCheckpoint()) {
+                        deleteOldChunkFiles();
+                        fileStorage.truncate(0);
+                        buff.reset();
+                        pos = 0;
+                    }
+                }
+                int chunkLength = buff.position();
+                if (chunkLength > 0) {
+                    buff.limit(chunkLength);
+                    buff.position(0);
+                    fileStorage.writeFully(pos, buff.getBuffer());
+                    pos += chunkLength;
+                    fileStorage.sync();
                 }
             }
         }

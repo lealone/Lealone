@@ -54,10 +54,11 @@ class PeriodicLogSyncService extends LogSyncService {
                     if (r.isSynced()) {
                         signal.cancel();
                         return;
-                    } else if (waitForSyncToCatchUp(started))
+                    } else if (waitForSyncToCatchUp(started)) {
                         signal.awaitUninterruptibly();
-                    else
+                    } else {
                         signal.cancel();
+                    }
                 }
             }
         }
@@ -78,5 +79,9 @@ class PeriodicLogSyncService extends LogSyncService {
         } else {
             super.prepareCommit(t);
         }
+
+        // if ((t.getSession() != null)) {
+        // t.getSession().commit(null);
+        // }
     }
 }

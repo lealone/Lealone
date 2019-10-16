@@ -33,6 +33,11 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
+    public boolean needSync() {
+        return false;
+    }
+
+    @Override
     public void maybeWaitForSync(RedoLogRecord r) {
     }
 

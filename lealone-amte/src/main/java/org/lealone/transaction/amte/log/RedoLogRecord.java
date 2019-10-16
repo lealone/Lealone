@@ -55,6 +55,9 @@ public abstract class RedoLogRecord {
 
     abstract void write(DataBuffer buff);
 
+    public void writeHead(DataBuffer buff) {
+    }
+
     static RedoLogRecord read(ByteBuffer buff) {
         int type = buff.get();
         if (type == TYPE_CHECKPOINT) {
@@ -155,8 +158,8 @@ public abstract class RedoLogRecord {
     }
 
     static class TransactionRedoLogRecord extends RedoLogRecord {
-        private final long transactionId;
-        private final ByteBuffer operations;
+        protected final long transactionId;
+        protected final ByteBuffer operations;
 
         public TransactionRedoLogRecord(long transactionId, ByteBuffer operations) {
             this.transactionId = transactionId;
@@ -180,13 +183,13 @@ public abstract class RedoLogRecord {
         public void write(DataBuffer buff, byte type) {
             buff.put(type);
             buff.putVarLong(transactionId);
-            buff.putVarInt(operations.remaining());
+            buff.putInt(operations.remaining());
             buff.put(operations);
         }
 
         public static ByteBuffer readOperations(ByteBuffer buff) {
             ByteBuffer operations;
-            int len = DataUtils.readVarInt(buff);
+            int len = buff.getInt(); // DataUtils.readVarInt(buff);
             if (len > 0) {
                 byte[] value = new byte[len];
                 buff.get(value);
@@ -206,6 +209,12 @@ public abstract class RedoLogRecord {
         @Override
         public void write(DataBuffer buff) {
             write(buff, TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
+        }
+
+        @Override
+        public void writeHead(DataBuffer buff) {
+            buff.put(TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
+            buff.putVarLong(transactionId);
         }
 
         public static LocalTransactionRedoLogRecord read(ByteBuffer buff) {

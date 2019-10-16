@@ -110,6 +110,7 @@ public class TransactionalLogRecord {
             writeBuffer.put((byte) 0);
         else {
             writeBuffer.put((byte) 1);
+            // 如果这里运行时出现了cast异常，可能是上层应用没有通过TransactionMap提供的api来写入最初的数据
             ((TransactionalValueType) map.getValueType()).valueType.write(writeBuffer, newValue.getValue());
         }
         writeBuffer.putInt(keyValueLengthStartPos, writeBuffer.position() - keyValueLengthStartPos - 4);
