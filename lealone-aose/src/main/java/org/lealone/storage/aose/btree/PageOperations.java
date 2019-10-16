@@ -303,7 +303,7 @@ public abstract class PageOperations {
             if (p.isEmpty() && p != p.map.getRootPage()) { // 删除leaf page，但是root leaf page除外
                 p.dynamicInfo = new DynamicInfo(BTreePage.State.REMOVING);
                 RemoveChild task = new RemoveChild(p, key);
-                p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
+                p.map.nodePageOperationHandler.handlePageOperation(task);
             }
             return old;
         }
@@ -520,7 +520,7 @@ public abstract class PageOperations {
         // 把AddChild操作放入父节点的处理器队列中，等候处理。
         // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
         AddChild task = new AddChild(tmp);
-        p.map.pohFactory.getNodePageOperationHandler().handlePageOperation(task);
+        p.map.nodePageOperationHandler.handlePageOperation(task);
 
         // 第六步:
         // 对于分布式场景，通知发生切割了，需要选一个leaf page来移动

@@ -28,6 +28,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.PageOperation;
+import org.lealone.storage.PageOperationHandler;
 import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
@@ -59,6 +60,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     protected final Map<String, Object> config;
     protected final BTreeStorage btreeStorage;
     protected final PageOperationHandlerFactory pohFactory;
+    // 每个btree固定一个处理器用于处理node page的所有状态更新操作
+    protected final PageOperationHandler nodePageOperationHandler;
     protected PageStorageMode pageStorageMode = PageStorageMode.ROW_STORAGE;
 
     // btree的root page，最开始是一个leaf page，随时都会指向新的page
@@ -74,7 +77,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         this.readOnly = config.containsKey("readOnly");
         this.config = config;
         this.pohFactory = aoStorage.getPageOperationHandlerFactory();
-
+        this.nodePageOperationHandler = pohFactory.getPageOperationHandler();
         Object mode = config.get("pageStorageMode");
         if (mode != null) {
             pageStorageMode = PageStorageMode.valueOf(mode.toString());

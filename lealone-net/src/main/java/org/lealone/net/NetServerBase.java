@@ -67,4 +67,9 @@ public abstract class NetServerBase extends ProtocolServerBase implements NetSer
         else
             throw new ConfigException(message, e);
     }
+
+    @Override
+    public boolean runInMainThread() {
+        return false;
+    }
 }

@@ -61,7 +61,7 @@ public class AsyncTransactionPerfTest extends TransactionPerfTestBase {
             handlers[i] = new DefaultPageOperationHandler(i, config);
         }
         PageOperationHandlerFactory f = storage.getPageOperationHandlerFactory();
-        f.setLeafPageOperationHandlers(handlers);
+        f.setPageOperationHandlers(handlers);
     }
 
     @Override

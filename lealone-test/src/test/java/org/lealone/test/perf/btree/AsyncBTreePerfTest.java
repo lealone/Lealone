@@ -74,7 +74,7 @@ public class AsyncBTreePerfTest extends StorageMapPerfTestBase {
             handlers[i] = new DefaultPageOperationHandler(i, config);
         }
         PageOperationHandlerFactory f = storage.getPageOperationHandlerFactory();
-        f.setLeafPageOperationHandlers(handlers);
+        f.setPageOperationHandlers(handlers);
     }
 
     void printShiftCount(int[] keys) {

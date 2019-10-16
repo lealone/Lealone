@@ -109,7 +109,7 @@ public class BTreePage {
         if (isLeaf())
             handler = map.pohFactory.getPageOperationHandler();
         else if (isNode())
-            handler = map.pohFactory.getNodePageOperationHandler();
+            handler = map.nodePageOperationHandler;
         else
             handler = null;
     }

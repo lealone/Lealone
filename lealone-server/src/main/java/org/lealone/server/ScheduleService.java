@@ -36,7 +36,7 @@ public class ScheduleService {
         if (config.containsKey("scheduler_count"))
             schedulerCount = Integer.parseInt(config.get("scheduler_count"));
         else
-            schedulerCount = Math.max(1, Runtime.getRuntime().availableProcessors() - 2);
+            schedulerCount = Math.max(1, Runtime.getRuntime().availableProcessors());
 
         schedulers = new Scheduler[schedulerCount];
         for (int i = 0; i < schedulerCount; i++) {

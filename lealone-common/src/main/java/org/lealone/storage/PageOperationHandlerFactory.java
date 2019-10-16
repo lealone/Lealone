@@ -24,8 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PageOperationHandlerFactory {
 
-    protected PageOperationHandler nodePageOperationHandler;
-    protected PageOperationHandler[] leafPageOperationHandlers;;
+    protected PageOperationHandler[] pageOperationHandlers;;
 
     protected PageOperationHandlerFactory(Map<String, String> config, PageOperationHandler[] handlers) {
         if (handlers != null) {
@@ -41,54 +40,18 @@ public abstract class PageOperationHandlerFactory {
 
         handlerCount = Math.max(1, handlerCount);
 
-        if (handlerCount == 1) {
-            nodePageOperationHandler = new DefaultPageOperationHandler("PageOperationHandler", config);
-            leafPageOperationHandlers = new PageOperationHandler[] { nodePageOperationHandler };
-        } else {
-            nodePageOperationHandler = new DefaultPageOperationHandler("NodePageOperationHandler", config);
-            handlerCount--;
-            leafPageOperationHandlers = new PageOperationHandler[handlerCount];
-            for (int i = 0; i < handlerCount; i++) {
-                leafPageOperationHandlers[i] = new DefaultPageOperationHandler("LeafPageOperationHandler-" + i, config);
-            }
+        pageOperationHandlers = new PageOperationHandler[handlerCount];
+        for (int i = 0; i < handlerCount; i++) {
+            pageOperationHandlers[i] = new DefaultPageOperationHandler("LeafPageOperationHandler-" + i, config);
         }
         startHandlers();
     }
 
     public abstract PageOperationHandler getPageOperationHandler();
 
-    public void setPageOperationHandlers(PageOperationHandler[] pageOperationHandlers) {
-        nodePageOperationHandler = pageOperationHandlers[0];
-        int handlerCount = pageOperationHandlers.length;
-        if (handlerCount == 1) {
-            leafPageOperationHandlers = new PageOperationHandler[] { nodePageOperationHandler };
-        } else {
-            handlerCount--;
-            leafPageOperationHandlers = new PageOperationHandler[handlerCount];
-            for (int i = 0; i < handlerCount; i++) {
-                leafPageOperationHandlers[i] = pageOperationHandlers[i];
-            }
-        }
-    }
-
-    public PageOperationHandler[] getLeafPageOperationHandlers() {
-        return leafPageOperationHandlers;
-    }
-
-    public void setLeafPageOperationHandlers(PageOperationHandler[] leafPageOperationHandlers) {
-        this.leafPageOperationHandlers = leafPageOperationHandlers;
-    }
-
-    public void setNodePageOperationHandler(PageOperationHandler handler) {
-        nodePageOperationHandler = handler;
-    }
-
-    public PageOperationHandler getNodePageOperationHandler() {
-        return nodePageOperationHandler != null ? nodePageOperationHandler : leafPageOperationHandlers[0];
-    }
-
-    public PageOperationHandler getPageOperationHandler(long id) {
-        return leafPageOperationHandlers[((int) id) % leafPageOperationHandlers.length];
+    public void setPageOperationHandlers(PageOperationHandler[] handlers) {
+        pageOperationHandlers = new PageOperationHandler[handlers.length];
+        System.arraycopy(handlers, 0, pageOperationHandlers, 0, handlers.length);
     }
 
     public void addPageOperation(PageOperation po) {
@@ -106,14 +69,11 @@ public abstract class PageOperationHandlerFactory {
     }
 
     public int getPageOperationHandlerCount() {
-        return leafPageOperationHandlers.length;
+        return pageOperationHandlers.length;
     }
 
     public void startHandlers() {
-        if (nodePageOperationHandler instanceof DefaultPageOperationHandler) {
-            ((DefaultPageOperationHandler) nodePageOperationHandler).start();
-        }
-        for (PageOperationHandler h : leafPageOperationHandlers) {
+        for (PageOperationHandler h : pageOperationHandlers) {
             if (h instanceof DefaultPageOperationHandler) {
                 ((DefaultPageOperationHandler) h).start();
             }
@@ -121,30 +81,28 @@ public abstract class PageOperationHandlerFactory {
     }
 
     public void stopHandlers() {
-        if (nodePageOperationHandler instanceof DefaultPageOperationHandler) {
-            ((DefaultPageOperationHandler) nodePageOperationHandler).stop();
-        }
-        for (PageOperationHandler h : leafPageOperationHandlers) {
+        for (PageOperationHandler h : pageOperationHandlers) {
             if (h instanceof DefaultPageOperationHandler) {
                 ((DefaultPageOperationHandler) h).stop();
             }
         }
     }
 
+    public static PageOperationHandlerFactory instance;
+
     public static PageOperationHandlerFactory create(Map<String, String> config) {
         return create(config, null);
     }
 
-    public static PageOperationHandlerFactory instance;
-
-    public static PageOperationHandlerFactory create(Map<String, String> config, PageOperationHandler[] handlers) {
+    public static synchronized PageOperationHandlerFactory create(Map<String, String> config,
+            PageOperationHandler[] handlers) {
         if (instance != null)
             return instance;
         if (config == null)
             config = new HashMap<>(0);
         PageOperationHandlerFactory factory = null;
         String key = "page_operation_handler_factory_type";
-        String type = "LoadBalance";
+        String type = null; // "LoadBalance";
         if (config.containsKey(key))
             type = config.get(key);
         if (type == null || type.equalsIgnoreCase("RoundRobin"))
@@ -170,8 +128,8 @@ public abstract class PageOperationHandlerFactory {
 
         @Override
         public PageOperationHandler getPageOperationHandler() {
-            int index = random.nextInt(leafPageOperationHandlers.length);
-            return leafPageOperationHandlers[index];
+            int index = random.nextInt(pageOperationHandlers.length);
+            return pageOperationHandlers[index];
         }
     }
 
@@ -185,7 +143,7 @@ public abstract class PageOperationHandlerFactory {
 
         @Override
         public PageOperationHandler getPageOperationHandler() {
-            return leafPageOperationHandlers[index.getAndIncrement() % leafPageOperationHandlers.length];
+            return pageOperationHandlers[index.getAndIncrement() % pageOperationHandlers.length];
         }
     }
 
@@ -199,12 +157,12 @@ public abstract class PageOperationHandlerFactory {
         public PageOperationHandler getPageOperationHandler() {
             long minLoad = Long.MAX_VALUE;
             int index = 0;
-            for (int i = 0, size = leafPageOperationHandlers.length; i < size; i++) {
-                long load = leafPageOperationHandlers[i].getLoad();
+            for (int i = 0, size = pageOperationHandlers.length; i < size; i++) {
+                long load = pageOperationHandlers[i].getLoad();
                 if (load < minLoad)
                     index = i;
             }
-            return leafPageOperationHandlers[index];
+            return pageOperationHandlers[index];
         }
     }
 }
