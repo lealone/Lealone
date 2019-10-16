@@ -68,6 +68,7 @@ class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
     private void min(BTreePage p, K from) {
         while (true) {
             if (p.isLeaf()) {
+                p = p.tmpCopyIfSplited();
                 int x = from == null ? 0 : p.binarySearch(from);
                 if (x < 0) {
                     x = -x - 1;

@@ -33,11 +33,14 @@ public class BTreeMapTest extends TestBase {
     @Test
     public void run() {
         init();
+        // for (int i = 0; i < 10; i++) {
         testSyncOperations();
         testAsyncOperations();
         testCompact();
         testSplit();
         testRemove();
+        testSave();
+        // }
     }
 
     private void init() {
@@ -272,7 +275,7 @@ public class BTreeMapTest extends TestBase {
         map.printPage();
         map.remove(8, ar -> {
         });
-        CountDownLatch latch = new CountDownLatch(count - 8);
+        CountDownLatch latch = new CountDownLatch(count - 8 + 1);
         for (int i = 8; i <= count; i++) {
             Integer key = i;
             String value = "value-" + i;
@@ -288,6 +291,28 @@ public class BTreeMapTest extends TestBase {
 
         assertEquals(count, map.size());
 
+        map.printPage();
+    }
+
+    void testSave() {
+        openMap();
+        map.clear();
+        map.save();
+        map.put(1, "a");
+        map.put(2, "b");
+        map.save();
+
+        int count = 20;
+        for (int i = 1; i <= count; i++) {
+            Integer key = i;
+            String value = "value-" + i;
+            map.put(key, value);
+        }
+        map.save();
+
+        map.put(1, "a1");
+        map.put(20, "b1");
+        map.save();
         map.printPage();
     }
 }

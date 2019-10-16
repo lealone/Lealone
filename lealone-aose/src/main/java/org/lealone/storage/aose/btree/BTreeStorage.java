@@ -49,11 +49,11 @@ public class BTreeStorage {
      * The block size (physical sector size) of the disk. The chunk header is
      * written twice, one copy in each block, to ensure it survives a crash.
      */
-    public static final int BLOCK_SIZE = 4 * 1024;
-    public static final int CHUNK_HEADER_BLOCKS = 2;
-    public static final int CHUNK_HEADER_SIZE = CHUNK_HEADER_BLOCKS * BLOCK_SIZE;
+    static final int BLOCK_SIZE = 4 * 1024;
+    private static final int CHUNK_HEADER_BLOCKS = 2;
+    static final int CHUNK_HEADER_SIZE = CHUNK_HEADER_BLOCKS * BLOCK_SIZE;
 
-    static long getFilePos(int offset) {
+    private static long getFilePos(int offset) {
         long filePos = offset + CHUNK_HEADER_SIZE;
         if (filePos < 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT, "Negative position {0}", filePos);
@@ -409,6 +409,10 @@ public class BTreeStorage {
         return p;
     }
 
+    void setUnsavedChanges(boolean b) {
+        hasUnsavedChanges = b;
+    }
+
     /**
      * Remove a page.
      * 
@@ -619,7 +623,7 @@ public class BTreeStorage {
         // if (p.getTotalCount() > 0 || force) {
         p.writeUnsavedRecursive(c, buff);
         c.rootPagePos = p.getPos();
-        p.writeEnd();
+        // p.writeEnd();
         // }
 
         c.pagePositionsOffset = buff.position();
@@ -757,6 +761,24 @@ public class BTreeStorage {
         }
     }
 
+    private void readPagePositions(BTreeChunk c) {
+        int size = c.pageCount;
+        if (c.pagePositions == null) {
+            ByteBuffer buffer = c.fileStorage.readFully(getFilePos(c.pagePositionsOffset), size * 8);
+            c.pagePositions = new ArrayList<Long>(size);
+            for (int i = 0; i < size; i++) {
+                c.pagePositions.add(buffer.getLong());
+            }
+        }
+        if (c.pageLengths == null) {
+            ByteBuffer buffer = c.fileStorage.readFully(getFilePos(c.pageLengthsOffset), size * 4);
+            c.pageLengths = new ArrayList<Integer>(size);
+            for (int i = 0; i < size; i++) {
+                c.pageLengths.add(buffer.getInt());
+            }
+        }
+    }
+
     private List<BTreeChunk> getOldChunks() {
         long maxBytesToWrite = BTreeChunk.MAX_SIZE;
         List<BTreeChunk> old = new ArrayList<>();
@@ -812,24 +834,6 @@ public class BTreeStorage {
     }
 
     // //////////////////////////////// Compact END /////////////////////////////////////
-
-    void readPagePositions(BTreeChunk c) {
-        int size = c.pageCount;
-        if (c.pagePositions == null) {
-            ByteBuffer buffer = c.fileStorage.readFully(getFilePos(c.pagePositionsOffset), size * 8);
-            c.pagePositions = new ArrayList<Long>(size);
-            for (int i = 0; i < size; i++) {
-                c.pagePositions.add(buffer.getLong());
-            }
-        }
-        if (c.pageLengths == null) {
-            ByteBuffer buffer = c.fileStorage.readFully(getFilePos(c.pageLengthsOffset), size * 4);
-            c.pageLengths = new ArrayList<Integer>(size);
-            for (int i = 0; i < size; i++) {
-                c.pageLengths.add(buffer.getInt());
-            }
-        }
-    }
 
     void addHostIds(Collection<String> hostIds) {
         if (hostIds != null)

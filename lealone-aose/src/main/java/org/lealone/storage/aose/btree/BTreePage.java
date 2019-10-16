@@ -71,7 +71,6 @@ public class BTreePage {
         boolean isRemoved() {
             return state == State.REMOVED;
         }
-
     }
 
     public static enum State {
@@ -102,6 +101,8 @@ public class BTreePage {
 
     private boolean splitEnabled = true;
     volatile DynamicInfo dynamicInfo = new DynamicInfo();
+
+    PageReference parentRef;
 
     protected BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
@@ -156,6 +157,24 @@ public class BTreePage {
         BTreePage p = this;
         while (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
             p = p.dynamicInfo.redirect.getChildPage(first ? 0 : 1);
+        }
+        return p;
+    }
+
+    BTreePage tmpCopyIfSplited() {
+        BTreePage p = this;
+        if (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
+            p = p.dynamicInfo.redirect;
+            BTreeLeafPage left = (BTreeLeafPage) p.getChildPage(0);
+            BTreeLeafPage right = (BTreeLeafPage) p.getChildPage(1);
+            int length = left.keys.length + right.keys.length;
+            Object[] keys = new Object[length];
+            Object[] values = new Object[length];
+            System.arraycopy(left.keys, 0, keys, 0, left.keys.length);
+            System.arraycopy(right.keys, 0, keys, left.keys.length, right.keys.length);
+            System.arraycopy(left.getValues(), 0, values, 0, left.getValues().length);
+            System.arraycopy(right.getValues(), 0, values, left.getValues().length, right.getValues().length);
+            p = BTreeLeafPage.create(p.map, keys, values, length, left.getMemory() + right.getMemory());
         }
         return p;
     }
@@ -464,6 +483,15 @@ public class BTreePage {
      */
     public void removePage() {
         throw ie();
+    }
+
+    void markDirty() {
+        if (pos != 0) {
+            removePage();
+            pos = 0;
+        } else {
+            map.btreeStorage.setUnsavedChanges(true);
+        }
     }
 
     /**

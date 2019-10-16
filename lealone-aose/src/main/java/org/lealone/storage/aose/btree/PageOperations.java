@@ -206,6 +206,15 @@ public abstract class PageOperations {
             p.insertLeaf(index, key, value);
             map.setMaxKey(key);
         }
+
+        protected void markDirtyPages() {
+            p.markDirty();
+            PageReference parentRef = p.parentRef;
+            while (parentRef != null) {
+                parentRef.page.markDirty();
+                parentRef = parentRef.page.parentRef;
+            }
+        }
     }
 
     public static class Put<K, V, R> extends SingleWrite<K, V, R> {
@@ -218,6 +227,7 @@ public abstract class PageOperations {
 
         @Override
         protected Object writeLocal(int index) {
+            markDirtyPages();
             Object result;
             if (index < 0) {
                 insertLeaf(index, value);
@@ -243,6 +253,7 @@ public abstract class PageOperations {
         @Override
         protected Object writeLocal(int index) {
             if (index < 0) {
+                markDirtyPages();
                 insertLeaf(index, value);
                 return null;
             }
@@ -267,6 +278,7 @@ public abstract class PageOperations {
             }
             Object old = p.getValue(index);
             if (map.areValuesEqual(old, oldValue)) {
+                markDirtyPages();
                 p.setValue(index, value);
                 return Boolean.TRUE;
             }
@@ -285,6 +297,7 @@ public abstract class PageOperations {
             if (index < 0) {
                 return null;
             }
+            markDirtyPages();
             Object old = p.getValue(index);
             p.remove(index);
             if (p.isEmpty() && p != p.map.getRootPage()) { // 删除leaf page，但是root leaf page除外
@@ -529,6 +542,9 @@ public abstract class PageOperations {
         Object[] keys = { k };
         PageReference[] children = { leftRef, rightRef };
         BTreePage parent = BTreePage.createNode(p.map, keys, children, 0);
+        PageReference parentRef = new PageReference(parent);
+        leftChildPage.parentRef = parentRef;
+        rightChildPage.parentRef = parentRef;
         return new TmpNodePage(parent, old, leftRef, rightRef, k);
     }
 }

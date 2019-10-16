@@ -77,7 +77,13 @@ public class BTreeNodePage extends BTreeLocalPage {
     @Override
     public BTreePage getChildPage(int index) {
         PageReference ref = children[index];
-        return ref.page != null ? ref.page : map.btreeStorage.readPage(ref, ref.pos);
+        if (ref.page != null) {
+            return ref.page;
+        } else {
+            BTreePage p = map.btreeStorage.readPage(ref, ref.pos);
+            ref.replacePage(p);
+            return p;
+        }
     }
 
     @Override
@@ -159,6 +165,9 @@ public class BTreeNodePage extends BTreeLocalPage {
         newChildren[index] = tmpNodePage.left;
         children = newChildren;
 
+        PageReference parentRef = new PageReference(this);
+        tmpNodePage.left.page.parentRef = parentRef;
+        tmpNodePage.right.page.parentRef = parentRef;
         addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD);
     }
 
@@ -175,6 +184,8 @@ public class BTreeNodePage extends BTreeLocalPage {
         newChildren[index] = new PageReference(childPage, key, index == 0);
         children = newChildren;
 
+        PageReference parentRef = new PageReference(this);
+        childPage.parentRef = parentRef;
         addMemory(map.getKeyType().getMemory(key) + PageUtils.PAGE_MEMORY_CHILD);
     }
 
