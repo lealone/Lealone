@@ -74,9 +74,10 @@ public class AMTransactionEngineTest extends TestBase {
         config.put("base_dir", joinDirs("amte"));
         config.put("redo_log_dir", "redo_log");
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_INSTANT);
-        config.put("checkpoint_service_loop_interval", "10"); // 10ms
+        // config.put("checkpoint_service_loop_interval", "10"); // 10ms
         // config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
-        // config.put("log_sync_period", "500"); // 500ms
+        config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_NO_SYNC);
+        config.put("log_sync_period", "500"); // 500ms
         return config;
     }
 

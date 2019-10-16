@@ -135,12 +135,16 @@ public abstract class PageOperationHandlerFactory {
         return create(config, null);
     }
 
+    public static PageOperationHandlerFactory instance;
+
     public static PageOperationHandlerFactory create(Map<String, String> config, PageOperationHandler[] handlers) {
+        if (instance != null)
+            return instance;
         if (config == null)
             config = new HashMap<>(0);
         PageOperationHandlerFactory factory = null;
         String key = "page_operation_handler_factory_type";
-        String type = null;
+        String type = "LoadBalance";
         if (config.containsKey(key))
             type = config.get(key);
         if (type == null || type.equalsIgnoreCase("RoundRobin"))
@@ -152,6 +156,7 @@ public abstract class PageOperationHandlerFactory {
         else {
             throw new RuntimeException("Unknow " + key + ": " + type);
         }
+        PageOperationHandlerFactory.instance = factory;
         return factory;
     }
 

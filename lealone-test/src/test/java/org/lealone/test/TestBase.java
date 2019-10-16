@@ -88,6 +88,7 @@ public class TestBase extends Assert {
             config.put("base_dir", TEST_DIR);
             config.put("redo_log_dir", "redo_log");
             config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
+            // config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_NO_SYNC);
             te.init(config);
         }
     }

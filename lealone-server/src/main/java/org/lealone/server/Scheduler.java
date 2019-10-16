@@ -143,7 +143,7 @@ public class Scheduler extends Thread
     private int nested;
     private PreparedCommand nextBestCommand;
 
-    Scheduler(int id, Map<String, String> config) {
+    public Scheduler(int id, Map<String, String> config) {
         super(ScheduleService.class.getSimpleName() + "-" + id);
         setDaemon(true);
         // 默认100毫秒
@@ -206,8 +206,9 @@ public class Scheduler extends Thread
 
     @Override
     public long getLoad() {
-        return maxPriorityQueue.size() + minPriorityQueue.size() + normPriorityQueue.size() + pageOperationQueue.size()
-                + sessions.size();
+        return sessions.size();// maxPriorityQueue.size() + minPriorityQueue.size() + normPriorityQueue.size() +
+                               // pageOperationQueue.size()
+        // + sessions.size();
     }
 
     @Override
@@ -392,17 +393,20 @@ public class Scheduler extends Thread
     public void beforeOperation() {
         e = null;
         counter = new AtomicInteger(1);
+        // logger.warn(getName() + " beforeOperation: " + counter.get());
     }
 
     @Override
     public void operationUndo() {
         counter.decrementAndGet();
+        // logger.warn(getName() + " operationUndo: " + counter.get());
         wakeUp();
     }
 
     @Override
     public void operationComplete() {
         counter.decrementAndGet();
+        // logger.warn(getName() + " operationComplete: " + counter.get());
         wakeUp();
     }
 
