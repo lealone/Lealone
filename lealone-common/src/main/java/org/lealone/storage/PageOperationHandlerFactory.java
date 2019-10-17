@@ -24,9 +24,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class PageOperationHandlerFactory {
 
-    protected PageOperationHandler[] pageOperationHandlers;;
+    protected final DefaultPageOperationHandler nodePageOperationHandler;
+    protected PageOperationHandler[] pageOperationHandlers;
 
     protected PageOperationHandlerFactory(Map<String, String> config, PageOperationHandler[] handlers) {
+        nodePageOperationHandler = new DefaultPageOperationHandler("NodePageOperationHandler", config);
+        nodePageOperationHandler.start();
         if (handlers != null) {
             setPageOperationHandlers(handlers);
             return;
@@ -45,6 +48,10 @@ public abstract class PageOperationHandlerFactory {
             pageOperationHandlers[i] = new DefaultPageOperationHandler("LeafPageOperationHandler-" + i, config);
         }
         startHandlers();
+    }
+
+    public PageOperationHandler getNodePageOperationHandler() {
+        return nodePageOperationHandler;
     }
 
     public abstract PageOperationHandler getPageOperationHandler();
@@ -73,6 +80,7 @@ public abstract class PageOperationHandlerFactory {
     }
 
     public void startHandlers() {
+        nodePageOperationHandler.start();
         for (PageOperationHandler h : pageOperationHandlers) {
             if (h instanceof DefaultPageOperationHandler) {
                 ((DefaultPageOperationHandler) h).start();
@@ -81,6 +89,7 @@ public abstract class PageOperationHandlerFactory {
     }
 
     public void stopHandlers() {
+        nodePageOperationHandler.stop();
         for (PageOperationHandler h : pageOperationHandlers) {
             if (h instanceof DefaultPageOperationHandler) {
                 ((DefaultPageOperationHandler) h).stop();

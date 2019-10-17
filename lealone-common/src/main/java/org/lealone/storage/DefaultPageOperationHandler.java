@@ -86,6 +86,7 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
     public void start() {
         if (thread != null)
             return;
+        stopped = false;
         ShutdownHookUtils.addShutdownHook(name, () -> {
             stop();
         });

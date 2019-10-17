@@ -171,7 +171,9 @@ public abstract class PageOperations {
                     DbException.throwInternalError();
                 }
             }
-
+            if (!p.isSplitEnabled() && p.getKeyCount() > 10) {
+                // System.out.println(p.getKeyCount());
+            }
             int index = p.binarySearch(key);
             Object result = writeLocal(index);
             handleAsyncResult(result); // 可以提前执行回调函数了，不需要考虑后续的代码
