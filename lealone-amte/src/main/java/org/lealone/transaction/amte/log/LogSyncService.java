@@ -111,16 +111,14 @@ public abstract class LogSyncService extends Thread {
 
     public void addRedoLogRecord(RedoLogRecord r) {
         redoLog.addRedoLogRecord(r);
+        // 对于需要立即做同步的场景，及时唤醒日志同步线程
+        if (isInstantSync())
+            haveWork.release();
     }
 
     public void addAndMaybeWaitForSync(RedoLogRecord r) {
         redoLog.addRedoLogRecord(r);
         maybeWaitForSync(r);
-    }
-
-    public void addLazyLog(LazyLog lazyLog) {
-        redoLog.addLazyLog(lazyLog);
-        haveWork.release();
     }
 
     public void checkpoint(long checkpointId) {

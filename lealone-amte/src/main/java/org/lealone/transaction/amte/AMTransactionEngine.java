@@ -251,6 +251,9 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
 
     @Override
     public void beforeClose(Storage storage) {
+        // 事务引擎已经关闭了，此时忽略存储引擎的事件响应
+        if (logSyncService == null)
+            return;
         checkpoint();
         for (String mapName : storage.getMapNames()) {
             estimatedMemory.remove(mapName);

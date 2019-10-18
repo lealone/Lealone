@@ -19,6 +19,7 @@ package org.lealone.transaction.amte.log;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +27,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
+import org.lealone.transaction.amte.AMTransactionEngine;
 import org.lealone.transaction.amte.TransactionalLogRecord;
 
 public abstract class RedoLogRecord {
@@ -93,7 +95,13 @@ public abstract class RedoLogRecord {
                 commitTimestamp, operations);
     }
 
+    public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine,
+            long transactionId, LinkedList<TransactionalLogRecord> logRecords) {
+        return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, logRecords);
+    }
+
     static class Checkpoint extends RedoLogRecord {
+
         private final long checkpointId;
 
         Checkpoint(long checkpointId) {
@@ -128,6 +136,7 @@ public abstract class RedoLogRecord {
     }
 
     static class DroppedMapRedoLogRecord extends RedoLogRecord {
+
         private final String mapName;
 
         DroppedMapRedoLogRecord(String mapName) {
@@ -158,6 +167,7 @@ public abstract class RedoLogRecord {
     }
 
     static class TransactionRedoLogRecord extends RedoLogRecord {
+
         protected final long transactionId;
         protected final ByteBuffer operations;
 
@@ -202,6 +212,7 @@ public abstract class RedoLogRecord {
     }
 
     static class LocalTransactionRedoLogRecord extends TransactionRedoLogRecord {
+
         public LocalTransactionRedoLogRecord(long transactionId, ByteBuffer operations) {
             super(transactionId, operations);
         }
@@ -225,6 +236,7 @@ public abstract class RedoLogRecord {
     }
 
     static class DistributedTransactionRedoLogRecord extends TransactionRedoLogRecord {
+
         private final String transactionName;
         private final String allLocalTransactionNames;
         private final long commitTimestamp;
@@ -253,6 +265,40 @@ public abstract class RedoLogRecord {
             long commitTimestamp = DataUtils.readVarLong(buff);
             return new DistributedTransactionRedoLogRecord(transactionId, transactionName, allLocalTransactionNames,
                     commitTimestamp, operations);
+        }
+    }
+
+    static class LazyTransactionRedoLogRecord extends RedoLogRecord {
+
+        final AMTransactionEngine transactionEngine;
+        final long transactionId;
+        final LinkedList<TransactionalLogRecord> logRecords;
+
+        public LazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine, long transactionId,
+                LinkedList<TransactionalLogRecord> logRecords) {
+            this.transactionEngine = transactionEngine;
+            this.transactionId = transactionId;
+            this.logRecords = logRecords;
+        }
+
+        @Override
+        void write(DataBuffer buffer) {
+            if (logRecords.isEmpty())
+                return;
+            RedoLogRecord redoLogRecord = createLocalTransactionRedoLogRecord(transactionId, null);
+            redoLogRecord.writeHead(buffer);
+            int pos = buffer.position();
+            buffer.putInt(0);
+            for (TransactionalLogRecord r : logRecords) {
+                r.writeForRedo(buffer, transactionEngine);
+            }
+            int length = buffer.position() - pos - 4;
+            buffer.putInt(pos, length);
+        }
+
+        @Override
+        long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+            throw DbException.throwInternalError();
         }
     }
 }

@@ -88,10 +88,6 @@ class RedoLog {
         currentChunk.addRedoLogRecord(r);
     }
 
-    void addLazyLog(LazyLog lazyLog) {
-        currentChunk.addLazyLog(lazyLog);
-    }
-
     Queue<RedoLogRecord> getAllRedoLogRecords() {
         LinkedTransferQueue<RedoLogRecord> queue = new LinkedTransferQueue<>();
         List<Integer> ids = getAllChunkIds();

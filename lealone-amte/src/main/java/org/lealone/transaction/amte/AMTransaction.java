@@ -35,7 +35,6 @@ import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.amte.AMTransactionMap.AMReplicationMap;
-import org.lealone.transaction.amte.log.LazyLog;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 
@@ -274,7 +273,8 @@ public class AMTransaction implements Transaction {
                 }
             }
         } else {
-            if (logSyncService.needSync()) {
+            // 如果不需要事务日志同步，那么什么都不做，直接提交事务
+            if (logSyncService.needSync() && !logRecords.isEmpty()) {
                 // 如果需要立即做事务日志同步，那么把redo log的生成工作放在当前线程，减轻日志同步线程的工作量
                 if (logSyncService.isInstantSync()) {
                     RedoLogRecord r = createLocalTransactionRedoLogRecord();
@@ -283,10 +283,11 @@ public class AMTransaction implements Transaction {
                         logSyncService.addAndMaybeWaitForSync(r);
                     }
                 } else {
-                    if (!logRecords.isEmpty()) {
-                        LazyLog lazyLog = new LazyLog(transactionEngine, transactionId, logRecords);
-                        logSyncService.addLazyLog(lazyLog);
-                    }
+                    // 对于其他日志同步场景，当前线程不需要等待，只需要把事务日志移交到后台日志同步线程的队列中即可
+                    // 此时当前线程也不需要自己去做redo log的生成工作，也由后台处理，能尽快结束事务
+                    RedoLogRecord r = RedoLogRecord.createLazyTransactionRedoLogRecord(transactionEngine, transactionId,
+                            logRecords);
+                    logSyncService.addRedoLogRecord(r);
                 }
             }
             // 分布式事务推迟提交
@@ -309,14 +310,15 @@ public class AMTransaction implements Transaction {
         for (TransactionalLogRecord r : t.logRecords) {
             r.commit(transactionEngine, tid);
         }
-        t.endTransaction();
+        t.endTransaction(false);
     }
 
-    private void endTransaction() {
+    private void endTransaction(boolean remove) {
         savepoints = null;
         logRecords = null;
         status = STATUS_CLOSED;
-        transactionEngine.removeTransaction(transactionId);
+        if (remove)
+            transactionEngine.removeTransaction(transactionId);
     }
 
     private int lastCapacity = 1024;
@@ -359,7 +361,7 @@ public class AMTransaction implements Transaction {
             checkNotClosed();
             rollbackTo(0);
         } finally {
-            endTransaction();
+            endTransaction(true);
         }
     }
 
