@@ -34,7 +34,7 @@ public abstract class PluggableEngineManager<T extends PluggableEngine> {
 
     private final Class<T> pluggableEngineClass;
     private final Map<String, T> pluggableEngines = new ConcurrentHashMap<>();
-    private boolean loaded = false;
+    private volatile boolean loaded = false;
 
     protected PluggableEngineManager(Class<T> pluggableEngineClass) {
         this.pluggableEngineClass = pluggableEngineClass;
@@ -73,8 +73,9 @@ public abstract class PluggableEngineManager<T extends PluggableEngine> {
     private synchronized void loadPluggableEngines() {
         if (loaded)
             return;
-        loaded = true;
         AccessController.doPrivileged(new PluggableEngineService());
+        // 注意在load完之后再设为true，否则其他线程可能会因为不用等待load完成从而得到一个NPE
+        loaded = true;
     }
 
     private class PluggableEngineService implements PrivilegedAction<Void> {
