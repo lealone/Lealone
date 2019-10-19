@@ -21,6 +21,7 @@ import javax.naming.StringRefAddr;
 import javax.sql.DataSource;
 
 import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.StringUtils;
 
 /**
@@ -77,8 +78,8 @@ public class JdbcDataSource extends TraceObject implements DataSource, Serializa
      */
     public JdbcDataSource() {
         initFactory();
-        int id = getNextTraceId(TraceObject.DATA_SOURCE);
-        setTrace(factory.getTrace(), TraceObject.DATA_SOURCE, id);
+        int id = getNextTraceId(TraceObjectType.DATA_SOURCE);
+        this.trace = factory.getTrace(TraceObjectType.DATA_SOURCE, id);
     }
 
     /**

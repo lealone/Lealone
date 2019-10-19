@@ -8,6 +8,7 @@ package org.lealone.db;
 import java.lang.ref.WeakReference;
 
 import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceModuleType;
 
 /**
  * This class is responsible to close a database if the application did not
@@ -25,7 +26,7 @@ class DatabaseCloser extends Thread {
         this.databaseRef = new WeakReference<Database>(db);
         this.delayInMillis = delayInMillis;
         this.shutdownHook = shutdownHook;
-        trace = db.getTrace(Trace.DATABASE);
+        trace = db.getTrace(TraceModuleType.DATABASE);
     }
 
     /**

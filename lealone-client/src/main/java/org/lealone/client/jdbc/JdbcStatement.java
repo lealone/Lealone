@@ -17,6 +17,7 @@ import org.lealone.client.ClientBatchCommand;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
 import org.lealone.db.Session;
@@ -52,7 +53,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             boolean closeWithResultSet) {
         this.conn = conn;
         this.session = conn.getSession();
-        setTrace(session.getTrace(), TraceObject.STATEMENT, id);
+        this.trace = conn.getTrace(TraceObjectType.STATEMENT, id);
         this.resultSetType = resultSetType;
         this.resultSetConcurrency = resultSetConcurrency;
         this.closedByResultSet = closeWithResultSet;
@@ -78,9 +79,9 @@ public class JdbcStatement extends TraceObject implements Statement {
     private ResultSet executeQuery(String sql, AsyncHandler<AsyncResult<ResultSet>> handler, boolean async)
             throws SQLException {
         try {
-            int id = getNextTraceId(TraceObject.RESULT_SET);
+            int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id,
+                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id,
                         "executeQuery" + (async ? "Async" : "") + "(" + quote(sql) + ")");
             }
             checkClosed();
@@ -246,7 +247,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             // }
             // }
         }
-        int id = getNextTraceId(TraceObject.RESULT_SET);
+        int id = getNextTraceId(TraceObjectType.RESULT_SET);
         checkClosed();
         closeOldResultSet();
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
@@ -285,7 +286,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             checkClosed();
             if (resultSet != null) {
                 int id = resultSet.getTraceId();
-                debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "getResultSet()");
+                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id, "getResultSet()");
             } else {
                 debugCodeCall("getResultSet");
             }
@@ -781,9 +782,9 @@ public class JdbcStatement extends TraceObject implements Statement {
     @Override
     public ResultSet getGeneratedKeys() throws SQLException {
         try {
-            int id = getNextTraceId(TraceObject.RESULT_SET);
+            int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "getGeneratedKeys()");
+                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id, "getGeneratedKeys()");
             }
             checkClosed();
             return conn.getGeneratedKeys(this, id);

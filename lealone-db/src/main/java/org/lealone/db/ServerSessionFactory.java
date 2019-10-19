@@ -122,8 +122,7 @@ public class ServerSessionFactory implements SessionFactory {
             database.removeSession(null);
             throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
         }
-        ServerSession session = database.createSession(user);
-        session.setConnectionInfo(ci);
+        ServerSession session = database.createSession(user, ci);
         session.setTargetEndpoints(targetEndpoints);
         session.setRunMode(database.getRunMode());
         return session;

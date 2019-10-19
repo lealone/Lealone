@@ -142,6 +142,7 @@ public class TcpServerConnection extends TransferConnection {
             String value = transfer.readString();
             ci.addProperty(key, value, true); // 一些不严谨的client driver可能会发送重复的属性名
         }
+        ci.initTraceProperty();
 
         String baseDir = tcpServer.getBaseDir();
         if (baseDir == null) {

@@ -6,7 +6,6 @@
 package org.lealone.db;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StringUtils;
 
 /**
@@ -19,7 +18,7 @@ public class Comment extends DbObjectBase {
     private String commentText;
 
     public Comment(Database database, int id, DbObject obj) {
-        super(database, id, getKey(obj), Trace.DATABASE);
+        super(database, id, getKey(obj));
         this.objectType = obj.getType();
         this.objectName = obj.getSQL();
     }

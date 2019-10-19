@@ -10,7 +10,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
@@ -50,7 +49,7 @@ public class TriggerObject extends SchemaObjectBase {
     private Trigger triggerCallback;
 
     public TriggerObject(Schema schema, int id, String name, Table table) {
-        super(schema, id, name, Trace.TRIGGER);
+        super(schema, id, name);
         this.table = table;
         setTemporary(table.isTemporary());
     }

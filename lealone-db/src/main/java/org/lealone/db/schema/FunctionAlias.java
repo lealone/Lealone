@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
@@ -50,7 +49,7 @@ public class FunctionAlias extends SchemaObjectBase {
     private boolean bufferResultSetToLocalTemp = true;
 
     private FunctionAlias(Schema schema, int id, String name) {
-        super(schema, id, name, Trace.FUNCTION);
+        super(schema, id, name);
     }
 
     @Override

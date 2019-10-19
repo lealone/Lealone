@@ -9,7 +9,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
@@ -51,7 +50,7 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
     protected Table table;
 
     Constraint(Schema schema, int id, String name, Table table) {
-        super(schema, id, name, Trace.CONSTRAINT);
+        super(schema, id, name);
         this.table = table;
         this.setTemporary(table.isTemporary());
     }

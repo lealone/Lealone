@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
@@ -654,7 +655,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
         public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
             this.statement = statement;
             this.session = statement.getSession();
-            this.trace = session.getDatabase().getTrace(Trace.COMMAND);
+            this.trace = session.getTrace(TraceModuleType.COMMAND);
             this.asyncHandler = asyncHandler;
             this.async = asyncHandler != null;
         }

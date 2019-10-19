@@ -10,7 +10,6 @@ import java.util.Arrays;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
@@ -39,7 +38,7 @@ public class User extends RightOwner {
     private byte[] userPasswordHash;
 
     public User(Database database, int id, String userName, boolean systemUser) {
-        super(database, id, userName, Trace.USER);
+        super(database, id, userName);
         this.systemUser = systemUser;
     }
 

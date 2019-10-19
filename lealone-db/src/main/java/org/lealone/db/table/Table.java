@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
@@ -94,7 +93,7 @@ public abstract class Table extends SchemaObjectBase {
     private ProcessingMode processingMode = ProcessingMode.OLTP;
 
     public Table(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
-        super(schema, id, name, Trace.TABLE);
+        super(schema, id, name);
         compareMode = database.getCompareMode();
         columnMap = database.newStringMap();
         this.persistIndexes = persistIndexes;

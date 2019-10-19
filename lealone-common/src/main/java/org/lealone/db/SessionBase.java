@@ -17,12 +17,20 @@
  */
 package org.lealone.db;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceModuleType;
+import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
+import org.lealone.common.trace.TraceSystem;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
 
 public abstract class SessionBase implements Session {
@@ -39,6 +47,8 @@ public abstract class SessionBase implements Session {
     protected Transaction parentTransaction;
 
     protected String newTargetEndpoints;
+
+    protected TraceSystem traceSystem;
 
     @Override
     public String getReplicationName() {
@@ -188,5 +198,75 @@ public abstract class SessionBase implements Session {
     @Override
     public void runModeChanged(String newTargetEndpoints) {
         this.newTargetEndpoints = newTargetEndpoints;
+    }
+
+    public Trace getTrace(TraceModuleType traceModuleType) {
+        if (traceSystem != null)
+            return traceSystem.getTrace(traceModuleType);
+        else
+            return Trace.NO_TRACE;
+    }
+
+    @Override
+    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType) {
+        if (traceSystem != null)
+            return traceSystem.getTrace(traceModuleType, traceObjectType, TraceObject.getNextTraceId(traceObjectType));
+        else
+            return Trace.NO_TRACE;
+    }
+
+    @Override
+    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType, int traceObjectId) {
+        if (traceSystem != null)
+            return traceSystem.getTrace(traceModuleType, traceObjectType, traceObjectId);
+        else
+            return Trace.NO_TRACE;
+    }
+
+    protected void initTraceSystem(ConnectionInfo ci) {
+        if (!ci.isTraceEnabled() || traceSystem != null)
+            return;
+        traceSystem = new TraceSystem();
+        String traceLevelFile = ci.getProperty(SetTypes.TRACE_LEVEL_FILE, null);
+        if (traceLevelFile != null) {
+            int level = Integer.parseInt(traceLevelFile);
+            String prefix = getFilePrefix(SysProperties.CLIENT_TRACE_DIRECTORY, ci.getDatabaseName());
+            try {
+                traceSystem.setLevelFile(level);
+                if (level > 0) {
+                    String file = FileUtils.createTempFile(prefix, Constants.SUFFIX_TRACE_FILE, false, false);
+                    traceSystem.setFileName(file);
+                }
+            } catch (IOException e) {
+                throw DbException.convertIOException(e, prefix);
+            }
+        }
+        String traceLevelSystemOut = ci.getProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT, null);
+        if (traceLevelSystemOut != null) {
+            int level = Integer.parseInt(traceLevelSystemOut);
+            traceSystem.setLevelSystemOut(level);
+        }
+    }
+
+    private static String getFilePrefix(String dir, String dbName) {
+        StringBuilder buff = new StringBuilder(dir);
+        if (!(dir.charAt(dir.length() - 1) == File.separatorChar))
+            buff.append(File.separatorChar);
+        for (int i = 0, length = dbName.length(); i < length; i++) {
+            char ch = dbName.charAt(i);
+            if (Character.isLetterOrDigit(ch)) {
+                buff.append(ch);
+            } else {
+                buff.append('_');
+            }
+        }
+        return buff.toString();
+    }
+
+    protected void closeTraceSystem() {
+        if (traceSystem != null) {
+            traceSystem.close();
+            traceSystem = null;
+        }
     }
 }

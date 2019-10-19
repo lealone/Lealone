@@ -8,7 +8,7 @@ package org.lealone.db;
 import java.sql.SQLException;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceModuleType;
 import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.value.ValueInt;
@@ -65,7 +65,7 @@ public class MetaRecord implements Comparable<MetaRecord> {
         } catch (DbException e) {
             e = e.addSQL(sql);
             SQLException s = e.getSQLException();
-            db.getTrace(Trace.DATABASE).error(s, sql);
+            db.getTrace(TraceModuleType.DATABASE).error(s, sql);
             if (listener != null) {
                 listener.exceptionThrown(s, sql);
                 // continue startup in this case

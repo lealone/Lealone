@@ -6,7 +6,6 @@
 package org.lealone.db.auth;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
@@ -73,13 +72,13 @@ public class Right extends DbObjectBase {
     private DbObject grantedObject;
 
     public Right(Database db, int id, RightOwner grantee, Role grantedRole) {
-        super(db, id, "RIGHT_" + id, Trace.USER);
+        super(db, id, "RIGHT_" + id);
         this.grantee = grantee;
         this.grantedRole = grantedRole;
     }
 
     public Right(Database db, int id, RightOwner grantee, int grantedRight, DbObject grantedObject) {
-        super(db, id, "" + id, Trace.USER);
+        super(db, id, "" + id);
         this.grantee = grantee;
         this.grantedRight = grantedRight;
         this.grantedObject = grantedObject;

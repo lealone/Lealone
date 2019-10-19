@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Database;
@@ -65,7 +64,7 @@ public class Schema extends DbObjectBase {
      * @param system if this is a system schema (such a schema can not be dropped)
      */
     public Schema(Database database, int id, String schemaName, User owner, boolean system) {
-        super(database, id, schemaName, Trace.SCHEMA);
+        super(database, id, schemaName);
         tablesAndViews = database.newStringMap();
         indexes = database.newStringMap();
         sequences = database.newStringMap();

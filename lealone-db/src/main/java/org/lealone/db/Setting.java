@@ -6,7 +6,6 @@
 package org.lealone.db;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 
 /**
  * A persistent database setting.
@@ -17,7 +16,7 @@ public class Setting extends DbObjectBase {
     private String stringValue;
 
     public Setting(Database database, int id, String settingName) {
-        super(database, id, settingName, Trace.SETTING);
+        super(database, id, settingName);
     }
 
     @Override

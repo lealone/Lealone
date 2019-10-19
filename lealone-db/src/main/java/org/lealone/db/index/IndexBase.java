@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
@@ -52,7 +51,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
      * @param indexColumns the columns that are indexed or null if this is not yet known
      */
     protected IndexBase(Table table, int id, String name, IndexType indexType, IndexColumn[] indexColumns) {
-        super(table.getSchema(), id, name, Trace.INDEX);
+        super(table.getSchema(), id, name);
         this.table = table;
         this.indexType = indexType;
         this.indexColumns = indexColumns;

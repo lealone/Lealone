@@ -5,7 +5,6 @@
  */
 package org.lealone.client;
 
-import java.io.File;
 import java.io.IOException;
 import java.sql.Connection;
 import java.util.ArrayList;
@@ -15,18 +14,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.LealoneException;
 import org.lealone.common.trace.Trace;
-import org.lealone.common.trace.TraceSystem;
+import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
-import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.Value;
@@ -57,10 +54,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private final ConnectionInfo ci;
     private final String server;
     private final Session parent;
+    private final Trace trace;
     private final Object lobSyncObject = new Object();
     private LobStorage lobStorage;
-    private TraceSystem traceSystem;
-    private Trace trace;
     private Transfer transfer;
     private String cipher;
     private byte[] fileEncryptionKey;
@@ -74,6 +70,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         this.ci = ci;
         this.server = server;
         this.parent = parent;
+        initTraceSystem(ci);
+        trace = getTrace();
     }
 
     TcpClientConnection getTcpConnection() {
@@ -100,7 +98,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
      */
     @Override
     public Session connect() {
-        initTraceSystem();
         cipher = ci.getProperty("CIPHER");
         if (cipher != null) {
             fileEncryptionKey = MathUtils.secureRandomBytes(32);
@@ -120,36 +117,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         return connect();
     }
 
-    private void initTraceSystem() {
-        traceSystem = new TraceSystem();
-        String traceLevelFile = ci.getProperty(SetTypes.TRACE_LEVEL_FILE, null);
-        if (traceLevelFile != null) {
-            int level = Integer.parseInt(traceLevelFile);
-            String prefix = getFilePrefix(SysProperties.CLIENT_TRACE_DIRECTORY, ci.getDatabaseName());
-            try {
-                traceSystem.setLevelFile(level);
-                if (level > 0) {
-                    String file = FileUtils.createTempFile(prefix, Constants.SUFFIX_TRACE_FILE, false, false);
-                    traceSystem.setFileName(file);
-                }
-            } catch (IOException e) {
-                throw DbException.convertIOException(e, prefix);
-            }
-        }
-        String traceLevelSystemOut = ci.getProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT, null);
-        if (traceLevelSystemOut != null) {
-            int level = Integer.parseInt(traceLevelSystemOut);
-            traceSystem.setLevelSystemOut(level);
-        }
-        trace = traceSystem.getTrace(Trace.JDBC);
-    }
-
-    private void closeTraceSystem() {
-        traceSystem.close();
-        traceSystem = null;
-        trace = null;
-    }
-
     private Transfer initTransfer(ConnectionInfo ci, NetEndpoint endpoint) throws Exception {
         NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
         CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
@@ -165,21 +132,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             tcpConnection.addSession(sessionId, this);
         }
         return transfer;
-    }
-
-    private static String getFilePrefix(String dir, String dbName) {
-        StringBuilder buff = new StringBuilder(dir);
-        if (!(dir.charAt(dir.length() - 1) == File.separatorChar))
-            buff.append(File.separatorChar);
-        for (int i = 0, length = dbName.length(); i < length; i++) {
-            char ch = dbName.charAt(i);
-            if (Character.isLetterOrDigit(ch)) {
-                buff.append(ch);
-            } else {
-                buff.append('_');
-            }
-        }
-        return buff.toString();
     }
 
     @Override
@@ -287,15 +239,17 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
         }
         transfer = null;
-        traceSystem.close();
+        closeTraceSystem();
         if (closeError != null) {
             throw closeError;
         }
     }
 
-    @Override
     public Trace getTrace() {
-        return traceSystem.getTrace(Trace.JDBC);
+        if (traceSystem != null)
+            return traceSystem.getTrace(TraceModuleType.JDBC);
+        else
+            return Trace.NO_TRACE;
     }
 
     /**

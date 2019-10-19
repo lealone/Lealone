@@ -7,8 +7,6 @@ package org.lealone.db;
 
 import java.util.List;
 
-import org.lealone.common.trace.Trace;
-
 /**
  * The base class for all database objects.
  */
@@ -20,11 +18,6 @@ public abstract class DbObjectBase implements DbObject {
 
     protected boolean temporary;
     protected String comment;
-
-    /**
-     * The trace module.
-     */
-    protected Trace trace;
     protected long modificationId;
 
     /**
@@ -33,13 +26,11 @@ public abstract class DbObjectBase implements DbObject {
      * @param db the database
      * @param id the object id
      * @param name the object name
-     * @param traceModuleId the trace module id
      */
-    protected DbObjectBase(Database database, int id, String name, int traceModuleId) {
+    protected DbObjectBase(Database database, int id, String name) {
         this.database = database;
         this.id = id;
         this.name = name;
-        this.trace = database.getTrace(traceModuleId);
         this.modificationId = database.getModificationMetaId();
     }
 
@@ -130,12 +121,10 @@ public abstract class DbObjectBase implements DbObject {
         database = null;
         id = -1;
         name = null;
-        trace = null;
     }
 
     @Override
     public String toString() {
         return name + ":" + id + ":" + super.toString();
     }
-
 }

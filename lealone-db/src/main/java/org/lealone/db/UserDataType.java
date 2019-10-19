@@ -5,7 +5,6 @@
  */
 package org.lealone.db;
 
-import org.lealone.common.trace.Trace;
 import org.lealone.db.table.Column;
 
 /**
@@ -16,7 +15,7 @@ public class UserDataType extends DbObjectBase {
     private Column column;
 
     public UserDataType(Database database, int id, String name) {
-        super(database, id, name, Trace.DATABASE);
+        super(database, id, name);
     }
 
     @Override

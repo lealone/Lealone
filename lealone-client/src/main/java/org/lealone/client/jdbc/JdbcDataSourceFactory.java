@@ -14,6 +14,8 @@ import javax.naming.Reference;
 import javax.naming.spi.ObjectFactory;
 
 import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceModuleType;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
@@ -90,4 +92,7 @@ public class JdbcDataSourceFactory implements ObjectFactory {
         return trace;
     }
 
+    Trace getTrace(TraceObjectType traceObjectType, int traceObjectId) {
+        return cachedTraceSystem.getTrace(TraceModuleType.JDBCX, traceObjectType, traceObjectId);
+    }
 }

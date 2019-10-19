@@ -11,8 +11,8 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
@@ -25,14 +25,14 @@ import org.lealone.db.value.Value;
 public class JdbcParameterMetaData extends TraceObject implements ParameterMetaData {
 
     private final JdbcPreparedStatement prep;
-    private final int paramCount;
     private final List<? extends CommandParameter> parameters;
+    private final int paramCount;
 
-    JdbcParameterMetaData(Trace trace, JdbcPreparedStatement prep, Command command, int id) {
-        setTrace(trace, TraceObject.PARAMETER_META_DATA, id);
+    JdbcParameterMetaData(JdbcPreparedStatement prep, Command command, int id) {
         this.prep = prep;
         this.parameters = command.getParameters();
         this.paramCount = parameters.size();
+        this.trace = prep.conn.getTrace(TraceObjectType.PARAMETER_META_DATA, id);
     }
 
     /**

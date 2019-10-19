@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.BitField;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.api.ErrorCode;
@@ -48,7 +48,7 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
 
     JdbcCallableStatement(JdbcConnection conn, String sql, int id, int resultSetType, int resultSetConcurrency) {
         super(conn, sql, id, resultSetType, resultSetConcurrency, false);
-        setTrace(session.getTrace(), TraceObject.CALLABLE_STATEMENT, id);
+        trace = conn.getTrace(TraceObjectType.CALLABLE_STATEMENT, id);
     }
 
     /**

@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
@@ -418,7 +419,7 @@ public class StandardTable extends Table {
                 // this could happen, for example on failure in the storage
                 // but if that is not the case it means
                 // there is something wrong with the database
-                trace.error(e2, "could not remove index");
+                session.getTrace().setType(TraceModuleType.TABLE).error(e2, "could not remove index");
                 throw e2;
             }
             throw e;

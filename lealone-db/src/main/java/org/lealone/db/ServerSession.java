@@ -737,7 +737,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return random;
     }
 
-    @Override
     public Trace getTrace() {
         if (trace != null && !closed) {
             return trace;
@@ -746,7 +745,15 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         if (closed) {
             return new TraceSystem().getTrace(traceModuleName);
         }
-        trace = database.getTraceSystem().getTrace(traceModuleName);
+        if (connectionInfo != null) {
+            initTraceSystem(connectionInfo);
+        } else {
+            traceSystem = database.getTraceSystem();
+        }
+        if (traceSystem == null)
+            trace = Trace.NO_TRACE;
+        else
+            trace = traceSystem.getTrace(traceModuleName);
         return trace;
     }
 

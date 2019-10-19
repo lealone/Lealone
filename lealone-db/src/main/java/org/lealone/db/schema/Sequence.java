@@ -8,7 +8,6 @@ package org.lealone.db.schema;
 import java.math.BigInteger;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
@@ -68,7 +67,7 @@ public class Sequence extends SchemaObjectBase {
      */
     public Sequence(Schema schema, int id, String name, Long startValue, Long increment, Long cacheSize, Long minValue,
             Long maxValue, boolean cycle, boolean belongsToTable) {
-        super(schema, id, name, Trace.SEQUENCE);
+        super(schema, id, name);
         this.increment = increment != null ? increment : 1;
         this.minValue = minValue != null ? minValue : getDefaultMinValue(startValue, this.increment);
         this.maxValue = maxValue != null ? maxValue : getDefaultMaxValue(startValue, this.increment);

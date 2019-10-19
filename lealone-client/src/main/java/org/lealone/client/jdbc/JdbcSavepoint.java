@@ -12,6 +12,7 @@ import java.sql.Savepoint;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.api.ErrorCode;
 
@@ -29,10 +30,10 @@ public class JdbcSavepoint extends TraceObject implements Savepoint {
     private JdbcConnection conn;
 
     JdbcSavepoint(JdbcConnection conn, int savepointId, String name, Trace trace, int id) {
-        setTrace(trace, TraceObject.SAVEPOINT, id);
         this.conn = conn;
         this.savepointId = savepointId;
         this.name = name;
+        this.trace = conn.getTrace(TraceObjectType.SAVEPOINT, id);
     }
 
     /**

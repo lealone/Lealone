@@ -5,7 +5,6 @@
  */
 package org.lealone.db.schema;
 
-import org.lealone.common.trace.Trace;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.value.Value;
 
@@ -18,7 +17,7 @@ public class Constant extends SchemaObjectBase {
     private final Value value;
 
     public Constant(Schema schema, int id, String name, Value value) {
-        super(schema, id, name, Trace.SCHEMA);
+        super(schema, id, name);
         this.value = value;
     }
 

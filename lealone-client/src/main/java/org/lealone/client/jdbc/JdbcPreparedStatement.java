@@ -31,7 +31,7 @@ import java.util.List;
 import org.lealone.client.ClientBatchCommand;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.Utils;
@@ -70,7 +70,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType, int resultSetConcurrency,
             boolean closeWithResultSet) {
         super(conn, id, resultSetType, resultSetConcurrency, closeWithResultSet);
-        setTrace(session.getTrace(), TraceObject.PREPARED_STATEMENT, id);
+        trace = conn.getTrace(TraceObjectType.PREPARED_STATEMENT, id);
         command = conn.prepareCommand(sql, fetchSize);
     }
 
@@ -103,9 +103,9 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
 
     private ResultSet executeQuery(AsyncHandler<AsyncResult<ResultSet>> handler, boolean async) throws SQLException {
         try {
-            int id = getNextTraceId(TraceObject.RESULT_SET);
+            int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObject.RESULT_SET, id, "executeQuery()");
+                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id, "executeQuery()");
             }
             checkClosed();
             closeOldResultSet();
@@ -219,7 +219,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public boolean execute() throws SQLException {
         try {
-            int id = getNextTraceId(TraceObject.RESULT_SET);
+            int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
                 debugCodeCall("execute");
             }
@@ -1090,12 +1090,12 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (result == null) {
                 return null;
             }
-            int id = getNextTraceId(TraceObject.RESULT_SET_META_DATA);
+            int id = getNextTraceId(TraceObjectType.RESULT_SET_META_DATA);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSetMetaData", TraceObject.RESULT_SET_META_DATA, id, "getMetaData()");
+                debugCodeAssign("ResultSetMetaData", TraceObjectType.RESULT_SET_META_DATA, id, "getMetaData()");
             }
             String catalog = conn.getCatalog();
-            JdbcResultSetMetaData meta = new JdbcResultSetMetaData(null, this, result, catalog, session.getTrace(), id);
+            JdbcResultSetMetaData meta = new JdbcResultSetMetaData(catalog, this, null, result, id);
             return meta;
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -1330,12 +1330,12 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public ParameterMetaData getParameterMetaData() throws SQLException {
         try {
-            int id = getNextTraceId(TraceObject.PARAMETER_META_DATA);
+            int id = getNextTraceId(TraceObjectType.PARAMETER_META_DATA);
             if (isDebugEnabled()) {
-                debugCodeAssign("ParameterMetaData", TraceObject.PARAMETER_META_DATA, id, "getParameterMetaData()");
+                debugCodeAssign("ParameterMetaData", TraceObjectType.PARAMETER_META_DATA, id, "getParameterMetaData()");
             }
             checkClosed();
-            JdbcParameterMetaData meta = new JdbcParameterMetaData(session.getTrace(), this, command, id);
+            JdbcParameterMetaData meta = new JdbcParameterMetaData(this, command, id);
             return meta;
         } catch (Exception e) {
             throw logAndConvert(e);

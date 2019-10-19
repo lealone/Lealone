@@ -5,7 +5,6 @@
  */
 package org.lealone.db.auth;
 
-import org.lealone.common.trace.Trace;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
@@ -18,7 +17,7 @@ public class Role extends RightOwner {
     private final boolean system;
 
     public Role(Database database, int id, String roleName, boolean system) {
-        super(database, id, roleName, Trace.USER);
+        super(database, id, roleName);
         this.system = system;
     }
 

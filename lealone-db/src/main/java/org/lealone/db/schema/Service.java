@@ -1,6 +1,5 @@
 package org.lealone.db.schema;
 
-import org.lealone.common.trace.Trace;
 import org.lealone.db.DbObjectType;
 
 public class Service extends SchemaObjectBase {
@@ -9,7 +8,7 @@ public class Service extends SchemaObjectBase {
     private String implementBy;
 
     public Service(Schema schema, int id, String name) {
-        super(schema, id, name, Trace.SCHEMA);
+        super(schema, id, name);
     }
 
     @Override

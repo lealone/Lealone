@@ -14,6 +14,7 @@ import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.value.Value;
@@ -30,9 +31,9 @@ public class JdbcArray extends TraceObject implements Array {
      * INTERNAL
      */
     JdbcArray(JdbcConnection conn, Value value, int id) {
-        setTrace(conn.getSession().getTrace(), TraceObject.ARRAY, id);
         this.conn = conn;
         this.value = value;
+        this.trace = conn.getTrace(TraceObjectType.ARRAY, id);
     }
 
     /**

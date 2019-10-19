@@ -10,6 +10,8 @@ import java.io.Closeable;
 import java.nio.ByteBuffer;
 
 import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceModuleType;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageCommand;
@@ -124,10 +126,22 @@ public interface Session extends Closeable, Transaction.Participant {
 
     /**
      * Get the trace object
-     *
+     * 
+     * @param traceModuleType the module type
+     * @param traceObjectType the trace object type
      * @return the trace object
      */
-    Trace getTrace();
+    Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType);
+
+    /**
+     * Get the trace object
+     * 
+     * @param traceModuleType the module type
+     * @param traceObjectType the trace object type 
+     * @param traceObjectId the trace object id
+     * @return the trace object
+     */
+    Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType, int traceObjectId);
 
     /**
      * Get the data handler object.

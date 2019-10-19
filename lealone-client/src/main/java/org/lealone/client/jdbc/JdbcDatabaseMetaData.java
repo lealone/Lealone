@@ -15,6 +15,7 @@ import java.sql.SQLException;
 
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Constants;
@@ -29,8 +30,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
     private String mode;
 
     JdbcDatabaseMetaData(JdbcConnection conn, Trace trace, int id) {
-        setTrace(trace, TraceObject.DATABASE_META_DATA, id);
         this.conn = conn;
+        this.trace = conn.getTrace(TraceObjectType.DATABASE_META_DATA, id);
     }
 
     /**
@@ -150,13 +151,13 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
             } else {
                 tableType = "TRUE";
             }
-            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "TABLE_CATALOG TABLE_CAT, "
-                    + "TABLE_SCHEMA TABLE_SCHEM, " + "TABLE_NAME, " + "TABLE_TYPE, " + "REMARKS, "
-                    + "TYPE_NAME TYPE_CAT, " + "TYPE_NAME TYPE_SCHEM, " + "TYPE_NAME, "
-                    + "TYPE_NAME SELF_REFERENCING_COL_NAME, " + "TYPE_NAME REF_GENERATION, " + "SQL "
-                    + "FROM INFORMATION_SCHEMA.TABLES " + "WHERE TABLE_CATALOG LIKE ? ESCAPE ? "
-                    + "AND TABLE_SCHEMA LIKE ? ESCAPE ? " + "AND TABLE_NAME LIKE ? ESCAPE ? " + "AND (" + tableType
-                    + ") " + "ORDER BY TABLE_TYPE, TABLE_SCHEMA, TABLE_NAME");
+            PreparedStatement prep = conn.prepareAutoCloseStatement(
+                    "SELECT " + "TABLE_CATALOG TABLE_CAT, " + "TABLE_SCHEMA TABLE_SCHEM, " + "TABLE_NAME, "
+                            + "TABLE_TYPE, " + "REMARKS, " + "TYPE_NAME TYPE_CAT, " + "TYPE_NAME TYPE_SCHEM, "
+                            + "TYPE_NAME, " + "TYPE_NAME SELF_REFERENCING_COL_NAME, " + "TYPE_NAME REF_GENERATION, "
+                            + "SQL " + "FROM INFORMATION_SCHEMA.TABLES " + "WHERE TABLE_CATALOG LIKE ? ESCAPE ? "
+                            + "AND TABLE_SCHEMA LIKE ? ESCAPE ? " + "AND TABLE_NAME LIKE ? ESCAPE ? " + "AND ("
+                            + tableType + ") " + "ORDER BY TABLE_TYPE, TABLE_SCHEMA, TABLE_NAME");
             prep.setString(1, getCatalogPattern(catalogPattern));
             prep.setString(2, "\\");
             prep.setString(3, getSchemaPattern(schemaPattern));
@@ -224,35 +225,20 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
                         + quote(tableNamePattern) + ", " + quote(columnNamePattern) + ");");
             }
             checkClosed();
-            PreparedStatement prep = conn
-                    .prepareAutoCloseStatement("SELECT "
-                            + "TABLE_CATALOG TABLE_CAT, "
-                            + "TABLE_SCHEMA TABLE_SCHEM, "
-                            + "TABLE_NAME, "
-                            + "COLUMN_NAME, "
-                            + "DATA_TYPE, "
-                            + "TYPE_NAME, "
-                            + "CHARACTER_MAXIMUM_LENGTH COLUMN_SIZE, "
-                            + "CHARACTER_MAXIMUM_LENGTH BUFFER_LENGTH, "
-                            + "NUMERIC_SCALE DECIMAL_DIGITS, "
-                            + "NUMERIC_PRECISION_RADIX NUM_PREC_RADIX, "
-                            + "NULLABLE, "
-                            + "REMARKS, "
-                            + "COLUMN_DEFAULT COLUMN_DEF, "
-                            + "DATA_TYPE SQL_DATA_TYPE, "
-                            + "ZERO() SQL_DATETIME_SUB, "
-                            + "CHARACTER_OCTET_LENGTH CHAR_OCTET_LENGTH, "
-                            + "ORDINAL_POSITION, "
-                            + "IS_NULLABLE IS_NULLABLE, "
-                            + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_CATALOG, "
-                            + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_SCHEMA, "
-                            + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_TABLE, "
-                            + "SOURCE_DATA_TYPE, "
-                            + "CASE WHEN SEQUENCE_NAME IS NULL THEN CAST(? AS VARCHAR) ELSE CAST(? AS VARCHAR) END IS_AUTOINCREMENT, "
-                            + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_CATLOG " + "FROM INFORMATION_SCHEMA.COLUMNS "
-                            + "WHERE TABLE_CATALOG LIKE ? ESCAPE ? " + "AND TABLE_SCHEMA LIKE ? ESCAPE ? "
-                            + "AND TABLE_NAME LIKE ? ESCAPE ? " + "AND COLUMN_NAME LIKE ? ESCAPE ? "
-                            + "ORDER BY TABLE_SCHEM, TABLE_NAME, ORDINAL_POSITION");
+            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "TABLE_CATALOG TABLE_CAT, "
+                    + "TABLE_SCHEMA TABLE_SCHEM, " + "TABLE_NAME, " + "COLUMN_NAME, " + "DATA_TYPE, " + "TYPE_NAME, "
+                    + "CHARACTER_MAXIMUM_LENGTH COLUMN_SIZE, " + "CHARACTER_MAXIMUM_LENGTH BUFFER_LENGTH, "
+                    + "NUMERIC_SCALE DECIMAL_DIGITS, " + "NUMERIC_PRECISION_RADIX NUM_PREC_RADIX, " + "NULLABLE, "
+                    + "REMARKS, " + "COLUMN_DEFAULT COLUMN_DEF, " + "DATA_TYPE SQL_DATA_TYPE, "
+                    + "ZERO() SQL_DATETIME_SUB, " + "CHARACTER_OCTET_LENGTH CHAR_OCTET_LENGTH, " + "ORDINAL_POSITION, "
+                    + "IS_NULLABLE IS_NULLABLE, " + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_CATALOG, "
+                    + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_SCHEMA, "
+                    + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_TABLE, " + "SOURCE_DATA_TYPE, "
+                    + "CASE WHEN SEQUENCE_NAME IS NULL THEN CAST(? AS VARCHAR) ELSE CAST(? AS VARCHAR) END IS_AUTOINCREMENT, "
+                    + "CAST(SOURCE_DATA_TYPE AS VARCHAR) SCOPE_CATLOG " + "FROM INFORMATION_SCHEMA.COLUMNS "
+                    + "WHERE TABLE_CATALOG LIKE ? ESCAPE ? " + "AND TABLE_SCHEMA LIKE ? ESCAPE ? "
+                    + "AND TABLE_NAME LIKE ? ESCAPE ? " + "AND COLUMN_NAME LIKE ? ESCAPE ? "
+                    + "ORDER BY TABLE_SCHEM, TABLE_NAME, ORDINAL_POSITION");
             prep.setString(1, "NO");
             prep.setString(2, "YES");
             prep.setString(3, getCatalogPattern(catalogPattern));
@@ -318,11 +304,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
             }
             checkClosed();
             PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "TABLE_CATALOG TABLE_CAT, "
-                    + "TABLE_SCHEMA TABLE_SCHEM, " + "TABLE_NAME, " + "NON_UNIQUE, "
-                    + "TABLE_CATALOG INDEX_QUALIFIER, " + "INDEX_NAME, " + "INDEX_TYPE TYPE, "
-                    + "ORDINAL_POSITION, "
-                    + "COLUMN_NAME, "
-                    + "ASC_OR_DESC, "
+                    + "TABLE_SCHEMA TABLE_SCHEM, " + "TABLE_NAME, " + "NON_UNIQUE, " + "TABLE_CATALOG INDEX_QUALIFIER, "
+                    + "INDEX_NAME, " + "INDEX_TYPE TYPE, " + "ORDINAL_POSITION, " + "COLUMN_NAME, " + "ASC_OR_DESC, "
                     // TODO meta data for number of unique values in an index
                     + "CARDINALITY, " + "PAGES, " + "FILTER_CONDITION, " + "SORT_TYPE "
                     + "FROM INFORMATION_SCHEMA.INDEXES " + "WHERE TABLE_CATALOG LIKE ? ESCAPE ? "
@@ -613,17 +596,15 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
                         + quote(procedureNamePattern) + ", " + quote(columnNamePattern) + ");");
             }
             checkClosed();
-            PreparedStatement prep = conn
-                    .prepareAutoCloseStatement("SELECT " + "ALIAS_CATALOG PROCEDURE_CAT, "
-                            + "ALIAS_SCHEMA PROCEDURE_SCHEM, " + "ALIAS_NAME PROCEDURE_NAME, " + "COLUMN_NAME, "
-                            + "COLUMN_TYPE, " + "DATA_TYPE, " + "TYPE_NAME, " + "PRECISION, " + "PRECISION LENGTH, "
-                            + "SCALE, " + "RADIX, " + "NULLABLE, " + "REMARKS, " + "COLUMN_DEFAULT COLUMN_DEF, "
-                            + "ZERO() SQL_DATA_TYPE, " + "ZERO() SQL_DATETIME_SUB, " + "ZERO() CHAR_OCTET_LENGTH, "
-                            + "POS ORDINAL_POSITION, " + "? IS_NULLABLE, " + "ALIAS_NAME SPECIFIC_NAME "
-                            + "FROM INFORMATION_SCHEMA.FUNCTION_COLUMNS " + "WHERE ALIAS_CATALOG LIKE ? ESCAPE ? "
-                            + "AND ALIAS_SCHEMA LIKE ? ESCAPE ? " + "AND ALIAS_NAME LIKE ? ESCAPE ? "
-                            + "AND COLUMN_NAME LIKE ? ESCAPE ? "
-                            + "ORDER BY PROCEDURE_SCHEM, PROCEDURE_NAME, ORDINAL_POSITION");
+            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "ALIAS_CATALOG PROCEDURE_CAT, "
+                    + "ALIAS_SCHEMA PROCEDURE_SCHEM, " + "ALIAS_NAME PROCEDURE_NAME, " + "COLUMN_NAME, "
+                    + "COLUMN_TYPE, " + "DATA_TYPE, " + "TYPE_NAME, " + "PRECISION, " + "PRECISION LENGTH, " + "SCALE, "
+                    + "RADIX, " + "NULLABLE, " + "REMARKS, " + "COLUMN_DEFAULT COLUMN_DEF, " + "ZERO() SQL_DATA_TYPE, "
+                    + "ZERO() SQL_DATETIME_SUB, " + "ZERO() CHAR_OCTET_LENGTH, " + "POS ORDINAL_POSITION, "
+                    + "? IS_NULLABLE, " + "ALIAS_NAME SPECIFIC_NAME " + "FROM INFORMATION_SCHEMA.FUNCTION_COLUMNS "
+                    + "WHERE ALIAS_CATALOG LIKE ? ESCAPE ? " + "AND ALIAS_SCHEMA LIKE ? ESCAPE ? "
+                    + "AND ALIAS_NAME LIKE ? ESCAPE ? " + "AND COLUMN_NAME LIKE ? ESCAPE ? "
+                    + "ORDER BY PROCEDURE_SCHEM, PROCEDURE_NAME, ORDINAL_POSITION");
             prep.setString(1, "YES");
             prep.setString(2, getCatalogPattern(catalogPattern));
             prep.setString(3, "\\");
@@ -657,9 +638,9 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
         try {
             debugCodeCall("getSchemas");
             checkClosed();
-            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "SCHEMA_NAME TABLE_SCHEM, "
-                    + "CATALOG_NAME TABLE_CATALOG, " + " IS_DEFAULT " + "FROM INFORMATION_SCHEMA.SCHEMATA "
-                    + "ORDER BY SCHEMA_NAME");
+            PreparedStatement prep = conn
+                    .prepareAutoCloseStatement("SELECT " + "SCHEMA_NAME TABLE_SCHEM, " + "CATALOG_NAME TABLE_CATALOG, "
+                            + " IS_DEFAULT " + "FROM INFORMATION_SCHEMA.SCHEMATA " + "ORDER BY SCHEMA_NAME");
             return prep.executeQuery();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -682,8 +663,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
         try {
             debugCodeCall("getCatalogs");
             checkClosed();
-            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT CATALOG_NAME TABLE_CAT "
-                    + "FROM INFORMATION_SCHEMA.CATALOGS");
+            PreparedStatement prep = conn
+                    .prepareAutoCloseStatement("SELECT CATALOG_NAME TABLE_CAT " + "FROM INFORMATION_SCHEMA.CATALOGS");
             return prep.executeQuery();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -707,8 +688,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
         try {
             debugCodeCall("getTableTypes");
             checkClosed();
-            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "TYPE TABLE_TYPE "
-                    + "FROM INFORMATION_SCHEMA.TABLE_TYPES " + "ORDER BY TABLE_TYPE");
+            PreparedStatement prep = conn.prepareAutoCloseStatement(
+                    "SELECT " + "TYPE TABLE_TYPE " + "FROM INFORMATION_SCHEMA.TABLE_TYPES " + "ORDER BY TABLE_TYPE");
             return prep.executeQuery();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -853,8 +834,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
             }
             checkClosed();
             PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "CAST(? AS SMALLINT) SCOPE, "
-                    + "C.COLUMN_NAME, " + "C.DATA_TYPE, " + "C.TYPE_NAME, "
-                    + "C.CHARACTER_MAXIMUM_LENGTH COLUMN_SIZE, " + "C.CHARACTER_MAXIMUM_LENGTH BUFFER_LENGTH, "
+                    + "C.COLUMN_NAME, " + "C.DATA_TYPE, " + "C.TYPE_NAME, " + "C.CHARACTER_MAXIMUM_LENGTH COLUMN_SIZE, "
+                    + "C.CHARACTER_MAXIMUM_LENGTH BUFFER_LENGTH, "
                     + "CAST(C.NUMERIC_SCALE AS SMALLINT) DECIMAL_DIGITS, " + "CAST(? AS SMALLINT) PSEUDO_COLUMN "
                     + "FROM INFORMATION_SCHEMA.INDEXES I, " + " INFORMATION_SCHEMA.COLUMNS C "
                     + "WHERE C.TABLE_NAME = I.TABLE_NAME " + "AND C.COLUMN_NAME = I.COLUMN_NAME "
@@ -901,7 +882,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
     public ResultSet getVersionColumns(String catalog, String schema, String tableName) throws SQLException {
         try {
             if (isDebugEnabled()) {
-                debugCode("getVersionColumns(" + quote(catalog) + ", " + quote(schema) + ", " + quote(tableName) + ");");
+                debugCode(
+                        "getVersionColumns(" + quote(catalog) + ", " + quote(schema) + ", " + quote(tableName) + ");");
             }
             checkClosed();
             PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "ZERO() SCOPE, " + "COLUMN_NAME, "
@@ -946,7 +928,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @throws SQLException if the connection is closed
      */
     @Override
-    public ResultSet getImportedKeys(String catalogPattern, String schemaPattern, String tableName) throws SQLException {
+    public ResultSet getImportedKeys(String catalogPattern, String schemaPattern, String tableName)
+            throws SQLException {
         try {
             if (isDebugEnabled()) {
                 debugCode("getImportedKeys(" + quote(catalogPattern) + ", " + quote(schemaPattern) + ", "
@@ -956,8 +939,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
             PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "PKTABLE_CATALOG PKTABLE_CAT, "
                     + "PKTABLE_SCHEMA PKTABLE_SCHEM, " + "PKTABLE_NAME PKTABLE_NAME, " + "PKCOLUMN_NAME, "
                     + "FKTABLE_CATALOG FKTABLE_CAT, " + "FKTABLE_SCHEMA FKTABLE_SCHEM, " + "FKTABLE_NAME, "
-                    + "FKCOLUMN_NAME, " + "ORDINAL_POSITION KEY_SEQ, " + "UPDATE_RULE, " + "DELETE_RULE, "
-                    + "FK_NAME, " + "PK_NAME, " + "DEFERRABILITY " + "FROM INFORMATION_SCHEMA.CROSS_REFERENCES "
+                    + "FKCOLUMN_NAME, " + "ORDINAL_POSITION KEY_SEQ, " + "UPDATE_RULE, " + "DELETE_RULE, " + "FK_NAME, "
+                    + "PK_NAME, " + "DEFERRABILITY " + "FROM INFORMATION_SCHEMA.CROSS_REFERENCES "
                     + "WHERE FKTABLE_CATALOG LIKE ? ESCAPE ? " + "AND FKTABLE_SCHEMA LIKE ? ESCAPE ? "
                     + "AND FKTABLE_NAME = ? " + "ORDER BY PKTABLE_CAT, PKTABLE_SCHEM, PKTABLE_NAME, FK_NAME, KEY_SEQ");
             prep.setString(1, getCatalogPattern(catalogPattern));
@@ -1003,7 +986,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      * @throws SQLException if the connection is closed
      */
     @Override
-    public ResultSet getExportedKeys(String catalogPattern, String schemaPattern, String tableName) throws SQLException {
+    public ResultSet getExportedKeys(String catalogPattern, String schemaPattern, String tableName)
+            throws SQLException {
         try {
             if (isDebugEnabled()) {
                 debugCode("getExportedKeys(" + quote(catalogPattern) + ", " + quote(schemaPattern) + ", "
@@ -1013,8 +997,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
             PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "PKTABLE_CATALOG PKTABLE_CAT, "
                     + "PKTABLE_SCHEMA PKTABLE_SCHEM, " + "PKTABLE_NAME PKTABLE_NAME, " + "PKCOLUMN_NAME, "
                     + "FKTABLE_CATALOG FKTABLE_CAT, " + "FKTABLE_SCHEMA FKTABLE_SCHEM, " + "FKTABLE_NAME, "
-                    + "FKCOLUMN_NAME, " + "ORDINAL_POSITION KEY_SEQ, " + "UPDATE_RULE, " + "DELETE_RULE, "
-                    + "FK_NAME, " + "PK_NAME, " + "DEFERRABILITY " + "FROM INFORMATION_SCHEMA.CROSS_REFERENCES "
+                    + "FKCOLUMN_NAME, " + "ORDINAL_POSITION KEY_SEQ, " + "UPDATE_RULE, " + "DELETE_RULE, " + "FK_NAME, "
+                    + "PK_NAME, " + "DEFERRABILITY " + "FROM INFORMATION_SCHEMA.CROSS_REFERENCES "
                     + "WHERE PKTABLE_CATALOG LIKE ? ESCAPE ? " + "AND PKTABLE_SCHEMA LIKE ? ESCAPE ? "
                     + "AND PKTABLE_NAME = ? " + "ORDER BY FKTABLE_CAT, FKTABLE_SCHEM, FKTABLE_NAME, FK_NAME, KEY_SEQ");
             prep.setString(1, getCatalogPattern(catalogPattern));
@@ -1078,8 +1062,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
             PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "PKTABLE_CATALOG PKTABLE_CAT, "
                     + "PKTABLE_SCHEMA PKTABLE_SCHEM, " + "PKTABLE_NAME PKTABLE_NAME, " + "PKCOLUMN_NAME, "
                     + "FKTABLE_CATALOG FKTABLE_CAT, " + "FKTABLE_SCHEMA FKTABLE_SCHEM, " + "FKTABLE_NAME, "
-                    + "FKCOLUMN_NAME, " + "ORDINAL_POSITION KEY_SEQ, " + "UPDATE_RULE, " + "DELETE_RULE, "
-                    + "FK_NAME, " + "PK_NAME, " + "DEFERRABILITY " + "FROM INFORMATION_SCHEMA.CROSS_REFERENCES "
+                    + "FKCOLUMN_NAME, " + "ORDINAL_POSITION KEY_SEQ, " + "UPDATE_RULE, " + "DELETE_RULE, " + "FK_NAME, "
+                    + "PK_NAME, " + "DEFERRABILITY " + "FROM INFORMATION_SCHEMA.CROSS_REFERENCES "
                     + "WHERE PKTABLE_CATALOG LIKE ? ESCAPE ? " + "AND PKTABLE_SCHEMA LIKE ? ESCAPE ? "
                     + "AND PKTABLE_NAME = ? " + "AND FKTABLE_CATALOG LIKE ? ESCAPE ? "
                     + "AND FKTABLE_SCHEMA LIKE ? ESCAPE ? " + "AND FKTABLE_NAME = ? "
@@ -1130,12 +1114,11 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
                         + ", " + quoteIntArray(types) + ");");
             }
             checkClosed();
-            PreparedStatement prep = conn
-                    .prepareAutoCloseStatement("SELECT " + "CAST(NULL AS VARCHAR) TYPE_CAT, "
-                            + "CAST(NULL AS VARCHAR) TYPE_SCHEM, " + "CAST(NULL AS VARCHAR) TYPE_NAME, "
-                            + "CAST(NULL AS VARCHAR) CLASS_NAME, " + "CAST(NULL AS SMALLINT) DATA_TYPE, "
-                            + "CAST(NULL AS VARCHAR) REMARKS, " + "CAST(NULL AS SMALLINT) BASE_TYPE "
-                            + "FROM DUAL WHERE FALSE");
+            PreparedStatement prep = conn.prepareAutoCloseStatement(
+                    "SELECT " + "CAST(NULL AS VARCHAR) TYPE_CAT, " + "CAST(NULL AS VARCHAR) TYPE_SCHEM, "
+                            + "CAST(NULL AS VARCHAR) TYPE_NAME, " + "CAST(NULL AS VARCHAR) CLASS_NAME, "
+                            + "CAST(NULL AS SMALLINT) DATA_TYPE, " + "CAST(NULL AS VARCHAR) REMARKS, "
+                            + "CAST(NULL AS SMALLINT) BASE_TYPE " + "FROM DUAL WHERE FALSE");
             return prep.executeQuery();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -1294,8 +1277,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
     private String getFunctions(String section) throws SQLException {
         try {
             checkClosed();
-            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT TOPIC "
-                    + "FROM INFORMATION_SCHEMA.HELP WHERE SECTION = ?");
+            PreparedStatement prep = conn
+                    .prepareAutoCloseStatement("SELECT TOPIC " + "FROM INFORMATION_SCHEMA.HELP WHERE SECTION = ?");
             prep.setString(1, section);
             ResultSet rs = prep.executeQuery();
             StatementBuilder buff = new StatementBuilder();
@@ -2636,9 +2619,9 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
                         + quote(tableNamePattern) + ");");
             }
             checkClosed();
-            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "CATALOG_NAME TABLE_CAT, "
-                    + "CATALOG_NAME TABLE_SCHEM, " + "CATALOG_NAME TABLE_NAME, " + "CATALOG_NAME SUPERTABLE_NAME "
-                    + "FROM INFORMATION_SCHEMA.CATALOGS " + "WHERE FALSE");
+            PreparedStatement prep = conn.prepareAutoCloseStatement(
+                    "SELECT " + "CATALOG_NAME TABLE_CAT, " + "CATALOG_NAME TABLE_SCHEM, " + "CATALOG_NAME TABLE_NAME, "
+                            + "CATALOG_NAME SUPERTABLE_NAME " + "FROM INFORMATION_SCHEMA.CATALOGS " + "WHERE FALSE");
             return prep.executeQuery();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -2814,10 +2797,10 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
         try {
             debugCodeCall("getSchemas(String,String)");
             checkClosed();
-            PreparedStatement prep = conn.prepareAutoCloseStatement("SELECT " + "SCHEMA_NAME TABLE_SCHEM, "
-                    + "CATALOG_NAME TABLE_CATALOG, " + " IS_DEFAULT " + "FROM INFORMATION_SCHEMA.SCHEMATA "
-                    + "WHERE CATALOG_NAME LIKE ? ESCAPE ? " + "AND SCHEMA_NAME LIKE ? ESCAPE ? "
-                    + "ORDER BY SCHEMA_NAME");
+            PreparedStatement prep = conn.prepareAutoCloseStatement(
+                    "SELECT " + "SCHEMA_NAME TABLE_SCHEM, " + "CATALOG_NAME TABLE_CATALOG, " + " IS_DEFAULT "
+                            + "FROM INFORMATION_SCHEMA.SCHEMATA " + "WHERE CATALOG_NAME LIKE ? ESCAPE ? "
+                            + "AND SCHEMA_NAME LIKE ? ESCAPE ? " + "ORDER BY SCHEMA_NAME");
             prep.setString(1, getCatalogPattern(catalogPattern));
             prep.setString(2, "\\");
             prep.setString(3, getSchemaPattern(schemaPattern));
@@ -2891,7 +2874,8 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
      */
     // ## Java 1.6 ##
     @Override
-    public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern) throws SQLException {
+    public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern)
+            throws SQLException {
         throw unsupported("getFunctions");
     }
 

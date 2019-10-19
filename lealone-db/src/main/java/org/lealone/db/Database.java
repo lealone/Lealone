@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.CaseInsensitiveMap;
@@ -384,11 +385,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
             traceSystem = new TraceSystem(getStoragePath() + Constants.SUFFIX_TRACE_FILE);
             traceSystem.setLevelFile(dbSettings.traceLevelFile);
             traceSystem.setLevelSystemOut(dbSettings.traceLevelSystemOut);
-            trace = traceSystem.getTrace(Trace.DATABASE);
+            trace = traceSystem.getTrace(TraceModuleType.DATABASE);
             trace.info("opening {0} (build {1})", name, Constants.BUILD_ID);
         } else {
             traceSystem = new TraceSystem();
-            trace = traceSystem.getTrace(Trace.DATABASE);
+            trace = traceSystem.getTrace(TraceModuleType.DATABASE);
         }
     }
 
@@ -641,13 +642,13 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     /**
-     * Get the trace object for the given module id.
+     * Get the trace object for the given module type.
      *
-     * @param moduleId the module id
+     * @param traceModuleType the module type
      * @return the trace object
      */
-    public Trace getTrace(int moduleId) {
-        return traceSystem.getTrace(moduleId);
+    public Trace getTrace(TraceModuleType traceModuleType) {
+        return traceSystem.getTrace(traceModuleType);
     }
 
     @Override
@@ -1032,13 +1033,19 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @return the session
      * @throws DbException if the database is in exclusive mode
      */
-    public synchronized ServerSession createSession(User user) {
+    public ServerSession createSession(User user) {
+        return createSession(user, null);
+    }
+
+    public synchronized ServerSession createSession(User user, ConnectionInfo ci) {
         if (exclusiveSession != null) {
             throw DbException.get(ErrorCode.DATABASE_IS_IN_EXCLUSIVE_MODE);
         }
         ServerSession session = new ServerSession(this, user, ++nextSessionId);
+        session.setConnectionInfo(ci);
         userSessions.add(session);
-        trace.info("connecting session #{0} to {1}", session.getId(), name);
+        session.getTrace().setType(TraceModuleType.DATABASE).info("connected session #{0} to {1}", session.getId(),
+                name);
         if (delayedCloser != null) {
             delayedCloser.reset();
             delayedCloser = null;
@@ -1083,7 +1090,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             }
             userSessions.remove(session);
             if (session != systemSession) {
-                trace.info("disconnecting session #{0}", session.getId());
+                session.getTrace().setType(TraceModuleType.DATABASE).info("disconnected session #{0}", session.getId());
             }
         }
 
@@ -1098,9 +1105,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 delayedCloser.setDaemon(true);
                 delayedCloser.start();
             }
-        }
-        if (session != systemSession && session != null) {
-            trace.info("disconnected session #{0}", session.getId());
         }
     }
 
@@ -1659,7 +1663,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             backgroundException = e;
             TraceSystem t = getTraceSystem();
             if (t != null) {
-                t.getTrace(Trace.DATABASE).error(e, "flush");
+                t.getTrace(TraceModuleType.DATABASE).error(e, "flush");
             }
         }
     }

@@ -36,7 +36,7 @@ public class ConnectionInfo implements Cloneable {
         KNOWN_SETTINGS.addAll(SetTypes.getTypes());
 
         String[] connectionSettings = { "IGNORE_UNKNOWN_SETTINGS", "INIT", "USER", "PASSWORD", "PASSWORD_HASH",
-                "IS_LOCAL", Constants.NET_FACTORY_NAME_KEY, "NETWORK_TIMEOUT" };
+                "IS_LOCAL", Constants.NET_FACTORY_NAME_KEY, "NETWORK_TIMEOUT", "TRACE_ENABLED" };
 
         for (String key : connectionSettings) {
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
@@ -73,6 +73,7 @@ public class ConnectionInfo implements Cloneable {
 
     private String netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
     private int networkTimeout = DEFAULT_NETWORK_TIMEOUT;
+    private boolean traceEnabled;
 
     public ConnectionInfo() {
     }
@@ -129,6 +130,7 @@ public class ConnectionInfo implements Cloneable {
         netFactoryName = removeProperty(Constants.NET_FACTORY_NAME_KEY, Constants.DEFAULT_NET_FACTORY_NAME);
         networkTimeout = getProperty("NETWORK_TIMEOUT", DEFAULT_NETWORK_TIMEOUT);
         removeProperty("NETWORK_TIMEOUT", "");
+        initTraceProperty();
     }
 
     private void checkURL() {
@@ -735,5 +737,13 @@ public class ConnectionInfo implements Cloneable {
 
     public int getNetworkTimeout() {
         return networkTimeout;
+    }
+
+    public boolean isTraceEnabled() {
+        return traceEnabled;
+    }
+
+    public void initTraceProperty() {
+        traceEnabled = getProperty("TRACE_ENABLED", false);
     }
 }

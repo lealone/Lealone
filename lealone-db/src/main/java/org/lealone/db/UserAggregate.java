@@ -9,7 +9,6 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
 import org.lealone.db.api.Aggregate;
 import org.lealone.db.api.AggregateFunction;
@@ -24,7 +23,7 @@ public class UserAggregate extends DbObjectBase {
     private Class<?> javaClass;
 
     public UserAggregate(Database db, int id, String name, String className, boolean force) {
-        super(db, id, name, Trace.FUNCTION);
+        super(db, id, name);
         this.className = className;
         if (!force) {
             getInstance();

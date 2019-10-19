@@ -20,6 +20,7 @@ import java.sql.SQLException;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.Task;
 import org.lealone.db.Constants;
@@ -38,9 +39,9 @@ public class JdbcBlob extends TraceObject implements Blob {
      * INTERNAL
      */
     public JdbcBlob(JdbcConnection conn, Value value, int id) {
-        setTrace(conn.getSession().getTrace(), TraceObject.BLOB, id);
         this.conn = conn;
         this.value = value;
+        this.trace = conn.getTrace(TraceObjectType.BLOB, id);
     }
 
     /**

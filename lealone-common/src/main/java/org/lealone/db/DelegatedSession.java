@@ -20,6 +20,8 @@ package org.lealone.db;
 import java.nio.ByteBuffer;
 
 import org.lealone.common.trace.Trace;
+import org.lealone.common.trace.TraceModuleType;
+import org.lealone.common.trace.TraceObjectType;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageCommand;
@@ -97,8 +99,13 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public Trace getTrace() {
-        return session.getTrace();
+    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType) {
+        return session.getTrace(traceModuleType, traceObjectType);
+    }
+
+    @Override
+    public Trace getTrace(TraceModuleType traceModuleType, TraceObjectType traceObjectType, int traceObjectId) {
+        return session.getTrace(traceModuleType, traceObjectType, traceObjectId);
     }
 
     @Override
