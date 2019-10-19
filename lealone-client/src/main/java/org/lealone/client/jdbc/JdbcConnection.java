@@ -32,7 +32,6 @@ import java.util.concurrent.Executor;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
-import org.lealone.common.util.CloseWatcher;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
@@ -62,11 +61,9 @@ import org.lealone.db.value.ValueString;
  */
 public class JdbcConnection extends TraceObject implements Connection {
 
-    private static boolean keepOpenStackTrace;
+    private final CompareMode compareMode = CompareMode.getInstance(null, 0, false);
     private final String url;
     private final String user;
-
-    private int holdability = ResultSet.HOLD_CURSORS_OVER_COMMIT;
 
     private Session session;
     private Command commit, rollback;
@@ -74,16 +71,12 @@ public class JdbcConnection extends TraceObject implements Connection {
     private Command setLockMode, getLockMode;
     private Command setQueryTimeout, getQueryTimeout;
 
+    private int holdability = ResultSet.HOLD_CURSORS_OVER_COMMIT;
+    private int queryTimeoutCache = -1;
     private int savepointId;
     private String catalog;
     private Statement executingStatement;
-    private final CompareMode compareMode = CompareMode.getInstance(null, 0, false);
-    private final CloseWatcher watcher;
-    private int queryTimeoutCache = -1;
 
-    /**
-     * INTERNAL
-     */
     public JdbcConnection(String url, Properties info) throws SQLException {
         this(new ConnectionInfo(url, info));
     }
@@ -102,8 +95,6 @@ public class JdbcConnection extends TraceObject implements Connection {
                         getTraceObjectName(), quote(url), quote(user));
                 trace.infoCode(code);
             }
-            closeOld();
-            watcher = CloseWatcher.register(this, session, keepOpenStackTrace);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -119,27 +110,6 @@ public class JdbcConnection extends TraceObject implements Connection {
         setTrace(trace, TraceObject.CONNECTION, id);
         this.user = user;
         this.url = url;
-        this.watcher = null;
-    }
-
-    private void closeOld() {
-        while (true) {
-            CloseWatcher w = CloseWatcher.pollUnclosed();
-            if (w == null) {
-                break;
-            }
-            try {
-                w.getCloseable().close();
-            } catch (Exception e) {
-                trace.error(e, "closing session");
-            }
-            // there was an unclosed object -
-            // keep the stack trace from now on
-            keepOpenStackTrace = true;
-            String s = w.getOpenStackTrace();
-            Exception ex = DbException.get(ErrorCode.TRACE_CONNECTION_NOT_CLOSED);
-            trace.error(ex, s);
-        }
     }
 
     /**
@@ -305,7 +275,6 @@ public class JdbcConnection extends TraceObject implements Connection {
             if (session == null) {
                 return;
             }
-            CloseWatcher.unregister(watcher);
             session.cancel();
             if (executingStatement != null) {
                 try {
