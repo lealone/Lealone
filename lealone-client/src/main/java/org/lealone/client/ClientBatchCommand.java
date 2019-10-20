@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
@@ -35,7 +34,6 @@ import org.lealone.net.Transfer;
 public class ClientBatchCommand implements Command {
     private ClientSession session;
     private Transfer transfer;
-    private final Trace trace;
     private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
     private ArrayList<Value[]> batchParameters; // 对应JdbcPreparedStatement.executeBatch()
     private int id = -1;
@@ -45,7 +43,6 @@ public class ClientBatchCommand implements Command {
         this.session = session;
         this.transfer = transfer;
         this.batchCommands = batchCommands;
-        trace = session.getTrace();
     }
 
     public ClientBatchCommand(ClientSession session, Transfer transfer, Command preparedCommand,
@@ -53,7 +50,6 @@ public class ClientBatchCommand implements Command {
         this.session = session;
         this.transfer = transfer;
         this.batchParameters = batchParameters;
-        trace = session.getTrace();
 
         if (preparedCommand instanceof ClientCommand)
             id = ((ClientCommand) preparedCommand).getId();
@@ -154,7 +150,7 @@ public class ClientBatchCommand implements Command {
         try {
             transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
         } catch (IOException e) {
-            trace.error(e, "close");
+            session.getTrace().error(e, "close");
         }
         session = null;
         transfer = null;

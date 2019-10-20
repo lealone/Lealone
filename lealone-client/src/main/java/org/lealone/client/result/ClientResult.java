@@ -10,7 +10,6 @@ import java.util.ArrayList;
 
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
@@ -38,12 +37,10 @@ public abstract class ClientResult implements Result {
     protected final int rowCount;
     protected int rowId, rowOffset;
     protected ArrayList<Value[]> result;
-    protected final Trace trace;
 
     public ClientResult(ClientSession session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
             throws IOException {
         this.session = session;
-        trace = session.getTrace();
         this.transfer = transfer;
         this.id = id;
         this.columns = new ClientResultColumn[columnCount];
@@ -157,7 +154,7 @@ public abstract class ClientResult implements Result {
             session.traceOperation("RESULT_CLOSE", id);
             transfer.writeRequestHeader(id, Session.RESULT_CLOSE).flush();
         } catch (IOException e) {
-            trace.error(e, "close");
+            session.getTrace().error(e, "close");
         } finally {
             transfer = null;
             session = null;

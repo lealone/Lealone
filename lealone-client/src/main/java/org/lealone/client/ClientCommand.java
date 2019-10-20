@@ -47,7 +47,6 @@ public class ClientCommand implements StorageCommand {
 
     private final Transfer transfer;
     private final ArrayList<CommandParameter> parameters;
-    private final Trace trace;
     private final String sql;
     private final int fetchSize;
     private boolean prepared;
@@ -58,7 +57,6 @@ public class ClientCommand implements StorageCommand {
     public ClientCommand(ClientSession session, Transfer transfer, String sql, int fetchSize) {
         this.transfer = transfer;
         parameters = Utils.newSmallArrayList();
-        trace = session.getTrace();
         this.sql = sql;
         this.fetchSize = fetchSize;
         this.session = session;
@@ -67,6 +65,14 @@ public class ClientCommand implements StorageCommand {
     @Override
     public int getType() {
         return CLIENT_COMMAND;
+    }
+
+    private void await(AsyncCallback<?> ac) {
+        ac.await(session.getNetworkTimeout());
+    }
+
+    private <T> T getResult(AsyncCallback<T> ac) {
+        return ac.getResult(session.getNetworkTimeout());
     }
 
     @Override
@@ -108,7 +114,7 @@ public class ClientCommand implements StorageCommand {
             };
             transfer.addAsyncCallback(id, ac);
             transfer.flush();
-            ac.await();
+            await(ac);
         } catch (IOException e) {
             s.handleException(e);
         }
@@ -161,7 +167,7 @@ public class ClientCommand implements StorageCommand {
             };
             transfer.addAsyncCallback(id, ac);
             transfer.flush();
-            result = ac.getResult();
+            result = getResult(ac);
         } catch (IOException e) {
             session.handleException(e);
         }
@@ -295,8 +301,7 @@ public class ClientCommand implements StorageCommand {
         if (handler != null) {
             return null;
         } else {
-            Result result = ac.getResult();
-            return result;
+            return getResult(ac);
         }
     }
 
@@ -410,7 +415,7 @@ public class ClientCommand implements StorageCommand {
         if (handler != null) {
             updateCount = -1;
         } else {
-            updateCount = ac.getResult();
+            updateCount = getResult(ac);
         }
 
         return updateCount;
@@ -439,7 +444,7 @@ public class ClientCommand implements StorageCommand {
         try {
             transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
         } catch (IOException e) {
-            trace.error(e, "close");
+            session.getTrace().error(e, "close");
         }
         session = null;
         try {
@@ -450,7 +455,7 @@ public class ClientCommand implements StorageCommand {
                 }
             }
         } catch (DbException e) {
-            trace.error(e, "close");
+            session.getTrace().error(e, "close");
         }
         parameters.clear();
     }
@@ -511,7 +516,7 @@ public class ClientCommand implements StorageCommand {
             };
             transfer.addAsyncCallback(id, ac);
             transfer.flush();
-            ac.await();
+            await(ac);
             bytes = resultRef.get();
         } catch (Exception e) {
             session.handleException(e);
@@ -549,7 +554,7 @@ public class ClientCommand implements StorageCommand {
             };
             transfer.addAsyncCallback(id, ac);
             transfer.flush();
-            ac.await();
+            await(ac);
             bytes = resultRef.get();
         } catch (Exception e) {
             session.handleException(e);
@@ -628,7 +633,7 @@ public class ClientCommand implements StorageCommand {
             };
             transfer.addAsyncCallback(id, ac);
             transfer.flush();
-            ac.await();
+            await(ac);
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -728,7 +733,7 @@ public class ClientCommand implements StorageCommand {
             transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_COMMIT);
             transfer.writeLong(validKey).writeBoolean(autoCommit).flush();
         } catch (IOException e) {
-            trace.error(e, "replicationCommit");
+            session.getTrace().error(e, "replicationCommit");
         }
     }
 
@@ -738,7 +743,7 @@ public class ClientCommand implements StorageCommand {
         try {
             transfer.writeRequestHeader(id, Session.COMMAND_REPLICATION_ROLLBACK).flush();
         } catch (IOException e) {
-            trace.error(e, "replicationRollback");
+            session.getTrace().error(e, "replicationRollback");
         }
     }
 
@@ -763,7 +768,7 @@ public class ClientCommand implements StorageCommand {
             };
             transfer.addAsyncCallback(id, ac);
             transfer.flush();
-            return ac.getResult();
+            return getResult(ac);
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -789,7 +794,7 @@ public class ClientCommand implements StorageCommand {
             };
             transfer.addAsyncCallback(id, ac);
             transfer.flush();
-            return ac.getResult();
+            return getResult(ac);
         } catch (Exception e) {
             session.handleException(e);
         }

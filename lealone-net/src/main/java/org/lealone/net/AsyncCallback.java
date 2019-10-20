@@ -65,7 +65,11 @@ public class AsyncCallback<T> {
     }
 
     public T getResult() {
-        await();
+        return getResult(-1);
+    }
+
+    public T getResult(long timeoutMillis) {
+        await(timeoutMillis);
         return result;
     }
 

@@ -71,7 +71,10 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         this.server = server;
         this.parent = parent;
         initTraceSystem(ci);
-        trace = getTrace();
+        if (traceSystem != null)
+            trace = traceSystem.getTrace(TraceModuleType.JDBC);
+        else
+            trace = Trace.NO_TRACE;
     }
 
     TcpClientConnection getTcpConnection() {
@@ -246,10 +249,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     public Trace getTrace() {
-        if (traceSystem != null)
-            return traceSystem.getTrace(TraceModuleType.JDBC);
-        else
-            return Trace.NO_TRACE;
+        return trace;
     }
 
     /**
@@ -503,5 +503,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public void runModeChanged(String newTargetEndpoints) {
         parent.runModeChanged(newTargetEndpoints);
+    }
+
+    int getNetworkTimeout() {
+        return ci.getNetworkTimeout();
     }
 }
