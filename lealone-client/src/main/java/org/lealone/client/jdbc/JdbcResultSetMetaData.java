@@ -27,13 +27,14 @@ public class JdbcResultSetMetaData extends TraceObject implements ResultSetMetaD
     private final Result result;
     private final int columnCount;
 
-    JdbcResultSetMetaData(String catalog, JdbcPreparedStatement prep, JdbcResultSet rs, Result result, int id) {
+    JdbcResultSetMetaData(JdbcConnection conn, String catalog, JdbcPreparedStatement prep, JdbcResultSet rs,
+            Result result, int id) {
         this.catalog = catalog;
         this.prep = prep;
         this.rs = rs;
         this.result = result;
         this.columnCount = result.getVisibleColumnCount();
-        this.trace = prep.conn.getTrace(TraceObjectType.RESULT_SET_META_DATA, id);
+        this.trace = conn.getTrace(TraceObjectType.RESULT_SET_META_DATA, id);
     }
 
     /**

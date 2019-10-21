@@ -19,6 +19,7 @@ package org.lealone.test.main;
 
 import java.sql.SQLException;
 
+import org.lealone.db.LealoneDatabase;
 import org.lealone.main.Shell;
 import org.lealone.test.TestBase;
 
@@ -30,7 +31,7 @@ public class ShellTest extends TestBase {
     }
 
     void run() throws SQLException {
-        String url = getURL();
+        String url = getURL(LealoneDatabase.NAME);
         String[] args = { "-url", url };
         Shell.main(args);
     }

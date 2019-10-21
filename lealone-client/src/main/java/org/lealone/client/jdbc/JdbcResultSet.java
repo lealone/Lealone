@@ -140,7 +140,7 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
             }
             checkClosed();
             String catalog = conn.getCatalog();
-            return new JdbcResultSetMetaData(catalog, null, this, result, id);
+            return new JdbcResultSetMetaData(conn, catalog, null, this, result, id);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
