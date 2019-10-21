@@ -17,9 +17,7 @@
  */
 package org.lealone.net.nio;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -28,10 +26,8 @@ import java.util.Set;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
-import org.lealone.net.Transfer;
 
 //TODO 1.支持SSL 2.支持配置参数
 public class NioNetServer extends NetServerBase implements NioEventLoop {
@@ -86,7 +82,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
                         if (key.isValid()) {
                             int readyOps = key.readyOps();
                             if ((readyOps & SelectionKey.OP_READ) != 0) {
-                                read(key);
+                                read(key, this);
                             } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                                 write(key);
                             } else if ((readyOps & SelectionKey.OP_ACCEPT) != 0) {
@@ -109,7 +105,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
         }
     }
 
-    private static class Attachment {
+    static class Attachment {
         AsyncConnection conn;
         int endOfStreamCount;
     }
@@ -133,41 +129,6 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
             }
             closeChannel(channel);
             logger.warn(getName() + " failed to accept", e);
-        }
-    }
-
-    private void read(SelectionKey key) {
-        Attachment attachment = (Attachment) key.attachment();
-        AsyncConnection conn = attachment.conn;
-        SocketChannel channel = (SocketChannel) key.channel();
-        try {
-            while (true) {
-                DataBuffer dataBuffer = DataBuffer.create(Transfer.BUFFER_SIZE);
-                ByteBuffer buffer = dataBuffer.getBuffer();
-                int count = channel.read(buffer);
-                if (count > 0) {
-                    attachment.endOfStreamCount = 0;
-                } else {
-                    // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
-                    // netty框架在下面这个方法的代码中有自己的不同解决方案
-                    // io.netty.channel.nio.NioEventLoop.processSelectedKey
-                    if (count < 0) {
-                        attachment.endOfStreamCount++;
-                        if (attachment.endOfStreamCount > 3) {
-                            closeChannel(channel);
-                        }
-                    }
-                    break;
-                }
-                buffer.flip();
-                NioBuffer nioBuffer = new NioBuffer(dataBuffer);
-                conn.handle(nioBuffer);
-            }
-        } catch (IOException e) {
-            if (conn != null) {
-                removeConnection(conn);
-            }
-            closeChannel(channel);
         }
     }
 
@@ -195,5 +156,13 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
     @Override
     public boolean runInMainThread() {
         return true;
+    }
+
+    @Override
+    public void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
+        if (conn != null) {
+            removeConnection(conn);
+        }
+        closeChannel(channel);
     }
 }

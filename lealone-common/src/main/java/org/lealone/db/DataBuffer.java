@@ -88,14 +88,14 @@ public class DataBuffer implements AutoCloseable {
     /**
      * The minimum number of bytes to grow a buffer at a time.
      */
-    private static final int MIN_GROW = 1024 * 1024;
+    private static final int MIN_GROW = 1024;
 
     /**
      * The data handler responsible for lob objects.
      */
     private final DataHandler handler;
 
-    private ByteBuffer reuse; // = ByteBuffer.allocate(MIN_GROW);
+    private ByteBuffer reuse; // = allocate(MIN_GROW);
 
     private ByteBuffer buff; // = reuse;
 
@@ -129,7 +129,7 @@ public class DataBuffer implements AutoCloseable {
 
     protected DataBuffer(DataHandler handler, int capacity) {
         this.handler = handler;
-        reuse = ByteBuffer.allocate(capacity);
+        reuse = allocate(capacity);
         buff = reuse;
     }
 
@@ -495,7 +495,7 @@ public class DataBuffer implements AutoCloseable {
 
     public ByteBuffer getAndCopyBuffer() {
         buff.flip();
-        ByteBuffer value = ByteBuffer.allocateDirect(buff.limit());
+        ByteBuffer value = allocate(buff.limit());
         value.put(buff);
         value.flip();
         return value;
@@ -505,7 +505,7 @@ public class DataBuffer implements AutoCloseable {
         type.write(this, obj);
         ByteBuffer buff = getAndFlipBuffer();
 
-        ByteBuffer v = ByteBuffer.allocateDirect(buff.limit());
+        ByteBuffer v = allocate(buff.limit());
         v.put(buff);
         v.flip();
         return v;
@@ -541,7 +541,7 @@ public class DataBuffer implements AutoCloseable {
             throw new OutOfMemoryError("Capacity: " + newCapacity + " needed: " + needed);
         }
         try {
-            buff = ByteBuffer.allocate(newCapacity);
+            buff = allocate(newCapacity);
         } catch (OutOfMemoryError e) {
             throw new OutOfMemoryError("Capacity: " + newCapacity);
         }
@@ -823,9 +823,15 @@ public class DataBuffer implements AutoCloseable {
         this.buff.position(p);
     }
 
+    private static ByteBuffer allocate(int capacity) {
+        // return ByteBuffer.allocate(capacity);
+        return ByteBuffer.allocateDirect(capacity);
+    }
+
     private static class DataBufferPool {
         // 不要求精确
         private static int poolSize;
+        private static final int maxPoolSize = 20;
         private static final int capacity = 4 * 1024 * 1024;
         private static final ConcurrentLinkedQueue<DataBuffer> dataBufferPool = new ConcurrentLinkedQueue<>();
 
@@ -837,16 +843,14 @@ public class DataBuffer implements AutoCloseable {
                 writeBuffer.clear();
                 poolSize--;
             }
-
             return writeBuffer;
         }
 
         public static void offer(DataBuffer writeBuffer) {
-            if (poolSize < 5 && writeBuffer.capacity() <= capacity) {
+            if (poolSize < maxPoolSize && writeBuffer.capacity() <= capacity) {
                 poolSize++;
                 dataBufferPool.offer(writeBuffer);
             }
         }
     }
-
 }

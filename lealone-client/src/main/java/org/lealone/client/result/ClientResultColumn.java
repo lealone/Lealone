@@ -7,7 +7,7 @@ package org.lealone.client.result;
 
 import java.io.IOException;
 
-import org.lealone.net.Transfer;
+import org.lealone.net.TransferInputStream;
 
 /**
  * A column of the client result.
@@ -69,7 +69,7 @@ class ClientResultColumn {
      *
      * @param in the object from where to read the data
      */
-    ClientResultColumn(Transfer in) throws IOException {
+    ClientResultColumn(TransferInputStream in) throws IOException {
         alias = in.readString();
         schemaName = in.readString();
         tableName = in.readString();

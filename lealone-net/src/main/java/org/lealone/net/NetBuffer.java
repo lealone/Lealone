@@ -37,4 +37,8 @@ public interface NetBuffer {
 
     NetBuffer setByte(int pos, byte b);
 
+    NetBuffer flip();
+
+    default void recycle() {
+    }
 }

@@ -168,6 +168,8 @@ public interface Session extends Closeable, Transaction.Participant {
      */
     boolean isClosed();
 
+    void checkClosed();
+
     int getModificationId();
 
     Transaction getTransaction();
@@ -186,9 +188,11 @@ public interface Session extends Closeable, Transaction.Participant {
 
     void commit(String allLocalTransactionNames);
 
-    Session connect();
+    default Session connect() {
+        return connect(true);
+    }
 
-    Session connect(boolean first);
+    Session connect(boolean allowRedirect);
 
     String getURL();
 

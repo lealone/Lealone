@@ -1089,7 +1089,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 exclusiveSession = null;
             }
             userSessions.remove(session);
-            if (session != systemSession) {
+            if (session != systemSession && session.getTrace().isInfoEnabled()) {
                 session.getTrace().setType(TraceModuleType.DATABASE).info("disconnected session #{0}", session.getId());
             }
         }

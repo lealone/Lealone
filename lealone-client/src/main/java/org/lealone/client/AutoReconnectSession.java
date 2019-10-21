@@ -53,12 +53,7 @@ class AutoReconnectSession extends DelegatedSession {
     }
 
     @Override
-    public Session connect() {
-        return connect(true);
-    }
-
-    @Override
-    public Session connect(boolean first) {
+    public Session connect(boolean allowRedirect) {
         InetSocketAddress inetSocketAddress = null;
         ClientSession clientSession = null;
         String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
@@ -68,8 +63,7 @@ class AutoReconnectSession extends DelegatedSession {
                 String s = servers[random.nextInt(len)];
                 try {
                     clientSession = new ClientSession(ci, s, this);
-                    clientSession.connect();
-                    inetSocketAddress = clientSession.getTcpConnection().getInetSocketAddress();
+                    inetSocketAddress = clientSession.open().getInetSocketAddress();
                     session = clientSession;
                     break;
                 } catch (Exception e) {
@@ -91,7 +85,7 @@ class AutoReconnectSession extends DelegatedSession {
             throw e;
         }
 
-        if (first) {
+        if (allowRedirect) {
             if (getRunMode() == RunMode.REPLICATION) {
                 ConnectionInfo ci = this.ci;
                 servers = StringUtils.arraySplit(getTargetEndpoints(), ',', true);
@@ -108,7 +102,7 @@ class AutoReconnectSession extends DelegatedSession {
                     }
                     ci = this.ci.copy(servers[i]);
                     sessions[i] = new ClientSession(ci, servers[i], this);
-                    sessions[i].connect(false);
+                    sessions[i].open();
                 }
                 ReplicationSession rs = new ReplicationSession(sessions);
                 rs.setAutoCommit(this.isAutoCommit());

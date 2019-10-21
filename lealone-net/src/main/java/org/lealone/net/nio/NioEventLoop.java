@@ -23,6 +23,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
+import org.lealone.net.AsyncConnection;
+
 public interface NioEventLoop {
 
     NioEventLoop getDefaultNioEventLoopImpl();
@@ -59,11 +61,19 @@ public interface NioEventLoop {
         getDefaultNioEventLoopImpl().tryRegisterWriteOperation(selector);
     }
 
+    default void read(SelectionKey key, NioEventLoop nioEventLoop) {
+        getDefaultNioEventLoopImpl().read(key, nioEventLoop);
+    }
+
     default void write(SelectionKey key) {
         getDefaultNioEventLoopImpl().write(key);
     }
 
     default void closeChannel(SocketChannel channel) {
         getDefaultNioEventLoopImpl().closeChannel(channel);
+    }
+
+    default void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
+        getDefaultNioEventLoopImpl().handleException(conn, channel, e);
     }
 }

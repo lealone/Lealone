@@ -24,7 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.lealone.net.NetEndpoint;
-import org.lealone.net.Transfer;
+import org.lealone.net.TransferOutputStream;
 import org.lealone.p2p.config.ConfigDescriptor;
 
 public class MessageOut<T extends Message<T>> {
@@ -66,7 +66,7 @@ public class MessageOut<T extends Message<T>> {
         return sbuf.toString();
     }
 
-    public void serialize(Transfer transfer, DataOutput out, int version) throws IOException {
+    public void serialize(TransferOutputStream transferOut, DataOutput out, int version) throws IOException {
         from.serialize(out);
 
         out.writeInt(verb.ordinal());
@@ -79,12 +79,12 @@ public class MessageOut<T extends Message<T>> {
 
         out.writeInt(0); // 先设为0
         if (payload != null) {
-            int lastSize = transfer.getDataOutputStreamSize();
+            int lastSize = transferOut.getDataOutputStreamSize();
             payload.getSerializer().serialize(payload, out, version);
 
-            int payloadSize = transfer.getDataOutputStreamSize() - lastSize;
+            int payloadSize = transferOut.getDataOutputStreamSize() - lastSize;
             int payloadSizeStartPos = lastSize - 4;// 需要减掉4
-            transfer.setPayloadSize(payloadSizeStartPos, payloadSize); // 再回填
+            transferOut.setPayloadSize(payloadSizeStartPos, payloadSize); // 再回填
         }
     }
 }

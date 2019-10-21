@@ -39,26 +39,30 @@ public abstract class TransferConnection extends AsyncConnection {
         super(writableChannel, isServer);
     }
 
-    protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
+    public TransferOutputStream createTransferOutputStream(Session session) {
+        return new TransferOutputStream(this, session, writableChannel);
+    }
+
+    protected void handleRequest(TransferInputStream in, int packetId, int operation) throws IOException {
         throw DbException.throwInternalError("handleRequest");
     }
 
-    protected void handleResponse(Transfer transfer, int id, int status) throws IOException {
+    protected void handleResponse(TransferInputStream in, int packetId, int status) throws IOException {
         throw DbException.throwInternalError("handleResponse");
     }
 
-    protected void addAsyncCallback(int id, AsyncCallback<?> ac) {
+    protected void addAsyncCallback(int packetId, AsyncCallback<?> ac) {
         throw DbException.throwInternalError("addAsyncCallback");
     }
 
-    protected static DbException parseError(Transfer transfer) {
+    protected static DbException parseError(TransferInputStream in) {
         Throwable t;
         try {
-            String sqlstate = transfer.readString();
-            String message = transfer.readString();
-            String sql = transfer.readString();
-            int errorCode = transfer.readInt();
-            String stackTrace = transfer.readString();
+            String sqlstate = in.readString();
+            String message = in.readString();
+            String sql = in.readString();
+            int errorCode = in.readInt();
+            String stackTrace = in.readString();
             JdbcSQLException s = new JdbcSQLException(message, sql, sqlstate, errorCode, null, stackTrace);
             t = s;
             if (errorCode == ErrorCode.CONNECTION_BROKEN_1) {
@@ -72,8 +76,9 @@ public abstract class TransferConnection extends AsyncConnection {
         return DbException.convert(t);
     }
 
-    public void sendError(Transfer transfer, int id, Throwable t) {
+    public void sendError(Session session, int packetId, Throwable t) {
         try {
+            TransferOutputStream out = createTransferOutputStream(session);
             SQLException e = DbException.convert(t).getSQLException();
             StringWriter writer = new StringWriter();
             e.printStackTrace(new PrintWriter(writer));
@@ -93,14 +98,12 @@ public abstract class TransferConnection extends AsyncConnection {
             // message = "[Server] " + message;
             // }
 
-            transfer.reset(); // 为什么要reset? 见reset中的注释
-
-            transfer.writeResponseHeader(id, Session.STATUS_ERROR);
-            transfer.writeString(e.getSQLState()).writeString(message).writeString(sql).writeInt(e.getErrorCode())
+            out.writeResponseHeader(packetId, Session.STATUS_ERROR);
+            out.writeString(e.getSQLState()).writeString(message).writeString(sql).writeInt(e.getErrorCode())
                     .writeString(trace).flush();
         } catch (Exception e2) {
-            if (transfer.getSession() != null)
-                transfer.getSession().close();
+            if (session != null)
+                session.close();
             else if (writableChannel != null) {
                 writableChannel.close();
             }
@@ -126,17 +129,17 @@ public abstract class TransferConnection extends AsyncConnection {
             while (true) {
                 // 必须生成新的Transfer实例，不同协议包对应不同Transfer实例，
                 // 否则如果有多个CommandHandler线程时会用同一个Transfer实例写数据，这会产生并发问题。
-                Transfer transfer;
+                TransferInputStream in;
                 if (pos == 0)
-                    transfer = new Transfer(this, writableChannel, buffer);
+                    in = new TransferInputStream(buffer);
                 else
-                    transfer = new Transfer(this, writableChannel, buffer.slice(pos, pos + length));
-                int packetLength = transfer.readInt();
+                    in = new TransferInputStream(buffer.slice(pos, pos + length));
+                int packetLength = in.readInt();
                 if (length - 4 == packetLength) {
-                    handlePacket(transfer);
+                    handlePacket(in);
                     break;
                 } else if (length - 4 > packetLength) {
-                    handlePacket(transfer);
+                    handlePacket(in);
                     pos = pos + packetLength + 4;
                     length = length - (packetLength + 4);
                     // 有可能剩下的不够4个字节了
@@ -154,18 +157,20 @@ public abstract class TransferConnection extends AsyncConnection {
         } catch (Throwable e) {
             if (isServer)
                 logger.error("Failed to handle packet", e);
+            else
+                throw DbException.convert(e);
         }
     }
 
-    private void handlePacket(Transfer transfer) throws IOException {
-        boolean isRequest = transfer.readByte() == Transfer.REQUEST;
-        int id = transfer.readInt();
+    private void handlePacket(TransferInputStream in) throws IOException {
+        boolean isRequest = in.readByte() == TransferOutputStream.REQUEST;
+        int packetId = in.readInt();
         if (isRequest) {
-            int operation = transfer.readInt();
-            handleRequest(transfer, id, operation);
+            int operation = in.readInt();
+            handleRequest(in, packetId, operation);
         } else {
-            int status = transfer.readInt();
-            handleResponse(transfer, id, status);
+            int status = in.readInt();
+            handleResponse(in, packetId, status);
         }
     }
 }

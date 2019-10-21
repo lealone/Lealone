@@ -22,7 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.net.NetEndpoint;
-import org.lealone.net.NetSerializer;
+import org.lealone.net.NetInputStream;
+import org.lealone.net.NetOutputStream;
 
 public class LeafPageMovePlan {
 
@@ -53,22 +54,22 @@ public class LeafPageMovePlan {
         return endpoints;
     }
 
-    public void serialize(NetSerializer netSerializer) throws IOException {
-        netSerializer.writeInt(index).writeString(moverHostId).writePageKey(pageKey);
-        netSerializer.writeInt(replicationEndpoints.size());
+    public void serialize(NetOutputStream out) throws IOException {
+        out.writeInt(index).writeString(moverHostId).writePageKey(pageKey);
+        out.writeInt(replicationEndpoints.size());
         for (NetEndpoint e : replicationEndpoints) {
-            netSerializer.writeString(e.getHostAndPort());
+            out.writeString(e.getHostAndPort());
         }
     }
 
-    public static LeafPageMovePlan deserialize(NetSerializer netSerializer) throws IOException {
-        int index = netSerializer.readInt();
-        String moverHostId = netSerializer.readString();
-        PageKey pageKey = netSerializer.readPageKey();
-        int size = netSerializer.readInt();
+    public static LeafPageMovePlan deserialize(NetInputStream in) throws IOException {
+        int index = in.readInt();
+        String moverHostId = in.readString();
+        PageKey pageKey = in.readPageKey();
+        int size = in.readInt();
         ArrayList<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            replicationEndpoints.add(NetEndpoint.createTCP(netSerializer.readString()));
+            replicationEndpoints.add(NetEndpoint.createTCP(in.readString()));
         }
         LeafPageMovePlan plan = new LeafPageMovePlan(moverHostId, replicationEndpoints, pageKey);
         plan.index = index;

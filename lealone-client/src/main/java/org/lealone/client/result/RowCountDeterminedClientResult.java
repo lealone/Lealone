@@ -22,13 +22,13 @@ import java.io.IOException;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.Value;
-import org.lealone.net.Transfer;
+import org.lealone.net.TransferInputStream;
 
 public class RowCountDeterminedClientResult extends ClientResult {
 
-    public RowCountDeterminedClientResult(ClientSession session, Transfer transfer, int id, int columnCount,
+    public RowCountDeterminedClientResult(ClientSession session, TransferInputStream in, int id, int columnCount,
             int rowCount, int fetchSize) throws IOException {
-        super(session, transfer, id, columnCount, rowCount, fetchSize);
+        super(session, in, id, columnCount, rowCount, fetchSize);
     }
 
     @Override
@@ -59,14 +59,14 @@ public class RowCountDeterminedClientResult extends ClientResult {
                 sendFetch(fetch);
             }
             for (int r = 0; r < fetch; r++) {
-                boolean row = transfer.readBoolean();
+                boolean row = in.readBoolean();
                 if (!row) {
                     break;
                 }
                 int len = columns.length;
                 Value[] values = new Value[len];
                 for (int i = 0; i < len; i++) {
-                    Value v = transfer.readValue();
+                    Value v = in.readValue();
                     values[i] = v;
                 }
                 result.add(values);

@@ -27,7 +27,6 @@ import org.lealone.db.async.AsyncResult;
 @SuppressWarnings("rawtypes")
 public class AsyncCallback<T> {
 
-    protected Transfer transfer;
     protected T result;
     protected DbException e;
     protected CountDownLatch latch = new CountDownLatch(1);
@@ -38,16 +37,8 @@ public class AsyncCallback<T> {
     public AsyncCallback() {
     }
 
-    public AsyncCallback(AsyncHandler ah) {
-        this.ah = ah;
-    }
-
     public void setAsyncHandler(AsyncHandler ah) {
         this.ah = ah;
-    }
-
-    public void setTransfer(Transfer transfer) {
-        this.transfer = transfer;
     }
 
     public void setDbException(DbException e) {
@@ -77,7 +68,7 @@ public class AsyncCallback<T> {
         await(-1);
     }
 
-    public void await(long timeoutMillis) {
+    public T await(long timeoutMillis) {
         try {
             if (timeoutMillis > 0)
                 latch.await(timeoutMillis, TimeUnit.MILLISECONDS);
@@ -88,24 +79,25 @@ public class AsyncCallback<T> {
 
             // 如果没有执行过run，抛出合适的异常
             if (!runEnd) {
-                if (transfer != null && transfer.isClosed())
-                    throw new RuntimeException("transfer is closed");
-                else
-                    throw new RuntimeException("time out");
+                throw new RuntimeException("time out");
             }
         } catch (InterruptedException e) {
             throw DbException.convert(e);
         }
+        return result;
     }
 
     @SuppressWarnings("unchecked")
-    public final void run(Transfer transfer) {
+    public final void run(TransferInputStream in) {
         // 放在最前面，不能放在最后面，
         // 否则调用了countDown，但是在设置runEnd为true前，调用await的线程读到的是false就会抛异常
         runEnd = true;
         if (e == null) {
-            this.transfer.setDataInputStream(transfer.getDataInputStream());
-            runInternal();
+            try {
+                runInternal(in);
+            } catch (Throwable t) {
+                e = DbException.convert(t);
+            }
         } else if (ah != null) {
             AsyncResult r = new AsyncResult();
             r.setCause(e);
@@ -115,6 +107,6 @@ public class AsyncCallback<T> {
             latch.countDown();
     }
 
-    protected void runInternal() {
+    protected void runInternal(TransferInputStream in) throws Exception {
     }
 }

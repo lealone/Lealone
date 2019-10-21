@@ -680,6 +680,25 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public K append(V value, Transaction.Listener listener) {
+        TransactionalValue ref = TransactionalValue.createRef(null);
+        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
+                null, ref);
+        ref.setRefValue(newValue);
+        AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
+            if (ar.isSucceeded()) {
+                listener.operationComplete();
+            } else {
+                listener.operationUndo();
+            }
+        };
+        K key = map.append(ref, handler);
+        transaction.logAppend((StorageMap<Object, TransactionalValue>) map, key, newValue);
+        return key;
+    }
+
+    @Override
     public boolean tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue) {
         DataUtils.checkArgument(newValue != null, "The newValue may not be null");
         return tryUpdateOrRemove(key, newValue, columnIndexes, (TransactionalValue) oldTransactionalValue);

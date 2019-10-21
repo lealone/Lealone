@@ -18,31 +18,18 @@
 package org.lealone.net;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
 
-public class NetBufferInputStream extends InputStream {
+import org.lealone.storage.PageKey;
 
-    protected final NetBuffer buffer;
-    protected final int size;
-    protected int pos;
+public interface NetInputStream {
 
-    public NetBufferInputStream(NetBuffer buffer) {
-        this.buffer = buffer;
-        size = buffer.length();
-    }
+    int readInt() throws IOException;
 
-    @Override
-    public int available() throws IOException {
-        return size - pos;
-    }
+    String readString() throws IOException;
 
-    @Override
-    public int read() throws IOException {
-        return buffer.getUnsignedByte(pos++);
-    }
+    ByteBuffer readByteBuffer() throws IOException;
 
-    @Override
-    public void close() throws IOException {
-        buffer.recycle();
-    }
+    PageKey readPageKey() throws IOException;
+
 }

@@ -28,6 +28,7 @@ import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.trace.TraceSystem;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FileUtils;
@@ -49,6 +50,7 @@ public abstract class SessionBase implements Session {
     protected String newTargetEndpoints;
 
     protected TraceSystem traceSystem;
+    protected boolean closed;
 
     @Override
     public String getReplicationName() {
@@ -224,7 +226,7 @@ public abstract class SessionBase implements Session {
     }
 
     protected void initTraceSystem(ConnectionInfo ci) {
-        if (!ci.isTraceEnabled() || traceSystem != null)
+        if (traceSystem != null || ci.isTraceDisabled())
             return;
         traceSystem = new TraceSystem();
         String traceLevelFile = ci.getProperty(SetTypes.TRACE_LEVEL_FILE, null);
@@ -248,6 +250,13 @@ public abstract class SessionBase implements Session {
         }
     }
 
+    protected void closeTraceSystem() {
+        if (traceSystem != null) {
+            traceSystem.close();
+            traceSystem = null;
+        }
+    }
+
     private static String getFilePrefix(String dir, String dbName) {
         StringBuilder buff = new StringBuilder(dir);
         if (!(dir.charAt(dir.length() - 1) == File.separatorChar))
@@ -263,10 +272,25 @@ public abstract class SessionBase implements Session {
         return buff.toString();
     }
 
-    protected void closeTraceSystem() {
-        if (traceSystem != null) {
-            traceSystem.close();
-            traceSystem = null;
+    /**
+     * Check if this session is closed and throws an exception if so.
+     *
+     * @throws DbException if the session is closed
+     */
+    @Override
+    public void checkClosed() {
+        if (isClosed()) {
+            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
+    }
+
+    @Override
+    public boolean isClosed() {
+        return closed;
+    }
+
+    @Override
+    public void close() {
+        closed = true;
     }
 }

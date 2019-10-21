@@ -8,8 +8,6 @@ package org.lealone.client;
 import java.io.IOException;
 import java.sql.Connection;
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.LealoneException;
@@ -33,7 +31,8 @@ import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.TcpClientConnection;
-import org.lealone.net.Transfer;
+import org.lealone.net.TransferInputStream;
+import org.lealone.net.TransferOutputStream;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.storage.LobStorage;
@@ -49,19 +48,23 @@ import org.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
+// 一个ClientSession对应一条JdbcConnection，
+// 同JdbcConnection一样，每个ClientSession对象也不是线程安全的，只能在单线程中使用。
+// 另外，每个ClientSession只对应一个server，
+// 虽然ConnectionInfo允许在JDBC URL中指定多个server，但是放在AutoReconnectSession中处理了。
 public class ClientSession extends SessionBase implements DataHandler, Transaction.Participant {
 
     private final ConnectionInfo ci;
     private final String server;
     private final Session parent;
+    private final String cipher;
+    private final byte[] fileEncryptionKey;
     private final Trace trace;
     private final Object lobSyncObject = new Object();
     private LobStorage lobStorage;
-    private Transfer transfer;
-    private String cipher;
-    private byte[] fileEncryptionKey;
-    private int sessionId;
+
     private TcpClientConnection tcpConnection;
+    private int sessionId;
 
     ClientSession(ConnectionInfo ci, String server, Session parent) {
         if (!ci.isRemote()) {
@@ -70,15 +73,12 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         this.ci = ci;
         this.server = server;
         this.parent = parent;
-        initTraceSystem(ci);
-        if (traceSystem != null)
-            trace = traceSystem.getTrace(TraceModuleType.JDBC);
-        else
-            trace = Trace.NO_TRACE;
-    }
 
-    TcpClientConnection getTcpConnection() {
-        return tcpConnection;
+        cipher = ci.getProperty("CIPHER");
+        fileEncryptionKey = cipher == null ? null : MathUtils.secureRandomBytes(32);
+
+        initTraceSystem(ci);
+        trace = traceSystem == null ? Trace.NO_TRACE : traceSystem.getTrace(TraceModuleType.JDBC);
     }
 
     @Override
@@ -88,53 +88,54 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public int getNextId() {
-        if (tcpConnection == null)
-            return super.getNextId();
-        else
-            return tcpConnection.getNextId();
+        if (tcpConnection == null) {
+            if (sessionId <= 0) {
+                open();
+            } else {
+                checkClosed();
+            }
+        }
+        return tcpConnection.getNextId();
     }
 
-    /**
-     * Open a new session.
-     *
-     * @return the session
-     */
     @Override
-    public Session connect() {
-        cipher = ci.getProperty("CIPHER");
-        if (cipher != null) {
-            fileEncryptionKey = MathUtils.secureRandomBytes(32);
-        }
-        NetEndpoint endpoint = NetEndpoint.createTCP(server);
-        try {
-            transfer = initTransfer(ci, endpoint);
-        } catch (Exception e) {
-            closeTraceSystem();
-            throw DbException.convert(e);
-        }
+    public Session connect(boolean allowRedirect) {
+        open();
         return this;
     }
 
-    @Override
-    public Session connect(boolean first) {
-        return connect();
+    // 在AutoReconnectSession类中有单独使用，所以用包访问级别
+    TcpClientConnection open() {
+        if (tcpConnection != null)
+            return tcpConnection;
+
+        try {
+            NetEndpoint endpoint = NetEndpoint.createTCP(server);
+            NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
+            CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
+            // 多个客户端session会共用同一条TCP连接
+            AsyncConnection conn = factory.getNetClient().createConnection(config, endpoint);
+            if (!(conn instanceof TcpClientConnection)) {
+                throw DbException.throwInternalError("not tcp client connection: " + conn.getClass().getName());
+            }
+            tcpConnection = (TcpClientConnection) conn;
+            // 每一个通过网络传输的协议包都会带上sessionId，
+            // 这样就能在同一条TCP连接中区分不同的客户端session了
+            sessionId = tcpConnection.getNextId();
+            tcpConnection.writeInitPacket(this);
+            if (isValid()) {
+                tcpConnection.addSession(sessionId, this);
+            }
+        } catch (Throwable e) {
+            closeTraceSystem();
+            throw DbException.convert(e);
+        }
+        return tcpConnection;
     }
 
-    private Transfer initTransfer(ConnectionInfo ci, NetEndpoint endpoint) throws Exception {
-        NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
-        CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
-        AsyncConnection conn = factory.getNetClient().createConnection(config, endpoint);
-        if (!(conn instanceof TcpClientConnection)) {
-            throw DbException.throwInternalError("not tcp client connection: " + conn.getClass().getName());
-        }
-        tcpConnection = (TcpClientConnection) conn;
-        sessionId = getNextId();
-        transfer = tcpConnection.createTransfer(this);
-        tcpConnection.writeInitPacket(this, transfer, ci);
-        if (isValid()) {
-            tcpConnection.addSession(sessionId, this);
-        }
-        return transfer;
+    public TransferOutputStream newOut() {
+        checkClosed();
+        return tcpConnection.createTransferOutputStream(this);
     }
 
     @Override
@@ -151,7 +152,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
      */
     public void cancelStatement(int statementId) {
         try {
-            transfer.writeRequestHeader(Session.SESSION_CANCEL_STATEMENT).writeInt(statementId).flush();
+            newOut().writeRequestHeader(Session.SESSION_CANCEL_STATEMENT).writeInt(statementId).flush();
         } catch (IOException e) {
             trace.debug(e, "could not cancel statement");
         }
@@ -167,14 +168,12 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     private void setAutoCommitSend(boolean autoCommit) {
         try {
+            TransferOutputStream out = newOut();
             int id = getNextId();
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            transfer.writeRequestHeader(id, Session.SESSION_SET_AUTO_COMMIT);
-            transfer.writeBoolean(autoCommit);
-            AsyncCallback<Void> ac = new AsyncCallback<>();
-            transfer.addAsyncCallback(id, ac);
-            transfer.flush();
-            ac.await();
+            out.writeRequestHeader(id, Session.SESSION_SET_AUTO_COMMIT);
+            out.writeBoolean(autoCommit);
+            out.flushAndAwait(id, getNetworkTimeout());
         } catch (IOException e) {
             handleException(e);
         }
@@ -190,13 +189,13 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public Command createCommand(String sql, int fetchSize) {
         checkClosed();
-        return new ClientCommand(this, transfer.copy(this), sql, fetchSize);
+        return new ClientCommand(this, sql, fetchSize);
     }
 
     @Override
     public StorageCommand createStorageCommand() {
         checkClosed();
-        return new ClientCommand(this, transfer.copy(this), null, -1);
+        return new ClientCommand(this, null, -1);
     }
 
     @Override
@@ -206,45 +205,34 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         return c;
     }
 
-    /**
-     * Check if this session is closed and throws an exception if so.
-     *
-     * @throws DbException if the session is closed
-     */
-    public void checkClosed() {
-        if (isClosed()) {
-            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
-        }
-    }
-
-    @Override
-    public boolean isClosed() {
-        return transfer == null;
-    }
-
     @Override
     public void close() {
-        RuntimeException closeError = null;
-        synchronized (this) {
-            try {
-                traceOperation("SESSION_CLOSE", 0);
-                // 只有当前Session有效时服务器端才持有对应的session
-                if (isValid()) {
-                    transfer.writeRequestHeader(Session.SESSION_CLOSE).flush();
-                    tcpConnection.removeSession(sessionId);
+        if (closed)
+            return;
+        try {
+            RuntimeException closeError = null;
+            synchronized (this) {
+                try {
+                    traceOperation("SESSION_CLOSE", 0);
+                    // 只有当前Session有效时服务器端才持有对应的session
+                    if (isValid()) {
+                        newOut().writeRequestHeader(Session.SESSION_CLOSE).flush();
+                        tcpConnection.removeSession(sessionId);
+                    }
+                } catch (RuntimeException e) {
+                    trace.error(e, "close");
+                    closeError = e;
+                } catch (Exception e) {
+                    trace.error(e, "close");
                 }
-            } catch (RuntimeException e) {
-                trace.error(e, "close");
-                closeError = e;
-            } catch (Exception e) {
-                trace.error(e, "close");
+                closeTraceSystem();
             }
-
-        }
-        transfer = null;
-        closeTraceSystem();
-        if (closeError != null) {
-            throw closeError;
+            tcpConnection = null;
+            if (closeError != null) {
+                throw closeError;
+            }
+        } finally {
+            super.close();
         }
     }
 
@@ -346,32 +334,24 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
         try {
-            int id = getNextId();
+            TransferOutputStream out = newOut();
+            int packetId = getNextId();
             traceOperation("LOB_READ", (int) lobId);
-            transfer.writeRequestHeader(id, Session.COMMAND_READ_LOB);
-            transfer.writeLong(lobId);
-            transfer.writeBytes(hmac);
-            transfer.writeLong(offset);
-            transfer.writeInt(length);
-            AtomicInteger lengthAI = new AtomicInteger();
-            AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+            out.writeRequestHeader(packetId, Session.COMMAND_READ_LOB);
+            out.writeLong(lobId);
+            out.writeBytes(hmac);
+            out.writeLong(offset);
+            out.writeInt(length);
+            return out.flushAndAwait(packetId, getNetworkTimeout(), new AsyncCallback<Integer>() {
                 @Override
-                public void runInternal() {
-                    try {
-                        int length = transfer.readInt();
-                        if (length > 0) {
-                            transfer.readBytes(buff, off, length);
-                        }
-                        lengthAI.set(length);
-                    } catch (IOException e) {
-                        throw DbException.convert(e);
+                public void runInternal(TransferInputStream in) throws Exception {
+                    int length = in.readInt();
+                    if (length > 0) {
+                        in.readBytes(buff, off, length);
                     }
+                    setResult(length);
                 }
-            };
-            transfer.addAsyncCallback(id, ac);
-            transfer.flush();
-            ac.await();
-            return lengthAI.get();
+            });
         } catch (IOException e) {
             handleException(e);
         }
@@ -382,8 +362,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT);
-            transfer.writeString(allLocalTransactionNames).flush();
+            newOut().writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT)
+                    .writeString(allLocalTransactionNames).flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -391,10 +371,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public synchronized void rollbackTransaction() {
-        checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK);
-            transfer.flush();
+            newOut().writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK).flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -402,11 +380,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public synchronized void addSavepoint(String name) {
-        checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT);
-            transfer.writeString(name);
-            transfer.flush();
+            newOut().writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT).writeString(name)
+                    .flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -414,11 +390,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public synchronized void rollbackToSavepoint(String name) {
-        checkClosed();
         try {
-            transfer.writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT);
-            transfer.writeString(name);
-            transfer.flush();
+            newOut().writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT).writeString(name)
+                    .flush();
         } catch (IOException e) {
             handleException(e);
         }
@@ -426,26 +400,17 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public synchronized boolean validateTransaction(String localTransactionName) {
-        checkClosed();
         try {
-            int id = getNextId();
-            transfer.writeRequestHeader(id, Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE);
-            transfer.writeString(localTransactionName);
-            AtomicBoolean isValid = new AtomicBoolean();
-            AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+            TransferOutputStream out = newOut();
+            int packetId = getNextId();
+            out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE);
+            out.writeString(localTransactionName);
+            return out.flushAndAwait(packetId, getNetworkTimeout(), new AsyncCallback<Boolean>() {
                 @Override
-                public void runInternal() {
-                    try {
-                        isValid.set(transfer.readBoolean());
-                    } catch (IOException e) {
-                        throw DbException.convert(e);
-                    }
+                public void runInternal(TransferInputStream in) throws Exception {
+                    setResult(in.readBoolean());
                 }
-            };
-            transfer.addAsyncCallback(id, ac);
-            transfer.flush();
-            ac.await();
-            return isValid.get();
+            });
         } catch (Exception e) {
             handleException(e);
             return false;
@@ -454,13 +419,13 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     public synchronized ClientBatchCommand getClientBatchCommand(ArrayList<String> batchCommands) {
         checkClosed();
-        return new ClientBatchCommand(this, transfer.copy(this), batchCommands);
+        return new ClientBatchCommand(this, batchCommands);
     }
 
     public synchronized ClientBatchCommand getClientBatchCommand(Command preparedCommand,
             ArrayList<Value[]> batchParameters) {
         checkClosed();
-        return new ClientBatchCommand(this, transfer.copy(this), preparedCommand, batchParameters);
+        return new ClientBatchCommand(this, preparedCommand, batchParameters);
     }
 
     @Override
@@ -505,7 +470,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         parent.runModeChanged(newTargetEndpoints);
     }
 
-    int getNetworkTimeout() {
+    public int getNetworkTimeout() {
         return ci.getNetworkTimeout();
     }
 }

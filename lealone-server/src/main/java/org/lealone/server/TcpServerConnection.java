@@ -46,8 +46,9 @@ import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.db.value.ValueLong;
-import org.lealone.net.Transfer;
 import org.lealone.net.TransferConnection;
+import org.lealone.net.TransferInputStream;
+import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.server.Scheduler.SessionInfo;
@@ -90,9 +91,9 @@ public class TcpServerConnection extends TransferConnection {
     /**
      * @see org.lealone.net.TcpClientConnection#writeInitPacket
      */
-    private void readInitPacket(Transfer transfer, int id, int sessionId) {
+    private void readInitPacket(TransferInputStream in, int packetId, int sessionId) {
         try {
-            int minClientVersion = transfer.readInt();
+            int minClientVersion = in.readInt();
             if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_MIN) {
                 throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion,
                         "" + Constants.TCP_PROTOCOL_VERSION_MIN);
@@ -101,45 +102,46 @@ public class TcpServerConnection extends TransferConnection {
                         "" + Constants.TCP_PROTOCOL_VERSION_MAX);
             }
             int clientVersion;
-            int maxClientVersion = transfer.readInt();
+            int maxClientVersion = in.readInt();
             if (maxClientVersion >= Constants.TCP_PROTOCOL_VERSION_MAX) {
                 clientVersion = Constants.TCP_PROTOCOL_VERSION_CURRENT;
             } else {
                 clientVersion = minClientVersion;
             }
-            transfer.setVersion(clientVersion);
+            in.setVersion(clientVersion);
 
-            ConnectionInfo ci = createConnectionInfo(transfer);
+            ConnectionInfo ci = createConnectionInfo(in);
             Session session = createSession(ci, sessionId);
 
-            transfer.setSession(session);
-            transfer.writeResponseHeader(id, Session.STATUS_OK);
-            transfer.writeInt(clientVersion);
-            transfer.writeBoolean(session.isAutoCommit());
-            transfer.writeString(session.getTargetEndpoints());
-            transfer.writeString(session.getRunMode().toString());
-            transfer.writeBoolean(session.isInvalid());
-            transfer.flush();
+            TransferOutputStream out = createTransferOutputStream(session);
+            in.setSession(session);
+            out.writeResponseHeader(packetId, Session.STATUS_OK);
+            out.writeInt(clientVersion);
+            out.writeBoolean(session.isAutoCommit());
+            out.writeString(session.getTargetEndpoints());
+            out.writeString(session.getRunMode().toString());
+            out.writeBoolean(session.isInvalid());
+            out.flush();
         } catch (Throwable e) {
-            sendError(transfer, id, e);
+            sendError(null, packetId, e);
         }
     }
 
-    private ConnectionInfo createConnectionInfo(Transfer transfer) throws IOException {
-        String dbName = transfer.readString();
-        String originalURL = transfer.readString();
-        String userName = transfer.readString();
+    private ConnectionInfo createConnectionInfo(TransferInputStream in) throws IOException {
+        String dbName = in.readString();
+        String originalURL = in.readString();
+        String userName = in.readString();
         ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
 
         ci.setUserName(userName);
-        ci.setUserPasswordHash(transfer.readBytes());
-        ci.setFilePasswordHash(transfer.readBytes());
-        ci.setFileEncryptionKey(transfer.readBytes());
+        ci.setUserPasswordHash(in.readBytes());
+        ci.setFilePasswordHash(in.readBytes());
+        ci.setFileEncryptionKey(in.readBytes());
 
-        int len = transfer.readInt();
+        int len = in.readInt();
         for (int i = 0; i < len; i++) {
-            String key = transfer.readString();
-            String value = transfer.readString();
+            String key = in.readString();
+            String value = in.readString();
             ci.addProperty(key, value, true); // 一些不严谨的client driver可能会发送重复的属性名
         }
         ci.initTraceProperty();
@@ -175,20 +177,20 @@ public class TcpServerConnection extends TransferConnection {
         return sessions.get(sessionId);
     }
 
-    private void sessionNotFound(Transfer transfer, int id, int sessionId) {
+    private void sessionNotFound(int packetId, int sessionId) {
         String msg = "Server session not found, maybe closed or timeout. client session id: " + sessionId;
         RuntimeException e = new RuntimeException(msg);
         // logger.warn(msg, e); //打印错误堆栈不是很大必要
         logger.warn(msg);
-        sendError(transfer, id, e);
+        sendError(null, packetId, e);
     }
 
-    private void closeSession(Transfer transfer, int id, int sessionId) {
+    private void closeSession(int packetId, int sessionId) {
         SessionInfo si = getSessionInfo(sessionId);
         if (si != null) {
             closeSession(si);
         } else {
-            sessionNotFound(transfer, id, sessionId);
+            sessionNotFound(packetId, sessionId);
         }
     }
 
@@ -213,12 +215,12 @@ public class TcpServerConnection extends TransferConnection {
         sessions.clear();
     }
 
-    protected static void setParameters(Transfer transfer, PreparedStatement command) throws IOException {
-        int len = transfer.readInt();
+    protected static void setParameters(TransferInputStream in, PreparedStatement command) throws IOException {
+        int len = in.readInt();
         List<? extends CommandParameter> params = command.getParameters();
         for (int i = 0; i < len; i++) {
             CommandParameter p = params.get(i);
-            p.setValue(transfer.readValue());
+            p.setValue(in.readValue());
         }
     }
 
@@ -227,11 +229,11 @@ public class TcpServerConnection extends TransferConnection {
      *
      * @param p the parameter
      */
-    private static void writeParameterMetaData(Transfer transfer, CommandParameter p) throws IOException {
-        transfer.writeInt(p.getType());
-        transfer.writeLong(p.getPrecision());
-        transfer.writeInt(p.getScale());
-        transfer.writeInt(p.getNullable());
+    private static void writeParameterMetaData(TransferOutputStream out, CommandParameter p) throws IOException {
+        out.writeInt(p.getType());
+        out.writeLong(p.getPrecision());
+        out.writeInt(p.getScale());
+        out.writeInt(p.getNullable());
     }
 
     /**
@@ -240,38 +242,38 @@ public class TcpServerConnection extends TransferConnection {
      * @param result the result
      * @param i the column index
      */
-    private static void writeColumn(Transfer transfer, Result result, int i) throws IOException {
-        transfer.writeString(result.getAlias(i));
-        transfer.writeString(result.getSchemaName(i));
-        transfer.writeString(result.getTableName(i));
-        transfer.writeString(result.getColumnName(i));
-        transfer.writeInt(result.getColumnType(i));
-        transfer.writeLong(result.getColumnPrecision(i));
-        transfer.writeInt(result.getColumnScale(i));
-        transfer.writeInt(result.getDisplaySize(i));
-        transfer.writeBoolean(result.isAutoIncrement(i));
-        transfer.writeInt(result.getNullable(i));
+    private static void writeColumn(TransferOutputStream out, Result result, int i) throws IOException {
+        out.writeString(result.getAlias(i));
+        out.writeString(result.getSchemaName(i));
+        out.writeString(result.getTableName(i));
+        out.writeString(result.getColumnName(i));
+        out.writeInt(result.getColumnType(i));
+        out.writeLong(result.getColumnPrecision(i));
+        out.writeInt(result.getColumnScale(i));
+        out.writeInt(result.getDisplaySize(i));
+        out.writeBoolean(result.isAutoIncrement(i));
+        out.writeInt(result.getNullable(i));
     }
 
-    private static void writeRow(Transfer transfer, Result result, int count) throws IOException {
+    private static void writeRow(TransferOutputStream out, Result result, int count) throws IOException {
         try {
             int visibleColumnCount = result.getVisibleColumnCount();
             for (int i = 0; i < count; i++) {
                 if (result.next()) {
-                    transfer.writeBoolean(true);
+                    out.writeBoolean(true);
                     Value[] v = result.currentRow();
                     for (int j = 0; j < visibleColumnCount; j++) {
-                        transfer.writeValue(v[j]);
+                        out.writeValue(v[j]);
                     }
                 } else {
-                    transfer.writeBoolean(false);
+                    out.writeBoolean(false);
                     break;
                 }
             }
         } catch (Throwable e) {
             // 如果取结果集的下一行记录时发生了异常，
             // 结果集包必须加一个结束标记，结果集包后面跟一个异常包。
-            transfer.writeBoolean(false);
+            out.writeBoolean(false);
             throw DbException.convert(e);
         }
     }
@@ -286,25 +288,27 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    private static void writeBatchResult(Transfer transfer, Session session, int id, int[] result) throws IOException {
-        writeResponseHeader(transfer, session, id);
+    private static void writeBatchResult(TransferOutputStream out, Session session, int packetId, int[] result)
+            throws IOException {
+        writeResponseHeader(out, session, packetId);
         for (int i = 0; i < result.length; i++)
-            transfer.writeInt(result[i]);
+            out.writeInt(result[i]);
 
-        transfer.flush();
+        out.flush();
     }
 
-    protected static void writeResponseHeader(Transfer transfer, Session session, int id) throws IOException {
-        transfer.writeResponseHeader(id, getStatus(session));
+    protected static void writeResponseHeader(TransferOutputStream out, Session session, int packetId)
+            throws IOException {
+        out.writeResponseHeader(packetId, getStatus(session));
     }
 
-    protected static List<PageKey> readPageKeys(Transfer transfer) throws IOException {
+    protected static List<PageKey> readPageKeys(TransferInputStream in) throws IOException {
         ArrayList<PageKey> pageKeys;
-        int size = transfer.readInt();
+        int size = in.readInt();
         if (size > 0) {
             pageKeys = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
-                PageKey pk = transfer.readPageKey();
+                PageKey pk = in.readPageKey();
                 pageKeys.add(pk);
             }
         } else {
@@ -313,12 +317,12 @@ public class TcpServerConnection extends TransferConnection {
         return pageKeys;
     }
 
-    protected void executeQueryAsync(Transfer transfer, int id, int operation, Session session, int sessionId,
-            boolean prepared) throws IOException {
-        int resultId = transfer.readInt();
-        int maxRows = transfer.readInt();
-        int fetchSize = transfer.readInt();
-        boolean scrollable = transfer.readBoolean();
+    protected void executeQueryAsync(TransferInputStream in, int packetId, int operation, Session session,
+            int sessionId, boolean prepared) throws IOException {
+        int resultId = in.readInt();
+        int maxRows = in.readInt();
+        int fetchSize = in.readInt();
+        boolean scrollable = in.readBoolean();
 
         if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
                 || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
@@ -328,71 +332,72 @@ public class TcpServerConnection extends TransferConnection {
 
         PreparedStatement stmt;
         if (prepared) {
-            stmt = (PreparedStatement) cache.getObject(id, false);
-            setParameters(transfer, stmt);
+            stmt = (PreparedStatement) cache.getObject(packetId, false);
+            setParameters(in, stmt);
         } else {
-            String sql = transfer.readString();
+            String sql = in.readString();
             stmt = session.prepareStatement(sql, fetchSize);
-            cache.addObject(id, stmt);
+            cache.addObject(packetId, stmt);
         }
         stmt.setFetchSize(fetchSize);
 
-        List<PageKey> pageKeys = readPageKeys(transfer);
-        if (executeQueryAsync(transfer, id, operation, session, sessionId, stmt, resultId, fetchSize)) {
+        List<PageKey> pageKeys = readPageKeys(in);
+        if (executeQueryAsync(in, packetId, operation, session, sessionId, stmt, resultId, fetchSize)) {
             return;
         }
+        TransferOutputStream out = createTransferOutputStream(session);
         PreparedStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, ar -> {
             if (ar.isSucceeded()) {
                 Result result = ar.getResult();
-                sendResult(transfer, id, operation, session, sessionId, result, resultId, fetchSize);
+                sendResult(out, packetId, operation, session, sessionId, result, resultId, fetchSize);
             } else {
-                sendError(transfer, id, ar.getCause());
+                sendError(out.getSession(), packetId, ar.getCause());
             }
         });
         yieldable.setPageKeys(pageKeys);
 
-        addPreparedCommandToQueue(transfer, id, session, sessionId, stmt, yieldable);
+        addPreparedCommandToQueue(in, packetId, session, sessionId, stmt, yieldable);
     }
 
-    protected boolean executeQueryAsync(Transfer transfer, int id, int operation, Session session, int sessionId,
-            PreparedStatement stmt, int resultId, int fetchSize) throws IOException {
+    protected boolean executeQueryAsync(TransferInputStream in, int packetId, int operation, Session session,
+            int sessionId, PreparedStatement stmt, int resultId, int fetchSize) throws IOException {
         return false;
     }
 
-    protected void sendResult(Transfer transfer, int id, int operation, Session session, int sessionId, Result result,
-            int resultId, int fetchSize) {
+    protected void sendResult(TransferOutputStream out, int packetId, int operation, Session session, int sessionId,
+            Result result, int resultId, int fetchSize) {
         cache.addObject(resultId, result);
         try {
-            transfer.writeResponseHeader(id, getStatus(session));
+            out.writeResponseHeader(packetId, getStatus(session));
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
                     || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
-                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                out.writeString(session.getTransaction().getLocalTransactionNames());
             }
             if (session.isRunModeChanged()) {
-                transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
+                out.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
             }
             int columnCount = result.getVisibleColumnCount();
-            transfer.writeInt(columnCount);
+            out.writeInt(columnCount);
             int rowCount = result.getRowCount();
-            transfer.writeInt(rowCount);
+            out.writeInt(rowCount);
             for (int i = 0; i < columnCount; i++) {
-                writeColumn(transfer, result, i);
+                writeColumn(out, result, i);
             }
             int fetch = fetchSize;
             if (rowCount != -1)
                 fetch = Math.min(rowCount, fetchSize);
-            writeRow(transfer, result, fetch);
-            transfer.flush();
+            writeRow(out, result, fetch);
+            out.flush();
         } catch (Exception e) {
-            sendError(transfer, id, e);
+            sendError(out.getSession(), packetId, e);
         }
     }
 
-    protected void executeUpdateAsync(Transfer transfer, int id, int operation, Session session, int sessionId,
-            boolean prepared) throws IOException {
+    protected void executeUpdateAsync(TransferInputStream in, int packetId, int operation, Session session,
+            int sessionId, boolean prepared) throws IOException {
         if (operation == Session.COMMAND_REPLICATION_UPDATE
                 || operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE) {
-            session.setReplicationName(transfer.readString());
+            session.setReplicationName(in.readString());
         } else if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
                 || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
             session.setAutoCommit(false);
@@ -401,61 +406,62 @@ public class TcpServerConnection extends TransferConnection {
 
         PreparedStatement stmt;
         if (prepared) {
-            stmt = (PreparedStatement) cache.getObject(id, false);
-            setParameters(transfer, stmt);
+            stmt = (PreparedStatement) cache.getObject(packetId, false);
+            setParameters(in, stmt);
         } else {
-            String sql = transfer.readString();
+            String sql = in.readString();
             stmt = session.prepareStatement(sql, -1);
-            cache.addObject(id, stmt);
+            cache.addObject(packetId, stmt);
         }
 
-        List<PageKey> pageKeys = readPageKeys(transfer);
+        List<PageKey> pageKeys = readPageKeys(in);
 
+        TransferOutputStream out = createTransferOutputStream(session);
         PreparedStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {
                 int updateCount = ar.getResult();
                 try {
-                    transfer.writeResponseHeader(id, getStatus(session));
+                    out.writeResponseHeader(packetId, getStatus(session));
                     if (session.isRunModeChanged()) {
-                        transfer.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
+                        out.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
                     }
                     if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
                             || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
-                        transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                        out.writeString(session.getTransaction().getLocalTransactionNames());
                     }
-                    transfer.writeInt(updateCount);
-                    transfer.writeLong(session.getLastRowKey());
-                    transfer.flush();
+                    out.writeInt(updateCount);
+                    out.writeLong(session.getLastRowKey());
+                    out.flush();
                 } catch (Exception e) {
-                    sendError(transfer, id, e);
+                    sendError(out.getSession(), packetId, e);
                 }
             } else {
-                sendError(transfer, id, ar.getCause());
+                sendError(out.getSession(), packetId, ar.getCause());
             }
         });
         yieldable.setPageKeys(pageKeys);
 
-        addPreparedCommandToQueue(transfer, id, session, sessionId, stmt, yieldable);
+        addPreparedCommandToQueue(in, packetId, session, sessionId, stmt, yieldable);
     }
 
-    private void addPreparedCommandToQueue(Transfer transfer, int id, Session session, int sessionId,
+    private void addPreparedCommandToQueue(TransferInputStream transfer, int packetId, Session session, int sessionId,
             PreparedStatement stmt, PreparedStatement.Yieldable<?> yieldable) {
         SessionInfo si = getSessionInfo(sessionId);
         if (si == null) {
-            sessionNotFound(transfer, id, sessionId);
+            sessionNotFound(packetId, sessionId);
             return;
         }
-        PreparedCommand pc = new PreparedCommand(transfer, id, session, stmt, yieldable, si);
+        PreparedCommand pc = new PreparedCommand(this, packetId, session, stmt, yieldable, si);
         si.addCommand(pc);
     }
 
     @Override
-    protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
+    protected void handleRequest(TransferInputStream in, int packetId, int operation) throws IOException {
         Scheduler scheduler;
         Session session;
 
-        // 参数id是数据包的id，而这里的sessionId是客户端session的id，每个数据包都会带这两个字段
-        int sessionId = transfer.readInt();
+        // 这里的sessionId是客户端session的id，每个数据包都会带这两个字段
+        int sessionId = in.readInt();
         SessionInfo si = getSessionInfo(sessionId);
         if (si == null) {
             // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
@@ -463,7 +469,7 @@ public class TcpServerConnection extends TransferConnection {
             if (operation == Session.SESSION_INIT) {
                 scheduler = ScheduleService.getScheduler();
             } else {
-                sessionNotFound(transfer, id, sessionId);
+                sessionNotFound(packetId, sessionId);
                 return;
             }
             session = null;
@@ -471,25 +477,25 @@ public class TcpServerConnection extends TransferConnection {
             si.updateLastTime();
             scheduler = si.getScheduler();
             session = si.session;
-            transfer.setSession(session);
+            in.setSession(session);
         }
-        AsyncTask task = new RequestPacketDeliveryTask(this, transfer, id, operation, session, sessionId);
+        AsyncTask task = new RequestPacketDeliveryTask(this, in, packetId, operation, session, sessionId);
         scheduler.handle(task);
     }
 
     private static class RequestPacketDeliveryTask implements AsyncTask {
         final TcpServerConnection conn;
-        final Transfer transfer;
-        final int id;
+        final TransferInputStream in;
+        final int packetId;
         final int operation;
         final Session session;
         final int sessionId;
 
-        public RequestPacketDeliveryTask(TcpServerConnection conn, Transfer transfer, int id, int operation,
+        public RequestPacketDeliveryTask(TcpServerConnection conn, TransferInputStream in, int packetId, int operation,
                 Session session, int sessionId) {
             this.conn = conn;
-            this.transfer = transfer;
-            this.id = id;
+            this.in = in;
+            this.packetId = packetId;
             this.operation = operation;
             this.session = session;
             this.sessionId = sessionId;
@@ -503,64 +509,67 @@ public class TcpServerConnection extends TransferConnection {
         @Override
         public void run() {
             try {
-                conn.handleRequest(transfer, id, operation, session, sessionId);
+                conn.handleRequest(in, packetId, operation, session, sessionId);
             } catch (Throwable e) {
-                logger.error("Failed to handle request, id: " + id + ", operation: " + operation, e);
-                conn.sendError(transfer, id, e);
+                logger.error("Failed to handle request, packetId: " + packetId + ", operation: " + operation, e);
+                conn.sendError(session, packetId, e);
+            } finally {
+                // in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
             }
         }
     }
 
-    private void handleRequest(Transfer transfer, int id, int operation, Session session, int sessionId)
+    private void handleRequest(TransferInputStream in, int packetId, int operation, Session session, int sessionId)
             throws IOException {
         switch (operation) {
         case Session.SESSION_INIT: {
-            readInitPacket(transfer, id, sessionId);
+            readInitPacket(in, packetId, sessionId);
             break;
         }
         case Session.COMMAND_PREPARE_READ_PARAMS:
         case Session.COMMAND_PREPARE: {
-            String sql = transfer.readString();
+            String sql = in.readString();
             PreparedStatement command = session.prepareStatement(sql, -1);
-            cache.addObject(id, command);
+            cache.addObject(packetId, command);
             boolean isQuery = command.isQuery();
-            writeResponseHeader(transfer, session, id);
-            transfer.writeBoolean(isQuery);
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
+            out.writeBoolean(isQuery);
             if (operation == Session.COMMAND_PREPARE_READ_PARAMS) {
                 List<? extends CommandParameter> params = command.getParameters();
-                transfer.writeInt(params.size());
+                out.writeInt(params.size());
                 for (CommandParameter p : params) {
-                    writeParameterMetaData(transfer, p);
+                    writeParameterMetaData(out, p);
                 }
             }
-            transfer.flush();
+            out.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY:
         case Session.COMMAND_QUERY: {
-            executeQueryAsync(transfer, id, operation, session, sessionId, false);
+            executeQueryAsync(in, packetId, operation, session, sessionId, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
         case Session.COMMAND_PREPARED_QUERY: {
-            executeQueryAsync(transfer, id, operation, session, sessionId, true);
+            executeQueryAsync(in, packetId, operation, session, sessionId, true);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
         case Session.COMMAND_UPDATE:
         case Session.COMMAND_REPLICATION_UPDATE: {
-            executeUpdateAsync(transfer, id, operation, session, sessionId, false);
+            executeUpdateAsync(in, packetId, operation, session, sessionId, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
-            executeUpdateAsync(transfer, id, operation, session, sessionId, true);
+            executeUpdateAsync(in, packetId, operation, session, sessionId, true);
             break;
         }
         case Session.COMMAND_REPLICATION_COMMIT: {
-            long validKey = transfer.readLong();
-            boolean autoCommit = transfer.readBoolean();
+            long validKey = in.readLong();
+            boolean autoCommit = in.readBoolean();
             session.replicationCommit(validKey, autoCommit);
             break;
         }
@@ -571,17 +580,17 @@ public class TcpServerConnection extends TransferConnection {
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT:
         case Session.COMMAND_STORAGE_PUT:
         case Session.COMMAND_STORAGE_REPLICATION_PUT: {
-            String mapName = transfer.readString();
-            byte[] key = transfer.readBytes();
-            byte[] value = transfer.readBytes();
+            String mapName = in.readString();
+            byte[] key = in.readBytes();
+            byte[] value = in.readBytes();
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
             // if (operation == Session.COMMAND_STORAGE_REPLICATION_PUT)
             // session.setReplicationName(transfer.readString());
-            session.setReplicationName(transfer.readString());
-            boolean raw = transfer.readBoolean();
+            session.setReplicationName(in.readString());
+            boolean raw = in.readBoolean();
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
             if (raw) {
@@ -592,46 +601,48 @@ public class TcpServerConnection extends TransferConnection {
             Object k = map.getKeyType().read(ByteBuffer.wrap(key));
             Object v = valueType.read(ByteBuffer.wrap(value));
             Object result = map.put(k, v);
-            writeResponseHeader(transfer, session, id);
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT)
-                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                out.writeString(session.getTransaction().getLocalTransactionNames());
 
             if (result != null) {
                 try (DataBuffer writeBuffer = DataBuffer.create()) {
                     valueType.write(writeBuffer, result);
                     ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
-                    transfer.writeByteBuffer(buffer);
+                    out.writeByteBuffer(buffer);
                 }
             } else {
-                transfer.writeByteBuffer(null);
+                out.writeByteBuffer(null);
             }
-            transfer.flush();
+            out.flush();
             break;
         }
         case Session.COMMAND_STORAGE_APPEND:
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND: {
-            String mapName = transfer.readString();
-            byte[] value = transfer.readBytes();
+            String mapName = in.readString();
+            byte[] value = in.readBytes();
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            session.setReplicationName(transfer.readString());
+            session.setReplicationName(in.readString());
 
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
             Object v = map.getValueType().read(ByteBuffer.wrap(value));
             Object result = map.append(v);
-            writeResponseHeader(transfer, session, id);
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND)
-                transfer.writeString(session.getTransaction().getLocalTransactionNames());
-            transfer.writeLong(((ValueLong) result).getLong());
-            transfer.flush();
+                out.writeString(session.getTransaction().getLocalTransactionNames());
+            out.writeLong(((ValueLong) result).getLong());
+            out.flush();
             break;
         }
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET:
         case Session.COMMAND_STORAGE_GET: {
-            String mapName = transfer.readString();
-            byte[] key = transfer.readBytes();
+            String mapName = in.readString();
+            byte[] key = in.readBytes();
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
@@ -640,133 +651,136 @@ public class TcpServerConnection extends TransferConnection {
             StorageMap<Object, Object> map = session.getStorageMap(mapName);
             Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
 
-            writeResponseHeader(transfer, session, id);
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
             if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET)
-                transfer.writeString(session.getTransaction().getLocalTransactionNames());
+                out.writeString(session.getTransaction().getLocalTransactionNames());
 
             if (result != null) {
                 try (DataBuffer writeBuffer = DataBuffer.create()) {
                     map.getValueType().write(writeBuffer, result);
                     ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
-                    transfer.writeByteBuffer(buffer);
+                    out.writeByteBuffer(buffer);
                 }
             } else {
-                transfer.writeByteBuffer(null);
+                out.writeByteBuffer(null);
             }
-            transfer.flush();
+            out.flush();
             break;
         }
         case Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE: {
-            String mapName = transfer.readString();
-            LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(transfer);
+            String mapName = in.readString();
+            LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(in);
 
             DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
                     .getStorageMap(mapName);
             leafPageMovePlan = map.prepareMoveLeafPage(leafPageMovePlan);
-            writeResponseHeader(transfer, session, id);
-            leafPageMovePlan.serialize(transfer);
-            transfer.flush();
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
+            leafPageMovePlan.serialize(out);
+            out.flush();
             break;
         }
         case Session.COMMAND_STORAGE_MOVE_LEAF_PAGE: {
-            String mapName = transfer.readString();
-            PageKey pageKey = transfer.readPageKey();
-            ByteBuffer page = transfer.readByteBuffer();
-            boolean addPage = transfer.readBoolean();
+            String mapName = in.readString();
+            PageKey pageKey = in.readPageKey();
+            ByteBuffer page = in.readByteBuffer();
+            boolean addPage = in.readBoolean();
             DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
                     .getStorageMap(mapName);
             ConcurrentUtils.submitTask("Add Leaf Page", () -> {
                 map.addLeafPage(pageKey, page, addPage);
             });
             // map.addLeafPage(pageKey, page, addPage);
-            // writeResponseHeader(transfer, session, id);
+            // writeResponseHeader(out, session, packetId);
             // transfer.flush();
             break;
         }
         case Session.COMMAND_STORAGE_REPLICATE_ROOT_PAGES: {
-            final String dbName = transfer.readString();
-            final ByteBuffer rootPages = transfer.readByteBuffer();
+            final String dbName = in.readString();
+            final ByteBuffer rootPages = in.readByteBuffer();
             final Session s = session;
             ConcurrentUtils.submitTask("Replicate Root Pages", () -> {
                 s.replicateRootPages(dbName, rootPages);
             });
 
             // session.replicateRootPages(dbName, rootPages);
-            // writeResponseHeader(transfer, session, id);
+            // writeResponseHeader(out, session, packetId);
             // transfer.flush();
             break;
         }
         case Session.COMMAND_STORAGE_READ_PAGE: {
-            String mapName = transfer.readString();
-            PageKey pageKey = transfer.readPageKey();
+            String mapName = in.readString();
+            PageKey pageKey = in.readPageKey();
             DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
                     .getStorageMap(mapName);
             ByteBuffer page = map.readPage(pageKey);
-            writeResponseHeader(transfer, session, id);
-            transfer.writeByteBuffer(page);
-            transfer.flush();
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
+            out.writeByteBuffer(page);
+            out.flush();
             break;
         }
         case Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE: {
-            String mapName = transfer.readString();
-            PageKey pageKey = transfer.readPageKey();
+            String mapName = in.readString();
+            PageKey pageKey = in.readPageKey();
 
             DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
                     .getStorageMap(mapName);
             map.removeLeafPage(pageKey);
-            writeResponseHeader(transfer, session, id);
-            transfer.flush();
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
+            out.flush();
             break;
         }
         case Session.COMMAND_GET_META_DATA: {
-            int objectId = transfer.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            int objectId = in.readInt();
+            PreparedStatement command = (PreparedStatement) cache.getObject(packetId, false);
             Result result = command.getMetaData();
             cache.addObject(objectId, result);
             int columnCount = result.getVisibleColumnCount();
-            transfer.writeResponseHeader(id, Session.STATUS_OK);
-            transfer.writeInt(columnCount).writeInt(0);
+            TransferOutputStream out = createTransferOutputStream(session);
+            out.writeResponseHeader(packetId, Session.STATUS_OK);
+            out.writeInt(columnCount).writeInt(0);
             for (int i = 0; i < columnCount; i++) {
-                writeColumn(transfer, result, i);
+                writeColumn(out, result, i);
             }
-            transfer.flush();
+            out.flush();
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
-            session.commit(transfer.readString());
-            // writeResponseHeader(transfer, session, id); //不需要发回响应
-            // transfer.flush();
+            session.commit(in.readString());
+            // 不需要发回响应
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
             session.rollback();
-            // writeResponseHeader(transfer, session, id); //不需要发回响应
-            // transfer.flush();
+            // 不需要发回响应
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT:
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT: {
-            String name = transfer.readString();
+            String name = in.readString();
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT)
                 session.addSavepoint(name);
             else
                 session.rollbackToSavepoint(name);
-            // writeResponseHeader(transfer, session, id); //不需要发回响应
-            // transfer.flush();
+            // 不需要发回响应
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE: {
-            boolean isValid = session.validateTransaction(transfer.readString());
-            writeResponseHeader(transfer, session, id);
-            transfer.writeBoolean(isValid);
-            transfer.flush();
+            boolean isValid = session.validateTransaction(in.readString());
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
+            out.writeBoolean(isValid);
+            out.flush();
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_UPDATE: {
-            int size = transfer.readInt();
+            int size = in.readInt();
             int[] result = new int[size];
             for (int i = 0; i < size; i++) {
-                String sql = transfer.readString();
+                String sql = in.readString();
                 PreparedStatement command = session.prepareStatement(sql, -1);
                 try {
                     result[i] = command.executeUpdate();
@@ -774,19 +788,20 @@ public class TcpServerConnection extends TransferConnection {
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(transfer, session, id, result);
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeBatchResult(out, session, packetId, result);
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
-            int size = transfer.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(id, false);
+            int size = in.readInt();
+            PreparedStatement command = (PreparedStatement) cache.getObject(packetId, false);
             List<? extends CommandParameter> params = command.getParameters();
             int paramsSize = params.size();
             int[] result = new int[size];
             for (int i = 0; i < size; i++) {
                 for (int j = 0; j < paramsSize; j++) {
                     CommandParameter p = params.get(j);
-                    p.setValue(transfer.readValue());
+                    p.setValue(in.readValue());
                 }
                 try {
                     result[i] = command.executeUpdate();
@@ -794,58 +809,61 @@ public class TcpServerConnection extends TransferConnection {
                     result[i] = Statement.EXECUTE_FAILED;
                 }
             }
-            writeBatchResult(transfer, session, id, result);
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeBatchResult(out, session, packetId, result);
             break;
         }
         case Session.COMMAND_CLOSE: {
-            PreparedStatement command = (PreparedStatement) cache.getObject(id, true);
+            PreparedStatement command = (PreparedStatement) cache.getObject(packetId, true);
             if (command != null) {
                 command.close();
-                cache.freeObject(id);
+                cache.freeObject(packetId);
             }
             break;
         }
         case Session.RESULT_FETCH_ROWS: {
-            int count = transfer.readInt();
-            Result result = (Result) cache.getObject(id, false);
-            transfer.writeResponseHeader(id, Session.STATUS_OK);
-            writeRow(transfer, result, count);
-            transfer.flush();
+            int count = in.readInt();
+            Result result = (Result) cache.getObject(packetId, false);
+            TransferOutputStream out = createTransferOutputStream(session);
+            out.writeResponseHeader(packetId, Session.STATUS_OK);
+            writeRow(out, result, count);
+            out.flush();
             break;
         }
         case Session.RESULT_RESET: {
-            Result result = (Result) cache.getObject(id, false);
+            Result result = (Result) cache.getObject(packetId, false);
             result.reset();
             break;
         }
         case Session.RESULT_CHANGE_ID: {
-            int oldId = id;
-            int newId = transfer.readInt();
+            int oldId = packetId;
+            int newId = in.readInt();
             Object obj = cache.getObject(oldId, false);
             cache.freeObject(oldId);
             cache.addObject(newId, obj);
             break;
         }
         case Session.RESULT_CLOSE: {
-            Result result = (Result) cache.getObject(id, true);
+            Result result = (Result) cache.getObject(packetId, true);
             if (result != null) {
                 result.close();
-                cache.freeObject(id);
+                cache.freeObject(packetId);
             }
             break;
         }
         case Session.SESSION_SET_AUTO_COMMIT: {
-            boolean autoCommit = transfer.readBoolean();
+            boolean autoCommit = in.readBoolean();
             session.setAutoCommit(autoCommit);
-            transfer.writeResponseHeader(id, Session.STATUS_OK).flush();
+            TransferOutputStream out = createTransferOutputStream(session);
+            out.writeResponseHeader(packetId, Session.STATUS_OK).flush();
             break;
         }
         case Session.SESSION_CLOSE: {
-            closeSession(transfer, id, sessionId);
+            closeSession(packetId, sessionId);
             break;
         }
         case Session.SESSION_CANCEL_STATEMENT: {
-            int statementId = transfer.readInt();
+            int statementId = in.readInt();
             PreparedStatement command = (PreparedStatement) cache.getObject(statementId, false);
             if (command != null) {
                 command.cancel();
@@ -859,33 +877,34 @@ public class TcpServerConnection extends TransferConnection {
                 lobs = SmallLRUCache.newInstance(
                         Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
             }
-            long lobId = transfer.readLong();
-            byte[] hmac = transfer.readBytes();
-            CachedInputStream in = lobs.get(lobId);
-            if (in == null) {
-                in = new CachedInputStream(null);
-                lobs.put(lobId, in);
+            long lobId = in.readLong();
+            byte[] hmac = in.readBytes();
+            CachedInputStream cachedInputStream = lobs.get(lobId);
+            if (cachedInputStream == null) {
+                cachedInputStream = new CachedInputStream(null);
+                lobs.put(lobId, cachedInputStream);
             }
-            long offset = transfer.readLong();
-            int length = transfer.readInt();
-            transfer.verifyLobMac(hmac, lobId);
-            if (in.getPos() != offset) {
+            long offset = in.readLong();
+            int length = in.readInt();
+            TransferOutputStream out = createTransferOutputStream(session);
+            out.verifyLobMac(hmac, lobId);
+            if (cachedInputStream.getPos() != offset) {
                 LobStorage lobStorage = session.getDataHandler().getLobStorage();
                 // only the lob id is used
                 ValueLob lob = ValueLob.create(Value.BLOB, null, -1, lobId, hmac, -1);
                 InputStream lobIn = lobStorage.getInputStream(lob, hmac, -1);
-                in = new CachedInputStream(lobIn);
-                lobs.put(lobId, in);
+                cachedInputStream = new CachedInputStream(lobIn);
+                lobs.put(lobId, cachedInputStream);
                 lobIn.skip(offset);
             }
             // limit the buffer size
             length = Math.min(16 * Constants.IO_BUFFER_SIZE, length);
             byte[] buff = new byte[length];
-            length = IOUtils.readFully(in, buff, length);
-            transfer.writeResponseHeader(id, Session.STATUS_OK);
-            transfer.writeInt(length);
-            transfer.writeBytes(buff, 0, length);
-            transfer.flush();
+            length = IOUtils.readFully(cachedInputStream, buff, length);
+            out.writeResponseHeader(packetId, Session.STATUS_OK);
+            out.writeInt(length);
+            out.writeBytes(buff, 0, length);
+            out.flush();
             break;
         }
         default:

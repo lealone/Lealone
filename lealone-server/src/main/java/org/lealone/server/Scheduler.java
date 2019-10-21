@@ -33,7 +33,7 @@ import org.lealone.db.Session;
 import org.lealone.db.SessionStatus;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
-import org.lealone.net.Transfer;
+import org.lealone.net.TransferConnection;
 import org.lealone.sql.PreparedStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
@@ -46,17 +46,17 @@ public class Scheduler extends Thread
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
     static class PreparedCommand {
-        private final Transfer transfer;
-        private final int id;
+        private final TransferConnection conn;
+        private final int packetId;
         private final Session session;
         private final PreparedStatement stmt;
         private final PreparedStatement.Yieldable<?> yieldable;
         private final SessionInfo si;
 
-        PreparedCommand(Transfer transfer, int id, Session session, PreparedStatement stmt,
+        PreparedCommand(TransferConnection conn, int packetId, Session session, PreparedStatement stmt,
                 PreparedStatement.Yieldable<?> yieldable, SessionInfo si) {
-            this.transfer = transfer;
-            this.id = id;
+            this.conn = conn;
+            this.packetId = packetId;
             this.session = session;
             this.stmt = stmt;
             this.yieldable = yieldable;
@@ -282,7 +282,7 @@ public class Scheduler extends Thread
                 }
                 last = c;
             } catch (Throwable e) {
-                c.transfer.getTransferConnection().sendError(c.transfer, c.id, e);
+                c.conn.sendError(c.session, c.packetId, e);
             }
         }
     }
@@ -305,7 +305,7 @@ public class Scheduler extends Thread
             try {
                 c.execute();
             } catch (Throwable e) {
-                c.transfer.getTransferConnection().sendError(c.transfer, c.id, e);
+                c.conn.sendError(c.session, c.packetId, e);
             }
         }
 

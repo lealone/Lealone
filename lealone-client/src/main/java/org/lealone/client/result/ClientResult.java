@@ -15,8 +15,8 @@ import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.net.AsyncCallback;
-import org.lealone.net.Transfer;
+import org.lealone.net.TransferInputStream;
+import org.lealone.net.TransferOutputStream;
 
 /**
  * The client side part of a result set that is kept on the server.
@@ -30,7 +30,7 @@ public abstract class ClientResult implements Result {
 
     protected int fetchSize;
     protected ClientSession session;
-    protected Transfer transfer;
+    protected TransferInputStream in;
     protected int id;
     protected final ClientResultColumn[] columns;
     protected Value[] currentRow;
@@ -38,15 +38,15 @@ public abstract class ClientResult implements Result {
     protected int rowId, rowOffset;
     protected ArrayList<Value[]> result;
 
-    public ClientResult(ClientSession session, Transfer transfer, int id, int columnCount, int rowCount, int fetchSize)
-            throws IOException {
+    public ClientResult(ClientSession session, TransferInputStream in, int id, int columnCount, int rowCount,
+            int fetchSize) throws IOException {
         this.session = session;
-        this.transfer = transfer;
+        this.in = in;
         this.id = id;
         this.columns = new ClientResultColumn[columnCount];
         this.rowCount = rowCount;
         for (int i = 0; i < columnCount; i++) {
-            columns[i] = new ClientResultColumn(transfer);
+            columns[i] = new ClientResultColumn(in);
         }
         rowId = -1;
         result = Utils.newSmallArrayList();
@@ -119,7 +119,7 @@ public abstract class ClientResult implements Result {
         session.checkClosed();
         try {
             session.traceOperation("RESULT_RESET", id);
-            transfer.writeRequestHeader(id, Session.RESULT_RESET).flush();
+            session.newOut().writeRequestHeader(id, Session.RESULT_RESET).flush();
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);
         }
@@ -152,23 +152,19 @@ public abstract class ClientResult implements Result {
         // TODO result sets: no reset possible for larger remote result sets
         try {
             session.traceOperation("RESULT_CLOSE", id);
-            transfer.writeRequestHeader(id, Session.RESULT_CLOSE).flush();
+            session.newOut().writeRequestHeader(id, Session.RESULT_CLOSE).flush();
         } catch (IOException e) {
             session.getTrace().error(e, "close");
         } finally {
-            transfer = null;
             session = null;
         }
     }
 
     protected void sendFetch(int fetchSize) throws IOException {
+        TransferOutputStream out = session.newOut();
         session.traceOperation("RESULT_FETCH_ROWS", id);
-        transfer.writeRequestHeader(id, Session.RESULT_FETCH_ROWS).writeInt(fetchSize);
-
-        AsyncCallback<Void> ac = new AsyncCallback<>();
-        transfer.addAsyncCallback(id, ac);
-        transfer.flush();
-        ac.await();
+        out.writeRequestHeader(id, Session.RESULT_FETCH_ROWS).writeInt(fetchSize);
+        out.flushAndAwait(id, session.getNetworkTimeout());
     }
 
     @Override
@@ -186,7 +182,7 @@ public abstract class ClientResult implements Result {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
                 session.traceOperation("CHANGE_ID", id);
-                transfer.writeRequestHeader(id, Session.RESULT_CHANGE_ID).writeInt(newId).flush();
+                session.newOut().writeRequestHeader(id, Session.RESULT_CHANGE_ID).writeInt(newId).flush();
                 id = newId;
                 // TODO remote result set: very old result sets may be
                 // already removed on the server (theoretically) - how to

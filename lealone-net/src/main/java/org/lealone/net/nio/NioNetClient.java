@@ -17,11 +17,9 @@
  */
 package org.lealone.net.nio;
 
-import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
@@ -32,13 +30,11 @@ import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ShutdownHookUtils;
-import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetClientBase;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.TcpClientConnection;
-import org.lealone.net.Transfer;
 
 public class NioNetClient extends NetClientBase implements NioEventLoop {
 
@@ -82,7 +78,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
                         if (key.isValid()) {
                             int readyOps = key.readyOps();
                             if ((readyOps & SelectionKey.OP_READ) != 0) {
-                                read(key);
+                                read(key, this);
                             } else if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                                 write(key);
                             } else if ((readyOps & SelectionKey.OP_CONNECT) != 0) {
@@ -101,83 +97,8 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
                 if (isClosed())
                     break;
             } catch (Throwable e) {
-                logger.warn(Thread.currentThread().getName() + " run exception: " + e.getMessage());
+                logger.warn(Thread.currentThread().getName() + " run exception: " + e.getMessage(), e);
             }
-        }
-    }
-
-    // 交由上层去解析协议包是否完整收到更好一点，因为这里假设前4个字节是包的长度，网络层不应该关心具体协议格式
-    @Deprecated
-    static ByteBuffer handle(ByteBuffer buffer, ByteBuffer lastBuffer, AsyncConnection conn) throws EOFException {
-        if (lastBuffer != null) {
-            ByteBuffer buffer2 = ByteBuffer.allocate(lastBuffer.limit() + buffer.limit());
-            buffer2.put(lastBuffer).put(buffer);
-            buffer2.flip();
-            buffer = buffer2;
-        }
-        while (buffer.hasRemaining()) {
-            int remaining = buffer.remaining();
-            if (remaining > 4) {
-                int pos = buffer.position();
-                int length = 0;
-                int ch1 = buffer.get(pos) & 0xff;
-                int ch2 = buffer.get(pos + 1) & 0xff;
-                int ch3 = buffer.get(pos + 2) & 0xff;
-                int ch4 = buffer.get(pos + 3) & 0xff;
-                if ((ch1 | ch2 | ch3 | ch4) < 0)
-                    throw new EOFException();
-                length = ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
-                if (remaining >= 4 + length) {
-                    byte[] bytes = new byte[length + 4];
-                    buffer.get(bytes);
-                    ByteBuffer buffer2 = ByteBuffer.wrap(bytes);
-                    NioBuffer nioBuffer = new NioBuffer(DataBuffer.create(buffer2));
-                    conn.handle(nioBuffer);
-                } else {
-                    ByteBuffer buffer2 = ByteBuffer.allocate(remaining);
-                    buffer2.put(buffer);
-                    buffer2.flip();
-                    return buffer2;
-                }
-            } else {
-                ByteBuffer buffer2 = ByteBuffer.allocate(remaining);
-                buffer2.put(buffer);
-                buffer2.flip();
-                return buffer2;
-            }
-        }
-        return null;
-    }
-
-    private void read(SelectionKey key) {
-        Attachment attachment = (Attachment) key.attachment();
-        AsyncConnection conn = attachment.conn;
-        SocketChannel channel = (SocketChannel) key.channel();
-        try {
-            while (true) {
-                DataBuffer dataBuffer = DataBuffer.create(Transfer.BUFFER_SIZE);
-                ByteBuffer buffer = dataBuffer.getBuffer();
-                int count = channel.read(buffer);
-                if (count > 0) {
-                    attachment.endOfStreamCount = 0;
-                } else {
-                    // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
-                    // netty框架在下面这个方法的代码中有自己的不同解决方案
-                    // io.netty.channel.nio.NioEventLoop.processSelectedKey
-                    if (count < 0) {
-                        attachment.endOfStreamCount++;
-                        if (attachment.endOfStreamCount > 3) {
-                            closeChannel(channel);
-                        }
-                    }
-                    break;
-                }
-                buffer.flip();
-                NioBuffer nioBuffer = new NioBuffer(dataBuffer);
-                conn.handle(nioBuffer);
-            }
-        } catch (IOException e) {
-            closeChannel(channel);
         }
     }
 
@@ -186,7 +107,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         if (!channel.isConnectionPending())
             return;
 
-        Attachment attachment = (Attachment) att;
+        ClientAttachment attachment = (ClientAttachment) att;
         AsyncConnection conn;
         try {
             channel.finishConnect();
@@ -206,12 +127,10 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         }
     }
 
-    private static class Attachment {
+    private static class ClientAttachment extends NioNetServer.Attachment {
         AsyncConnectionManager connectionManager;
         InetSocketAddress inetSocketAddress;
         CountDownLatch latch;
-        AsyncConnection conn;
-        int endOfStreamCount;
     }
 
     @Override
@@ -246,7 +165,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             socket.setTcpNoDelay(true);
             socket.setKeepAlive(true);
 
-            Attachment attachment = new Attachment();
+            ClientAttachment attachment = new ClientAttachment();
             attachment.connectionManager = connectionManager;
             attachment.inetSocketAddress = inetSocketAddress;
             attachment.latch = latch;
@@ -275,5 +194,10 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         } catch (Exception e1) {
         }
         nioEventLoopAdapter.closeChannel(channel);
+    }
+
+    @Override
+    public void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
+        closeChannel(channel);
     }
 }

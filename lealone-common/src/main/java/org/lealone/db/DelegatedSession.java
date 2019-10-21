@@ -129,6 +129,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public void checkClosed() {
+        session.checkClosed();
+    }
+
+    @Override
     public int getModificationId() {
         return session.getModificationId();
     }
@@ -174,13 +179,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public Session connect() {
-        return session.connect();
-    }
-
-    @Override
-    public Session connect(boolean first) {
-        return session.connect(first);
+    public Session connect(boolean allowRedirect) {
+        return session.connect(allowRedirect);
     }
 
     @Override

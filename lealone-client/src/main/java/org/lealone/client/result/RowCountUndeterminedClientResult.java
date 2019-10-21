@@ -22,7 +22,7 @@ import java.io.IOException;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.Value;
-import org.lealone.net.Transfer;
+import org.lealone.net.TransferInputStream;
 
 public class RowCountUndeterminedClientResult extends ClientResult {
 
@@ -30,9 +30,9 @@ public class RowCountUndeterminedClientResult extends ClientResult {
     // 如果初始化为false，相当于在调用完super(...)后再执行isEnd = false，这时前面的值就被覆盖了。
     private boolean isEnd;
 
-    public RowCountUndeterminedClientResult(ClientSession session, Transfer transfer, int id, int columnCount,
+    public RowCountUndeterminedClientResult(ClientSession session, TransferInputStream in, int id, int columnCount,
             int fetchSize) throws IOException {
-        super(session, transfer, id, columnCount, -1, fetchSize);
+        super(session, in, id, columnCount, -1, fetchSize);
     }
 
     @Override
@@ -73,7 +73,7 @@ public class RowCountUndeterminedClientResult extends ClientResult {
                 sendFetch(fetchSize);
             }
             for (int r = 0; r < fetchSize; r++) {
-                boolean row = transfer.readBoolean();
+                boolean row = in.readBoolean();
                 if (!row) {
                     isEnd = true;
                     break;
@@ -81,7 +81,7 @@ public class RowCountUndeterminedClientResult extends ClientResult {
                 int len = columns.length;
                 Value[] values = new Value[len];
                 for (int i = 0; i < len; i++) {
-                    Value v = transfer.readValue();
+                    Value v = in.readValue();
                     values[i] = v;
                 }
                 result.add(values);

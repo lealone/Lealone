@@ -40,11 +40,11 @@ public class TcpClientConnection extends TransferConnection {
     private final ConcurrentHashMap<Integer, Session> sessions = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, AsyncCallback<?>> callbackMap = new ConcurrentHashMap<>();
     private final AtomicInteger nextId = new AtomicInteger(0);
-    private final NetClient netClient;
+    // private final NetClient netClient;
 
     public TcpClientConnection(WritableChannel writableChannel, NetClient netClient) {
         super(writableChannel, false);
-        this.netClient = netClient;
+        // this.netClient = netClient;
     }
 
     public int getNextId() {
@@ -52,8 +52,8 @@ public class TcpClientConnection extends TransferConnection {
     }
 
     @Override
-    protected void addAsyncCallback(int id, AsyncCallback<?> ac) {
-        callbackMap.put(id, ac);
+    public void addAsyncCallback(int packetId, AsyncCallback<?> ac) {
+        callbackMap.put(packetId, ac);
     }
 
     @Override
@@ -79,57 +79,53 @@ public class TcpClientConnection extends TransferConnection {
 
     public Session removeSession(int sessionId) {
         Session session = sessions.remove(sessionId);
-        if (netClient != null && sessions.isEmpty()) {
-            netClient.removeConnection(inetSocketAddress);
-        }
+        // 不在这里删除连接，这会导致很多问题
+        // if (netClient != null && sessions.isEmpty()) {
+        // netClient.removeConnection(inetSocketAddress);
+        // }
         return session;
     }
 
-    public Transfer createTransfer(Session session) {
-        return new Transfer(this, writableChannel, session);
+    // 以后协议修改了再使用版本号区分
+    public void setVersion(int version) {
     }
 
-    public void writeInitPacket(Session session, Transfer transfer, ConnectionInfo ci) throws Exception {
+    public void writeInitPacket(final Session session) throws Exception {
         checkClosed();
-        int id = session.getNextId();
-        transfer.setSSL(ci.isSSL());
-        transfer.writeRequestHeader(id, Session.SESSION_INIT);
-        transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
-        transfer.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
-        transfer.writeString(ci.getDatabaseShortName());
-        transfer.writeString(ci.getURL()); // 不带参数的URL
-        transfer.writeString(ci.getUserName());
-        transfer.writeBytes(ci.getUserPasswordHash());
-        transfer.writeBytes(ci.getFilePasswordHash());
-        transfer.writeBytes(ci.getFileEncryptionKey());
+        ConnectionInfo ci = session.getConnectionInfo();
+        int packetId = getNextId();
+        TransferOutputStream out = createTransferOutputStream(session);
+        out.setSSL(ci.isSSL());
+        out.writeRequestHeader(packetId, Session.SESSION_INIT);
+        out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
+        out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
+        out.writeString(ci.getDatabaseShortName());
+        out.writeString(ci.getURL()); // 不带参数的URL
+        out.writeString(ci.getUserName());
+        out.writeBytes(ci.getUserPasswordHash());
+        out.writeBytes(ci.getFilePasswordHash());
+        out.writeBytes(ci.getFileEncryptionKey());
         String[] keys = ci.getKeys();
-        transfer.writeInt(keys.length);
+        out.writeInt(keys.length);
         for (String key : keys) {
-            transfer.writeString(key).writeString(ci.getProperty(key));
+            out.writeString(key).writeString(ci.getProperty(key));
         }
-        AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+        out.flushAndAwait(packetId, ci.getNetworkTimeout(), new AsyncCallback<Void>() {
             @Override
-            public void runInternal() {
-                try {
-                    int clientVersion = transfer.readInt();
-                    transfer.setVersion(clientVersion);
-                    boolean autoCommit = transfer.readBoolean();
-                    session.setAutoCommit(autoCommit);
-                    session.setTargetEndpoints(transfer.readString());
-                    session.setRunMode(RunMode.valueOf(transfer.readString()));
-                    session.setInvalid(transfer.readBoolean());
-                } catch (IOException e) {
-                    throw DbException.convert(e);
-                }
+            public void runInternal(TransferInputStream in) throws Exception {
+                int clientVersion = in.readInt();
+                setVersion(clientVersion);
+                boolean autoCommit = in.readBoolean();
+                session.setAutoCommit(autoCommit);
+                session.setTargetEndpoints(in.readString());
+                session.setRunMode(RunMode.valueOf(in.readString()));
+                session.setInvalid(in.readBoolean());
             }
-        };
-        transfer.addAsyncCallback(id, ac);
-        transfer.flush();
-        ac.await(ci.getNetworkTimeout());
+        });
     }
 
     @Override
-    protected void handleResponse(Transfer transfer, int id, int status) throws IOException {
+    protected void handleResponse(TransferInputStream in, int packetId, int status) throws IOException {
         checkClosed();
         String newTargetEndpoints = null;
         Session session = null;
@@ -137,20 +133,20 @@ public class TcpClientConnection extends TransferConnection {
         if (status == Session.STATUS_OK) {
             // ok
         } else if (status == Session.STATUS_ERROR) {
-            e = parseError(transfer);
+            e = parseError(in);
         } else if (status == Session.STATUS_CLOSED) {
-            transfer = null;
+            in = null;
         } else if (status == Session.STATUS_RUN_MODE_CHANGED) {
-            int sessionId = transfer.readInt();
+            int sessionId = in.readInt();
             session = getSession(sessionId);
-            newTargetEndpoints = transfer.readString();
+            newTargetEndpoints = in.readString();
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
 
-        AsyncCallback<?> ac = callbackMap.remove(id);
+        AsyncCallback<?> ac = callbackMap.remove(packetId);
         if (ac == null) {
-            String msg = "Async callback is null, may be a bug! id = " + id;
+            String msg = "Async callback is null, may be a bug! packetId = " + packetId;
             if (e != null) {
                 logger.warn(msg, e);
             } else {
@@ -160,7 +156,7 @@ public class TcpClientConnection extends TransferConnection {
         }
         if (e != null)
             ac.setDbException(e);
-        ac.run(transfer);
+        ac.run(in);
         if (newTargetEndpoints != null)
             session.runModeChanged(newTargetEndpoints);
     }

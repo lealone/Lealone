@@ -33,7 +33,7 @@ public class NioBufferFactory implements NetBufferFactory {
 
     @Override
     public NioBuffer createBuffer(int initialSizeHint) {
-        return new NioBuffer(DataBuffer.create(initialSizeHint));
+        return new NioBuffer(DataBuffer.create());
     }
 
 }

@@ -83,7 +83,7 @@ public abstract class NetClientBase implements NetClient {
 
     @Override
     public void removeConnection(InetSocketAddress inetSocketAddress) {
-        checkClosed();
+        // checkClosed(); //不做检查
         AsyncConnection conn = asyncConnections.remove(inetSocketAddress);
         if (conn != null && !conn.isClosed())
             conn.close();
@@ -108,7 +108,6 @@ public abstract class NetClientBase implements NetClient {
     public void close() {
         if (!closed.compareAndSet(false, true))
             return;
-        opened.set(false);
         for (AsyncConnection conn : asyncConnections.values()) {
             try {
                 conn.close();
@@ -117,6 +116,7 @@ public abstract class NetClientBase implements NetClient {
         }
         asyncConnections.clear();
         closeInternal();
+        opened.set(false);
     }
 
     protected void checkClosed() {

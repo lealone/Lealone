@@ -728,6 +728,9 @@ public class ConnectionInfo implements Cloneable {
         ci.servers = newServer;
         ci.sessionFactory = sessionFactory;
         ci.persistent = persistent;
+        ci.netFactoryName = netFactoryName;
+        ci.networkTimeout = networkTimeout;
+        ci.traceEnabled = traceEnabled;
         return ci;
     }
 
@@ -741,6 +744,10 @@ public class ConnectionInfo implements Cloneable {
 
     public boolean isTraceEnabled() {
         return traceEnabled;
+    }
+
+    public boolean isTraceDisabled() {
+        return !traceEnabled;
     }
 
     public void initTraceProperty() {

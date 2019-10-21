@@ -30,8 +30,12 @@ public class NioBuffer implements NetBuffer {
         this.dataBuffer = dataBuffer;
     }
 
-    public ByteBuffer getByteBuffer() {
+    public ByteBuffer getAndFlipBuffer() {
         return dataBuffer.getAndFlipBuffer();
+    }
+
+    public ByteBuffer getByteBuffer() {
+        return dataBuffer.getBuffer();
     }
 
     @Override
@@ -101,6 +105,17 @@ public class NioBuffer implements NetBuffer {
     @Override
     public NioBuffer setByte(int pos, byte b) {
         dataBuffer.putByte(pos, b);
+        return this;
+    }
+
+    @Override
+    public void recycle() {
+        dataBuffer.close();
+    }
+
+    @Override
+    public NioBuffer flip() {
+        dataBuffer.getAndFlipBuffer();
         return this;
     }
 }

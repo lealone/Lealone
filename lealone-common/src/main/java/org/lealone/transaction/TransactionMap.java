@@ -80,6 +80,8 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public void addIfAbsent(K key, V value, Transaction.Listener listener);
 
+    public K append(V value, Transaction.Listener listener);
+
     public default boolean tryUpdate(K key, V newValue) {
         Object oldTransactionalValue = getTransactionalValue(key);
         return tryUpdate(key, newValue, null, oldTransactionalValue);

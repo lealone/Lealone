@@ -22,22 +22,14 @@ import java.nio.ByteBuffer;
 
 import org.lealone.storage.PageKey;
 
-public interface NetSerializer {
+public interface NetOutputStream {
 
-    NetSerializer writeInt(int x) throws IOException;
+    NetOutputStream writeInt(int x) throws IOException;
 
-    NetSerializer writeString(String s) throws IOException;
+    NetOutputStream writeString(String s) throws IOException;
 
-    NetSerializer writeByteBuffer(ByteBuffer data) throws IOException;
+    NetOutputStream writeByteBuffer(ByteBuffer data) throws IOException;
 
-    NetSerializer writePageKey(PageKey pk) throws IOException;
-
-    int readInt() throws IOException;
-
-    String readString() throws IOException;
-
-    ByteBuffer readByteBuffer() throws IOException;
-
-    PageKey readPageKey() throws IOException;
+    NetOutputStream writePageKey(PageKey pk) throws IOException;
 
 }

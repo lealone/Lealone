@@ -27,8 +27,9 @@ import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.db.Session;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetEndpoint;
-import org.lealone.net.Transfer;
 import org.lealone.net.TransferConnection;
+import org.lealone.net.TransferInputStream;
+import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.server.ClusterMetaData;
@@ -52,14 +53,14 @@ public class P2pConnection extends TransferConnection {
     }
 
     @Override
-    protected void handleRequest(Transfer transfer, int id, int operation) throws IOException {
+    protected void handleRequest(TransferInputStream in, int packetId, int operation) throws IOException {
         switch (operation) {
         case Session.SESSION_INIT: {
-            readInitPacket(transfer, id);
+            readInitPacket(in, packetId);
             break;
         }
         case Session.COMMAND_P2P_MESSAGE: {
-            receiveMessage(transfer, id);
+            receiveMessage(in, packetId);
             break;
         }
         default:
@@ -82,22 +83,22 @@ public class P2pConnection extends TransferConnection {
 
     private void writeInitPacket(String localHostAndPort) throws Exception {
         int packetId = 0;
-        Transfer transfer = new Transfer(this, writableChannel);
-        transfer.writeRequestHeaderWithoutSessionId(packetId, Session.SESSION_INIT);
-        transfer.writeInt(MessagingService.PROTOCOL_MAGIC);
-        transfer.writeInt(version);
-        transfer.writeString(localHostAndPort);
+        TransferOutputStream transferOut = createTransferOutputStream(null);
+        transferOut.writeRequestHeaderWithoutSessionId(packetId, Session.SESSION_INIT);
+        transferOut.writeInt(MessagingService.PROTOCOL_MAGIC);
+        transferOut.writeInt(version);
+        transferOut.writeString(localHostAndPort);
         // AsyncCallback<Void> ac = new AsyncCallback<>();
         // transfer.addAsyncCallback(packetId, ac);
-        transfer.flush();
+        transferOut.flush();
         // ac.await();
     }
 
-    private void readInitPacket(Transfer transfer, int packetId) {
+    private void readInitPacket(TransferInputStream in, int packetId) {
         try {
-            MessagingService.validateMagic(transfer.readInt());
-            version = transfer.readInt();
-            hostAndPort = transfer.readString();
+            MessagingService.validateMagic(in.readInt());
+            version = in.readInt();
+            hostAndPort = in.readString();
             remoteEndpoint = NetEndpoint.createP2P(hostAndPort);
             resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
             // metrics = new ConnectionMetrics(remoteEndpoint);
@@ -105,7 +106,7 @@ public class P2pConnection extends TransferConnection {
             // transfer.flush();
             MessagingService.instance().addConnection(this);
         } catch (Throwable e) {
-            sendError(transfer, packetId, e);
+            sendError(null, packetId, e);
         }
     }
 
@@ -121,19 +122,19 @@ public class P2pConnection extends TransferConnection {
     // 不需要加synchronized，因为会创建新的临时DataOutputStream
     private void sendMessage(MessageOut<?> message, int id, long timestamp) throws IOException {
         checkClosed();
-        Transfer transfer = new Transfer(this, writableChannel);
-        DataOutputStream out = transfer.getDataOutputStream();
-        transfer.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_P2P_MESSAGE);
+        TransferOutputStream transferOut = createTransferOutputStream(null);
+        DataOutputStream out = transferOut.getDataOutputStream();
+        transferOut.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_P2P_MESSAGE);
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
 
         // int cast cuts off the high-order half of the timestamp, which we can assume remains
         // the same between now and when the recipient reconstructs it.
         out.writeInt((int) timestamp);
-        message.serialize(transfer, out, version);
-        transfer.flush();
+        message.serialize(transferOut, out, version);
+        transferOut.flush();
     }
 
-    private void receiveMessage(Transfer transfer, int id) throws IOException {
+    private void receiveMessage(TransferInputStream transfer, int packetId) throws IOException {
         DataInputStream in = transfer.getDataInputStream();
         MessagingService.validateMagic(in.readInt());
         long timestamp = System.currentTimeMillis();
@@ -142,9 +143,9 @@ public class P2pConnection extends TransferConnection {
         if (ConfigDescriptor.hasCrossNodeTimeout())
             timestamp = (timestamp & 0xFFFFFFFF00000000L) | (((partial & 0xFFFFFFFFL) << 2) >> 2);
 
-        MessageIn<?> message = MessageIn.read(in, version, id);
+        MessageIn<?> message = MessageIn.read(in, version, packetId);
         if (message != null) {
-            MessageDeliveryTask task = new MessageDeliveryTask(message, id, timestamp);
+            MessageDeliveryTask task = new MessageDeliveryTask(message, packetId, timestamp);
             AsyncTaskHandlerFactory.getAsyncTaskHandler().handle(task);
             // LealoneExecutorService stage = StageManager.getStage(message.getMessageType());
             // assert stage != null : "No stage for message type " + message.verb;

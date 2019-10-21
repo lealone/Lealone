@@ -29,26 +29,24 @@ import org.lealone.db.Session;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
-import org.lealone.net.Transfer;
+import org.lealone.net.TransferInputStream;
+import org.lealone.net.TransferOutputStream;
 
 public class ClientBatchCommand implements Command {
+
     private ClientSession session;
-    private Transfer transfer;
     private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
     private ArrayList<Value[]> batchParameters; // 对应JdbcPreparedStatement.executeBatch()
     private int id = -1;
     private int[] result;
 
-    public ClientBatchCommand(ClientSession session, Transfer transfer, ArrayList<String> batchCommands) {
+    public ClientBatchCommand(ClientSession session, ArrayList<String> batchCommands) {
         this.session = session;
-        this.transfer = transfer;
         this.batchCommands = batchCommands;
     }
 
-    public ClientBatchCommand(ClientSession session, Transfer transfer, Command preparedCommand,
-            ArrayList<Value[]> batchParameters) {
+    public ClientBatchCommand(ClientSession session, Command preparedCommand, ArrayList<Value[]> batchParameters) {
         this.session = session;
-        this.transfer = transfer;
         this.batchParameters = batchParameters;
 
         if (preparedCommand instanceof ClientCommand)
@@ -91,31 +89,32 @@ public class ClientBatchCommand implements Command {
             id = session.getNextId();
 
         try {
+            TransferOutputStream out = session.newOut();
             if (batchCommands != null) {
                 session.traceOperation("COMMAND_BATCH_STATEMENT_UPDATE", id);
-                transfer.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_UPDATE);
+                out.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_UPDATE);
                 int size = batchCommands.size();
                 result = new int[size];
-                transfer.writeInt(size);
+                out.writeInt(size);
                 for (int i = 0; i < size; i++) {
-                    transfer.writeString(batchCommands.get(i));
+                    out.writeString(batchCommands.get(i));
                 }
-                getResultAsync();
+                getResultAsync(out);
             } else {
                 session.traceOperation("COMMAND_BATCH_STATEMENT_PREPARED_UPDATE", id);
-                transfer.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE);
+                out.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE);
                 int size = batchParameters.size();
                 result = new int[size];
-                transfer.writeInt(size);
+                out.writeInt(size);
                 Value[] values;
                 int len;
                 for (int i = 0; i < size; i++) {
                     values = batchParameters.get(i);
                     len = values.length;
                     for (int m = 0; m < len; m++)
-                        transfer.writeValue(values[m]);
+                        out.writeValue(values[m]);
                 }
-                getResultAsync();
+                getResultAsync(out);
             }
         } catch (IOException e) {
             session.handleException(e);
@@ -124,21 +123,14 @@ public class ClientBatchCommand implements Command {
         return 0;
     }
 
-    private void getResultAsync() throws IOException {
-        AsyncCallback<Void> ac = new AsyncCallback<Void>() {
+    private void getResultAsync(TransferOutputStream out) throws IOException {
+        out.flushAndAwait(id, session.getNetworkTimeout(), new AsyncCallback<Void>() {
             @Override
-            public void runInternal() {
-                try {
-                    for (int i = 0, size = ClientBatchCommand.this.result.length; i < size; i++)
-                        ClientBatchCommand.this.result[i] = transfer.readInt();
-                } catch (IOException e) {
-                    throw DbException.convert(e);
-                }
+            public void runInternal(TransferInputStream in) throws Exception {
+                for (int i = 0, size = ClientBatchCommand.this.result.length; i < size; i++)
+                    ClientBatchCommand.this.result[i] = in.readInt();
             }
-        };
-        transfer.addAsyncCallback(id, ac);
-        transfer.flush();
-        ac.await();
+        });
     }
 
     @Override
@@ -148,12 +140,11 @@ public class ClientBatchCommand implements Command {
         }
         session.traceOperation("COMMAND_CLOSE", id);
         try {
-            transfer.writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
+            session.newOut().writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
         } catch (IOException e) {
             session.getTrace().error(e, "close");
         }
         session = null;
-        transfer = null;
 
         if (batchCommands != null) {
             batchCommands.clear();
@@ -180,5 +171,4 @@ public class ClientBatchCommand implements Command {
     public int[] getResult() {
         return result;
     }
-
 }

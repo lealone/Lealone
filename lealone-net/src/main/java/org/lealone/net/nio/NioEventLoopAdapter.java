@@ -31,11 +31,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.lealone.common.logging.Logger;
+import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DateTimeUtils;
+import org.lealone.db.DataBuffer;
+import org.lealone.net.AsyncConnection;
+import org.lealone.net.nio.NioNetServer.Attachment;
 
 public class NioEventLoopAdapter implements NioEventLoop {
 
-    private final ConcurrentHashMap<SocketChannel, ConcurrentLinkedQueue<ByteBuffer>> channels = new ConcurrentHashMap<>();
+    private static final Logger logger = LoggerFactory.getLogger(NioEventLoopAdapter.class);
+
+    private final ConcurrentHashMap<SocketChannel, ConcurrentLinkedQueue<NioBuffer>> channels = new ConcurrentHashMap<>();
 
     private final AtomicBoolean selecting = new AtomicBoolean(false);
     private Selector selector;
@@ -98,23 +105,21 @@ public class NioEventLoopAdapter implements NioEventLoop {
 
     @Override
     public void addSocketChannel(SocketChannel channel) {
-        ConcurrentLinkedQueue<ByteBuffer> queue = new ConcurrentLinkedQueue<>();
-        channels.putIfAbsent(channel, queue);
+        channels.putIfAbsent(channel, new ConcurrentLinkedQueue<>());
     }
 
     @Override
     public void addNioBuffer(SocketChannel channel, NioBuffer nioBuffer) {
-        ConcurrentLinkedQueue<ByteBuffer> queue = channels.get(channel);
+        ConcurrentLinkedQueue<NioBuffer> queue = channels.get(channel);
         if (queue != null) {
-            ByteBuffer buffer = nioBuffer.getByteBuffer();
-            queue.add(buffer);
+            queue.add(nioBuffer);
             wakeup();
         }
     }
 
     @Override
     public void tryRegisterWriteOperation(Selector selector) {
-        for (Entry<SocketChannel, ConcurrentLinkedQueue<ByteBuffer>> entry : channels.entrySet()) {
+        for (Entry<SocketChannel, ConcurrentLinkedQueue<NioBuffer>> entry : channels.entrySet()) {
             if (!entry.getValue().isEmpty()) {
                 for (SelectionKey key : selector.keys()) {
                     if (key.channel() == entry.getKey() && key.isValid()) {
@@ -126,22 +131,80 @@ public class NioEventLoopAdapter implements NioEventLoop {
         }
     }
 
+    private long totalReadBytes;
+    private long totalWrittenBytes;
+    private final boolean isDebugEnabled = logger.isDebugEnabled();
+
+    @Override
+    public void read(SelectionKey key, NioEventLoop nioEventLoop) {
+        Attachment attachment = (Attachment) key.attachment();
+        AsyncConnection conn = attachment.conn;
+        SocketChannel channel = (SocketChannel) key.channel();
+        try {
+            while (true) {
+                DataBuffer dataBuffer = DataBuffer.create();
+                ByteBuffer buffer = dataBuffer.getBuffer();
+                int capacity = dataBuffer.capacity();
+                int readBytes = channel.read(buffer);
+                if (readBytes > 0) {
+                    attachment.endOfStreamCount = 0;
+                } else {
+                    // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
+                    // netty框架在下面这个方法的代码中有自己的不同解决方案
+                    // io.netty.channel.nio.NioEventLoop.processSelectedKey
+                    if (readBytes < 0) {
+                        attachment.endOfStreamCount++;
+                        if (attachment.endOfStreamCount > 3) {
+                            closeChannel(channel);
+                        }
+                    }
+                    break;
+                }
+                buffer.flip();
+                if (isDebugEnabled) {
+                    totalReadBytes += readBytes;
+                    logger.debug(("total read bytes: " + totalReadBytes));
+                }
+                NioBuffer nioBuffer = new NioBuffer(dataBuffer);
+                conn.handle(nioBuffer);
+                // 说明没读满，可以直接退出循环了
+                if (readBytes < capacity)
+                    break;
+            }
+        } catch (Exception e) {
+            nioEventLoop.handleException(conn, channel, e);
+        }
+    }
+
     @Override
     public void write(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
         try {
-            Queue<ByteBuffer> queue = channels.get(channel);
-            outer: for (ByteBuffer buffer : queue) {
+            Queue<NioBuffer> queue = channels.get(channel);
+            for (NioBuffer nioBuffer : queue) {
+                ByteBuffer buffer = nioBuffer.getByteBuffer();
+                int remaining = buffer.remaining();
                 // 一定要用while循环来写，否则会丢数据！
-                while (buffer.hasRemaining()) {
-                    if (channel.write(buffer) <= 0)
-                        break outer;
+                while (remaining > 0) {
+                    int writtenBytes = channel.write(buffer);
+                    if (writtenBytes <= 0) {
+                        if (key.isValid()) {
+                            key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+                        }
+                        return;
+                    }
+                    remaining -= writtenBytes;
+                    if (isDebugEnabled) {
+                        totalWrittenBytes += writtenBytes;
+                        logger.debug(("total written bytes: " + totalWrittenBytes));
+                    }
                 }
-                if (!buffer.hasRemaining()) {
-                    queue.remove(buffer);
-                }
+                queue.remove(nioBuffer);
+                nioBuffer.recycle();
             }
-            if (queue.isEmpty()) {
+
+            // 还是要检测key是否是有效的，否则会抛CancelledKeyException
+            if (queue.isEmpty() && key.isValid()) {
                 int ops = key.interestOps();
                 ops &= ~SelectionKey.OP_WRITE;
                 key.interestOps(ops);

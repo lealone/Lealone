@@ -79,7 +79,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private HashMap<String, Procedure> procedures;
     private boolean autoCommitAtTransactionEnd;
     private volatile long cancelAt;
-    private boolean closed;
     private final long sessionStart = System.currentTimeMillis();
     private long transactionStart;
     private long currentCommandStart;
@@ -656,7 +655,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
                 cleanTempTables(true);
                 database.removeSession(this);
             } finally {
-                closed = true;
+                super.close();
             }
         }
     }
@@ -772,11 +771,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     public Value getLastScopeIdentity() {
         return lastScopeIdentity;
-    }
-
-    @Override
-    public boolean isClosed() {
-        return closed;
     }
 
     public void setThrottle(int throttle) {
@@ -1322,12 +1316,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public Session connect() {
-        return this;
-    }
-
-    @Override
-    public Session connect(boolean first) {
+    public Session connect(boolean allowRedirect) {
         return this;
     }
 
