@@ -111,10 +111,6 @@ public class TransferOutputStream implements NetOutputStream {
         // this.ssl = ssl;
     }
 
-    // 以后协议修改了再使用版本号区分
-    public void setVersion(int version) {
-    }
-
     /**
      * Write pending changes.
      */

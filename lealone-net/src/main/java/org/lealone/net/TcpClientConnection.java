@@ -86,10 +86,6 @@ public class TcpClientConnection extends TransferConnection {
         return session;
     }
 
-    // 以后协议修改了再使用版本号区分
-    public void setVersion(int version) {
-    }
-
     public void writeInitPacket(final Session session) throws Exception {
         checkClosed();
         ConnectionInfo ci = session.getConnectionInfo();
@@ -113,9 +109,9 @@ public class TcpClientConnection extends TransferConnection {
         out.flushAndAwait(packetId, ci.getNetworkTimeout(), new AsyncCallback<Void>() {
             @Override
             public void runInternal(TransferInputStream in) throws Exception {
-                int clientVersion = in.readInt();
-                setVersion(clientVersion);
+                int protocolVersion = in.readInt();
                 boolean autoCommit = in.readBoolean();
+                session.setProtocolVersion(protocolVersion);
                 session.setAutoCommit(autoCommit);
                 session.setTargetEndpoints(in.readString());
                 session.setRunMode(RunMode.valueOf(in.readString()));

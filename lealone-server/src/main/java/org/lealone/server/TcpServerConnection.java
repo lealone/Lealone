@@ -108,13 +108,13 @@ public class TcpServerConnection extends TransferConnection {
             } else {
                 clientVersion = minClientVersion;
             }
-            in.setVersion(clientVersion);
 
             ConnectionInfo ci = createConnectionInfo(in);
             Session session = createSession(ci, sessionId);
+            session.setProtocolVersion(clientVersion);
+            in.setSession(session);
 
             TransferOutputStream out = createTransferOutputStream(session);
-            in.setSession(session);
             out.writeResponseHeader(packetId, Session.STATUS_OK);
             out.writeInt(clientVersion);
             out.writeBoolean(session.isAutoCommit());

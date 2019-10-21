@@ -70,10 +70,6 @@ public class TransferInputStream implements NetInputStream {
         this.session = session;
     }
 
-    // 以后协议修改了再使用版本号区分
-    public void setVersion(int version) {
-    }
-
     public DataInputStream getDataInputStream() {
         return in;
     }
