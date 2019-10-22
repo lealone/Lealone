@@ -84,6 +84,10 @@ class RedoLog {
         return ids;
     }
 
+    int size() {
+        return currentChunk.size();
+    }
+
     void addRedoLogRecord(RedoLogRecord r) {
         currentChunk.addRedoLogRecord(r);
     }

@@ -17,11 +17,14 @@
  */
 package org.lealone.transaction.amte.log;
 
+import java.util.Map;
+
 import org.lealone.transaction.amte.AMTransaction;
 
 class NoLogSyncService extends LogSyncService {
 
-    public NoLogSyncService() {
+    NoLogSyncService(Map<String, String> config) {
+        super(config);
     }
 
     @Override

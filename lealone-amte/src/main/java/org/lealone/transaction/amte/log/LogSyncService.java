@@ -38,6 +38,8 @@ public abstract class LogSyncService extends Thread {
     protected final Semaphore haveWork = new Semaphore(1);
     protected final WaitQueue syncComplete = new WaitQueue();
 
+    // 只要达到一定的阈值就可以立即同步了
+    protected final int redoLogRecordSyncThreshold;
     protected final LinkedBlockingQueue<AMTransaction> transactions = new LinkedBlockingQueue<>();
 
     protected long syncIntervalMillis;
@@ -48,9 +50,13 @@ public abstract class LogSyncService extends Thread {
     // key: mapName, value: map key/value ByteBuffer list
     private final HashMap<String, List<ByteBuffer>> pendingRedoLog = new HashMap<>();
 
-    public LogSyncService() {
+    public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(true);
+        if (config.containsKey("redo_log_record_sync_threshold"))
+            redoLogRecordSyncThreshold = Integer.parseInt(config.get("redo_log_record_sync_threshold"));
+        else
+            redoLogRecordSyncThreshold = 100;
     }
 
     public abstract void maybeWaitForSync(RedoLogRecord r);
@@ -72,6 +78,8 @@ public abstract class LogSyncService extends Thread {
             sync();
             lastSyncedAt = syncStarted;
             syncComplete.signalAll();
+            if (redoLog.size() > redoLogRecordSyncThreshold)
+                continue;
             long now = System.currentTimeMillis();
             long sleep = syncStarted + syncIntervalMillis - now;
             if (sleep < 0)
@@ -155,7 +163,7 @@ public abstract class LogSyncService extends Thread {
         else if (LOG_SYNC_TYPE_INSTANT.equalsIgnoreCase(logSyncType))
             logSyncService = new InstantLogSyncService(config);
         else if (LOG_SYNC_TYPE_NO_SYNC.equalsIgnoreCase(logSyncType))
-            logSyncService = new NoLogSyncService();
+            logSyncService = new NoLogSyncService(config);
         else
             throw new IllegalArgumentException("Unknow log_sync_type: " + logSyncType);
         logSyncService.redoLog = new RedoLog(config);

@@ -21,6 +21,7 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.storage.fs.FileStorage;
@@ -40,9 +41,13 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         return storagePath + File.separator + CHUNK_FILE_NAME_PREFIX + id;
     }
 
+    private static final int BUFF_SIZE = 16 * 1024;
+    private DataBuffer buff = DataBuffer.create(BUFF_SIZE);
+
     private final int id;
     private final FileStorage fileStorage;
     private final Map<String, String> config;
+    private final AtomicInteger logQueueSize = new AtomicInteger(0);
     private LinkedTransferQueue<RedoLogRecord> logQueue;
     private long pos;
 
@@ -72,7 +77,13 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
         return id;
     }
 
+    int size() {
+        return logQueueSize.get();
+    }
+
     void addRedoLogRecord(RedoLogRecord r) {
+        // 虽然这两行不是原子操作，但是也没影响的，最多日志线程空转一下
+        logQueueSize.incrementAndGet();
         logQueue.add(r);
     }
 
@@ -88,31 +99,42 @@ class RedoLogChunk implements Comparable<RedoLogChunk> {
     }
 
     synchronized void save() {
-        LinkedTransferQueue<RedoLogRecord> redoLogRecordQueue = getAndResetRedoLogRecords();
-        if (!redoLogRecordQueue.isEmpty()) {
-            try (DataBuffer buff = DataBuffer.create()) {
-                for (RedoLogRecord r : redoLogRecordQueue) {
-                    if (r.isCheckpoint()) {
-                        deleteOldChunkFiles();
-                        fileStorage.truncate(0);
-                        buff.reset();
-                        pos = 0;
-                    }
-                    r.write(buff);
+        if (logQueueSize.get() > 0) {
+            LinkedTransferQueue<RedoLogRecord> redoLogRecordQueue = getAndResetRedoLogRecords();
+            long chunkLength = 0;
+            for (RedoLogRecord r : redoLogRecordQueue) {
+                if (r.isCheckpoint()) {
+                    deleteOldChunkFiles();
+                    fileStorage.truncate(0);
+                    buff.reset();
+                    pos = 0;
                 }
-                int chunkLength = buff.position();
-                if (chunkLength > 0) {
-                    buff.limit(chunkLength);
-                    buff.position(0);
-                    fileStorage.writeFully(pos, buff.getBuffer());
-                    pos += chunkLength;
-                    fileStorage.sync();
-                }
-                for (RedoLogRecord r : redoLogRecordQueue) {
-                    r.setSynced(true);
-                }
+                r.write(buff);
+                if (buff.position() > BUFF_SIZE)
+                    chunkLength += write(buff);
+                logQueueSize.decrementAndGet();
             }
+            chunkLength += write(buff);
+            if (chunkLength > 0) {
+                fileStorage.sync();
+            }
+            for (RedoLogRecord r : redoLogRecordQueue) {
+                r.setSynced(true);
+            }
+            // 避免占用太多内存
+            if (buff.capacity() > BUFF_SIZE * 3)
+                buff = DataBuffer.create(BUFF_SIZE);
         }
+    }
+
+    private int write(DataBuffer buff) {
+        int length = buff.position();
+        if (length > 0) {
+            fileStorage.writeFully(pos, buff.getAndFlipBuffer());
+            pos += length;
+            buff.reset();
+        }
+        return length;
     }
 
     private void deleteOldChunkFiles() {

@@ -27,6 +27,7 @@ class InstantLogSyncService extends LogSyncService {
     private static final long DEFAULT_LOG_SYNC_INTERVAL = 5;
 
     InstantLogSyncService(Map<String, String> config) {
+        super(config);
         syncIntervalMillis = DateTimeUtils.getLoopInterval(config, "log_sync_service_loop_interval",
                 DEFAULT_LOG_SYNC_INTERVAL);
     }
