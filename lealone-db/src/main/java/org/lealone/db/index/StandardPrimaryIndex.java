@@ -127,7 +127,7 @@ public class StandardPrimaryIndex extends IndexBase {
             row.setKey(k);
         }
 
-        if (table.getContainsLargeObject()) {
+        if (table.containsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
                 Value v = row.getValue(i);
                 Value v2 = v.link(database, getId());
@@ -201,7 +201,7 @@ public class StandardPrimaryIndex extends IndexBase {
         if (map.isLocked(oldRow.getRawValue(), columnIndexes))
             return false;
 
-        if (table.getContainsLargeObject()) {
+        if (table.containsLargeObject()) {
             for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
                 Value v = newRow.getValue(i);
                 Value v2 = v.link(database, getId());
@@ -233,7 +233,7 @@ public class StandardPrimaryIndex extends IndexBase {
         if (map.isLocked(row.getRawValue(), null))
             return true;
 
-        if (table.getContainsLargeObject()) {
+        if (table.containsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
                 Value v = row.getValue(i);
                 if (v.isLinked()) {
@@ -309,7 +309,7 @@ public class StandardPrimaryIndex extends IndexBase {
 
     @Override
     public void truncate(ServerSession session) {
-        if (table.getContainsLargeObject()) {
+        if (table.containsLargeObject()) {
             database.getLobStorage().removeAllForTable(table.getId());
         }
         getMap(session).clear();

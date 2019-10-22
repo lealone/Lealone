@@ -1113,4 +1113,8 @@ public abstract class Table extends SchemaObjectBase {
     public ProcessingMode getProcessingMode() {
         return processingMode;
     }
+
+    public boolean containsLargeObject() {
+        return false;
+    }
 }

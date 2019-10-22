@@ -1161,10 +1161,22 @@ public class Database implements DataHandler, DbObject, IDatabase {
         // remove all session variables
         if (persistent) {
             if (lobStorage != null) {
-                try {
-                    lobStorage.removeAllForTable(LobStorage.TABLE_ID_SESSION_VARIABLE);
-                } catch (DbException e) {
-                    trace.error(e, "close");
+                boolean containsLargeObject = false;
+                for (Schema schema : schemas.values()) {
+                    for (Table table : schema.getAllTablesAndViews()) {
+                        if (table.containsLargeObject()) {
+                            containsLargeObject = true;
+                            break;
+                        }
+                    }
+                }
+                // 避免在没有lob字段时在关闭数据库的最后反而去生成lob相关的文件
+                if (containsLargeObject) {
+                    try {
+                        lobStorage.removeAllForTable(LobStorage.TABLE_ID_SESSION_VARIABLE);
+                    } catch (DbException e) {
+                        trace.error(e, "close");
+                    }
                 }
             }
         }

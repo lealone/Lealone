@@ -688,7 +688,8 @@ public class StandardTable extends Table {
         return lastModificationId;
     }
 
-    public boolean getContainsLargeObject() {
+    @Override
+    public boolean containsLargeObject() {
         return containsLargeObject;
     }
 
