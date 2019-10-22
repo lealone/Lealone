@@ -44,19 +44,21 @@ import org.lealone.storage.StorageCommand;
  */
 public class ClientCommand implements StorageCommand {
 
-    private final ArrayList<CommandParameter> parameters;
+    // 通过设为null来判断是否关闭了当前命令，所以没有加上final
+    private ClientSession session;
     private final String sql;
     private final int fetchSize;
-    private boolean prepared;
-    private ClientSession session;
     private int packetId;
     private boolean isQuery;
+    private boolean prepared;
+
+    // 只有prepared命令才需要用到，所以延迟初始化
+    private ArrayList<CommandParameter> parameters;
 
     public ClientCommand(ClientSession session, String sql, int fetchSize) {
-        parameters = Utils.newSmallArrayList();
+        this.session = session;
         this.sql = sql;
         this.fetchSize = fetchSize;
-        this.session = session;
     }
 
     @Override
@@ -66,16 +68,17 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public Command prepare() {
-        prepare(session, true);
+        parameters = Utils.newSmallArrayList();
+        prepare(true);
         prepared = true;
         return this;
     }
 
-    private void prepare(ClientSession session, boolean createParams) {
+    private void prepare(final boolean readParams) {
         packetId = session.getNextId();
         try {
             TransferOutputStream out = session.newOut();
-            if (createParams) {
+            if (readParams) {
                 session.traceOperation("COMMAND_PREPARE_READ_PARAMS", packetId);
                 out.writeRequestHeader(packetId, Session.COMMAND_PREPARE_READ_PARAMS);
             } else {
@@ -83,15 +86,15 @@ public class ClientCommand implements StorageCommand {
                 out.writeRequestHeader(packetId, Session.COMMAND_PREPARE);
             }
             out.writeString(sql);
-            out.flushAndAwait(packetId, session.getNetworkTimeout(), new AsyncCallback<Void>() {
+            out.flushAndAwait(packetId, new AsyncCallback<Void>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     isQuery = in.readBoolean();
-                    if (createParams) {
+                    if (readParams) {
                         parameters.clear();
                         int paramCount = in.readInt();
-                        for (int j = 0; j < paramCount; j++) {
-                            ClientCommandParameter p = new ClientCommandParameter(j);
+                        for (int i = 0; i < paramCount; i++) {
+                            ClientCommandParameter p = new ClientCommandParameter(i);
                             p.readMetaData(in);
                             parameters.add(p);
                         }
@@ -110,14 +113,14 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public ArrayList<CommandParameter> getParameters() {
-        return parameters;
+        return parameters != null ? parameters : new ArrayList<>(0);
     }
 
     private void prepareIfRequired() {
         session.checkClosed();
         if (packetId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS) {
             // object is too old - we need to prepare again
-            prepare(session, false);
+            prepare(false);
         }
     }
 
@@ -145,7 +148,7 @@ public class ClientCommand implements StorageCommand {
                     setResult(result);
                 }
             };
-            result = out.flushAndAwait(packetId, session.getNetworkTimeout(), ac);
+            result = out.flushAndAwait(packetId, ac);
         } catch (IOException e) {
             session.handleException(e);
         }
@@ -272,7 +275,7 @@ public class ClientCommand implements StorageCommand {
             out.flush(packetId, ac);
             return null;
         } else {
-            return out.flushAndAwait(packetId, session.getNetworkTimeout(), ac);
+            return out.flushAndAwait(packetId, ac);
         }
     }
 
@@ -379,7 +382,7 @@ public class ClientCommand implements StorageCommand {
             ac.setAsyncHandler(handler);
             out.flush(packetId, ac);
         } else {
-            updateCount = out.flushAndAwait(packetId, session.getNetworkTimeout(), ac);
+            updateCount = out.flushAndAwait(packetId, ac);
         }
         return updateCount;
     }
@@ -409,18 +412,20 @@ public class ClientCommand implements StorageCommand {
         } catch (IOException e) {
             session.getTrace().error(e, "close");
         }
-        session = null;
-        try {
-            for (CommandParameter p : parameters) {
-                Value v = p.getValue();
-                if (v != null) {
-                    v.close();
+        if (parameters != null) {
+            try {
+                for (CommandParameter p : parameters) {
+                    Value v = p.getValue();
+                    if (v != null) {
+                        v.close();
+                    }
                 }
+            } catch (DbException e) {
+                session.getTrace().error(e, "close");
             }
-        } catch (DbException e) {
-            session.getTrace().error(e, "close");
+            parameters = null;
         }
-        parameters.clear();
+        session = null;
     }
 
     /**
@@ -464,7 +469,7 @@ public class ClientCommand implements StorageCommand {
             }
             out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
             out.writeString(replicationName).writeBoolean(raw);
-            bytes = out.flushAndAwait(id, session.getNetworkTimeout(), new AsyncCallback<byte[]>() {
+            bytes = out.flushAndAwait(id, new AsyncCallback<byte[]>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -494,7 +499,7 @@ public class ClientCommand implements StorageCommand {
                 out.writeRequestHeader(id, Session.COMMAND_STORAGE_GET);
             }
             out.writeString(mapName).writeByteBuffer(key);
-            bytes = out.flushAndAwait(id, session.getNetworkTimeout(), new AsyncCallback<byte[]>() {
+            bytes = out.flushAndAwait(id, new AsyncCallback<byte[]>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -569,7 +574,7 @@ public class ClientCommand implements StorageCommand {
             out.writeString(mapName).writeByteBuffer(value);
             out.writeString(replicationName);
 
-            result = out.flushAndAwait(id, session.getNetworkTimeout(), new AsyncCallback<Long>() {
+            result = out.flushAndAwait(id, new AsyncCallback<Long>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -699,7 +704,7 @@ public class ClientCommand implements StorageCommand {
             out.writeRequestHeader(id, Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE);
             out.writeString(mapName);
             leafPageMovePlan.serialize(out);
-            return out.flushAndAwait(id, session.getNetworkTimeout(), new AsyncCallback<LeafPageMovePlan>() {
+            return out.flushAndAwait(id, new AsyncCallback<LeafPageMovePlan>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     setResult(LeafPageMovePlan.deserialize(in));
@@ -719,7 +724,7 @@ public class ClientCommand implements StorageCommand {
             session.traceOperation("COMMAND_STORAGE_READ_PAGE", id);
             out.writeRequestHeader(id, Session.COMMAND_STORAGE_READ_PAGE);
             out.writeString(mapName).writePageKey(pageKey);
-            return out.flushAndAwait(id, session.getNetworkTimeout(), new AsyncCallback<ByteBuffer>() {
+            return out.flushAndAwait(id, new AsyncCallback<ByteBuffer>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     result = in.readByteBuffer();

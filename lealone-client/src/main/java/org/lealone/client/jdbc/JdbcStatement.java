@@ -225,29 +225,29 @@ public class JdbcStatement extends TraceObject implements Statement {
     }
 
     private boolean executeInternal(String sql) throws SQLException {
-        if (sql != null) {
-            sql = sql.trim();
-            // 禁用这段代码，容易遗漏，比如set命令得用executeUpdate
-            // if (!sql.isEmpty()) {
-            // char c = Character.toUpperCase(sql.charAt(0));
-            // switch (c) {
-            // case 'S': // select or show
-            // executeQuery(sql);
-            // return true;
-            // case 'I': // insert
-            // case 'U': // update
-            // case 'D': // delete or drop
-            // case 'C': // create
-            // case 'A': // alter
-            // case 'M': // merge
-            // executeUpdate(sql);
-            // return false;
-            // default:
-            // break;
-            // }
-            // }
-        }
-        int id = getNextTraceId(TraceObjectType.RESULT_SET);
+        // 禁用这段代码，容易遗漏，比如set命令得用executeUpdate
+        // 想在客户端区分哪些sql是查询还是更新语句比较困难，还不如让服务器端来做
+        // if (sql != null) {
+        // sql = sql.trim();
+        // if (!sql.isEmpty()) {
+        // char c = Character.toUpperCase(sql.charAt(0));
+        // switch (c) {
+        // case 'S': // select or show
+        // executeQuery(sql);
+        // return true;
+        // case 'I': // insert
+        // case 'U': // update
+        // case 'D': // delete or drop
+        // case 'C': // create
+        // case 'A': // alter
+        // case 'M': // merge
+        // executeUpdate(sql);
+        // return false;
+        // default:
+        // break;
+        // }
+        // }
+        // }
         checkClosed();
         closeOldResultSet();
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
@@ -260,6 +260,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                 boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                 Result result = command.executeQuery(maxRows, scrollable);
+                int id = getNextTraceId(TraceObjectType.RESULT_SET);
                 resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
             } else {
                 returnsResultSet = false;

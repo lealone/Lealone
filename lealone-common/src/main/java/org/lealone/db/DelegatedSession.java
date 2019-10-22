@@ -337,4 +337,9 @@ public class DelegatedSession implements Session {
     public Session getNestedSession(String hostAndPort, boolean remote) {
         return session.getNestedSession(hostAndPort, remote);
     }
+
+    @Override
+    public int getNetworkTimeout() {
+        return session.getNetworkTimeout();
+    }
 }

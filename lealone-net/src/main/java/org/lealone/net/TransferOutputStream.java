@@ -125,8 +125,17 @@ public class TransferOutputStream implements NetOutputStream {
         resettableOutputStream.flush();
     }
 
-    public void flushAndAwait(int packetId, long timeoutMillis) throws IOException {
-        flushAndAwait(packetId, timeoutMillis, new AsyncCallback<Void>()); // 注意不能用静态实例
+    public void flushAndAwait(int packetId) throws IOException {
+        flushAndAwait(packetId, new AsyncCallback<Void>()); // 注意不能用静态实例
+    }
+
+    public <T> T flushAndAwait(int packetId, AsyncCallback<T> ac) throws IOException {
+        long timeoutMillis;
+        if (session != null)
+            timeoutMillis = session.getNetworkTimeout();
+        else
+            timeoutMillis = -1;
+        return flushAndAwait(packetId, timeoutMillis, ac);
     }
 
     public <T> T flushAndAwait(int packetId, long timeoutMillis, AsyncCallback<T> ac) throws IOException {

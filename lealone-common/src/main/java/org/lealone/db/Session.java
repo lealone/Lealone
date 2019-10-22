@@ -271,4 +271,6 @@ public interface Session extends Closeable, Transaction.Participant {
     // 以后协议修改了再使用版本号区分
     default void setProtocolVersion(int version) {
     }
+
+    int getNetworkTimeout();
 }

@@ -169,11 +169,11 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private void setAutoCommitSend(boolean autoCommit) {
         try {
             TransferOutputStream out = newOut();
-            int id = getNextId();
+            int packetId = getNextId();
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            out.writeRequestHeader(id, Session.SESSION_SET_AUTO_COMMIT);
+            out.writeRequestHeader(packetId, Session.SESSION_SET_AUTO_COMMIT);
             out.writeBoolean(autoCommit);
-            out.flushAndAwait(id, getNetworkTimeout());
+            out.flushAndAwait(packetId);
         } catch (IOException e) {
             handleException(e);
         }
@@ -342,7 +342,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             out.writeBytes(hmac);
             out.writeLong(offset);
             out.writeInt(length);
-            return out.flushAndAwait(packetId, getNetworkTimeout(), new AsyncCallback<Integer>() {
+            return out.flushAndAwait(packetId, new AsyncCallback<Integer>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     int length = in.readInt();
@@ -405,7 +405,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             int packetId = getNextId();
             out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE);
             out.writeString(localTransactionName);
-            return out.flushAndAwait(packetId, getNetworkTimeout(), new AsyncCallback<Boolean>() {
+            return out.flushAndAwait(packetId, new AsyncCallback<Boolean>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     setResult(in.readBoolean());
@@ -470,6 +470,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         parent.runModeChanged(newTargetEndpoints);
     }
 
+    @Override
     public int getNetworkTimeout() {
         return ci.getNetworkTimeout();
     }

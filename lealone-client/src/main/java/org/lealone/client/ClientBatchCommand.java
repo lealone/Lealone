@@ -124,7 +124,7 @@ public class ClientBatchCommand implements Command {
     }
 
     private void getResultAsync(TransferOutputStream out) throws IOException {
-        out.flushAndAwait(id, session.getNetworkTimeout(), new AsyncCallback<Void>() {
+        out.flushAndAwait(id, new AsyncCallback<Void>() {
             @Override
             public void runInternal(TransferInputStream in) throws Exception {
                 for (int i = 0, size = ClientBatchCommand.this.result.length; i < size; i++)

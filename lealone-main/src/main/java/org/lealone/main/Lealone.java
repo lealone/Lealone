@@ -114,7 +114,7 @@ public class Lealone {
         long t1 = System.currentTimeMillis();
         LealoneDatabase.getInstance(); // 提前触发对LealoneDatabase的初始化
         long t2 = System.currentTimeMillis();
-        logger.info("Init lealone database: " + (t2 - t1) + "ms");
+        logger.info("Init lealone database: " + (t2 - t1) + " ms");
 
         // 如果启用了集群，集群的元数据表通过嵌入式的方式访问
         if (config.protocol_server_engines != null) {
@@ -241,7 +241,7 @@ public class Lealone {
             }
         }
         long t2 = System.currentTimeMillis();
-        logger.info("Init " + name + "s" + ": " + (t2 - t1) + "ms");
+        logger.info("Init " + name + "s" + ": " + (t2 - t1) + " ms");
     }
 
     private static void checkException(String msg, Throwable e) {

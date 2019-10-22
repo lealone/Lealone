@@ -164,7 +164,7 @@ public abstract class ClientResult implements Result {
         TransferOutputStream out = session.newOut();
         session.traceOperation("RESULT_FETCH_ROWS", id);
         out.writeRequestHeader(id, Session.RESULT_FETCH_ROWS).writeInt(fetchSize);
-        out.flushAndAwait(id, session.getNetworkTimeout());
+        out.flushAndAwait(id);
     }
 
     @Override

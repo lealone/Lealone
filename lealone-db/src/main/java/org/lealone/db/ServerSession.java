@@ -1452,4 +1452,9 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     public String getUserName() {
         return user.getName();
     }
+
+    @Override
+    public int getNetworkTimeout() {
+        return connectionInfo != null ? connectionInfo.getNetworkTimeout() : -1;
+    }
 }
