@@ -7,26 +7,18 @@ package org.lealone.client;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.client.result.ClientResult;
 import org.lealone.client.result.RowCountDeterminedClientResult;
 import org.lealone.client.result.RowCountUndeterminedClientResult;
-import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.Trace;
-import org.lealone.common.util.Utils;
-import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Session;
-import org.lealone.db.SysProperties;
-import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
-import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.TransferInputStream;
@@ -45,15 +37,11 @@ import org.lealone.storage.StorageCommand;
 public class ClientCommand implements StorageCommand {
 
     // 通过设为null来判断是否关闭了当前命令，所以没有加上final
-    private ClientSession session;
-    private final String sql;
-    private final int fetchSize;
-    private int packetId;
-    private boolean isQuery;
-    private boolean prepared;
-
-    // 只有prepared命令才需要用到，所以延迟初始化
-    private ArrayList<CommandParameter> parameters;
+    protected ClientSession session;
+    protected final String sql;
+    protected final int fetchSize;
+    protected int packetId;
+    protected boolean isQuery;
 
     public ClientCommand(ClientSession session, String sql, int fetchSize) {
         this.session = session;
@@ -67,92 +55,18 @@ public class ClientCommand implements StorageCommand {
     }
 
     @Override
-    public Command prepare() {
-        parameters = Utils.newSmallArrayList();
-        prepare(true);
-        prepared = true;
-        return this;
-    }
-
-    private void prepare(final boolean readParams) {
-        packetId = session.getNextId();
-        try {
-            TransferOutputStream out = session.newOut();
-            if (readParams) {
-                session.traceOperation("COMMAND_PREPARE_READ_PARAMS", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_PREPARE_READ_PARAMS);
-            } else {
-                session.traceOperation("COMMAND_PREPARE", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_PREPARE);
-            }
-            out.writeString(sql);
-            out.flushAndAwait(packetId, new AsyncCallback<Void>() {
-                @Override
-                public void runInternal(TransferInputStream in) throws Exception {
-                    isQuery = in.readBoolean();
-                    if (readParams) {
-                        parameters.clear();
-                        int paramCount = in.readInt();
-                        for (int i = 0; i < paramCount; i++) {
-                            ClientCommandParameter p = new ClientCommandParameter(i);
-                            p.readMetaData(in);
-                            parameters.add(p);
-                        }
-                    }
-                }
-            });
-        } catch (IOException e) {
-            session.handleException(e);
-        }
-    }
-
-    @Override
     public boolean isQuery() {
         return isQuery;
     }
 
     @Override
     public ArrayList<CommandParameter> getParameters() {
-        return parameters != null ? parameters : new ArrayList<>(0);
-    }
-
-    private void prepareIfRequired() {
-        session.checkClosed();
-        if (packetId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS) {
-            // object is too old - we need to prepare again
-            prepare(false);
-        }
+        return new ArrayList<>(0);
     }
 
     @Override
     public Result getMetaData() {
-        if (!isQuery) {
-            return null;
-        }
-        TransferOutputStream out = session.newOut();
-        int objectId = session.getNextId();
-        ClientResult result = null;
-        prepareIfRequired();
-        try {
-            session.traceOperation("COMMAND_GET_META_DATA", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_GET_META_DATA);
-            out.writeInt(objectId);
-            AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
-                @Override
-                public void runInternal(TransferInputStream in) throws Exception {
-                    int columnCount = in.readInt();
-                    int rowCount = in.readInt();
-                    ClientResult result = new RowCountDeterminedClientResult(session, in, objectId, columnCount,
-                            rowCount, Integer.MAX_VALUE);
-
-                    setResult(result);
-                }
-            };
-            result = out.flushAndAwait(packetId, ac);
-        } catch (IOException e) {
-            session.handleException(e);
-        }
-        return result;
+        return null;
     }
 
     @Override
@@ -181,37 +95,20 @@ public class ClientCommand implements StorageCommand {
         query(maxRows, scrollable, pageKeys, handler);
     }
 
-    private Result query(int maxRows, boolean scrollable, List<PageKey> pageKeys,
+    protected Result query(int maxRows, boolean scrollable, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Result>> handler) {
-        if (prepared) {
-            checkParameters();
-            prepareIfRequired();
-        } else {
-            packetId = session.getNextId();
-        }
+        packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         int resultId = session.getNextId();
         Result result = null;
         try {
-            boolean isDistributedQuery = session.getParentTransaction() != null
-                    && !session.getParentTransaction().isAutoCommit();
-
-            if (prepared) {
-                if (isDistributedQuery) {
-                    session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY);
-                } else {
-                    session.traceOperation("COMMAND_PREPARED_QUERY", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_PREPARED_QUERY);
-                }
+            boolean isDistributedQuery = isDistributed();
+            if (isDistributedQuery) {
+                session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_QUERY", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY);
             } else {
-                if (isDistributedQuery) {
-                    session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_QUERY", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY);
-                } else {
-                    session.traceOperation("COMMAND_QUERY", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_QUERY);
-                }
+                session.traceOperation("COMMAND_QUERY", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_QUERY);
             }
             int fetch;
             if (scrollable) {
@@ -220,10 +117,7 @@ public class ClientCommand implements StorageCommand {
                 fetch = fetchSize;
             }
             out.writeInt(resultId).writeInt(maxRows).writeInt(fetch).writeBoolean(scrollable);
-            if (prepared)
-                sendParameters(out);
-            else
-                out.writeString(sql);
+            out.writeString(sql);
             writePageKeys(pageKeys, out);
 
             result = getQueryResult(isDistributedQuery, fetch, resultId, handler, out);
@@ -233,7 +127,11 @@ public class ClientCommand implements StorageCommand {
         return result;
     }
 
-    private void writePageKeys(List<PageKey> pageKeys, TransferOutputStream out) throws IOException {
+    protected boolean isDistributed() {
+        return session.getParentTransaction() != null && !session.getParentTransaction().isAutoCommit();
+    }
+
+    protected void writePageKeys(List<PageKey> pageKeys, TransferOutputStream out) throws IOException {
         if (pageKeys == null) {
             out.writeInt(0);
         } else {
@@ -246,7 +144,7 @@ public class ClientCommand implements StorageCommand {
         }
     }
 
-    private Result getQueryResult(boolean isDistributedQuery, int fetch, int resultId,
+    protected Result getQueryResult(boolean isDistributedQuery, int fetch, int resultId,
             AsyncHandler<AsyncResult<Result>> handler, TransferOutputStream out) throws IOException {
         isQuery = true;
         AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
@@ -299,52 +197,26 @@ public class ClientCommand implements StorageCommand {
         update(null, null, null, handler);
     }
 
-    private int update(String replicationName, CommandUpdateResult commandUpdateResult, List<PageKey> pageKeys,
+    protected int update(String replicationName, CommandUpdateResult commandUpdateResult, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> handler) {
-        if (prepared) {
-            checkParameters();
-            prepareIfRequired();
-        } else {
-            packetId = session.getNextId();
-        }
+        packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         int updateCount = 0;
         try {
-            boolean isDistributedUpdate = session.getParentTransaction() != null
-                    && !session.getParentTransaction().isAutoCommit();
-
-            if (prepared) {
-                if (isDistributedUpdate) {
-                    session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE);
-                } else if (replicationName != null) {
-                    session.traceOperation("COMMAND_REPLICATION_PREPARED_UPDATE", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_PREPARED_UPDATE);
-                } else {
-                    session.traceOperation("COMMAND_PREPARED_UPDATE", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_PREPARED_UPDATE);
-                }
+            boolean isDistributedUpdate = isDistributed();
+            if (isDistributedUpdate) {
+                session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_UPDATE", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE);
+            } else if (replicationName != null) {
+                session.traceOperation("COMMAND_REPLICATION_UPDATE", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_UPDATE);
             } else {
-                if (isDistributedUpdate) {
-                    session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_UPDATE", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE);
-                } else if (replicationName != null) {
-                    session.traceOperation("COMMAND_REPLICATION_UPDATE", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_UPDATE);
-                } else {
-                    session.traceOperation("COMMAND_UPDATE", packetId);
-                    out.writeRequestHeader(packetId, Session.COMMAND_UPDATE);
-                }
+                session.traceOperation("COMMAND_UPDATE", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_UPDATE);
             }
-
             if (replicationName != null)
                 out.writeString(replicationName);
-
-            if (prepared)
-                sendParameters(out);
-            else
-                out.writeString(sql);
-
+            out.writeString(sql);
             writePageKeys(pageKeys, out);
             updateCount = getUpdateCount(isDistributedUpdate, packetId, commandUpdateResult, handler, out);
         } catch (Exception e) {
@@ -353,7 +225,7 @@ public class ClientCommand implements StorageCommand {
         return updateCount;
     }
 
-    private int getUpdateCount(boolean isDistributedUpdate, int packetId, CommandUpdateResult commandUpdateResult,
+    protected int getUpdateCount(boolean isDistributedUpdate, int packetId, CommandUpdateResult commandUpdateResult,
             AsyncHandler<AsyncResult<Integer>> handler, TransferOutputStream out) throws IOException {
         isQuery = false;
         AsyncCallback<Integer> ac = new AsyncCallback<Integer>() {
@@ -387,47 +259,8 @@ public class ClientCommand implements StorageCommand {
         return updateCount;
     }
 
-    private void checkParameters() {
-        for (CommandParameter p : parameters) {
-            p.checkSet();
-        }
-    }
-
-    private void sendParameters(TransferOutputStream out) throws IOException {
-        int len = parameters.size();
-        out.writeInt(len);
-        for (CommandParameter p : parameters) {
-            out.writeValue(p.getValue());
-        }
-    }
-
     @Override
     public void close() {
-        if (session == null || session.isClosed()) {
-            return;
-        }
-        // 非Prepared语句执行一次就自动结束了，服务器端没有做缓存，所以不需要发送关闭命令
-        if (prepared) {
-            session.traceOperation("COMMAND_CLOSE", packetId);
-            try {
-                session.newOut().writeRequestHeader(packetId, Session.COMMAND_CLOSE).flush();
-            } catch (IOException e) {
-                session.getTrace().error(e, "close");
-            }
-            if (parameters != null) {
-                try {
-                    for (CommandParameter p : parameters) {
-                        Value v = p.getValue();
-                        if (v != null) {
-                            v.close();
-                        }
-                    }
-                } catch (DbException e) {
-                    session.getTrace().error(e, "close");
-                }
-                parameters = null;
-            }
-        }
         session = null;
     }
 
@@ -441,7 +274,7 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public String toString() {
-        return sql + Trace.formatParams(getParameters());
+        return sql;
     }
 
     int getId() {
@@ -590,90 +423,6 @@ public class ClientCommand implements StorageCommand {
         }
         commandUpdateResult.addResult(this, result);
         return ValueLong.get(result);
-    }
-
-    /**
-     * A client side parameter.
-     */
-    private static class ClientCommandParameter implements CommandParameter {
-
-        private final int index;
-        private Value value;
-        private int dataType = Value.UNKNOWN;
-        private long precision;
-        private int scale;
-        private int nullable = ResultSetMetaData.columnNullableUnknown;
-
-        public ClientCommandParameter(int index) {
-            this.index = index;
-        }
-
-        @Override
-        public int getIndex() {
-            return index;
-        }
-
-        @Override
-        public void setValue(Value newValue, boolean closeOld) {
-            if (closeOld && value != null) {
-                value.close();
-            }
-            value = newValue;
-        }
-
-        @Override
-        public void setValue(Value value) {
-            this.value = value;
-        }
-
-        @Override
-        public Value getValue() {
-            return value;
-        }
-
-        @Override
-        public void checkSet() {
-            if (value == null) {
-                throw DbException.get(ErrorCode.PARAMETER_NOT_SET_1, "#" + (index + 1));
-            }
-        }
-
-        @Override
-        public boolean isValueSet() {
-            return value != null;
-        }
-
-        @Override
-        public int getType() {
-            return value == null ? dataType : value.getType();
-        }
-
-        @Override
-        public long getPrecision() {
-            return value == null ? precision : value.getPrecision();
-        }
-
-        @Override
-        public int getScale() {
-            return value == null ? scale : value.getScale();
-        }
-
-        @Override
-        public int getNullable() {
-            return nullable;
-        }
-
-        /**
-         * Read the parameter meta data from the out object.
-         *
-         * @param in the TransferInputStream
-         */
-        public void readMetaData(TransferInputStream in) throws IOException {
-            dataType = in.readInt();
-            precision = in.readLong();
-            scale = in.readInt();
-            nullable = in.readInt();
-        }
     }
 
     @Override

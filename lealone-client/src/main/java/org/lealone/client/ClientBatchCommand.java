@@ -37,7 +37,7 @@ public class ClientBatchCommand implements Command {
     private ClientSession session;
     private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
     private ArrayList<Value[]> batchParameters; // 对应JdbcPreparedStatement.executeBatch()
-    private int id = -1;
+    private int packetId = -1;
     private int[] result;
 
     public ClientBatchCommand(ClientSession session, ArrayList<String> batchCommands) {
@@ -50,7 +50,7 @@ public class ClientBatchCommand implements Command {
         this.batchParameters = batchParameters;
 
         if (preparedCommand instanceof ClientCommand)
-            id = ((ClientCommand) preparedCommand).getId();
+            packetId = ((ClientCommand) preparedCommand).getId();
     }
 
     @Override
@@ -85,14 +85,14 @@ public class ClientBatchCommand implements Command {
 
     @Override
     public int executeUpdate() {
-        if (id == -1)
-            id = session.getNextId();
+        if (packetId == -1)
+            packetId = session.getNextId();
 
         try {
             TransferOutputStream out = session.newOut();
             if (batchCommands != null) {
-                session.traceOperation("COMMAND_BATCH_STATEMENT_UPDATE", id);
-                out.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_UPDATE);
+                session.traceOperation("COMMAND_BATCH_STATEMENT_UPDATE", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_BATCH_STATEMENT_UPDATE);
                 int size = batchCommands.size();
                 result = new int[size];
                 out.writeInt(size);
@@ -101,8 +101,8 @@ public class ClientBatchCommand implements Command {
                 }
                 getResultAsync(out);
             } else {
-                session.traceOperation("COMMAND_BATCH_STATEMENT_PREPARED_UPDATE", id);
-                out.writeRequestHeader(id, Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE);
+                session.traceOperation("COMMAND_BATCH_STATEMENT_PREPARED_UPDATE", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE);
                 int size = batchParameters.size();
                 result = new int[size];
                 out.writeInt(size);
@@ -124,7 +124,7 @@ public class ClientBatchCommand implements Command {
     }
 
     private void getResultAsync(TransferOutputStream out) throws IOException {
-        out.flushAndAwait(id, new AsyncCallback<Void>() {
+        out.flushAndAwait(packetId, new AsyncCallback<Void>() {
             @Override
             public void runInternal(TransferInputStream in) throws Exception {
                 for (int i = 0, size = ClientBatchCommand.this.result.length; i < size; i++)
@@ -138,9 +138,9 @@ public class ClientBatchCommand implements Command {
         if (session == null || session.isClosed()) {
             return;
         }
-        session.traceOperation("COMMAND_CLOSE", id);
+        session.traceOperation("COMMAND_CLOSE", packetId);
         try {
-            session.newOut().writeRequestHeader(id, Session.COMMAND_CLOSE).flush();
+            session.newOut().writeRequestHeader(packetId, Session.COMMAND_CLOSE).flush();
         } catch (IOException e) {
             session.getTrace().error(e, "close");
         }
@@ -160,7 +160,7 @@ public class ClientBatchCommand implements Command {
 
     @Override
     public void cancel() {
-        session.cancelStatement(id);
+        session.cancelStatement(packetId);
     }
 
     @Override

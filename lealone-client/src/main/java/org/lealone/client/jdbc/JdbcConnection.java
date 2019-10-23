@@ -1069,9 +1069,7 @@ public class JdbcConnection extends TraceObject implements Connection {
      * @return the command
      */
     Command prepareCommand(String sql, int fetchSize) {
-        Command c = createCommand(sql, fetchSize);
-        c.prepare();
-        return c;
+        return session.prepareCommand(sql, fetchSize);
     }
 
     private Command prepareCommand(String sql, Command old) {

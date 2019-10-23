@@ -131,10 +131,6 @@ public interface Command {
         return false;
     }
 
-    default Command prepare() {
-        return this;
-    }
-
     default void replicationCommit(long validKey, boolean autoCommit) {
     }
 

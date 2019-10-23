@@ -19,7 +19,6 @@ package org.lealone.sql;
 
 public interface ParsedStatement extends SQLStatement {
 
-    @Override
     PreparedStatement prepare();
 
 }

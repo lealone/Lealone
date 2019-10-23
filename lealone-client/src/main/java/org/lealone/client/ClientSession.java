@@ -200,9 +200,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public Command prepareCommand(String sql, int fetchSize) {
-        Command c = createCommand(sql, fetchSize);
-        c.prepare();
-        return c;
+        checkClosed();
+        return new ClientPreparedCommand(this, sql, fetchSize);
     }
 
     @Override
