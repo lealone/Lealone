@@ -3659,5 +3659,4 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
     public void setCommand(Command command) {
         this.command = command;
     }
-
 }

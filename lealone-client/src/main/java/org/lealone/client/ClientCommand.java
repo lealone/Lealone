@@ -406,24 +406,27 @@ public class ClientCommand implements StorageCommand {
         if (session == null || session.isClosed()) {
             return;
         }
-        session.traceOperation("COMMAND_CLOSE", packetId);
-        try {
-            session.newOut().writeRequestHeader(packetId, Session.COMMAND_CLOSE).flush();
-        } catch (IOException e) {
-            session.getTrace().error(e, "close");
-        }
-        if (parameters != null) {
+        // 非Prepared语句执行一次就自动结束了，服务器端没有做缓存，所以不需要发送关闭命令
+        if (prepared) {
+            session.traceOperation("COMMAND_CLOSE", packetId);
             try {
-                for (CommandParameter p : parameters) {
-                    Value v = p.getValue();
-                    if (v != null) {
-                        v.close();
-                    }
-                }
-            } catch (DbException e) {
+                session.newOut().writeRequestHeader(packetId, Session.COMMAND_CLOSE).flush();
+            } catch (IOException e) {
                 session.getTrace().error(e, "close");
             }
-            parameters = null;
+            if (parameters != null) {
+                try {
+                    for (CommandParameter p : parameters) {
+                        Value v = p.getValue();
+                        if (v != null) {
+                            v.close();
+                        }
+                    }
+                } catch (DbException e) {
+                    session.getTrace().error(e, "close");
+                }
+                parameters = null;
+            }
         }
         session = null;
     }
@@ -452,24 +455,24 @@ public class ClientCommand implements StorageCommand {
     @Override
     public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
         byte[] bytes = null;
-        int id = session.getNextId();
+        int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
             boolean isDistributed = session.getParentTransaction() != null
                     && !session.getParentTransaction().isAutoCommit();
             if (isDistributed) {
-                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT", id);
-                out.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT);
+                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT);
             } else if (replicationName != null) {
-                session.traceOperation("COMMAND_STORAGE_REPLICATION_PUT", id);
-                out.writeRequestHeader(id, Session.COMMAND_STORAGE_REPLICATION_PUT);
+                session.traceOperation("COMMAND_STORAGE_REPLICATION_PUT", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_REPLICATION_PUT);
             } else {
-                session.traceOperation("COMMAND_STORAGE_PUT", id);
-                out.writeRequestHeader(id, Session.COMMAND_STORAGE_PUT);
+                session.traceOperation("COMMAND_STORAGE_PUT", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_PUT);
             }
             out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
             out.writeString(replicationName).writeBoolean(raw);
-            bytes = out.flushAndAwait(id, new AsyncCallback<byte[]>() {
+            bytes = out.flushAndAwait(packetId, new AsyncCallback<byte[]>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -486,20 +489,20 @@ public class ClientCommand implements StorageCommand {
     @Override
     public Object executeGet(String mapName, ByteBuffer key) {
         byte[] bytes = null;
-        int id = session.getNextId();
+        int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
             boolean isDistributed = session.getParentTransaction() != null
                     && !session.getParentTransaction().isAutoCommit();
             if (isDistributed) {
-                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET", id);
-                out.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET);
+                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET);
             } else {
-                session.traceOperation("COMMAND_STORAGE_GET", id);
-                out.writeRequestHeader(id, Session.COMMAND_STORAGE_GET);
+                session.traceOperation("COMMAND_STORAGE_GET", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_GET);
             }
             out.writeString(mapName).writeByteBuffer(key);
-            bytes = out.flushAndAwait(id, new AsyncCallback<byte[]>() {
+            bytes = out.flushAndAwait(packetId, new AsyncCallback<byte[]>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -515,11 +518,11 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
-        int id = session.getNextId();
+        int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", id);
-            out.writeRequestHeader(id, Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
+            session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", packetId);
+            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
             out.writeString(mapName).writePageKey(pageKey).writeByteBuffer(page).writeBoolean(addPage);
             out.flush();
         } catch (Exception e) {
@@ -529,11 +532,11 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public void replicateRootPages(String dbName, ByteBuffer rootPages) {
-        int id = session.getNextId();
+        int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_REPLICATE_ROOT_PAGES", id);
-            out.writeRequestHeader(id, Session.COMMAND_STORAGE_REPLICATE_ROOT_PAGES);
+            session.traceOperation("COMMAND_STORAGE_REPLICATE_ROOT_PAGES", packetId);
+            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_REPLICATE_ROOT_PAGES);
             out.writeString(dbName).writeByteBuffer(rootPages);
             out.flush();
         } catch (Exception e) {
@@ -543,11 +546,11 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public void removeLeafPage(String mapName, PageKey pageKey) {
-        int id = session.getNextId();
+        int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_REMOVE_LEAF_PAGE", id);
-            out.writeRequestHeader(id, Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
+            session.traceOperation("COMMAND_STORAGE_REMOVE_LEAF_PAGE", packetId);
+            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
             out.writeString(mapName).writePageKey(pageKey);
             out.flush();
         } catch (Exception e) {
@@ -559,22 +562,22 @@ public class ClientCommand implements StorageCommand {
     public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
             CommandUpdateResult commandUpdateResult) {
         Long result = null;
-        int id = session.getNextId();
+        int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
             boolean isDistributed = session.getParentTransaction() != null
                     && !session.getParentTransaction().isAutoCommit();
             if (isDistributed) {
-                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND", id);
-                out.writeRequestHeader(id, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND);
+                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND);
             } else {
-                session.traceOperation("COMMAND_STORAGE_APPEND", id);
-                out.writeRequestHeader(id, Session.COMMAND_STORAGE_APPEND);
+                session.traceOperation("COMMAND_STORAGE_APPEND", packetId);
+                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_APPEND);
             }
             out.writeString(mapName).writeByteBuffer(value);
             out.writeString(replicationName);
 
-            result = out.flushAndAwait(id, new AsyncCallback<Long>() {
+            result = out.flushAndAwait(packetId, new AsyncCallback<Long>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -675,6 +678,7 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public void replicationCommit(long validKey, boolean autoCommit) {
+        int packetId = session.getNextId();
         session.traceOperation("COMMAND_REPLICATION_COMMIT", packetId);
         TransferOutputStream out = session.newOut();
         try {
@@ -687,6 +691,7 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public void replicationRollback() {
+        int packetId = session.getNextId();
         session.traceOperation("COMMAND_REPLICATION_ROLLBACK", packetId);
         try {
             session.newOut().writeRequestHeader(packetId, Session.COMMAND_REPLICATION_ROLLBACK).flush();
@@ -697,14 +702,14 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
-        int id = session.getNextId();
+        int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE", id);
-            out.writeRequestHeader(id, Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE);
+            session.traceOperation("COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE", packetId);
+            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE);
             out.writeString(mapName);
             leafPageMovePlan.serialize(out);
-            return out.flushAndAwait(id, new AsyncCallback<LeafPageMovePlan>() {
+            return out.flushAndAwait(packetId, new AsyncCallback<LeafPageMovePlan>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     setResult(LeafPageMovePlan.deserialize(in));
@@ -718,13 +723,13 @@ public class ClientCommand implements StorageCommand {
 
     @Override
     public ByteBuffer readRemotePage(String mapName, PageKey pageKey) {
-        int id = session.getNextId();
+        int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_READ_PAGE", id);
-            out.writeRequestHeader(id, Session.COMMAND_STORAGE_READ_PAGE);
+            session.traceOperation("COMMAND_STORAGE_READ_PAGE", packetId);
+            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_READ_PAGE);
             out.writeString(mapName).writePageKey(pageKey);
-            return out.flushAndAwait(id, new AsyncCallback<ByteBuffer>() {
+            return out.flushAndAwait(packetId, new AsyncCallback<ByteBuffer>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     result = in.readByteBuffer();

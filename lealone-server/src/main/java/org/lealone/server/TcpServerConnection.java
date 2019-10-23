@@ -337,37 +337,37 @@ public class TcpServerConnection extends TransferConnection {
         } else {
             String sql = in.readString();
             stmt = session.prepareStatement(sql, fetchSize);
-            cache.addObject(packetId, stmt);
+            // cache.addObject(packetId, stmt); //客户端的非Prepared语句不需要缓存
         }
         stmt.setFetchSize(fetchSize);
 
-        List<PageKey> pageKeys = readPageKeys(in);
-        if (executeQueryAsync(in, packetId, operation, session, sessionId, stmt, resultId, fetchSize)) {
+        // 允许其他扩展跳过正常的流程
+        if (executeQueryAsync(packetId, operation, session, sessionId, stmt, resultId, fetchSize)) {
             return;
         }
-        TransferOutputStream out = createTransferOutputStream(session);
         PreparedStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, ar -> {
             if (ar.isSucceeded()) {
                 Result result = ar.getResult();
-                sendResult(out, packetId, operation, session, sessionId, result, resultId, fetchSize);
+                sendResult(packetId, operation, session, sessionId, result, resultId, fetchSize);
             } else {
-                sendError(out.getSession(), packetId, ar.getCause());
+                sendError(session, packetId, ar.getCause());
             }
         });
+        List<PageKey> pageKeys = readPageKeys(in);
         yieldable.setPageKeys(pageKeys);
-
-        addPreparedCommandToQueue(in, packetId, session, sessionId, stmt, yieldable);
+        addPreparedCommandToQueue(packetId, session, sessionId, stmt, yieldable);
     }
 
-    protected boolean executeQueryAsync(TransferInputStream in, int packetId, int operation, Session session,
-            int sessionId, PreparedStatement stmt, int resultId, int fetchSize) throws IOException {
+    protected boolean executeQueryAsync(int packetId, int operation, Session session, int sessionId,
+            PreparedStatement stmt, int resultId, int fetchSize) throws IOException {
         return false;
     }
 
-    protected void sendResult(TransferOutputStream out, int packetId, int operation, Session session, int sessionId,
-            Result result, int resultId, int fetchSize) {
+    protected void sendResult(int packetId, int operation, Session session, int sessionId, Result result, int resultId,
+            int fetchSize) {
         cache.addObject(resultId, result);
         try {
+            TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, getStatus(session));
             if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
                     || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
@@ -389,7 +389,7 @@ public class TcpServerConnection extends TransferConnection {
             writeRow(out, result, fetch);
             out.flush();
         } catch (Exception e) {
-            sendError(out.getSession(), packetId, e);
+            sendError(session, packetId, e);
         }
     }
 
@@ -411,16 +411,14 @@ public class TcpServerConnection extends TransferConnection {
         } else {
             String sql = in.readString();
             stmt = session.prepareStatement(sql, -1);
-            cache.addObject(packetId, stmt);
+            // cache.addObject(packetId, stmt); //客户端的非Prepared语句不需要缓存
         }
 
-        List<PageKey> pageKeys = readPageKeys(in);
-
-        TransferOutputStream out = createTransferOutputStream(session);
         PreparedStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {
                 int updateCount = ar.getResult();
                 try {
+                    TransferOutputStream out = createTransferOutputStream(session);
                     out.writeResponseHeader(packetId, getStatus(session));
                     if (session.isRunModeChanged()) {
                         out.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
@@ -433,19 +431,19 @@ public class TcpServerConnection extends TransferConnection {
                     out.writeLong(session.getLastRowKey());
                     out.flush();
                 } catch (Exception e) {
-                    sendError(out.getSession(), packetId, e);
+                    sendError(session, packetId, e);
                 }
             } else {
-                sendError(out.getSession(), packetId, ar.getCause());
+                sendError(session, packetId, ar.getCause());
             }
         });
+        List<PageKey> pageKeys = readPageKeys(in);
         yieldable.setPageKeys(pageKeys);
-
-        addPreparedCommandToQueue(in, packetId, session, sessionId, stmt, yieldable);
+        addPreparedCommandToQueue(packetId, session, sessionId, stmt, yieldable);
     }
 
-    private void addPreparedCommandToQueue(TransferInputStream transfer, int packetId, Session session, int sessionId,
-            PreparedStatement stmt, PreparedStatement.Yieldable<?> yieldable) {
+    private void addPreparedCommandToQueue(int packetId, Session session, int sessionId, PreparedStatement stmt,
+            PreparedStatement.Yieldable<?> yieldable) {
         SessionInfo si = getSessionInfo(sessionId);
         if (si == null) {
             sessionNotFound(packetId, sessionId);
