@@ -27,7 +27,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.Value;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 
 public class GlobalUniqueIndex extends IndexBase {
 
@@ -56,7 +56,7 @@ public class GlobalUniqueIndex extends IndexBase {
         }
         sql.append("))");
 
-        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
+        PreparedSQLStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(true);
         prepared.update();
     }
@@ -90,7 +90,7 @@ public class GlobalUniqueIndex extends IndexBase {
         }
         sql.append(")");
 
-        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
+        PreparedSQLStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(false);
         prepared.update();
     }
@@ -112,7 +112,7 @@ public class GlobalUniqueIndex extends IndexBase {
             }
         }
 
-        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
+        PreparedSQLStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(false);
         prepared.update();
     }
@@ -152,7 +152,7 @@ public class GlobalUniqueIndex extends IndexBase {
             }
         }
 
-        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
+        PreparedSQLStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(false);
         Result result = prepared.query(0);
         if (bigger)
@@ -167,14 +167,14 @@ public class GlobalUniqueIndex extends IndexBase {
 
     @Override
     public void remove(ServerSession session) {
-        PreparedStatement prepared = session.prepareStatement("drop table if exists " + getName(), true);
+        PreparedSQLStatement prepared = session.prepareStatement("drop table if exists " + getName(), true);
         prepared.setLocal(true);
         prepared.update();
     }
 
     @Override
     public void truncate(ServerSession session) {
-        PreparedStatement prepared = session.prepareStatement("truncate table " + getName(), true);
+        PreparedSQLStatement prepared = session.prepareStatement("truncate table " + getName(), true);
         prepared.setLocal(true);
         prepared.update();
     }
@@ -201,7 +201,7 @@ public class GlobalUniqueIndex extends IndexBase {
 
         if (session == null)
             session = getDatabase().getSystemSession();
-        PreparedStatement prepared = session.prepareStatement(sql.toString(), true);
+        PreparedSQLStatement prepared = session.prepareStatement(sql.toString(), true);
         prepared.setLocal(false);
         Result result = prepared.query(0);
         return result.getRowCount();
@@ -222,7 +222,7 @@ public class GlobalUniqueIndex extends IndexBase {
         StatementBuilder sql = new StatementBuilder("alter table ");
         sql.append(getName()).append(" rename to").append(newName);
 
-        PreparedStatement prepared = getDatabase().getSystemSession().prepareStatement(sql.toString(), true);
+        PreparedSQLStatement prepared = getDatabase().getSystemSession().prepareStatement(sql.toString(), true);
         prepared.setLocal(true);
         prepared.update();
     }

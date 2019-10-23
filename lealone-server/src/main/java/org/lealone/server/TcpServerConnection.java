@@ -52,7 +52,7 @@ import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.server.Scheduler.SessionInfo;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
@@ -215,7 +215,7 @@ public class TcpServerConnection extends TransferConnection {
         sessions.clear();
     }
 
-    protected static void readParameters(TransferInputStream in, PreparedStatement command) throws IOException {
+    protected static void readParameters(TransferInputStream in, PreparedSQLStatement command) throws IOException {
         int len = in.readInt();
         List<? extends CommandParameter> params = command.getParameters();
         for (int i = 0; i < len; i++) {
@@ -331,9 +331,9 @@ public class TcpServerConnection extends TransferConnection {
         }
 
         List<PageKey> pageKeys = readPageKeys(in);
-        PreparedStatement stmt;
+        PreparedSQLStatement stmt;
         if (prepared) {
-            stmt = (PreparedStatement) cache.getObject(packetId, false);
+            stmt = (PreparedSQLStatement) cache.getObject(packetId, false);
             readParameters(in, stmt);
         } else {
             String sql = in.readString();
@@ -346,7 +346,7 @@ public class TcpServerConnection extends TransferConnection {
         if (executeQueryAsync(packetId, operation, session, sessionId, stmt, resultId, fetchSize)) {
             return;
         }
-        PreparedStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, ar -> {
+        PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, ar -> {
             if (ar.isSucceeded()) {
                 Result result = ar.getResult();
                 sendResult(packetId, operation, session, sessionId, result, resultId, fetchSize);
@@ -359,7 +359,7 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     protected boolean executeQueryAsync(int packetId, int operation, Session session, int sessionId,
-            PreparedStatement stmt, int resultId, int fetchSize) throws IOException {
+            PreparedSQLStatement stmt, int resultId, int fetchSize) throws IOException {
         return false;
     }
 
@@ -405,9 +405,9 @@ public class TcpServerConnection extends TransferConnection {
         }
 
         List<PageKey> pageKeys = readPageKeys(in);
-        PreparedStatement stmt;
+        PreparedSQLStatement stmt;
         if (prepared) {
-            stmt = (PreparedStatement) cache.getObject(packetId, false);
+            stmt = (PreparedSQLStatement) cache.getObject(packetId, false);
             readParameters(in, stmt);
         } else {
             String sql = in.readString();
@@ -415,7 +415,7 @@ public class TcpServerConnection extends TransferConnection {
             // cache.addObject(packetId, stmt); //客户端的非Prepared语句不需要缓存
         }
 
-        PreparedStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
+        PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
             if (ar.isSucceeded()) {
                 int updateCount = ar.getResult();
                 try {
@@ -442,8 +442,8 @@ public class TcpServerConnection extends TransferConnection {
         addPreparedCommandToQueue(packetId, session, sessionId, stmt, yieldable);
     }
 
-    private void addPreparedCommandToQueue(int packetId, Session session, int sessionId, PreparedStatement stmt,
-            PreparedStatement.Yieldable<?> yieldable) {
+    private void addPreparedCommandToQueue(int packetId, Session session, int sessionId, PreparedSQLStatement stmt,
+            PreparedSQLStatement.Yieldable<?> yieldable) {
         SessionInfo si = getSessionInfo(sessionId);
         if (si == null) {
             sessionNotFound(packetId, sessionId);
@@ -527,7 +527,7 @@ public class TcpServerConnection extends TransferConnection {
         case Session.COMMAND_PREPARE_READ_PARAMS:
         case Session.COMMAND_PREPARE: {
             String sql = in.readString();
-            PreparedStatement command = session.prepareStatement(sql, -1);
+            PreparedSQLStatement command = session.prepareStatement(sql, -1);
             cache.addObject(packetId, command);
             boolean isQuery = command.isQuery();
             TransferOutputStream out = createTransferOutputStream(session);
@@ -733,7 +733,7 @@ public class TcpServerConnection extends TransferConnection {
         }
         case Session.COMMAND_GET_META_DATA: {
             int objectId = in.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(packetId, false);
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.getObject(packetId, false);
             Result result = command.getMetaData();
             cache.addObject(objectId, result);
             int columnCount = result.getVisibleColumnCount();
@@ -779,7 +779,7 @@ public class TcpServerConnection extends TransferConnection {
             int[] result = new int[size];
             for (int i = 0; i < size; i++) {
                 String sql = in.readString();
-                PreparedStatement command = session.prepareStatement(sql, -1);
+                PreparedSQLStatement command = session.prepareStatement(sql, -1);
                 try {
                     result[i] = command.executeUpdate();
                 } catch (Exception e) {
@@ -792,7 +792,7 @@ public class TcpServerConnection extends TransferConnection {
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
             int size = in.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(packetId, false);
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.getObject(packetId, false);
             List<? extends CommandParameter> params = command.getParameters();
             int paramsSize = params.size();
             int[] result = new int[size];
@@ -812,7 +812,7 @@ public class TcpServerConnection extends TransferConnection {
             break;
         }
         case Session.COMMAND_CLOSE: {
-            PreparedStatement command = (PreparedStatement) cache.getObject(packetId, true);
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.getObject(packetId, true);
             if (command != null) {
                 command.close();
                 cache.freeObject(packetId);
@@ -862,7 +862,7 @@ public class TcpServerConnection extends TransferConnection {
         }
         case Session.SESSION_CANCEL_STATEMENT: {
             int statementId = in.readInt();
-            PreparedStatement command = (PreparedStatement) cache.getObject(statementId, false);
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.getObject(statementId, false);
             if (command != null) {
                 command.cancel();
                 command.close();

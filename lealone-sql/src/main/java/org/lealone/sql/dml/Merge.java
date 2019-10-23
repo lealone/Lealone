@@ -21,7 +21,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
@@ -82,7 +82,7 @@ public class Merge extends ManipulationStatement {
     }
 
     @Override
-    public PreparedStatement prepare() {
+    public PreparedSQLStatement prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
                 // special case where table is used as a sequence

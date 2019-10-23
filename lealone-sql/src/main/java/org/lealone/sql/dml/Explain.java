@@ -17,7 +17,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
@@ -61,7 +61,7 @@ public class Explain extends ManipulationStatement {
     }
 
     @Override
-    public PreparedStatement prepare() {
+    public PreparedSQLStatement prepare() {
         command.prepare();
         return this;
     }

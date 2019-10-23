@@ -5,7 +5,7 @@
  */
 package org.lealone.db;
 
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 
 /**
  * Represents a procedure. Procedures are implemented for PostgreSQL
@@ -14,9 +14,9 @@ import org.lealone.sql.PreparedStatement;
 public class Procedure {
 
     private final String name;
-    private final PreparedStatement prepared;
+    private final PreparedSQLStatement prepared;
 
-    public Procedure(String name, PreparedStatement prepared) {
+    public Procedure(String name, PreparedSQLStatement prepared) {
         this.name = name;
         this.prepared = prepared;
     }
@@ -25,7 +25,7 @@ public class Procedure {
         return name;
     }
 
-    public PreparedStatement getPrepared() {
+    public PreparedSQLStatement getPrepared() {
         return prepared;
     }
 

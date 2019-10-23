@@ -24,7 +24,7 @@ import org.lealone.db.result.Row;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
@@ -100,7 +100,7 @@ public class Update extends ManipulationStatement {
     }
 
     @Override
-    public PreparedStatement prepare() {
+    public PreparedSQLStatement prepare() {
         int size = columns.size();
         HashSet<Column> columnSet = new HashSet<>(size + 1);
         if (condition != null) {

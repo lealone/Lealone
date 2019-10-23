@@ -20,7 +20,7 @@ package org.lealone.test.db;
 import org.junit.Test;
 import org.lealone.db.ServerSessionFactory;
 import org.lealone.db.Session;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.test.UnitTestBase;
 
 public class SessionTest extends UnitTestBase {
@@ -35,7 +35,7 @@ public class SessionTest extends UnitTestBase {
 
         String sql = "CREATE TABLE IF NOT EXISTS SessionTest(f1 int, f2 int)";
         int fetchSize = 0;
-        PreparedStatement ps = session.prepareStatement(sql, fetchSize);
+        PreparedSQLStatement ps = session.prepareStatement(sql, fetchSize);
         p(ps.isQuery());
     }
 }

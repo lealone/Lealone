@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 
 public class SessionPool {
@@ -80,7 +80,7 @@ public class SessionPool {
             queue.offer(session);
     }
 
-    public static Command getCommand(ServerSession originalSession, PreparedStatement prepared, //
+    public static Command getCommand(ServerSession originalSession, PreparedSQLStatement prepared, //
             String url, String sql) throws Exception {
         Session session = originalSession.getSession(url);
         if (session != null && session.isClosed())

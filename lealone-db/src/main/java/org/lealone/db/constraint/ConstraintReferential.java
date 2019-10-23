@@ -26,7 +26,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.IExpression;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 
 /**
  * A referential constraint.
@@ -423,7 +423,7 @@ public class ConstraintReferential extends Constraint {
                 checkRow(session, oldRow);
             } else {
                 int i = deleteAction == CASCADE ? 0 : columns.length;
-                PreparedStatement deleteCommand = getDelete(session);
+                PreparedSQLStatement deleteCommand = getDelete(session);
                 setWhere(deleteCommand, i, oldRow);
                 updateWithSkipCheck(deleteCommand);
             }
@@ -432,7 +432,7 @@ public class ConstraintReferential extends Constraint {
             if (updateAction == RESTRICT) {
                 checkRow(session, oldRow);
             } else {
-                PreparedStatement updateCommand = getUpdate(session);
+                PreparedSQLStatement updateCommand = getUpdate(session);
                 if (updateAction == CASCADE) {
                     List<? extends CommandParameter> params = updateCommand.getParameters();
                     for (int i = 0, len = columns.length; i < len; i++) {
@@ -447,7 +447,7 @@ public class ConstraintReferential extends Constraint {
         }
     }
 
-    private void updateWithSkipCheck(PreparedStatement prep) {
+    private void updateWithSkipCheck(PreparedSQLStatement prep) {
         // TODO constraints: maybe delay the update or support delayed checks
         // (until commit)
         try {
@@ -460,7 +460,7 @@ public class ConstraintReferential extends Constraint {
         }
     }
 
-    private void setWhere(PreparedStatement command, int pos, Row row) {
+    private void setWhere(PreparedSQLStatement command, int pos, Row row) {
         for (int i = 0, len = refColumns.length; i < len; i++) {
             int idx = refColumns[i].column.getColumnId();
             Value v = row.getValue(idx);
@@ -504,11 +504,11 @@ public class ConstraintReferential extends Constraint {
         deleteSQL = buff.toString();
     }
 
-    private PreparedStatement getUpdate(ServerSession session) {
+    private PreparedSQLStatement getUpdate(ServerSession session) {
         return prepare(session, updateSQL, updateAction);
     }
 
-    private PreparedStatement getDelete(ServerSession session) {
+    private PreparedSQLStatement getDelete(ServerSession session) {
         return prepare(session, deleteSQL, deleteAction);
     }
 
@@ -548,8 +548,8 @@ public class ConstraintReferential extends Constraint {
         buildDeleteSQL();
     }
 
-    private PreparedStatement prepare(ServerSession session, String sql, int action) {
-        PreparedStatement command = session.prepareStatement(sql);
+    private PreparedSQLStatement prepare(ServerSession session, String sql, int action) {
+        PreparedSQLStatement command = session.prepareStatement(sql);
         if (action != CASCADE) {
             List<? extends CommandParameter> params = command.getParameters();
             for (int i = 0, len = columns.length; i < len; i++) {

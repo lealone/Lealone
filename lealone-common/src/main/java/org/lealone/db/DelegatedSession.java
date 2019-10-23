@@ -22,8 +22,8 @@ import java.nio.ByteBuffer;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
-import org.lealone.sql.ParsedStatement;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.ParsedSQLStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
@@ -80,12 +80,12 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public ParsedStatement parseStatement(String sql) {
+    public ParsedSQLStatement parseStatement(String sql) {
         return session.parseStatement(sql);
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, int fetchSize) {
+    public PreparedSQLStatement prepareStatement(String sql, int fetchSize) {
         return session.prepareStatement(sql, fetchSize);
     }
 
@@ -145,7 +145,7 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public Transaction getTransaction(PreparedStatement statement) {
+    public Transaction getTransaction(PreparedSQLStatement statement) {
         return session.getTransaction(statement);
     }
 

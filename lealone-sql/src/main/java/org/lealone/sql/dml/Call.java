@@ -12,7 +12,7 @@ import org.lealone.db.ServerSession;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
@@ -63,7 +63,7 @@ public class Call extends ManipulationStatement {
     }
 
     @Override
-    public PreparedStatement prepare() {
+    public PreparedSQLStatement prepare() {
         expression = expression.optimize(session);
         expressions = new Expression[] { expression };
         isResultSet = expression.getType() == Value.RESULT_SET;

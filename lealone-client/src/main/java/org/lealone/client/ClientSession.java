@@ -33,8 +33,8 @@ import org.lealone.net.NetFactoryManager;
 import org.lealone.net.TcpClientConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
-import org.lealone.sql.ParsedStatement;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.ParsedSQLStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
@@ -434,12 +434,12 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
-    public ParsedStatement parseStatement(String sql) {
+    public ParsedSQLStatement parseStatement(String sql) {
         return null;
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, int fetchSize) {
+    public PreparedSQLStatement prepareStatement(String sql, int fetchSize) {
         return null;
     }
 

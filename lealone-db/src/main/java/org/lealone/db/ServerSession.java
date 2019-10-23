@@ -31,8 +31,8 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.ParsedStatement;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.ParsedSQLStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.DistributedStorageMap;
@@ -92,10 +92,10 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private int modificationId;
     private int objectId;
     private final int queryCacheSize;
-    private SmallLRUCache<String, PreparedStatement> queryCache;
+    private SmallLRUCache<String, PreparedSQLStatement> queryCache;
     private long modificationMetaID = -1;
 
-    private final ArrayList<PreparedStatement> currentStatements = new ArrayList<>(1);
+    private final ArrayList<PreparedSQLStatement> currentStatements = new ArrayList<>(1);
     private boolean containsDDL;
     private boolean containsDatabaseStatement;
 
@@ -363,7 +363,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public ParsedStatement parseStatement(String sql) {
+    public ParsedSQLStatement parseStatement(String sql) {
         return database.createParser(this).parse(sql);
     }
 
@@ -373,7 +373,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      * @param sql the SQL statement
      * @return the prepared statement
      */
-    public PreparedStatement prepareStatement(String sql) {
+    public PreparedSQLStatement prepareStatement(String sql) {
         return prepareStatement(sql, false);
     }
 
@@ -384,17 +384,17 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      * @param rightsChecked true if the rights have already been checked
      * @return the prepared statement
      */
-    public PreparedStatement prepareStatement(String sql, boolean rightsChecked) {
+    public PreparedSQLStatement prepareStatement(String sql, boolean rightsChecked) {
         SQLParser parser = database.createParser(this);
         parser.setRightsChecked(rightsChecked);
-        PreparedStatement p = parser.parse(sql).prepare();
+        PreparedSQLStatement p = parser.parse(sql).prepare();
         p.setLocal(isLocal());
         return p;
     }
 
-    public PreparedStatement prepareStatementLocal(String sql) {
+    public PreparedSQLStatement prepareStatementLocal(String sql) {
         SQLParser parser = database.createParser(this);
-        PreparedStatement p = parser.parse(sql).prepare();
+        PreparedSQLStatement p = parser.parse(sql).prepare();
         p.setLocal(true);
         return p;
     }
@@ -422,11 +422,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public PreparedStatement prepareStatement(String sql, int fetchSize) {
+    public PreparedSQLStatement prepareStatement(String sql, int fetchSize) {
         if (closed) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
         }
-        PreparedStatement ps;
+        PreparedSQLStatement ps;
         if (queryCacheSize > 0) {
             if (queryCache == null) {
                 queryCache = SmallLRUCache.newInstance(queryCacheSize);
@@ -815,7 +815,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         }
     }
 
-    public void addStatement(PreparedStatement statement) {
+    public void addStatement(PreparedSQLStatement statement) {
         currentStatements.add(statement);
         if (statement.isDatabaseStatement())
             containsDatabaseStatement = true;
@@ -1207,7 +1207,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public Transaction getTransaction(PreparedStatement p) {
+    public Transaction getTransaction(PreparedSQLStatement p) {
         if (transaction != null)
             return transaction;
 

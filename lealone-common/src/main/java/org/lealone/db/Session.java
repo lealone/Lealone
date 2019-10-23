@@ -12,8 +12,8 @@ import java.nio.ByteBuffer;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
-import org.lealone.sql.ParsedStatement;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.ParsedSQLStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
@@ -106,9 +106,9 @@ public interface Session extends Closeable, Transaction.Participant {
      */
     SQLCommand prepareSQLCommand(String sql, int fetchSize);
 
-    ParsedStatement parseStatement(String sql);
+    ParsedSQLStatement parseStatement(String sql);
 
-    PreparedStatement prepareStatement(String sql, int fetchSize);
+    PreparedSQLStatement prepareStatement(String sql, int fetchSize);
 
     /**
      * Check if this session is in auto-commit mode.
@@ -175,7 +175,7 @@ public interface Session extends Closeable, Transaction.Participant {
 
     Transaction getTransaction();
 
-    Transaction getTransaction(PreparedStatement statement);
+    Transaction getTransaction(PreparedSQLStatement statement);
 
     Transaction getParentTransaction();
 

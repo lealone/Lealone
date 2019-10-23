@@ -40,7 +40,7 @@ import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Calculator;
 import org.lealone.sql.expression.Expression;
@@ -320,7 +320,7 @@ public class Select extends Query {
     }
 
     @Override
-    public PreparedStatement prepare() {
+    public PreparedSQLStatement prepare() {
         if (isPrepared) {
             // sometimes a subquery is prepared twice (CREATE TABLE AS SELECT)
             return this;

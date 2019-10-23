@@ -42,7 +42,7 @@ import org.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
-public abstract class StatementBase implements PreparedStatement, ParsedStatement {
+public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLStatement {
 
     /**
      * The session.
@@ -197,7 +197,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
      * Prepare this statement.
      */
     @Override
-    public PreparedStatement prepare() {
+    public PreparedSQLStatement prepare() {
         // nothing to do
         return this;
     }
@@ -483,7 +483,7 @@ public abstract class StatementBase implements PreparedStatement, ParsedStatemen
     }
 
     @Override
-    public PreparedStatement getWrappedStatement() {
+    public PreparedSQLStatement getWrappedStatement() {
         return this;
     }
 

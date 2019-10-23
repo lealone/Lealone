@@ -17,8 +17,8 @@
  */
 package org.lealone.sql;
 
-public interface ParsedStatement extends SQLStatement {
+public interface ParsedSQLStatement extends SQLStatement {
 
-    PreparedStatement prepare();
+    PreparedSQLStatement prepare();
 
 }

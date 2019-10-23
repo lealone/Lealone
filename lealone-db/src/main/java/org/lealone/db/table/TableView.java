@@ -30,7 +30,7 @@ import org.lealone.db.util.SynchronizedVerifier;
 import org.lealone.db.value.Value;
 import org.lealone.sql.IExpression;
 import org.lealone.sql.IQuery;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 
 /**
  * A view is a virtual table that is defined by a query.
@@ -97,7 +97,7 @@ public class TableView extends Table {
     }
 
     private static IQuery compileViewQuery(ServerSession session, String sql) {
-        PreparedStatement p = session.prepareStatement(sql);
+        PreparedSQLStatement p = session.prepareStatement(sql);
         p = p.getWrappedStatement(); // 要看最原始的那条语句的类型
         if (!(p instanceof IQuery)) {
             throw DbException.getSyntaxError(sql, 0);

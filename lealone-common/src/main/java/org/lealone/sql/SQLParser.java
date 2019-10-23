@@ -23,7 +23,7 @@ public interface SQLParser {
 
     IExpression parseExpression(String sql);
 
-    ParsedStatement parse(String sql);
+    ParsedSQLStatement parse(String sql);
 
     Object parseColumnForTable(String columnSql);
 

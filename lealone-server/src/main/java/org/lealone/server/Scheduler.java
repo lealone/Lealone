@@ -34,7 +34,7 @@ import org.lealone.db.SessionStatus;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.net.TransferConnection;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
@@ -49,12 +49,12 @@ public class Scheduler extends Thread
         private final TransferConnection conn;
         private final int packetId;
         private final Session session;
-        private final PreparedStatement stmt;
-        private final PreparedStatement.Yieldable<?> yieldable;
+        private final PreparedSQLStatement stmt;
+        private final PreparedSQLStatement.Yieldable<?> yieldable;
         private final SessionInfo si;
 
-        PreparedCommand(TransferConnection conn, int packetId, Session session, PreparedStatement stmt,
-                PreparedStatement.Yieldable<?> yieldable, SessionInfo si) {
+        PreparedCommand(TransferConnection conn, int packetId, Session session, PreparedSQLStatement stmt,
+                PreparedSQLStatement.Yieldable<?> yieldable, SessionInfo si) {
             this.conn = conn;
             this.packetId = packetId;
             this.session = session;
@@ -246,7 +246,7 @@ public class Scheduler extends Thread
 
     @Override
     public void executeNextStatement() {
-        int priority = PreparedStatement.MIN_PRIORITY;
+        int priority = PreparedSQLStatement.MIN_PRIORITY;
         PreparedCommand last = null;
         while (true) {
             PreparedCommand c;
@@ -288,7 +288,7 @@ public class Scheduler extends Thread
     }
 
     @Override
-    public void executeNextStatementIfNeeded(PreparedStatement current) {
+    public void executeNextStatementIfNeeded(PreparedSQLStatement current) {
         // 如果出来各高优化级的命令，最多只抢占3次，避免堆栈溢出
         if (nested >= 3)
             return;
@@ -316,7 +316,7 @@ public class Scheduler extends Thread
     }
 
     @Override
-    public boolean yieldIfNeeded(PreparedStatement current) {
+    public boolean yieldIfNeeded(PreparedSQLStatement current) {
         // 如果来了更高优化级的命令，那么当前正在执行的语句就让出当前线程，当前线程转去执行高优先级的命令
         int priority = current.getPriority();
         nextBestCommand = getNextBestCommand(priority, false);

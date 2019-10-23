@@ -25,7 +25,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.storage.PageKey;
 
-public interface PreparedStatement extends SQLStatement {
+public interface PreparedSQLStatement extends SQLStatement {
 
     public final static int MIN_PRIORITY = 1;
     public final static int NORM_PRIORITY = 5;
@@ -49,7 +49,7 @@ public interface PreparedStatement extends SQLStatement {
 
     boolean isCacheable();
 
-    PreparedStatement getWrappedStatement();
+    PreparedSQLStatement getWrappedStatement();
 
     double getCost();
 

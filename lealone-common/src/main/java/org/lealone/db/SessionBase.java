@@ -29,7 +29,7 @@ import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
@@ -170,7 +170,7 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public Transaction getTransaction(PreparedStatement statement) {
+    public Transaction getTransaction(PreparedSQLStatement statement) {
         throw DbException.getUnsupportedException("getTransaction");
     }
 

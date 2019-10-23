@@ -14,7 +14,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.table.Table;
-import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.PlanItem;
@@ -64,7 +64,7 @@ public class Delete extends ManipulationStatement {
     }
 
     @Override
-    public PreparedStatement prepare() {
+    public PreparedSQLStatement prepare() {
         if (condition != null) {
             condition.mapColumns(tableFilter, 0);
             condition = condition.optimize(session);
