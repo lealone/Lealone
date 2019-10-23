@@ -101,7 +101,12 @@ public class Scheduler extends Thread
             // 那么就不需要放到队列中了直接执行即可。
             // TODO 如果command的优先级很低，立即执行它是否合适？
             if (scheduler == Thread.currentThread()) {
-                command.execute();
+                // 同一个session中的上一个事务还在执行中，不能立刻执行它
+                if (command.session.getStatus() == SessionStatus.COMMITTING_TRANSACTION) {
+                    preparedCommands.add(command);
+                } else {
+                    command.execute();
+                }
                 return;
             }
             preparedCommands.add(command);
