@@ -94,41 +94,48 @@ public class ClientSQLCommand implements SQLCommand {
 
     protected Result query(int maxRows, boolean scrollable, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Result>> handler) {
-        packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
-        int resultId = session.getNextId();
-        Result result = null;
+        String operation;
+        int packetType;
+        boolean isDistributedQuery = isDistributed();
+        if (isDistributedQuery) {
+            operation = "COMMAND_DISTRIBUTED_TRANSACTION_QUERY";
+            packetType = Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY;
+        } else {
+            operation = "COMMAND_QUERY";
+            packetType = Session.COMMAND_QUERY;
+        }
+        int fetch;
+        if (scrollable) {
+            fetch = Integer.MAX_VALUE;
+        } else {
+            fetch = fetchSize;
+        }
         try {
-            boolean isDistributedQuery = isDistributed();
-            if (isDistributedQuery) {
-                session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_QUERY", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY);
-            } else {
-                session.traceOperation("COMMAND_QUERY", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_QUERY);
-            }
-            int fetch;
-            if (scrollable) {
-                fetch = Integer.MAX_VALUE;
-            } else {
-                fetch = fetchSize;
-            }
-            out.writeInt(resultId).writeInt(maxRows).writeInt(fetch).writeBoolean(scrollable);
+            packetId = session.getNextId();
+            int resultId = session.getNextId();
+            TransferOutputStream out = session.newOut();
+            writeQueryHeader(out, operation, packetType, resultId, maxRows, fetch, scrollable, pageKeys);
             out.writeString(sql);
-            writePageKeys(pageKeys, out);
-
-            result = getQueryResult(isDistributedQuery, fetch, resultId, handler, out);
+            return getQueryResult(out, isDistributedQuery, fetch, resultId, handler);
         } catch (Exception e) {
             session.handleException(e);
         }
-        return result;
+        return null;
     }
 
     protected boolean isDistributed() {
         return session.getParentTransaction() != null && !session.getParentTransaction().isAutoCommit();
     }
 
-    protected void writePageKeys(List<PageKey> pageKeys, TransferOutputStream out) throws IOException {
+    protected void writeQueryHeader(TransferOutputStream out, String operation, int packetType, int resultId,
+            int maxRows, int fetch, boolean scrollable, List<PageKey> pageKeys) throws Exception {
+        session.traceOperation(operation, packetId);
+        out.writeRequestHeader(packetId, packetType);
+        out.writeInt(resultId).writeInt(maxRows).writeInt(fetch).writeBoolean(scrollable);
+        writePageKeys(out, pageKeys);
+    }
+
+    private static void writePageKeys(TransferOutputStream out, List<PageKey> pageKeys) throws IOException {
         if (pageKeys == null) {
             out.writeInt(0);
         } else {
@@ -141,8 +148,8 @@ public class ClientSQLCommand implements SQLCommand {
         }
     }
 
-    protected Result getQueryResult(boolean isDistributedQuery, int fetch, int resultId,
-            AsyncHandler<AsyncResult<Result>> handler, TransferOutputStream out) throws IOException {
+    protected Result getQueryResult(TransferOutputStream out, boolean isDistributedQuery, int fetch, int resultId,
+            AsyncHandler<AsyncResult<Result>> handler) throws IOException {
         isQuery = true;
         AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
             @Override
@@ -196,34 +203,42 @@ public class ClientSQLCommand implements SQLCommand {
 
     protected int update(String replicationName, CommandUpdateResult commandUpdateResult, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> handler) {
-        packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
-        int updateCount = 0;
+        String operation;
+        int packetType;
+        boolean isDistributedUpdate = isDistributed();
+        if (isDistributedUpdate) {
+            operation = "COMMAND_DISTRIBUTED_TRANSACTION_UPDATE";
+            packetType = Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE;
+        } else if (replicationName != null) {
+            operation = "COMMAND_REPLICATION_UPDATE";
+            packetType = Session.COMMAND_REPLICATION_UPDATE;
+        } else {
+            operation = "COMMAND_UPDATE";
+            packetType = Session.COMMAND_UPDATE;
+        }
         try {
-            boolean isDistributedUpdate = isDistributed();
-            if (isDistributedUpdate) {
-                session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_UPDATE", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE);
-            } else if (replicationName != null) {
-                session.traceOperation("COMMAND_REPLICATION_UPDATE", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_UPDATE);
-            } else {
-                session.traceOperation("COMMAND_UPDATE", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_UPDATE);
-            }
-            if (replicationName != null)
-                out.writeString(replicationName);
+            packetId = session.getNextId();
+            TransferOutputStream out = session.newOut();
+            writeUpdateHeader(out, operation, packetType, replicationName, pageKeys);
             out.writeString(sql);
-            writePageKeys(pageKeys, out);
-            updateCount = getUpdateCount(isDistributedUpdate, packetId, commandUpdateResult, handler, out);
+            return getUpdateCount(out, isDistributedUpdate, commandUpdateResult, handler);
         } catch (Exception e) {
             session.handleException(e);
         }
-        return updateCount;
+        return 0;
     }
 
-    protected int getUpdateCount(boolean isDistributedUpdate, int packetId, CommandUpdateResult commandUpdateResult,
-            AsyncHandler<AsyncResult<Integer>> handler, TransferOutputStream out) throws IOException {
+    protected void writeUpdateHeader(TransferOutputStream out, String operation, int packetType, String replicationName,
+            List<PageKey> pageKeys) throws Exception {
+        session.traceOperation(operation, packetId);
+        out.writeRequestHeader(packetId, packetType);
+        if (replicationName != null)
+            out.writeString(replicationName);
+        writePageKeys(out, pageKeys);
+    }
+
+    protected int getUpdateCount(TransferOutputStream out, boolean isDistributedUpdate,
+            CommandUpdateResult commandUpdateResult, AsyncHandler<AsyncResult<Integer>> handler) throws IOException {
         isQuery = false;
         AsyncCallback<Integer> ac = new AsyncCallback<Integer>() {
             @Override

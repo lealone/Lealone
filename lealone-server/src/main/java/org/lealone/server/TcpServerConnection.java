@@ -215,7 +215,7 @@ public class TcpServerConnection extends TransferConnection {
         sessions.clear();
     }
 
-    protected static void setParameters(TransferInputStream in, PreparedStatement command) throws IOException {
+    protected static void readParameters(TransferInputStream in, PreparedStatement command) throws IOException {
         int len = in.readInt();
         List<? extends CommandParameter> params = command.getParameters();
         for (int i = 0; i < len; i++) {
@@ -330,10 +330,11 @@ public class TcpServerConnection extends TransferConnection {
             session.setRoot(false);
         }
 
+        List<PageKey> pageKeys = readPageKeys(in);
         PreparedStatement stmt;
         if (prepared) {
             stmt = (PreparedStatement) cache.getObject(packetId, false);
-            setParameters(in, stmt);
+            readParameters(in, stmt);
         } else {
             String sql = in.readString();
             stmt = session.prepareStatement(sql, fetchSize);
@@ -353,7 +354,6 @@ public class TcpServerConnection extends TransferConnection {
                 sendError(session, packetId, ar.getCause());
             }
         });
-        List<PageKey> pageKeys = readPageKeys(in);
         yieldable.setPageKeys(pageKeys);
         addPreparedCommandToQueue(packetId, session, sessionId, stmt, yieldable);
     }
@@ -404,10 +404,11 @@ public class TcpServerConnection extends TransferConnection {
             session.setRoot(false);
         }
 
+        List<PageKey> pageKeys = readPageKeys(in);
         PreparedStatement stmt;
         if (prepared) {
             stmt = (PreparedStatement) cache.getObject(packetId, false);
-            setParameters(in, stmt);
+            readParameters(in, stmt);
         } else {
             String sql = in.readString();
             stmt = session.prepareStatement(sql, -1);
@@ -437,7 +438,6 @@ public class TcpServerConnection extends TransferConnection {
                 sendError(session, packetId, ar.getCause());
             }
         });
-        List<PageKey> pageKeys = readPageKeys(in);
         yieldable.setPageKeys(pageKeys);
         addPreparedCommandToQueue(packetId, session, sessionId, stmt, yieldable);
     }

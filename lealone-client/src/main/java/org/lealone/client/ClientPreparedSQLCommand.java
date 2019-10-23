@@ -132,33 +132,32 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             AsyncHandler<AsyncResult<Result>> handler) {
         checkParameters();
         prepareIfRequired();
-        TransferOutputStream out = session.newOut();
-        int resultId = session.getNextId();
-        Result result = null;
+        String operation;
+        int packetType;
+        boolean isDistributedQuery = isDistributed();
+        if (isDistributedQuery) {
+            operation = "COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY";
+            packetType = Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY;
+        } else {
+            operation = "COMMAND_PREPARED_QUERY";
+            packetType = Session.COMMAND_PREPARED_QUERY;
+        }
+        int fetch;
+        if (scrollable) {
+            fetch = Integer.MAX_VALUE;
+        } else {
+            fetch = fetchSize;
+        }
         try {
-            boolean isDistributedQuery = isDistributed();
-            if (isDistributedQuery) {
-                session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY);
-            } else {
-                session.traceOperation("COMMAND_PREPARED_QUERY", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_PREPARED_QUERY);
-            }
-            int fetch;
-            if (scrollable) {
-                fetch = Integer.MAX_VALUE;
-            } else {
-                fetch = fetchSize;
-            }
-            out.writeInt(resultId).writeInt(maxRows).writeInt(fetch).writeBoolean(scrollable);
-            sendParameters(out);
-            writePageKeys(pageKeys, out);
-
-            result = getQueryResult(isDistributedQuery, fetch, resultId, handler, out);
+            TransferOutputStream out = session.newOut();
+            int resultId = session.getNextId();
+            writeQueryHeader(out, operation, packetType, resultId, maxRows, fetch, scrollable, pageKeys);
+            writeParameters(out);
+            return getQueryResult(out, isDistributedQuery, fetch, resultId, handler);
         } catch (Exception e) {
             session.handleException(e);
         }
-        return result;
+        return null;
     }
 
     @Override
@@ -166,30 +165,28 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             AsyncHandler<AsyncResult<Integer>> handler) {
         checkParameters();
         prepareIfRequired();
-        TransferOutputStream out = session.newOut();
-        int updateCount = 0;
+        String operation;
+        int packetType;
+        boolean isDistributedUpdate = isDistributed();
+        if (isDistributedUpdate) {
+            operation = "COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE";
+            packetType = Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE;
+        } else if (replicationName != null) {
+            operation = "COMMAND_REPLICATION_PREPARED_UPDATE";
+            packetType = Session.COMMAND_REPLICATION_PREPARED_UPDATE;
+        } else {
+            operation = "COMMAND_PREPARED_UPDATE";
+            packetType = Session.COMMAND_PREPARED_UPDATE;
+        }
         try {
-            boolean isDistributedUpdate = isDistributed();
-            if (isDistributedUpdate) {
-                session.traceOperation("COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE);
-            } else if (replicationName != null) {
-                session.traceOperation("COMMAND_REPLICATION_PREPARED_UPDATE", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_PREPARED_UPDATE);
-            } else {
-                session.traceOperation("COMMAND_PREPARED_UPDATE", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_PREPARED_UPDATE);
-            }
-
-            if (replicationName != null)
-                out.writeString(replicationName);
-            sendParameters(out);
-            writePageKeys(pageKeys, out);
-            updateCount = getUpdateCount(isDistributedUpdate, packetId, commandUpdateResult, handler, out);
+            TransferOutputStream out = session.newOut();
+            writeUpdateHeader(out, operation, packetType, replicationName, pageKeys);
+            writeParameters(out);
+            return getUpdateCount(out, isDistributedUpdate, commandUpdateResult, handler);
         } catch (Exception e) {
             session.handleException(e);
         }
-        return updateCount;
+        return 0;
     }
 
     private void checkParameters() {
@@ -198,7 +195,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         }
     }
 
-    private void sendParameters(TransferOutputStream out) throws IOException {
+    private void writeParameters(TransferOutputStream out) throws IOException {
         int len = parameters.size();
         out.writeInt(len);
         for (CommandParameter p : parameters) {
