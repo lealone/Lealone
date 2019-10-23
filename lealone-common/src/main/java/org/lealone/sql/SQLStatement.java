@@ -5,8 +5,6 @@
  */
 package org.lealone.sql;
 
-import org.lealone.db.Command;
-
 /**
  * Represents a SQL statement.
  * 
@@ -14,7 +12,7 @@ import org.lealone.db.Command;
  * @author zhh
  */
 // 此接口只定义了所有子类对应的类型常量值
-public interface SQLStatement extends Command {
+public interface SQLStatement extends SQLCommand {
 
     /**
      * The type for unknown statement.

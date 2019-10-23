@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLCommand;
 
 public class SessionPool {
     private static final int QUEUE_SIZE = 3;
@@ -99,9 +100,9 @@ public class SessionPool {
         List<? extends CommandParameter> parameters = prepared.getParameters();
         int fetchSize = prepared.getFetchSize();
         if (parameters == null || parameters.isEmpty())
-            return session.createCommand(sql, fetchSize);
+            return session.createSQLCommand(sql, fetchSize);
 
-        Command command = session.prepareCommand(sql, fetchSize);
+        SQLCommand command = session.prepareSQLCommand(sql, fetchSize);
 
         // 传递最初的参数值到新的Command
         if (parameters != null) {

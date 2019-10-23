@@ -22,24 +22,24 @@ import java.nio.ByteBuffer;
 import org.lealone.db.Command;
 import org.lealone.db.CommandUpdateResult;
 
-public interface StorageCommand extends Command, AutoCloseable {
+public interface StorageCommand extends Command {
 
     Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw);
 
     Object executeGet(String mapName, ByteBuffer key);
 
+    Object executeAppend(String replicationName, String mapName, ByteBuffer value,
+            CommandUpdateResult commandUpdateResult);
+
     LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan);
 
     void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage);
 
-    void removeLeafPage(String mapName, PageKey pageKey);
-
-    Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            CommandUpdateResult commandUpdateResult);
-
     void replicateRootPages(String dbName, ByteBuffer rootPages);
 
-    public default ByteBuffer readRemotePage(String mapName, PageKey pageKey) {
+    void removeLeafPage(String mapName, PageKey pageKey);
+
+    default ByteBuffer readRemotePage(String mapName, PageKey pageKey) {
         return null;
     }
 }

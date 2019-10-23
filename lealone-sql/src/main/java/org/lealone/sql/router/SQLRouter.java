@@ -31,7 +31,6 @@ import java.util.concurrent.TimeUnit;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Command;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
@@ -40,6 +39,7 @@ import org.lealone.db.result.Result;
 import org.lealone.net.NetEndpoint;
 import org.lealone.net.NetEndpointManager;
 import org.lealone.net.NetEndpointManagerHolder;
+import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.dml.Select;
@@ -82,9 +82,9 @@ public class SQLRouter {
         }
 
         ReplicationSession rs = m.createReplicationSession(currentSession, sessions);
-        Command c = null;
+        SQLCommand c = null;
         try {
-            c = rs.createCommand(sql, -1);
+            c = rs.createSQLCommand(sql, -1);
             return c.executeUpdate();
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -132,9 +132,9 @@ public class SQLRouter {
         ReplicationSession rs = new ReplicationSession(sessions, initReplicationEndpoints);
         rs.setAutoCommit(currentSession.isAutoCommit());
         rs.setRpcTimeout(m.getRpcTimeout());
-        Command c = null;
+        SQLCommand c = null;
         try {
-            c = rs.createCommand(defineStatement.getSQL(), -1);
+            c = rs.createSQLCommand(defineStatement.getSQL(), -1);
             return c.executeUpdate();
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -235,7 +235,7 @@ public class SQLRouter {
         String sql = statement.getPlanSQL(true);
         Session currentSession = statement.getSession();
         Session[] sessions = new Session[size];
-        Command[] commands = new Command[size];
+        SQLCommand[] commands = new SQLCommand[size];
         ArrayList<Callable<Integer>> callables = new ArrayList<>(size);
         int i = 0;
         for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
@@ -243,8 +243,8 @@ public class SQLRouter {
             List<PageKey> pageKeys = e.getValue();
             sessions[i] = currentSession.getNestedSession(hostId,
                     !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
-            commands[i] = sessions[i].createCommand(sql, Integer.MAX_VALUE);
-            Command c = commands[i];
+            commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
+            SQLCommand c = commands[i];
             callables.add(() -> {
                 return c.executeUpdate(pageKeys);
             });
@@ -294,7 +294,7 @@ public class SQLRouter {
             String sql = statement.getPlanSQL(true);
             boolean scrollable = false;
             Session[] sessions = new Session[size];
-            Command[] commands = new Command[size];
+            SQLCommand[] commands = new SQLCommand[size];
             ArrayList<Callable<Result>> callables = new ArrayList<>(size);
             int i = 0;
             for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
@@ -302,8 +302,8 @@ public class SQLRouter {
                 List<PageKey> pageKeys = e.getValue();
                 sessions[i] = currentSession.getNestedSession(hostId,
                         !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
-                commands[i] = sessions[i].createCommand(sql, Integer.MAX_VALUE);
-                Command c = commands[i];
+                commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
+                SQLCommand c = commands[i];
                 callables.add(() -> {
                     return c.executeQuery(maxRows, false, pageKeys);
                 });

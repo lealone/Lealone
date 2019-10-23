@@ -13,7 +13,7 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 
-import org.lealone.client.ClientBatchCommand;
+import org.lealone.client.ClientBatchSQCommand;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
@@ -26,6 +26,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
+import org.lealone.sql.SQLCommand;
 
 /**
  * Represents a statement.
@@ -87,7 +88,7 @@ public class JdbcStatement extends TraceObject implements Statement {
             checkClosed();
             closeOldResultSet();
             sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            Command command = conn.createCommand(sql, fetchSize);
+            SQLCommand command = conn.createSQLCommand(sql, fetchSize);
             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
             setExecutingStatement(command);
@@ -175,7 +176,7 @@ public class JdbcStatement extends TraceObject implements Statement {
         checkClosed();
         closeOldResultSet();
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-        Command command = conn.createCommand(sql, fetchSize);
+        SQLCommand command = conn.createSQLCommand(sql, fetchSize);
         setExecutingStatement(command);
         if (async) {
             AsyncHandler<AsyncResult<Integer>> h = new AsyncHandler<AsyncResult<Integer>>() {
@@ -251,7 +252,7 @@ public class JdbcStatement extends TraceObject implements Statement {
         checkClosed();
         closeOldResultSet();
         sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-        Command command = conn.prepareCommand(sql, fetchSize);
+        SQLCommand command = conn.prepareSQLCommand(sql, fetchSize);
         boolean returnsResultSet;
         setExecutingStatement(command);
         try {
@@ -734,7 +735,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                 return new int[0];
 
             if (session instanceof ClientSession) {
-                ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(batchCommands);
+                ClientBatchSQCommand c = ((ClientSession) session).getClientBatchCommand(batchCommands);
                 c.executeUpdate();
                 int[] result = c.getResult();
                 c.close();

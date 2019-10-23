@@ -28,14 +28,13 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 
-import org.lealone.client.ClientBatchCommand;
+import org.lealone.client.ClientBatchSQCommand;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.Utils;
-import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
@@ -57,13 +56,14 @@ import org.lealone.db.value.ValueShort;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
+import org.lealone.sql.SQLCommand;
 
 /**
  * Represents a prepared statement.
  */
 public class JdbcPreparedStatement extends JdbcStatement implements PreparedStatement {
 
-    protected Command command;
+    protected SQLCommand command;
     private ArrayList<Value[]> batchParameters;
     private HashMap<String, Integer> cachedColumnLabelMap;
 
@@ -71,7 +71,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             boolean closeWithResultSet) {
         super(conn, id, resultSetType, resultSetConcurrency, closeWithResultSet);
         trace = conn.getTrace(TraceObjectType.PREPARED_STATEMENT, id);
-        command = conn.prepareCommand(sql, fetchSize);
+        command = conn.prepareSQLCommand(sql, fetchSize);
     }
 
     /**
@@ -1150,7 +1150,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 return new int[0];
 
             if (session instanceof ClientSession) {
-                ClientBatchCommand c = ((ClientSession) session).getClientBatchCommand(command, batchParameters);
+                ClientBatchSQCommand c = ((ClientSession) session).getClientBatchCommand(command, batchParameters);
                 c.executeUpdate();
                 int[] result = c.getResult();
                 c.close();

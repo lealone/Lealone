@@ -31,8 +31,9 @@ import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
+import org.lealone.sql.SQLCommand;
 
-public class ClientBatchCommand implements Command {
+public class ClientBatchSQCommand implements SQLCommand {
 
     private ClientSession session;
     private ArrayList<String> batchCommands; // 对应JdbcStatement.executeBatch()
@@ -40,22 +41,22 @@ public class ClientBatchCommand implements Command {
     private int packetId = -1;
     private int[] result;
 
-    public ClientBatchCommand(ClientSession session, ArrayList<String> batchCommands) {
+    public ClientBatchSQCommand(ClientSession session, ArrayList<String> batchCommands) {
         this.session = session;
         this.batchCommands = batchCommands;
     }
 
-    public ClientBatchCommand(ClientSession session, Command preparedCommand, ArrayList<Value[]> batchParameters) {
+    public ClientBatchSQCommand(ClientSession session, Command preparedCommand, ArrayList<Value[]> batchParameters) {
         this.session = session;
         this.batchParameters = batchParameters;
 
-        if (preparedCommand instanceof ClientCommand)
-            packetId = ((ClientCommand) preparedCommand).getId();
+        if (preparedCommand instanceof ClientSQLCommand)
+            packetId = ((ClientSQLCommand) preparedCommand).getId();
     }
 
     @Override
     public int getType() {
-        return CLIENT_BATCH_COMMAND;
+        return CLIENT_BATCH_SQL_COMMAND;
     }
 
     @Override
@@ -119,7 +120,6 @@ public class ClientBatchCommand implements Command {
         } catch (IOException e) {
             session.handleException(e);
         }
-
         return 0;
     }
 
@@ -127,8 +127,8 @@ public class ClientBatchCommand implements Command {
         out.flushAndAwait(packetId, new AsyncCallback<Void>() {
             @Override
             public void runInternal(TransferInputStream in) throws Exception {
-                for (int i = 0, size = ClientBatchCommand.this.result.length; i < size; i++)
-                    ClientBatchCommand.this.result[i] = in.readInt();
+                for (int i = 0, size = ClientBatchSQCommand.this.result.length; i < size; i++)
+                    ClientBatchSQCommand.this.result[i] = in.readInt();
             }
         });
     }

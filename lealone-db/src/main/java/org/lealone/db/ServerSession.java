@@ -33,6 +33,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLParser;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LobStorage;
@@ -399,13 +400,13 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public synchronized Command createCommand(String sql, int fetchSize) {
+    public synchronized SQLCommand createSQLCommand(String sql, int fetchSize) {
         return prepareStatement(sql, fetchSize);
     }
 
     @Override
     public StorageCommand createStorageCommand() {
-        return new ServerCommand(this);
+        return new ServerStorageCommand(this);
     }
 
     /**
@@ -416,7 +417,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      * @return the prepared statement
      */
     @Override
-    public synchronized Command prepareCommand(String sql, int fetchSize) {
+    public synchronized SQLCommand prepareSQLCommand(String sql, int fetchSize) {
         return prepareStatement(sql, fetchSize);
     }
 

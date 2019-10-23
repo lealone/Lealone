@@ -14,6 +14,7 @@ import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
@@ -92,7 +93,7 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int STATUS_ERROR = 1002;
     public static final int STATUS_RUN_MODE_CHANGED = 1003;
 
-    Command createCommand(String sql, int fetchSize);
+    SQLCommand createSQLCommand(String sql, int fetchSize);
 
     StorageCommand createStorageCommand();
 
@@ -103,7 +104,7 @@ public interface Session extends Closeable, Transaction.Participant {
      * @param fetchSize the number of rows to fetch in one step
      * @return the prepared command
      */
-    Command prepareCommand(String sql, int fetchSize);
+    SQLCommand prepareSQLCommand(String sql, int fetchSize);
 
     ParsedStatement parseStatement(String sql);
 

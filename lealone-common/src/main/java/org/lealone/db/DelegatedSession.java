@@ -24,6 +24,7 @@ import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
@@ -64,8 +65,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public Command createCommand(String sql, int fetchSize) {
-        return session.createCommand(sql, fetchSize);
+    public SQLCommand createSQLCommand(String sql, int fetchSize) {
+        return session.createSQLCommand(sql, fetchSize);
     }
 
     @Override
@@ -74,8 +75,8 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public Command prepareCommand(String sql, int fetchSize) {
-        return session.prepareCommand(sql, fetchSize);
+    public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
+        return session.prepareSQLCommand(sql, fetchSize);
     }
 
     @Override

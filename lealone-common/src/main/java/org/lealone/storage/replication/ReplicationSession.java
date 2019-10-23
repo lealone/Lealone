@@ -22,9 +22,9 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.db.Command;
 import org.lealone.db.DelegatedSession;
 import org.lealone.db.Session;
+import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.transaction.Transaction;
 
@@ -107,19 +107,27 @@ public class ReplicationSession extends DelegatedSession {
     }
 
     @Override
-    public Command createCommand(String sql, int fetchSize) {
-        Command[] commands = new Command[n];
+    public SQLCommand createSQLCommand(String sql, int fetchSize) {
+        SQLCommand[] commands = new SQLCommand[n];
         for (int i = 0; i < n; i++)
-            commands[i] = sessions[i].createCommand(sql, fetchSize);
-        return new ReplicationCommand(this, commands);
+            commands[i] = sessions[i].createSQLCommand(sql, fetchSize);
+        return new ReplicationSQLCommand(this, commands);
     }
 
     @Override
-    public Command prepareCommand(String sql, int fetchSize) {
-        Command[] commands = new Command[n];
+    public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
+        SQLCommand[] commands = new SQLCommand[n];
         for (int i = 0; i < n; i++)
-            commands[i] = sessions[i].prepareCommand(sql, fetchSize);
-        return new ReplicationCommand(this, commands);
+            commands[i] = sessions[i].prepareSQLCommand(sql, fetchSize);
+        return new ReplicationSQLCommand(this, commands);
+    }
+
+    @Override
+    public StorageCommand createStorageCommand() {
+        StorageCommand[] commands = new StorageCommand[n];
+        for (int i = 0; i < n; i++)
+            commands[i] = sessions[i].createStorageCommand();
+        return new ReplicationStorageCommand(this, commands);
     }
 
     @Override
@@ -187,13 +195,5 @@ public class ReplicationSession extends DelegatedSession {
     public void commit(String allLocalTransactionNames) {
         for (int i = 0; i < n; i++)
             sessions[i].commit(allLocalTransactionNames);
-    }
-
-    @Override
-    public StorageCommand createStorageCommand() {
-        StorageCommand[] commands = new StorageCommand[n];
-        for (int i = 0; i < n; i++)
-            commands[i] = sessions[i].createStorageCommand();
-        return new ReplicationCommand(this, commands);
     }
 }

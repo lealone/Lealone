@@ -14,10 +14,10 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.MathUtils;
-import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
+import org.lealone.sql.SQLCommand;
 
 /**
  * Information about the parameters of a prepared statement.
@@ -28,7 +28,7 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
     private final List<? extends CommandParameter> parameters;
     private final int paramCount;
 
-    JdbcParameterMetaData(JdbcPreparedStatement prep, Command command, int id) {
+    JdbcParameterMetaData(JdbcPreparedStatement prep, SQLCommand command, int id) {
         this.prep = prep;
         this.parameters = command.getParameters();
         this.paramCount = parameters.size();

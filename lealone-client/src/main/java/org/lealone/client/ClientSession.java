@@ -35,6 +35,7 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.sql.ParsedStatement;
 import org.lealone.sql.PreparedStatement;
+import org.lealone.sql.SQLCommand;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.fs.FileStorage;
@@ -187,21 +188,21 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
-    public Command createCommand(String sql, int fetchSize) {
+    public SQLCommand createSQLCommand(String sql, int fetchSize) {
         checkClosed();
-        return new ClientCommand(this, sql, fetchSize);
+        return new ClientSQLCommand(this, sql, fetchSize);
     }
 
     @Override
     public StorageCommand createStorageCommand() {
         checkClosed();
-        return new ClientCommand(this, null, -1);
+        return new ClientStorageCommand(this);
     }
 
     @Override
-    public Command prepareCommand(String sql, int fetchSize) {
+    public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
         checkClosed();
-        return new ClientPreparedCommand(this, sql, fetchSize);
+        return new ClientPreparedSQLCommand(this, sql, fetchSize);
     }
 
     @Override
@@ -416,15 +417,15 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         }
     }
 
-    public synchronized ClientBatchCommand getClientBatchCommand(ArrayList<String> batchCommands) {
+    public synchronized ClientBatchSQCommand getClientBatchCommand(ArrayList<String> batchCommands) {
         checkClosed();
-        return new ClientBatchCommand(this, batchCommands);
+        return new ClientBatchSQCommand(this, batchCommands);
     }
 
-    public synchronized ClientBatchCommand getClientBatchCommand(Command preparedCommand,
+    public synchronized ClientBatchSQCommand getClientBatchCommand(Command preparedCommand,
             ArrayList<Value[]> batchParameters) {
         checkClosed();
-        return new ClientBatchCommand(this, preparedCommand, batchParameters);
+        return new ClientBatchSQCommand(this, preparedCommand, batchParameters);
     }
 
     @Override

@@ -36,7 +36,6 @@ import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.Utils;
-import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
@@ -48,6 +47,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
+import org.lealone.sql.SQLCommand;
 
 /**
  * <p>
@@ -69,10 +69,10 @@ public class JdbcConnection extends TraceObject implements Connection {
     private final String user;
 
     private Session session;
-    private Command commit, rollback;
-    private Command getReadOnly, getGeneratedKeys;
-    private Command setLockMode, getLockMode;
-    private Command setQueryTimeout, getQueryTimeout;
+    private SQLCommand commit, rollback;
+    private SQLCommand getReadOnly, getGeneratedKeys;
+    private SQLCommand setLockMode, getLockMode;
+    private SQLCommand setQueryTimeout, getQueryTimeout;
 
     private int holdability = ResultSet.HOLD_CURSORS_OVER_COMMIT;
     private int queryTimeoutCache = -1;
@@ -319,7 +319,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         setQueryTimeout = closeAndSetNull(setQueryTimeout);
     }
 
-    private static Command closeAndSetNull(Command command) {
+    private static SQLCommand closeAndSetNull(SQLCommand command) {
         if (command != null) {
             command.close();
         }
@@ -377,7 +377,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             debugCodeCall("commit");
             checkClosed();
-            commit = prepareCommand("COMMIT", commit);
+            commit = prepareSQLCommand("COMMIT", commit);
             commit.executeUpdate();
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -468,7 +468,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             debugCodeCall("isReadOnly");
             checkClosed();
-            getReadOnly = prepareCommand("CALL READONLY()", getReadOnly);
+            getReadOnly = prepareSQLCommand("CALL READONLY()", getReadOnly);
             Result result = getReadOnly.executeQuery(0, false);
             result.next();
             boolean readOnly = result.currentRow()[0].getBoolean().booleanValue();
@@ -506,11 +506,11 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("getCatalog");
             checkClosed();
             if (catalog == null) {
-                Command cat = prepareCommand("CALL DATABASE()", Integer.MAX_VALUE);
-                Result result = cat.executeQuery(0, false);
+                SQLCommand command = prepareSQLCommand("CALL DATABASE()", Integer.MAX_VALUE);
+                Result result = command.executeQuery(0, false);
                 result.next();
                 catalog = result.currentRow()[0].getString();
-                cat.close();
+                command.close();
             }
             return catalog;
         } catch (Exception e) {
@@ -622,7 +622,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 throw DbException.getInvalidValueException("level", level);
             }
             commit();
-            setLockMode = prepareCommand("SET LOCK_MODE ?", setLockMode);
+            setLockMode = prepareSQLCommand("SET LOCK_MODE ?", setLockMode);
             setLockMode.getParameters().get(0).setValue(ValueInt.get(lockMode), false);
             setLockMode.executeUpdate();
         } catch (Exception e) {
@@ -637,7 +637,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             debugCodeCall("setQueryTimeout", seconds);
             checkClosed();
-            setQueryTimeout = prepareCommand("SET QUERY_TIMEOUT ?", setQueryTimeout);
+            setQueryTimeout = prepareSQLCommand("SET QUERY_TIMEOUT ?", setQueryTimeout);
             setQueryTimeout.getParameters().get(0).setValue(ValueInt.get(seconds * 1000), false);
             setQueryTimeout.executeUpdate();
             queryTimeoutCache = seconds;
@@ -654,7 +654,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("getQueryTimeout");
             if (queryTimeoutCache == -1) {
                 checkClosed();
-                getQueryTimeout = prepareCommand("SELECT VALUE FROM INFORMATION_SCHEMA.SETTINGS WHERE NAME=?",
+                getQueryTimeout = prepareSQLCommand("SELECT VALUE FROM INFORMATION_SCHEMA.SETTINGS WHERE NAME=?",
                         getQueryTimeout);
                 getQueryTimeout.getParameters().get(0).setValue(ValueString.get("QUERY_TIMEOUT"), false);
                 Result result = getQueryTimeout.executeQuery(0, false);
@@ -684,7 +684,7 @@ public class JdbcConnection extends TraceObject implements Connection {
         try {
             debugCodeCall("getTransactionIsolation");
             checkClosed();
-            getLockMode = prepareCommand("CALL LOCK_MODE()", getLockMode);
+            getLockMode = prepareSQLCommand("CALL LOCK_MODE()", getLockMode);
             Result result = getLockMode.executeQuery(0, false);
             result.next();
             int lockMode = result.currentRow()[0].getInt();
@@ -879,7 +879,8 @@ public class JdbcConnection extends TraceObject implements Connection {
                 debugCodeAssign("Savepoint", TraceObjectType.SAVEPOINT, id, "setSavepoint()");
             }
             checkClosed();
-            Command set = prepareCommand("SAVEPOINT " + JdbcSavepoint.getName(null, savepointId), Integer.MAX_VALUE);
+            SQLCommand set = prepareSQLCommand("SAVEPOINT " + JdbcSavepoint.getName(null, savepointId),
+                    Integer.MAX_VALUE);
             set.executeUpdate();
             JdbcSavepoint savepoint = new JdbcSavepoint(this, savepointId, null, trace, id);
             savepointId++;
@@ -903,7 +904,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 debugCodeAssign("Savepoint", TraceObjectType.SAVEPOINT, id, "setSavepoint(" + quote(name) + ")");
             }
             checkClosed();
-            Command set = prepareCommand("SAVEPOINT " + JdbcSavepoint.getName(name, 0), Integer.MAX_VALUE);
+            SQLCommand set = prepareSQLCommand("SAVEPOINT " + JdbcSavepoint.getName(name, 0), Integer.MAX_VALUE);
             set.executeUpdate();
             JdbcSavepoint savepoint = new JdbcSavepoint(this, 0, name, trace, id);
             return savepoint;
@@ -1057,8 +1058,8 @@ public class JdbcConnection extends TraceObject implements Connection {
 
     // =============================================================
 
-    Command createCommand(String sql, int fetchSize) {
-        return session.createCommand(sql, fetchSize);
+    SQLCommand createSQLCommand(String sql, int fetchSize) {
+        return session.createSQLCommand(sql, fetchSize);
     }
 
     /**
@@ -1068,12 +1069,12 @@ public class JdbcConnection extends TraceObject implements Connection {
      * @param fetchSize the fetch size (used in remote connections)
      * @return the command
      */
-    Command prepareCommand(String sql, int fetchSize) {
-        return session.prepareCommand(sql, fetchSize);
+    SQLCommand prepareSQLCommand(String sql, int fetchSize) {
+        return session.prepareSQLCommand(sql, fetchSize);
     }
 
-    private Command prepareCommand(String sql, Command old) {
-        return old == null ? prepareCommand(sql, Integer.MAX_VALUE) : old;
+    private SQLCommand prepareSQLCommand(String sql, SQLCommand old) {
+        return old == null ? prepareSQLCommand(sql, Integer.MAX_VALUE) : old;
     }
 
     private static int translateGetEnd(String sql, int i, char c) {
@@ -1341,7 +1342,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     }
 
     private void rollbackInternal() {
-        rollback = prepareCommand("ROLLBACK", rollback);
+        rollback = prepareSQLCommand("ROLLBACK", rollback);
         rollback.executeUpdate();
     }
 
@@ -1356,7 +1357,7 @@ public class JdbcConnection extends TraceObject implements Connection {
      * INTERNAL
      */
     ResultSet getGeneratedKeys(JdbcStatement stat, int id) {
-        getGeneratedKeys = prepareCommand("SELECT SCOPE_IDENTITY() WHERE SCOPE_IDENTITY() IS NOT NULL",
+        getGeneratedKeys = prepareSQLCommand("SELECT SCOPE_IDENTITY() WHERE SCOPE_IDENTITY() IS NOT NULL",
                 getGeneratedKeys);
         Result result = getGeneratedKeys.executeQuery(0, false);
         ResultSet rs = new JdbcResultSet(this, stat, result, id, false, true, false);

@@ -30,21 +30,26 @@ import org.lealone.net.TransferOutputStream;
 import org.lealone.storage.PageKey;
 
 /**
- * Represents the client-side part of a SQL prepared statement.
+ * Represents the client-side part of a prepared SQL statement.
  * This class is not used in embedded mode.
  * 
  * @author H2 Group
  * @author zhh
  */
-public class ClientPreparedCommand extends ClientCommand {
+public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     private ArrayList<CommandParameter> parameters;
 
-    public ClientPreparedCommand(ClientSession session, String sql, int fetchSize) {
+    public ClientPreparedSQLCommand(ClientSession session, String sql, int fetchSize) {
         super(session, sql, fetchSize);
         packetId = session.getNextId();
         parameters = Utils.newSmallArrayList();
         prepare(true);
+    }
+
+    @Override
+    public int getType() {
+        return CLIENT_PREPARED_SQL_COMMAND;
     }
 
     private void prepare(final boolean readParams) {
