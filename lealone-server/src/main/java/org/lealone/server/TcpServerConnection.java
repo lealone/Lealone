@@ -407,7 +407,8 @@ public class TcpServerConnection extends TransferConnection {
         List<PageKey> pageKeys = readPageKeys(in);
         PreparedSQLStatement stmt;
         if (prepared) {
-            stmt = (PreparedSQLStatement) cache.getObject(packetId, false);
+            int psPacketId = in.readInt();
+            stmt = (PreparedSQLStatement) cache.getObject(psPacketId, false);
             readParameters(in, stmt);
         } else {
             String sql = in.readString();

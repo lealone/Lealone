@@ -163,6 +163,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     @Override
     protected int update(String replicationName, CommandUpdateResult commandUpdateResult, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> handler) {
+        int psPacketId = this.packetId;
+        this.packetId = session.getNextId();
         checkParameters();
         prepareIfRequired();
         String operation;
@@ -181,10 +183,13 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         try {
             TransferOutputStream out = session.newOut();
             writeUpdateHeader(out, operation, packetType, replicationName, pageKeys);
+            out.writeInt(psPacketId);
             writeParameters(out);
             return getUpdateCount(out, isDistributedUpdate, commandUpdateResult, handler);
         } catch (Exception e) {
             session.handleException(e);
+        } finally {
+            this.packetId = psPacketId;
         }
         return 0;
     }
