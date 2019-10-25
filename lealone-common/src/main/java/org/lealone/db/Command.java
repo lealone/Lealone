@@ -48,4 +48,11 @@ public interface Command extends AutoCloseable {
 
     default void replicationRollback() {
     }
+
+    default int getId() {
+        return 0;
+    }
+
+    default void setId(int id) {
+    }
 }

@@ -31,18 +31,18 @@ public abstract class ClientResult implements Result {
     protected int fetchSize;
     protected ClientSession session;
     protected TransferInputStream in;
-    protected int id;
+    protected int resultId; // 如果为负数，表示后端没有缓存任何东西
     protected final ClientResultColumn[] columns;
     protected Value[] currentRow;
     protected final int rowCount;
     protected int rowId, rowOffset;
     protected ArrayList<Value[]> result;
 
-    public ClientResult(ClientSession session, TransferInputStream in, int id, int columnCount, int rowCount,
+    public ClientResult(ClientSession session, TransferInputStream in, int resultId, int columnCount, int rowCount,
             int fetchSize) throws IOException {
         this.session = session;
         this.in = in;
-        this.id = id;
+        this.resultId = resultId;
         this.columns = new ClientResultColumn[columnCount];
         this.rowCount = rowCount;
         for (int i = 0; i < columnCount; i++) {
@@ -116,12 +116,14 @@ public abstract class ClientResult implements Result {
         if (session == null) {
             return;
         }
-        session.checkClosed();
-        try {
-            session.traceOperation("RESULT_RESET", id);
-            session.newOut().writeRequestHeader(id, Session.RESULT_RESET).flush();
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, null);
+        if (resultId > 0) {
+            session.checkClosed();
+            try {
+                session.traceOperation("RESULT_RESET", resultId);
+                session.newOut().writeRequestHeader(Session.RESULT_RESET).writeInt(resultId).flush();
+            } catch (IOException e) {
+                throw DbException.convertIOException(e, null);
+            }
         }
     }
 
@@ -149,10 +151,11 @@ public abstract class ClientResult implements Result {
         if (session == null) {
             return;
         }
-        // TODO result sets: no reset possible for larger remote result sets
         try {
-            session.traceOperation("RESULT_CLOSE", id);
-            session.newOut().writeRequestHeader(id, Session.RESULT_CLOSE).flush();
+            if (resultId > 0) {
+                session.traceOperation("RESULT_CLOSE", resultId);
+                session.newOut().writeRequestHeader(Session.RESULT_CLOSE).writeInt(resultId).flush();
+            }
         } catch (IOException e) {
             session.getTrace().error(e, "close");
         } finally {
@@ -162,9 +165,10 @@ public abstract class ClientResult implements Result {
 
     protected void sendFetch(int fetchSize) throws IOException {
         TransferOutputStream out = session.newOut();
-        session.traceOperation("RESULT_FETCH_ROWS", id);
-        out.writeRequestHeader(id, Session.RESULT_FETCH_ROWS).writeInt(fetchSize);
-        out.flushAndAwait(id);
+        int packetId = session.getNextId();
+        session.traceOperation("RESULT_FETCH_ROWS", resultId);
+        out.writeRequestHeader(packetId, Session.RESULT_FETCH_ROWS).writeInt(resultId).writeInt(fetchSize);
+        out.flushAndAwait(packetId);
     }
 
     @Override
@@ -178,15 +182,13 @@ public abstract class ClientResult implements Result {
             return;
         }
         try {
-            if (id <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS / 2) {
+            if (resultId > 0 && resultId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS / 2) {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
-                session.traceOperation("CHANGE_ID", id);
-                session.newOut().writeRequestHeader(id, Session.RESULT_CHANGE_ID).writeInt(newId).flush();
-                id = newId;
-                // TODO remote result set: very old result sets may be
-                // already removed on the server (theoretically) - how to
-                // solve this?
+                session.traceOperation("CHANGE_ID", resultId);
+                session.newOut().writeRequestHeader(Session.RESULT_CHANGE_ID).writeInt(resultId).writeInt(newId)
+                        .flush();
+                resultId = newId;
             }
         } catch (IOException e) {
             throw DbException.convertIOException(e, null);

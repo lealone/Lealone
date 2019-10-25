@@ -317,5 +317,4 @@ public class UpdatableRow {
             throw DbException.get(ErrorCode.NO_DATA_AVAILABLE);
         }
     }
-
 }

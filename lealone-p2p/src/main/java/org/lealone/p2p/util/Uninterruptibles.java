@@ -29,7 +29,7 @@ public class Uninterruptibles {
             while (true) {
                 try {
                     // TimeUnit.sleep() treats negative timeouts just like zero.
-                    java.util.concurrent.TimeUnit.NANOSECONDS.sleep(remainingNanos);
+                    TimeUnit.NANOSECONDS.sleep(remainingNanos);
                     return;
                 } catch (InterruptedException e) {
                     interrupted = true;

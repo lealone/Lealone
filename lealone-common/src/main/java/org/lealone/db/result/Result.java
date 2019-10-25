@@ -12,7 +12,7 @@ import org.lealone.db.value.Value;
  * The result interface is used by the LocalResult and ClientResult class.
  * A result may contain rows, or just an update count.
  */
-public interface Result {
+public interface Result extends AutoCloseable {
 
     /**
      * Go to the beginning of the result, that means
@@ -68,6 +68,7 @@ public interface Result {
     /**
      * Close the result and delete any temporary files
      */
+    @Override
     void close();
 
     /**

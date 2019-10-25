@@ -45,6 +45,7 @@ import javax.management.ObjectName;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
+import org.lealone.common.util.Pair;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetEndpoint;
@@ -56,7 +57,6 @@ import org.lealone.p2p.net.MessageOut;
 import org.lealone.p2p.net.MessagingService;
 import org.lealone.p2p.net.Verb;
 import org.lealone.p2p.server.P2pServer;
-import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Uninterruptibles;
 import org.lealone.p2p.util.Utils;
 

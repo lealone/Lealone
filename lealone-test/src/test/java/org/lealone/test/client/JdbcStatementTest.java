@@ -18,26 +18,27 @@
 package org.lealone.test.client;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.Statement;
 
 import org.junit.Test;
-import org.lealone.common.trace.TraceSystem;
-import org.lealone.test.UnitTestBase;
+import org.lealone.db.LealoneDatabase;
+import org.lealone.test.TestBase;
 
-public class JdbcStatementTest extends UnitTestBase {
+public class JdbcStatementTest extends TestBase {
     @Test
     public void run() throws Exception {
-        setEmbedded(true).enableTrace(TraceSystem.DEBUG);
-        Connection conn = getConnection();
+        Connection conn = getConnection(LealoneDatabase.NAME);
         Statement stmt = conn.createStatement();
 
         stmt.execute("/* test */DROP TABLE IF EXISTS JdbcStatementTest");
         stmt.execute("CREATE TABLE IF NOT EXISTS JdbcStatementTest (f1 int, f2 long)");
+        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)");
 
-        // ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM JdbcStatementTest");
-        // assertTrue(rs.next());
-        // assertEquals(1, rs.getInt(1));
-        // assertEquals(2, rs.getLong(2));
+        ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM JdbcStatementTest");
+        assertTrue(rs.next());
+        assertEquals(1, rs.getInt(1));
+        assertEquals(2, rs.getLong(2));
 
         stmt.executeUpdate("DELETE FROM JdbcStatementTest WHERE f1 = 1");
 

@@ -26,14 +26,16 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.IOUtils;
+import org.lealone.common.util.Pair;
 import org.lealone.common.util.SmallLRUCache;
-import org.lealone.common.util.SmallMap;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
@@ -75,17 +77,25 @@ public class TcpServerConnection extends TransferConnection {
     // 所有与这个sessionId相关的命令请求都先放到SessionInfo中的队列，
     // 然后由调度器根据优先级从多个队列中依次取出执行。
     private final ConcurrentHashMap<Integer, SessionInfo> sessions = new ConcurrentHashMap<>();
-    private final SmallMap cache = new SmallMap(SysProperties.SERVER_CACHED_OBJECTS);
     private final TcpServer tcpServer;
+    private final ExpiringMap<Integer, AutoCloseable> cache;
     private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
         this.tcpServer = tcpServer;
-    }
-
-    protected SmallMap getCache() {
-        return cache;
+        cache = new ExpiringMap<>(ScheduleService.getScheduler(), tcpServer.getSessionTimeout(),
+                new Function<Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>>, Void>() {
+                    @Override
+                    public Void apply(Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>> pair) {
+                        try {
+                            pair.right.value.close();
+                        } catch (Exception e) {
+                            logger.warn(e.getMessage());
+                        }
+                        return null;
+                    }
+                });
     }
 
     /**
@@ -213,6 +223,7 @@ public class TcpServerConnection extends TransferConnection {
             closeSession(si);
         }
         sessions.clear();
+        cache.close();
     }
 
     protected static void readParameters(TransferInputStream in, PreparedSQLStatement command) throws IOException {
@@ -333,12 +344,14 @@ public class TcpServerConnection extends TransferConnection {
         List<PageKey> pageKeys = readPageKeys(in);
         PreparedSQLStatement stmt;
         if (prepared) {
-            stmt = (PreparedSQLStatement) cache.getObject(packetId, false);
+            int commandId = in.readInt();
+            stmt = (PreparedSQLStatement) cache.get(commandId);
             readParameters(in, stmt);
         } else {
+            // 客户端的非Prepared语句不需要缓存
             String sql = in.readString();
             stmt = session.prepareStatement(sql, fetchSize);
-            // cache.addObject(packetId, stmt); //客户端的非Prepared语句不需要缓存
+            stmt.setId(packetId);
         }
         stmt.setFetchSize(fetchSize);
 
@@ -365,7 +378,7 @@ public class TcpServerConnection extends TransferConnection {
 
     protected void sendResult(int packetId, int operation, Session session, int sessionId, Result result, int resultId,
             int fetchSize) {
-        cache.addObject(resultId, result);
+        cache.put(resultId, result);
         try {
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, getStatus(session));
@@ -407,13 +420,14 @@ public class TcpServerConnection extends TransferConnection {
         List<PageKey> pageKeys = readPageKeys(in);
         PreparedSQLStatement stmt;
         if (prepared) {
-            int psPacketId = in.readInt();
-            stmt = (PreparedSQLStatement) cache.getObject(psPacketId, false);
+            int commandId = in.readInt();
+            stmt = (PreparedSQLStatement) cache.get(commandId);
             readParameters(in, stmt);
         } else {
+            // 客户端的非Prepared语句不需要缓存
             String sql = in.readString();
             stmt = session.prepareStatement(sql, -1);
-            // cache.addObject(packetId, stmt); //客户端的非Prepared语句不需要缓存
+            stmt.setId(packetId);
         }
 
         PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
@@ -527,9 +541,11 @@ public class TcpServerConnection extends TransferConnection {
         }
         case Session.COMMAND_PREPARE_READ_PARAMS:
         case Session.COMMAND_PREPARE: {
+            int commandId = in.readInt();
             String sql = in.readString();
             PreparedSQLStatement command = session.prepareStatement(sql, -1);
-            cache.addObject(packetId, command);
+            command.setId(commandId);
+            cache.put(commandId, command);
             boolean isQuery = command.isQuery();
             TransferOutputStream out = createTransferOutputStream(session);
             writeResponseHeader(out, session, packetId);
@@ -733,14 +749,13 @@ public class TcpServerConnection extends TransferConnection {
             break;
         }
         case Session.COMMAND_GET_META_DATA: {
-            int objectId = in.readInt();
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.getObject(packetId, false);
+            int commandId = in.readInt();
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.get(commandId);
             Result result = command.getMetaData();
-            cache.addObject(objectId, result);
             int columnCount = result.getVisibleColumnCount();
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, Session.STATUS_OK);
-            out.writeInt(columnCount).writeInt(0);
+            out.writeInt(columnCount);
             for (int i = 0; i < columnCount; i++) {
                 writeColumn(out, result, i);
             }
@@ -793,7 +808,7 @@ public class TcpServerConnection extends TransferConnection {
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
             int size = in.readInt();
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.getObject(packetId, false);
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.get(packetId);
             List<? extends CommandParameter> params = command.getParameters();
             int paramsSize = params.size();
             int[] result = new int[size];
@@ -813,16 +828,17 @@ public class TcpServerConnection extends TransferConnection {
             break;
         }
         case Session.COMMAND_CLOSE: {
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.getObject(packetId, true);
+            int commandId = in.readInt();
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.remove(commandId, true);
             if (command != null) {
                 command.close();
-                cache.freeObject(packetId);
             }
             break;
         }
         case Session.RESULT_FETCH_ROWS: {
+            int resultId = in.readInt();
             int count = in.readInt();
-            Result result = (Result) cache.getObject(packetId, false);
+            Result result = (Result) cache.get(resultId);
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, Session.STATUS_OK);
             writeRow(out, result, count);
@@ -830,23 +846,23 @@ public class TcpServerConnection extends TransferConnection {
             break;
         }
         case Session.RESULT_RESET: {
-            Result result = (Result) cache.getObject(packetId, false);
+            int resultId = in.readInt();
+            Result result = (Result) cache.get(resultId);
             result.reset();
             break;
         }
         case Session.RESULT_CHANGE_ID: {
-            int oldId = packetId;
+            int oldId = in.readInt();
             int newId = in.readInt();
-            Object obj = cache.getObject(oldId, false);
-            cache.freeObject(oldId);
-            cache.addObject(newId, obj);
+            AutoCloseable obj = cache.remove(oldId, false);
+            cache.put(newId, obj);
             break;
         }
         case Session.RESULT_CLOSE: {
-            Result result = (Result) cache.getObject(packetId, true);
+            int resultId = in.readInt();
+            Result result = (Result) cache.remove(resultId, true);
             if (result != null) {
                 result.close();
-                cache.freeObject(packetId);
             }
             break;
         }
@@ -863,11 +879,12 @@ public class TcpServerConnection extends TransferConnection {
         }
         case Session.SESSION_CANCEL_STATEMENT: {
             int statementId = in.readInt();
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.getObject(statementId, false);
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.remove(statementId, false);
             if (command != null) {
                 command.cancel();
                 command.close();
-                cache.freeObject(statementId);
+            } else {
+                session.cancelStatement(statementId);
             }
             break;
         }

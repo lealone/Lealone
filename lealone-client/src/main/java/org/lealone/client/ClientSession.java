@@ -100,6 +100,14 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
+    public int getCurrentId() {
+        if (tcpConnection == null) {
+            return 0;
+        }
+        return tcpConnection.getCurrentId();
+    }
+
+    @Override
     public Session connect(boolean allowRedirect) {
         open();
         return this;
@@ -149,8 +157,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     /**
      * Cancel the statement with the given id.
      *
-     * @param id the statement id
+     * @param statementId the statement id
      */
+    @Override
     public void cancelStatement(int statementId) {
         try {
             newOut().writeRequestHeader(Session.SESSION_CANCEL_STATEMENT).writeInt(statementId).flush();

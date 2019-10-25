@@ -28,11 +28,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.Pair;
 import org.lealone.net.NetEndpoint;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.FailureDetector;
 import org.lealone.p2p.server.P2pServer;
-import org.lealone.p2p.util.Pair;
 
 public class TopologyMetaData {
 

@@ -1458,4 +1458,10 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     public int getNetworkTimeout() {
         return connectionInfo != null ? connectionInfo.getNetworkTimeout() : -1;
     }
+
+    @Override
+    public void cancelStatement(int statementId) {
+        if (currentCommand != null && currentCommand.getId() == statementId)
+            currentCommand.cancel();
+    }
 }

@@ -60,6 +60,9 @@ import org.lealone.sql.SQLCommand;
 
 /**
  * Represents a prepared statement.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class JdbcPreparedStatement extends JdbcStatement implements PreparedStatement {
 
@@ -72,6 +75,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         super(conn, id, resultSetType, resultSetConcurrency, closeWithResultSet);
         trace = conn.getTrace(TraceObjectType.PREPARED_STATEMENT, id);
         command = conn.prepareSQLCommand(sql, fetchSize);
+        setExecutingStatement(command);
     }
 
     /**
@@ -105,33 +109,33 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         try {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id, "executeQuery()");
+                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id,
+                        async ? "executeQueryAsync()" : "executeQuery()");
             }
             checkClosed();
-            closeOldResultSet();
             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-            setExecutingStatement(command);
             if (async) {
                 AsyncHandler<AsyncResult<Result>> h = new AsyncHandler<AsyncResult<Result>>() {
                     @Override
                     public void handle(AsyncResult<Result> ar) {
                         Result r = ar.getResult();
-                        resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id, closedByResultSet,
-                                scrollable, updatable, cachedColumnLabelMap);
-                        setExecutingStatement(null);
-                        resultSet.setCommand(command);
-
                         if (handler != null) {
+                            JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id,
+                                    closedByResultSet, scrollable, updatable, cachedColumnLabelMap);
                             AsyncResult<ResultSet> r2 = new AsyncResult<>();
                             r2.setResult(resultSet);
                             handler.handle(r2);
+                        } else {
+                            r.close();
                         }
                     }
                 };
                 command.executeQueryAsync(maxRows, scrollable, h);
                 return null;
             } else {
+                closeOldResultSet();
+                setExecutingStatement(command);
                 Result result;
                 try {
                     result = command.executeQuery(maxRows, scrollable);
@@ -177,6 +181,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) throws SQLException {
         try {
             debugCodeCall("executeUpdateAsync");
+            checkClosed();
             executeUpdateInternal(handler, true);
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -184,20 +189,13 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     }
 
     private int executeUpdateInternal(AsyncHandler<AsyncResult<Integer>> handler, boolean async) throws SQLException {
-        closeOldResultSet();
-        setExecutingStatement(command);
         if (async) {
-            AsyncHandler<AsyncResult<Integer>> h = new AsyncHandler<AsyncResult<Integer>>() {
-                @Override
-                public void handle(AsyncResult<Integer> ar) {
-                    updateCount = ar.getResult();
-                    setExecutingStatement(null);
-                    handler.handle(ar);
-                }
-            };
-            command.executeUpdateAsync(h);
-            return -1;
+            updateCount = -1;
+            command.executeUpdateAsync(handler);
+            return updateCount;
         } else {
+            closeOldResultSet();
+            setExecutingStatement(command);
             try {
                 updateCount = command.executeUpdate();
             } finally {
@@ -1561,5 +1559,4 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public String toString() {
         return getTraceObjectName() + ": " + command;
     }
-
 }

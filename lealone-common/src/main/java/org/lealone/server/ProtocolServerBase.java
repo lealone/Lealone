@@ -27,6 +27,8 @@ import org.lealone.db.Constants;
 
 public abstract class ProtocolServerBase implements ProtocolServer {
 
+    public static final int DEFAULT_SESSION_TIMEOUT = 60 * 1000; // 如果session在60秒内不活跃就会超时
+
     protected Map<String, String> config;
     protected String host = Constants.DEFAULT_HOST;
     protected int port;
@@ -43,7 +45,7 @@ public abstract class ProtocolServerBase implements ProtocolServer {
     // 如果allowOthers为false，那么可以指定具体的白名单，只有在白名单中的客户端才可以连进来
     protected HashSet<String> whiteList;
     protected ServerEncryptionOptions serverEncryptionOptions;
-    protected int sessionTimeout = 60 * 1000; // 如果session在60秒内不活跃就会超时
+    protected int sessionTimeout = DEFAULT_SESSION_TIMEOUT;
 
     protected ProtocolServerBase() {
     }

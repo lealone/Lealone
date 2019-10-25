@@ -51,6 +51,10 @@ public class TcpClientConnection extends TransferConnection {
         return nextId.incrementAndGet();
     }
 
+    public int getCurrentId() {
+        return nextId.get();
+    }
+
     @Override
     public void addAsyncCallback(int packetId, AsyncCallback<?> ac) {
         callbackMap.put(packetId, ac);

@@ -171,4 +171,9 @@ public class ClientBatchSQCommand implements SQLCommand {
     public int[] getResult() {
         return result;
     }
+
+    @Override
+    public int getId() {
+        return packetId;
+    }
 }

@@ -26,9 +26,9 @@ import org.lealone.net.TransferInputStream;
 
 public class RowCountDeterminedClientResult extends ClientResult {
 
-    public RowCountDeterminedClientResult(ClientSession session, TransferInputStream in, int id, int columnCount,
+    public RowCountDeterminedClientResult(ClientSession session, TransferInputStream in, int resultId, int columnCount,
             int rowCount, int fetchSize) throws IOException {
-        super(session, in, id, columnCount, rowCount, fetchSize);
+        super(session, in, resultId, columnCount, rowCount, fetchSize);
     }
 
     @Override

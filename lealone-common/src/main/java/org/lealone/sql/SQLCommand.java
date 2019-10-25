@@ -72,17 +72,7 @@ public interface SQLCommand extends Command {
     }
 
     default void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        executeQueryAsync(maxRows, scrollable, null, handler);
-    }
-
-    default void executeQueryAsync(int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Result>> handler) {
-        Result result = executeQuery(maxRows, scrollable, pageKeys);
-        if (handler != null) {
-            AsyncResult<Result> r = new AsyncResult<>();
-            r.setResult(result);
-            handler.handle(r);
-        }
+        executeQuery(maxRows, scrollable);
     }
 
     /**
@@ -105,16 +95,6 @@ public interface SQLCommand extends Command {
     int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult);
 
     default void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        executeUpdateAsync(null, handler);
-    }
-
-    default boolean executeUpdateAsync(List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
-        int updateCount = executeUpdate(pageKeys);
-        if (handler != null) {
-            AsyncResult<Integer> r = new AsyncResult<>();
-            r.setResult(updateCount);
-            handler.handle(r);
-        }
-        return false;
+        executeUpdate();
     }
 }

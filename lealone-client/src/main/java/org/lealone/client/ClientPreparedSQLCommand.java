@@ -42,7 +42,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     public ClientPreparedSQLCommand(ClientSession session, String sql, int fetchSize) {
         super(session, sql, fetchSize);
-        packetId = session.getNextId();
+        // commandId重新prepare时会变，但是parameters不会变
         parameters = Utils.newSmallArrayList();
         prepare(true);
     }
@@ -53,6 +53,9 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     private void prepare(final boolean readParams) {
+        // Prepared SQL的ID，每次执行时都发给后端
+        commandId = session.getNextId();
+        int packetId = session.getNextId();
         try {
             TransferOutputStream out = session.newOut();
             if (readParams) {
@@ -62,13 +65,12 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
                 session.traceOperation("COMMAND_PREPARE", packetId);
                 out.writeRequestHeader(packetId, Session.COMMAND_PREPARE);
             }
-            out.writeString(sql);
+            out.writeInt(commandId).writeString(sql);
             out.flushAndAwait(packetId, new AsyncCallback<Void>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     isQuery = in.readBoolean();
                     if (readParams) {
-                        parameters.clear();
                         int paramCount = in.readInt();
                         for (int i = 0; i < paramCount; i++) {
                             ClientCommandParameter p = new ClientCommandParameter(i);
@@ -85,7 +87,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     private void prepareIfRequired() {
         session.checkClosed();
-        if (packetId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS) {
+        if (commandId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS) {
             // object is too old - we need to prepare again
             prepare(false);
         }
@@ -102,29 +104,25 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             return null;
         }
         TransferOutputStream out = session.newOut();
-        int objectId = session.getNextId();
-        ClientResult result = null;
+        int packetId = session.getNextId();
         prepareIfRequired();
         try {
             session.traceOperation("COMMAND_GET_META_DATA", packetId);
             out.writeRequestHeader(packetId, Session.COMMAND_GET_META_DATA);
-            out.writeInt(objectId);
+            out.writeInt(commandId);
             AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     int columnCount = in.readInt();
-                    int rowCount = in.readInt();
-                    ClientResult result = new RowCountDeterminedClientResult(session, in, objectId, columnCount,
-                            rowCount, Integer.MAX_VALUE);
-
+                    ClientResult result = new RowCountDeterminedClientResult(session, in, -1, columnCount, 0, 0);
                     setResult(result);
                 }
             };
-            result = out.flushAndAwait(packetId, ac);
+            return out.flushAndAwait(packetId, ac);
         } catch (IOException e) {
             session.handleException(e);
         }
-        return result;
+        return null;
     }
 
     @Override
@@ -134,6 +132,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         prepareIfRequired();
         String operation;
         int packetType;
+        int packetId = session.getNextId();
         boolean isDistributedQuery = isDistributed();
         if (isDistributedQuery) {
             operation = "COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY";
@@ -151,9 +150,10 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         try {
             TransferOutputStream out = session.newOut();
             int resultId = session.getNextId();
-            writeQueryHeader(out, operation, packetType, resultId, maxRows, fetch, scrollable, pageKeys);
+            writeQueryHeader(out, operation, packetId, packetType, resultId, maxRows, fetch, scrollable, pageKeys);
+            out.writeInt(commandId);
             writeParameters(out);
-            return getQueryResult(out, isDistributedQuery, fetch, resultId, handler);
+            return getQueryResult(out, packetId, isDistributedQuery, fetch, resultId, handler);
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -163,12 +163,11 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     @Override
     protected int update(String replicationName, CommandUpdateResult commandUpdateResult, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> handler) {
-        int psPacketId = this.packetId;
-        this.packetId = session.getNextId();
         checkParameters();
         prepareIfRequired();
         String operation;
         int packetType;
+        int packetId = session.getNextId();
         boolean isDistributedUpdate = isDistributed();
         if (isDistributedUpdate) {
             operation = "COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE";
@@ -182,14 +181,12 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         }
         try {
             TransferOutputStream out = session.newOut();
-            writeUpdateHeader(out, operation, packetType, replicationName, pageKeys);
-            out.writeInt(psPacketId);
+            writeUpdateHeader(out, operation, packetId, packetType, replicationName, pageKeys);
+            out.writeInt(commandId);
             writeParameters(out);
-            return getUpdateCount(out, isDistributedUpdate, commandUpdateResult, handler);
+            return getUpdateCount(out, packetId, isDistributedUpdate, commandUpdateResult, handler);
         } catch (Exception e) {
             session.handleException(e);
-        } finally {
-            this.packetId = psPacketId;
         }
         return 0;
     }
@@ -213,11 +210,12 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         if (session == null || session.isClosed()) {
             return;
         }
+        int packetId = session.getNextId();
         session.traceOperation("COMMAND_CLOSE", packetId);
         try {
-            session.newOut().writeRequestHeader(packetId, Session.COMMAND_CLOSE).flush();
+            session.newOut().writeRequestHeader(packetId, Session.COMMAND_CLOSE).writeInt(commandId).flush();
         } catch (IOException e) {
-            session.getTrace().error(e, "close");
+            session.getTrace().error(e, "close session");
         }
         if (parameters != null) {
             try {
@@ -228,7 +226,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
                     }
                 }
             } catch (DbException e) {
-                session.getTrace().error(e, "close");
+                session.getTrace().error(e, "close command parameters");
             }
             parameters = null;
         }

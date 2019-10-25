@@ -31,6 +31,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.Session;
 import org.lealone.db.SessionStatus;
+import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.net.TransferConnection;
@@ -173,10 +174,6 @@ public class Scheduler extends Thread
 
             runPageOperationTasks();
             executeNextStatement();
-
-            // for (int i = 0, size = periodicQueue.size(); i < size; i++) {
-            // periodicQueue.get(i).run();
-            // }
         }
     }
 
@@ -250,6 +247,16 @@ public class Scheduler extends Thread
     }
 
     @Override
+    public void addPeriodicTask(AsyncPeriodicTask task) {
+        periodicQueue.add(task);
+    }
+
+    @Override
+    public void removePeriodicTask(AsyncPeriodicTask task) {
+        periodicQueue.remove(task);
+    }
+
+    @Override
     public void executeNextStatement() {
         int priority = PreparedSQLStatement.MIN_PRIORITY;
         PreparedCommand last = null;
@@ -263,6 +270,7 @@ public class Scheduler extends Thread
             }
             if (c == null) {
                 checkSessionTimeout();
+                handlePeriodicTasks();
                 runPageOperationTasks();
                 runQueueTasks(maxPriorityQueue);
                 runQueueTasks(normPriorityQueue);
@@ -382,6 +390,14 @@ public class Scheduler extends Thread
         long currentTime = System.currentTimeMillis();
         for (SessionInfo si : sessions) {
             si.checkSessionTimeout(currentTime);
+        }
+    }
+
+    private void handlePeriodicTasks() {
+        if (periodicQueue.isEmpty())
+            return;
+        for (int i = 0, size = periodicQueue.size(); i < size; i++) {
+            periodicQueue.get(i).run();
         }
     }
 

@@ -343,4 +343,9 @@ public class DelegatedSession implements Session {
     public int getNetworkTimeout() {
         return session.getNetworkTimeout();
     }
+
+    @Override
+    public void cancelStatement(int statementId) {
+        session.cancelStatement(statementId);
+    }
 }

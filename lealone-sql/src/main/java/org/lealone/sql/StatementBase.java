@@ -78,6 +78,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     private boolean canReuse;
     private boolean local = true;
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
+    private int statementId;
 
     /**
      * Create a new object.
@@ -87,6 +88,16 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     public StatementBase(ServerSession session) {
         this.session = session;
         modificationMetaId = session.getDatabase().getModificationMetaId();
+    }
+
+    @Override
+    public int getId() {
+        return statementId;
+    }
+
+    @Override
+    public void setId(int id) {
+        statementId = id;
     }
 
     @Override

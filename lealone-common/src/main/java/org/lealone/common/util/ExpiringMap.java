@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.p2p.util;
+package org.lealone.common.util;
 
 import java.util.Map;
 import java.util.Set;
@@ -24,55 +24,52 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncPeriodicTask;
-import org.lealone.db.async.AsyncTaskHandlerFactory;
+import org.lealone.db.async.AsyncTaskHandler;
 
 public class ExpiringMap<K, V> {
+
     private static final Logger logger = LoggerFactory.getLogger(ExpiringMap.class);
-    private volatile boolean shutdown;
 
     public static class CacheableObject<T> {
         public final T value;
         public final long timeout;
         private final long createdAt;
+        private long last;
 
         private CacheableObject(T value, long timeout) {
             assert value != null;
             this.value = value;
             this.timeout = timeout;
-            this.createdAt = System.nanoTime();
+            last = createdAt = System.nanoTime();
         }
 
         private boolean isReadyToDieAt(long atNano) {
-            return atNano - createdAt > TimeUnit.MILLISECONDS.toNanos(timeout);
+            return atNano - last > TimeUnit.MILLISECONDS.toNanos(timeout);
         }
     }
 
-    // if we use more ExpiringMaps we may want to add multiple threads to this executor
-    // private static final ScheduledExecutorService service = new DebuggableScheduledThreadPoolExecutor(
-    // "EXPIRING-MAP-REAPER");
-
-    private final ConcurrentMap<K, CacheableObject<V>> cache = new ConcurrentHashMap<K, CacheableObject<V>>();
+    private final ConcurrentMap<K, CacheableObject<V>> cache = new ConcurrentHashMap<>();
     private final long defaultExpiration;
-
-    public ExpiringMap(long defaultExpiration) {
-        this(defaultExpiration, null);
-    }
+    private final AsyncTaskHandler asyncTaskHandler;
+    private final AsyncPeriodicTask task;
 
     /**
      *
      * @param defaultExpiration the TTL for objects in the cache in milliseconds
      */
-    public ExpiringMap(long defaultExpiration, final Function<Pair<K, CacheableObject<V>>, ?> postExpireHook) {
+    public ExpiringMap(AsyncTaskHandler asyncTaskHandler, long defaultExpiration,
+            final Function<Pair<K, CacheableObject<V>>, ?> postExpireHook) {
+        // if (defaultExpiration <= 0) {
+        // throw new IllegalArgumentException("Argument specified must be a positive number");
+        // }
         this.defaultExpiration = defaultExpiration;
-
-        if (defaultExpiration <= 0) {
-            throw new IllegalArgumentException("Argument specified must be a positive number");
-        }
-
-        AsyncPeriodicTask task = new AsyncPeriodicTask() {
+        this.asyncTaskHandler = asyncTaskHandler;
+        task = new AsyncPeriodicTask() {
             @Override
             public void run() {
                 long start = System.nanoTime();
@@ -86,53 +83,42 @@ public class ExpiringMap<K, V> {
                         }
                     }
                 }
-                logger.trace("Expired {} entries", n);
+                if (logger.isTraceEnabled())
+                    logger.trace("Expired {} entries", n);
             }
         };
-        // service.scheduleWithFixedDelay(task, defaultExpiration / 2, defaultExpiration / 2,
-        // TimeUnit.MILLISECONDS);
-        AsyncTaskHandlerFactory.getAsyncTaskHandler().scheduleWithFixedDelay(task, defaultExpiration / 2,
-                defaultExpiration / 2, TimeUnit.MILLISECONDS);
+        if (defaultExpiration > 0)
+            asyncTaskHandler.addPeriodicTask(task);
     }
 
-    public void shutdownBlocking() {
-        // service.shutdown();
-        // try {
-        // service.awaitTermination(defaultExpiration * 2, TimeUnit.MILLISECONDS);
-        // } catch (InterruptedException e) {
-        // throw new AssertionError(e);
-        // }
+    public AsyncPeriodicTask getAsyncPeriodicTask() {
+        return task;
     }
 
     public void reset() {
-        shutdown = false;
         cache.clear();
     }
 
+    public void close() {
+        cache.clear();
+        asyncTaskHandler.removePeriodicTask(task);
+    }
+
     public V put(K key, V value) {
-        return put(key, value, this.defaultExpiration);
+        return put(key, value, defaultExpiration);
     }
 
     public V put(K key, V value, long timeout) {
-        if (shutdown) {
-            // StorageProxy isn't equipped to deal with "I'm nominally alive, but I can't send any messages out."
-            // So we'll just sit on this thread until the rest of the server shutdown completes.
-            //
-            // See comments in CustomTThreadPoolServer.serve, lealone-3335, and lealone-3727.
-            Uninterruptibles.sleepUninterruptibly(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        }
         CacheableObject<V> previous = cache.put(key, new CacheableObject<V>(value, timeout));
         return (previous == null) ? null : previous.value;
     }
 
     public V get(K key) {
-        CacheableObject<V> co = cache.get(key);
-        return co == null ? null : co.value;
+        return get(key, false);
     }
 
     public V remove(K key) {
-        CacheableObject<V> co = cache.remove(key);
-        return co == null ? null : co.value;
+        return remove(key, false);
     }
 
     /**
@@ -157,5 +143,43 @@ public class ExpiringMap<K, V> {
 
     public Set<K> keySet() {
         return cache.keySet();
+    }
+
+    /**
+     * Get an object from the map if it is stored.
+     *
+     * @param key the key of the object
+     * @param ifAvailable only return it if available, otherwise return null
+     * @return the object or null
+     * @throws DbException if isAvailable is false and the object has not been found
+     */
+    public V get(K key, boolean ifAvailable) {
+        CacheableObject<V> co = cache.get(key);
+        return getValue(co, ifAvailable);
+    }
+
+    /**
+     * Remove an object from the map.
+     *
+     * @param key the key of the object
+     * @param ifAvailable only return it if available, otherwise return null
+     * @return the object or null
+     * @throws DbException if isAvailable is false and the object has not been found
+     */
+    public V remove(K key, boolean ifAvailable) {
+        CacheableObject<V> co = cache.remove(key);
+        return getValue(co, ifAvailable);
+    }
+
+    private V getValue(CacheableObject<V> co, boolean ifAvailable) {
+        if (co == null) {
+            if (!ifAvailable) {
+                throw DbException.get(ErrorCode.OBJECT_CLOSED);
+            }
+            return null;
+        } else {
+            co.last = System.nanoTime();
+            return co.value;
+        }
     }
 }

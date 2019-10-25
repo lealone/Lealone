@@ -30,6 +30,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.Pair;
 import org.lealone.db.Constants;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
@@ -51,7 +52,6 @@ import org.lealone.p2p.locator.TopologyMetaData;
 import org.lealone.p2p.net.MessagingService;
 import org.lealone.p2p.net.P2pConnection;
 import org.lealone.p2p.util.FileUtils;
-import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Utils;
 import org.lealone.server.DelegatedProtocolServer;
 

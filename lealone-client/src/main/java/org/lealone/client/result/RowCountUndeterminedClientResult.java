@@ -30,9 +30,9 @@ public class RowCountUndeterminedClientResult extends ClientResult {
     // 如果初始化为false，相当于在调用完super(...)后再执行isEnd = false，这时前面的值就被覆盖了。
     private boolean isEnd;
 
-    public RowCountUndeterminedClientResult(ClientSession session, TransferInputStream in, int id, int columnCount,
-            int fetchSize) throws IOException {
-        super(session, in, id, columnCount, -1, fetchSize);
+    public RowCountUndeterminedClientResult(ClientSession session, TransferInputStream in, int resultId,
+            int columnCount, int fetchSize) throws IOException {
+        super(session, in, resultId, columnCount, -1, fetchSize);
     }
 
     @Override
@@ -93,5 +93,4 @@ public class RowCountUndeterminedClientResult extends ClientResult {
             throw DbException.convertIOException(e, null);
         }
     }
-
 }

@@ -41,6 +41,8 @@ import javax.management.ObjectName;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.common.util.ExpiringMap;
+import org.lealone.common.util.Pair;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
@@ -55,8 +57,6 @@ import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.locator.ILatencySubscriber;
 import org.lealone.p2p.server.ClusterMetaData;
 import org.lealone.p2p.server.P2pServer;
-import org.lealone.p2p.util.ExpiringMap;
-import org.lealone.p2p.util.Pair;
 import org.lealone.p2p.util.Utils;
 
 @SuppressWarnings({ "rawtypes" })
@@ -184,7 +184,8 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                     }
                 };
 
-        callbacks = new ExpiringMap<Integer, CallbackInfo>(ConfigDescriptor.getRpcTimeout(), timeoutReporter);
+        callbacks = new ExpiringMap<Integer, CallbackInfo>(AsyncTaskHandlerFactory.getAsyncTaskHandler(),
+                ConfigDescriptor.getRpcTimeout(), timeoutReporter);
 
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
@@ -203,8 +204,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
      */
     public void shutdown() {
         logger.info("Waiting for messaging service to quiesce");
-        // the important part
-        callbacks.shutdownBlocking();
     }
 
     public void incrementDroppedMessages(Verb verb) {
@@ -359,11 +358,11 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     }
 
     public CallbackInfo getRegisteredCallback(int messageId) {
-        return callbacks.get(messageId);
+        return callbacks.get(messageId, true);
     }
 
     public CallbackInfo removeRegisteredCallback(int messageId) {
-        return callbacks.remove(messageId);
+        return callbacks.remove(messageId, true);
     }
 
     /**

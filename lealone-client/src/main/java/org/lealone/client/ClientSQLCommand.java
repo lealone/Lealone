@@ -37,7 +37,7 @@ public class ClientSQLCommand implements SQLCommand {
     protected ClientSession session;
     protected final String sql;
     protected final int fetchSize;
-    protected int packetId;
+    protected int commandId;
     protected boolean isQuery;
 
     public ClientSQLCommand(ClientSession session, String sql, int fetchSize) {
@@ -86,12 +86,6 @@ public class ClientSQLCommand implements SQLCommand {
         query(maxRows, scrollable, null, handler);
     }
 
-    @Override
-    public void executeQueryAsync(int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Result>> handler) {
-        query(maxRows, scrollable, pageKeys, handler);
-    }
-
     protected Result query(int maxRows, boolean scrollable, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Result>> handler) {
         String operation;
@@ -111,12 +105,13 @@ public class ClientSQLCommand implements SQLCommand {
             fetch = fetchSize;
         }
         try {
-            packetId = session.getNextId();
+            int packetId = session.getNextId();
+            commandId = packetId;
             int resultId = session.getNextId();
             TransferOutputStream out = session.newOut();
-            writeQueryHeader(out, operation, packetType, resultId, maxRows, fetch, scrollable, pageKeys);
+            writeQueryHeader(out, operation, packetId, packetType, resultId, maxRows, fetch, scrollable, pageKeys);
             out.writeString(sql);
-            return getQueryResult(out, isDistributedQuery, fetch, resultId, handler);
+            return getQueryResult(out, packetId, isDistributedQuery, fetch, resultId, handler);
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -127,8 +122,8 @@ public class ClientSQLCommand implements SQLCommand {
         return session.getParentTransaction() != null && !session.getParentTransaction().isAutoCommit();
     }
 
-    protected void writeQueryHeader(TransferOutputStream out, String operation, int packetType, int resultId,
-            int maxRows, int fetch, boolean scrollable, List<PageKey> pageKeys) throws Exception {
+    protected void writeQueryHeader(TransferOutputStream out, String operation, int packetId, int packetType,
+            int resultId, int maxRows, int fetch, boolean scrollable, List<PageKey> pageKeys) throws Exception {
         session.traceOperation(operation, packetId);
         out.writeRequestHeader(packetId, packetType);
         out.writeInt(resultId).writeInt(maxRows).writeInt(fetch).writeBoolean(scrollable);
@@ -148,8 +143,8 @@ public class ClientSQLCommand implements SQLCommand {
         }
     }
 
-    protected Result getQueryResult(TransferOutputStream out, boolean isDistributedQuery, int fetch, int resultId,
-            AsyncHandler<AsyncResult<Result>> handler) throws IOException {
+    protected Result getQueryResult(TransferOutputStream out, int packetId, boolean isDistributedQuery, int fetch,
+            int resultId, AsyncHandler<AsyncResult<Result>> handler) throws IOException {
         isQuery = true;
         AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
             @Override
@@ -217,19 +212,20 @@ public class ClientSQLCommand implements SQLCommand {
             packetType = Session.COMMAND_UPDATE;
         }
         try {
-            packetId = session.getNextId();
+            int packetId = session.getNextId();
+            commandId = packetId;
             TransferOutputStream out = session.newOut();
-            writeUpdateHeader(out, operation, packetType, replicationName, pageKeys);
+            writeUpdateHeader(out, operation, packetId, packetType, replicationName, pageKeys);
             out.writeString(sql);
-            return getUpdateCount(out, isDistributedUpdate, commandUpdateResult, handler);
+            return getUpdateCount(out, packetId, isDistributedUpdate, commandUpdateResult, handler);
         } catch (Exception e) {
             session.handleException(e);
         }
         return 0;
     }
 
-    protected void writeUpdateHeader(TransferOutputStream out, String operation, int packetType, String replicationName,
-            List<PageKey> pageKeys) throws Exception {
+    protected void writeUpdateHeader(TransferOutputStream out, String operation, int packetId, int packetType,
+            String replicationName, List<PageKey> pageKeys) throws Exception {
         session.traceOperation(operation, packetId);
         out.writeRequestHeader(packetId, packetType);
         if (replicationName != null)
@@ -237,7 +233,7 @@ public class ClientSQLCommand implements SQLCommand {
         writePageKeys(out, pageKeys);
     }
 
-    protected int getUpdateCount(TransferOutputStream out, boolean isDistributedUpdate,
+    protected int getUpdateCount(TransferOutputStream out, int packetId, boolean isDistributedUpdate,
             CommandUpdateResult commandUpdateResult, AsyncHandler<AsyncResult<Integer>> handler) throws IOException {
         isQuery = false;
         AsyncCallback<Integer> ac = new AsyncCallback<Integer>() {
@@ -281,7 +277,7 @@ public class ClientSQLCommand implements SQLCommand {
      */
     @Override
     public void cancel() {
-        session.cancelStatement(packetId);
+        session.cancelStatement(commandId);
     }
 
     @Override
@@ -289,12 +285,9 @@ public class ClientSQLCommand implements SQLCommand {
         return sql;
     }
 
-    int getId() {
-        return packetId;
-    }
-
-    String getSql() {
-        return sql;
+    @Override
+    public int getId() {
+        return commandId;
     }
 
     @Override
