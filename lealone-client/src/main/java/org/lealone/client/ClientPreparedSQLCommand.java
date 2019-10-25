@@ -238,6 +238,28 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         return sql + Trace.formatParams(getParameters());
     }
 
+    public int[] executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
+        int packetId = session.getNextId();
+        TransferOutputStream out = session.newOut();
+        try {
+            session.traceOperation("COMMAND_BATCH_STATEMENT_PREPARED_UPDATE", packetId);
+            out.writeRequestHeader(packetId, Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE);
+            out.writeInt(commandId);
+            int size = batchParameters.size();
+            out.writeInt(size);
+            for (int i = 0; i < size; i++) {
+                Value[] values = batchParameters.get(i);
+                int len = values.length;
+                for (int j = 0; j < len; j++)
+                    out.writeValue(values[j]);
+            }
+            return getResultAsync(out, packetId, size);
+        } catch (IOException e) {
+            session.handleException(e);
+        }
+        return null;
+    }
+
     /**
      * A client side parameter.
      */

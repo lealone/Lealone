@@ -13,13 +13,13 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 
-import org.lealone.client.ClientBatchSQCommand;
-import org.lealone.client.ClientSession;
+import org.lealone.client.ClientSQLCommand;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
+import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
@@ -734,12 +734,16 @@ public class JdbcStatement extends TraceObject implements Statement {
             if (batchCommands == null || batchCommands.isEmpty())
                 return new int[0];
 
-            if (session instanceof ClientSession) {
-                ClientBatchSQCommand c = ((ClientSession) session).getClientBatchCommand(batchCommands);
-                c.executeUpdate();
-                int[] result = c.getResult();
-                c.close();
-                return result;
+            ConnectionInfo ci = session.getConnectionInfo();
+            if (ci != null && ci.isRemote()) {
+                ClientSQLCommand command = (ClientSQLCommand) session.createSQLCommand(null, -1);
+                setExecutingStatement(command);
+                try {
+                    return command.executeBatchSQLCommands(batchCommands);
+                } finally {
+                    batchCommands = null;
+                    setExecutingStatement(null);
+                }
             } else {
                 int size = batchCommands.size();
                 int[] result = new int[size];

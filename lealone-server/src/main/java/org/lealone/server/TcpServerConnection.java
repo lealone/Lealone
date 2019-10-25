@@ -807,8 +807,9 @@ public class TcpServerConnection extends TransferConnection {
             break;
         }
         case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
+            int commandId = in.readInt();
             int size = in.readInt();
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.get(packetId);
+            PreparedSQLStatement command = (PreparedSQLStatement) cache.get(commandId);
             List<? extends CommandParameter> params = command.getParameters();
             int paramsSize = params.size();
             int[] result = new int[size];

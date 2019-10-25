@@ -7,7 +7,6 @@ package org.lealone.client;
 
 import java.io.IOException;
 import java.sql.Connection;
-import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.LealoneException;
@@ -17,14 +16,12 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
-import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.value.Value;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetEndpoint;
@@ -424,17 +421,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             handleException(e);
             return false;
         }
-    }
-
-    public synchronized ClientBatchSQCommand getClientBatchCommand(ArrayList<String> batchCommands) {
-        checkClosed();
-        return new ClientBatchSQCommand(this, batchCommands);
-    }
-
-    public synchronized ClientBatchSQCommand getClientBatchCommand(Command preparedCommand,
-            ArrayList<Value[]> batchParameters) {
-        checkClosed();
-        return new ClientBatchSQCommand(this, preparedCommand, batchParameters);
     }
 
     @Override

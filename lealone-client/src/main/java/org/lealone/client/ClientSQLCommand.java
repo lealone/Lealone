@@ -313,4 +313,35 @@ public class ClientSQLCommand implements SQLCommand {
             session.getTrace().error(e, "replicationRollback");
         }
     }
+
+    public int[] executeBatchSQLCommands(List<String> batchCommands) {
+        int packetId = session.getNextId();
+        commandId = packetId;
+        TransferOutputStream out = session.newOut();
+        try {
+            session.traceOperation("COMMAND_BATCH_STATEMENT_UPDATE", packetId);
+            out.writeRequestHeader(packetId, Session.COMMAND_BATCH_STATEMENT_UPDATE);
+            int size = batchCommands.size();
+            out.writeInt(size);
+            for (int i = 0; i < size; i++) {
+                out.writeString(batchCommands.get(i));
+            }
+            return getResultAsync(out, packetId, size);
+        } catch (IOException e) {
+            session.handleException(e);
+        }
+        return null;
+    }
+
+    protected int[] getResultAsync(TransferOutputStream out, int packetId, int size) throws IOException {
+        return out.flushAndAwait(packetId, new AsyncCallback<int[]>() {
+            @Override
+            public void runInternal(TransferInputStream in) throws Exception {
+                int[] result = new int[size];
+                for (int i = 0; i < size; i++)
+                    result[i] = in.readInt();
+                setResult(result);
+            }
+        });
+    }
 }

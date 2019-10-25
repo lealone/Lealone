@@ -28,8 +28,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 
-import org.lealone.client.ClientBatchSQCommand;
-import org.lealone.client.ClientSession;
+import org.lealone.client.ClientPreparedSQLCommand;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.DateTimeUtils;
@@ -1147,12 +1146,10 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (batchParameters == null || batchParameters.isEmpty())
                 return new int[0];
 
-            if (session instanceof ClientSession) {
-                ClientBatchSQCommand c = ((ClientSession) session).getClientBatchCommand(command, batchParameters);
-                c.executeUpdate();
-                int[] result = c.getResult();
-                c.close();
-                return result;
+            if (command instanceof ClientPreparedSQLCommand) {
+                ArrayList<Value[]> parameters = batchParameters;
+                batchParameters = null;
+                return ((ClientPreparedSQLCommand) command).executeBatchPreparedSQLCommands(parameters);
             } else {
                 int size = batchParameters.size();
                 int[] result = new int[size];

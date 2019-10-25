@@ -79,8 +79,25 @@ public class JdbcPreparedStatementTest extends TestBase {
             }
             latch2.countDown();
         });
-        ps.executeQueryAsync(null);
+        // ps.executeQueryAsync(null);
         latch2.await();
+
+        testBatch(conn);
         conn.close();
+    }
+
+    void testBatch(Connection conn) throws SQLException {
+        String sql = "INSERT INTO test(f1, f2) VALUES(?, ?)";
+        JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
+        ps.setInt(1, 1000);
+        ps.setLong(2, 2000);
+        ps.addBatch();
+        ps.setInt(1, 8000);
+        ps.setLong(2, 9000);
+        ps.addBatch();
+        int[] updateCounts = ps.executeBatch();
+        assertEquals(2, updateCounts.length);
+        assertEquals(1, updateCounts[0]);
+        assertEquals(1, updateCounts[1]);
     }
 }

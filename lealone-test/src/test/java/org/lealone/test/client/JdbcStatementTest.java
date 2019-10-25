@@ -19,6 +19,7 @@ package org.lealone.test.client;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.junit.Test;
@@ -31,18 +32,29 @@ public class JdbcStatementTest extends TestBase {
         Connection conn = getConnection(LealoneDatabase.NAME);
         Statement stmt = conn.createStatement();
 
-        stmt.execute("/* test */DROP TABLE IF EXISTS JdbcStatementTest");
-        stmt.execute("CREATE TABLE IF NOT EXISTS JdbcStatementTest (f1 int, f2 long)");
+        stmt.execute("/* test */DROP TABLE IF EXISTS test");
+        stmt.execute("CREATE TABLE IF NOT EXISTS test (f1 int, f2 long)");
         stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)");
 
-        ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM JdbcStatementTest");
+        ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM test");
         assertTrue(rs.next());
         assertEquals(1, rs.getInt(1));
         assertEquals(2, rs.getLong(2));
 
-        stmt.executeUpdate("DELETE FROM JdbcStatementTest WHERE f1 = 1");
+        stmt.executeUpdate("DELETE FROM test WHERE f1 = 1");
+
+        testBatch(stmt);
 
         stmt.close();
         conn.close();
+    }
+
+    void testBatch(Statement stmt) throws SQLException {
+        stmt.addBatch("INSERT INTO test(f1, f2) VALUES(1000, 2000)");
+        stmt.addBatch("INSERT INTO test(f1, f2) VALUES(8000, 9000)");
+        int[] updateCounts = stmt.executeBatch();
+        assertEquals(2, updateCounts.length);
+        assertEquals(1, updateCounts[0]);
+        assertEquals(1, updateCounts[1]);
     }
 }

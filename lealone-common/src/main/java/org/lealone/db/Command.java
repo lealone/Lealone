@@ -15,13 +15,12 @@ public interface Command extends AutoCloseable {
 
     int CLIENT_SQL_COMMAND = -1;
     int CLIENT_PREPARED_SQL_COMMAND = -2;
-    int CLIENT_BATCH_SQL_COMMAND = -3;
 
-    int CLIENT_STORAGE_COMMAND = -4;
-    int SERVER_STORAGE_COMMAND = -5;
+    int CLIENT_STORAGE_COMMAND = -11;
+    int SERVER_STORAGE_COMMAND = -12;
 
-    int REPLICATION_SQL_COMMAND = -6;
-    int REPLICATION_STORAGE_COMMAND = -7;
+    int REPLICATION_SQL_COMMAND = -21;
+    int REPLICATION_STORAGE_COMMAND = -22;
 
     /**
      * Get command type.
