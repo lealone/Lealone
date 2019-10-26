@@ -737,13 +737,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             session.setCurrentCommand(statement);
             session.addStatement(statement);
 
-            recompileIfRequired();
+            recompileIfNeeded();
             setProgress(DatabaseEventListener.STATE_STATEMENT_START);
             statement.checkParameters();
             return startInternal();
         }
 
-        private void recompileIfRequired() {
+        private void recompileIfNeeded() {
             if (statement.needRecompile()) {
                 // TODO test with 'always recompile'
                 statement.setModificationMetaId(0);

@@ -23,7 +23,9 @@ public interface AsyncTask extends Runnable {
     public final static int NORM_PRIORITY = 5;
     public final static int MAX_PRIORITY = 10;
 
-    int getPriority();
+    default int getPriority() {
+        return NORM_PRIORITY;
+    }
 
     default boolean isPeriodic() {
         return false;

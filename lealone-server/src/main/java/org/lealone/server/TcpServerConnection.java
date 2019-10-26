@@ -43,7 +43,6 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncTask;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
@@ -328,8 +327,11 @@ public class TcpServerConnection extends TransferConnection {
         return pageKeys;
     }
 
-    protected void executeQueryAsync(TransferInputStream in, int packetId, int operation, Session session,
-            int sessionId, boolean prepared) throws IOException {
+    protected void executeQueryAsync(TransferInputStream in, int packetId, int operation, SessionInfo si,
+            boolean prepared) throws IOException {
+        final Session session = si.session;
+        final int sessionId = si.sessionId;
+
         int resultId = in.readInt();
         int maxRows = in.readInt();
         int fetchSize = in.readInt();
@@ -368,7 +370,7 @@ public class TcpServerConnection extends TransferConnection {
             }
         });
         yieldable.setPageKeys(pageKeys);
-        addPreparedCommandToQueue(packetId, session, sessionId, stmt, yieldable);
+        addPreparedCommandToQueue(packetId, si, stmt, yieldable);
     }
 
     protected boolean executeQueryAsync(int packetId, int operation, Session session, int sessionId,
@@ -406,8 +408,11 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    protected void executeUpdateAsync(TransferInputStream in, int packetId, int operation, Session session,
-            int sessionId, boolean prepared) throws IOException {
+    protected void executeUpdateAsync(TransferInputStream in, int packetId, int operation, SessionInfo si,
+            boolean prepared) throws IOException {
+        final Session session = si.session;
+        final int sessionId = si.sessionId;
+
         if (operation == Session.COMMAND_REPLICATION_UPDATE
                 || operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE) {
             session.setReplicationName(in.readString());
@@ -427,6 +432,7 @@ public class TcpServerConnection extends TransferConnection {
             // 客户端的非Prepared语句不需要缓存
             String sql = in.readString();
             stmt = session.prepareStatement(sql, -1);
+            // 非Prepared语句执行一次就结束，所以可以用packetId当唯一标识，一般用来执行客户端发起的取消操作
             stmt.setId(packetId);
         }
 
@@ -454,91 +460,57 @@ public class TcpServerConnection extends TransferConnection {
             }
         });
         yieldable.setPageKeys(pageKeys);
-        addPreparedCommandToQueue(packetId, session, sessionId, stmt, yieldable);
+        addPreparedCommandToQueue(packetId, si, stmt, yieldable);
     }
 
-    private void addPreparedCommandToQueue(int packetId, Session session, int sessionId, PreparedSQLStatement stmt,
+    private void addPreparedCommandToQueue(int packetId, SessionInfo si, PreparedSQLStatement stmt,
             PreparedSQLStatement.Yieldable<?> yieldable) {
-        SessionInfo si = getSessionInfo(sessionId);
-        if (si == null) {
-            sessionNotFound(packetId, sessionId);
-            return;
-        }
-        PreparedCommand pc = new PreparedCommand(this, packetId, session, stmt, yieldable, si);
+        PreparedCommand pc = new PreparedCommand(this, packetId, si, stmt, yieldable);
         si.addCommand(pc);
     }
 
+    // 这个方法是由网络事件循环线程执行的
     @Override
     protected void handleRequest(TransferInputStream in, int packetId, int operation) throws IOException {
-        Scheduler scheduler;
-        Session session;
-
-        // 这里的sessionId是客户端session的id，每个数据包都会带这两个字段
+        // 这里的sessionId是客户端session的id，每个数据包都会带这个字段
         int sessionId = in.readInt();
         SessionInfo si = getSessionInfo(sessionId);
         if (si == null) {
             // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
             // 之后此session相关的请求包和命令都由固定的调度器负责处理。
             if (operation == Session.SESSION_INIT) {
-                scheduler = ScheduleService.getScheduler();
+                ScheduleService.getScheduler().handle(() -> {
+                    try {
+                        readInitPacket(in, packetId, sessionId);
+                    } catch (Throwable e) {
+                        logger.error("Failed to create session, packetId: " + packetId, e);
+                        sendError(null, packetId, e);
+                    }
+                });
             } else {
                 sessionNotFound(packetId, sessionId);
-                return;
             }
-            session = null;
         } else {
             si.updateLastTime();
-            scheduler = si.getScheduler();
-            session = si.session;
-            in.setSession(session);
-        }
-        AsyncTask task = new RequestPacketDeliveryTask(this, in, packetId, operation, session, sessionId);
-        scheduler.handle(task);
-    }
-
-    private static class RequestPacketDeliveryTask implements AsyncTask {
-        final TcpServerConnection conn;
-        final TransferInputStream in;
-        final int packetId;
-        final int operation;
-        final Session session;
-        final int sessionId;
-
-        public RequestPacketDeliveryTask(TcpServerConnection conn, TransferInputStream in, int packetId, int operation,
-                Session session, int sessionId) {
-            this.conn = conn;
-            this.in = in;
-            this.packetId = packetId;
-            this.operation = operation;
-            this.session = session;
-            this.sessionId = sessionId;
-        }
-
-        @Override
-        public int getPriority() {
-            return NORM_PRIORITY;
-        }
-
-        @Override
-        public void run() {
-            try {
-                conn.handleRequest(in, packetId, operation, session, sessionId);
-            } catch (Throwable e) {
-                logger.error("Failed to handle request, packetId: " + packetId + ", operation: " + operation, e);
-                conn.sendError(session, packetId, e);
-            } finally {
-                // in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
-            }
+            in.setSession(si.session);
+            si.getScheduler().handle(() -> {
+                try {
+                    handleRequest(in, packetId, operation, si);
+                } catch (Throwable e) {
+                    logger.error("Failed to handle request, packetId: " + packetId + ", operation: " + operation, e);
+                    sendError(si.session, packetId, e);
+                } finally {
+                    // in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
+                }
+            });
         }
     }
 
-    private void handleRequest(TransferInputStream in, int packetId, int operation, Session session, int sessionId)
-            throws IOException {
+    // 这个方法就已经是由调度器线程执行了
+    private void handleRequest(TransferInputStream in, int packetId, int operation, SessionInfo si) throws IOException {
+        Session session = si.session;
+        int sessionId = si.sessionId;
         switch (operation) {
-        case Session.SESSION_INIT: {
-            readInitPacket(in, packetId, sessionId);
-            break;
-        }
         case Session.COMMAND_PREPARE_READ_PARAMS:
         case Session.COMMAND_PREPARE: {
             int commandId = in.readInt();
@@ -562,24 +534,24 @@ public class TcpServerConnection extends TransferConnection {
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY:
         case Session.COMMAND_QUERY: {
-            executeQueryAsync(in, packetId, operation, session, sessionId, false);
+            executeQueryAsync(in, packetId, operation, si, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
         case Session.COMMAND_PREPARED_QUERY: {
-            executeQueryAsync(in, packetId, operation, session, sessionId, true);
+            executeQueryAsync(in, packetId, operation, si, true);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
         case Session.COMMAND_UPDATE:
         case Session.COMMAND_REPLICATION_UPDATE: {
-            executeUpdateAsync(in, packetId, operation, session, sessionId, false);
+            executeUpdateAsync(in, packetId, operation, si, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
-            executeUpdateAsync(in, packetId, operation, session, sessionId, true);
+            executeUpdateAsync(in, packetId, operation, si, true);
             break;
         }
         case Session.COMMAND_REPLICATION_COMMIT: {

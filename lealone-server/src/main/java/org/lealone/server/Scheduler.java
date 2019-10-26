@@ -49,19 +49,17 @@ public class Scheduler extends Thread
     static class PreparedCommand {
         private final TransferConnection conn;
         private final int packetId;
-        private final Session session;
+        private final SessionInfo si;
         private final PreparedSQLStatement stmt;
         private final PreparedSQLStatement.Yieldable<?> yieldable;
-        private final SessionInfo si;
 
-        PreparedCommand(TransferConnection conn, int packetId, Session session, PreparedSQLStatement stmt,
-                PreparedSQLStatement.Yieldable<?> yieldable, SessionInfo si) {
+        PreparedCommand(TransferConnection conn, int packetId, SessionInfo si, PreparedSQLStatement stmt,
+                PreparedSQLStatement.Yieldable<?> yieldable) {
             this.conn = conn;
             this.packetId = packetId;
-            this.session = session;
+            this.si = si;
             this.stmt = stmt;
             this.yieldable = yieldable;
-            this.si = si;
         }
 
         void execute() {
@@ -103,7 +101,7 @@ public class Scheduler extends Thread
             // TODO 如果command的优先级很低，立即执行它是否合适？
             if (scheduler == Thread.currentThread()) {
                 // 同一个session中的上一个事务还在执行中，不能立刻执行它
-                if (command.session.getStatus() == SessionStatus.COMMITTING_TRANSACTION) {
+                if (command.si.session.getStatus() == SessionStatus.COMMITTING_TRANSACTION) {
                     preparedCommands.add(command);
                 } else {
                     command.execute();
@@ -295,7 +293,7 @@ public class Scheduler extends Thread
                 }
                 last = c;
             } catch (Throwable e) {
-                c.conn.sendError(c.session, c.packetId, e);
+                c.conn.sendError(c.si.session, c.packetId, e);
             }
         }
     }
@@ -318,7 +316,7 @@ public class Scheduler extends Thread
             try {
                 c.execute();
             } catch (Throwable e) {
-                c.conn.sendError(c.session, c.packetId, e);
+                c.conn.sendError(c.si.session, c.packetId, e);
             }
         }
 
@@ -353,7 +351,7 @@ public class Scheduler extends Thread
                 continue;
 
             if (checkStatus) {
-                SessionStatus sessionStatus = pc.session.getStatus();
+                SessionStatus sessionStatus = pc.si.session.getStatus();
                 if (sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
                     continue;
                 } else if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
