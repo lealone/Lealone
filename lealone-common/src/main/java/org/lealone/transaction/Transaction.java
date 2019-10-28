@@ -52,7 +52,15 @@ public interface Transaction {
      * closed while the transaction is committing. When opening a store,
      * such transactions should be committed.
      */
-    public static final int STATUS_COMMITTING = 3;
+    public static final int STATUS_COMMITTING = 2;
+
+    public static final int STATUS_WAITING = 3;
+
+    public static final int OPERATION_COMPLETE = 1;
+
+    public static final int OPERATION_NEED_RETRY = 2;
+
+    public static final int OPERATION_NEED_WAIT = 3;
 
     int getStatus();
 
@@ -163,6 +171,9 @@ public interface Transaction {
 
         default void await() {
         }
+
+        default void wakeUp() {
+        }
     }
 
     class SyncListener implements Listener {
@@ -198,6 +209,25 @@ public interface Transaction {
             }
             if (e != null)
                 throw e;
+        }
+    }
+
+    public static class WaitigTransaction {
+
+        private final Transaction transaction;
+        private final Listener listener;
+
+        public WaitigTransaction(Transaction transaction, Listener listener) {
+            this.transaction = transaction;
+            this.listener = listener;
+        }
+
+        public void wakeUp() {
+            // 避免重复调用
+            if (transaction.getStatus() == STATUS_WAITING) {
+                transaction.setStatus(STATUS_OPEN);
+                listener.wakeUp();
+            }
         }
     }
 }

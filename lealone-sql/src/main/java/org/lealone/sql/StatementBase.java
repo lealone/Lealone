@@ -735,7 +735,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             else
                 session.getTransaction(statement);
             session.setCurrentCommand(statement);
-            session.addStatement(statement);
 
             recompileIfNeeded();
             setProgress(DatabaseEventListener.STATE_STATEMENT_START);
@@ -745,7 +744,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
         private void recompileIfNeeded() {
             if (statement.needRecompile()) {
-                // TODO test with 'always recompile'
                 statement.setModificationMetaId(0);
                 String sql = statement.getSQL();
                 ArrayList<Parameter> oldParams = statement.getParameters();

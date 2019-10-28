@@ -239,7 +239,7 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
-    public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+    public int tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
         throw newUnsupportedException();
     }
@@ -254,7 +254,7 @@ public abstract class Table extends SchemaObjectBase {
         throw newUnsupportedException();
     }
 
-    public boolean tryRemoveRow(ServerSession session, Row row) {
+    public int tryRemoveRow(ServerSession session, Row row, Transaction.Listener globalListener) {
         throw newUnsupportedException();
     }
 
@@ -1116,5 +1116,9 @@ public abstract class Table extends SchemaObjectBase {
 
     public boolean containsLargeObject() {
         return false;
+    }
+
+    public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
+        return null;
     }
 }

@@ -22,6 +22,7 @@ import java.sql.Connection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -40,6 +41,8 @@ import org.lealone.transaction.amte.log.RedoLogRecord;
 
 public class AMTransaction implements Transaction {
 
+    private static final LinkedList<WaitigTransaction> EMPTY_LINKED_LIST = new LinkedList<>();
+
     // 以下几个public或包级别的字段是在其他地方频繁使用的，
     // 为了使用方便或节省一点点性能开销就不通过getter方法访问了
     final AMTransactionEngine transactionEngine;
@@ -54,10 +57,13 @@ public class AMTransaction implements Transaction {
 
     private HashMap<String, Integer> savepoints;
     private Session session;
-    private int status;
+    private volatile int status;
     private int isolationLevel = Connection.TRANSACTION_READ_COMMITTED; // 默认是读已提交级别
     private boolean autoCommit;
     private boolean prepared;
+
+    private final AtomicReference<LinkedList<WaitigTransaction>> waitingTransactionsRef = new AtomicReference<>(
+            EMPTY_LINKED_LIST);
 
     public AMTransaction(AMTransactionEngine engine, long tid) {
         this(engine, tid, null);
@@ -346,6 +352,34 @@ public class AMTransaction implements Transaction {
         status = STATUS_CLOSED;
         if (remove)
             transactionEngine.removeTransaction(transactionId);
+
+        while (true) {
+            LinkedList<WaitigTransaction> waitigTransactions = waitingTransactionsRef.get();
+            if (waitigTransactions != EMPTY_LINKED_LIST) {
+                for (WaitigTransaction waitigTransaction : waitigTransactions) {
+                    waitigTransaction.wakeUp();
+                }
+            }
+            if (waitingTransactionsRef.compareAndSet(waitigTransactions, null))
+                break;
+        }
+    }
+
+    int addWaitingTransaction(Transaction transaction, Listener listener) {
+        transaction.setStatus(STATUS_WAITING);
+        WaitigTransaction wt = new WaitigTransaction(transaction, listener);
+        while (true) {
+            // 如果已经提交了，通知重试
+            if (status == STATUS_CLOSED) {
+                transaction.setStatus(STATUS_OPEN);
+                return OPERATION_NEED_RETRY;
+            }
+            LinkedList<WaitigTransaction> waitingTransactions = waitingTransactionsRef.get();
+            LinkedList<WaitigTransaction> newWaitingTransactions = new LinkedList<>(waitingTransactions);
+            newWaitingTransactions.add(wt);
+            if (waitingTransactionsRef.compareAndSet(waitingTransactions, newWaitingTransactions))
+                return OPERATION_NEED_WAIT;
+        }
     }
 
     private int lastCapacity = 1024;

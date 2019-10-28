@@ -137,12 +137,12 @@ public class AMTransactionMapTest extends TestBase {
 
         Transaction t2 = te.beginTransaction(false);
         map = map.getInstance(t2);
-        assertTrue(map.tryUpdate("1", "a2"));
+        assertTrue(map.tryUpdate("1", "a2") == Transaction.OPERATION_COMPLETE);
         assertEquals("a2", map.get("1"));
 
         Transaction t3 = te.beginTransaction(false);
         map = map.getInstance(t3);
-        assertFalse(map.tryUpdate("1", "a3"));
+        assertFalse(map.tryUpdate("1", "a3") != Transaction.OPERATION_COMPLETE);
         assertEquals("a", map.get("1"));
 
         t2.commit();
@@ -150,11 +150,11 @@ public class AMTransactionMapTest extends TestBase {
 
         Transaction t4 = te.beginTransaction(false);
         map = map.getInstance(t4);
-        assertTrue(map.tryRemove("1"));
+        assertTrue(map.tryRemove("1") == Transaction.OPERATION_COMPLETE);
 
         Transaction t5 = te.beginTransaction(false);
         map = map.getInstance(t5);
-        assertFalse(map.tryRemove("1"));
+        assertFalse(map.tryRemove("1") != Transaction.OPERATION_COMPLETE);
 
         t4.commit();
         t5.rollback();
@@ -204,31 +204,31 @@ public class AMTransactionMapTest extends TestBase {
         oldValue = map1.getTransactionalValue(key);
         columnIndex = 0;
         vv = createVersionedValue(map1, key, columnIndex, 1);
-        ok = map1.tryUpdate(key, vv, new int[] { columnIndex }, oldValue);
+        ok = map1.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) == Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         oldValue = map2.getTransactionalValue(key);
         columnIndex = 1;
         vv = createVersionedValue(map2, key, columnIndex, 1);
-        ok = map2.tryUpdate(key, vv, new int[] { columnIndex }, oldValue);
+        ok = map2.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) == Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         oldValue = map1.getTransactionalValue(key);
         columnIndex = 2;
         vv = createVersionedValue(map1, key, columnIndex, 1);
-        ok = map1.tryUpdate(key, vv, new int[] { columnIndex }, oldValue);
+        ok = map1.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) == Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         oldValue = map2.getTransactionalValue(key);
         columnIndex = 3;
         vv = createVersionedValue(map2, key, columnIndex, 1);
-        ok = map2.tryUpdate(key, vv, new int[] { columnIndex }, oldValue);
+        ok = map2.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) == Transaction.OPERATION_COMPLETE;
         assertTrue(ok);
 
         oldValue = map3.getTransactionalValue(key);
         columnIndex = 3;
         vv = createVersionedValue(map3, key, columnIndex, 1);
-        ok = map3.tryUpdate(key, vv, new int[] { columnIndex }, oldValue);
+        ok = map3.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) != Transaction.OPERATION_COMPLETE;
         assertFalse(ok);
 
         t2.rollback();

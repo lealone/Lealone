@@ -196,7 +196,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         if (oldTransactionalValue == null) {
             addIfAbsent(key, value, listener);
         } else {
-            if (tryUpdateOrRemove(key, value, null, oldTransactionalValue))
+            if (tryUpdateOrRemove(key, value, null, oldTransactionalValue) == Transaction.OPERATION_COMPLETE)
                 listener.operationComplete();
             else
                 listener.operationUndo();
@@ -699,20 +699,20 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public boolean tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue) {
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue) {
         DataUtils.checkArgument(newValue != null, "The newValue may not be null");
         return tryUpdateOrRemove(key, newValue, columnIndexes, (TransactionalValue) oldTransactionalValue);
     }
 
     @Override
-    public boolean tryRemove(K key, Object oldTransactionalValue) {
+    public int tryRemove(K key, Object oldTransactionalValue) {
         return tryUpdateOrRemove(key, null, null, (TransactionalValue) oldTransactionalValue);
     }
 
     // 在SQL层对应update或delete语句，用于支持行锁和列锁。
     // 如果当前行(或列)已经被其他事务锁住了那么返回false表示更新或删除失败了，当前事务要让出当前线程。
     // 当value为null时代表delete，否则代表update
-    private boolean tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
+    private int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
         DataUtils.checkArgument(oldTransactionalValue != null, "The oldTransactionalValue may not be null");
         transaction.checkNotClosed();
         String mapName = getName();
@@ -723,18 +723,37 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     map.getValueType(), columnIndexes, oldTransactionalValue);
             transaction.log(mapName, key, refValue, newValue);
             if (oldTransactionalValue.compareAndSet(refValue, newValue)) {
-                return true;
+                return Transaction.OPERATION_COMPLETE;
             } else {
                 transaction.logUndo();
                 if (value == null) {
                     // 两个事务同时删除某一行时，因为删除操作是排它的，
                     // 所以只要一个compareAndSet成功了，另一个就没必要重试了
-                    return false;
+                    return addWaitingTransaction(oldTransactionalValue);
                 }
             }
         }
         // 当前行已经被其他事务锁住了
-        return false;
+        return addWaitingTransaction(oldTransactionalValue);
+    }
+
+    @Override
+    public int addWaitingTransaction(Object oldTransactionalValue, Transaction.Listener listener) {
+        return addWaitingTransaction((TransactionalValue) oldTransactionalValue, listener);
+    }
+
+    private int addWaitingTransaction(TransactionalValue oldTransactionalValue) {
+        Object object = Thread.currentThread();
+        if (object instanceof Transaction.Listener)
+            return addWaitingTransaction(oldTransactionalValue, (Transaction.Listener) object);
+        else
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
+
+    }
+
+    private int addWaitingTransaction(TransactionalValue oldTransactionalValue, Transaction.Listener listener) {
+        AMTransaction t = transaction.transactionEngine.getTransaction(oldTransactionalValue.getTid());
+        return t.addWaitingTransaction(transaction, listener);
     }
 
     @Override
@@ -766,6 +785,11 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     public Object[] getValueAndRef(K key, int[] columnIndexes) {
         TransactionalValue ref = map.get(key, columnIndexes);
         return new Object[] { getUnwrapValue(key, ref), ref };
+    }
+
+    @Override
+    public Object getValue(Object oldTransactionalValue) {
+        return ((TransactionalValue) oldTransactionalValue).getValue();
     }
 
     @Override

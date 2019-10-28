@@ -82,28 +82,28 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public K append(V value, Transaction.Listener listener);
 
-    public default boolean tryUpdate(K key, V newValue) {
+    public default int tryUpdate(K key, V newValue) {
         Object oldTransactionalValue = getTransactionalValue(key);
         return tryUpdate(key, newValue, null, oldTransactionalValue);
     }
 
-    public default boolean tryUpdate(K key, V newValue, Object oldTransactionalValue) {
+    public default int tryUpdate(K key, V newValue, Object oldTransactionalValue) {
         return tryUpdate(key, newValue, null, oldTransactionalValue);
     }
 
-    public default boolean tryUpdate(K key, V newValue, int[] columnIndexes) {
+    public default int tryUpdate(K key, V newValue, int[] columnIndexes) {
         Object oldTransactionalValue = getTransactionalValue(key);
         return tryUpdate(key, newValue, columnIndexes, oldTransactionalValue);
     }
 
-    public boolean tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue);
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue);
 
-    public default boolean tryRemove(K key) {
+    public default int tryRemove(K key) {
         Object oldTransactionalValue = getTransactionalValue(key);
         return tryRemove(key, oldTransactionalValue);
     }
 
-    public boolean tryRemove(K key, Object oldTransactionalValue);
+    public int tryRemove(K key, Object oldTransactionalValue);
 
     public default boolean tryLock(K key) {
         Object oldTransactionalValue = getTransactionalValue(key);
@@ -116,5 +116,9 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public Object[] getValueAndRef(K key, int[] columnIndexes);
 
+    public Object getValue(Object oldTransactionalValue);
+
     public Object getTransactionalValue(K key);
+
+    public int addWaitingTransaction(Object oldTransactionalValue, Transaction.Listener listener);
 }

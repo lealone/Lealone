@@ -76,19 +76,20 @@ public interface Index extends SchemaObject {
     default void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         Transaction.Listener listener = getTransactionListener();
 
-        boolean ok = tryUpdate(session, oldRow, newRow, updateColumns, listener);
-        if (ok)
+        int ret = tryUpdate(session, oldRow, newRow, updateColumns, listener);
+        if (ret == Transaction.OPERATION_COMPLETE)
             listener.operationComplete();
         else
             listener.operationUndo();
         listener.await();
     }
 
-    default boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+    default int tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
-        boolean ok = tryRemove(session, oldRow);
-        ok = ok && tryAdd(session, newRow, globalListener);
-        return ok;
+        int ret = tryRemove(session, oldRow, globalListener);
+        if (ret == Transaction.OPERATION_COMPLETE)
+            tryAdd(session, newRow, globalListener);
+        return ret;
     }
 
     /**
@@ -98,11 +99,11 @@ public interface Index extends SchemaObject {
      * @param row the row
      */
     default void remove(ServerSession session, Row row) {
-        if (!tryRemove(session, row))
+        if (tryRemove(session, row, null) != Transaction.OPERATION_COMPLETE)
             throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, getTable().getName());
     }
 
-    default boolean tryRemove(ServerSession session, Row row) {
+    default int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
         throw DbException.getUnsupportedException("remove row");
     }
 

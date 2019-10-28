@@ -31,6 +31,7 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -176,6 +177,8 @@ public class Update extends ManipulationStatement {
         final int limitRows; // 如果是0，表示不更新任何记录；如果小于0，表示没有限制
         final Column[] columns;
         final int columnCount;
+        boolean hasNext;
+        Row oldRow;
 
         public YieldableUpdate(Update statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
@@ -195,6 +198,10 @@ public class Update extends ManipulationStatement {
             table.fire(session, Trigger.UPDATE, true);
             table.lock(session, true, false);
             statement.setCurrentRowNumber(0);
+            if (limitRows == 0)
+                hasNext = false;
+            else
+                hasNext = tableFilter.next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
             return false;
         }
 
@@ -205,9 +212,13 @@ public class Update extends ManipulationStatement {
 
         @Override
         protected boolean executeAndListen() {
-            if (limitRows == 0)
-                return false;
-            while (pendingOperationException == null && tableFilter.next()) {
+            if (oldRow != null) {
+                // 如果oldRow已经删除了那么移到下一行
+                if (tableFilter.rebuildSearchRow(session, oldRow) == null)
+                    hasNext = tableFilter.next();
+                oldRow = null;
+            }
+            while (pendingOperationException == null && hasNext) {
                 boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
                 if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
                     Row oldRow = tableFilter.get();
@@ -233,10 +244,19 @@ public class Update extends ManipulationStatement {
                         done = table.fireBeforeRow(session, oldRow, newRow);
                     }
                     if (!done) {
-                        if (async)
-                            yieldIfNeeded = !table.tryUpdateRow(session, oldRow, newRow, statement.columns, this);
-                        else
+                        if (async) {
+                            int ret = table.tryUpdateRow(session, oldRow, newRow, statement.columns, this);
+                            if (ret == Transaction.OPERATION_NEED_RETRY) {
+                                if (tableFilter.rebuildSearchRow(session, oldRow) == null)
+                                    hasNext = tableFilter.next();
+                                continue;
+                            } else if (ret != Transaction.OPERATION_COMPLETE) {
+                                this.oldRow = oldRow;
+                                return true;
+                            }
+                        } else {
                             table.updateRow(session, oldRow, newRow, statement.columns);
+                        }
                         if (table.fireRow()) {
                             table.fireAfterRow(session, oldRow, newRow, false);
                         }
@@ -247,6 +267,7 @@ public class Update extends ManipulationStatement {
                         return false;
                     }
                 }
+                hasNext = tableFilter.next();
                 if (async && yieldIfNeeded) {
                     return true;
                 }

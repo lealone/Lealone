@@ -21,12 +21,13 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 
 import org.lealone.client.jdbc.JdbcStatement;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
 
 public class AsyncConcurrentUpdateTest {
 
     public static void main(String[] args) throws Exception {
-        Connection conn = new TestBase().getConnection();
+        Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
         JdbcStatement stmt = (JdbcStatement) conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS AsyncConcurrentUpdateTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS AsyncConcurrentUpdateTest (f1 int primary key, f2 long)");
@@ -35,21 +36,26 @@ public class AsyncConcurrentUpdateTest {
 
         int threadsCount = 2;
         UpdateThread[] updateThreads = new UpdateThread[threadsCount];
+        DeleteThread[] deleteThreads = new DeleteThread[threadsCount];
         QueryThread[] queryThreads = new QueryThread[threadsCount];
         for (int i = 0; i < threadsCount; i++) {
             updateThreads[i] = new UpdateThread(i);
         }
-
+        for (int i = 0; i < threadsCount; i++) {
+            deleteThreads[i] = new DeleteThread(i);
+        }
         for (int i = 0; i < threadsCount; i++) {
             queryThreads[i] = new QueryThread(i);
         }
 
         for (int i = 0; i < threadsCount; i++) {
             updateThreads[i].start();
+            deleteThreads[i].start();
             queryThreads[i].start();
         }
         for (int i = 0; i < threadsCount; i++) {
             updateThreads[i].join();
+            deleteThreads[i].join();
             queryThreads[i].join();
         }
         AsyncJdbcStatementTest.close(stmt, conn);
@@ -61,7 +67,7 @@ public class AsyncConcurrentUpdateTest {
 
         UpdateThread(int id) throws Exception {
             super("UpdateThread-" + id);
-            conn = new TestBase().getConnection();
+            conn = new TestBase().getConnection(LealoneDatabase.NAME);
             stmt = (JdbcStatement) conn.createStatement();
         }
 
@@ -82,13 +88,40 @@ public class AsyncConcurrentUpdateTest {
         }
     }
 
+    static class DeleteThread extends Thread {
+        JdbcStatement stmt;
+        Connection conn;
+
+        DeleteThread(int id) throws Exception {
+            super("DeleteThread-" + id);
+            conn = new TestBase().getConnection(LealoneDatabase.NAME);
+            stmt = (JdbcStatement) conn.createStatement();
+        }
+
+        @Override
+        public void run() {
+            try {
+                conn.setAutoCommit(false);
+
+                String sql = "delete from AsyncConcurrentUpdateTest where f1=1";
+                stmt.executeUpdate(sql);
+
+                conn.commit();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                AsyncJdbcStatementTest.close(stmt, conn);
+            }
+        }
+    }
+
     static class QueryThread extends Thread {
         JdbcStatement stmt;
         Connection conn;
 
         QueryThread(int id) throws Exception {
             super("QueryThread-" + id);
-            conn = new TestBase().getConnection();
+            conn = new TestBase().getConnection(LealoneDatabase.NAME);
             stmt = (JdbcStatement) conn.createStatement();
         }
 

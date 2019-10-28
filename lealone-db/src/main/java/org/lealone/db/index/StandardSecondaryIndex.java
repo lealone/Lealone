@@ -224,11 +224,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         };
         globalListener.beforeOperation();
         map.addIfAbsent(array, ValueNull.INSTANCE, localListener);
-        return false;
+        return true;
     }
 
     @Override
-    public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+    public int tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
         // 只有索引字段被更新时才更新索引
         for (Column c : columns) {
@@ -236,14 +236,14 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
                 return super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
             }
         }
-        return true;
+        return Transaction.OPERATION_COMPLETE;
     }
 
     @Override
-    public boolean tryRemove(ServerSession session, Row row) {
+    public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
         TransactionMap<Value, Value> map = getMap(session);
         if (map.isLocked(row.getRawValue(), null))
-            return true;
+            return map.addWaitingTransaction(row.getRawValue(), globalListener);
 
         ValueArray array = convertToKey(row);
         return map.tryRemove(array, row.getRawValue());

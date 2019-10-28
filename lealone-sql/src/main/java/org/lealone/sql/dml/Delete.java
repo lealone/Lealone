@@ -19,6 +19,7 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.transaction.Transaction;
 
 /**
  * This class represents the statement
@@ -119,12 +120,14 @@ public class Delete extends ManipulationStatement {
         return new YieldableDelete(this, asyncHandler);
     }
 
-    private static class YieldableDelete extends YieldableUpdateBase {
+    private static class YieldableDelete extends YieldableListenableUpdateBase {
 
         final Delete statement;
         final TableFilter tableFilter;
         final Table table;
         final int limitRows; // 如果是0，表示不删除任何记录；如果小于0，表示没有限制
+        boolean hasNext;
+        Row oldRow;
 
         public YieldableDelete(Delete statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
@@ -142,6 +145,10 @@ public class Delete extends ManipulationStatement {
             table.fire(session, Trigger.DELETE, true);
             table.lock(session, true, false);
             statement.setCurrentRowNumber(0);
+            if (limitRows == 0)
+                hasNext = false;
+            else
+                hasNext = tableFilter.next(); // 提前next，当发生行锁时可以直接用tableFilter的当前值重试
             return false;
         }
 
@@ -151,18 +158,13 @@ public class Delete extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeInternal() {
-            if (delete()) {
-                return true;
+        protected boolean executeAndListen() {
+            if (oldRow != null) {
+                if (tableFilter.rebuildSearchRow(session, oldRow) == null)
+                    hasNext = tableFilter.next();
+                oldRow = null;
             }
-            setResult(Integer.valueOf(affectedRows), affectedRows);
-            return false;
-        }
-
-        private boolean delete() {
-            if (limitRows == 0)
-                return false;
-            while (tableFilter.next()) {
+            while (pendingOperationException == null && hasNext) {
                 boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
                 if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
                     Row row = tableFilter.get();
@@ -171,10 +173,19 @@ public class Delete extends ManipulationStatement {
                         done = table.fireBeforeRow(session, row, null);
                     }
                     if (!done) {
-                        if (async)
-                            yieldIfNeeded = !table.tryRemoveRow(session, row) || yieldIfNeeded;
-                        else
+                        if (async) {
+                            int ret = table.tryRemoveRow(session, row, this);
+                            if (ret == Transaction.OPERATION_NEED_RETRY) {
+                                if (tableFilter.rebuildSearchRow(session, row) == null)
+                                    hasNext = tableFilter.next();
+                                continue;
+                            } else if (ret != Transaction.OPERATION_COMPLETE) {
+                                oldRow = row;
+                                return true;
+                            }
+                        } else {
                             table.removeRow(session, row);
+                        }
                         if (table.fireRow()) {
                             table.fireAfterRow(session, row, null, false);
                         }
@@ -184,10 +195,12 @@ public class Delete extends ManipulationStatement {
                         return false;
                     }
                 }
+                hasNext = tableFilter.next();
                 if (async && yieldIfNeeded) {
                     return true;
                 }
             }
+            loopEnd = true;
             return false;
         }
     }

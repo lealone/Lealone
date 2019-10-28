@@ -95,7 +95,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     private SmallLRUCache<String, PreparedSQLStatement> queryCache;
     private long modificationMetaID = -1;
 
-    private final ArrayList<PreparedSQLStatement> currentStatements = new ArrayList<>(1);
     private boolean containsDDL;
     private boolean containsDatabaseStatement;
 
@@ -549,7 +548,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         if (!isRoot)
             setAutoCommit(true);
 
-        currentStatements.clear();
         containsDDL = false;
         containsDatabaseStatement = false;
         setReplicationName(null);
@@ -591,10 +589,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             containsDDL = false;
         }
 
-        // for (int i = currentStatements.size() - 1; i >= 0; i--) {
-        // currentStatements.get(i).rollback();
-        // }
-        currentStatements.clear();
         clean();
         releaseSessionCache();
     }
@@ -806,21 +800,21 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      *
      * @param command the command
      */
-    public void setCurrentCommand(Command command) {
-        this.currentCommand = command;
-        if (queryTimeout > 0 && command != null) {
+    public void setCurrentCommand(PreparedSQLStatement statement) {
+        this.currentCommand = statement;
+        if (queryTimeout > 0 && statement != null) {
             long now = System.currentTimeMillis();
             currentCommandStart = now;
             cancelAt = now + queryTimeout;
         }
-    }
-
-    public void addStatement(PreparedSQLStatement statement) {
-        currentStatements.add(statement);
-        if (statement.isDatabaseStatement())
-            containsDatabaseStatement = true;
-        else if (statement.isDDL())
-            containsDDL = true;
+        // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
+        // 注意，在执行完当前语句后会再调用一次，把currentCommand设为null，所以这里要加一下判断
+        if (statement != null) {
+            if (statement.isDatabaseStatement())
+                containsDatabaseStatement = true;
+            else if (statement.isDDL())
+                containsDDL = true;
+        }
     }
 
     /**

@@ -172,11 +172,11 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         session.setLastRow(row);
         session.setLastIndex(this);
-        return false;
+        return true;
     }
 
     @Override
-    public boolean tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+    public int tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
         if (mainIndexColumn != -1) {
             Column c = columns[mainIndexColumn];
@@ -187,7 +187,7 @@ public class StandardPrimaryIndex extends IndexBase {
                 if (!oldKey.equals(newKey)) {
                     return super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
                 } else if (updateColumns.size() == 1) { // 新值与旧值相同，并且只更新主键时什么都不用做
-                    return true;
+                    return Transaction.OPERATION_COMPLETE;
                 }
             }
         }
@@ -199,7 +199,7 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(oldRow.getRawValue(), columnIndexes))
-            return false;
+            return map.addWaitingTransaction(oldRow.getRawValue(), globalListener);
 
         if (table.containsLargeObject()) {
             for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
@@ -221,17 +221,17 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
-        boolean ok = map.tryUpdate(key, newValue, columnIndexes, oldRow.getRawValue());
+        int ret = map.tryUpdate(key, newValue, columnIndexes, oldRow.getRawValue());
         session.setLastRow(newRow);
         session.setLastIndex(this);
-        return ok;
+        return ret;
     }
 
     @Override
-    public boolean tryRemove(ServerSession session, Row row) {
+    public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(row.getRawValue(), null))
-            return true;
+            return map.addWaitingTransaction(row.getRawValue(), globalListener);
 
         if (table.containsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
@@ -280,6 +280,21 @@ public class StandardPrimaryIndex extends IndexBase {
         row.setKey(key);
         row.setVersion(v.vertion);
         row.setRawValue(valueAndRef[1]);
+        return row;
+    }
+
+    public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
+        Object value = getMap(session).getValue(oldTransactionalValue);
+        // 已经删除了
+        if (value == null)
+            return null;
+        VersionedValue v = (VersionedValue) value;
+        ValueArray array = v.value;
+        array = v.value;
+        Row row = new Row(array.getList(), 0);
+        row.setKey(key);
+        row.setVersion(v.vertion);
+        row.setRawValue(oldTransactionalValue);
         return row;
     }
 

@@ -893,26 +893,16 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
         return currentSearchRow.getColumnCount();
     }
 
+    public Row rebuildSearchRow(ServerSession session, Row oldRow) {
+        Row newRow = table.getRow(session, oldRow.getKey(), oldRow.getRawValue());
+        current = newRow;
+        currentSearchRow = newRow;
+        return newRow;
+    }
+
     @Override
     public Value getValue(Column column) {
-        if (currentSearchRow == null) {
-            return null;
-        }
-        int columnId = column.getColumnId();
-        if (columnId == -1) {
-            return ValueLong.get(currentSearchRow.getKey());
-        }
-        if (current == null) {
-            Value v = currentSearchRow.getValue(columnId);
-            if (v != null) {
-                return v;
-            }
-            current = cursor.get();
-            if (current == null) {
-                return ValueNull.INSTANCE;
-            }
-        }
-        return current.getValue(columnId);
+        return getValue(column.getColumnId());
     }
 
     public Value getValue(int columnId) {

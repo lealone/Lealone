@@ -331,6 +331,10 @@ public class StandardTable extends Table {
         return primaryIndex.getRow(session, key, columnIndexes);
     }
 
+    public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
+        return primaryIndex.getRow(session, key, oldTransactionalValue);
+    }
+
     @Override
     public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
             boolean create, String indexComment) {
@@ -571,7 +575,7 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+    public int tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
@@ -584,8 +588,9 @@ public class StandardTable extends Table {
                 if (globalListener == null) {
                     index.update(session, oldRow, newRow, updateColumns);
                 } else {
-                    if (!index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener))
-                        return false;
+                    int ret = index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
+                    if (ret != Transaction.OPERATION_COMPLETE)
+                        return ret;
                 }
             }
         } catch (Throwable e) {
@@ -593,20 +598,20 @@ public class StandardTable extends Table {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        return true;
+        return Transaction.OPERATION_COMPLETE;
     }
 
     @Override
     public void removeRow(ServerSession session, Row row) {
-        tryRemoveRow(session, row, false);
+        tryRemoveRow(session, row, false, null);
     }
 
     @Override
-    public boolean tryRemoveRow(ServerSession session, Row row) {
-        return tryRemoveRow(session, row, true);
+    public int tryRemoveRow(ServerSession session, Row row, Transaction.Listener globalListener) {
+        return tryRemoveRow(session, row, true, globalListener);
     }
 
-    private boolean tryRemoveRow(ServerSession session, Row row, boolean async) {
+    private int tryRemoveRow(ServerSession session, Row row, boolean async, Transaction.Listener globalListener) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         int savepointId = t.getSavepointId();
@@ -614,8 +619,9 @@ public class StandardTable extends Table {
             for (int i = indexes.size() - 1; i >= 0; i--) {
                 Index index = indexes.get(i);
                 if (async) {
-                    if (!index.tryRemove(session, row))
-                        return false;
+                    int ret = index.tryRemove(session, row, globalListener);
+                    if (ret != Transaction.OPERATION_COMPLETE)
+                        return ret;
                 } else {
                     index.remove(session, row);
                 }
@@ -625,7 +631,7 @@ public class StandardTable extends Table {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        return false;
+        return Transaction.OPERATION_COMPLETE;
     }
 
     @Override
