@@ -20,6 +20,7 @@ package org.lealone.test.misc;
 import java.sql.Connection;
 import java.sql.Statement;
 
+import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
 public class DeadlockTest extends SqlTestBase {
@@ -27,8 +28,9 @@ public class DeadlockTest extends SqlTestBase {
         new DeadlockTest().run();
     }
 
+    @Test
     public void run() throws Exception {
-        stmt.executeUpdate("set DEFAULT_LOCK_TIMEOUT 100000");
+        stmt.executeUpdate("set DEFAULT_LOCK_TIMEOUT 2000");
         stmt.executeUpdate("drop table IF EXISTS DeadlockTest1");
         stmt.executeUpdate("drop table IF EXISTS DeadlockTest2");
         stmt.executeUpdate("create table IF NOT EXISTS DeadlockTest1(id int, name varchar(500), b boolean)");

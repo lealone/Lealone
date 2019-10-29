@@ -120,5 +120,5 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public Object getTransactionalValue(K key);
 
-    public int addWaitingTransaction(Object oldTransactionalValue, Transaction.Listener listener);
+    public int addWaitingTransaction(Object key, Object oldTransactionalValue, Transaction.Listener listener);
 }

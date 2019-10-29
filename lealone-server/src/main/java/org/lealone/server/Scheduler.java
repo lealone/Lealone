@@ -355,7 +355,14 @@ public class Scheduler extends Thread
                 if (sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
                     continue;
                 } else if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
-                    if (pc.si.session.getTransaction().getStatus() == Transaction.STATUS_WAITING) {
+                    Transaction t = pc.si.session.getTransaction();
+                    if (t.getStatus() == Transaction.STATUS_WAITING) {
+                        try {
+                            t.checkTimeout();
+                        } catch (Throwable e) {
+                            t.rollback();
+                            pc.conn.sendError(pc.si.session, pc.packetId, e);
+                        }
                         continue;
                     }
                     bestQueue = preparedCommands;

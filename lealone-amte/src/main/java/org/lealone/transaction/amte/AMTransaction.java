@@ -62,6 +62,10 @@ public class AMTransaction implements Transaction {
     private boolean autoCommit;
     private boolean prepared;
 
+    // 被哪个事务锁住记录了
+    private volatile AMTransaction lockedBy;
+    private long lockStartTime;
+    // 有哪些事务在等待我释放锁
     private final AtomicReference<LinkedList<WaitigTransaction>> waitingTransactionsRef = new AtomicReference<>(
             EMPTY_LINKED_LIST);
 
@@ -133,6 +137,10 @@ public class AMTransaction implements Transaction {
     @Override
     public void setStatus(int status) {
         this.status = status;
+        if (lockedBy != null && status == STATUS_OPEN) {
+            lockedBy = null;
+            lockStartTime = 0;
+        }
     }
 
     @Override
@@ -355,7 +363,7 @@ public class AMTransaction implements Transaction {
 
         while (true) {
             LinkedList<WaitigTransaction> waitigTransactions = waitingTransactionsRef.get();
-            if (waitigTransactions != EMPTY_LINKED_LIST) {
+            if (waitigTransactions != null && waitigTransactions != EMPTY_LINKED_LIST) {
                 for (WaitigTransaction waitigTransaction : waitigTransactions) {
                     waitigTransaction.wakeUp();
                 }
@@ -363,11 +371,12 @@ public class AMTransaction implements Transaction {
             if (waitingTransactionsRef.compareAndSet(waitigTransactions, null))
                 break;
         }
+        lockedBy = null;
     }
 
-    int addWaitingTransaction(Transaction transaction, Listener listener) {
+    int addWaitingTransaction(Object key, AMTransaction transaction, Listener listener) {
         transaction.setStatus(STATUS_WAITING);
-        WaitigTransaction wt = new WaitigTransaction(transaction, listener);
+        WaitigTransaction wt = new WaitigTransaction(key, transaction, listener);
         while (true) {
             // 如果已经提交了，通知重试
             if (status == STATUS_CLOSED) {
@@ -377,9 +386,55 @@ public class AMTransaction implements Transaction {
             LinkedList<WaitigTransaction> waitingTransactions = waitingTransactionsRef.get();
             LinkedList<WaitigTransaction> newWaitingTransactions = new LinkedList<>(waitingTransactions);
             newWaitingTransactions.add(wt);
-            if (waitingTransactionsRef.compareAndSet(waitingTransactions, newWaitingTransactions))
+            if (waitingTransactionsRef.compareAndSet(waitingTransactions, newWaitingTransactions)) {
+                transaction.waitFor(this);
                 return OPERATION_NEED_WAIT;
+            }
         }
+    }
+
+    private void waitFor(AMTransaction transaction) {
+        lockedBy = transaction;
+        lockStartTime = System.currentTimeMillis();
+    }
+
+    @Override
+    public void checkTimeout() {
+        if (lockedBy != null && lockStartTime != 0
+                && System.currentTimeMillis() - lockStartTime > session.getLockTimeout()) {
+            boolean isDeadlock = false;
+            WaitigTransaction waitigTransaction = null;
+            LinkedList<WaitigTransaction> waitigTransactions = waitingTransactionsRef.get();
+            for (WaitigTransaction wt : waitigTransactions) {
+                if (wt.getTransaction() == lockedBy) {
+                    isDeadlock = true;
+                    waitigTransaction = wt;
+                    break;
+                }
+            }
+            waitigTransactions = lockedBy.waitingTransactionsRef.get();
+            WaitigTransaction waitigTransaction2 = null;
+            for (WaitigTransaction wt : waitigTransactions) {
+                if (wt.getTransaction() == this) {
+                    waitigTransaction2 = wt;
+                    break;
+                }
+            }
+            if (isDeadlock) {
+                String msg = getMsg(transactionId, session, lockedBy, waitigTransaction2);
+                msg += "\r\n" + getMsg(lockedBy.transactionId, lockedBy.session, this, waitigTransaction);
+                throw DbException.get(ErrorCode.DEADLOCK_1, msg);
+            } else {
+                String msg = getMsg(transactionId, session, lockedBy, waitigTransaction2);
+                throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, msg);
+            }
+        }
+    }
+
+    private static String getMsg(long tid, Session session, AMTransaction transaction,
+            WaitigTransaction waitigTransaction) {
+        return "transaction #" + tid + " in session " + session + " wait for transaction #" + transaction.transactionId
+                + " in session " + transaction.session + ", row key: " + waitigTransaction.getKey();
     }
 
     private int lastCapacity = 1024;

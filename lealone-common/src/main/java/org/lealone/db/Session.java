@@ -276,4 +276,8 @@ public interface Session extends Closeable, Transaction.Participant {
     int getNetworkTimeout();
 
     void cancelStatement(int statementId);
+
+    default int getLockTimeout() {
+        return Integer.MAX_VALUE;
+    }
 }

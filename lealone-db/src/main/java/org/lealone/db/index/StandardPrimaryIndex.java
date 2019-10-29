@@ -199,7 +199,7 @@ public class StandardPrimaryIndex extends IndexBase {
         }
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(oldRow.getRawValue(), columnIndexes))
-            return map.addWaitingTransaction(oldRow.getRawValue(), globalListener);
+            return map.addWaitingTransaction(oldRow.getKey(), oldRow.getRawValue(), globalListener);
 
         if (table.containsLargeObject()) {
             for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
@@ -231,7 +231,7 @@ public class StandardPrimaryIndex extends IndexBase {
     public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(row.getRawValue(), null))
-            return map.addWaitingTransaction(row.getRawValue(), globalListener);
+            return map.addWaitingTransaction(row.getKey(), row.getRawValue(), globalListener);
 
         if (table.containsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {

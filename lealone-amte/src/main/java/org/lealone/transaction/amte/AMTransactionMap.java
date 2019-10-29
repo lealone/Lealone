@@ -729,31 +729,32 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 if (value == null) {
                     // 两个事务同时删除某一行时，因为删除操作是排它的，
                     // 所以只要一个compareAndSet成功了，另一个就没必要重试了
-                    return addWaitingTransaction(oldTransactionalValue);
+                    return addWaitingTransaction(key, oldTransactionalValue);
                 }
             }
         }
         // 当前行已经被其他事务锁住了
-        return addWaitingTransaction(oldTransactionalValue);
+        return addWaitingTransaction(key, oldTransactionalValue);
     }
 
     @Override
-    public int addWaitingTransaction(Object oldTransactionalValue, Transaction.Listener listener) {
-        return addWaitingTransaction((TransactionalValue) oldTransactionalValue, listener);
+    public int addWaitingTransaction(Object key, Object oldTransactionalValue, Transaction.Listener listener) {
+        return addWaitingTransaction(key, (TransactionalValue) oldTransactionalValue, listener);
     }
 
-    private int addWaitingTransaction(TransactionalValue oldTransactionalValue) {
+    private int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue) {
         Object object = Thread.currentThread();
         if (object instanceof Transaction.Listener)
-            return addWaitingTransaction(oldTransactionalValue, (Transaction.Listener) object);
+            return addWaitingTransaction(key, oldTransactionalValue, (Transaction.Listener) object);
         else
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
 
     }
 
-    private int addWaitingTransaction(TransactionalValue oldTransactionalValue, Transaction.Listener listener) {
+    private int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
+            Transaction.Listener listener) {
         AMTransaction t = transaction.transactionEngine.getTransaction(oldTransactionalValue.getTid());
-        return t.addWaitingTransaction(transaction, listener);
+        return t.addWaitingTransaction(key, transaction, listener);
     }
 
     @Override

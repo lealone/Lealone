@@ -92,6 +92,8 @@ public interface Transaction {
 
     void addParticipant(Participant participant);
 
+    void checkTimeout();
+
     /**
      * Open a data map.
      *
@@ -214,10 +216,12 @@ public interface Transaction {
 
     public static class WaitigTransaction {
 
+        private final Object key;
         private final Transaction transaction;
         private final Listener listener;
 
-        public WaitigTransaction(Transaction transaction, Listener listener) {
+        public WaitigTransaction(Object key, Transaction transaction, Listener listener) {
+            this.key = key;
             this.transaction = transaction;
             this.listener = listener;
         }
@@ -228,6 +232,18 @@ public interface Transaction {
                 transaction.setStatus(STATUS_OPEN);
                 listener.wakeUp();
             }
+        }
+
+        public Object getKey() {
+            return key;
+        }
+
+        public Transaction getTransaction() {
+            return transaction;
+        }
+
+        public Listener getListener() {
+            return listener;
         }
     }
 }
