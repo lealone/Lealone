@@ -96,13 +96,20 @@ class RedoLog {
         LinkedTransferQueue<RedoLogRecord> queue = new LinkedTransferQueue<>();
         List<Integer> ids = getAllChunkIds();
         for (int id : ids) {
-            RedoLogChunk chunk;
-            if (id == currentChunk.getId()) {
-                chunk = currentChunk;
-            } else {
-                chunk = new RedoLogChunk(id, config);
+            RedoLogChunk chunk = null;
+            try {
+                if (id == currentChunk.getId()) {
+                    chunk = currentChunk;
+                } else {
+                    chunk = new RedoLogChunk(id, config);
+                }
+                queue.addAll(chunk.getAndResetRedoLogRecords());
+            } finally {
+                // 注意一定要关闭，否则对应的chunk文件将无法删除，
+                // 内部会打开一个FileStorage，不会因为没有引用到了而自动关闭
+                if (chunk != null && chunk != currentChunk)
+                    chunk.close();
             }
-            queue.addAll(chunk.getAndResetRedoLogRecords());
         }
         return queue;
     }

@@ -142,7 +142,7 @@ public class AMTransactionMapTest extends TestBase {
 
         Transaction t3 = te.beginTransaction(false);
         map = map.getInstance(t3);
-        assertFalse(map.tryUpdate("1", "a3") != Transaction.OPERATION_COMPLETE);
+        assertTrue(map.tryUpdate("1", "a3") == Transaction.OPERATION_NEED_WAIT);
         assertEquals("a", map.get("1"));
 
         t2.commit();
@@ -154,7 +154,7 @@ public class AMTransactionMapTest extends TestBase {
 
         Transaction t5 = te.beginTransaction(false);
         map = map.getInstance(t5);
-        assertFalse(map.tryRemove("1") != Transaction.OPERATION_COMPLETE);
+        assertTrue(map.tryRemove("1") == Transaction.OPERATION_NEED_WAIT);
 
         t4.commit();
         t5.rollback();
@@ -229,7 +229,7 @@ public class AMTransactionMapTest extends TestBase {
         columnIndex = 3;
         vv = createVersionedValue(map3, key, columnIndex, 1);
         ok = map3.tryUpdate(key, vv, new int[] { columnIndex }, oldValue) != Transaction.OPERATION_COMPLETE;
-        assertFalse(ok);
+        assertTrue(ok);
 
         t2.rollback();
         // t2.commit();

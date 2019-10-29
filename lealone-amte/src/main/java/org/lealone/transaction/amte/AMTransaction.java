@@ -278,11 +278,15 @@ public class AMTransaction implements Transaction {
                 logSyncService.addRedoLogRecord(r);
                 if (session != null) {
                     session.commit(null);
+                } else {
+                    commitLocal();
                 }
             }
         } else {
             if (session != null) {
                 session.commit(null);
+            } else {
+                commitLocal();
             }
         }
     }

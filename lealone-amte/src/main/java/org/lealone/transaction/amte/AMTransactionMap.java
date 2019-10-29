@@ -747,7 +747,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         if (object instanceof Transaction.Listener)
             return addWaitingTransaction(key, oldTransactionalValue, (Transaction.Listener) object);
         else
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
+            return Transaction.OPERATION_NEED_WAIT;
+        // throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
 
     }
 
