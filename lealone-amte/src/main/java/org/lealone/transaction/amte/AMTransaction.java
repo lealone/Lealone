@@ -38,6 +38,7 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.amte.AMTransactionMap.AMReplicationMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
+import org.lealone.transaction.amte.log.UndoLogRecord;
 
 public class AMTransaction implements Transaction {
 
@@ -51,7 +52,7 @@ public class AMTransaction implements Transaction {
 
     String globalTransactionName;
     int logId;
-    LinkedList<TransactionalLogRecord> logRecords = new LinkedList<>();
+    LinkedList<UndoLogRecord> undoLogRecords = new LinkedList<>();
 
     private final LogSyncService logSyncService;
 
@@ -81,24 +82,23 @@ public class AMTransaction implements Transaction {
         status = Transaction.STATUS_OPEN;
     }
 
-    public TransactionalLogRecord log(String mapName, Object key, TransactionalValue oldValue,
-            TransactionalValue newValue, boolean isForUpdate) {
-        TransactionalLogRecord r = new TransactionalLogRecord(mapName, key, oldValue, newValue, isForUpdate);
-        logRecords.add(r);
+    public UndoLogRecord log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
+            boolean isForUpdate) {
+        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newValue, isForUpdate);
+        undoLogRecords.add(r);
         logId++;
         return r;
     }
 
-    public TransactionalLogRecord log(String mapName, Object key, TransactionalValue oldValue,
-            TransactionalValue newValue) {
-        TransactionalLogRecord r = new TransactionalLogRecord(mapName, key, oldValue, newValue, false);
-        logRecords.add(r);
+    public UndoLogRecord log(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue) {
+        UndoLogRecord r = new UndoLogRecord(mapName, key, oldValue, newValue, false);
+        undoLogRecords.add(r);
         logId++;
         return r;
     }
 
     public void logUndo() {
-        logRecords.removeLast();
+        undoLogRecords.removeLast();
         --logId;
     }
 
@@ -216,7 +216,7 @@ public class AMTransaction implements Transaction {
         valueType = new TransactionalValueType(valueType);
         StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
         if (!map.isInMemory()) {
-            TransactionalLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(name));
+            UndoLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(name));
         }
         transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
         boolean isShardingMode = parameters == null ? false : Boolean.parseBoolean(parameters.get("isShardingMode"));
@@ -260,7 +260,7 @@ public class AMTransaction implements Transaction {
         // logSyncService.prepareCommit(this);
 
         // 如果不需要事务日志同步，那么什么都不做，直接提交事务
-        if (logSyncService.needSync() && !logRecords.isEmpty()) {
+        if (logSyncService.needSync() && !undoLogRecords.isEmpty()) {
             // 如果需要立即做事务日志同步，那么把redo log的生成工作放在当前线程，减轻日志同步线程的工作量
             if (logSyncService.isInstantSync()) {
                 RedoLogRecord r = createLocalTransactionRedoLogRecord();
@@ -274,7 +274,7 @@ public class AMTransaction implements Transaction {
                 // 对于其他日志同步场景，当前线程不需要等待，只需要把事务日志移交到后台日志同步线程的队列中即可
                 // 此时当前线程也不需要自己去做redo log的生成工作，也由后台处理，能尽快结束事务
                 RedoLogRecord r = RedoLogRecord.createLazyTransactionRedoLogRecord(transactionEngine, transactionId,
-                        logRecords);
+                        undoLogRecords);
                 logSyncService.addRedoLogRecord(r);
                 if (session != null) {
                     session.commit(null);
@@ -319,7 +319,7 @@ public class AMTransaction implements Transaction {
             }
         } else {
             // 如果不需要事务日志同步，那么什么都不做，直接提交事务
-            if (logSyncService.needSync() && !logRecords.isEmpty()) {
+            if (logSyncService.needSync() && !undoLogRecords.isEmpty()) {
                 // 如果需要立即做事务日志同步，那么把redo log的生成工作放在当前线程，减轻日志同步线程的工作量
                 if (logSyncService.isInstantSync()) {
                     RedoLogRecord r = createLocalTransactionRedoLogRecord();
@@ -331,7 +331,7 @@ public class AMTransaction implements Transaction {
                     // 对于其他日志同步场景，当前线程不需要等待，只需要把事务日志移交到后台日志同步线程的队列中即可
                     // 此时当前线程也不需要自己去做redo log的生成工作，也由后台处理，能尽快结束事务
                     RedoLogRecord r = RedoLogRecord.createLazyTransactionRedoLogRecord(transactionEngine, transactionId,
-                            logRecords);
+                            undoLogRecords);
                     logSyncService.addRedoLogRecord(r);
                 }
             }
@@ -352,7 +352,7 @@ public class AMTransaction implements Transaction {
         AMTransaction t = transactionEngine.removeTransaction(tid);
         if (t == null)
             return;
-        for (TransactionalLogRecord r : t.logRecords) {
+        for (UndoLogRecord r : t.undoLogRecords) {
             r.commit(transactionEngine, tid);
         }
         t.endTransaction(false);
@@ -360,7 +360,7 @@ public class AMTransaction implements Transaction {
 
     private void endTransaction(boolean remove) {
         savepoints = null;
-        logRecords = null;
+        undoLogRecords = null;
         status = STATUS_CLOSED;
         if (remove)
             transactionEngine.removeTransaction(transactionId);
@@ -444,22 +444,11 @@ public class AMTransaction implements Transaction {
     private int lastCapacity = 1024;
 
     // 将当前一系列的事务操作日志转换成单条RedoLogRecord
-    protected ByteBuffer logRecords2redoLogRecordBuffer() {
-        if (logRecords.isEmpty())
+    protected ByteBuffer undoLogRecords2redoLogRecordBuffer() {
+        if (undoLogRecords.isEmpty())
             return null;
-        // try (DataBuffer writeBuffer = DataBuffer.create()) {
-        // for (TransactionalLogRecord r : logRecords) {
-        // r.writeForRedo(writeBuffer, transactionEngine);
-        // }
-        // ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
-        // ByteBuffer operations = ByteBuffer.allocateDirect(buffer.limit());
-        // operations.put(buffer);
-        // operations.flip();
-        // return operations;
-        // }
-
         DataBuffer writeBuffer = DataBuffer.create(lastCapacity);
-        for (TransactionalLogRecord r : logRecords) {
+        for (UndoLogRecord r : undoLogRecords) {
             r.writeForRedo(writeBuffer, transactionEngine);
         }
         lastCapacity = writeBuffer.position();
@@ -469,7 +458,7 @@ public class AMTransaction implements Transaction {
     }
 
     private RedoLogRecord createLocalTransactionRedoLogRecord() {
-        ByteBuffer operations = logRecords2redoLogRecordBuffer();
+        ByteBuffer operations = undoLogRecords2redoLogRecordBuffer();
         if (operations == null || operations.limit() == 0)
             return null;
         return RedoLogRecord.createLocalTransactionRedoLogRecord(transactionId, operations);
@@ -519,7 +508,7 @@ public class AMTransaction implements Transaction {
 
     private void rollbackTo(long toLogId) {
         while (--logId >= toLogId) {
-            TransactionalLogRecord r = logRecords.removeLast();
+            UndoLogRecord r = undoLogRecords.removeLast();
             r.rollback(transactionEngine);
         }
     }
@@ -557,7 +546,7 @@ public class AMTransaction implements Transaction {
                 lastStorageMap.remove(lastKey);
             }
             lastStorageMap.put(key, lastValue);
-            logRecords.getLast().key = key; // 替换原来的key
+            undoLogRecords.getLast().setKey(key); // 替换原来的key
         }
     }
 

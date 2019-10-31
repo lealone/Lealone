@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte;
+package org.lealone.transaction.amte.log;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -26,23 +26,42 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.amte.AMTransactionEngine;
+import org.lealone.transaction.amte.TransactionalValue;
+import org.lealone.transaction.amte.TransactionalValueType;
 
-public class TransactionalLogRecord {
+public class UndoLogRecord {
 
-    final String mapName;
-    Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
-    final TransactionalValue oldValue;
-    final TransactionalValue newValue;
-    final boolean isForUpdate;
-    volatile boolean undone;
+    private final String mapName;
+    private Object key; // 没有用final，在AMTransaction.replicationPrepareCommit方法那里有特殊用途
+    private final TransactionalValue oldValue;
+    private final TransactionalValue newValue;
+    private final boolean isForUpdate;
+    private volatile boolean undone;
 
-    public TransactionalLogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
+    public UndoLogRecord(String mapName, Object key, TransactionalValue oldValue, TransactionalValue newValue,
             boolean isForUpdate) {
         this.mapName = mapName;
         this.key = key;
         this.oldValue = oldValue;
         this.newValue = newValue;
         this.isForUpdate = isForUpdate;
+    }
+
+    public String getMapName() {
+        return mapName;
+    }
+
+    public Object getKey() {
+        return key;
+    }
+
+    public void setKey(Object key) {
+        this.key = key;
+    }
+
+    public void setUndone(boolean undone) {
+        this.undone = undone;
     }
 
     // 调用这个方法时事务已经提交，redo日志已经写完，这里只是在内存中更新到最新值

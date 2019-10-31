@@ -88,7 +88,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     // 看看是否有REPEATABLE_READ和SERIALIZABLE隔离级别的事务，并且事务id小于给定值tid的
-    boolean containsUncommittedRepeatableReadTransactionLessThan(long tid) {
+    public boolean containsUncommittedRepeatableReadTransactionLessThan(long tid) {
         for (AMTransaction t : currentTransactions.headMap(tid).values()) {
             if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ)
                 return true;
@@ -104,7 +104,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         return currentTransactions.values();
     }
 
-    StorageMap<Object, TransactionalValue> getMap(String mapName) {
+    public StorageMap<Object, TransactionalValue> getMap(String mapName) {
         return maps.get(mapName);
     }
 
@@ -121,7 +121,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         logSyncService.addAndMaybeWaitForSync(r);
     }
 
-    void incrementEstimatedMemory(String mapName, int memory) {
+    public void incrementEstimatedMemory(String mapName, int memory) {
         estimatedMemory.get(mapName).addAndGet(memory);
     }
 

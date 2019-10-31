@@ -28,7 +28,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.transaction.amte.AMTransactionEngine;
-import org.lealone.transaction.amte.TransactionalLogRecord;
 
 public abstract class RedoLogRecord {
 
@@ -57,7 +56,7 @@ public abstract class RedoLogRecord {
 
     abstract void write(DataBuffer buff);
 
-    public void writeHead(DataBuffer buff) {
+    void writeHead(DataBuffer buff) {
     }
 
     static RedoLogRecord read(ByteBuffer buff) {
@@ -96,7 +95,7 @@ public abstract class RedoLogRecord {
     }
 
     public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine,
-            long transactionId, LinkedList<TransactionalLogRecord> logRecords) {
+            long transactionId, LinkedList<UndoLogRecord> logRecords) {
         return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, logRecords);
     }
 
@@ -180,7 +179,7 @@ public abstract class RedoLogRecord {
         public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
             ByteBuffer buff = operations;
             while (buff.hasRemaining()) {
-                TransactionalLogRecord.readForRedo(buff, pendingRedoLog);
+                UndoLogRecord.readForRedo(buff, pendingRedoLog);
             }
             return transactionId > lastTransactionId ? transactionId : lastTransactionId;
         }
@@ -272,10 +271,10 @@ public abstract class RedoLogRecord {
 
         final AMTransactionEngine transactionEngine;
         final long transactionId;
-        final LinkedList<TransactionalLogRecord> logRecords;
+        final LinkedList<UndoLogRecord> logRecords;
 
         public LazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine, long transactionId,
-                LinkedList<TransactionalLogRecord> logRecords) {
+                LinkedList<UndoLogRecord> logRecords) {
             this.transactionEngine = transactionEngine;
             this.transactionId = transactionId;
             this.logRecords = logRecords;
@@ -289,7 +288,7 @@ public abstract class RedoLogRecord {
             redoLogRecord.writeHead(buffer);
             int pos = buffer.position();
             buffer.putInt(0);
-            for (TransactionalLogRecord r : logRecords) {
+            for (UndoLogRecord r : logRecords) {
                 r.writeForRedo(buffer, transactionEngine);
             }
             int length = buffer.position() - pos - 4;

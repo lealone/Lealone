@@ -37,6 +37,7 @@ import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.amte.log.UndoLogRecord;
 
 public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
@@ -289,7 +290,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         long sizeRaw = map.size();
         long undoLogSize = 0;
         for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
-            undoLogSize += t.logRecords.size();
+            undoLogSize += t.undoLogRecords.size();
         }
         if (undoLogSize == 0) {
             return sizeRaw;
@@ -320,15 +321,15 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 null);
         try {
             for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
-                LinkedList<TransactionalLogRecord> records = t.logRecords;
-                for (TransactionalLogRecord r : records) {
-                    String m = r.mapName;
+                LinkedList<UndoLogRecord> records = t.undoLogRecords;
+                for (UndoLogRecord r : records) {
+                    String m = r.getMapName();
                     if (!mapName.equals(m)) {
                         // a different map - ignore
                         continue;
                     }
                     @SuppressWarnings("unchecked")
-                    K key = (K) r.key;
+                    K key = (K) r.getKey();
                     if (get(key) == null) {
                         Integer old = temp.put(key, 1);
                         // count each key only once (there might be multiple
@@ -657,7 +658,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 null, ref);
         ref.setRefValue(newValue);
         String mapName = getName();
-        final TransactionalLogRecord r = transaction.log(mapName, key, null, newValue);
+        final UndoLogRecord r = transaction.log(mapName, key, null, newValue);
         AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
             if (ar.isSucceeded()) {
                 TransactionalValue old = ar.getResult();
@@ -666,13 +667,13 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     // 在logUndo()中执行removeLast()在逻辑上也是不对的，
                     // 因为这里的异步回调函数可能是在不同线程中执行的，顺序也没有保证。
                     // transaction.logUndo();
-                    r.undone = true;
+                    r.setUndone(true);
                     listener.operationUndo();
                 } else {
                     listener.operationComplete();
                 }
             } else {
-                r.undone = true;
+                r.setUndone(true);
                 listener.operationUndo();
             }
         };
