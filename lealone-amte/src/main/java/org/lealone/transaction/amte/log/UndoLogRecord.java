@@ -72,7 +72,7 @@ public class UndoLogRecord {
             newValue.rollback(); // 解锁而已，不用提交的
             return;
         }
-        StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
+        StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
         if (map == null) {
             return; // map was later removed
         }
@@ -97,7 +97,7 @@ public class UndoLogRecord {
             newValue.rollback();
             return;
         }
-        StorageMap<Object, TransactionalValue> map = transactionEngine.getMap(mapName);
+        StorageMap<Object, TransactionalValue> map = transactionEngine.getStorageMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map != null) {
             if (oldValue == null) {
@@ -113,7 +113,7 @@ public class UndoLogRecord {
         if (isForUpdate || undone) {
             return;
         }
-        StorageMap<?, ?> map = transactionEngine.getMap(mapName);
+        StorageMap<?, ?> map = transactionEngine.getStorageMap(mapName);
         // 有可能在执行DROP DATABASE时删除了
         if (map == null) {
             return;

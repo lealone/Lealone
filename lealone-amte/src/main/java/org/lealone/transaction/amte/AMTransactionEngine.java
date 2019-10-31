@@ -23,7 +23,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -38,6 +37,7 @@ import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.amte.AMTransactionMap.AMReplicationMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 
@@ -48,17 +48,20 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
 
     private static final String NAME = "AMTE";
 
+    private static final class MapInfo {
+        final StorageMap<Object, TransactionalValue> map;
+        final AtomicInteger estimatedMemory = new AtomicInteger(0);
+
+        MapInfo(StorageMap<Object, TransactionalValue> map) {
+            this.map = map;
+        }
+    }
+
     // key: mapName
-    private final ConcurrentHashMap<String, StorageMap<Object, TransactionalValue>> maps = new ConcurrentHashMap<>();
-    // key: mapName
-    private final ConcurrentHashMap<String, TransactionMap<?, ?>> tmaps = new ConcurrentHashMap<>();
-    // key: mapName, value: memory size
-    private final ConcurrentHashMap<String, AtomicInteger> estimatedMemory = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, MapInfo> maps = new ConcurrentHashMap<>();
     // key: transactionId
     private final ConcurrentSkipListMap<Long, AMTransaction> currentTransactions = new ConcurrentSkipListMap<>();
-
     private final AtomicLong lastTransactionId = new AtomicLong();
-    private final AtomicBoolean init = new AtomicBoolean(false);
 
     private LogSyncService logSyncService;
     private CheckpointService checkpointService;
@@ -83,8 +86,38 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         return currentTransactions.containsKey(tid);
     }
 
-    boolean containsUncommittedTransactionLessThan(long tid) {
-        return currentTransactions.lowerKey(tid) != null;
+    AMTransaction getTransaction(long tid) {
+        return currentTransactions.get(tid);
+    }
+
+    Collection<AMTransaction> getCurrentTransactions() {
+        return currentTransactions.values();
+    }
+
+    void addStorageMap(StorageMap<Object, TransactionalValue> map) {
+        if (!maps.contains(map.getName())) {
+            maps.put(map.getName(), new MapInfo(map));
+            map.getStorage().registerEventListener(this);
+        }
+    }
+
+    void removeStorageMap(String mapName) {
+        maps.remove(mapName);
+        RedoLogRecord r = RedoLogRecord.createDroppedMapRedoLogRecord(mapName);
+        logSyncService.addAndMaybeWaitForSync(r);
+    }
+
+    ///////////////////// 以下方法在UndoLogRecord中有用途 /////////////////////
+
+    public StorageMap<Object, TransactionalValue> getStorageMap(String mapName) {
+        MapInfo mapInfo = maps.get(mapName);
+        return mapInfo != null ? mapInfo.map : null;
+    }
+
+    public void incrementEstimatedMemory(String mapName, int memory) {
+        MapInfo mapInfo = maps.get(mapName);
+        if (mapInfo != null)
+            mapInfo.estimatedMemory.addAndGet(memory);
     }
 
     // 看看是否有REPEATABLE_READ和SERIALIZABLE隔离级别的事务，并且事务id小于给定值tid的
@@ -96,38 +129,11 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         return false;
     }
 
-    AMTransaction getTransaction(long tid) {
-        return currentTransactions.get(tid);
-    }
-
-    Collection<AMTransaction> getCurrentTransactions() {
-        return currentTransactions.values();
-    }
-
-    public StorageMap<Object, TransactionalValue> getMap(String mapName) {
-        return maps.get(mapName);
-    }
-
-    void addMap(StorageMap<Object, TransactionalValue> map) {
-        estimatedMemory.put(map.getName(), new AtomicInteger(0));
-        maps.put(map.getName(), map);
-        map.getStorage().registerEventListener(this);
-    }
-
-    void removeMap(String mapName) {
-        estimatedMemory.remove(mapName);
-        maps.remove(mapName);
-        RedoLogRecord r = RedoLogRecord.createDroppedMapRedoLogRecord(mapName);
-        logSyncService.addAndMaybeWaitForSync(r);
-    }
-
-    public void incrementEstimatedMemory(String mapName, int memory) {
-        estimatedMemory.get(mapName).addAndGet(memory);
-    }
+    ///////////////////// 实现TransactionEngine接口 /////////////////////
 
     @Override
     public synchronized void init(Map<String, String> config) {
-        if (!init.compareAndSet(false, true))
+        if (logSyncService != null)
             return;
         checkpointService = new CheckpointService(config);
         logSyncService = LogSyncService.create(config);
@@ -139,34 +145,14 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         logSyncService.start();
         checkpointService.start();
 
-        addShutdownHook();
-    }
-
-    private void addShutdownHook() {
         ShutdownHookUtils.addShutdownHook(this, () -> {
             close();
         });
     }
 
     @Override
-    public AMTransaction beginTransaction(boolean autoCommit, boolean isShardingMode) {
-        if (!init.get()) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
-        }
-        long tid = getTransactionId(autoCommit, isShardingMode);
-        AMTransaction t = createTransaction(tid);
-        t.setAutoCommit(autoCommit);
-        currentTransactions.put(tid, t);
-        return t;
-    }
-
-    protected AMTransaction createTransaction(long tid) {
-        return new AMTransaction(this, tid);
-    }
-
-    @Override
-    public void close() {
-        if (!init.compareAndSet(true, false))
+    public synchronized void close() {
+        if (logSyncService == null)
             return;
         if (logSyncService != null) {
             // logSyncService放在最后关闭，这样还能执行一次checkpoint，下次启动时能减少redo操作的次数
@@ -186,29 +172,15 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public boolean validateTransaction(String localTransactionName) {
-        return false;
-    }
-
-    @Override
-    public boolean supportsMVCC() {
-        return true;
-    }
-
-    @Override
-    public void addTransactionMap(TransactionMap<?, ?> map) {
-        tmaps.put(map.getName(), map);
-    }
-
-    @Override
-    public TransactionMap<?, ?> getTransactionMap(String name) {
-        return tmaps.get(name);
-    }
-
-    @Override
-    public void removeTransactionMap(String name) {
-        removeMap(name);
-        tmaps.remove(name);
+    public AMTransaction beginTransaction(boolean autoCommit, boolean isShardingMode) {
+        if (logSyncService == null) {
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
+        }
+        long tid = getTransactionId(autoCommit, isShardingMode);
+        AMTransaction t = createTransaction(tid);
+        t.setAutoCommit(autoCommit);
+        currentTransactions.put(tid, t);
+        return t;
     }
 
     private long getTransactionId(boolean autoCommit, boolean isShardingMode) {
@@ -244,10 +216,39 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         return last;
     }
 
+    protected AMTransaction createTransaction(long tid) {
+        return new AMTransaction(this, tid);
+    }
+
+    @Override
+    public boolean validateTransaction(String localTransactionName) {
+        return false;
+    }
+
+    @Override
+    public boolean supportsMVCC() {
+        return true;
+    }
+
+    @Override
+    public TransactionMap<?, ?> getTransactionMap(String mapName, Transaction transaction) {
+        MapInfo mapInfo = maps.get(mapName);
+        if (mapInfo == null)
+            return null;
+
+        AMTransaction t = (AMTransaction) transaction;
+        if (t.isShardingMode())
+            return new AMReplicationMap<>(t, mapInfo.map);
+        else
+            return new AMTransactionMap<>(t, mapInfo.map);
+    }
+
     @Override
     public void checkpoint() {
         checkpointService.checkpoint();
     }
+
+    ///////////////////// 实现StorageEventListener接口 /////////////////////
 
     @Override
     public void beforeClose(Storage storage) {
@@ -256,9 +257,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
             return;
         checkpoint();
         for (String mapName : storage.getMapNames()) {
-            estimatedMemory.remove(mapName);
             maps.remove(mapName);
-            tmaps.remove(mapName);
         }
     }
 
@@ -322,13 +321,14 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
             // 如果上面的条件都不满足，那么再看看已经提交的数据占用的预估总内存大小是否大于阈值
             if (!executeCheckpoint) {
                 long totalEstimatedMemory = 0;
-                for (AtomicInteger counter : estimatedMemory.values()) {
-                    totalEstimatedMemory += counter.get();
+                for (MapInfo mapInfo : maps.values()) {
+                    totalEstimatedMemory += mapInfo.estimatedMemory.get();
                 }
                 executeCheckpoint = totalEstimatedMemory > committedDataCacheSize;
             }
             if (executeCheckpoint) {
-                for (StorageMap<Object, TransactionalValue> map : maps.values()) {
+                for (MapInfo mapInfo : maps.values()) {
+                    StorageMap<?, ?> map = mapInfo.map;
                     if (map.isClosed())
                         continue;
 
@@ -336,7 +336,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
                     // 不过不要紧，如果在生成检查点之后系统崩溃了导致未提交事务不能正常完成，还有读时撤销机制保证数据完整性，
                     // 因为在保存未提交数据时，也同时保存了原来的数据，如果在读到未提交数据时发现了异常，就会进行撤销，
                     // 读时撤销机制在TransactionalValue类中实现。
-                    AtomicInteger counter = estimatedMemory.get(map.getName());
+                    AtomicInteger counter = mapInfo.estimatedMemory;
                     if (force || counter != null && counter.getAndSet(0) > 0) {
                         map.save();
                     }

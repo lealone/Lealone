@@ -31,11 +31,7 @@ public interface TransactionEngine extends PluggableEngine {
 
     boolean supportsMVCC();
 
-    void addTransactionMap(TransactionMap<?, ?> map);
-
-    TransactionMap<?, ?> getTransactionMap(String name);
-
-    void removeTransactionMap(String name);
+    TransactionMap<?, ?> getTransactionMap(String mapName, Transaction transaction);
 
     void checkpoint();
 }

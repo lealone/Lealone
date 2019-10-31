@@ -2515,9 +2515,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             return;
         }
         for (Storage storage : getStorages()) {
-            for (String mapName : storage.getMapNames()) {
-                transactionEngine.removeTransactionMap(mapName);
-            }
             storage.drop();
         }
     }

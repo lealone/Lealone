@@ -341,6 +341,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return user;
     }
 
+    @Override
     public int getLockTimeout() {
         return lockTimeout;
     }
@@ -1342,7 +1343,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         if (!database.isInitialized())
             database.init();
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName).getInstance(getTransaction());
+        return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
     }
 
     @Override

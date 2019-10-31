@@ -396,7 +396,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         String mapName = map.getName();
         if (mapName != null) {
             map.remove();
-            transaction.transactionEngine.removeMap(mapName);
+            transaction.transactionEngine.removeStorageMap(mapName);
         }
     }
 

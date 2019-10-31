@@ -81,7 +81,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
 
         Transaction t = transactionEngine.beginTransaction(false, session.isShardingMode());
         TransactionMap<Value, Value> map = t.openMap(mapName, keyType, valueType, storage, table.getParameters());
-        transactionEngine.addTransactionMap(map);
         t.commit(); // 避免产生内部未提交的事务
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");

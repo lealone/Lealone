@@ -31,6 +31,7 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 import org.lealone.transaction.TransactionMap;
+import org.lealone.transaction.amte.AMTransactionEngine;
 import org.lealone.transaction.amte.log.LogSyncService;
 
 public class AMTransactionEngineTest extends TestBase {
@@ -82,6 +83,26 @@ public class AMTransactionEngineTest extends TestBase {
     }
 
     @Test
+    public void testEngine() {
+        AMTransactionEngine te = new AMTransactionEngine();
+        try {
+            te.beginTransaction(true);
+            fail();
+        } catch (Exception e) {
+        }
+
+        te.init(getDefaultConfig());
+        Storage storage = getStorage();
+
+        Transaction t1 = te.beginTransaction(false);
+        t1.openMap("testEngine", storage);
+        assertNotNull(te.getTransactionMap("testEngine", t1));
+        storage.close();
+        assertNull(te.getTransactionMap("testEngine", t1));
+        te.close();
+    }
+
+    @Test
     public void testCheckpoint() {
         Map<String, String> config = getDefaultConfig();
         config.put("committed_data_cache_size_in_mb", "1");
@@ -117,5 +138,6 @@ public class AMTransactionEngineTest extends TestBase {
 
         te.checkpoint();
         assertTrue(map.getDiskSpaceUsed() > 0);
+        te.close();
     }
 }

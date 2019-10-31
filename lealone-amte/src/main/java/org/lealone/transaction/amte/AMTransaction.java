@@ -218,7 +218,7 @@ public class AMTransaction implements Transaction {
         if (!map.isInMemory()) {
             UndoLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(name));
         }
-        transactionEngine.addMap((StorageMap<Object, TransactionalValue>) map);
+        transactionEngine.addStorageMap((StorageMap<Object, TransactionalValue>) map);
         boolean isShardingMode = parameters == null ? false : Boolean.parseBoolean(parameters.get("isShardingMode"));
         return createTransactionMap(map, isShardingMode);
     }
