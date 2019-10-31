@@ -19,7 +19,6 @@ package org.lealone.transaction.amte.log;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -95,8 +94,8 @@ public abstract class RedoLogRecord {
     }
 
     public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine,
-            long transactionId, LinkedList<UndoLogRecord> logRecords) {
-        return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, logRecords);
+            long transactionId, UndoLog undoLog) {
+        return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, undoLog);
     }
 
     static class Checkpoint extends RedoLogRecord {
@@ -271,24 +270,24 @@ public abstract class RedoLogRecord {
 
         final AMTransactionEngine transactionEngine;
         final long transactionId;
-        final LinkedList<UndoLogRecord> logRecords;
+        final UndoLog undoLog;
 
         public LazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine, long transactionId,
-                LinkedList<UndoLogRecord> logRecords) {
+                UndoLog undoLog) {
             this.transactionEngine = transactionEngine;
             this.transactionId = transactionId;
-            this.logRecords = logRecords;
+            this.undoLog = undoLog;
         }
 
         @Override
         void write(DataBuffer buffer) {
-            if (logRecords.isEmpty())
+            if (undoLog.isEmpty())
                 return;
             RedoLogRecord redoLogRecord = createLocalTransactionRedoLogRecord(transactionId, null);
             redoLogRecord.writeHead(buffer);
             int pos = buffer.position();
             buffer.putInt(0);
-            for (UndoLogRecord r : logRecords) {
+            for (UndoLogRecord r : undoLog.getUndoLogRecords()) {
                 r.writeForRedo(buffer, transactionEngine);
             }
             int length = buffer.position() - pos - 4;

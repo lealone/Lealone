@@ -559,7 +559,7 @@ public interface TransactionalValue {
             // }
             this.transaction = transaction;
             this.tid = transaction.transactionId;
-            this.logId = transaction.logId;
+            this.logId = transaction.undoLog.getLogId();
             this.oldValue = oldValue;
             this.oldValueType = oldValueType;
             this.hostAndPort = NetEndpoint.getLocalTcpHostAndPort();

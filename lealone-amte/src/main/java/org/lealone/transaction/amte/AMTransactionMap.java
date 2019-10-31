@@ -290,7 +290,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         long sizeRaw = map.size();
         long undoLogSize = 0;
         for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
-            undoLogSize += t.undoLogRecords.size();
+            undoLogSize += t.undoLog.size();
         }
         if (undoLogSize == 0) {
             return sizeRaw;
@@ -321,7 +321,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 null);
         try {
             for (AMTransaction t : transaction.transactionEngine.getCurrentTransactions()) {
-                LinkedList<UndoLogRecord> records = t.undoLogRecords;
+                LinkedList<UndoLogRecord> records = t.undoLog.getUndoLogRecords();
                 for (UndoLogRecord r : records) {
                     String m = r.getMapName();
                     if (!mapName.equals(m)) {
@@ -658,7 +658,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 null, ref);
         ref.setRefValue(newValue);
         String mapName = getName();
-        final UndoLogRecord r = transaction.log(mapName, key, null, newValue);
+        final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newValue);
         AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
             if (ar.isSucceeded()) {
                 TransactionalValue old = ar.getResult();
@@ -722,11 +722,11 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             TransactionalValue refValue = oldTransactionalValue.getRefValue();
             TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
                     map.getValueType(), columnIndexes, oldTransactionalValue);
-            transaction.log(mapName, key, refValue, newValue);
+            transaction.undoLog.add(mapName, key, refValue, newValue);
             if (oldTransactionalValue.compareAndSet(refValue, newValue)) {
                 return Transaction.OPERATION_COMPLETE;
             } else {
-                transaction.logUndo();
+                transaction.undoLog.undo();
                 if (value == null) {
                     // 两个事务同时删除某一行时，因为删除操作是排它的，
                     // 所以只要一个compareAndSet成功了，另一个就没必要重试了
@@ -770,11 +770,11 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         TransactionalValue refValue = ref.getRefValue();
         TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(), refValue,
                 map.getValueType(), null, ref);
-        transaction.log(getName(), key, refValue, newValue, true);
+        transaction.undoLog.add(getName(), key, refValue, newValue, true);
         if (ref.compareAndSet(refValue, newValue)) {
             return true;
         } else {
-            transaction.logUndo();
+            transaction.undoLog.undo();
             return false;
         }
     }
