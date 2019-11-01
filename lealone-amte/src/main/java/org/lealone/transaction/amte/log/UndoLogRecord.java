@@ -17,15 +17,9 @@
  */
 package org.lealone.transaction.amte.log;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.amte.AMTransactionEngine;
 import org.lealone.transaction.amte.TransactionalValue;
 import org.lealone.transaction.amte.TransactionalValueType;
@@ -137,38 +131,5 @@ public class UndoLogRecord {
         // 预估一下内存占用大小，当到达一个阈值时方便其他服务线程刷数据到硬盘
         int memory = writeBuffer.position() - lastPosition;
         transactionEngine.incrementEstimatedMemory(mapName, memory);
-    }
-
-    // 这个方法在数据库初始化读取redo日志时调用，此时还没有打开底层存储的map，所以只预先解析出mapName和keyValue字节数组
-    public static void readForRedo(ByteBuffer buff, Map<String, List<ByteBuffer>> pendingRedoLog) {
-        String mapName = ValueString.type.read(buff);
-
-        List<ByteBuffer> keyValues = pendingRedoLog.get(mapName);
-        if (keyValues == null) {
-            keyValues = new ArrayList<>();
-            pendingRedoLog.put(mapName, keyValues);
-        }
-        int len = buff.getInt();
-        byte[] keyValue = new byte[len];
-        buff.get(keyValue);
-        keyValues.add(ByteBuffer.wrap(keyValue));
-    }
-
-    // 第一次打开底层存储的map时调用这个方法，重新执行一次上次已经成功并且在检查点之后的事务操作
-    @SuppressWarnings("unchecked")
-    public static <K> void redo(StorageMap<K, TransactionalValue> map, List<ByteBuffer> pendingKeyValues) {
-        if (pendingKeyValues != null && !pendingKeyValues.isEmpty()) {
-            StorageDataType kt = map.getKeyType();
-            StorageDataType vt = ((TransactionalValueType) map.getValueType()).valueType;
-            for (ByteBuffer kv : pendingKeyValues) {
-                K key = (K) kt.read(kv);
-                if (kv.get() == 0)
-                    map.remove(key);
-                else {
-                    Object value = vt.read(kv);
-                    map.put(key, TransactionalValue.createCommitted(value));
-                }
-            }
-        }
     }
 }

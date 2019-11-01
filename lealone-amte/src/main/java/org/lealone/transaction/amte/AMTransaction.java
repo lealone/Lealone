@@ -38,7 +38,6 @@ import org.lealone.transaction.amte.AMTransactionMap.AMReplicationMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 import org.lealone.transaction.amte.log.UndoLog;
-import org.lealone.transaction.amte.log.UndoLogRecord;
 
 public class AMTransaction implements Transaction {
 
@@ -199,7 +198,7 @@ public class AMTransaction implements Transaction {
         valueType = new TransactionalValueType(valueType);
         StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
         if (!map.isInMemory()) {
-            UndoLogRecord.redo(map, logSyncService.getAndRemovePendingRedoLog(name));
+            logSyncService.getRedoLog().redo(map);
         }
         transactionEngine.addStorageMap((StorageMap<Object, TransactionalValue>) map);
         boolean isShardingMode = parameters == null ? false : Boolean.parseBoolean(parameters.get("isShardingMode"));

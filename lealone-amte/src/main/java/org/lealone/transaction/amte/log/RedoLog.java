@@ -18,28 +18,34 @@
 package org.lealone.transaction.amte.log;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.LinkedTransferQueue;
 
 import org.lealone.db.Constants;
+import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.amte.TransactionalValue;
+import org.lealone.transaction.amte.TransactionalValueType;
 
 /**
  * A redo log
  *
  * @author zhh
  */
-class RedoLog {
+public class RedoLog {
 
     private static final long DEFAULT_LOG_CHUNK_SIZE = 32 * 1024 * 1024;
 
     public static final char NAME_ID_SEPARATOR = Constants.NAME_SEPARATOR;
 
+    // key: mapName, value: map key/value ByteBuffer list
+    private final HashMap<String, List<ByteBuffer>> pendingRedoLog = new HashMap<>();
     private final Map<String, String> config;
     private final long logChunkSize;
 
@@ -59,14 +65,6 @@ class RedoLog {
 
         if (!FileUtils.exists(storagePath))
             FileUtils.createDirectories(storagePath);
-
-        List<Integer> ids = getAllChunkIds();
-        int lastId;
-        if (!ids.isEmpty())
-            lastId = ids.get(ids.size() - 1);
-        else
-            lastId = 0;
-        currentChunk = new RedoLogChunk(lastId, config);
     }
 
     private List<Integer> getAllChunkIds() {
@@ -84,34 +82,58 @@ class RedoLog {
         return ids;
     }
 
+    public long init() {
+        long lastTransactionId = 0;
+        List<Integer> ids = getAllChunkIds();
+        if (ids.isEmpty()) {
+            currentChunk = new RedoLogChunk(0, config);
+        } else {
+            int lastId = ids.get(ids.size() - 1);
+            for (int id : ids) {
+                RedoLogChunk chunk = null;
+                try {
+                    chunk = new RedoLogChunk(id, config);
+                    for (RedoLogRecord r : chunk.getAndResetRedoLogRecords()) {
+                        lastTransactionId = r.initPendingRedoLog(pendingRedoLog, lastTransactionId);
+                    }
+                } finally {
+                    // 注意一定要关闭，否则对应的chunk文件将无法删除，
+                    // 内部会打开一个FileStorage，不会因为没有引用到了而自动关闭
+                    if (id == lastId)
+                        currentChunk = chunk;
+                    else if (chunk != null)
+                        chunk.close();
+                }
+            }
+        }
+        return lastTransactionId;
+    }
+
+    // 第一次打开底层存储的map时调用这个方法，重新执行一次上次已经成功并且在检查点之后的事务操作
+    @SuppressWarnings("unchecked")
+    public <K> void redo(StorageMap<K, TransactionalValue> map) {
+        List<ByteBuffer> pendingKeyValues = pendingRedoLog.remove(map.getName());
+        if (pendingKeyValues != null && !pendingKeyValues.isEmpty()) {
+            StorageDataType kt = map.getKeyType();
+            StorageDataType vt = ((TransactionalValueType) map.getValueType()).valueType;
+            for (ByteBuffer kv : pendingKeyValues) {
+                K key = (K) kt.read(kv);
+                if (kv.get() == 0)
+                    map.remove(key);
+                else {
+                    Object value = vt.read(kv);
+                    map.put(key, TransactionalValue.createCommitted(value));
+                }
+            }
+        }
+    }
+
     int size() {
         return currentChunk.size();
     }
 
     void addRedoLogRecord(RedoLogRecord r) {
         currentChunk.addRedoLogRecord(r);
-    }
-
-    Queue<RedoLogRecord> getAllRedoLogRecords() {
-        LinkedTransferQueue<RedoLogRecord> queue = new LinkedTransferQueue<>();
-        List<Integer> ids = getAllChunkIds();
-        for (int id : ids) {
-            RedoLogChunk chunk = null;
-            try {
-                if (id == currentChunk.getId()) {
-                    chunk = currentChunk;
-                } else {
-                    chunk = new RedoLogChunk(id, config);
-                }
-                queue.addAll(chunk.getAndResetRedoLogRecords());
-            } finally {
-                // 注意一定要关闭，否则对应的chunk文件将无法删除，
-                // 内部会打开一个FileStorage，不会因为没有引用到了而自动关闭
-                if (chunk != null && chunk != currentChunk)
-                    chunk.close();
-            }
-        }
-        return queue;
     }
 
     void close() {

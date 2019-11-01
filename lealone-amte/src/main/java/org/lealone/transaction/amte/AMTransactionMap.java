@@ -663,10 +663,9 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             if (ar.isSucceeded()) {
                 TransactionalValue old = ar.getResult();
                 if (old != null) {
-                    // 不能用logUndo()，因为它不是线程安全的，
-                    // 在logUndo()中执行removeLast()在逻辑上也是不对的，
+                    // 不能用undoLog.undo()，因为它不是线程安全的，
+                    // 在undoLog.undo()中执行removeLast()在逻辑上也是不对的，
                     // 因为这里的异步回调函数可能是在不同线程中执行的，顺序也没有保证。
-                    // transaction.logUndo();
                     r.setUndone(true);
                     listener.operationUndo();
                 } else {
@@ -711,8 +710,9 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     // 在SQL层对应update或delete语句，用于支持行锁和列锁。
-    // 如果当前行(或列)已经被其他事务锁住了那么返回false表示更新或删除失败了，当前事务要让出当前线程。
-    // 当value为null时代表delete，否则代表update
+    // 如果当前行(或列)已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，
+    // 当前事务要让出当前线程。
+    // 当value为null时代表delete，否则代表update。
     private int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
         DataUtils.checkArgument(oldTransactionalValue != null, "The oldTransactionalValue may not be null");
         transaction.checkNotClosed();

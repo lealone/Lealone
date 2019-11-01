@@ -18,7 +18,7 @@
 package org.lealone.transaction.amte.log;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -54,9 +54,6 @@ public abstract class RedoLogRecord {
     abstract long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId);
 
     abstract void write(DataBuffer buff);
-
-    void writeHead(DataBuffer buff) {
-    }
 
     static RedoLogRecord read(ByteBuffer buff) {
         int type = buff.get();
@@ -146,7 +143,7 @@ public abstract class RedoLogRecord {
         public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
             List<ByteBuffer> logs = pendingRedoLog.get(mapName);
             if (logs != null) {
-                logs = new ArrayList<>();
+                logs = new LinkedList<>();
                 pendingRedoLog.put(mapName, logs);
             }
             return lastTransactionId;
@@ -178,7 +175,18 @@ public abstract class RedoLogRecord {
         public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
             ByteBuffer buff = operations;
             while (buff.hasRemaining()) {
-                UndoLogRecord.readForRedo(buff, pendingRedoLog);
+                // 此时还没有打开底层存储的map，所以只预先解析出mapName和keyValue字节数组
+                // 写时格式参照UndoLogRecord.writeForRedo()
+                String mapName = ValueString.type.read(buff);
+                List<ByteBuffer> keyValues = pendingRedoLog.get(mapName);
+                if (keyValues == null) {
+                    keyValues = new LinkedList<>();
+                    pendingRedoLog.put(mapName, keyValues);
+                }
+                int len = buff.getInt();
+                byte[] keyValue = new byte[len];
+                buff.get(keyValue);
+                keyValues.add(ByteBuffer.wrap(keyValue));
             }
             return transactionId > lastTransactionId ? transactionId : lastTransactionId;
         }
@@ -218,12 +226,6 @@ public abstract class RedoLogRecord {
         @Override
         public void write(DataBuffer buff) {
             write(buff, TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
-        }
-
-        @Override
-        public void writeHead(DataBuffer buff) {
-            buff.put(TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
-            buff.putVarLong(transactionId);
         }
 
         public static LocalTransactionRedoLogRecord read(ByteBuffer buff) {
@@ -283,8 +285,8 @@ public abstract class RedoLogRecord {
         void write(DataBuffer buffer) {
             if (undoLog.isEmpty())
                 return;
-            RedoLogRecord redoLogRecord = createLocalTransactionRedoLogRecord(transactionId, null);
-            redoLogRecord.writeHead(buffer);
+            buffer.put(TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD);
+            buffer.putVarLong(transactionId);
             int pos = buffer.position();
             buffer.putInt(0);
             for (UndoLogRecord r : undoLog.getUndoLogRecords()) {

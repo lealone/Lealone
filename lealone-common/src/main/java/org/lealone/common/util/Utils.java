@@ -643,7 +643,7 @@ public class Utils {
         return new InputStreamReader(new ByteArrayInputStream(data));
     }
 
-    // 目前投打包部署不支持把资源文件都压缩到一个大文件中
+    // 目前打包部署不支持把资源文件都压缩到一个大文件中
     private static final boolean CHECK_DATA_ZIP_FILE = false;
 
     // 如果有"/"前缀，那么Utils.class.getClassLoader().getResourceAsStream找不到资源，必须去掉"/"前缀

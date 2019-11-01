@@ -138,7 +138,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         checkpointService = new CheckpointService(config);
         logSyncService = LogSyncService.create(config);
 
-        long lastTransactionId = logSyncService.initPendingRedoLog();
+        long lastTransactionId = logSyncService.getRedoLog().init();
         this.lastTransactionId.set(lastTransactionId);
 
         // 调用完initPendingRedoLog后再启动logSyncService

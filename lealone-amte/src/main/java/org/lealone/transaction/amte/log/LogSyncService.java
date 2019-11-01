@@ -17,10 +17,7 @@
  */
 package org.lealone.transaction.amte.log;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
@@ -47,9 +44,6 @@ public abstract class LogSyncService extends Thread {
     protected boolean running = true;
     protected RedoLog redoLog;
 
-    // key: mapName, value: map key/value ByteBuffer list
-    private final HashMap<String, List<ByteBuffer>> pendingRedoLog = new HashMap<>();
-
     public LogSyncService(Map<String, String> config) {
         setName(getClass().getSimpleName());
         setDaemon(true);
@@ -57,6 +51,10 @@ public abstract class LogSyncService extends Thread {
             redoLogRecordSyncThreshold = Integer.parseInt(config.get("redo_log_record_sync_threshold"));
         else
             redoLogRecordSyncThreshold = 100;
+    }
+
+    public RedoLog getRedoLog() {
+        return redoLog;
     }
 
     public abstract void maybeWaitForSync(RedoLogRecord r);
@@ -133,18 +131,6 @@ public abstract class LogSyncService extends Thread {
         RedoLogRecord r = RedoLogRecord.createCheckpoint(checkpointId);
         addRedoLogRecord(r);
         maybeWaitForSync(r);
-    }
-
-    public long initPendingRedoLog() {
-        long lastTransactionId = 0;
-        for (RedoLogRecord r : redoLog.getAllRedoLogRecords()) {
-            lastTransactionId = r.initPendingRedoLog(pendingRedoLog, lastTransactionId);
-        }
-        return lastTransactionId;
-    }
-
-    public List<ByteBuffer> getAndRemovePendingRedoLog(String mapName) {
-        return pendingRedoLog.remove(mapName);
     }
 
     public boolean isInstantSync() {
