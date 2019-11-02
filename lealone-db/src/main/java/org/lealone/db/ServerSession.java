@@ -463,32 +463,26 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return database;
     }
 
-    private boolean prepared;
-    private String allLocalTransactionNames;
-
     @Override
-    public void prepareCommit() {
-        prepared = true;
+    public void asyncCommit(Runnable asyncTask) {
         if (transaction != null) {
             transaction.setStatus(Transaction.STATUS_COMMITTING);
             sessionStatus = SessionStatus.COMMITTING_TRANSACTION;
-            transaction.prepareCommit();
+            transaction.asyncCommit(asyncTask);
         } else {
             // 在手动提交模式下执行了COMMIT语句，然后再手动提交事务，
-            // 此时transaction为null，但是runnable不为null
-            if (runnable != null)
-                runnable.run();
+            // 此时transaction为null，但是asyncTask不为null
+            if (asyncTask != null)
+                asyncTask.run();
         }
     }
 
-    public void prepareCommit(String allLocalTransactionNames) {
-        prepared = true;
-        this.allLocalTransactionNames = allLocalTransactionNames;
-        if (transaction != null) {
-            transaction.setStatus(Transaction.STATUS_COMMITTING);
-            sessionStatus = SessionStatus.COMMITTING_TRANSACTION;
-            transaction.prepareCommit(allLocalTransactionNames);
-        }
+    @Override
+    public void asyncCommitComplete() {
+        transactionStart = 0;
+        transaction = null;
+        endTransaction();
+        commitFinal();
     }
 
     public void commit() {
@@ -502,24 +496,37 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      */
     @Override
     public void commit(String allLocalTransactionNames) {
-        if (prepared) {
-            prepared = false;
-            allLocalTransactionNames = this.allLocalTransactionNames;
-        }
+        if (transaction == null)
+            return;
         checkCommitRollback();
         transactionStart = 0;
+        // 避免重复commit
+        Transaction transaction = this.transaction;
+        this.transaction = null;
+        if (allLocalTransactionNames == null)
+            transaction.commit();
+        else
+            transaction.commit(allLocalTransactionNames);
+        endTransaction();
+        commitFinal();
+    }
 
-        if (transaction != null) {
-            // 避免重复commit
-            Transaction transaction = this.transaction;
-            this.transaction = null;
-            if (allLocalTransactionNames == null)
-                transaction.commit();
-            else
-                transaction.commit(allLocalTransactionNames);
-
-            endTransaction();
+    private void checkCommitRollback() {
+        if (commitOrRollbackDisabled && locks.size() > 0) {
+            throw DbException.get(ErrorCode.COMMIT_ROLLBACK_NOT_ALLOWED);
         }
+    }
+
+    private void endTransaction() {
+        if (!isRoot)
+            setAutoCommit(true);
+
+        containsDDL = false;
+        containsDatabaseStatement = false;
+        setReplicationName(null);
+    }
+
+    private void commitFinal() {
         if (!containsDDL) {
             // do not clean the temp tables if the last command was a
             // create/drop
@@ -543,21 +550,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         clean();
         releaseSessionCache();
         sessionStatus = SessionStatus.NO_TRANSACTION;
-    }
-
-    private void endTransaction() {
-        if (!isRoot)
-            setAutoCommit(true);
-
-        containsDDL = false;
-        containsDatabaseStatement = false;
-        setReplicationName(null);
-    }
-
-    private void checkCommitRollback() {
-        if (commitOrRollbackDisabled && locks.size() > 0) {
-            throw DbException.get(ErrorCode.COMMIT_ROLLBACK_NOT_ALLOWED);
-        }
     }
 
     /**

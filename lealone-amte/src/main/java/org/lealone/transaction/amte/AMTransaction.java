@@ -34,7 +34,6 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.amte.AMTransactionMap.AMReplicationMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 import org.lealone.transaction.amte.log.UndoLog;
@@ -59,7 +58,8 @@ public class AMTransaction implements Transaction {
     private volatile int status;
     private int isolationLevel = Connection.TRANSACTION_READ_COMMITTED; // 默认是读已提交级别
     private boolean autoCommit;
-    private boolean prepared;
+
+    private Runnable asyncTask;
 
     // 被哪个事务锁住记录了
     private volatile AMTransaction lockedBy;
@@ -201,16 +201,12 @@ public class AMTransaction implements Transaction {
             logSyncService.getRedoLog().redo(map);
         }
         transactionEngine.addStorageMap((StorageMap<Object, TransactionalValue>) map);
-        boolean isShardingMode = parameters == null ? false : Boolean.parseBoolean(parameters.get("isShardingMode"));
-        return createTransactionMap(map, isShardingMode);
+        return createTransactionMap(map, parameters);
     }
 
     protected <K, V> AMTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
-            boolean isShardingMode) {
-        if (isShardingMode)
-            return new AMReplicationMap<>(this, map);
-        else
-            return new AMTransactionMap<>(this, map);
+            Map<String, String> parameters) {
+        return new AMTransactionMap<>(this, map);
     }
 
     @Override
@@ -234,55 +230,55 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
-    public void prepareCommit() {
+    public void asyncCommit(Runnable asyncTask) {
         checkNotClosed();
-        prepared = true;
+        this.asyncTask = asyncTask;
+        if (writeRedoLog(true)) {
+            asyncCommitComplete();
+        }
+    }
 
-        // if (logSyncService.needSync()) {
-        // RedoLogRecord r = createLocalTransactionRedoLogRecord();
-        // // 事务没有进行任何操作时不用同步日志
-        // if (r != null) {
-        // // 先写redoLog
-        // logSyncService.addRedoLogRecord(r);
-        // }
-        // }
-        // logSyncService.prepareCommit(this);
-
-        // 如果不需要事务日志同步，那么什么都不做，直接提交事务
+    // 如果不需要事务日志同步或者不需要立即做事务日志同步那么返回true，这时可以直接提交事务了。
+    // 如果需要立即做事务日志，当需要异步提交事务时返回false，当需要同步提交时需要等待
+    private boolean writeRedoLog(boolean asyncCommit) {
         if (logSyncService.needSync() && undoLog.isNotEmpty()) {
             // 如果需要立即做事务日志同步，那么把redo log的生成工作放在当前线程，减轻日志同步线程的工作量
             if (logSyncService.isInstantSync()) {
                 RedoLogRecord r = createLocalTransactionRedoLogRecord();
-                // 事务没有进行任何操作时不用同步日志
-                if (r != null) {
-                    // 先写redoLog
+                if (asyncCommit) {
                     logSyncService.addRedoLogRecord(r);
+                    logSyncService.asyncCommit(this);
+                    return false;
+                } else {
+                    logSyncService.addAndMaybeWaitForSync(r);
+                    return true;
                 }
-                logSyncService.prepareCommit(this);
             } else {
                 // 对于其他日志同步场景，当前线程不需要等待，只需要把事务日志移交到后台日志同步线程的队列中即可
                 // 此时当前线程也不需要自己去做redo log的生成工作，也由后台处理，能尽快结束事务
                 RedoLogRecord r = RedoLogRecord.createLazyTransactionRedoLogRecord(transactionEngine, transactionId,
                         undoLog);
                 logSyncService.addRedoLogRecord(r);
-                if (session != null) {
-                    session.commit(null);
-                } else {
-                    commitLocal();
-                }
+                return true;
             }
         } else {
-            if (session != null) {
-                session.commit(null);
-            } else {
-                commitLocal();
-            }
+            // 如果不需要事务日志同步，那么什么都不做，可以直接提交事务了
+            return true;
         }
     }
 
-    @Override
-    public void prepareCommit(String allLocalTransactionNames) {
-        prepareCommit();
+    public void asyncCommitComplete() {
+        commitFinal();
+        if (session != null) {
+            session.asyncCommitComplete();
+        }
+        if (asyncTask != null) {
+            try {
+                asyncTask.run();
+            } catch (Exception e) {
+                throw DbException.convert(e);
+            }
+        }
     }
 
     @Override
@@ -297,37 +293,11 @@ public class AMTransaction implements Transaction {
 
     protected void commitLocal() {
         checkNotClosed();
-        if (prepared) { // 在prepareCommit阶段已经写完redoLog了
+        writeRedoLog(false);
+
+        // 分布式事务推迟提交
+        if (isLocal()) {
             commitFinal();
-            if (session != null && session.getRunnable() != null) {
-                try {
-                    session.getRunnable().run();
-                } catch (Exception e) {
-                    throw DbException.convert(e);
-                }
-            }
-        } else {
-            // 如果不需要事务日志同步，那么什么都不做，直接提交事务
-            if (logSyncService.needSync() && undoLog.isNotEmpty()) {
-                // 如果需要立即做事务日志同步，那么把redo log的生成工作放在当前线程，减轻日志同步线程的工作量
-                if (logSyncService.isInstantSync()) {
-                    RedoLogRecord r = createLocalTransactionRedoLogRecord();
-                    if (r != null) { // 事务没有进行任何操作时不用同步日志
-                        // 先写redoLog
-                        logSyncService.addAndMaybeWaitForSync(r);
-                    }
-                } else {
-                    // 对于其他日志同步场景，当前线程不需要等待，只需要把事务日志移交到后台日志同步线程的队列中即可
-                    // 此时当前线程也不需要自己去做redo log的生成工作，也由后台处理，能尽快结束事务
-                    RedoLogRecord r = RedoLogRecord.createLazyTransactionRedoLogRecord(transactionEngine, transactionId,
-                            undoLog);
-                    logSyncService.addRedoLogRecord(r);
-                }
-            }
-            // 分布式事务推迟提交
-            if (isLocal()) {
-                commitFinal();
-            }
         }
     }
 

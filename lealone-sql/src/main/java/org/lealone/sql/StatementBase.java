@@ -841,16 +841,17 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             session.closeTemporaryResults();
             session.setCurrentCommand(null);
             if (asyncResult != null) {
-                if (session.isAutoCommit() && session.getReplicationName() == null) { // 在复制模式下不能自动提交
-                    // 等到事务日志写成功后再返回语句的执行结果
-                    session.setRunnable(() -> asyncHandler.handle(asyncResult));
-                    session.prepareCommit();
+                // 在复制模式下不能自动提交
+                if (session.isAutoCommit() && session.getReplicationName() == null) {
+                    // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
+                    session.asyncCommit(() -> asyncHandler.handle(asyncResult));
                 } else {
-                    // 当前语句是在一个手动提交的事务中进行，提前返回语句的执行结果
+                    // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
                     asyncHandler.handle(asyncResult);
                 }
             } else {
                 if (session.isAutoCommit() && session.getReplicationName() == null) {
+                    // 阻塞当前线程，可能需要等事务日志写完为止
                     session.commit();
                 }
             }

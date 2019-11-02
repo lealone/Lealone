@@ -211,7 +211,7 @@ public class SQLRouter {
 
             int updateCount = maybeExecuteDistributedUpdate(statement, endpointToPageKeyMap);
             if (isTopTransaction)
-                session.prepareCommit();
+                session.asyncCommit(null);
             return updateCount;
         } catch (Exception e) {
             if (isTopTransaction)

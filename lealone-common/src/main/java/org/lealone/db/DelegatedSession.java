@@ -230,18 +230,13 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void setRunnable(Runnable runnable) {
-        session.setRunnable(runnable);
+    public void asyncCommit(Runnable asyncTask) {
+        session.asyncCommit(asyncTask);
     }
 
     @Override
-    public Runnable getRunnable() {
-        return session.getRunnable();
-    }
-
-    @Override
-    public void prepareCommit() {
-        session.prepareCommit();
+    public void asyncCommitComplete() {
+        session.asyncCommitComplete();
     }
 
     @Override

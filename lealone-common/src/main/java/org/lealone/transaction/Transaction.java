@@ -124,9 +124,11 @@ public interface Transaction {
 
     int getSavepointId();
 
-    void prepareCommit();
+    default void asyncCommit() {
+        asyncCommit(null);
+    }
 
-    void prepareCommit(String allLocalTransactionNames);
+    void asyncCommit(Runnable asyncTask);
 
     void commit();
 

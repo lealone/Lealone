@@ -189,6 +189,10 @@ public interface Session extends Closeable, Transaction.Participant {
 
     void commit(String allLocalTransactionNames);
 
+    void asyncCommit(Runnable asyncTask);
+
+    void asyncCommitComplete();
+
     default Session connect() {
         return connect(true);
     }
@@ -212,12 +216,6 @@ public interface Session extends Closeable, Transaction.Participant {
     void replicateRootPages(String dbName, ByteBuffer rootPages);
 
     int getNextId();
-
-    void setRunnable(Runnable runnable);
-
-    Runnable getRunnable();
-
-    void prepareCommit();
 
     SessionStatus getStatus();
 

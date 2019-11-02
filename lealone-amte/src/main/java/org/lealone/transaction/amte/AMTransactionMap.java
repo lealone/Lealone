@@ -25,10 +25,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
-import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
@@ -40,38 +38,6 @@ import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.amte.log.UndoLogRecord;
 
 public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
-
-    static class AMReplicationMap<K, V> extends AMTransactionMap<K, V> {
-
-        private final DistributedStorageMap<K, TransactionalValue> map;
-        private final Session session;
-        private final StorageDataType valueType;
-
-        AMReplicationMap(AMTransaction transaction, StorageMap<K, TransactionalValue> map) {
-            super(transaction, map);
-            this.map = (DistributedStorageMap<K, TransactionalValue>) map;
-            session = transaction.getSession();
-            valueType = getValueType();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public V get(K key) {
-            return (V) map.replicationGet(session, key);
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public V put(K key, V value) {
-            return (V) map.replicationPut(session, key, value, valueType);
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public K append(V value) {
-            return (K) map.replicationAppend(session, value, valueType);
-        }
-    }
 
     private final AMTransaction transaction;
     protected final StorageMap<K, TransactionalValue> map;
@@ -492,10 +458,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public AMTransactionMap<K, V> getInstance(Transaction transaction) {
         AMTransaction t = (AMTransaction) transaction;
-        if (t.isShardingMode())
-            return new AMReplicationMap<>(t, map);
-        else
-            return new AMTransactionMap<>(t, map);
+        return new AMTransactionMap<>(t, map);
     }
 
     @Override

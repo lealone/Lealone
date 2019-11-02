@@ -38,7 +38,6 @@ public abstract class SessionBase implements Session {
 
     protected String replicationName;
     protected AtomicInteger nextId = new AtomicInteger(0);
-    protected Runnable runnable;
 
     protected String targetEndpoints;
     protected RunMode runMode;
@@ -92,17 +91,11 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void setRunnable(Runnable runnable) {
-        this.runnable = runnable;
+    public void asyncCommit(Runnable asyncTask) {
     }
 
     @Override
-    public Runnable getRunnable() {
-        return runnable;
-    }
-
-    @Override
-    public void prepareCommit() {
+    public void asyncCommitComplete() {
     }
 
     @Override

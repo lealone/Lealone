@@ -37,7 +37,6 @@ import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.amte.AMTransactionMap.AMReplicationMap;
 import org.lealone.transaction.amte.log.LogSyncService;
 import org.lealone.transaction.amte.log.RedoLogRecord;
 
@@ -95,7 +94,8 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     void addStorageMap(StorageMap<Object, TransactionalValue> map) {
-        if (!maps.contains(map.getName())) {
+        // 注意，不要敲成contains，是containsKey
+        if (!maps.containsKey(map.getName())) {
             maps.put(map.getName(), new MapInfo(map));
             map.getStorage().registerEventListener(this);
         }
@@ -235,12 +235,13 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         MapInfo mapInfo = maps.get(mapName);
         if (mapInfo == null)
             return null;
-
-        AMTransaction t = (AMTransaction) transaction;
-        if (t.isShardingMode())
-            return new AMReplicationMap<>(t, mapInfo.map);
         else
-            return new AMTransactionMap<>(t, mapInfo.map);
+            return getTransactionMap(transaction, mapInfo.map);
+    }
+
+    protected TransactionMap<?, ?> getTransactionMap(Transaction transaction,
+            StorageMap<Object, TransactionalValue> map) {
+        return new AMTransactionMap<>((AMTransaction) transaction, map);
     }
 
     @Override

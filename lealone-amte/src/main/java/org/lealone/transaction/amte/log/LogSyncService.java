@@ -59,7 +59,7 @@ public abstract class LogSyncService extends Thread {
 
     public abstract void maybeWaitForSync(RedoLogRecord r);
 
-    public void prepareCommit(AMTransaction t) {
+    public void asyncCommit(AMTransaction t) {
         transactions.add(t);
         haveWork.release();
     }
@@ -99,19 +99,16 @@ public abstract class LogSyncService extends Thread {
     private void sync() {
         if (redoLog != null)
             redoLog.save();
-        commitTransactions();
+        notifyComplete();
     }
 
-    private void commitTransactions() {
+    private void notifyComplete() {
         if (transactions.isEmpty())
             return;
         ArrayList<AMTransaction> oldTransactions = new ArrayList<>(transactions.size());
         transactions.drainTo(oldTransactions);
         for (AMTransaction t : oldTransactions) {
-            if (t.getSession() != null)
-                t.getSession().commit(null);
-            else
-                t.commit();
+            t.asyncCommitComplete();
         }
     }
 

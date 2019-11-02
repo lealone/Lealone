@@ -72,17 +72,13 @@ class PeriodicLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void prepareCommit(AMTransaction t) {
+    public void asyncCommit(AMTransaction t) {
         // 如果在同步周期内，可以提前提交事务
         long started = System.currentTimeMillis();
-        if (!waitForSyncToCatchUp(started) && (t.getSession() != null)) {
-            t.getSession().commit(null);
+        if (!waitForSyncToCatchUp(started)) {
+            t.asyncCommitComplete();
         } else {
-            super.prepareCommit(t);
+            super.asyncCommit(t);
         }
-
-        // if ((t.getSession() != null)) {
-        // t.getSession().commit(null);
-        // }
     }
 }

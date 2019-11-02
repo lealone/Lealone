@@ -45,9 +45,7 @@ class NoLogSyncService extends LogSyncService {
     }
 
     @Override
-    public void prepareCommit(AMTransaction t) {
-        if (t.getSession() != null) {
-            t.getSession().commit(null);
-        }
+    public void asyncCommit(AMTransaction t) {
+        t.asyncCommitComplete();
     }
 }
