@@ -83,7 +83,7 @@ public class UndoLog {
         }
     }
 
-    private int lastCapacity = 1024;
+    private static int lastCapacity = 1024;
 
     // 将当前一系列的事务操作日志转换成单条RedoLogRecord
     public ByteBuffer toRedoLogRecordBuffer(AMTransactionEngine transactionEngine) {

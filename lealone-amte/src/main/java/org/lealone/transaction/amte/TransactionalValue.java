@@ -20,6 +20,7 @@ package org.lealone.transaction.amte;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.UnsafeUtils;
 import org.lealone.db.DataBuffer;
@@ -549,13 +550,10 @@ public interface TransactionalValue {
         Uncommitted(AMTransaction transaction, Object value, TransactionalValue oldValue, StorageDataType oldValueType,
                 int[] columnIndexes, TransactionalValue ref) {
             super(value);
-            // // 避免同一个事务对同一行不断更新导致过长的oldValue链，只取最早的oldValue即可
-            // if (oldValue != null) {
-            // if (oldValue.getTid() == transaction.transactionId && (oldValue instanceof Uncommitted)) {
-            // oldValue = ((Uncommitted) oldValue).oldValue;
-            // } else {
-            // // oldValue = oldValue.getCommitted();
-            // }
+            // 虽然同一个事务对同一行记录不断更新会导致过长的oldValue链，
+            // 但是为了实现保存点的功能还是得这么做，直到事务提交时再取最新值
+            // if (oldValue != null && oldValue.getTid() == transaction.transactionId) {
+            // oldValue = oldValue.getOldValue();
             // }
             this.transaction = transaction;
             this.tid = transaction.transactionId;
@@ -911,7 +909,13 @@ public interface TransactionalValue {
 
         @Override
         public TransactionalValue commit(long tid) {
-            CommittedWithTid committed = new CommittedWithTid(tid, value, oldValue);
+            CommittedWithTid committed;
+            if (oldValue != null && oldValue.getTid() == tid) {
+                // 同一个事务对同一个key更新了多次时只保留最近的一次
+                committed = new CommittedWithTid(tid, value, oldValue.getOldValue());
+            } else {
+                committed = new CommittedWithTid(tid, value, oldValue);
+            }
             TransactionalValue first = ref.getRefValue();
             if (this == first) {
                 ref.setRefValue(committed);
@@ -932,22 +936,12 @@ public interface TransactionalValue {
 
         @Override
         public void rollback() {
+            // 因为执行rollback时是按最新到最老的顺序进行的，
+            // 所以当前被rollback的TransactionalValue一定是RefValue
             TransactionalValue first = ref.getRefValue();
-            if (this == first) {
-                ref.setRefValue(this.getOldValue());
-            } else {
-                TransactionalValue last = first;
-                TransactionalValue next = first.getOldValue();
-                while (next != null) {
-                    if (next == this) {
-                        next = next.getOldValue();
-                        break;
-                    }
-                    last = next;
-                    next = next.getOldValue();
-                }
-                last.setOldValue(next);
-            }
+            if (this != first)
+                throw DbException.throwInternalError();
+            ref.setRefValue(this.getOldValue());
         }
     }
 }
