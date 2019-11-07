@@ -443,18 +443,20 @@ public interface TransactionalValue {
 
     // 用于支持REPEATABLE_READ，小于tid的事务只能读取oldValue
     static class CommittedWithTid extends TransactionalValueBase {
-        private final long tid;
+        final long version;
+        private final AMTransaction transaction;
         private TransactionalValue oldValue;
 
-        CommittedWithTid(long tid, Object value, TransactionalValue oldValue) {
+        CommittedWithTid(AMTransaction transaction, Object value, TransactionalValue oldValue) {
             super(value);
-            this.tid = tid;
+            this.transaction = transaction;
             this.oldValue = oldValue;
+            version = transaction.transactionEngine.nextEvenTransactionId();
         }
 
         @Override
         public long getTid() {
-            return tid;
+            return transaction.transactionId;
         }
 
         @Override
@@ -469,17 +471,27 @@ public interface TransactionalValue {
 
         @Override
         public TransactionalValue getCommitted(AMTransaction transaction) {
-            switch (transaction.getIsolationLevel()) {
-            case Transaction.IL_REPEATABLE_READ:
-            case Transaction.IL_SERIALIZABLE:
-                if (transaction.transactionId >= tid)
+            if (this.transaction.isCommitted()) {
+                switch (transaction.getIsolationLevel()) {
+                case Transaction.IL_REPEATABLE_READ:
+                case Transaction.IL_SERIALIZABLE:
+                    if (transaction.transactionId >= version)
+                        return this;
+                    else if (oldValue != null) {
+                        return oldValue.getCommitted(transaction);
+                    }
+                    return SIGHTLESS;
+                default:
                     return this;
-                else if (oldValue != null) {
-                    return oldValue.getCommitted(transaction);
                 }
-                return SIGHTLESS;
-            default:
-                return this;
+            } else {
+                if (transaction.getIsolationLevel() == Transaction.IL_READ_UNCOMMITTED) {
+                    return this;
+                } else if (oldValue != null) {
+                    return oldValue.getCommitted(transaction);
+                } else {
+                    return null;
+                }
             }
         }
 
@@ -490,8 +502,8 @@ public interface TransactionalValue {
 
         @Override
         public String toString() {
-            StringBuilder buff = new StringBuilder("CommittedWithTid[ ");
-            buff.append("tid = ").append(tid);
+            StringBuilder buff = new StringBuilder(transaction.isCommitted() ? "CommittedWithTid[ " : "Committing[");
+            buff.append("tid = ").append(transaction.transactionId).append(", version = ").append(version);
             buff.append(", value = ").append(value).append(", oldValue = ").append(oldValue).append(" ]");
             return buff.toString();
         }
@@ -530,7 +542,7 @@ public interface TransactionalValue {
 
     static class Uncommitted extends TransactionalValueBase {
 
-        private AMTransaction transaction;
+        AMTransaction transaction;
         private final long tid;
         private final int logId;
         TransactionalValue oldValue;
@@ -715,72 +727,43 @@ public interface TransactionalValue {
 
         @Override
         public TransactionalValue commit(long tid) {
-            int nextCount = 0;
+            boolean noUncommitted = true;
             while (true) {
                 TransactionalValue first = ref.getRefValue();
-                CommittedWithTid committed = new CommittedWithTid(tid, value, null);
-                // TransactionalValue next = first;
-                // TransactionalValue last = committed;
-                // while (next != null) {
-                // if (next.getTid() == tid && (next.getLogId() == logId || next.isCommitted())) {
-                // next = next.getOldValue();
-                // continue;
-                // }
-                // if (next instanceof Uncommitted && next.getTid() != tid) {
-                // Uncommitted u = (Uncommitted) next;
-                // u = u.copy(); // 避免多线程执行时修改原来的链接结构
-                // if (u.value != null)
-                // u.oldValueType.setColumns(u.value, value, columnIndexes);
-                // last.setOldValue(u);
-                // last = u;
-                // } else {
-                // last.setOldValue(next);
-                // last = next;
-                // }
-                // nextCount++;
-                // next = next.getOldValue();
-                // }
-                // last.setOldValue(next);
-                if (ref.compareAndSet(first, committed))
+                CommittedWithTid committed = new CommittedWithTid(transaction, value, oldValue);
+                TransactionalValue next = first;
+                TransactionalValue last = committed;
+                while (next != null) {
+                    if (next.getTid() == tid && (next.getLogId() == logId || next.isCommitted())) {
+                        next = next.getOldValue();
+                        continue;
+                    }
+                    if (next instanceof Uncommitted && next.getTid() != tid) {
+                        Uncommitted u = (Uncommitted) next;
+                        u = u.copy(); // 避免多线程执行时修改原来的链接结构
+                        if (u.value != null)
+                            u.oldValueType.setColumns(u.value, value, columnIndexes);
+                        last.setOldValue(u);
+                        last = u;
+                        noUncommitted = false;
+                    } else {
+                        last.setOldValue(next);
+                        last = next;
+                    }
+                    next = next.getOldValue();
+                }
+                last.setOldValue(next);
+                if (ref.compareAndSet(first, committed)) {
+                    // 及时清除不必要的OldValue链
+                    if (noUncommitted
+                            && !transaction.transactionEngine.containsRepeatableReadTransactions(committed.version)) {
+                        committed.setOldValue(null);
+                    }
                     break;
+                }
             }
-            if (nextCount > 3)
-                System.out.println("next:" + nextCount);
             return null;
         }
-
-        // next链表太长了会导致OOM
-        // @Override
-        // public TransactionalValue commit(long tid) {
-        // while (true) {
-        // TransactionalValue first = ref.getRefValue();
-        // CommittedWithTid committed = new CommittedWithTid(tid, value, oldValue);
-        // TransactionalValue next = first;
-        // TransactionalValue last = committed;
-        // while (next != null) {
-        // if (next.getTid() == tid && (next.getLogId() == logId || next.isCommitted())) {
-        // next = next.getOldValue();
-        // continue;
-        // }
-        // if (next instanceof Uncommitted && next.getTid() != tid) {
-        // Uncommitted u = (Uncommitted) next;
-        // u = u.copy(); // 避免多线程执行时修改原来的链接结构
-        // if (u.value != null)
-        // u.oldValueType.setColumns(u.value, value, columnIndexes);
-        // last.setOldValue(u);
-        // last = u;
-        // } else {
-        // last.setOldValue(next);
-        // last = next;
-        // }
-        // next = next.getOldValue();
-        // }
-        // last.setOldValue(next);
-        // if (ref.compareAndSet(first, committed))
-        // break;
-        // }
-        // return null;
-        // }
 
         @Override
         public void rollback() {
@@ -912,9 +895,9 @@ public interface TransactionalValue {
             CommittedWithTid committed;
             if (oldValue != null && oldValue.getTid() == tid) {
                 // 同一个事务对同一个key更新了多次时只保留最近的一次
-                committed = new CommittedWithTid(tid, value, oldValue.getOldValue());
+                committed = new CommittedWithTid(transaction, value, oldValue.getOldValue());
             } else {
-                committed = new CommittedWithTid(tid, value, oldValue);
+                committed = new CommittedWithTid(transaction, value, oldValue);
             }
             TransactionalValue first = ref.getRefValue();
             if (this == first) {

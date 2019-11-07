@@ -121,8 +121,8 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     // 看看是否有REPEATABLE_READ和SERIALIZABLE隔离级别的事务，并且事务id小于给定值tid的
-    public boolean containsUncommittedRepeatableReadTransactionLessThan(long tid) {
-        for (AMTransaction t : currentTransactions.headMap(tid).values()) {
+    public boolean containsRepeatableReadTransactions(long lessThanVersion) {
+        for (AMTransaction t : currentTransactions.headMap(lessThanVersion).values()) {
             if (t.getIsolationLevel() >= Transaction.IL_REPEATABLE_READ)
                 return true;
         }

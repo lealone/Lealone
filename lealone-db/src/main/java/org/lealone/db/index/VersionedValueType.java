@@ -59,7 +59,7 @@ public class VersionedValueType implements StorageDataType {
         }
         VersionedValue a = (VersionedValue) aObj;
         VersionedValue b = (VersionedValue) bObj;
-        long comp = a.vertion - b.vertion;
+        long comp = a.version - b.version;
         if (comp == 0) {
             return valueType.compare(a.value, b.value);
         }
@@ -90,14 +90,14 @@ public class VersionedValueType implements StorageDataType {
     @Override
     public void write(DataBuffer buff, Object obj) {
         VersionedValue v = (VersionedValue) obj;
-        buff.putVarInt(v.vertion);
+        buff.putVarInt(v.version);
         valueType.write(buff, v.value);
     }
 
     @Override
     public void writeMeta(DataBuffer buff, Object obj) {
         VersionedValue v = (VersionedValue) obj;
-        buff.putVarInt(v.vertion);
+        buff.putVarInt(v.version);
     }
 
     @Override

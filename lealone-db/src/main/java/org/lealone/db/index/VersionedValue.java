@@ -21,20 +21,19 @@ import org.lealone.db.value.ValueArray;
 
 public class VersionedValue {
 
-    public final int vertion; // 表的元数据版本号
+    public final int version; // 表的元数据版本号
     public final ValueArray value;
 
-    public VersionedValue(int vertion, ValueArray value) {
-        this.vertion = vertion;
+    public VersionedValue(int version, ValueArray value) {
+        this.version = version;
         this.value = value;
     }
 
     @Override
     public String toString() {
         StringBuilder buff = new StringBuilder("VersionedValue[ ");
-        buff.append("vertion = ").append(vertion);
+        buff.append("version = ").append(version);
         buff.append(", value = ").append(value).append(" ]");
         return buff.toString();
     }
-
 }

@@ -17,7 +17,16 @@
  */
 package org.lealone.test.amte;
 
+import java.util.concurrent.CountDownLatch;
+
 import org.junit.Test;
+import org.lealone.db.index.ValueDataType;
+import org.lealone.db.index.VersionedValue;
+import org.lealone.db.index.VersionedValueType;
+import org.lealone.db.result.SortOrder;
+import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueInt;
 import org.lealone.storage.Storage;
 import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
@@ -37,6 +46,7 @@ public class TransactionalValueTest extends TestBase {
         try {
             testExclusiveCommit();
             testExclusiveRollback();
+            testUncommittedCommit();
         } finally {
             te.close();
         }
@@ -87,5 +97,99 @@ public class TransactionalValueTest extends TestBase {
         t.commit();
         tv = (TransactionalValue) map.getTransactionalValue("2");
         assertEquals("b2", tv.getValue());
+    }
+
+    void testUncommittedCommit() {
+        String mapName = "testUncommittedCommit";
+        int columns = 4;
+        int[] sortTypes = new int[columns];
+        for (int i = 0; i < columns; i++) {
+            sortTypes[i] = SortOrder.ASCENDING;
+        }
+        ValueDataType valueType = new ValueDataType(null, null, sortTypes);
+        VersionedValueType vvType = new VersionedValueType(valueType, columns);
+
+        Transaction t = te.beginTransaction(false);
+        TransactionMap<String, VersionedValue> map = t.openMap(mapName, null, vvType, storage);
+        map.clear();
+
+        String key = "1";
+
+        ValueArray valueArray = createValueArray(0, 0, 0, 0);
+        VersionedValue vv = new VersionedValue(1, valueArray);
+        map.put(key, vv);
+        t.commit();
+
+        Transaction t1 = te.beginTransaction(false);
+        TransactionMap<String, VersionedValue> map1 = t1.openMap(mapName, storage);
+
+        Transaction t2 = te.beginTransaction(false);
+        TransactionMap<String, VersionedValue> map2 = t2.openMap(mapName, storage);
+
+        Transaction t3 = te.beginTransaction(false);
+        TransactionMap<String, VersionedValue> map3 = t3.openMap(mapName, storage);
+
+        vv = createVersionedValue(map1, key, 0, 10);
+        map1.tryUpdate(key, vv, new int[] { 0 });
+        vv = createVersionedValue(map1, key, 0, 11);
+        map1.tryUpdate(key, vv, new int[] { 0 });
+
+        vv = createVersionedValue(map2, key, 1, 20);
+        map2.tryUpdate(key, vv, new int[] { 1 });
+        vv = createVersionedValue(map2, key, 1, 21);
+        map2.tryUpdate(key, vv, new int[] { 1 });
+
+        vv = createVersionedValue(map3, key, 2, 30);
+        map3.tryUpdate(key, vv, new int[] { 2 });
+        vv = createVersionedValue(map3, key, 2, 31);
+        map3.tryUpdate(key, vv, new int[] { 2 });
+
+        TransactionalValue tv = (TransactionalValue) map3.getTransactionalValue(key);
+        System.out.println(tv);
+        System.out.println("========");
+
+        // t2.commit();
+        // // t2.rollback();
+        // t3.commit();
+        // t1.commit();
+
+        CountDownLatch latch = new CountDownLatch(3);
+        new Thread(() -> {
+            t2.commit();
+            latch.countDown();
+        }).start();
+        new Thread(() -> {
+            t3.commit();
+            latch.countDown();
+        }).start();
+        new Thread(() -> {
+            t1.commit();
+            latch.countDown();
+        }).start();
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.out.println("========");
+        tv = (TransactionalValue) map3.getTransactionalValue(key);
+        System.out.println(tv);
+    }
+
+    private ValueArray createValueArray(int... values) {
+        ValueInt[] a = new ValueInt[values.length];
+        for (int i = 0; i < a.length; i++)
+            a[i] = ValueInt.get(values[i]);
+        return ValueArray.get(a);
+    }
+
+    private VersionedValue createVersionedValue(TransactionMap<String, VersionedValue> map, String key, int columnIndex,
+            int value) {
+        VersionedValue vv = map.get(key);
+        Value[] values = vv.value.getList().clone();
+        values[columnIndex] = ValueInt.get(value);
+        ValueArray valueArray = ValueArray.get(values);
+        vv = new VersionedValue(1, valueArray);
+        return vv;
     }
 }

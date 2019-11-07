@@ -73,7 +73,7 @@ public class UndoLogRecord {
         if (oldValue == null) { // insert
             newValue.commit(tid);
         } else if (newValue != null && newValue.getValue() == null) { // delete
-            if (!transactionEngine.containsUncommittedRepeatableReadTransactionLessThan(tid)) {
+            if (!transactionEngine.containsRepeatableReadTransactions(tid)) {
                 map.remove(key);
             } else {
                 newValue.commit(tid);

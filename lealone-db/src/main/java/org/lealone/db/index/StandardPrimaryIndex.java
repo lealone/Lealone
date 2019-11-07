@@ -277,7 +277,7 @@ public class StandardPrimaryIndex extends IndexBase {
         array = v.value;
         Row row = new Row(array.getList(), 0);
         row.setKey(key);
-        row.setVersion(v.vertion);
+        row.setVersion(v.version);
         row.setRawValue(valueAndRef[1]);
         return row;
     }
@@ -292,7 +292,7 @@ public class StandardPrimaryIndex extends IndexBase {
         array = v.value;
         Row row = new Row(array.getList(), 0);
         row.setKey(key);
-        row.setVersion(v.vertion);
+        row.setVersion(v.version);
         row.setRawValue(oldTransactionalValue);
         return row;
     }
@@ -528,7 +528,7 @@ public class StandardPrimaryIndex extends IndexBase {
                     }
                     VersionedValue value = current.getValue();
                     Value[] data = value.value.getList();
-                    int version = value.vertion;
+                    int version = value.version;
                     row = new Row(data, 0);
                     row.setKey(current.getKey().getLong());
                     row.setVersion(version);
