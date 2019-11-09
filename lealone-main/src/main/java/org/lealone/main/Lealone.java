@@ -53,6 +53,14 @@ public class Lealone {
     private static Config config;
 
     public static void main(String[] args) {
+        main(args, false);
+    }
+
+    public static void embed(String[] args) {
+        main(args, true);
+    }
+
+    public static void main(String[] args, boolean embedded) {
         logger.info("Lealone version: {}", Utils.getReleaseVersionString());
 
         try {
@@ -67,6 +75,9 @@ public class Lealone {
 
             long t2 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
+
+            if (embedded)
+                return;
 
             ProtocolServer mainProtocolServer = start();
 

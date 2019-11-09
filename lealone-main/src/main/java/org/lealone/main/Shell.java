@@ -12,16 +12,17 @@ import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.io.StringReader;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
+import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.ScriptReader;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 
 /**
@@ -47,11 +48,11 @@ public class Shell {
     private int maxColumnSize = 100;
     private final ArrayList<String> history = new ArrayList<>();
 
-    public static void main(String... args) throws SQLException {
+    public static void main(String[] args) throws SQLException {
         new Shell().run(args);
     }
 
-    private void run(String... args) throws SQLException {
+    private void run(String[] args) throws SQLException {
         String url = null;
         String user = null;
         String password = null;
@@ -80,11 +81,11 @@ public class Shell {
             }
         }
         if (url != null) {
-            conn = DriverManager.getConnection(url, user, password);
+            conn = getConnection(args, url, user, password);
             stat = conn.createStatement();
         }
         if (sql == null) {
-            promptLoop();
+            promptLoop(args);
         } else {
             ScriptReader r = new ScriptReader(new StringReader(sql));
             while (true) {
@@ -124,7 +125,7 @@ public class Shell {
         println("");
     }
 
-    private void promptLoop() {
+    private void promptLoop(String[] args) {
         println("");
         println("Welcome to Lealone Shell " + Constants.getVersion());
         println("Exit with Ctrl+C");
@@ -138,7 +139,7 @@ public class Shell {
         while (true) {
             try {
                 if (conn == null) {
-                    connect();
+                    connect(args);
                     showHelp();
                 }
                 if (statement == null) {
@@ -249,7 +250,7 @@ public class Shell {
         }
     }
 
-    private void connect() throws IOException, SQLException {
+    private void connect(String[] args) throws IOException, SQLException {
         StringBuilder buff = new StringBuilder(100);
         buff.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//").append("127.0.0.1").append(':')
                 .append(Constants.DEFAULT_TCP_PORT).append('/').append(Constants.PROJECT_NAME);
@@ -265,7 +266,7 @@ public class Shell {
 
         println("[Enter]   Hide");
         String password = readPassword();
-        conn = DriverManager.getConnection(url, user, password);
+        conn = getConnection(args, url, user, password);
         stat = conn.createStatement();
         println("Connected");
     }
@@ -496,4 +497,20 @@ public class Shell {
         return rowCount;
     }
 
+    private static Connection getConnection(String[] args, String url, String user, String password)
+            throws SQLException {
+        java.util.Properties info = new java.util.Properties();
+
+        if (user != null) {
+            info.put("user", user);
+        }
+        if (password != null) {
+            info.put("password", password);
+        }
+        ConnectionInfo ci = new ConnectionInfo(url, info);
+        if (ci.isEmbedded()) {
+            Lealone.embed(args);
+        }
+        return new JdbcConnection(ci);
+    }
 }
