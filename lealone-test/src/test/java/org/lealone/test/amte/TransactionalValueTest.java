@@ -47,6 +47,7 @@ public class TransactionalValueTest extends TestBase {
             testExclusiveCommit();
             testExclusiveRollback();
             testUncommittedCommit();
+            testRemove();
         } finally {
             te.close();
         }
@@ -191,5 +192,26 @@ public class TransactionalValueTest extends TestBase {
         ValueArray valueArray = ValueArray.get(values);
         vv = new VersionedValue(1, valueArray);
         return vv;
+    }
+
+    void testRemove() {
+        Transaction t = te.beginTransaction(false);
+        TransactionMap<String, String> map = t.openMap("testRemove", storage);
+        map.clear();
+        map.put("2", "b1");
+        t.commit();
+
+        Transaction t1 = te.beginTransaction(false);
+        t1.setIsolationLevel(Transaction.IL_REPEATABLE_READ);
+        TransactionMap<String, String> map1 = t1.openMap("testRemove", storage);
+
+        Transaction t2 = te.beginTransaction(false);
+        TransactionMap<String, String> map2 = t2.openMap("testRemove", storage);
+        map2.remove("2");
+        t2.commit();
+
+        String v = map1.get("2");
+        System.out.println(v);
+        t1.commit();
     }
 }

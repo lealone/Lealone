@@ -626,11 +626,20 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             if (ar.isSucceeded()) {
                 TransactionalValue old = ar.getResult();
                 if (old != null) {
-                    // 不能用undoLog.undo()，因为它不是线程安全的，
-                    // 在undoLog.undo()中执行removeLast()在逻辑上也是不对的，
-                    // 因为这里的异步回调函数可能是在不同线程中执行的，顺序也没有保证。
                     r.setUndone(true);
-                    listener.operationUndo();
+                    // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
+                    if (old.getValue() == null) {
+                        if (tryUpdate(key, value, old) == Transaction.OPERATION_COMPLETE) {
+                            listener.operationComplete();
+                        } else {
+                            listener.operationUndo();
+                        }
+                    } else {
+                        // 不能用undoLog.undo()，因为它不是线程安全的，
+                        // 在undoLog.undo()中执行removeLast()在逻辑上也是不对的，
+                        // 因为这里的异步回调函数可能是在不同线程中执行的，顺序也没有保证。
+                        listener.operationUndo();
+                    }
                 } else {
                     listener.operationComplete();
                 }
@@ -713,7 +722,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         else
             return Transaction.OPERATION_NEED_WAIT;
         // throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
-
     }
 
     private int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,

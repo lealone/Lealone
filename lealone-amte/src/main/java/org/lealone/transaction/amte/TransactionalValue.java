@@ -448,10 +448,14 @@ public interface TransactionalValue {
         private TransactionalValue oldValue;
 
         CommittedWithTid(AMTransaction transaction, Object value, TransactionalValue oldValue) {
+            this(transaction, value, oldValue, transaction.transactionEngine.nextEvenTransactionId());
+        }
+
+        CommittedWithTid(AMTransaction transaction, Object value, TransactionalValue oldValue, long versio) {
             super(value);
             this.transaction = transaction;
             this.oldValue = oldValue;
-            version = transaction.transactionEngine.nextEvenTransactionId();
+            this.version = versio;
         }
 
         @Override
@@ -728,12 +732,18 @@ public interface TransactionalValue {
         @Override
         public TransactionalValue commit(long tid) {
             boolean noUncommitted = true;
+            long minVersion = Long.MAX_VALUE;
             while (true) {
                 TransactionalValue first = ref.getRefValue();
                 CommittedWithTid committed = new CommittedWithTid(transaction, value, oldValue);
                 TransactionalValue next = first;
                 TransactionalValue last = committed;
                 while (next != null) {
+                    if (next instanceof CommittedWithTid) {
+                        long v = ((CommittedWithTid) next).version;
+                        if (v < minVersion)
+                            minVersion = v;
+                    }
                     if (next.getTid() == tid && (next.getLogId() == logId || next.isCommitted())) {
                         next = next.getOldValue();
                         continue;
@@ -756,7 +766,7 @@ public interface TransactionalValue {
                 if (ref.compareAndSet(first, committed)) {
                     // 及时清除不必要的OldValue链
                     if (noUncommitted
-                            && !transaction.transactionEngine.containsRepeatableReadTransactions(committed.version)) {
+                            && !transaction.transactionEngine.containsRepeatableReadTransactions(minVersion)) {
                         committed.setOldValue(null);
                     }
                     break;
@@ -895,9 +905,9 @@ public interface TransactionalValue {
             CommittedWithTid committed;
             if (oldValue != null && oldValue.getTid() == tid) {
                 // 同一个事务对同一个key更新了多次时只保留最近的一次
-                committed = new CommittedWithTid(transaction, value, oldValue.getOldValue());
+                committed = new CommittedWithTid(transaction, value, oldValue.getOldValue(), transaction.transactionId);
             } else {
-                committed = new CommittedWithTid(transaction, value, oldValue);
+                committed = new CommittedWithTid(transaction, value, oldValue, transaction.transactionId);
             }
             TransactionalValue first = ref.getRefValue();
             if (this == first) {

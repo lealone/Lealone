@@ -192,6 +192,7 @@ public class Delete extends ManipulationStatement {
                     }
                     affectedRows++;
                     if (limitRows > 0 && affectedRows >= limitRows) {
+                        loopEnd = true;
                         return false;
                     }
                 }
