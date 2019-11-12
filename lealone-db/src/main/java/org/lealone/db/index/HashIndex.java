@@ -180,7 +180,5 @@ public class HashIndex extends IndexBase {
         public boolean previous() {
             throw DbException.throwInternalError();
         }
-
     }
-
 }

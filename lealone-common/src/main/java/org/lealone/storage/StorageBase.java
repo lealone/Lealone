@@ -74,7 +74,7 @@ public abstract class StorageBase implements Storage {
         int i = 0;
         String name = null;
         while (true) {
-            name = TEMP_NAME_PREFIX + i;
+            name = TEMP_NAME_PREFIX + i++;
             if (!maps.containsKey(name))
                 return name;
         }

@@ -46,6 +46,10 @@ public interface Index extends SchemaObject {
      */
     void close(ServerSession session);
 
+    default boolean supportsAsync() {
+        return false;
+    }
+
     default Transaction.Listener getTransactionListener() {
         Object object = Thread.currentThread();
         Transaction.Listener listener;

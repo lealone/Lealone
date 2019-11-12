@@ -331,6 +331,7 @@ public class StandardTable extends Table {
         return primaryIndex.getRow(session, key, columnIndexes);
     }
 
+    @Override
     public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
         return primaryIndex.getRow(session, key, oldTransactionalValue);
     }
@@ -556,7 +557,7 @@ public class StandardTable extends Table {
             // 第一个是PrimaryIndex
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                if (globalListener == null) // 如果是null就用同步api
+                if (globalListener == null || !index.supportsAsync()) // 如果是null就用同步api
                     index.add(session, row);
                 else
                     index.tryAdd(session, row, globalListener);
@@ -585,7 +586,7 @@ public class StandardTable extends Table {
             // 第一个是PrimaryIndex
             for (int i = 0, size = indexes.size(); i < size; i++) {
                 Index index = indexes.get(i);
-                if (globalListener == null) {
+                if (globalListener == null || !index.supportsAsync()) {
                     index.update(session, oldRow, newRow, updateColumns);
                 } else {
                     int ret = index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
@@ -618,7 +619,7 @@ public class StandardTable extends Table {
         try {
             for (int i = indexes.size() - 1; i >= 0; i--) {
                 Index index = indexes.get(i);
-                if (async) {
+                if (async && index.supportsAsync()) {
                     int ret = index.tryRemove(session, row, globalListener);
                     if (ret != Transaction.OPERATION_COMPLETE)
                         return ret;

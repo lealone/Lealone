@@ -114,6 +114,11 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
+    public boolean supportsAsync() {
+        return true;
+    }
+
+    @Override
     public boolean tryAdd(ServerSession session, Row row, final Transaction.Listener globalListener) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
         boolean checkDuplicateKey = true;

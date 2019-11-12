@@ -28,7 +28,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
 
 /**
@@ -55,13 +54,8 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         keyColumns = indexColumns.length + 1;
 
         dataMap = openMap(session, mapName);
-
-        // TODO
-        // Fix bug when creating lots of temporary tables, where we could run out of transaction IDs
-        session.commit();
     }
 
-    // TODO 不考虑事务
     private TransactionMap<Value, Value> openMap(ServerSession session, String mapName) {
         int[] sortTypes = new int[keyColumns];
         for (int i = 0; i < indexColumns.length; i++) {
@@ -77,11 +71,8 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         ValueDataType valueType = new ValueDataType(null, null, null);
 
         Storage storage = database.getStorage(table.getStorageEngine());
-        TransactionEngine transactionEngine = database.getTransactionEngine();
-
-        Transaction t = transactionEngine.beginTransaction(false, session.isShardingMode());
-        TransactionMap<Value, Value> map = t.openMap(mapName, keyType, valueType, storage, table.getParameters());
-        t.commit(); // 避免产生内部未提交的事务
+        TransactionMap<Value, Value> map = session.getTransaction().openMap(mapName, keyType, valueType, storage,
+                table.getParameters());
         if (!keyType.equals(map.getKeyType())) {
             throw DbException.throwInternalError("Incompatible key type");
         }
@@ -180,6 +171,11 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public void close(ServerSession session) {
         // ok
+    }
+
+    @Override
+    public boolean supportsAsync() {
+        return true;
     }
 
     private void checkUnique(SearchRow row, TransactionMap<Value, Value> map, ValueArray unique) {
