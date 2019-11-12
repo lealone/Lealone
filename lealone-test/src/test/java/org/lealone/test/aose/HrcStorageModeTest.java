@@ -31,8 +31,8 @@ import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.PageStorageMode;
 import org.lealone.test.TestBase;
-import org.lealone.transaction.amte.TransactionalValue;
-import org.lealone.transaction.amte.TransactionalValueType;
+import org.lealone.transaction.aote.TransactionalValue;
+import org.lealone.transaction.aote.TransactionalValueType;
 
 //把CACHE_SIZE加到后，RowStorage的方式有更多内存就不会重复从硬盘读取page，此时就跟ColumnStorage的性能差不多
 public class HrcStorageModeTest extends TestBase {

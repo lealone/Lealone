@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte.log;
+package org.lealone.transaction.aote.log;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -24,7 +24,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import org.lealone.common.concurrent.WaitQueue;
-import org.lealone.transaction.amte.AMTransaction;
+import org.lealone.transaction.aote.AMTransaction;
 
 public abstract class LogSyncService extends Thread {
 

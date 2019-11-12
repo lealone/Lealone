@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte.log;
+package org.lealone.transaction.aote.log;
 
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
@@ -26,7 +26,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
-import org.lealone.transaction.amte.AMTransactionEngine;
+import org.lealone.transaction.aote.AMTransactionEngine;
 
 public abstract class RedoLogRecord {
 

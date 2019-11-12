@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte.log;
+package org.lealone.transaction.aote.log;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -30,8 +30,8 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
-import org.lealone.transaction.amte.TransactionalValue;
-import org.lealone.transaction.amte.TransactionalValueType;
+import org.lealone.transaction.aote.TransactionalValue;
+import org.lealone.transaction.aote.TransactionalValueType;
 
 /**
  * A redo log

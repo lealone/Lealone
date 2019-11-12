@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte;
+package org.lealone.transaction.aote;
 
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -35,7 +35,7 @@ import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.amte.log.UndoLogRecord;
+import org.lealone.transaction.aote.log.UndoLogRecord;
 
 public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 

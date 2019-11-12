@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.amte;
+package org.lealone.test.aote;
 
 import java.util.concurrent.CountDownLatch;
 
@@ -32,7 +32,7 @@ import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.amte.TransactionalValue;
+import org.lealone.transaction.aote.TransactionalValue;
 
 public class TransactionalValueTest extends TestBase {
 

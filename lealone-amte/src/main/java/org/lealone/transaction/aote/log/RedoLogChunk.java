@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte.log;
+package org.lealone.transaction.aote.log;
 
 import java.io.File;
 import java.nio.ByteBuffer;

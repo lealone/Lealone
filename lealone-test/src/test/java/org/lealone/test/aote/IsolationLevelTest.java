@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.amte;
+package org.lealone.test.aote;
 
 import org.junit.Test;
 import org.lealone.storage.Storage;

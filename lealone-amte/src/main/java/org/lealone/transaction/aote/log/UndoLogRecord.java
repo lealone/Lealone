@@ -15,14 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte.log;
+package org.lealone.transaction.aote.log;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
 import org.lealone.storage.StorageMap;
-import org.lealone.transaction.amte.AMTransactionEngine;
-import org.lealone.transaction.amte.TransactionalValue;
-import org.lealone.transaction.amte.TransactionalValueType;
+import org.lealone.transaction.aote.AMTransactionEngine;
+import org.lealone.transaction.aote.TransactionalValue;
+import org.lealone.transaction.aote.TransactionalValueType;
 
 public class UndoLogRecord {
 

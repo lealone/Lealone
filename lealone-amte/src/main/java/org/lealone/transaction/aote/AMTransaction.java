@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte;
+package org.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
 import java.sql.Connection;
@@ -34,9 +34,9 @@ import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.amte.log.LogSyncService;
-import org.lealone.transaction.amte.log.RedoLogRecord;
-import org.lealone.transaction.amte.log.UndoLog;
+import org.lealone.transaction.aote.log.LogSyncService;
+import org.lealone.transaction.aote.log.RedoLogRecord;
+import org.lealone.transaction.aote.log.UndoLog;
 
 public class AMTransaction implements Transaction {
 

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.transaction.amte;
+package org.lealone.transaction.aote;
 
 import java.util.Collection;
 import java.util.Map;
@@ -37,8 +37,8 @@ import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngineBase;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.amte.log.LogSyncService;
-import org.lealone.transaction.amte.log.RedoLogRecord;
+import org.lealone.transaction.aote.log.LogSyncService;
+import org.lealone.transaction.aote.log.RedoLogRecord;
 
 //async multi-version transaction engine
 public class AMTransactionEngine extends TransactionEngineBase implements StorageEventListener {

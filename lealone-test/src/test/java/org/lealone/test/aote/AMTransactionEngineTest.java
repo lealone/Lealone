@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.amte;
+package org.lealone.test.aote;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,8 +31,8 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionEngineManager;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.amte.AMTransactionEngine;
-import org.lealone.transaction.amte.log.LogSyncService;
+import org.lealone.transaction.aote.AMTransactionEngine;
+import org.lealone.transaction.aote.log.LogSyncService;
 
 public class AMTransactionEngineTest extends TestBase {
 
