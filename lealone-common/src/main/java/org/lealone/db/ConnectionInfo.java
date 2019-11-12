@@ -303,7 +303,7 @@ public class ConnectionInfo implements Cloneable {
      */
     public boolean isPersistent() {
         if (persistent == null) {
-            persistent = getProperty("PERSISTENT", true);
+            persistent = getProperty("PERSISTENT", embedded ? true : false);
         }
         return persistent.booleanValue();
     }

@@ -241,11 +241,12 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
         TransactionMap<Value, Value> map = getMap(session);
-        if (map.isLocked(row.getRawValue(), null))
-            return map.addWaitingTransaction(row.getKey(), row.getRawValue(), globalListener);
-
         ValueArray array = convertToKey(row);
-        return map.tryRemove(array, row.getRawValue());
+        Object oldTransactionalValue = map.getTransactionalValue(array);
+        if (map.isLocked(oldTransactionalValue, null))
+            return map.addWaitingTransaction(row.getKey(), oldTransactionalValue, globalListener);
+        else
+            return map.tryRemove(array, oldTransactionalValue);
     }
 
     @Override
