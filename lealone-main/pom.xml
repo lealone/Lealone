@@ -42,7 +42,7 @@
         </dependency>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-amte</artifactId>
+            <artifactId>lealone-aote</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
