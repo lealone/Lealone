@@ -15,6 +15,7 @@ import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
+import org.lealone.net.AsyncCallback;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 
@@ -168,7 +169,14 @@ public abstract class ClientResult implements Result {
         int packetId = session.getNextId();
         session.traceOperation("RESULT_FETCH_ROWS", resultId);
         out.writeRequestHeader(packetId, Session.RESULT_FETCH_ROWS).writeInt(resultId).writeInt(fetchSize);
-        out.flushAndAwait(packetId);
+        // 释放buffer
+        in.closeInputStream();
+        in = out.flushAndAwait(packetId, new AsyncCallback<TransferInputStream>() {
+            @Override
+            public void runInternal(TransferInputStream in) throws Exception {
+                setResult(in);
+            }
+        });
     }
 
     @Override
