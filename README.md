@@ -5,9 +5,9 @@
 
 ### Lealone有哪些特性
 
-#### 开源版本(不支持分布式事务)
-
 ##### 高亮特性
+
+* 支持高性能分布式事务、支持强一致性复制、支持全局快照隔离
 
 * 完全异步化，使用少量线程就能处理大量并发
 
@@ -27,11 +27,14 @@
 
 * 支持混合运行模式，包括4种模式: 嵌入式、Client/Server模式、复制模式、Sharding模式
 
+* 支持不停机快速手动或自动转换运行模式(Client/Server模式 -> 复制模式 -> Sharding模式)
+
 * 支持通过CREATE SERVICE创建可托管的后端服务
 
 * 支持异步化的lock free b-tree
 
 * 非常小的绿色环保安装包，只有2M左右的大小
+
 
 ##### 普通特性
 
@@ -40,9 +43,6 @@
 * 从[H2数据库](http://www.h2database.com/html/main.html)借鉴了大量成熟的代码和思想
 
 
-
-
-#### 企业版本
 
 * 支持分布式事务
 
@@ -55,9 +55,9 @@
 
 ### Lealone文档
 
-* [Getting started](https://github.com/codefollower/Lealone/blob/master/docs/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3.md#1-%E5%BF%AB%E9%80%9F%E5%85%A5%E9%97%A8)
+* [Getting started](https://github.com/lealone/Lealone-Docs/blob/master/%E5%BA%94%E7%94%A8%E6%96%87%E6%A1%A3/%E7%94%A8%E6%88%B7%E6%96%87%E6%A1%A3.md)
 
-* [文档首页](https://github.com/codefollower/Lealone/blob/master/docs/README.md)
+* [文档首页](https://github.com/lealone/Lealone-Docs)
 
 ### Lealone Plugins
 
@@ -87,5 +87,5 @@
 
 ### Lealone License
 
-* [License](https://github.com/codefollower/Lealone/blob/master/LICENSE.md)
+* [License](https://github.com/lealone/Lealone/blob/master/LICENSE.md)
 
