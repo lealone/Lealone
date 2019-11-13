@@ -30,7 +30,7 @@ public class Constants {
 
     public static final String DEFAULT_SQL_ENGINE_NAME = PROJECT_NAME;
 
-    public static final String DEFAULT_TRANSACTION_ENGINE_NAME = "AMTE";
+    public static final String DEFAULT_TRANSACTION_ENGINE_NAME = "AOTE";
 
     public static final String DEFAULT_CONTAINER_ENGINE_NAME = "CGROUP";
 

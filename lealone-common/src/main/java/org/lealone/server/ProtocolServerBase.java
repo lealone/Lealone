@@ -27,7 +27,7 @@ import org.lealone.db.Constants;
 
 public abstract class ProtocolServerBase implements ProtocolServer {
 
-    public static final int DEFAULT_SESSION_TIMEOUT = 60 * 1000; // 如果session在60秒内不活跃就会超时
+    public static final int DEFAULT_SESSION_TIMEOUT = 15 * 60 * 1000; // 如果session在15分钟内不活跃就会超时
 
     protected Map<String, String> config;
     protected String host = Constants.DEFAULT_HOST;
