@@ -155,7 +155,7 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
 
     @Override
     public boolean runInMainThread() {
-        return true;
+        return runInMainThread;
     }
 
     @Override
