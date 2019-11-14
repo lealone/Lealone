@@ -27,6 +27,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
@@ -46,6 +47,8 @@ import org.lealone.sql.dml.Select;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.Storage;
 import org.lealone.storage.replication.ReplicationSession;
+import org.lealone.storage.replication.ThreadPool;
+import org.lealone.transaction.Transaction;
 
 public class SQLRouter {
 
@@ -132,16 +135,27 @@ public class SQLRouter {
         ReplicationSession rs = new ReplicationSession(sessions, initReplicationEndpoints);
         rs.setAutoCommit(currentSession.isAutoCommit());
         rs.setRpcTimeout(m.getRpcTimeout());
-        SQLCommand c = null;
-        try {
-            c = rs.createSQLCommand(defineStatement.getSQL(), -1);
-            return c.executeUpdate();
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            if (c != null)
-                c.close();
-        }
+
+        AtomicInteger updateCount = new AtomicInteger();
+        Transaction.Listener listener = Transaction.getTransactionListener();
+        ThreadPool.executor.submit(() -> {
+            SQLCommand c = null;
+            try {
+                c = rs.createSQLCommand(defineStatement.getSQL(), -1);
+                updateCount.set(c.executeUpdate());
+                listener.operationComplete();
+            } catch (Exception e) {
+                DbException e2 = DbException.convert(DbException.getRootCause(e));
+                listener.setException(e2);
+                listener.operationUndo();
+                throw e2;
+            } finally {
+                if (c != null)
+                    c.close();
+            }
+        });
+        listener.await();
+        return updateCount.get();
     }
 
     public static int executeUpdate(StatementBase statement) {

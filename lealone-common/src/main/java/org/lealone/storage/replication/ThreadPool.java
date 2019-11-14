@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-class ThreadPool {
+public class ThreadPool {
     public final static ThreadPoolExecutor executor = getThreadPoolExecutor();
 
     private static ThreadPoolExecutor getThreadPoolExecutor() {

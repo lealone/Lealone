@@ -50,17 +50,6 @@ public interface Index extends SchemaObject {
         return false;
     }
 
-    default Transaction.Listener getTransactionListener() {
-        Object object = Thread.currentThread();
-        Transaction.Listener listener;
-        if (object instanceof Transaction.Listener)
-            listener = (Transaction.Listener) object;
-        else
-            listener = new Transaction.SyncListener();
-        listener.beforeOperation();
-        return listener;
-    }
-
     /**
      * Add a row to the index.
      *
@@ -68,7 +57,7 @@ public interface Index extends SchemaObject {
      * @param row the row to add
      */
     default void add(ServerSession session, Row row) {
-        Transaction.Listener listener = getTransactionListener();
+        Transaction.Listener listener = Transaction.getTransactionListener();
         tryAdd(session, row, listener);
         listener.await();
     }
@@ -78,8 +67,7 @@ public interface Index extends SchemaObject {
     }
 
     default void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
-        Transaction.Listener listener = getTransactionListener();
-
+        Transaction.Listener listener = Transaction.getTransactionListener();
         int ret = tryUpdate(session, oldRow, newRow, updateColumns, listener);
         if (ret == Transaction.OPERATION_COMPLETE)
             listener.operationComplete();

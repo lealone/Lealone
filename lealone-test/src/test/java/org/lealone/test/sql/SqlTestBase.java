@@ -24,6 +24,7 @@ import java.sql.Statement;
 
 import org.junit.After;
 import org.junit.Before;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
@@ -57,13 +58,7 @@ public class SqlTestBase extends TestBase {
     }
 
     protected Throwable getRootCause(Throwable cause) {
-        Throwable root = cause;
-        while (true) {
-            if (root.getCause() == null)
-                break;
-            root = root.getCause();
-        }
-        return root;
+        return DbException.getRootCause(cause);
     }
 
     @Before

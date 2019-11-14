@@ -19,6 +19,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 
 import org.lealone.client.jdbc.JdbcConnection;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.ScriptReader;
 import org.lealone.common.util.StringUtils;
@@ -327,10 +328,11 @@ public class Shell {
                 JdbcUtils.closeSilently(rs);
             }
         } catch (SQLException e) {
-            println("Error: " + e.getMessage());
+            println("Error: " + DbException.getRootCause(e).getMessage());
             if (listMode) {
                 e.printStackTrace(err);
             }
+            println("");
             return;
         }
         out.println();

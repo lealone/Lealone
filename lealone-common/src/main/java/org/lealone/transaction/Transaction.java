@@ -248,4 +248,15 @@ public interface Transaction {
             return listener;
         }
     }
+
+    public static Transaction.Listener getTransactionListener() {
+        Object object = Thread.currentThread();
+        Transaction.Listener listener;
+        if (object instanceof Transaction.Listener)
+            listener = (Transaction.Listener) object;
+        else
+            listener = new Transaction.SyncListener();
+        listener.beforeOperation();
+        return listener;
+    }
 }

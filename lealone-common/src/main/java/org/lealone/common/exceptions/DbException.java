@@ -374,4 +374,13 @@ public class DbException extends RuntimeException {
         }
     }
 
+    public static Throwable getRootCause(Throwable cause) {
+        Throwable root = cause;
+        while (true) {
+            if (root.getCause() == null)
+                break;
+            root = root.getCause();
+        }
+        return root;
+    }
 }
