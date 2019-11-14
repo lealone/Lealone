@@ -4247,7 +4247,7 @@ public class Parser implements SQLParser {
             read("ASSIGNMENT");
             read("STRATEGY");
             endpointAssignmentProperties = parseParameters(true);
-            checkEndpointAssignmentProperties(replicationProperties);
+            checkEndpointAssignmentProperties(endpointAssignmentProperties);
         }
         // if (readIf("RESOURCE")) {
         // read("QUOTA");

@@ -27,6 +27,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigException;
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
@@ -276,7 +277,7 @@ public class P2pNetEndpointManager implements NetEndpointManager {
             return defaultReplicationStrategy;
         AbstractReplicationStrategy replicationStrategy = replicationStrategies.get(db);
         if (replicationStrategy == null) {
-            HashMap<String, String> map = new HashMap<>(db.getReplicationProperties());
+            CaseInsensitiveMap<String> map = new CaseInsensitiveMap<>(db.getReplicationProperties());
             String className = map.remove("class");
             if (className == null) {
                 throw new ConfigException("Missing replication strategy class");
@@ -298,7 +299,7 @@ public class P2pNetEndpointManager implements NetEndpointManager {
             return defaultEndpointAssignmentStrategy;
         AbstractEndpointAssignmentStrategy endpointAssignmentStrategy = endpointAssignmentStrategies.get(db);
         if (endpointAssignmentStrategy == null) {
-            HashMap<String, String> map = new HashMap<>(db.getEndpointAssignmentProperties());
+            CaseInsensitiveMap<String> map = new CaseInsensitiveMap<>(db.getEndpointAssignmentProperties());
             String className = map.remove("class");
             if (className == null) {
                 throw new ConfigException("Missing endpoint assignment strategy class");

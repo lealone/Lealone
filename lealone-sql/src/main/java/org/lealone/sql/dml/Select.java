@@ -1359,6 +1359,7 @@ public class Select extends Query {
         @Override
         protected boolean executeInternal() {
             if (resultCache.useCache) {
+                resultCache.lastResult.reset();
                 setResult(resultCache.lastResult, resultCache.lastResult.getRowCount());
                 return false;
             }

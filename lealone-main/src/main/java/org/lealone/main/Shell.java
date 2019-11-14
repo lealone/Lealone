@@ -507,6 +507,7 @@ public class Shell {
         if (password != null) {
             info.put("password", password);
         }
+        info.put("NETWORK_TIMEOUT", "-1");
         ConnectionInfo ci = new ConnectionInfo(url, info);
         if (ci.isEmbedded()) {
             Lealone.embed(args);

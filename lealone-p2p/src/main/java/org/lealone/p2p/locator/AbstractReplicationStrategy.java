@@ -96,6 +96,7 @@ public abstract class AbstractReplicationStrategy {
             return;
 
         for (String key : configOptions.keySet()) {
+            key = key.toLowerCase();
             if (!expectedOptions.contains(key))
                 throw new ConfigException(
                         String.format("Unrecognized strategy option {%s} passed to %s for database %s", key,

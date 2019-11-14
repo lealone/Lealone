@@ -97,6 +97,8 @@ public class CreateDatabase extends DatabaseStatement {
                 newDB.setReplicationProperties(null);
             }
             lealoneDB.addDatabaseObject(session, newDB);
+            // 将缓存过期掉
+            lealoneDB.getNextModificationMetaId();
         }
 
         // LealoneDatabase在启动过程中执行CREATE DATABASE时，不对数据库初始化

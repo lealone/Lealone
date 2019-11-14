@@ -91,7 +91,7 @@ public class StandardTable extends Table {
                 parameters.put("initReplicationEndpoints", initReplicationEndpoints);
             }
         }
-        parameters.put("isShardingMode", data.session.getDatabase().isShardingMode() + "");
+        parameters.put("isShardingMode", data.session.isShardingMode() + "");
 
         isHidden = data.isHidden;
         nextAnalyze = database.getSettings().analyzeAuto;
