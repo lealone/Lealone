@@ -311,4 +311,46 @@ public class P2pNetEndpointManager implements NetEndpointManager {
         }
         return endpointAssignmentStrategy;
     }
+
+    @Override
+    public Collection<String> getRecognizedReplicationStrategyOptions(String strategyName) {
+        AbstractReplicationStrategy replicationStrategy;
+        if (strategyName == null)
+            replicationStrategy = defaultReplicationStrategy;
+        else
+            replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(null, strategyName,
+                    ConfigDescriptor.getEndpointSnitch(), null);
+        return replicationStrategy.recognizedOptions();
+    }
+
+    @Override
+    public Collection<String> getRecognizedEndpointAssignmentStrategyOptions(String strategyName) {
+        AbstractEndpointAssignmentStrategy endpointAssignmentStrategy;
+        if (strategyName == null)
+            endpointAssignmentStrategy = defaultEndpointAssignmentStrategy;
+        else
+            endpointAssignmentStrategy = AbstractEndpointAssignmentStrategy.create(null, strategyName,
+                    ConfigDescriptor.getEndpointSnitch(), null);
+        return endpointAssignmentStrategy.recognizedOptions();
+    }
+
+    @Override
+    public String getDefaultReplicationStrategy() {
+        return defaultReplicationStrategy.getClass().getSimpleName();
+    }
+
+    @Override
+    public int getDefaultReplicationFactor() {
+        return defaultReplicationStrategy.getReplicationFactor();
+    }
+
+    @Override
+    public String getDefaultEndpointAssignmentStrategy() {
+        return defaultEndpointAssignmentStrategy.getClass().getSimpleName();
+    }
+
+    @Override
+    public int getDefaultEndpointAssignmentFactor() {
+        return defaultEndpointAssignmentStrategy.getAssignmentFactor();
+    }
 }

@@ -68,4 +68,28 @@ public interface NetEndpointManager {
             Set<NetEndpoint> candidateEndpoints) {
         return null;
     }
+
+    default Collection<String> getRecognizedReplicationStrategyOptions(String strategyName) {
+        return null;
+    }
+
+    default Collection<String> getRecognizedEndpointAssignmentStrategyOptions(String strategyName) {
+        return null;
+    }
+
+    default String getDefaultReplicationStrategy() {
+        return null;
+    }
+
+    default int getDefaultReplicationFactor() {
+        return 1;
+    }
+
+    default String getDefaultEndpointAssignmentStrategy() {
+        return null;
+    }
+
+    default int getDefaultEndpointAssignmentFactor() {
+        return 1;
+    }
 }

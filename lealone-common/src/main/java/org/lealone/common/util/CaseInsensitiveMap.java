@@ -6,6 +6,7 @@
  */
 package org.lealone.common.util;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -74,4 +75,9 @@ public class CaseInsensitiveMap<V> extends HashMap<String, V> {
         return key == null ? null : StringUtils.toUpperEnglish(key.toString());
     }
 
+    public void removeAll(Collection<?> c) {
+        for (Object e : c) {
+            remove(e);
+        }
+    }
 }
