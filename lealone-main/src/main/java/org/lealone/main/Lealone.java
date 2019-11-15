@@ -82,8 +82,9 @@ public class Lealone {
             ProtocolServer mainProtocolServer = start();
 
             long t3 = (System.currentTimeMillis() - t);
-            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", (t1 + t2 + t3), t1, t2,
-                    t3);
+            long totalTime = t1 + t2 + t3;
+            logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", totalTime, t1, t2, t3);
+            logger.info("Exit with Ctrl+C");
 
             // 在主线程中运行，避免出现DestroyJavaVM线程
             if (mainProtocolServer != null)
