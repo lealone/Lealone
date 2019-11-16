@@ -46,7 +46,8 @@ public class DatabaseTest extends DbObjectTestBase {
         executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest1");
         asserts("CreateDatabaseTest1");
 
-        executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest2 PARAMETERS(OPTIMIZE_DISTINCT=true, PERSISTENT=false)");
+        executeUpdate(
+                "CREATE DATABASE IF NOT EXISTS CreateDatabaseTest2 PARAMETERS(OPTIMIZE_DISTINCT=true, PERSISTENT=false)");
         asserts("CreateDatabaseTest2");
 
         executeUpdate("CREATE DATABASE IF NOT EXISTS CreateDatabaseTest3 PARAMETERS()");

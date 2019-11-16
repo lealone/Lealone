@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 class TransactionValidator extends Thread {
 
@@ -86,7 +86,7 @@ class TransactionValidator extends Thread {
     private static void validateTransaction(QueuedMessage qm) {
         String[] allLocalTransactionNames = qm.allLocalTransactionNames.split(",");
         boolean isFullSuccessful = true;
-        String localHostAndPort = NetEndpoint.getLocalTcpHostAndPort();
+        String localHostAndPort = NetNode.getLocalTcpHostAndPort();
         for (String localTransactionName : allLocalTransactionNames) {
             if (!localTransactionName.startsWith(localHostAndPort)) {
                 if (!qm.t.validator.validate(localTransactionName)) {

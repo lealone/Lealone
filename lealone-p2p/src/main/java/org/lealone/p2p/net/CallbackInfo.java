@@ -17,7 +17,7 @@
  */
 package org.lealone.p2p.net;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 /**
  * Encapsulates the callback information.
@@ -25,12 +25,12 @@ import org.lealone.net.NetEndpoint;
  * to be written due to a timeout in the response from a replica.
  */
 public class CallbackInfo {
-    protected final NetEndpoint target;
+    protected final NetNode target;
     protected final IAsyncCallback<?> callback;
     protected final IVersionedSerializer<?> serializer;
     private final boolean failureCallback;
 
-    public CallbackInfo(NetEndpoint target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer) {
+    public CallbackInfo(NetNode target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer) {
         this(target, callback, serializer, false);
     }
 
@@ -41,7 +41,7 @@ public class CallbackInfo {
      * @param callback
      * @param serializer serializer to deserialize response message
      */
-    public CallbackInfo(NetEndpoint target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer,
+    public CallbackInfo(NetNode target, IAsyncCallback<?> callback, IVersionedSerializer<?> serializer,
             boolean failureCallback) {
         this.target = target;
         this.callback = callback;

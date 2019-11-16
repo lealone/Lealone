@@ -1381,7 +1381,7 @@ public class MetaTable extends Table {
                         // RUN_MODE
                         database.getRunMode().toString(),
                         // NODES
-                        database.getTargetEndpoints());
+                        database.getTargetNodes());
             }
             break;
         }

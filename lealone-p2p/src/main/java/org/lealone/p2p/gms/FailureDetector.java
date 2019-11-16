@@ -37,7 +37,7 @@ import javax.management.ObjectName;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.util.BoundedStatsDeque;
@@ -64,7 +64,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     // change.
     private final double PHI_FACTOR = 1.0 / Math.log(10.0); // 0.434...
 
-    private final Map<NetEndpoint, ArrivalWindow> arrivalSamples = new Hashtable<>();
+    private final Map<NetNode, ArrivalWindow> arrivalSamples = new Hashtable<>();
     private final List<IFailureDetectionEventListener> fdEvntListeners = new CopyOnWriteArrayList<>();
 
     public FailureDetector() {
@@ -88,19 +88,19 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public String getAllEndpointStates() {
+    public String getAllNodeStates() {
         StringBuilder sb = new StringBuilder();
-        for (Map.Entry<NetEndpoint, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
+        for (Map.Entry<NetNode, NodeState> entry : Gossiper.instance.nodeStateMap.entrySet()) {
             sb.append(entry.getKey()).append("\n");
-            appendEndpointState(sb, entry.getValue());
+            appendNodeState(sb, entry.getValue());
         }
         return sb.toString();
     }
 
     @Override
     public Map<String, String> getSimpleStates() {
-        Map<String, String> nodesStatus = new HashMap<>(Gossiper.instance.endpointStateMap.size());
-        for (Map.Entry<NetEndpoint, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
+        Map<String, String> nodesStatus = new HashMap<>(Gossiper.instance.nodeStateMap.size());
+        for (Map.Entry<NetNode, NodeState> entry : Gossiper.instance.nodeStateMap.entrySet()) {
             if (entry.getValue().isAlive())
                 nodesStatus.put(entry.getKey().toString(), "UP");
             else
@@ -110,9 +110,9 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public int getDownEndpointCount() {
+    public int getDownNodeCount() {
         int count = 0;
-        for (Map.Entry<NetEndpoint, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
+        for (Map.Entry<NetNode, NodeState> entry : Gossiper.instance.nodeStateMap.entrySet()) {
             if (!entry.getValue().isAlive())
                 count++;
         }
@@ -120,9 +120,9 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public int getUpEndpointCount() {
+    public int getUpNodeCount() {
         int count = 0;
-        for (Map.Entry<NetEndpoint, EndpointState> entry : Gossiper.instance.endpointStateMap.entrySet()) {
+        for (Map.Entry<NetNode, NodeState> entry : Gossiper.instance.nodeStateMap.entrySet()) {
             if (entry.getValue().isAlive())
                 count++;
         }
@@ -130,17 +130,17 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public String getEndpointState(String address) throws UnknownHostException {
+    public String getNodeState(String address) throws UnknownHostException {
         StringBuilder sb = new StringBuilder();
-        EndpointState endpointState = Gossiper.instance.getEndpointState(NetEndpoint.getByName(address));
-        appendEndpointState(sb, endpointState);
+        NodeState nodeState = Gossiper.instance.getNodeState(NetNode.getByName(address));
+        appendNodeState(sb, nodeState);
         return sb.toString();
     }
 
-    private void appendEndpointState(StringBuilder sb, EndpointState endpointState) {
-        sb.append("  generation:").append(endpointState.getHeartBeatState().getGeneration()).append("\n");
-        sb.append("  heartbeat:").append(endpointState.getHeartBeatState().getHeartBeatVersion()).append("\n");
-        for (Map.Entry<ApplicationState, VersionedValue> state : endpointState.applicationState.entrySet()) {
+    private void appendNodeState(StringBuilder sb, NodeState nodeState) {
+        sb.append("  generation:").append(nodeState.getHeartBeatState().getGeneration()).append("\n");
+        sb.append("  heartbeat:").append(nodeState.getHeartBeatState().getHeartBeatVersion()).append("\n");
+        for (Map.Entry<ApplicationState, VersionedValue> state : nodeState.applicationState.entrySet()) {
             sb.append("  ").append(state.getKey()).append(":").append(state.getValue().value).append("\n");
         }
     }
@@ -174,21 +174,21 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public boolean isAlive(NetEndpoint ep) {
-        if (ep.equals(ConfigDescriptor.getLocalEndpoint()))
+    public boolean isAlive(NetNode ep) {
+        if (ep.equals(ConfigDescriptor.getLocalNode()))
             return true;
 
-        EndpointState epState = Gossiper.instance.getEndpointState(ep);
+        NodeState epState = Gossiper.instance.getNodeState(ep);
         // we could assert not-null, but having isAlive fail screws a node over so badly that
         // it's worth being defensive here so minor bugs don't cause disproportionate
         // badness. (See lealone-1463 for an example).
         if (epState == null)
-            logger.error("unknown endpoint {}", ep);
+            logger.error("unknown node {}", ep);
         return epState != null && epState.isAlive();
     }
 
     @Override
-    public void report(NetEndpoint ep) {
+    public void report(NetNode ep) {
         if (logger.isTraceEnabled())
             logger.trace("reporting {}", ep);
         long now = System.nanoTime();
@@ -204,7 +204,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public void interpret(NetEndpoint ep) {
+    public void interpret(NetNode ep) {
         ArrivalWindow hbWnd = arrivalSamples.get(ep);
         if (hbWnd == null) {
             return;
@@ -224,7 +224,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public void forceConviction(NetEndpoint ep) {
+    public void forceConviction(NetNode ep) {
         logger.debug("Forcing conviction of {}", ep);
         for (IFailureDetectionEventListener listener : fdEvntListeners) {
             listener.convict(ep, getPhiConvictThreshold());
@@ -232,7 +232,7 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     }
 
     @Override
-    public void remove(NetEndpoint ep) {
+    public void remove(NetNode ep) {
         arrivalSamples.remove(ep);
     }
 
@@ -249,10 +249,10 @@ public class FailureDetector implements IFailureDetector, FailureDetectorMBean {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        Set<NetEndpoint> eps = arrivalSamples.keySet();
+        Set<NetNode> eps = arrivalSamples.keySet();
 
         sb.append("-----------------------------------------------------------------------");
-        for (NetEndpoint ep : eps) {
+        for (NetNode ep : eps) {
             ArrivalWindow hWnd = arrivalSamples.get(ep);
             sb.append(ep + " : ");
             sb.append(hWnd);

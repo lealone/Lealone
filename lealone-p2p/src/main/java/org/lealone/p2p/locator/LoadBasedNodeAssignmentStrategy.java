@@ -18,22 +18,21 @@
 package org.lealone.p2p.locator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigException;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
+import org.lealone.p2p.gms.Gossiper;
 
-public class RandomEndpointAssignmentStrategy extends AbstractEndpointAssignmentStrategy {
+public class LoadBasedNodeAssignmentStrategy extends AbstractNodeAssignmentStrategy {
 
-    private static final Random random = new Random();
-
-    public RandomEndpointAssignmentStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions) {
+    public LoadBasedNodeAssignmentStrategy(String dbName, INodeSnitch snitch, Map<String, String> configOptions) {
         super(dbName, snitch, configOptions);
     }
 
@@ -57,44 +56,59 @@ public class RandomEndpointAssignmentStrategy extends AbstractEndpointAssignment
     }
 
     @Override
-    public List<NetEndpoint> assignEndpoints(TopologyMetaData metaData, Set<NetEndpoint> oldEndpoints,
-            Set<NetEndpoint> candidateEndpoints, boolean includeOldEndpoints) {
-        HashSet<NetEndpoint> all = new HashSet<>(candidateEndpoints);
-        all.removeAll(oldEndpoints);
+    public List<NetNode> assignNodes(TopologyMetaData metaData, Set<NetNode> oldNodes, Set<NetNode> candidateNodes,
+            boolean includeOldNodes) {
+        HashSet<NetNode> all = new HashSet<>(candidateNodes);
+        all.removeAll(oldNodes);
         int total = all.size();
         int need = getAssignmentFactor();
-        if (includeOldEndpoints)
-            need -= oldEndpoints.size();
+        if (includeOldNodes)
+            need -= oldNodes.size();
 
-        ArrayList<NetEndpoint> endpoints = new ArrayList<>(need);
+        class LoadInfo implements Comparable<LoadInfo> {
+            String load;
+            int index;
+
+            public LoadInfo(String load, int index) {
+                super();
+                this.load = load;
+                this.index = index;
+            }
+
+            @Override
+            public int compareTo(LoadInfo o) {
+                return this.load.compareTo(o.load);
+            }
+        }
+
+        ArrayList<NetNode> allList = new ArrayList<>(all);
+        LoadInfo[] loadInfoList = new LoadInfo[total];
+        for (int i = 0; i < total; i++) {
+            String load = Gossiper.instance.getLoad(allList.get(i));
+            loadInfoList[i] = new LoadInfo(load, i);
+        }
+
+        // 按load从小到大排序，优先分配load小的节点
+        Arrays.sort(loadInfoList);
+
+        ArrayList<NetNode> nodes = new ArrayList<>(need);
 
         if (total > 0) {
-            ArrayList<NetEndpoint> list = new ArrayList<>(all);
-            Set<Integer> indexSet = new HashSet<>(need);
-            if (need >= total) {
-                need = total;
-                for (int i = 0; i < total; i++) {
-                    indexSet.add(i);
+            int count = 0;
+            for (LoadInfo loadInfo : loadInfoList) {
+                NetNode e = allList.get(loadInfo.index);
+                if (!oldNodes.contains(e)) {
+                    nodes.add(e);
+                    if (++count >= need)
+                        break;
                 }
-            } else {
-                while (true) {
-                    int i = random.nextInt(total);
-                    if (!oldEndpoints.contains(list.get(i))) {
-                        indexSet.add(i);
-                        if (indexSet.size() == need)
-                            break;
-                    }
-                }
-            }
-            for (int i : indexSet) {
-                endpoints.add(list.get(i));
             }
         }
 
         // 不够时，从原来的节点中取
-        if (endpoints.size() < need) {
-            getFromOldEndpoints(oldEndpoints, endpoints, need);
+        if (nodes.size() < need) {
+            getFromOldNodes(oldNodes, nodes, need);
         }
-        return endpoints;
+        return nodes;
     }
 }

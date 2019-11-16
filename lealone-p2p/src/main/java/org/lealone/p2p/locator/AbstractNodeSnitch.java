@@ -23,12 +23,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
 
-public abstract class AbstractEndpointSnitch implements IEndpointSnitch {
+public abstract class AbstractNodeSnitch implements INodeSnitch {
     @Override
-    public abstract int compareEndpoints(NetEndpoint target, NetEndpoint a1, NetEndpoint a2);
+    public abstract int compareNodes(NetNode target, NetNode a1, NetNode a2);
 
     /**
      * Sorts the <tt>Collection</tt> of node addresses by proximity to the given address
@@ -37,8 +37,8 @@ public abstract class AbstractEndpointSnitch implements IEndpointSnitch {
      * @return a new sorted <tt>List</tt>
      */
     @Override
-    public List<NetEndpoint> getSortedListByProximity(NetEndpoint address, Collection<NetEndpoint> unsortedAddress) {
-        List<NetEndpoint> preferred = new ArrayList<NetEndpoint>(unsortedAddress);
+    public List<NetNode> getSortedListByProximity(NetNode address, Collection<NetNode> unsortedAddress) {
+        List<NetNode> preferred = new ArrayList<NetNode>(unsortedAddress);
         sortByProximity(address, preferred);
         return preferred;
     }
@@ -49,11 +49,11 @@ public abstract class AbstractEndpointSnitch implements IEndpointSnitch {
      * @param addresses the nodes to sort
      */
     @Override
-    public void sortByProximity(final NetEndpoint address, List<NetEndpoint> addresses) {
-        Collections.sort(addresses, new Comparator<NetEndpoint>() {
+    public void sortByProximity(final NetNode address, List<NetNode> addresses) {
+        Collections.sort(addresses, new Comparator<NetNode>() {
             @Override
-            public int compare(NetEndpoint a1, NetEndpoint a2) {
-                return compareEndpoints(address, a1, a2);
+            public int compare(NetNode a1, NetNode a2) {
+                return compareNodes(address, a1, a2);
             }
         });
     }
@@ -64,7 +64,7 @@ public abstract class AbstractEndpointSnitch implements IEndpointSnitch {
     }
 
     @Override
-    public boolean isWorthMergingForRangeQuery(List<NetEndpoint> merged, List<NetEndpoint> l1, List<NetEndpoint> l2) {
+    public boolean isWorthMergingForRangeQuery(List<NetNode> merged, List<NetNode> l1, List<NetNode> l2) {
         // Querying remote DC is likely to be an order of magnitude slower than
         // querying locally, so 2 queries to local nodes is likely to still be
         // faster than 1 query involving remote ones
@@ -72,9 +72,9 @@ public abstract class AbstractEndpointSnitch implements IEndpointSnitch {
         return mergedHasRemote ? hasRemoteNode(l1) || hasRemoteNode(l2) : true;
     }
 
-    private boolean hasRemoteNode(List<NetEndpoint> l) {
+    private boolean hasRemoteNode(List<NetNode> l) {
         String localDc = ConfigDescriptor.getLocalDataCenter();
-        for (NetEndpoint ep : l) {
+        for (NetNode ep : l) {
             if (!localDc.equals(getDatacenter(ep)))
                 return true;
         }

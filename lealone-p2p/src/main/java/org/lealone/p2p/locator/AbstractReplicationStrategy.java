@@ -27,7 +27,7 @@ import java.util.Set;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.util.Utils;
 
 /**
@@ -40,7 +40,7 @@ public abstract class AbstractReplicationStrategy {
     protected final String dbName;
     protected final Map<String, String> configOptions;
 
-    AbstractReplicationStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions) {
+    AbstractReplicationStrategy(String dbName, INodeSnitch snitch, Map<String, String> configOptions) {
         assert dbName != null;
         assert snitch != null;
         this.dbName = dbName;
@@ -65,19 +65,16 @@ public abstract class AbstractReplicationStrategy {
     public abstract Collection<String> recognizedOptions();
 
     /**
-     * calculate the natural endpoints
+     * calculate the natural nodes
      *
      */
-    public abstract List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
-            boolean includeOldReplicationEndpoints);
+    public abstract List<NetNode> calculateReplicationNodes(TopologyMetaData metaData, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes);
 
-    public List<NetEndpoint> getReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
-            boolean includeOldReplicationEndpoints) {
+    public List<NetNode> getReplicationNodes(TopologyMetaData metaData, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
         TopologyMetaData tm = metaData.getCacheOnlyHostIdMap();
-        return calculateReplicationEndpoints(tm, oldReplicationEndpoints, candidateEndpoints,
-                includeOldReplicationEndpoints);
+        return calculateReplicationNodes(tm, oldReplicationNodes, candidateNodes, includeOldReplicationNodes);
     }
 
     protected void validateReplicationFactor(String rf) throws ConfigException {
@@ -105,10 +102,10 @@ public abstract class AbstractReplicationStrategy {
     }
 
     private static AbstractReplicationStrategy createInternal(String dbName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, IEndpointSnitch snitch,
+            Class<? extends AbstractReplicationStrategy> strategyClass, INodeSnitch snitch,
             Map<String, String> strategyOptions) throws ConfigException {
         AbstractReplicationStrategy strategy;
-        Class<?>[] parameterTypes = new Class[] { String.class, IEndpointSnitch.class, Map.class };
+        Class<?>[] parameterTypes = new Class[] { String.class, INodeSnitch.class, Map.class };
         try {
             Constructor<? extends AbstractReplicationStrategy> constructor = strategyClass
                     .getConstructor(parameterTypes);
@@ -120,7 +117,7 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public static AbstractReplicationStrategy createReplicationStrategy(String dbName,
-            Class<? extends AbstractReplicationStrategy> strategyClass, IEndpointSnitch snitch,
+            Class<? extends AbstractReplicationStrategy> strategyClass, INodeSnitch snitch,
             Map<String, String> strategyOptions) {
         try {
             AbstractReplicationStrategy strategy = createInternal(dbName, strategyClass, snitch, strategyOptions);
@@ -141,7 +138,7 @@ public abstract class AbstractReplicationStrategy {
     }
 
     public static AbstractReplicationStrategy createReplicationStrategy(String dbName, String strategyClassName,
-            IEndpointSnitch snitch, Map<String, String> strategyOptions) {
+            INodeSnitch snitch, Map<String, String> strategyOptions) {
         Class<? extends AbstractReplicationStrategy> strategyClass = getClass(strategyClassName);
         return createReplicationStrategy(dbName, strategyClass, snitch, strategyOptions);
     }

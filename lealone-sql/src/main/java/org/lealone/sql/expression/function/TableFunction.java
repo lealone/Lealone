@@ -79,7 +79,8 @@ public class TableFunction extends Function {
         columns.toArray(columnList);
     }
 
-    private ValueResultSet getTable(ServerSession session, Expression[] argList, boolean onlyColumnList, boolean distinctRows) {
+    private ValueResultSet getTable(ServerSession session, Expression[] argList, boolean onlyColumnList,
+            boolean distinctRows) {
         int len = columnList.length;
         Expression[] header = new Expression[len];
         Database db = session.getDatabase();

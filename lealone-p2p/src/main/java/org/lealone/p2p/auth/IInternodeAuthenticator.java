@@ -19,7 +19,7 @@
 package org.lealone.p2p.auth;
 
 import org.lealone.common.exceptions.ConfigException;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 public interface IInternodeAuthenticator {
     /**
@@ -30,7 +30,7 @@ public interface IInternodeAuthenticator {
      * @param remotePort port of the connecting node.
      * @return true if the connection should be accepted, false otherwise.
      */
-    boolean authenticate(NetEndpoint remoteAddress, int remotePort);
+    boolean authenticate(NetNode remoteAddress, int remotePort);
 
     /**
      * Validates configuration of IInternodeAuthenticator implementation (if configurable).

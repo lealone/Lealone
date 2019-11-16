@@ -63,16 +63,16 @@ public interface Storage {
 
     void unregisterEventListener(StorageEventListener listener);
 
-    default void replicate(Object dbObject, String[] newReplicationEndpoints, RunMode runMode) {
+    default void replicate(Object dbObject, String[] newReplicationNodes, RunMode runMode) {
         throw DbException.getUnsupportedException("replicate");
     }
 
-    default void sharding(Object dbObject, String[] oldEndpoints, String[] newEndpoints, RunMode runMode) {
+    default void sharding(Object dbObject, String[] oldNodes, String[] newNodes, RunMode runMode) {
         throw DbException.getUnsupportedException("sharding");
     }
 
-    default void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
-            String[] newEndpoints) {
+    default void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
+            String[] newNodes) {
         throw DbException.getUnsupportedException("scaleIn");
     }
 }

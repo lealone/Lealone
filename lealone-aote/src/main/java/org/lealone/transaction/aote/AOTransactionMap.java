@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
@@ -78,7 +78,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         // 数据从节点A迁移到节点B的过程中，如果把A中未提交的值也移到B中，
         // 那么在节点B中会读到不一致的数据，此时需要从节点A读出正确的值
         // TODO 如何更高效的判断，不用比较字符串
-        if (data.getHostAndPort() != null && !data.getHostAndPort().equals(NetEndpoint.getLocalTcpHostAndPort())) {
+        if (data.getHostAndPort() != null && !data.getHostAndPort().equals(NetNode.getLocalTcpHostAndPort())) {
             return getRemoteTransactionalValue(data.getHostAndPort(), key);
         }
         // 第二种: 分布式场景
@@ -112,7 +112,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
     private boolean validateReplication(String globalTransactionName) {
         boolean isValid = true;
         String[] names = globalTransactionName.split(",");
-        NetEndpoint localHostAndPort = NetEndpoint.getLocalTcpEndpoint();
+        NetNode localHostAndPort = NetNode.getLocalTcpNode();
         // 从1开始，第一个不是节点名
         for (int i = 1, size = names.length; i < size && isValid; i++) {
             String name = names[i];
@@ -120,7 +120,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
                 name += ":" + Constants.DEFAULT_TCP_PORT;
             }
 
-            if (localHostAndPort.equals(NetEndpoint.createTCP(name)))
+            if (localHostAndPort.equals(NetNode.createTCP(name)))
                 continue;
             isValid = isValid && transaction.validator.validate(name, "replication:" + globalTransactionName);
         }

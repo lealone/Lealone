@@ -69,7 +69,7 @@ class WriteResponseHandler {
     void onFailure() {
         int f = failuresUpdater.incrementAndGet(this);
 
-        if (totalBlockFor() + f >= totalEndpoints())
+        if (totalBlockFor() + f >= totalNodes())
             signal();
     }
 
@@ -97,7 +97,7 @@ class WriteResponseHandler {
             throw new WriteTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor);
         }
 
-        if (!successful && totalBlockFor() + failures >= totalEndpoints()) {
+        if (!successful && totalBlockFor() + failures >= totalNodes()) {
             throw new WriteFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor());
         }
     }
@@ -120,7 +120,7 @@ class WriteResponseHandler {
         return w;
     }
 
-    private int totalEndpoints() {
+    private int totalNodes() {
         return n;
     }
 

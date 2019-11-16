@@ -17,50 +17,50 @@
  */
 package org.lealone.p2p.server;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 /**
- * Interface on which interested parties can be notified of high level endpoint
+ * Interface on which interested parties can be notified of high level node
  * state changes.
  *
- * Note that while IEndpointStateChangeSubscriber notify about gossip related
- * changes (IEndpointStateChangeSubscriber.onJoin() is called when a node join
+ * Note that while INodeStateChangeSubscriber notify about gossip related
+ * changes (INodeStateChangeSubscriber.onJoin() is called when a node join
  * gossip), this interface allows to be notified about higher level events.
  */
-public interface IEndpointLifecycleSubscriber {
+public interface INodeLifecycleSubscriber {
     /**
      * Called when a new node joins the cluster, i.e. either has just been
      * bootstrapped or "instajoins".
      *
-     * @param endpoint the newly added endpoint.
+     * @param node the newly added node.
      */
-    public void onJoinCluster(NetEndpoint endpoint);
+    public void onJoinCluster(NetNode node);
 
     /**
      * Called when a new node leave the cluster (decommission or removeToken).
      *
-     * @param endpoint the endpoint that is leaving.
+     * @param node the node that is leaving.
      */
-    public void onLeaveCluster(NetEndpoint endpoint);
+    public void onLeaveCluster(NetNode node);
 
     /**
      * Called when a node is marked UP.
      *
-     * @param endpoint the endpoint marked UP.
+     * @param node the node marked UP.
      */
-    public void onUp(NetEndpoint endpoint);
+    public void onUp(NetNode node);
 
     /**
      * Called when a node is marked DOWN.
      *
-     * @param endpoint the endpoint marked DOWN.
+     * @param node the node marked DOWN.
      */
-    public void onDown(NetEndpoint endpoint);
+    public void onDown(NetNode node);
 
     /**
      * Called when a node has moved (to a new token).
      *
-     * @param endpoint the endpoint that has moved.
+     * @param node the node that has moved.
      */
-    public void onMove(NetEndpoint endpoint);
+    public void onMove(NetNode node);
 }

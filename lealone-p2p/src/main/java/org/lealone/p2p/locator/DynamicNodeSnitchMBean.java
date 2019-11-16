@@ -21,10 +21,10 @@ import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
-public interface DynamicEndpointSnitchMBean {
-    public Map<NetEndpoint, Double> getScores();
+public interface DynamicNodeSnitchMBean {
+    public Map<NetNode, Double> getScores();
 
     public int getUpdateInterval();
 

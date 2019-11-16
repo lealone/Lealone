@@ -305,8 +305,8 @@ public class Operation extends Expression {
                         return this;
                     }
                 }
-                throw DbException.getUnsupportedException(DataType.getDataType(l).name + " " + getOperationToken()
-                        + " " + DataType.getDataType(r).name);
+                throw DbException.getUnsupportedException(
+                        DataType.getDataType(l).name + " " + getOperationToken() + " " + DataType.getDataType(r).name);
             } else {
                 dataType = Value.getHigherOrder(l, r);
                 if (DataType.isStringType(dataType) && session.getDatabase().getMode().allowPlusForStringConcat) {

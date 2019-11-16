@@ -34,7 +34,7 @@ import org.lealone.common.util.Pair;
 import org.lealone.db.Constants;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetServer;
@@ -42,12 +42,12 @@ import org.lealone.net.WritableChannel;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.EndpointState;
+import org.lealone.p2p.gms.NodeState;
 import org.lealone.p2p.gms.Gossiper;
-import org.lealone.p2p.gms.IEndpointStateChangeSubscriber;
+import org.lealone.p2p.gms.INodeStateChangeSubscriber;
 import org.lealone.p2p.gms.VersionedValue;
 import org.lealone.p2p.gms.VersionedValue.VersionedValueFactory;
-import org.lealone.p2p.locator.IEndpointSnitch;
+import org.lealone.p2p.locator.INodeSnitch;
 import org.lealone.p2p.locator.TopologyMetaData;
 import org.lealone.p2p.net.MessagingService;
 import org.lealone.p2p.net.P2pConnection;
@@ -67,8 +67,7 @@ import com.sun.management.OperatingSystemMXBean;
  * @author zhh
  */
 @SuppressWarnings("restriction")
-public class P2pServer extends DelegatedProtocolServer
-        implements IEndpointStateChangeSubscriber, AsyncConnectionManager {
+public class P2pServer extends DelegatedProtocolServer implements INodeStateChangeSubscriber, AsyncConnectionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(P2pServer.class);
     private static final BackgroundActivityMonitor bgMonitor = new BackgroundActivityMonitor();
@@ -77,7 +76,7 @@ public class P2pServer extends DelegatedProtocolServer
     public static final VersionedValueFactory valueFactory = new VersionedValueFactory();
 
     private final TopologyMetaData topologyMetaData = new TopologyMetaData();
-    private final List<IEndpointLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
+    private final List<INodeLifecycleSubscriber> lifecycleSubscribers = new CopyOnWriteArrayList<>();
 
     private boolean gossipingStarted;
 
@@ -108,7 +107,7 @@ public class P2pServer extends DelegatedProtocolServer
         setProtocolServer(netServer);
         netServer.init(config);
 
-        NetEndpoint.setLocalP2pEndpoint(getHost(), getPort());
+        NetNode.setLocalP2pNode(getHost(), getPort());
     }
 
     @Override
@@ -134,28 +133,28 @@ public class P2pServer extends DelegatedProtocolServer
     private void loadPersistedNodeInfo() {
         if (Boolean.parseBoolean(Config.getProperty("load.persisted.node.info", "true"))) {
             logger.info("Loading persisted node info");
-            Map<NetEndpoint, String> loadedHostIds = ClusterMetaData.loadHostIds();
-            NetEndpoint local = ConfigDescriptor.getLocalEndpoint();
-            for (NetEndpoint ep : loadedHostIds.keySet()) {
+            Map<NetNode, String> loadedHostIds = ClusterMetaData.loadHostIds();
+            NetNode local = ConfigDescriptor.getLocalNode();
+            for (NetNode ep : loadedHostIds.keySet()) {
                 if (!ep.equals(local)) {
                     topologyMetaData.updateHostId(loadedHostIds.get(ep), ep);
-                    Gossiper.instance.addSavedEndpoint(ep);
+                    Gossiper.instance.addSavedNode(ep);
                 }
             }
         }
     }
 
     private void prepareToJoin() throws ConfigException {
-        NetEndpoint localEndpoint = ConfigDescriptor.getLocalEndpoint();
-        localHostId = NetEndpoint.getLocalTcpHostAndPort();
-        topologyMetaData.updateHostId(localHostId, localEndpoint);
+        NetNode localNode = ConfigDescriptor.getLocalNode();
+        localHostId = NetNode.getLocalTcpHostAndPort();
+        topologyMetaData.updateHostId(localHostId, localNode);
 
-        int generation = ClusterMetaData.incrementAndGetGeneration(localEndpoint);
+        int generation = ClusterMetaData.incrementAndGetGeneration(localNode);
 
         Map<ApplicationState, VersionedValue> appStates = new HashMap<>();
         appStates.put(ApplicationState.HOST_ID, valueFactory.hostId(localHostId));
-        appStates.put(ApplicationState.TCP_ENDPOINT, valueFactory.endpoint(NetEndpoint.getLocalTcpEndpoint()));
-        appStates.put(ApplicationState.P2P_ENDPOINT, valueFactory.endpoint(NetEndpoint.getLocalP2pEndpoint()));
+        appStates.put(ApplicationState.TCP_NODE, valueFactory.node(NetNode.getLocalTcpNode()));
+        appStates.put(ApplicationState.P2P_NODE, valueFactory.node(NetNode.getLocalP2pNode()));
         appStates.put(ApplicationState.DC, getDatacenter());
         appStates.put(ApplicationState.RACK, getRack());
         appStates.put(ApplicationState.RELEASE_VERSION, valueFactory.releaseVersion());
@@ -173,14 +172,14 @@ public class P2pServer extends DelegatedProtocolServer
     }
 
     private VersionedValue getDatacenter() {
-        IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        String dc = snitch.getDatacenter(ConfigDescriptor.getLocalEndpoint());
+        INodeSnitch snitch = ConfigDescriptor.getNodeSnitch();
+        String dc = snitch.getDatacenter(ConfigDescriptor.getLocalNode());
         return valueFactory.datacenter(dc);
     }
 
     private VersionedValue getRack() {
-        IEndpointSnitch snitch = ConfigDescriptor.getEndpointSnitch();
-        String rack = snitch.getRack(ConfigDescriptor.getLocalEndpoint());
+        INodeSnitch snitch = ConfigDescriptor.getNodeSnitch();
+        String rack = snitch.getRack(ConfigDescriptor.getLocalNode());
         return valueFactory.rack(rack);
     }
 
@@ -196,11 +195,11 @@ public class P2pServer extends DelegatedProtocolServer
         Gossiper.instance.addLocalApplicationState(ApplicationState.RACK, getRack());
     }
 
-    public void register(IEndpointLifecycleSubscriber subscriber) {
+    public void register(INodeLifecycleSubscriber subscriber) {
         lifecycleSubscribers.add(subscriber);
     }
 
-    public void unregister(IEndpointLifecycleSubscriber subscriber) {
+    public void unregister(INodeLifecycleSubscriber subscriber) {
         lifecycleSubscribers.remove(subscriber);
     }
 
@@ -239,8 +238,8 @@ public class P2pServer extends DelegatedProtocolServer
         bgMonitor.incrManualSeverity(incr);
     }
 
-    public double getSeverity(NetEndpoint endpoint) {
-        return bgMonitor.getSeverity(endpoint);
+    public double getSeverity(NetNode node) {
+        return bgMonitor.getSeverity(node);
     }
 
     public String getLocalHostId() {
@@ -248,18 +247,18 @@ public class P2pServer extends DelegatedProtocolServer
     }
 
     public String getLocalHostIdAsString() {
-        return topologyMetaData.getHostId(ConfigDescriptor.getLocalEndpoint());
+        return topologyMetaData.getHostId(ConfigDescriptor.getLocalNode());
     }
 
     public Map<String, String> getHostIdMap() {
         Map<String, String> mapOut = new HashMap<>();
-        for (Map.Entry<NetEndpoint, String> entry : topologyMetaData.getEndpointToHostIdMapForReading().entrySet())
+        for (Map.Entry<NetNode, String> entry : topologyMetaData.getNodeToHostIdMapForReading().entrySet())
             mapOut.put(entry.getKey().getHostAddress(), entry.getValue().toString());
         return mapOut;
     }
 
     @Override
-    public void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
+    public void onChange(NetNode node, ApplicationState state, VersionedValue value) {
         if (state == ApplicationState.STATUS) {
             String apStateValue = value.value;
             String[] pieces = apStateValue.split(VersionedValue.DELIMITER_STR, -1);
@@ -269,64 +268,64 @@ public class P2pServer extends DelegatedProtocolServer
 
             switch (moveName) {
             case VersionedValue.STATUS_NORMAL:
-                handleStateNormal(endpoint);
+                handleStateNormal(node);
                 break;
             case VersionedValue.REMOVING_TOKEN:
             case VersionedValue.REMOVED_TOKEN:
-                handleStateRemoving(endpoint, pieces);
+                handleStateRemoving(node, pieces);
                 break;
             case VersionedValue.STATUS_LEAVING:
-                handleStateLeaving(endpoint);
+                handleStateLeaving(node);
                 break;
             case VersionedValue.STATUS_LEFT:
-                handleStateLeft(endpoint, pieces);
+                handleStateLeft(node, pieces);
                 break;
             }
         } else {
-            EndpointState epState = Gossiper.instance.getEndpointState(endpoint);
+            NodeState epState = Gossiper.instance.getNodeState(node);
             if (epState == null || Gossiper.instance.isDeadState(epState)) {
-                logger.debug("Ignoring state change for dead or unknown endpoint: {}", endpoint);
+                logger.debug("Ignoring state change for dead or unknown node: {}", node);
                 return;
             }
-            if (!endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
-                updatePeerInfo(endpoint, state, value);
+            if (!node.equals(ConfigDescriptor.getLocalNode()))
+                updatePeerInfo(node, state, value);
         }
     }
 
-    private void updatePeerInfo(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
+    private void updatePeerInfo(NetNode node, ApplicationState state, VersionedValue value) {
         switch (state) {
         case HOST_ID:
-            ClusterMetaData.updatePeerInfo(endpoint, "host_id", value.value);
+            ClusterMetaData.updatePeerInfo(node, "host_id", value.value);
             break;
-        case TCP_ENDPOINT:
-            ClusterMetaData.updatePeerInfo(endpoint, "tcp_endpoint", value.value);
-            endpoint.setTcpHostAndPort(value.value);
+        case TCP_NODE:
+            ClusterMetaData.updatePeerInfo(node, "tcp_node", value.value);
+            node.setTcpHostAndPort(value.value);
             break;
-        case P2P_ENDPOINT:
-            ClusterMetaData.updatePeerInfo(endpoint, "p2p_endpoint", value.value);
+        case P2P_NODE:
+            ClusterMetaData.updatePeerInfo(node, "p2p_node", value.value);
             break;
         case DC:
-            ClusterMetaData.updatePeerInfo(endpoint, "data_center", value.value);
+            ClusterMetaData.updatePeerInfo(node, "data_center", value.value);
             break;
         case RACK:
-            ClusterMetaData.updatePeerInfo(endpoint, "rack", value.value);
+            ClusterMetaData.updatePeerInfo(node, "rack", value.value);
             break;
         case RELEASE_VERSION:
-            ClusterMetaData.updatePeerInfo(endpoint, "release_version", value.value);
+            ClusterMetaData.updatePeerInfo(node, "release_version", value.value);
             break;
         case NET_VERSION:
-            ClusterMetaData.updatePeerInfo(endpoint, "net_version", value.value);
+            ClusterMetaData.updatePeerInfo(node, "net_version", value.value);
             break;
         }
     }
 
-    private void updatePeerInfo(NetEndpoint endpoint) {
-        if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
+    private void updatePeerInfo(NetNode node) {
+        if (node.equals(ConfigDescriptor.getLocalNode()))
             return;
 
-        EndpointState epState = Gossiper.instance.getEndpointState(endpoint);
+        NodeState epState = Gossiper.instance.getNodeState(node);
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
-            updatePeerInfo(endpoint, entry.getKey(), entry.getValue());
+            updatePeerInfo(node, entry.getKey(), entry.getValue());
         }
     }
 
@@ -334,79 +333,78 @@ public class P2pServer extends DelegatedProtocolServer
      * Handle node move to normal state. That is, node is entering token ring and participating
      * in reads.
      *
-     * @param endpoint node
+     * @param node node
      */
-    private void handleStateNormal(final NetEndpoint endpoint) {
-        Set<NetEndpoint> endpointsToRemove = new HashSet<>();
+    private void handleStateNormal(final NetNode node) {
+        Set<NetNode> nodesToRemove = new HashSet<>();
 
-        if (topologyMetaData.isMember(endpoint))
-            logger.info("Node {} state jump to normal", endpoint);
+        if (topologyMetaData.isMember(node))
+            logger.info("Node {} state jump to normal", node);
 
-        updatePeerInfo(endpoint);
+        updatePeerInfo(node);
         // Order Matters, TM.updateHostID() should be called before TM.updateNormalToken(), (see Cassandra-4300).
-        if (Gossiper.instance.usesHostId(endpoint)) {
-            String hostId = Gossiper.instance.getHostId(endpoint);
-            NetEndpoint existing = topologyMetaData.getEndpoint(hostId);
+        if (Gossiper.instance.usesHostId(node)) {
+            String hostId = Gossiper.instance.getHostId(node);
+            NetNode existing = topologyMetaData.getNode(hostId);
 
-            if (existing != null && !existing.equals(endpoint)) {
-                if (existing.equals(ConfigDescriptor.getLocalEndpoint())) {
-                    logger.warn("Not updating host ID {} for {} because it's mine", hostId, endpoint);
-                    topologyMetaData.removeEndpoint(endpoint);
-                    endpointsToRemove.add(endpoint);
-                } else if (Gossiper.instance.compareEndpointStartup(endpoint, existing) > 0) {
+            if (existing != null && !existing.equals(node)) {
+                if (existing.equals(ConfigDescriptor.getLocalNode())) {
+                    logger.warn("Not updating host ID {} for {} because it's mine", hostId, node);
+                    topologyMetaData.removeNode(node);
+                    nodesToRemove.add(node);
+                } else if (Gossiper.instance.compareNodeStartup(node, existing) > 0) {
                     logger.warn("Host ID collision for {} between {} and {}; {} is the new owner", hostId, existing,
-                            endpoint, endpoint);
-                    topologyMetaData.removeEndpoint(existing);
-                    endpointsToRemove.add(existing);
-                    topologyMetaData.updateHostId(hostId, endpoint);
+                            node, node);
+                    topologyMetaData.removeNode(existing);
+                    nodesToRemove.add(existing);
+                    topologyMetaData.updateHostId(hostId, node);
                 } else {
-                    logger.warn("Host ID collision for {} between {} and {}; ignored {}", hostId, existing, endpoint,
-                            endpoint);
-                    topologyMetaData.removeEndpoint(endpoint);
-                    endpointsToRemove.add(endpoint);
+                    logger.warn("Host ID collision for {} between {} and {}; ignored {}", hostId, existing, node, node);
+                    topologyMetaData.removeNode(node);
+                    nodesToRemove.add(node);
                 }
             } else {
-                topologyMetaData.updateHostId(hostId, endpoint);
+                topologyMetaData.updateHostId(hostId, node);
             }
         }
 
-        for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
-            subscriber.onJoinCluster(endpoint);
+        for (INodeLifecycleSubscriber subscriber : lifecycleSubscribers)
+            subscriber.onJoinCluster(node);
     }
 
     /**
      * Handle node preparing to leave the ring
      *
-     * @param endpoint node
+     * @param node node
      */
-    private void handleStateLeaving(NetEndpoint endpoint) {
-        if (!topologyMetaData.isMember(endpoint)) {
-            logger.info("Node {} state jump to leaving", endpoint);
+    private void handleStateLeaving(NetNode node) {
+        if (!topologyMetaData.isMember(node)) {
+            logger.info("Node {} state jump to leaving", node);
         }
-        // at this point the endpoint is certainly a member with this token, so let's proceed normally
-        topologyMetaData.addLeavingEndpoint(endpoint);
+        // at this point the node is certainly a member with this token, so let's proceed normally
+        topologyMetaData.addLeavingNode(node);
     }
 
     /**
      * Handle node leaving the ring. This will happen when a node is decommissioned
      *
-     * @param endpoint If reason for leaving is decommission, endpoint is the leaving node.
+     * @param node If reason for leaving is decommission, node is the leaving node.
      * @param pieces STATE_LEFT,token
      */
-    private void handleStateLeft(NetEndpoint endpoint, String[] pieces) {
-        excise(endpoint, extractExpireTime(pieces));
+    private void handleStateLeft(NetNode node, String[] pieces) {
+        excise(node, extractExpireTime(pieces));
     }
 
     /**
      * Handle notification that a node being actively removed from the ring via 'removenode'
      *
-     * @param endpoint node
+     * @param node node
      * @param pieces either REMOVED_TOKEN (node is gone) or REMOVING_TOKEN (replicas need to be restored)
      */
-    private void handleStateRemoving(NetEndpoint endpoint, String[] pieces) {
+    private void handleStateRemoving(NetNode node, String[] pieces) {
         assert (pieces.length > 0);
 
-        if (endpoint.equals(ConfigDescriptor.getLocalEndpoint())) {
+        if (node.equals(ConfigDescriptor.getLocalNode())) {
             logger.info("Received removenode gossip about myself. "
                     + "Is this node rejoining after an explicit removenode?");
             try {
@@ -416,46 +414,46 @@ public class P2pServer extends DelegatedProtocolServer
             }
             return;
         }
-        if (topologyMetaData.isMember(endpoint)) {
+        if (topologyMetaData.isMember(node)) {
             String state = pieces[0];
             if (VersionedValue.REMOVED_TOKEN.equals(state)) {
-                excise(endpoint, extractExpireTime(pieces));
+                excise(node, extractExpireTime(pieces));
             } else if (VersionedValue.REMOVING_TOKEN.equals(state)) {
 
-                // Note that the endpoint is being removed
-                topologyMetaData.addLeavingEndpoint(endpoint);
+                // Note that the node is being removed
+                topologyMetaData.addLeavingNode(node);
             }
         } else {
             // now that the gossiper has told us about this nonexistent member, notify the gossiper to remove it
             if (VersionedValue.REMOVED_TOKEN.equals(pieces[0]))
-                addExpireTimeIfFound(endpoint, extractExpireTime(pieces));
-            removeEndpoint(endpoint);
+                addExpireTimeIfFound(node, extractExpireTime(pieces));
+            removeNode(node);
         }
     }
 
-    private void excise(NetEndpoint endpoint) {
-        logger.info("Removing endpoint {} ", endpoint);
-        removeEndpoint(endpoint);
-        topologyMetaData.removeEndpoint(endpoint);
+    private void excise(NetNode node) {
+        logger.info("Removing node {} ", node);
+        removeNode(node);
+        topologyMetaData.removeNode(node);
 
-        for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
-            subscriber.onLeaveCluster(endpoint);
+        for (INodeLifecycleSubscriber subscriber : lifecycleSubscribers)
+            subscriber.onLeaveCluster(node);
     }
 
-    private void excise(NetEndpoint endpoint, long expireTime) {
-        addExpireTimeIfFound(endpoint, expireTime);
-        excise(endpoint);
+    private void excise(NetNode node, long expireTime) {
+        addExpireTimeIfFound(node, expireTime);
+        excise(node);
     }
 
-    /** unlike excise we just need this endpoint gone without going through any notifications **/
-    private void removeEndpoint(NetEndpoint endpoint) {
-        Gossiper.instance.removeEndpoint(endpoint);
-        ClusterMetaData.removeEndpoint(endpoint);
+    /** unlike excise we just need this node gone without going through any notifications **/
+    private void removeNode(NetNode node) {
+        Gossiper.instance.removeNode(node);
+        ClusterMetaData.removeNode(node);
     }
 
-    private void addExpireTimeIfFound(NetEndpoint endpoint, long expireTime) {
+    private void addExpireTimeIfFound(NetNode node, long expireTime) {
         if (expireTime != 0L) {
-            Gossiper.instance.addExpireTimeForEndpoint(endpoint, expireTime);
+            Gossiper.instance.addExpireTimeForNode(node, expireTime);
         }
     }
 
@@ -464,37 +462,37 @@ public class P2pServer extends DelegatedProtocolServer
     }
 
     @Override
-    public void onJoin(NetEndpoint endpoint, EndpointState epState) {
+    public void onJoin(NetNode node, NodeState epState) {
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
-            onChange(endpoint, entry.getKey(), entry.getValue());
+            onChange(node, entry.getKey(), entry.getValue());
         }
     }
 
     @Override
-    public void onAlive(NetEndpoint endpoint, EndpointState state) {
-        if (topologyMetaData.isMember(endpoint)) {
-            for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
-                subscriber.onUp(endpoint);
+    public void onAlive(NetNode node, NodeState state) {
+        if (topologyMetaData.isMember(node)) {
+            for (INodeLifecycleSubscriber subscriber : lifecycleSubscribers)
+                subscriber.onUp(node);
         }
     }
 
     @Override
-    public void onRemove(NetEndpoint endpoint) {
-        topologyMetaData.removeEndpoint(endpoint);
+    public void onRemove(NetNode node) {
+        topologyMetaData.removeNode(node);
     }
 
     @Override
-    public void onDead(NetEndpoint endpoint, EndpointState state) {
-        MessagingService.instance().convict(endpoint);
-        for (IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)
-            subscriber.onDown(endpoint);
+    public void onDead(NetNode node, NodeState state) {
+        MessagingService.instance().convict(node);
+        for (INodeLifecycleSubscriber subscriber : lifecycleSubscribers)
+            subscriber.onDown(node);
     }
 
     @Override
-    public void onRestart(NetEndpoint endpoint, EndpointState state) {
+    public void onRestart(NetNode node, NodeState state) {
         // If we have restarted before the node was even marked down, we need to reset the connection pool
         if (state.isAlive())
-            onDead(endpoint, state);
+            onDead(node, state);
     }
 
     /** raw load value */
@@ -516,11 +514,11 @@ public class P2pServer extends DelegatedProtocolServer
 
     public Map<String, String> getLoadMap() {
         Map<String, String> map = new HashMap<>();
-        for (Map.Entry<NetEndpoint, Double> entry : LoadBroadcaster.instance.getLoadInfo().entrySet()) {
+        for (Map.Entry<NetNode, Double> entry : LoadBroadcaster.instance.getLoadInfo().entrySet()) {
             map.put(entry.getKey().getHostAddress(), FileUtils.stringifyFileSize(entry.getValue()));
         }
         // gossiper doesn't see its own updates, so we need to special-case the local node
-        map.put(ConfigDescriptor.getLocalEndpoint().getHostAddress(), getLoadString());
+        map.put(ConfigDescriptor.getLocalNode().getHostAddress(), getLoadString());
         return map;
     }
 
@@ -529,7 +527,7 @@ public class P2pServer extends DelegatedProtocolServer
     }
 
     public List<String> getLeavingNodes() {
-        return stringify(topologyMetaData.getLeavingEndpoints());
+        return stringify(topologyMetaData.getLeavingNodes());
     }
 
     public List<String> getLiveNodes() {
@@ -540,12 +538,12 @@ public class P2pServer extends DelegatedProtocolServer
         return stringify(Gossiper.instance.getUnreachableMembers());
     }
 
-    private List<String> stringify(Iterable<NetEndpoint> endpoints) {
-        List<String> stringEndpoints = new ArrayList<>();
-        for (NetEndpoint ep : endpoints) {
-            stringEndpoints.add(ep.getHostAddress());
+    private List<String> stringify(Iterable<NetNode> nodes) {
+        List<String> stringNodes = new ArrayList<>();
+        for (NetNode ep : nodes) {
+            stringNodes.add(ep.getHostAddress());
         }
-        return stringEndpoints;
+        return stringNodes;
     }
 
     /**

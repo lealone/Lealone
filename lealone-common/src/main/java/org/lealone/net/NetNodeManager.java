@@ -25,29 +25,29 @@ import org.lealone.db.IDatabase;
 import org.lealone.db.Session;
 import org.lealone.storage.replication.ReplicationSession;
 
-public interface NetEndpointManager {
+public interface NetNodeManager {
 
-    Set<NetEndpoint> getLiveEndpoints();
+    Set<NetNode> getLiveNodes();
 
     default long getRpcTimeout() {
         return 0;
     }
 
-    String[] assignEndpoints(IDatabase db);
+    String[] assignNodes(IDatabase db);
 
-    default String[] getReplicationEndpoints(IDatabase db) {
+    default String[] getReplicationNodes(IDatabase db) {
         return new String[0];
     }
 
-    default String[] getShardingEndpoints(IDatabase db) {
+    default String[] getShardingNodes(IDatabase db) {
         return new String[0];
     }
 
-    default ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints) {
+    default ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
         return null;
     }
 
-    default ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints,
+    default ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
             Boolean remote) {
         return null;
     }
@@ -56,16 +56,16 @@ public interface NetEndpointManager {
         return null;
     }
 
-    default NetEndpoint getEndpoint(String hostId) {
+    default NetNode getNode(String hostId) {
         return null;
     }
 
-    default String getHostId(NetEndpoint endpoint) {
+    default String getHostId(NetNode node) {
         return null;
     }
 
-    default List<NetEndpoint> getReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints) {
+    default List<NetNode> getReplicationNodes(IDatabase db, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes) {
         return null;
     }
 
@@ -73,7 +73,7 @@ public interface NetEndpointManager {
         return null;
     }
 
-    default Collection<String> getRecognizedEndpointAssignmentStrategyOptions(String strategyName) {
+    default Collection<String> getRecognizedNodeAssignmentStrategyOptions(String strategyName) {
         return null;
     }
 
@@ -85,11 +85,11 @@ public interface NetEndpointManager {
         return 1;
     }
 
-    default String getDefaultEndpointAssignmentStrategy() {
+    default String getDefaultNodeAssignmentStrategy() {
         return null;
     }
 
-    default int getDefaultEndpointAssignmentFactor() {
+    default int getDefaultNodeAssignmentFactor() {
         return 1;
     }
 }

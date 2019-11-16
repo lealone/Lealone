@@ -26,7 +26,7 @@ import java.util.Map;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 public class ClusterMetaData {
 
@@ -44,8 +44,8 @@ public class ClusterMetaData {
             stmt.execute("CREATE TABLE IF NOT EXISTS " + NODES_TABLE + "(" //
                     + "id varchar,"//
                     + "host_id varchar,"//
-                    + "tcp_endpoint varchar,"//
-                    + "p2p_endpoint varchar,"//
+                    + "tcp_node varchar,"//
+                    + "p2p_node varchar,"//
                     + "data_center varchar,"//
                     + "rack varchar,"//
                     + "release_version varchar,"//
@@ -64,18 +64,18 @@ public class ClusterMetaData {
         logger.error("Cluster metadata exception", e);
     }
 
-    public static synchronized Map<NetEndpoint, String> loadHostIds() {
-        Map<NetEndpoint, String> hostIdMap = new HashMap<>();
+    public static synchronized Map<NetNode, String> loadHostIds() {
+        Map<NetNode, String> hostIdMap = new HashMap<>();
         try {
-            ResultSet rs = stmt.executeQuery("SELECT host_id, p2p_endpoint FROM " + NODES_TABLE);
+            ResultSet rs = stmt.executeQuery("SELECT host_id, p2p_node FROM " + NODES_TABLE);
             while (rs.next()) {
                 String hostId = rs.getString(1);
-                String p2pEndpoint = rs.getString(2);
-                if (p2pEndpoint == null) {
+                String p2pNode = rs.getString(2);
+                if (p2pNode == null) {
                     continue;
                 }
-                NetEndpoint endpoint = NetEndpoint.getByName(p2pEndpoint);
-                hostIdMap.put(endpoint, hostId);
+                NetNode node = NetNode.getByName(p2pNode);
+                hostIdMap.put(node, hostId);
             }
             rs.close();
         } catch (Exception e) {
@@ -84,7 +84,7 @@ public class ClusterMetaData {
         return hostIdMap;
     }
 
-    public static synchronized int incrementAndGetGeneration(NetEndpoint ep) {
+    public static synchronized int incrementAndGetGeneration(NetNode ep) {
         String sql = "SELECT gossip_generation FROM %s WHERE id='%s'";
         int generation = 0;
         try {
@@ -120,7 +120,7 @@ public class ClusterMetaData {
     }
 
     // 由调用者确定是否把本地节点的信息存入NODES表
-    public static synchronized void updatePeerInfo(NetEndpoint ep, String columnName, Object value) {
+    public static synchronized void updatePeerInfo(NetNode ep, String columnName, Object value) {
         try {
             String sql = "MERGE INTO %s (id, %s) KEY(id) VALUES('%s', '%s')";
             stmt.executeUpdate(String.format(sql, NODES_TABLE, columnName, ep.getHostAndPort(), value));
@@ -129,7 +129,7 @@ public class ClusterMetaData {
         }
     }
 
-    public static synchronized void removeEndpoint(NetEndpoint ep) {
+    public static synchronized void removeNode(NetNode ep) {
         String sql = "DELETE FROM %s WHERE id = '%s'";
         try {
             stmt.executeUpdate(String.format(sql, NODES_TABLE, ep.getHostAndPort()));
@@ -138,16 +138,16 @@ public class ClusterMetaData {
         }
     }
 
-    public static synchronized Map<NetEndpoint, Map<String, String>> loadDcRackInfo() {
-        Map<NetEndpoint, Map<String, String>> map = new HashMap<>();
+    public static synchronized Map<NetNode, Map<String, String>> loadDcRackInfo() {
+        Map<NetNode, Map<String, String>> map = new HashMap<>();
         try {
             ResultSet rs = stmt.executeQuery("SELECT host_id, data_center, rack FROM " + NODES_TABLE);
             while (rs.next()) {
-                NetEndpoint endpoint = NetEndpoint.getByName(rs.getString(1));
+                NetNode node = NetNode.getByName(rs.getString(1));
                 Map<String, String> dcRackInfo = new HashMap<>();
                 dcRackInfo.put("data_center", rs.getString(2));
                 dcRackInfo.put("rack", rs.getString(3));
-                map.put(endpoint, dcRackInfo);
+                map.put(node, dcRackInfo);
             }
             rs.close();
         } catch (Exception e) {
@@ -156,14 +156,14 @@ public class ClusterMetaData {
         return map;
     }
 
-    public static synchronized NetEndpoint getPreferredIP(NetEndpoint ep) {
+    public static synchronized NetNode getPreferredIP(NetNode ep) {
         String sql = "SELECT preferred_ip FROM %s WHERE id='%s'";
         try {
             ResultSet rs = stmt.executeQuery(String.format(sql, NODES_TABLE, ep.getHostAndPort()));
             if (rs.next()) {
                 String preferredIp = rs.getString(1);
                 if (preferredIp != null)
-                    return NetEndpoint.getByName(preferredIp);
+                    return NetNode.getByName(preferredIp);
             }
         } catch (Exception e) {
             handleException(e);
@@ -171,7 +171,7 @@ public class ClusterMetaData {
         return ep;
     }
 
-    public static synchronized void updatePreferredIP(NetEndpoint ep, NetEndpoint preferred_ip) {
+    public static synchronized void updatePreferredIP(NetNode ep, NetNode preferred_ip) {
         updatePeerInfo(ep, "preferred_ip", preferred_ip.getHostAndPort());
     }
 }

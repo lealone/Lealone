@@ -26,13 +26,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.lealone.p2p.net.IVersionedSerializer;
 
 /**
- * This abstraction represents both the HeartBeatState and the ApplicationState in an EndpointState
- * instance. Any state for a given endpoint can be retrieved from this instance.
+ * This abstraction represents both the HeartBeatState and the ApplicationState in an NodeState
+ * instance. Any state for a given node can be retrieved from this instance.
  */
-public class EndpointState {
+public class NodeState {
     private static final ApplicationState[] STATES = ApplicationState.values();
 
-    public final static IVersionedSerializer<EndpointState> serializer = new EndpointStateSerializer();
+    public final static IVersionedSerializer<NodeState> serializer = new NodeStateSerializer();
 
     private volatile HeartBeatState hbState;
     final Map<ApplicationState, VersionedValue> applicationState = new ConcurrentHashMap<>();
@@ -41,7 +41,7 @@ public class EndpointState {
     private volatile long updateTimestamp;
     private volatile boolean isAlive;
 
-    EndpointState(HeartBeatState initialHbState) {
+    NodeState(HeartBeatState initialHbState) {
         hbState = initialHbState;
         updateTimestamp = System.nanoTime();
         isAlive = true;
@@ -98,12 +98,12 @@ public class EndpointState {
 
     @Override
     public String toString() {
-        return String.format("EndpointState[ %s, AppStateMap = %s ]", hbState, applicationState);
+        return String.format("NodeState[ %s, AppStateMap = %s ]", hbState, applicationState);
     }
 
-    private static class EndpointStateSerializer implements IVersionedSerializer<EndpointState> {
+    private static class NodeStateSerializer implements IVersionedSerializer<NodeState> {
         @Override
-        public void serialize(EndpointState epState, DataOutput out, int version) throws IOException {
+        public void serialize(NodeState epState, DataOutput out, int version) throws IOException {
             /* serialize the HeartBeatState */
             HeartBeatState hbState = epState.getHeartBeatState();
             HeartBeatState.serializer.serialize(hbState, out, version);
@@ -119,15 +119,15 @@ public class EndpointState {
         }
 
         @Override
-        public EndpointState deserialize(DataInput in, int version) throws IOException {
+        public NodeState deserialize(DataInput in, int version) throws IOException {
             HeartBeatState hbState = HeartBeatState.serializer.deserialize(in, version);
-            EndpointState epState = new EndpointState(hbState);
+            NodeState epState = new NodeState(hbState);
 
             int appStateSize = in.readInt();
             for (int i = 0; i < appStateSize; ++i) {
                 int key = in.readInt();
                 VersionedValue value = VersionedValue.serializer.deserialize(in, version);
-                epState.addApplicationState(EndpointState.STATES[key], value);
+                epState.addApplicationState(NodeState.STATES[key], value);
             }
             return epState;
         }

@@ -23,12 +23,12 @@ import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Session;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.type.StorageDataType;
 
 public interface DistributedStorageMap<K, V> extends StorageMap<K, V> {
 
-    List<NetEndpoint> getReplicationEndpoints(Object key);
+    List<NetNode> getReplicationNodes(Object key);
 
     Object replicationPut(Session session, Object key, Object value, StorageDataType valueType);
 
@@ -48,7 +48,7 @@ public interface DistributedStorageMap<K, V> extends StorageMap<K, V> {
 
     void setRootPage(ByteBuffer buff);
 
-    default Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
+    default Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to) {
         return null;
     }
 }

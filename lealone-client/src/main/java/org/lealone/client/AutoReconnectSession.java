@@ -28,13 +28,13 @@ import org.lealone.db.DelegatedSession;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.replication.ReplicationSession;
 
 class AutoReconnectSession extends DelegatedSession {
 
     private ConnectionInfo ci;
-    private String newTargetEndpoints;
+    private String newTargetNodes;
 
     public AutoReconnectSession(ConnectionInfo ci) {
         if (!ci.isRemote()) {
@@ -47,7 +47,7 @@ class AutoReconnectSession extends DelegatedSession {
     public void setAutoCommit(boolean autoCommit) {
         super.setAutoCommit(autoCommit);
 
-        if (newTargetEndpoints != null) {
+        if (newTargetNodes != null) {
             reconnect();
         }
     }
@@ -88,14 +88,14 @@ class AutoReconnectSession extends DelegatedSession {
         if (allowRedirect) {
             if (getRunMode() == RunMode.REPLICATION) {
                 ConnectionInfo ci = this.ci;
-                servers = StringUtils.arraySplit(getTargetEndpoints(), ',', true);
+                servers = StringUtils.arraySplit(getTargetNodes(), ',', true);
                 int size = servers.length;
                 ClientSession[] sessions = new ClientSession[size];
                 for (int i = 0; i < size; i++) {
                     // 如果首次连接的节点就是复制节点之一，则复用它
                     if (isValid()) {
-                        NetEndpoint endpoint = NetEndpoint.createTCP(servers[i]);
-                        if (endpoint.getInetSocketAddress().equals(inetSocketAddress)) {
+                        NetNode node = NetNode.createTCP(servers[i]);
+                        if (node.getInetSocketAddress().equals(inetSocketAddress)) {
                             sessions[i] = clientSession;
                             continue;
                         }
@@ -113,7 +113,7 @@ class AutoReconnectSession extends DelegatedSession {
                 switch (getRunMode()) {
                 case CLIENT_SERVER:
                 case SHARDING: {
-                    this.ci = this.ci.copy(getTargetEndpoints());
+                    this.ci = this.ci.copy(getTargetNodes());
                     // 关闭当前session,因为连到的节点不是所要的,这里可能会关闭vertx,
                     // 所以要放在构造下一个ClientSession前调用
                     this.close();
@@ -128,8 +128,8 @@ class AutoReconnectSession extends DelegatedSession {
     }
 
     @Override
-    public void runModeChanged(String newTargetEndpoints) {
-        this.newTargetEndpoints = newTargetEndpoints;
+    public void runModeChanged(String newTargetNodes) {
+        this.newTargetNodes = newTargetNodes;
         if (session.isAutoCommit()) {
             reconnect();
         }
@@ -137,17 +137,17 @@ class AutoReconnectSession extends DelegatedSession {
 
     private void reconnect() {
         Session oldSession = this.session;
-        this.ci = this.ci.copy(newTargetEndpoints);
+        this.ci = this.ci.copy(newTargetNodes);
         ConcurrentUtils.submitTask("Reconnect", () -> {
             connect();
             oldSession.close();
-            newTargetEndpoints = null;
+            newTargetNodes = null;
         });
     }
 
     @Override
     public void reconnectIfNeeded() {
-        if (newTargetEndpoints != null) {
+        if (newTargetNodes != null) {
             reconnect();
         }
     }

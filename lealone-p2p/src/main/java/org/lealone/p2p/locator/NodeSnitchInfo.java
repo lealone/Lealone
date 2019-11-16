@@ -23,15 +23,15 @@ import java.net.UnknownHostException;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.util.Utils;
 
-public class EndpointSnitchInfo implements EndpointSnitchInfoMBean {
+public class NodeSnitchInfo implements NodeSnitchInfoMBean {
     public static void create() {
         MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
         try {
-            mbs.registerMBean(new EndpointSnitchInfo(), new ObjectName(Utils.getJmxObjectName("EndpointSnitchInfo")));
+            mbs.registerMBean(new NodeSnitchInfo(), new ObjectName(Utils.getJmxObjectName("NodeSnitchInfo")));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -39,16 +39,16 @@ public class EndpointSnitchInfo implements EndpointSnitchInfoMBean {
 
     @Override
     public String getDatacenter(String host) throws UnknownHostException {
-        return ConfigDescriptor.getEndpointSnitch().getDatacenter(NetEndpoint.getByName(host));
+        return ConfigDescriptor.getNodeSnitch().getDatacenter(NetNode.getByName(host));
     }
 
     @Override
     public String getRack(String host) throws UnknownHostException {
-        return ConfigDescriptor.getEndpointSnitch().getRack(NetEndpoint.getByName(host));
+        return ConfigDescriptor.getNodeSnitch().getRack(NetNode.getByName(host));
     }
 
     @Override
     public String getSnitchName() {
-        return ConfigDescriptor.getEndpointSnitch().getClass().getName();
+        return ConfigDescriptor.getNodeSnitch().getClass().getName();
     }
 }

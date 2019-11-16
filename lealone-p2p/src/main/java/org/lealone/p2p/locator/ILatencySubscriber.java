@@ -17,8 +17,8 @@
  */
 package org.lealone.p2p.locator;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 public interface ILatencySubscriber {
-    public void receiveTiming(NetEndpoint address, long latency);
+    public void receiveTiming(NetNode address, long latency);
 }

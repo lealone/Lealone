@@ -42,7 +42,8 @@ public class OnlineDDLTest {
             stmt.executeUpdate("ALTER TABLE test ADD CONSTRAINT test_constraint_check CHECK (f1 > 1)");
             stmt.executeUpdate("ALTER TABLE test ADD CONSTRAINT test_constraint_unique UNIQUE KEY (f2)");
             stmt.executeUpdate("DROP TABLE IF EXISTS ConstraintReferentialTestTable CASCADE");
-            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ConstraintReferentialTestTable (f1 int PRIMARY KEY not null)");
+            stmt.executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS ConstraintReferentialTestTable (f1 int PRIMARY KEY not null)");
             ResultSet rs2 = stmt.executeQuery("SELECT count(*) FROM test");
             rs2.next();
             System.out.println("count=" + rs2.getInt(1));

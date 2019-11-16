@@ -38,7 +38,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
@@ -56,7 +56,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     protected final boolean isShardingMode;
     protected IDatabase db;
     private RunMode runMode;
-    private String[] oldEndpoints;
+    private String[] oldNodes;
 
     protected DistributedBTreeMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, Object> config, AOStorage aoStorage) {
@@ -69,26 +69,26 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         db = (IDatabase) config.get("db");
 
         if (btreeStorage.lastChunk == null && isShardingMode) {
-            String initReplicationEndpoints = (String) config.get("initReplicationEndpoints");
-            DataUtils.checkArgument(initReplicationEndpoints != null, "The initReplicationEndpoints may not be null");
-            String[] replicationEndpoints = StringUtils.arraySplit(initReplicationEndpoints, '&');
-            if (containsLocalEndpoint(replicationEndpoints)) {
+            String initReplicationNodes = (String) config.get("initReplicationNodes");
+            DataUtils.checkArgument(initReplicationNodes != null, "The initReplicationNodes may not be null");
+            String[] replicationNodes = StringUtils.arraySplit(initReplicationNodes, '&');
+            if (containsLocalNode(replicationNodes)) {
                 root = BTreeLeafPage.createEmpty(this);
             } else {
                 root = new BTreeRemotePage(this);
             }
-            root.setReplicationHostIds(Arrays.asList(replicationEndpoints));
-            btreeStorage.addHostIds(replicationEndpoints);
+            root.setReplicationHostIds(Arrays.asList(replicationNodes));
+            btreeStorage.addHostIds(replicationNodes);
             // 强制把replicationHostIds持久化
             btreeStorage.forceSave();
             parallelDisabled = true;
         }
     }
 
-    private boolean containsLocalEndpoint(String[] replicationEndpoints) {
-        NetEndpoint local = NetEndpoint.getLocalTcpEndpoint();
-        for (String e : replicationEndpoints) {
-            if (local.equals(NetEndpoint.createTCP(e)))
+    private boolean containsLocalNode(String[] replicationNodes) {
+        NetNode local = NetNode.getLocalTcpNode();
+        for (String e : replicationNodes) {
+            if (local.equals(NetNode.createTCP(e)))
                 return true;
         }
         return false;
@@ -112,12 +112,12 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     @Override
     protected <R> Object putRemote(BTreePage p, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
         if (p.getLeafPageMovePlan().moverHostId.equals(getLocalHostId())) {
-            int size = p.getLeafPageMovePlan().replicationEndpoints.size();
-            List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
-            replicationEndpoints.addAll(p.getLeafPageMovePlan().replicationEndpoints);
-            boolean containsLocalEndpoint = replicationEndpoints.remove(getLocalEndpoint());
+            int size = p.getLeafPageMovePlan().replicationNodes.size();
+            List<NetNode> replicationNodes = new ArrayList<>(size);
+            replicationNodes.addAll(p.getLeafPageMovePlan().replicationNodes);
+            boolean containsLocalNode = replicationNodes.remove(getLocalNode());
             Object returnValue = null;
-            ReplicationSession rs = db.createReplicationSession(db.createInternalSession(), replicationEndpoints);
+            ReplicationSession rs = db.createReplicationSession(db.createInternalSession(), replicationNodes);
             try (DataBuffer k = DataBuffer.create();
                     DataBuffer v = DataBuffer.create();
                     StorageCommand c = rs.createStorageCommand()) {
@@ -129,7 +129,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
                 }
             }
             // 如果新的复制节点中还包含本地节点，那么还需要put到本地节点中
-            if (containsLocalEndpoint) {
+            if (containsLocalNode) {
                 return put(key, value); // TODO 可能还有bug
             } else {
                 return returnValue;
@@ -139,16 +139,16 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         }
     }
 
-    private Set<NetEndpoint> getCandidateEndpoints() {
-        return getCandidateEndpoints(db, db.getHostIds());
+    private Set<NetNode> getCandidateNodes() {
+        return getCandidateNodes(db, db.getHostIds());
     }
 
-    static Set<NetEndpoint> getCandidateEndpoints(IDatabase db, String[] hostIds) {
-        Set<NetEndpoint> candidateEndpoints = new HashSet<>(hostIds.length);
+    static Set<NetNode> getCandidateNodes(IDatabase db, String[] hostIds) {
+        Set<NetNode> candidateNodes = new HashSet<>(hostIds.length);
         for (String hostId : hostIds) {
-            candidateEndpoints.add(db.getEndpoint(hostId));
+            candidateNodes.add(db.getNode(hostId));
         }
-        return candidateEndpoints;
+        return candidateNodes;
     }
 
     // 必需同步
@@ -188,14 +188,14 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
                     return;
 
                 p = parent.getChildPage(index);
-                String[] oldEndpoints;
+                String[] oldNodes;
                 if (p.getReplicationHostIds() == null) {
-                    oldEndpoints = new String[0];
+                    oldNodes = new String[0];
                 } else {
-                    oldEndpoints = new String[p.getReplicationHostIds().size()];
-                    p.getReplicationHostIds().toArray(oldEndpoints);
+                    oldNodes = new String[p.getReplicationHostIds().size()];
+                    p.getReplicationHostIds().toArray(oldNodes);
                 }
-                replicateOrMovePage(pageKey, p, parent, index, oldEndpoints, false);
+                replicateOrMovePage(pageKey, p, parent, index, oldNodes, false);
                 break;
             }
         }
@@ -207,41 +207,41 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     // 3. 在sharding模式下发生page split时需要移动右边的page
     //
     // 前两种场景在移动page时所选定的目标节点可以是原来的节点，后一种不可以。
-    // 除此之外，这三者并没有多大差异，只是oldEndpoints中包含的节点个数多少的问题，
+    // 除此之外，这三者并没有多大差异，只是oldNodes中包含的节点个数多少的问题，
     // client_server模式只有一个节点，在replication模式下，如果副本个数是1，那么也相当于client_server模式。
-    private void replicateOrMovePage(PageKey pageKey, BTreePage p, BTreePage parent, int index, String[] oldEndpoints,
+    private void replicateOrMovePage(PageKey pageKey, BTreePage p, BTreePage parent, int index, String[] oldNodes,
             boolean replicate) {
-        Set<NetEndpoint> candidateEndpoints = getCandidateEndpoints();
-        replicateOrMovePage(pageKey, p, parent, index, oldEndpoints, replicate, candidateEndpoints);
+        Set<NetNode> candidateNodes = getCandidateNodes();
+        replicateOrMovePage(pageKey, p, parent, index, oldNodes, replicate, candidateNodes);
     }
 
-    void replicateOrMovePage(PageKey pageKey, BTreePage p, BTreePage parent, int index, String[] oldEndpoints,
-            boolean replicate, Set<NetEndpoint> candidateEndpoints) {
-        if (oldEndpoints == null || oldEndpoints.length == 0) {
-            DbException.throwInternalError("oldEndpoints is null");
+    void replicateOrMovePage(PageKey pageKey, BTreePage p, BTreePage parent, int index, String[] oldNodes,
+            boolean replicate, Set<NetNode> candidateNodes) {
+        if (oldNodes == null || oldNodes.length == 0) {
+            DbException.throwInternalError("oldNodes is null");
         }
 
-        List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(db, oldEndpoints);
-        Set<NetEndpoint> oldEndpointSet;
+        List<NetNode> oldReplicationNodes = getReplicationNodes(db, oldNodes);
+        Set<NetNode> oldNodeSet;
         if (replicate) {
-            // 允许选择原来的节点，所以用new HashSet<>(0)替代new HashSet<>(oldReplicationEndpoints)
-            oldEndpointSet = new HashSet<>(0);
+            // 允许选择原来的节点，所以用new HashSet<>(0)替代new HashSet<>(oldReplicationNodes)
+            oldNodeSet = new HashSet<>(0);
         } else {
-            oldEndpointSet = new HashSet<>(oldReplicationEndpoints);
+            oldNodeSet = new HashSet<>(oldReplicationNodes);
         }
 
-        List<NetEndpoint> newReplicationEndpoints = db.getReplicationEndpoints(oldEndpointSet, candidateEndpoints);
+        List<NetNode> newReplicationNodes = db.getReplicationNodes(oldNodeSet, candidateNodes);
 
         Session session = db.createInternalSession();
         LeafPageMovePlan leafPageMovePlan = null;
 
-        if (oldEndpoints.length == 1) {
-            leafPageMovePlan = new LeafPageMovePlan(oldEndpoints[0], newReplicationEndpoints, pageKey);
+        if (oldNodes.length == 1) {
+            leafPageMovePlan = new LeafPageMovePlan(oldNodes[0], newReplicationNodes, pageKey);
             p.setLeafPageMovePlan(leafPageMovePlan);
         } else {
-            ReplicationSession rs = db.createReplicationSession(session, oldReplicationEndpoints);
+            ReplicationSession rs = db.createReplicationSession(session, oldReplicationNodes);
             try (StorageCommand c = rs.createStorageCommand()) {
-                LeafPageMovePlan plan = new LeafPageMovePlan(getLocalHostId(), newReplicationEndpoints, pageKey);
+                LeafPageMovePlan plan = new LeafPageMovePlan(getLocalHostId(), newReplicationNodes, pageKey);
                 leafPageMovePlan = c.prepareMoveLeafPage(getName(), plan);
             }
 
@@ -253,48 +253,48 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
             p = setLeafPageMovePlan(pageKey, leafPageMovePlan);
 
             if (!leafPageMovePlan.moverHostId.equals(getLocalHostId())) {
-                p.setReplicationHostIds(leafPageMovePlan.getReplicationEndpoints());
+                p.setReplicationHostIds(leafPageMovePlan.getReplicationNodes());
                 return;
             }
         }
 
-        p.setReplicationHostIds(toHostIds(db, newReplicationEndpoints));
-        NetEndpoint localEndpoint = getLocalEndpoint();
+        p.setReplicationHostIds(toHostIds(db, newReplicationNodes));
+        NetNode localNode = getLocalNode();
 
-        Set<NetEndpoint> otherEndpoints = new HashSet<>(candidateEndpoints);
-        otherEndpoints.removeAll(newReplicationEndpoints);
+        Set<NetNode> otherNodes = new HashSet<>(candidateNodes);
+        otherNodes.removeAll(newReplicationNodes);
 
-        if (parent != null && !replicate && !newReplicationEndpoints.contains(localEndpoint)) {
+        if (parent != null && !replicate && !newReplicationNodes.contains(localNode)) {
             PageReference r = PageReference.createRemotePageReference(pageKey.key, index == 0);
             r.replicationHostIds = p.getReplicationHostIds();
             parent.setChild(index, r);
         }
         if (!replicate) {
-            otherEndpoints.removeAll(oldReplicationEndpoints);
-            newReplicationEndpoints.removeAll(oldReplicationEndpoints);
+            otherNodes.removeAll(oldReplicationNodes);
+            newReplicationNodes.removeAll(oldReplicationNodes);
         }
 
-        if (newReplicationEndpoints.contains(localEndpoint)) {
-            newReplicationEndpoints.remove(localEndpoint);
+        if (newReplicationNodes.contains(localNode)) {
+            newReplicationNodes.remove(localNode);
         }
 
         // 移动page到新的复制节点(page中包含数据)
-        if (!newReplicationEndpoints.isEmpty()) {
-            ReplicationSession rs = db.createReplicationSession(session, newReplicationEndpoints, true);
+        if (!newReplicationNodes.isEmpty()) {
+            ReplicationSession rs = db.createReplicationSession(session, newReplicationNodes, true);
             moveLeafPage(leafPageMovePlan.pageKey, p, rs, false, !replicate);
         }
 
         // 当前节点已经不是副本所在节点
-        if (parent != null && replicate && otherEndpoints.contains(localEndpoint)) {
-            otherEndpoints.remove(localEndpoint);
+        if (parent != null && replicate && otherNodes.contains(localNode)) {
+            otherNodes.remove(localNode);
             PageReference r = PageReference.createRemotePageReference(pageKey.key, index == 0);
             r.replicationHostIds = p.getReplicationHostIds();
             parent.setChild(index, r);
         }
 
         // 移动page到其他节点(page中不包含数据，只包含这个page各数据副本所在节点信息)
-        if (!otherEndpoints.isEmpty()) {
-            ReplicationSession rs = db.createReplicationSession(session, otherEndpoints, true);
+        if (!otherNodes.isEmpty()) {
+            ReplicationSession rs = db.createReplicationSession(session, otherNodes, true);
             moveLeafPage(leafPageMovePlan.pageKey, p, rs, true, !replicate);
         }
     }
@@ -315,11 +315,11 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     private void removeLeafPage(PageKey pageKey, BTreePage leafPage) {
         if (leafPage.getReplicationHostIds().get(0).equals(getLocalHostId())) {
             RunnableOperation operation = new RunnableOperation(() -> {
-                List<NetEndpoint> oldReplicationEndpoints = getReplicationEndpoints(leafPage);
-                Set<NetEndpoint> otherEndpoints = getCandidateEndpoints();
-                otherEndpoints.removeAll(oldReplicationEndpoints);
+                List<NetNode> oldReplicationNodes = getReplicationNodes(leafPage);
+                Set<NetNode> otherNodes = getCandidateNodes();
+                otherNodes.removeAll(oldReplicationNodes);
                 Session session = db.createInternalSession();
-                ReplicationSession rs = db.createReplicationSession(session, otherEndpoints, true);
+                ReplicationSession rs = db.createReplicationSession(session, otherNodes, true);
                 try (StorageCommand c = rs.createStorageCommand()) {
                     c.removeLeafPage(getName(), pageKey);
                 }
@@ -459,13 +459,13 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     }
 
     @Override
-    public List<NetEndpoint> getReplicationEndpoints(Object key) {
-        return getReplicationEndpoints(root, key);
+    public List<NetNode> getReplicationNodes(Object key) {
+        return getReplicationNodes(root, key);
     }
 
-    private List<NetEndpoint> getReplicationEndpoints(BTreePage p, Object key) {
+    private List<NetNode> getReplicationNodes(BTreePage p, Object key) {
         if (p.isLeaf()) {
-            return getReplicationEndpoints(p);
+            return getReplicationNodes(p);
         }
         int index = p.binarySearch(key);
         // p is a node
@@ -474,44 +474,44 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         } else {
             index++;
         }
-        return getReplicationEndpoints(p.getChildPage(index), key);
+        return getReplicationNodes(p.getChildPage(index), key);
     }
 
-    private List<NetEndpoint> getReplicationEndpoints(BTreePage p) {
-        return getReplicationEndpoints(db, p.getReplicationHostIds());
+    private List<NetNode> getReplicationNodes(BTreePage p) {
+        return getReplicationNodes(db, p.getReplicationHostIds());
     }
 
-    static List<NetEndpoint> getReplicationEndpoints(IDatabase db, String[] replicationHostIds) {
-        return getReplicationEndpoints(db, Arrays.asList(replicationHostIds));
+    static List<NetNode> getReplicationNodes(IDatabase db, String[] replicationHostIds) {
+        return getReplicationNodes(db, Arrays.asList(replicationHostIds));
     }
 
-    static List<NetEndpoint> getReplicationEndpoints(IDatabase db, List<String> replicationHostIds) {
+    static List<NetNode> getReplicationNodes(IDatabase db, List<String> replicationHostIds) {
         int size = replicationHostIds.size();
-        List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
+        List<NetNode> replicationNodes = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            replicationEndpoints.add(db.getEndpoint(replicationHostIds.get(i)));
+            replicationNodes.add(db.getNode(replicationHostIds.get(i)));
         }
-        return replicationEndpoints;
+        return replicationNodes;
     }
 
-    private List<NetEndpoint> getLastPageReplicationEndpoints() {
+    private List<NetNode> getLastPageReplicationNodes() {
         BTreePage p = root;
         while (true) {
             if (p.isLeaf()) {
-                return getReplicationEndpoints(p);
+                return getReplicationNodes(p);
             }
             p = p.getChildPage(getChildPageCount(p) - 1);
         }
     }
 
-    NetEndpoint getLocalEndpoint() {
-        return NetEndpoint.getLocalP2pEndpoint();
+    NetNode getLocalNode() {
+        return NetNode.getLocalP2pNode();
     }
 
     @Override
     public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
-        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
-        ReplicationSession rs = db.createReplicationSession(session, replicationEndpoints);
+        List<NetNode> replicationNodes = getReplicationNodes(key);
+        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer k = DataBuffer.create();
                 DataBuffer v = DataBuffer.create();
                 StorageCommand c = rs.createStorageCommand()) {
@@ -526,8 +526,8 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
 
     @Override
     public Object replicationGet(Session session, Object key) {
-        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(key);
-        ReplicationSession rs = db.createReplicationSession(session, replicationEndpoints);
+        List<NetNode> replicationNodes = getReplicationNodes(key);
+        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
             byte[] value = (byte[]) c.executeGet(getName(), keyBuffer);
@@ -539,8 +539,8 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
 
     @Override
     public Object replicationAppend(Session session, Object value, StorageDataType valueType) {
-        List<NetEndpoint> replicationEndpoints = getLastPageReplicationEndpoints();
-        ReplicationSession rs = db.createReplicationSession(session, replicationEndpoints);
+        List<NetNode> replicationNodes = getLastPageReplicationNodes();
+        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer v = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer valueBuffer = v.write(valueType, value);
             return c.executeAppend(null, getName(), valueBuffer, null);
@@ -561,11 +561,11 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     }
 
     public void replicateRootPage(DataBuffer p) {
-        root.replicatePage(p, NetEndpoint.getLocalTcpEndpoint());
+        root.replicatePage(p, NetNode.getLocalTcpNode());
     }
 
-    public void setOldEndpoints(String[] oldEndpoints) {
-        this.oldEndpoints = oldEndpoints;
+    public void setOldNodes(String[] oldNodes) {
+        this.oldNodes = oldNodes;
     }
 
     public void setDatabase(IDatabase db) {
@@ -609,7 +609,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
 
     private ByteBuffer replicatePage(BTreePage p) {
         try (DataBuffer buff = DataBuffer.create()) {
-            p.replicatePage(buff, getLocalEndpoint());
+            p.replicatePage(buff, getLocalNode());
             ByteBuffer pageBuffer = buff.getAndFlipBuffer();
             return pageBuffer.slice();
         }
@@ -628,14 +628,14 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
 
         // 以下处理从client_server或replication模式到sharding模式的场景
         // ---------------------------------------------------------------
-        replicateOrMovePage(pageKey, p, parent, index, oldEndpoints, true);
+        replicateOrMovePage(pageKey, p, parent, index, oldNodes, true);
 
         return replicatePage(p);
     }
 
-    private static List<String> toHostIds(IDatabase db, List<NetEndpoint> endpoints) {
-        List<String> hostIds = new ArrayList<>(endpoints.size());
-        for (NetEndpoint e : endpoints) {
+    private static List<String> toHostIds(IDatabase db, List<NetNode> nodes) {
+        List<String> hostIds = new ArrayList<>(nodes.size());
+        for (NetNode e : nodes) {
             String id = db.getHostId(e);
             hostIds.add(id);
         }
@@ -654,18 +654,18 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         root.readRemotePagesRecursive();
     }
 
-    public void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
-        root.moveAllLocalLeafPages(oldEndpoints, newEndpoints);
+    public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
+        root.moveAllLocalLeafPages(oldNodes, newNodes);
     }
 
     // 查找闭区间[from, to]对应的所有leaf page，并建立这些leaf page所在节点与page key的映射关系
     // 该方法不需要读取leaf page或remote page
     @Override
-    public Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to) {
-        return getEndpointToPageKeyMap(session, from, to, null);
+    public Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to) {
+        return getNodeToPageKeyMap(session, from, to, null);
     }
 
-    public Map<String, List<PageKey>> getEndpointToPageKeyMap(Session session, K from, K to, List<PageKey> pageKeys) {
+    public Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to, List<PageKey> pageKeys) {
         Map<String, List<PageKey>> map = new HashMap<>();
         Random random = new Random();
         if (root.isLeaf()) {

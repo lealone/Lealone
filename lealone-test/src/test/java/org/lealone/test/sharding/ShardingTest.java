@@ -42,12 +42,12 @@ public class ShardingTest extends SqlTestBase {
                 + " RUN MODE sharding PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:1, nodes:7)";
 
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
-        sql += " PARAMETERS (endpoint_assignment_strategy: 'RandomEndpointAssignmentStrategy', assignment_factor: 1)";
+        sql += " PARAMETERS (node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 1)";
         // stmt.executeUpdate(sql);
 
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
-        sql += " endpoint_assignment_strategy: 'RandomEndpointAssignmentStrategy', assignment_factor: 3)";
+        sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 3)";
         stmt.executeUpdate(sql);
 
         // stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");

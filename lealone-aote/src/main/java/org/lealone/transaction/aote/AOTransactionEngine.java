@@ -19,7 +19,7 @@ package org.lealone.transaction.aote;
 
 import java.util.Map;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
@@ -57,8 +57,7 @@ public class AOTransactionEngine extends AMTransactionEngine {
     }
 
     boolean validateTransaction(long tid, AOTransaction currentTransaction) {
-        return TransactionStatusTable.validateTransaction(NetEndpoint.getLocalTcpHostAndPort(), tid,
-                currentTransaction);
+        return TransactionStatusTable.validateTransaction(NetNode.getLocalTcpHostAndPort(), tid, currentTransaction);
     }
 
     @Override

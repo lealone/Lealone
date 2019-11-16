@@ -24,7 +24,7 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.TcpClientConnection;
@@ -116,11 +116,11 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             return tcpConnection;
 
         try {
-            NetEndpoint endpoint = NetEndpoint.createTCP(server);
+            NetNode node = NetNode.createTCP(server);
             NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
             CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
             // 多个客户端session会共用同一条TCP连接
-            AsyncConnection conn = factory.getNetClient().createConnection(config, endpoint);
+            AsyncConnection conn = factory.getNetClient().createConnection(config, node);
             if (!(conn instanceof TcpClientConnection)) {
                 throw DbException.throwInternalError("not tcp client connection: " + conn.getClass().getName());
             }
@@ -461,8 +461,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
-    public void runModeChanged(String newTargetEndpoints) {
-        parent.runModeChanged(newTargetEndpoints);
+    public void runModeChanged(String newTargetNodes) {
+        parent.runModeChanged(newTargetNodes);
     }
 
     @Override

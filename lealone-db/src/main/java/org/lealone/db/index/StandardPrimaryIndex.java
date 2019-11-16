@@ -493,12 +493,12 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
+    public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
         ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
         @SuppressWarnings("unchecked")
         DistributedStorageMap<Value, VersionedValue> map = (DistributedStorageMap<Value, VersionedValue>) getMap(
                 session);
-        return map.getEndpointToPageKeyMap(session, minAndMaxValues[0], minAndMaxValues[1]);
+        return map.getNodeToPageKeyMap(session, minAndMaxValues[0], minAndMaxValues[1]);
     }
 
     /**

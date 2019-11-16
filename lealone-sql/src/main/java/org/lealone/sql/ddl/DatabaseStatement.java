@@ -30,8 +30,8 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.net.NetEndpoint;
-import org.lealone.net.NetEndpointManagerHolder;
+import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.router.SQLRouter;
 
 public abstract class DatabaseStatement extends DefinitionStatement {
@@ -40,7 +40,7 @@ public abstract class DatabaseStatement extends DefinitionStatement {
     protected RunMode runMode;
     protected Map<String, String> parameters;
     protected Map<String, String> replicationProperties;
-    protected Map<String, String> endpointAssignmentProperties;
+    protected Map<String, String> nodeAssignmentProperties;
 
     protected DatabaseStatement(ServerSession session, String dbName) {
         super(session);
@@ -67,9 +67,9 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         }
     }
 
-    protected boolean isTargetEndpoint(Database db) {
-        NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
-        return db.isTargetEndpoint(localEndpoint);
+    protected boolean isTargetNode(Database db) {
+        NetNode localNode = NetNode.getLocalTcpNode();
+        return db.isTargetNode(localNode);
     }
 
     protected void executeDatabaseStatement(Database db) {
@@ -82,9 +82,9 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(this.parameters);
         parameters.remove("hostIds");
         String replicationStrategy = parameters.get("replication_strategy");
-        String endpointAssignmentStrategy = parameters.get("endpoint_assignment_strategy");
+        String nodeAssignmentStrategy = parameters.get("node_assignment_strategy");
 
-        Collection<String> recognizedReplicationStrategyOptions = NetEndpointManagerHolder.get()
+        Collection<String> recognizedReplicationStrategyOptions = NetNodeManagerHolder.get()
                 .getRecognizedReplicationStrategyOptions(replicationStrategy);
         if (recognizedReplicationStrategyOptions == null) {
             recognizedReplicationStrategyOptions = new HashSet<>(1);
@@ -93,67 +93,66 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         }
         recognizedReplicationStrategyOptions.add("replication_strategy");
 
-        Collection<String> recognizedEndpointAssignmentStrategyOptions = NetEndpointManagerHolder.get()
-                .getRecognizedEndpointAssignmentStrategyOptions(endpointAssignmentStrategy);
+        Collection<String> recognizedNodeAssignmentStrategyOptions = NetNodeManagerHolder.get()
+                .getRecognizedNodeAssignmentStrategyOptions(nodeAssignmentStrategy);
 
-        if (recognizedEndpointAssignmentStrategyOptions == null) {
-            recognizedEndpointAssignmentStrategyOptions = new HashSet<>(1);
+        if (recognizedNodeAssignmentStrategyOptions == null) {
+            recognizedNodeAssignmentStrategyOptions = new HashSet<>(1);
         } else {
-            recognizedEndpointAssignmentStrategyOptions = new HashSet<>(recognizedEndpointAssignmentStrategyOptions);
+            recognizedNodeAssignmentStrategyOptions = new HashSet<>(recognizedNodeAssignmentStrategyOptions);
         }
-        recognizedEndpointAssignmentStrategyOptions.add("endpoint_assignment_strategy");
+        recognizedNodeAssignmentStrategyOptions.add("node_assignment_strategy");
 
         Collection<String> recognizedSettingOptions = DbSettings.getDefaultSettings().getSettings().keySet();
         parameters.removeAll(recognizedReplicationStrategyOptions);
-        parameters.removeAll(recognizedEndpointAssignmentStrategyOptions);
+        parameters.removeAll(recognizedNodeAssignmentStrategyOptions);
         parameters.removeAll(recognizedSettingOptions);
         if (!parameters.isEmpty()) {
             throw new ConfigException(String.format("Unrecognized parameters: %s for database %s, " //
                     + "recognized replication strategy options: %s, " //
-                    + "endpoint assignment strategy options: %s, " //
+                    + "node assignment strategy options: %s, " //
                     + "database setting options: %s", //
                     parameters.keySet(), dbName, recognizedReplicationStrategyOptions,
-                    recognizedEndpointAssignmentStrategyOptions, recognizedSettingOptions));
+                    recognizedNodeAssignmentStrategyOptions, recognizedSettingOptions));
         }
 
         parameters = (CaseInsensitiveMap<String>) this.parameters;
         replicationProperties = new CaseInsensitiveMap<>();
         if (!parameters.containsKey("replication_factor")) {
             replicationProperties.put("replication_factor",
-                    NetEndpointManagerHolder.get().getDefaultReplicationFactor() + "");
+                    NetNodeManagerHolder.get().getDefaultReplicationFactor() + "");
         }
         if (replicationStrategy != null) {
             replicationProperties.put("class", replicationStrategy);
         } else {
-            replicationProperties.put("class", NetEndpointManagerHolder.get().getDefaultReplicationStrategy());
+            replicationProperties.put("class", NetNodeManagerHolder.get().getDefaultReplicationStrategy());
         }
         for (String option : recognizedReplicationStrategyOptions) {
             if (parameters.containsKey(option))
                 replicationProperties.put(option, parameters.get(option));
         }
 
-        endpointAssignmentProperties = new CaseInsensitiveMap<>();
+        nodeAssignmentProperties = new CaseInsensitiveMap<>();
         if (!parameters.containsKey("assignment_factor")) {
-            endpointAssignmentProperties.put("assignment_factor",
-                    NetEndpointManagerHolder.get().getDefaultEndpointAssignmentFactor() + "");
+            nodeAssignmentProperties.put("assignment_factor",
+                    NetNodeManagerHolder.get().getDefaultNodeAssignmentFactor() + "");
         }
-        if (endpointAssignmentStrategy != null) {
-            endpointAssignmentProperties.put("class", endpointAssignmentStrategy);
+        if (nodeAssignmentStrategy != null) {
+            nodeAssignmentProperties.put("class", nodeAssignmentStrategy);
         } else {
-            endpointAssignmentProperties.put("class",
-                    NetEndpointManagerHolder.get().getDefaultEndpointAssignmentStrategy());
+            nodeAssignmentProperties.put("class", NetNodeManagerHolder.get().getDefaultNodeAssignmentStrategy());
         }
-        for (String option : recognizedEndpointAssignmentStrategyOptions) {
+        for (String option : recognizedNodeAssignmentStrategyOptions) {
             if (parameters.containsKey(option))
-                endpointAssignmentProperties.put(option, parameters.get(option));
+                nodeAssignmentProperties.put(option, parameters.get(option));
         }
         if (runMode == RunMode.CLIENT_SERVER) {
-            endpointAssignmentProperties.put("assignment_factor", "1");
+            nodeAssignmentProperties.put("assignment_factor", "1");
         } else if (runMode == RunMode.REPLICATION) {
-            endpointAssignmentProperties.put("assignment_factor", replicationProperties.get("replication_factor"));
+            nodeAssignmentProperties.put("assignment_factor", replicationProperties.get("replication_factor"));
         } else if (runMode == RunMode.SHARDING) {
             if (!parameters.containsKey("assignment_factor"))
-                endpointAssignmentProperties.put("assignment_factor", replicationProperties.get("replication_factor"));
+                nodeAssignmentProperties.put("assignment_factor", replicationProperties.get("replication_factor"));
             // throw new ConfigException("In sharding mode, assignment_factor must be set");
         }
         // parameters剩下的当成database setting

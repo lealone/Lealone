@@ -22,7 +22,7 @@ import java.util.List;
 
 import org.lealone.db.IDatabase;
 import org.lealone.db.Session;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.replication.ReplicationSession;
@@ -119,17 +119,16 @@ public class PageReference {
         IDatabase db = map.getDatabase();
         // TODO 支持多节点容错
         String remoteHostId = replicationHostIds.get(0);
-        List<NetEndpoint> replicationEndpoints = DistributedBTreeMap.getReplicationEndpoints(db,
-                new String[] { remoteHostId });
+        List<NetNode> replicationNodes = DistributedBTreeMap.getReplicationNodes(db, new String[] { remoteHostId });
         Session session = db.createInternalSession(true);
-        ReplicationSession rs = db.createReplicationSession(session, replicationEndpoints);
+        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer pageBuffer = c.readRemotePage(map.getName(), pageKey);
             page = BTreePage.readReplicatedPage(map, pageBuffer);
         }
 
         if (!map.isShardingMode() || (page.getReplicationHostIds() != null
-                && page.getReplicationHostIds().contains(NetEndpoint.getLocalTcpHostAndPort()))) {
+                && page.getReplicationHostIds().contains(NetNode.getLocalTcpHostAndPort()))) {
             pos = 0;
         }
         return page;

@@ -1061,12 +1061,12 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
         return cursor.getEndSearchRow();
     }
 
-    public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session) {
+    public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session) {
         if (!indexConditionsParsed) {
             indexConditionsParsed = true;
             cursor.parseIndexConditions(session, indexConditions);
         }
-        return cursor.getEndpointToPageKeyMap(session);
+        return cursor.getNodeToPageKeyMap(session);
     }
 
     public void setPageKeys(List<PageKey> pageKeys) {

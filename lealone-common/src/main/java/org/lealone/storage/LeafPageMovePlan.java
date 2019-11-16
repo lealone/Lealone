@@ -21,20 +21,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
 
 public class LeafPageMovePlan {
 
     public final String moverHostId;
-    public final List<NetEndpoint> replicationEndpoints;
+    public final List<NetNode> replicationNodes;
     public final PageKey pageKey;
     private int index;
 
-    public LeafPageMovePlan(String moverHostId, List<NetEndpoint> replicationEndpoints, PageKey pageKey) {
+    public LeafPageMovePlan(String moverHostId, List<NetNode> replicationNodes, PageKey pageKey) {
         this.moverHostId = moverHostId;
-        this.replicationEndpoints = replicationEndpoints;
+        this.replicationNodes = replicationNodes;
         this.pageKey = pageKey;
     }
 
@@ -46,18 +46,18 @@ public class LeafPageMovePlan {
         return index;
     }
 
-    public List<String> getReplicationEndpoints() {
-        List<String> endpoints = new ArrayList<>(replicationEndpoints.size());
-        for (NetEndpoint e : replicationEndpoints)
-            endpoints.add(e.getHostAndPort());
+    public List<String> getReplicationNodes() {
+        List<String> nodes = new ArrayList<>(replicationNodes.size());
+        for (NetNode e : replicationNodes)
+            nodes.add(e.getHostAndPort());
 
-        return endpoints;
+        return nodes;
     }
 
     public void serialize(NetOutputStream out) throws IOException {
         out.writeInt(index).writeString(moverHostId).writePageKey(pageKey);
-        out.writeInt(replicationEndpoints.size());
-        for (NetEndpoint e : replicationEndpoints) {
+        out.writeInt(replicationNodes.size());
+        for (NetNode e : replicationNodes) {
             out.writeString(e.getHostAndPort());
         }
     }
@@ -67,11 +67,11 @@ public class LeafPageMovePlan {
         String moverHostId = in.readString();
         PageKey pageKey = in.readPageKey();
         int size = in.readInt();
-        ArrayList<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
+        ArrayList<NetNode> replicationNodes = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            replicationEndpoints.add(NetEndpoint.createTCP(in.readString()));
+            replicationNodes.add(NetNode.createTCP(in.readString()));
         }
-        LeafPageMovePlan plan = new LeafPageMovePlan(moverHostId, replicationEndpoints, pageKey);
+        LeafPageMovePlan plan = new LeafPageMovePlan(moverHostId, replicationNodes, pageKey);
         plan.index = index;
         return plan;
     }

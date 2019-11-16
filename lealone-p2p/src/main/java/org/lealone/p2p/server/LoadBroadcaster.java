@@ -27,17 +27,17 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.EndpointState;
+import org.lealone.p2p.gms.NodeState;
 import org.lealone.p2p.gms.Gossiper;
-import org.lealone.p2p.gms.IEndpointStateChangeSubscriber;
+import org.lealone.p2p.gms.INodeStateChangeSubscriber;
 import org.lealone.p2p.gms.VersionedValue;
 
-public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
+public class LoadBroadcaster implements INodeStateChangeSubscriber {
 
     private static final Logger logger = LoggerFactory.getLogger(LoadBroadcaster.class);
-    private static final ConcurrentMap<NetEndpoint, Double> loadInfo = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<NetNode, Double> loadInfo = new ConcurrentHashMap<>();
     private static final int BROADCAST_INTERVAL = 60 * 1000;
 
     public static final LoadBroadcaster instance = new LoadBroadcaster();
@@ -63,27 +63,27 @@ public class LoadBroadcaster implements IEndpointStateChangeSubscriber {
                 BROADCAST_INTERVAL, TimeUnit.MILLISECONDS);
     }
 
-    public Map<NetEndpoint, Double> getLoadInfo() {
+    public Map<NetNode, Double> getLoadInfo() {
         return Collections.unmodifiableMap(loadInfo);
     }
 
     @Override
-    public void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
+    public void onChange(NetNode node, ApplicationState state, VersionedValue value) {
         if (state != ApplicationState.LOAD)
             return;
-        loadInfo.put(endpoint, Double.valueOf(value.value));
+        loadInfo.put(node, Double.valueOf(value.value));
     }
 
     @Override
-    public void onJoin(NetEndpoint endpoint, EndpointState epState) {
+    public void onJoin(NetNode node, NodeState epState) {
         VersionedValue localValue = epState.getApplicationState(ApplicationState.LOAD);
         if (localValue != null) {
-            onChange(endpoint, ApplicationState.LOAD, localValue);
+            onChange(node, ApplicationState.LOAD, localValue);
         }
     }
 
     @Override
-    public void onRemove(NetEndpoint endpoint) {
-        loadInfo.remove(endpoint);
+    public void onRemove(NetNode node) {
+        loadInfo.remove(node);
     }
 }

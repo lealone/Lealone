@@ -82,13 +82,13 @@ public class StandardTable extends Table {
         }
         globalTemporary = data.globalTemporary;
 
-        String initReplicationEndpoints = null;
+        String initReplicationNodes = null;
         String replicationName = data.session.getReplicationName();
         if (replicationName != null) {
             int pos = replicationName.indexOf('@');
             if (pos != -1) {
-                initReplicationEndpoints = replicationName.substring(0, pos);
-                parameters.put("initReplicationEndpoints", initReplicationEndpoints);
+                initReplicationNodes = replicationName.substring(0, pos);
+                parameters.put("initReplicationNodes", initReplicationNodes);
             }
         }
         parameters.put("isShardingMode", data.session.isShardingMode() + "");

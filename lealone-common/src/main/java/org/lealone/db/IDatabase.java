@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.Storage;
 import org.lealone.storage.replication.ReplicationSession;
 
@@ -40,25 +40,23 @@ public interface IDatabase {
 
     String[] getHostIds();
 
-    ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints);
+    ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes);
 
-    ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints,
-            Boolean remote);
+    ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes, Boolean remote);
 
-    NetEndpoint getEndpoint(String hostId);
+    NetNode getNode(String hostId);
 
-    String getHostId(NetEndpoint endpoint);
+    String getHostId(NetNode node);
 
     String getLocalHostId();
 
-    List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints);
+    List<NetNode> getReplicationNodes(Set<NetNode> oldReplicationNodes, Set<NetNode> candidateNodes);
 
     boolean isShardingMode();
 
     Map<String, String> getReplicationProperties();
 
-    Map<String, String> getEndpointAssignmentProperties();
+    Map<String, String> getNodeAssignmentProperties();
 
     List<Storage> getStorages();
 

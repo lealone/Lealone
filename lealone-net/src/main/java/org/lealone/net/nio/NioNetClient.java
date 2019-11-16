@@ -33,7 +33,7 @@ import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetClientBase;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
 
 public class NioNetClient extends NetClientBase implements NioEventLoop {
@@ -149,9 +149,9 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
     }
 
     @Override
-    protected void createConnectionInternal(NetEndpoint endpoint, AsyncConnectionManager connectionManager,
+    protected void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
             CountDownLatch latch) throws Exception {
-        InetSocketAddress inetSocketAddress = endpoint.getInetSocketAddress();
+        InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         int socketRecvBuffer = 16 * 1024;
         int socketSendBuffer = 8 * 1024;
         SocketChannel channel = null;

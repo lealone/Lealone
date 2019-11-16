@@ -48,7 +48,7 @@ public class NodeBase extends YamlConfigLoader {
     protected String listen_address;
     protected String dir;
     protected String nodeBaseDirPrefix;
-    protected String endpoint_snitch;
+    protected String node_snitch;
 
     // 在org.lealone.common.util.Utils.construct(String, String)中必须使用无参数的构造函数
     public NodeBase() {
@@ -64,8 +64,8 @@ public class NodeBase extends YamlConfigLoader {
         if (listen_address != null)
             config.listen_address = listen_address;
 
-        if (endpoint_snitch != null)
-            config.cluster_config.endpoint_snitch = endpoint_snitch;
+        if (node_snitch != null)
+            config.cluster_config.node_snitch = node_snitch;
 
         System.setProperty("java.io.tmpdir", "./" + config.base_dir + "/tmp");
         System.setProperty("lealone.base.dir", "./" + config.base_dir);

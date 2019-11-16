@@ -31,8 +31,8 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
-import org.lealone.net.NetEndpoint;
-import org.lealone.net.NetEndpointManagerHolder;
+import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.Storage;
@@ -108,15 +108,15 @@ public class AlterDatabase extends DatabaseStatement {
             db.alterParameters(parameters);
         if (replicationProperties != null)
             db.setReplicationProperties(replicationProperties);
-        if (endpointAssignmentProperties != null)
-            db.setReplicationProperties(endpointAssignmentProperties);
+        if (nodeAssignmentProperties != null)
+            db.setReplicationProperties(nodeAssignmentProperties);
     }
 
     private void updateLocalMeta() {
         LealoneDatabase.getInstance().updateMeta(session, db);
     }
 
-    private void updateRemoteEndpoints() {
+    private void updateRemoteNodes() {
         executeDatabaseStatement(db);
     }
 
@@ -127,9 +127,9 @@ public class AlterDatabase extends DatabaseStatement {
                 newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
             } else {
                 if (toReplicationMode)
-                    newHostIds = NetEndpointManagerHolder.get().getReplicationEndpoints(db);
+                    newHostIds = NetNodeManagerHolder.get().getReplicationNodes(db);
                 else
-                    newHostIds = NetEndpointManagerHolder.get().getShardingEndpoints(db);
+                    newHostIds = NetNodeManagerHolder.get().getShardingNodes(db);
             }
 
             String hostIds = StringUtils.arrayCombine(oldHostIds, ',') + ","
@@ -138,7 +138,7 @@ public class AlterDatabase extends DatabaseStatement {
 
             rewriteSql();
         } else {
-            if (super.isTargetEndpoint(db)) {
+            if (super.isTargetNode(db)) {
                 oldHostIds = db.getHostIds();
                 HashSet<String> oldSet = new HashSet<>(Arrays.asList(oldHostIds));
                 if (parameters != null && parameters.containsKey("hostIds")) {
@@ -173,18 +173,18 @@ public class AlterDatabase extends DatabaseStatement {
     private void clientServer2ClientServer() {
         alterDatabase();
         updateLocalMeta();
-        updateRemoteEndpoints();
+        updateRemoteNodes();
     }
 
     private void replication2Replication() {
         int replicationFactorOld = getReplicationFactor(db.getReplicationProperties());
         int replicationFactorNew = getReplicationFactor(replicationProperties);
         int value = replicationFactorNew - replicationFactorOld;
-        int replicationEndpoints = Math.abs(value);
+        int replicationNodes = Math.abs(value);
         if (value > 0) {
             scaleOutReplication2Replication();
         } else if (value < 0) {
-            scaleInReplication2Replication(replicationEndpoints);
+            scaleInReplication2Replication(replicationNodes);
         } else {
             alterDatabase();
             updateLocalMeta();
@@ -207,14 +207,14 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     @Override
-    protected boolean isTargetEndpoint(Database db) {
-        // boolean isTargetEndpoint = super.isTargetEndpoint(db);
-        // if (session.isRoot() && isTargetEndpoint) {
+    protected boolean isTargetNode(Database db) {
+        // boolean isTargetNode = super.isTargetNode(db);
+        // if (session.isRoot() && isTargetNode) {
         // return true;
         // }
         TreeSet<String> hostIds = new TreeSet<>(Arrays.asList(db.getHostIds()));
-        NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
-        if (hostIds.iterator().next().equalsIgnoreCase(localEndpoint.getHostAndPort())) {
+        NetNode localNode = NetNode.getLocalTcpNode();
+        if (hostIds.iterator().next().equalsIgnoreCase(localNode.getHostAndPort())) {
             return true;
         } else {
             return false;
@@ -227,8 +227,8 @@ public class AlterDatabase extends DatabaseStatement {
         alterDatabase();
         rewriteSql(true);
         updateLocalMeta();
-        updateRemoteEndpoints();
-        if (isTargetEndpoint(db)) {
+        updateRemoteNodes();
+        if (isTargetNode(db)) {
             Database db2 = copyDatabase();
             SQLRouter.replicate(db2, RunMode.CLIENT_SERVER, runMode, newHostIds);
         }
@@ -238,8 +238,8 @@ public class AlterDatabase extends DatabaseStatement {
         alterDatabase();
         rewriteSql(false);
         updateLocalMeta();
-        updateRemoteEndpoints();
-        if (isTargetEndpoint(db)) {
+        updateRemoteNodes();
+        if (isTargetNode(db)) {
             Database db2 = copyDatabase();
             SQLRouter.sharding(db2, RunMode.CLIENT_SERVER, runMode, oldHostIds, newHostIds);
         }
@@ -249,8 +249,8 @@ public class AlterDatabase extends DatabaseStatement {
         alterDatabase();
         rewriteSql(false);
         updateLocalMeta();
-        updateRemoteEndpoints();
-        if (isTargetEndpoint(db)) {
+        updateRemoteNodes();
+        if (isTargetNode(db)) {
             Database db2 = copyDatabase();
             SQLRouter.sharding(db2, RunMode.REPLICATION, runMode, oldHostIds, newHostIds);
         }
@@ -260,8 +260,8 @@ public class AlterDatabase extends DatabaseStatement {
         alterDatabase();
         rewriteSql(true);
         updateLocalMeta();
-        updateRemoteEndpoints();
-        if (isTargetEndpoint(db)) {
+        updateRemoteNodes();
+        if (isTargetNode(db)) {
             Database db2 = copyDatabase();
             SQLRouter.replicate(db2, RunMode.REPLICATION, runMode, newHostIds);
         }
@@ -271,8 +271,8 @@ public class AlterDatabase extends DatabaseStatement {
         alterDatabase();
         rewriteSql(false);
         updateLocalMeta();
-        updateRemoteEndpoints();
-        if (isTargetEndpoint(db)) {
+        updateRemoteNodes();
+        if (isTargetNode(db)) {
             Database db2 = copyDatabase();
             SQLRouter.sharding(db2, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
         }
@@ -284,15 +284,15 @@ public class AlterDatabase extends DatabaseStatement {
         scaleInReplication2Replication(db.getHostIds().length - 1);
     }
 
-    private void scaleInReplication2Replication(int removeReplicationEndpoints) {
+    private void scaleInReplication2Replication(int removeReplicationNodes) {
         alterDatabase();
         String[] removeHostIds = null;
         if (session.isRoot()) {
             oldHostIds = db.getHostIds();
-            removeHostIds = new String[removeReplicationEndpoints];
-            String[] newHostIds = new String[oldHostIds.length - removeReplicationEndpoints];
-            System.arraycopy(oldHostIds, 0, removeHostIds, 0, removeReplicationEndpoints);
-            System.arraycopy(oldHostIds, removeReplicationEndpoints, newHostIds, 0, newHostIds.length);
+            removeHostIds = new String[removeReplicationNodes];
+            String[] newHostIds = new String[oldHostIds.length - removeReplicationNodes];
+            System.arraycopy(oldHostIds, 0, removeHostIds, 0, removeReplicationNodes);
+            System.arraycopy(oldHostIds, removeReplicationNodes, newHostIds, 0, newHostIds.length);
 
             db.getParameters().put("hostIds", StringUtils.arrayCombine(newHostIds, ','));
             db.getParameters().put("removeHostIds", StringUtils.arrayCombine(removeHostIds, ','));
@@ -300,13 +300,13 @@ public class AlterDatabase extends DatabaseStatement {
             rewriteSql();
         }
         updateLocalMeta();
-        updateRemoteEndpoints();
+        updateRemoteNodes();
         Map<String, String> parameters = db.getParameters();
         if (parameters != null && parameters.containsKey("removeHostIds")) {
             removeHostIds = StringUtils.arraySplit(parameters.get("removeHostIds"), ',', true);
             HashSet<String> set = new HashSet<>(Arrays.asList(removeHostIds));
-            NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
-            if (set.contains(localEndpoint.getHostAndPort())) {
+            NetNode localNode = NetNode.getLocalTcpNode();
+            if (set.contains(localNode.getHostAndPort())) {
                 LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
                 lealoneDB.removeDatabaseObject(session, db);
                 db.setDeleteFilesOnDisconnect(true);
@@ -359,12 +359,12 @@ public class AlterDatabase extends DatabaseStatement {
             rewriteSql();
         }
         updateLocalMeta();
-        updateRemoteEndpoints();
+        updateRemoteNodes();
         Map<String, String> parameters = db.getParameters();
 
         newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
         HashSet<String> set;
-        String localHostId = NetEndpoint.getLocalTcpEndpoint().getHostAndPort();
+        String localHostId = NetNode.getLocalTcpNode().getHostAndPort();
         if (parameters != null && parameters.containsKey("removeHostIds")) {
             removeHostIds = StringUtils.arraySplit(parameters.get("removeHostIds"), ',', true);
             set = new HashSet<>(Arrays.asList(removeHostIds));

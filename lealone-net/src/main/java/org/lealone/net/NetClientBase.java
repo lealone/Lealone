@@ -36,13 +36,13 @@ public abstract class NetClientBase implements NetClient {
 
     protected abstract void openInternal(Map<String, String> config);
 
-    protected abstract void createConnectionInternal(NetEndpoint endpoint, AsyncConnectionManager connectionManager,
+    protected abstract void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
             CountDownLatch latch) throws Throwable;
 
     @Override
-    public AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint) {
+    public AsyncConnection createConnection(Map<String, String> config, NetNode node) {
         // checkClosed(); //创建连接时不检查关闭状态，这样允许重用NetClient实例，如果之前的实例关闭了，重新打开即可
-        return createConnection(config, endpoint, null);
+        return createConnection(config, node, null);
     }
 
     private synchronized void open(Map<String, String> config) {
@@ -53,12 +53,12 @@ public abstract class NetClientBase implements NetClient {
     }
 
     @Override
-    public AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint,
+    public AsyncConnection createConnection(Map<String, String> config, NetNode node,
             AsyncConnectionManager connectionManager) {
         if (!opened.get()) {
             open(config);
         }
-        InetSocketAddress inetSocketAddress = endpoint.getInetSocketAddress();
+        InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         AsyncConnection asyncConnection = getConnection(inetSocketAddress);
         if (asyncConnection == null) {
             synchronized (this) {
@@ -66,7 +66,7 @@ public abstract class NetClientBase implements NetClient {
                 if (asyncConnection == null) {
                     CountDownLatch latch = new CountDownLatch(1);
                     try {
-                        createConnectionInternal(endpoint, connectionManager, latch);
+                        createConnectionInternal(node, connectionManager, latch);
                         latch.await();
                     } catch (Throwable e) {
                         throw new RuntimeException("Cannot connect to " + inetSocketAddress, e);

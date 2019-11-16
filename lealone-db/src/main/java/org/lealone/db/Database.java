@@ -64,8 +64,8 @@ import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
-import org.lealone.net.NetEndpoint;
-import org.lealone.net.NetEndpointManagerHolder;
+import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLParser;
@@ -182,7 +182,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     private Map<String, String> replicationProperties;
     private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
-    private Map<String, String> endpointAssignmentProperties;
+    private Map<String, String> nodeAssignmentProperties;
 
     private RunMode runMode = RunMode.CLIENT_SERVER;
     private ConnectionInfo lastConnectionInfo;
@@ -298,12 +298,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     @Override
-    public Map<String, String> getEndpointAssignmentProperties() {
-        return endpointAssignmentProperties;
+    public Map<String, String> getNodeAssignmentProperties() {
+        return nodeAssignmentProperties;
     }
 
-    public void setEndpointAssignmentProperties(Map<String, String> endpointAssignmentProperties) {
-        this.endpointAssignmentProperties = endpointAssignmentProperties;
+    public void setNodeAssignmentProperties(Map<String, String> nodeAssignmentProperties) {
+        this.nodeAssignmentProperties = nodeAssignmentProperties;
     }
 
     public void setRunMode(RunMode runMode) {
@@ -339,7 +339,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         db.storages.putAll(storages);
         db.runMode = runMode;
         db.replicationProperties = replicationProperties;
-        db.replicationProperties = endpointAssignmentProperties;
+        db.replicationProperties = nodeAssignmentProperties;
         db.lastConnectionInfo = lastConnectionInfo;
         db.init();
         LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
@@ -2237,8 +2237,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     private static String getCreateSQL(String quotedDbName, Map<String, String> parameters,
-            Map<String, String> replicationProperties, Map<String, String> endpointAssignmentProperties,
-            RunMode runMode) {
+            Map<String, String> replicationProperties, Map<String, String> nodeAssignmentProperties, RunMode runMode) {
         StatementBuilder sql = new StatementBuilder("CREATE DATABASE IF NOT EXISTS ");
         sql.append(quotedDbName);
         if (runMode != null) {
@@ -2275,7 +2274,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), parameters, replicationProperties, endpointAssignmentProperties,
+        return getCreateSQL(quoteIdentifier(name), parameters, replicationProperties, nodeAssignmentProperties,
                 runMode);
     }
 
@@ -2320,8 +2319,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     private String[] hostIds;
-    private HashSet<NetEndpoint> endpoints;
-    private String targetEndpoints;
+    private HashSet<NetNode> nodes;
+    private String targetNodes;
 
     @Override
     public String[] getHostIds() {
@@ -2329,41 +2328,41 @@ public class Database implements DataHandler, DbObject, IDatabase {
             synchronized (this) {
                 if (hostIds == null) {
                     if (parameters != null && parameters.containsKey("hostIds")) {
-                        targetEndpoints = parameters.get("hostIds").trim();
-                        hostIds = StringUtils.arraySplit(targetEndpoints, ',');
+                        targetNodes = parameters.get("hostIds").trim();
+                        hostIds = StringUtils.arraySplit(targetNodes, ',');
                     }
                     if (hostIds == null) {
                         hostIds = new String[0];
-                        endpoints = null;
+                        nodes = null;
                     } else {
-                        endpoints = new HashSet<>(hostIds.length);
+                        nodes = new HashSet<>(hostIds.length);
                         for (String id : hostIds) {
-                            endpoints.add(NetEndpoint.createTCP(id));
+                            nodes.add(NetNode.createTCP(id));
                         }
                     }
-                    if (endpoints != null && endpoints.isEmpty()) {
-                        endpoints = null;
+                    if (nodes != null && nodes.isEmpty()) {
+                        nodes = null;
                     }
-                    if (targetEndpoints != null && targetEndpoints.isEmpty())
-                        targetEndpoints = null;
+                    if (targetNodes != null && targetNodes.isEmpty())
+                        targetNodes = null;
                 }
             }
         }
         return hostIds;
     }
 
-    public boolean isTargetEndpoint(NetEndpoint endpoint) {
+    public boolean isTargetNode(NetNode node) {
         if (hostIds == null) {
             getHostIds();
         }
-        return endpoints == null || endpoints.contains(endpoint);
+        return nodes == null || nodes.contains(node);
     }
 
-    public String getTargetEndpoints() {
+    public String getTargetNodes() {
         if (hostIds == null) {
             getHostIds();
         }
-        return targetEndpoints;
+        return targetNodes;
     }
 
     private java.sql.PreparedStatement psGetVersion;
@@ -2537,35 +2536,33 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints) {
-        return NetEndpointManagerHolder.get().createReplicationSession(session, replicationEndpoints);
+    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
+        return NetNodeManagerHolder.get().createReplicationSession(session, replicationNodes);
     }
 
     @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints,
+    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
             Boolean remote) {
-        return NetEndpointManagerHolder.get().createReplicationSession(session, replicationEndpoints, remote);
+        return NetNodeManagerHolder.get().createReplicationSession(session, replicationNodes, remote);
     }
 
     @Override
-    public NetEndpoint getEndpoint(String hostId) {
-        return NetEndpointManagerHolder.get().getEndpoint(hostId);
+    public NetNode getNode(String hostId) {
+        return NetNodeManagerHolder.get().getNode(hostId);
     }
 
     @Override
-    public String getHostId(NetEndpoint endpoint) {
-        return NetEndpointManagerHolder.get().getHostId(endpoint);
+    public String getHostId(NetNode node) {
+        return NetNodeManagerHolder.get().getHostId(node);
     }
 
     @Override
     public String getLocalHostId() {
-        return NetEndpoint.getLocalTcpHostAndPort();
+        return NetNode.getLocalTcpHostAndPort();
     }
 
     @Override
-    public List<NetEndpoint> getReplicationEndpoints(Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints) {
-        return NetEndpointManagerHolder.get().getReplicationEndpoints(this, oldReplicationEndpoints,
-                candidateEndpoints);
+    public List<NetNode> getReplicationNodes(Set<NetNode> oldReplicationNodes, Set<NetNode> candidateNodes) {
+        return NetNodeManagerHolder.get().getReplicationNodes(this, oldReplicationNodes, candidateNodes);
     }
 }

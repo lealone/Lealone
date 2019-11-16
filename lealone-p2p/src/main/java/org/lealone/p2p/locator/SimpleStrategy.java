@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigException;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 /**
  * This class returns the nodes responsible for a given
@@ -36,7 +36,7 @@ import org.lealone.net.NetEndpoint;
  */
 public class SimpleStrategy extends AbstractReplicationStrategy {
 
-    public SimpleStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions) {
+    public SimpleStrategy(String dbName, INodeSnitch snitch, Map<String, String> configOptions) {
         super(dbName, snitch, configOptions);
     }
 
@@ -59,34 +59,33 @@ public class SimpleStrategy extends AbstractReplicationStrategy {
     }
 
     @Override
-    public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
-            boolean includeOldReplicationEndpoints) {
+    public List<NetNode> calculateReplicationNodes(TopologyMetaData metaData, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
         int replicas = getReplicationFactor();
-        if (includeOldReplicationEndpoints)
-            replicas -= oldReplicationEndpoints.size();
+        if (includeOldReplicationNodes)
+            replicas -= oldReplicationNodes.size();
         ArrayList<String> hostIds = metaData.getSortedHostIds();
-        List<NetEndpoint> endpoints = new ArrayList<NetEndpoint>(replicas);
+        List<NetNode> nodes = new ArrayList<NetNode>(replicas);
 
         if (hostIds.isEmpty())
-            return endpoints;
+            return nodes;
 
         Iterator<String> iter = hostIds.iterator();
-        while (endpoints.size() < replicas && iter.hasNext()) {
-            NetEndpoint ep = metaData.getEndpoint(iter.next());
-            if (candidateEndpoints.contains(ep) && !oldReplicationEndpoints.contains(ep) && !endpoints.contains(ep))
-                endpoints.add(ep);
+        while (nodes.size() < replicas && iter.hasNext()) {
+            NetNode ep = metaData.getNode(iter.next());
+            if (candidateNodes.contains(ep) && !oldReplicationNodes.contains(ep) && !nodes.contains(ep))
+                nodes.add(ep);
         }
 
         // 不够时，从原来的复制节点中取
-        if (endpoints.size() < replicas) {
-            Iterator<NetEndpoint> old = oldReplicationEndpoints.iterator();
-            while (endpoints.size() < replicas && old.hasNext()) {
-                NetEndpoint ep = old.next();
-                if (!endpoints.contains(ep))
-                    endpoints.add(ep);
+        if (nodes.size() < replicas) {
+            Iterator<NetNode> old = oldReplicationNodes.iterator();
+            while (nodes.size() < replicas && old.hasNext()) {
+                NetNode ep = old.next();
+                if (!nodes.contains(ep))
+                    nodes.add(ep);
             }
         }
-        return endpoints;
+        return nodes;
     }
 }

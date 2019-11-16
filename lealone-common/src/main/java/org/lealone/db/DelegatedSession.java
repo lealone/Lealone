@@ -260,13 +260,13 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public void setTargetEndpoints(String targetEndpoints) {
-        session.setTargetEndpoints(targetEndpoints);
+    public void setTargetNodes(String targetNodes) {
+        session.setTargetNodes(targetNodes);
     }
 
     @Override
-    public String getTargetEndpoints() {
-        return session.getTargetEndpoints();
+    public String getTargetNodes() {
+        return session.getTargetNodes();
     }
 
     @Override
@@ -310,13 +310,13 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public String getNewTargetEndpoints() {
-        return session.getNewTargetEndpoints();
+    public String getNewTargetNodes() {
+        return session.getNewTargetNodes();
     }
 
     @Override
-    public void runModeChanged(String newTargetEndpoints) {
-        session.runModeChanged(newTargetEndpoints);
+    public void runModeChanged(String newTargetNodes) {
+        session.runModeChanged(newTargetNodes);
     }
 
     @Override

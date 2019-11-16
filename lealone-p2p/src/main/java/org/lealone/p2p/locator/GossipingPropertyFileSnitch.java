@@ -23,10 +23,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.EndpointState;
+import org.lealone.p2p.gms.NodeState;
 import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.server.ClusterMetaData;
 import org.lealone.p2p.server.P2pServer;
@@ -43,7 +43,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
     private final AtomicReference<ReconnectableSnitchHelper> snitchHelperReference;
     private volatile boolean gossipStarted;
 
-    private Map<NetEndpoint, Map<String, String>> savedEndpoints;
+    private Map<NetNode, Map<String, String>> savedNodes;
     private static final String DEFAULT_DC = "UNKNOWN_DC";
     private static final String DEFAULT_RACK = "UNKNOWN_RACK";
 
@@ -77,44 +77,44 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
     }
 
     /**
-     * Return the data center for which an endpoint resides in
+     * Return the data center for which an node resides in
      *
-     * @param endpoint the endpoint to process
+     * @param node the node to process
      * @return string of data center
      */
     @Override
-    public String getDatacenter(NetEndpoint endpoint) {
-        if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
+    public String getDatacenter(NetNode node) {
+        if (node.equals(ConfigDescriptor.getLocalNode()))
             return myDC;
 
-        EndpointState epState = Gossiper.instance.getEndpointState(endpoint);
+        NodeState epState = Gossiper.instance.getNodeState(node);
         if (epState == null || epState.getApplicationState(ApplicationState.DC) == null) {
-            if (savedEndpoints == null)
-                savedEndpoints = ClusterMetaData.loadDcRackInfo();
-            if (savedEndpoints.containsKey(endpoint))
-                return savedEndpoints.get(endpoint).get("data_center");
+            if (savedNodes == null)
+                savedNodes = ClusterMetaData.loadDcRackInfo();
+            if (savedNodes.containsKey(node))
+                return savedNodes.get(node).get("data_center");
             return DEFAULT_DC;
         }
         return epState.getApplicationState(ApplicationState.DC).value;
     }
 
     /**
-     * Return the rack for which an endpoint resides in
+     * Return the rack for which an node resides in
      *
-     * @param endpoint the endpoint to process
+     * @param node the node to process
      * @return string of rack
      */
     @Override
-    public String getRack(NetEndpoint endpoint) {
-        if (endpoint.equals(ConfigDescriptor.getLocalEndpoint()))
+    public String getRack(NetNode node) {
+        if (node.equals(ConfigDescriptor.getLocalNode()))
             return myRack;
 
-        EndpointState epState = Gossiper.instance.getEndpointState(endpoint);
+        NodeState epState = Gossiper.instance.getNodeState(node);
         if (epState == null || epState.getApplicationState(ApplicationState.RACK) == null) {
-            if (savedEndpoints == null)
-                savedEndpoints = ClusterMetaData.loadDcRackInfo();
-            if (savedEndpoints.containsKey(endpoint))
-                return savedEndpoints.get(endpoint).get("rack");
+            if (savedNodes == null)
+                savedNodes = ClusterMetaData.loadDcRackInfo();
+            if (savedNodes.containsKey(node))
+                return savedNodes.get(node).get("rack");
             return DEFAULT_RACK;
         }
         return epState.getApplicationState(ApplicationState.RACK).value;
@@ -125,7 +125,7 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
         super.gossiperStarting();
 
         Gossiper.instance.addLocalApplicationState(ApplicationState.INTERNAL_IP,
-                P2pServer.valueFactory.internalIP(ConfigDescriptor.getLocalEndpoint().getHostAddress()));
+                P2pServer.valueFactory.internalIP(ConfigDescriptor.getLocalNode().getHostAddress()));
 
         reloadGossiperState();
 

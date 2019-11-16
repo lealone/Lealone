@@ -21,28 +21,28 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.net.IVersionedSerializer;
 
 /**
- * Contains information about a specified list of Endpoints and the largest version
- * of the state they have generated as known by the local endpoint.
+ * Contains information about a specified list of Nodes and the largest version
+ * of the state they have generated as known by the local node.
  */
 public class GossipDigest implements Comparable<GossipDigest> {
     public static final IVersionedSerializer<GossipDigest> serializer = new GossipDigestSerializer();
 
-    final NetEndpoint endpoint;
+    final NetNode node;
     final int generation;
     final int maxVersion;
 
-    GossipDigest(NetEndpoint ep, int gen, int version) {
-        endpoint = ep;
+    GossipDigest(NetNode ep, int gen, int version) {
+        node = ep;
         generation = gen;
         maxVersion = version;
     }
 
-    NetEndpoint getEndpoint() {
-        return endpoint;
+    NetNode getNode() {
+        return node;
     }
 
     int getGeneration() {
@@ -63,7 +63,7 @@ public class GossipDigest implements Comparable<GossipDigest> {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append(endpoint);
+        sb.append(node);
         sb.append(":");
         sb.append(generation);
         sb.append(":");
@@ -74,17 +74,17 @@ public class GossipDigest implements Comparable<GossipDigest> {
     private static class GossipDigestSerializer implements IVersionedSerializer<GossipDigest> {
         @Override
         public void serialize(GossipDigest gDigest, DataOutput out, int version) throws IOException {
-            gDigest.endpoint.serialize(out);
+            gDigest.node.serialize(out);
             out.writeInt(gDigest.generation);
             out.writeInt(gDigest.maxVersion);
         }
 
         @Override
         public GossipDigest deserialize(DataInput in, int version) throws IOException {
-            NetEndpoint endpoint = NetEndpoint.deserialize(in);
+            NetNode node = NetNode.deserialize(in);
             int generation = in.readInt();
             int maxVersion = in.readInt();
-            return new GossipDigest(endpoint, generation, maxVersion);
+            return new GossipDigest(node, generation, maxVersion);
         }
     }
 }

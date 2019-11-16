@@ -27,13 +27,13 @@ public interface FailureDetectorMBean {
 
     public double getPhiConvictThreshold();
 
-    public String getAllEndpointStates();
+    public String getAllNodeStates();
 
-    public String getEndpointState(String address) throws UnknownHostException;
+    public String getNodeState(String address) throws UnknownHostException;
 
     public Map<String, String> getSimpleStates();
 
-    public int getDownEndpointCount();
+    public int getDownNodeCount();
 
-    public int getUpEndpointCount();
+    public int getUpNodeCount();
 }

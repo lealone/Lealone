@@ -45,7 +45,7 @@ public class DistributedBTreeMapTest extends TestBase {
     @Test
     public void run() {
         init();
-        testGetEndpointToKeyMap();
+        testGetNodeToKeyMap();
         testRemotePage();
         testLeafPageRemove();
     }
@@ -68,36 +68,36 @@ public class DistributedBTreeMapTest extends TestBase {
         return storage.openDistributedBTreeMap(name, null, null, parameters);
     }
 
-    void testGetEndpointToKeyMap() {
-        DistributedBTreeMap<Integer, String> map = openDistributedBTreeMap("testGetEndpointToKeyMap");
+    void testGetNodeToKeyMap() {
+        DistributedBTreeMap<Integer, String> map = openDistributedBTreeMap("testGetNodeToKeyMap");
         map.clear();
-        testGetEndpointToKeyMap(map); // 测试空map
+        testGetNodeToKeyMap(map); // 测试空map
 
         map.clear();
         int count = 10;
         for (int i = 1; i <= count; i++) {
             map.put(i, "value" + i);
         }
-        testGetEndpointToKeyMap(map); // 测试只有一个root leaf page的map
+        testGetNodeToKeyMap(map); // 测试只有一个root leaf page的map
 
         map.clear();
         count = 6000;
         for (int i = 1; i <= count; i++) {
             map.put(i, "value" + i);
         }
-        testGetEndpointToKeyMap(map); // 测试有root node page的map
+        testGetNodeToKeyMap(map); // 测试有root node page的map
 
         map.clear();
 
         ArrayList<PageKey> pageKeys = new ArrayList<>();
-        map.getEndpointToPageKeyMap(null, 1, 9, pageKeys);
+        map.getNodeToPageKeyMap(null, 1, 9, pageKeys);
         assertEquals(1, pageKeys.size());
         assertNull(pageKeys.get(0).key);
 
         map.put(1, "value" + 1);
 
         pageKeys = new ArrayList<>();
-        map.getEndpointToPageKeyMap(null, 1, 9, pageKeys);
+        map.getNodeToPageKeyMap(null, 1, 9, pageKeys);
         assertEquals(1, pageKeys.size());
         assertTrue(pageKeys.get(0).key.equals(1));
 
@@ -106,21 +106,21 @@ public class DistributedBTreeMapTest extends TestBase {
         }
 
         pageKeys = new ArrayList<>();
-        map.getEndpointToPageKeyMap(null, 1, 9, pageKeys);
+        map.getNodeToPageKeyMap(null, 1, 9, pageKeys);
         assertEquals(1, pageKeys.size());
 
         pageKeys = new ArrayList<>();
-        map.getEndpointToPageKeyMap(null, 15, 40, pageKeys);
+        map.getNodeToPageKeyMap(null, 15, 40, pageKeys);
         assertEquals(1, pageKeys.size());
 
         pageKeys = new ArrayList<>();
-        map.getEndpointToPageKeyMap(null, 15, null, pageKeys);
+        map.getNodeToPageKeyMap(null, 15, null, pageKeys);
         assertEquals(1, pageKeys.size());
 
         // map.close();
     }
 
-    void testGetEndpointToKeyMap(DistributedBTreeMap<Integer, String> map) {
+    void testGetNodeToKeyMap(DistributedBTreeMap<Integer, String> map) {
         BTreePage root = map.getRootPage();
         Random random = new Random();
         String[] ids = { "a", "b", "c", "d", "e", "f" };
@@ -128,9 +128,9 @@ public class DistributedBTreeMapTest extends TestBase {
         Integer from = 3; // 5900;
         Integer to = 5999;
         HashSet<PageKey> pageKeySet = new HashSet<>();
-        Map<String, List<PageKey>> endpointToPageKeyMap = map.getEndpointToPageKeyMap(null, from, to);
-        // System.out.println(endpointToPageKeyMap);
-        for (List<PageKey> pageKeys : endpointToPageKeyMap.values()) {
+        Map<String, List<PageKey>> nodeToPageKeyMap = map.getNodeToPageKeyMap(null, from, to);
+        // System.out.println(nodeToPageKeyMap);
+        for (List<PageKey> pageKeys : nodeToPageKeyMap.values()) {
             for (PageKey pk : pageKeys) {
                 if (!pageKeySet.add(pk)) {
                     // System.out.println("PageKey: " + pk);
@@ -140,7 +140,7 @@ public class DistributedBTreeMapTest extends TestBase {
         }
 
         int count = 0;
-        for (List<PageKey> pageKeys : endpointToPageKeyMap.values()) {
+        for (List<PageKey> pageKeys : nodeToPageKeyMap.values()) {
             // System.out.println("pageKeys: " + pageKeys);
             StorageMapCursor<Integer, String> cursor = map.cursor(IterationParameters.create(from, pageKeys));
             while (cursor.hasNext()) {
@@ -198,7 +198,7 @@ public class DistributedBTreeMapTest extends TestBase {
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
-        parameters.put("initReplicationEndpoints", "127.0.0.1:1111&127.0.0.1:222");
+        parameters.put("initReplicationNodes", "127.0.0.1:1111&127.0.0.1:222");
         BTreeMap<Integer, String> map = openDistributedBTreeMap(mapName, parameters);
         assertTrue(map.getRootPage().isRemote());
         assertEquals(2, map.getRootPage().getReplicationHostIds().size());
@@ -235,7 +235,7 @@ public class DistributedBTreeMapTest extends TestBase {
         }
         // 上面put的数据得到一个node page加两个leaf page
         ArrayList<PageKey> pageKeys = new ArrayList<>();
-        map.getEndpointToPageKeyMap(null, 1, 50, pageKeys);
+        map.getNodeToPageKeyMap(null, 1, 50, pageKeys);
         assertEquals(2, pageKeys.size());
 
         PageKey pk = pageKeys.get(0);
@@ -253,7 +253,7 @@ public class DistributedBTreeMapTest extends TestBase {
             map.put(i, "value" + i);
         }
         pageKeys = new ArrayList<>();
-        map.getEndpointToPageKeyMap(null, 1, 500, pageKeys);
+        map.getNodeToPageKeyMap(null, 1, 500, pageKeys);
         for (PageKey pageKey : pageKeys)
             map.removeLeafPage(pageKey);
         assertTrue(map.getRootPage().isEmpty());

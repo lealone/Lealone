@@ -27,7 +27,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
@@ -600,11 +600,11 @@ public class BTreePage {
         throw ie();
     }
 
-    void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
+    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
         throw ie();
     }
 
-    void replicatePage(DataBuffer buff, NetEndpoint localEndpoint) {
+    void replicatePage(DataBuffer buff, NetNode localNode) {
         throw ie();
     }
 

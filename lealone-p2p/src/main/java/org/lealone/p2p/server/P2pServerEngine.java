@@ -19,8 +19,8 @@ package org.lealone.p2p.server;
 
 import java.util.Map;
 
-import org.lealone.net.NetEndpointManagerHolder;
-import org.lealone.p2p.net.P2pNetEndpointManager;
+import org.lealone.net.NetNodeManagerHolder;
+import org.lealone.p2p.net.P2pNetNodeManager;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngineBase;
 
@@ -40,7 +40,7 @@ public class P2pServerEngine extends ProtocolServerEngineBase {
     @Override
     public void init(Map<String, String> config) {
         super.init(config);
-        initNetEndpointManager();
+        initNetNodeManager();
         P2pServer.instance.init(config);
     }
 
@@ -54,8 +54,8 @@ public class P2pServerEngine extends ProtocolServerEngineBase {
         return P2pServer.instance;
     }
 
-    private static void initNetEndpointManager() {
-        NetEndpointManagerHolder.set(P2pNetEndpointManager.getInstance());
+    private static void initNetNodeManager() {
+        NetNodeManagerHolder.set(P2pNetNodeManager.getInstance());
     }
 
 }

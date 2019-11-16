@@ -22,9 +22,9 @@ import java.util.Map;
 
 public interface NetClient {
 
-    AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint);
+    AsyncConnection createConnection(Map<String, String> config, NetNode node);
 
-    AsyncConnection createConnection(Map<String, String> config, NetEndpoint endpoint,
+    AsyncConnection createConnection(Map<String, String> config, NetNode node,
             AsyncConnectionManager connectionManager);
 
     void removeConnection(InetSocketAddress inetSocketAddress);

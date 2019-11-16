@@ -611,10 +611,10 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         return null;
     }
 
-    public Map<String, List<PageKey>> getEndpointToPageKeyMap() {
+    public Map<String, List<PageKey>> getNodeToPageKeyMap() {
         TableFilter tf = getTableFilter();
         if (tf != null)
-            return tf.getEndpointToPageKeyMap(session);
+            return tf.getNodeToPageKeyMap(session);
         return null;
     }
 

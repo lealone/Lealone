@@ -32,7 +32,7 @@ import java.util.Set;
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.locator.TopologyMetaData.Topology;
 import org.lealone.p2p.util.Utils;
 
@@ -46,16 +46,16 @@ import org.lealone.p2p.util.Utils;
  * datacenter replication factors could be 3, 2, and 1 - so 3 replicas in
  * one datacenter, 2 in another, and 1 in another - totalling 6.
  * <p/>
- * This class also caches the Endpoints and invalidates the cache if there is a
+ * This class also caches the Nodes and invalidates the cache if there is a
  * change in the number of tokens.
  */
 public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
 
     private static final Logger logger = LoggerFactory.getLogger(NetworkTopologyStrategy.class);
-    private final IEndpointSnitch snitch;
+    private final INodeSnitch snitch;
     private final Map<String, Integer> datacenters;
 
-    public NetworkTopologyStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions)
+    public NetworkTopologyStrategy(String dbName, INodeSnitch snitch, Map<String, String> configOptions)
             throws ConfigException {
         super(dbName, snitch, configOptions);
         this.snitch = snitch;
@@ -104,54 +104,53 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
     }
 
     /**
-     * calculate endpoints in one pass through the tokens by tracking our progress in each DC, rack etc.
+     * calculate nodes in one pass through the tokens by tracking our progress in each DC, rack etc.
      */
     @Override
-    public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
-            boolean includeOldReplicationEndpoints) {
-        // we want to preserve insertion order so that the first added endpoint becomes primary
-        Set<NetEndpoint> replicas = new LinkedHashSet<>();
+    public List<NetNode> calculateReplicationNodes(TopologyMetaData metaData, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
+        // we want to preserve insertion order so that the first added node becomes primary
+        Set<NetNode> replicas = new LinkedHashSet<>();
         int totalReplicas = 0;
         // replicas we have found in each DC
-        Map<String, Set<NetEndpoint>> dcReplicas = new HashMap<>(datacenters.size());
+        Map<String, Set<NetNode>> dcReplicas = new HashMap<>(datacenters.size());
         for (Map.Entry<String, Integer> dc : datacenters.entrySet()) {
             totalReplicas += dc.getValue();
-            dcReplicas.put(dc.getKey(), new HashSet<NetEndpoint>(dc.getValue()));
+            dcReplicas.put(dc.getKey(), new HashSet<NetNode>(dc.getValue()));
         }
 
-        if (includeOldReplicationEndpoints)
-            totalReplicas -= oldReplicationEndpoints.size();
+        if (includeOldReplicationNodes)
+            totalReplicas -= oldReplicationNodes.size();
 
         Topology topology = metaData.getTopology();
-        // all endpoints in each DC, so we can check when we have exhausted all the members of a DC
-        Map<String, Set<NetEndpoint>> allEndpoints = topology.getDatacenterEndpoints();
+        // all nodes in each DC, so we can check when we have exhausted all the members of a DC
+        Map<String, Set<NetNode>> allNodes = topology.getDatacenterNodes();
         // all racks in a DC so we can check when we have exhausted all racks in a DC
-        Map<String, Map<String, Set<NetEndpoint>>> racks = topology.getDatacenterRacks();
-        assert !allEndpoints.isEmpty() && !racks.isEmpty() : "not aware of any cluster members";
+        Map<String, Map<String, Set<NetNode>>> racks = topology.getDatacenterRacks();
+        assert !allNodes.isEmpty() && !racks.isEmpty() : "not aware of any cluster members";
 
         // tracks the racks we have already placed replicas in
         Map<String, Set<String>> seenRacks = new HashMap<>(datacenters.size());
         for (Map.Entry<String, Integer> dc : datacenters.entrySet())
             seenRacks.put(dc.getKey(), new HashSet<String>());
 
-        // tracks the endpoints that we skipped over while looking for unique racks
+        // tracks the nodes that we skipped over while looking for unique racks
         // when we relax the rack uniqueness we can append this to the current result
         // so we don't have to wind back the iterator
-        Map<String, Set<NetEndpoint>> skippedDcEndpoints = new HashMap<>(datacenters.size());
+        Map<String, Set<NetNode>> skippedDcNodes = new HashMap<>(datacenters.size());
         for (Map.Entry<String, Integer> dc : datacenters.entrySet())
-            skippedDcEndpoints.put(dc.getKey(), new LinkedHashSet<NetEndpoint>());
+            skippedDcNodes.put(dc.getKey(), new LinkedHashSet<NetNode>());
 
         ArrayList<String> hostIds = metaData.getSortedHostIds();
         Iterator<String> tokenIter = hostIds.iterator();
-        while (tokenIter.hasNext() && !hasSufficientReplicas(dcReplicas, allEndpoints)) {
+        while (tokenIter.hasNext() && !hasSufficientReplicas(dcReplicas, allNodes)) {
             String next = tokenIter.next();
-            NetEndpoint ep = metaData.getEndpoint(next);
-            if (!candidateEndpoints.contains(ep) || oldReplicationEndpoints.contains(ep))
+            NetNode ep = metaData.getNode(next);
+            if (!candidateNodes.contains(ep) || oldReplicationNodes.contains(ep))
                 continue;
             String dc = snitch.getDatacenter(ep);
             // have we already found all replicas for this dc?
-            if (!datacenters.containsKey(dc) || hasSufficientReplicas(dc, dcReplicas, allEndpoints))
+            if (!datacenters.containsKey(dc) || hasSufficientReplicas(dc, dcReplicas, allNodes))
                 continue;
             // can we skip checking the rack?
             if (seenRacks.get(dc).size() == racks.get(dc).keySet().size()) {
@@ -161,16 +160,16 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
                 String rack = snitch.getRack(ep);
                 // is this a new rack?
                 if (seenRacks.get(dc).contains(rack)) {
-                    skippedDcEndpoints.get(dc).add(ep);
+                    skippedDcNodes.get(dc).add(ep);
                 } else {
                     dcReplicas.get(dc).add(ep);
                     replicas.add(ep);
                     seenRacks.get(dc).add(rack);
                     // if we've run out of distinct racks, add the hosts we skipped past already (up to RF)
                     if (seenRacks.get(dc).size() == racks.get(dc).keySet().size()) {
-                        Iterator<NetEndpoint> skippedIt = skippedDcEndpoints.get(dc).iterator();
-                        while (skippedIt.hasNext() && !hasSufficientReplicas(dc, dcReplicas, allEndpoints)) {
-                            NetEndpoint nextSkipped = skippedIt.next();
+                        Iterator<NetNode> skippedIt = skippedDcNodes.get(dc).iterator();
+                        while (skippedIt.hasNext() && !hasSufficientReplicas(dc, dcReplicas, allNodes)) {
+                            NetNode nextSkipped = skippedIt.next();
                             dcReplicas.get(dc).add(nextSkipped);
                             replicas.add(nextSkipped);
                         }
@@ -180,30 +179,29 @@ public class NetworkTopologyStrategy extends AbstractReplicationStrategy {
         }
 
         // 不够时，从原来的复制节点中取
-        if (!oldReplicationEndpoints.isEmpty() && replicas.size() < totalReplicas) {
-            List<NetEndpoint> oldEndpoints = calculateReplicationEndpoints(metaData, new HashSet<>(0),
-                    oldReplicationEndpoints, includeOldReplicationEndpoints);
+        if (!oldReplicationNodes.isEmpty() && replicas.size() < totalReplicas) {
+            List<NetNode> oldNodes = calculateReplicationNodes(metaData, new HashSet<>(0), oldReplicationNodes,
+                    includeOldReplicationNodes);
 
-            Iterator<NetEndpoint> old = oldEndpoints.iterator();
+            Iterator<NetNode> old = oldNodes.iterator();
             while (replicas.size() < totalReplicas && old.hasNext()) {
-                NetEndpoint ep = old.next();
+                NetNode ep = old.next();
                 if (!replicas.contains(ep))
                     replicas.add(ep);
             }
         }
 
-        return new ArrayList<NetEndpoint>(replicas);
+        return new ArrayList<NetNode>(replicas);
     }
 
-    private boolean hasSufficientReplicas(String dc, Map<String, Set<NetEndpoint>> dcReplicas,
-            Map<String, Set<NetEndpoint>> allEndpoints) {
-        return dcReplicas.get(dc).size() >= Math.min(allEndpoints.get(dc).size(), getReplicationFactor(dc));
+    private boolean hasSufficientReplicas(String dc, Map<String, Set<NetNode>> dcReplicas,
+            Map<String, Set<NetNode>> allNodes) {
+        return dcReplicas.get(dc).size() >= Math.min(allNodes.get(dc).size(), getReplicationFactor(dc));
     }
 
-    private boolean hasSufficientReplicas(Map<String, Set<NetEndpoint>> dcReplicas,
-            Map<String, Set<NetEndpoint>> allEndpoints) {
+    private boolean hasSufficientReplicas(Map<String, Set<NetNode>> dcReplicas, Map<String, Set<NetNode>> allNodes) {
         for (String dc : datacenters.keySet())
-            if (!hasSufficientReplicas(dc, dcReplicas, allEndpoints))
+            if (!hasSufficientReplicas(dc, dcReplicas, allNodes))
                 return false;
         return true;
     }

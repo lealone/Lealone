@@ -48,19 +48,19 @@ public class ReplicationSession extends DelegatedSession {
         this(sessions, null);
     }
 
-    public ReplicationSession(Session[] sessions, List<String> initReplicationEndpoints) {
+    public ReplicationSession(Session[] sessions, List<String> initReplicationNodes) {
         super(sessions[0]);
         this.sessions = sessions;
 
-        String replicationEndpoints = null;
-        if (initReplicationEndpoints != null) {
+        String replicationNodes = null;
+        if (initReplicationNodes != null) {
             StringBuilder buff = new StringBuilder();
-            for (int i = 0, size = initReplicationEndpoints.size(); i < size; i++) {
+            for (int i = 0, size = initReplicationNodes.size(); i < size; i++) {
                 if (i > 0)
                     buff.append('&');
-                buff.append(initReplicationEndpoints.get(i));
+                buff.append(initReplicationNodes.get(i));
             }
-            replicationEndpoints = buff.toString();
+            replicationNodes = buff.toString();
         }
 
         n = sessions.length;
@@ -78,8 +78,8 @@ public class ReplicationSession extends DelegatedSession {
 
         try {
             String hostName = InetAddress.getLocalHost().getHostAddress();
-            if (replicationEndpoints != null) {
-                hostName = replicationEndpoints + "@" + hostName;
+            if (replicationNodes != null) {
+                hostName = replicationNodes + "@" + hostName;
             }
             this.hostName = hostName;
         } catch (UnknownHostException e) {

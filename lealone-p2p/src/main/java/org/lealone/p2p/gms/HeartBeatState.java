@@ -24,7 +24,7 @@ import java.io.IOException;
 import org.lealone.p2p.net.IVersionedSerializer;
 
 /**
- * HeartBeat State associated with any given endpoint.
+ * HeartBeat State associated with any given node.
  */
 class HeartBeatState {
     public static final IVersionedSerializer<HeartBeatState> serializer = new HeartBeatStateSerializer();

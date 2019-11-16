@@ -25,21 +25,21 @@ import java.util.Map;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.StringUtils;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 public class SimpleSeedProvider implements SeedProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(SimpleSeedProvider.class);
 
-    private final List<NetEndpoint> seeds;
+    private final List<NetNode> seeds;
 
     public SimpleSeedProvider(Map<String, String> parameters) {
         // 允许包含端口号
         String[] hosts = StringUtils.arraySplit(parameters.get("seeds"), ',');
-        List<NetEndpoint> seeds = new ArrayList<>(hosts.length);
+        List<NetNode> seeds = new ArrayList<>(hosts.length);
         for (String host : hosts) {
             try {
-                seeds.add(NetEndpoint.createP2P(host));
+                seeds.add(NetNode.createP2P(host));
             } catch (Exception ex) {
                 // not fatal... DD will bark if there end up being zero seeds.
                 logger.warn("Seed provider couldn't lookup host {}", host);
@@ -49,7 +49,7 @@ public class SimpleSeedProvider implements SeedProvider {
     }
 
     @Override
-    public List<NetEndpoint> getSeeds() {
+    public List<NetNode> getSeeds() {
         return seeds;
     }
 

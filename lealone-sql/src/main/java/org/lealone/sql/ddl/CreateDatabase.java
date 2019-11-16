@@ -28,7 +28,7 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.net.NetEndpointManagerHolder;
+import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -71,10 +71,10 @@ public class CreateDatabase extends DatabaseStatement {
             int id = getObjectId(lealoneDB);
             newDB = new Database(id, dbName, parameters);
             newDB.setReplicationProperties(replicationProperties);
-            newDB.setEndpointAssignmentProperties(endpointAssignmentProperties);
+            newDB.setNodeAssignmentProperties(nodeAssignmentProperties);
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
-                String[] hostIds = NetEndpointManagerHolder.get().assignEndpoints(newDB);
+                String[] hostIds = NetNodeManagerHolder.get().assignNodes(newDB);
                 if (hostIds != null && hostIds.length > 0)
                     newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
                 else
@@ -95,7 +95,7 @@ public class CreateDatabase extends DatabaseStatement {
         if (!lealoneDB.isStarting()) {
             executeDatabaseStatement(newDB);
             // 只有数据库真实所在的目标节点才需要初始化数据库，其他节点只需要在LealoneDatabase中有一条相应记录即可
-            if (isTargetEndpoint(newDB)) {
+            if (isTargetNode(newDB)) {
                 newDB.init();
                 newDB.createRootUserIfNotExists();
             }

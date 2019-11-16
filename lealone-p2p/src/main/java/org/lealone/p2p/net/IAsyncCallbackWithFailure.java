@@ -17,11 +17,11 @@
  */
 package org.lealone.p2p.net;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 public interface IAsyncCallbackWithFailure<T> extends IAsyncCallback<T> {
     /**
      * Called when there is an exception on the remote node or timeout happens
      */
-    public void onFailure(NetEndpoint from);
+    public void onFailure(NetNode from);
 }

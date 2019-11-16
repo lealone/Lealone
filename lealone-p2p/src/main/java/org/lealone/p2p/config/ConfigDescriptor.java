@@ -35,17 +35,17 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.auth.AllowAllInternodeAuthenticator;
 import org.lealone.p2p.auth.IInternodeAuthenticator;
 import org.lealone.p2p.config.Config.ClusterConfig;
 import org.lealone.p2p.config.Config.PluggableEngineDef;
-import org.lealone.p2p.locator.AbstractEndpointAssignmentStrategy;
+import org.lealone.p2p.locator.AbstractNodeAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
-import org.lealone.p2p.locator.DynamicEndpointSnitch;
-import org.lealone.p2p.locator.EndpointSnitchInfo;
-import org.lealone.p2p.locator.IEndpointSnitch;
-import org.lealone.p2p.locator.RandomEndpointAssignmentStrategy;
+import org.lealone.p2p.locator.DynamicNodeSnitch;
+import org.lealone.p2p.locator.NodeSnitchInfo;
+import org.lealone.p2p.locator.INodeSnitch;
+import org.lealone.p2p.locator.RandomNodeAssignmentStrategy;
 import org.lealone.p2p.locator.SeedProvider;
 import org.lealone.p2p.locator.SimpleStrategy;
 import org.lealone.p2p.net.Verb;
@@ -55,20 +55,20 @@ import org.lealone.p2p.util.Utils;
 public class ConfigDescriptor {
 
     private static Config config;
-    private static NetEndpoint localP2pEndpoint;
-    private static IEndpointSnitch snitch;
+    private static NetNode localP2pNode;
+    private static INodeSnitch snitch;
     private static String localDC;
-    private static Comparator<NetEndpoint> localComparator;
+    private static Comparator<NetNode> localComparator;
     private static SeedProvider seedProvider;
     private static IInternodeAuthenticator internodeAuthenticator;
     private static AbstractReplicationStrategy defaultReplicationStrategy;
-    private static AbstractEndpointAssignmentStrategy defaultEndpointAssignmentStrategy;
+    private static AbstractNodeAssignmentStrategy defaultNodeAssignmentStrategy;
 
     public static void applyConfig(Config config) throws ConfigException {
         ConfigDescriptor.config = config;
 
         // 单机模式下不需要加载集群相关的配置，
-        // 避免创建不必要的资源，例如实例化DynamicEndpointSnitch时需要开启ScheduledTasks线程
+        // 避免创建不必要的资源，例如实例化DynamicNodeSnitch时需要开启ScheduledTasks线程
         if (!isP2pServerEnabled())
             return;
 
@@ -77,15 +77,15 @@ public class ConfigDescriptor {
             throw new ConfigException("phi_convict_threshold must be between 5 and 16");
         }
 
-        localP2pEndpoint = createLocalP2pEndpoint(config);
-        snitch = createEndpointSnitch(config.cluster_config);
+        localP2pNode = createLocalP2pNode(config);
+        snitch = createNodeSnitch(config.cluster_config);
 
-        localDC = snitch.getDatacenter(localP2pEndpoint);
-        localComparator = new Comparator<NetEndpoint>() {
+        localDC = snitch.getDatacenter(localP2pNode);
+        localComparator = new Comparator<NetNode>() {
             @Override
-            public int compare(NetEndpoint endpoint1, NetEndpoint endpoint2) {
-                boolean local1 = localDC.equals(snitch.getDatacenter(endpoint1));
-                boolean local2 = localDC.equals(snitch.getDatacenter(endpoint2));
+            public int compare(NetNode node1, NetNode node2) {
+                boolean local1 = localDC.equals(snitch.getDatacenter(node1));
+                boolean local2 = localDC.equals(snitch.getDatacenter(node2));
                 if (local1 && !local2)
                     return -1;
                 if (local2 && !local1)
@@ -97,7 +97,7 @@ public class ConfigDescriptor {
         seedProvider = createSeedProvider(config.cluster_config);
         internodeAuthenticator = createInternodeAuthenticator(config.cluster_config);
         defaultReplicationStrategy = createDefaultReplicationStrategy(config.cluster_config);
-        defaultEndpointAssignmentStrategy = createDefaultEndpointAssignmentStrategy(config.cluster_config);
+        defaultNodeAssignmentStrategy = createDefaultNodeAssignmentStrategy(config.cluster_config);
     }
 
     private static boolean isP2pServerEnabled() {
@@ -110,7 +110,7 @@ public class ConfigDescriptor {
         return p2pServerEnabled;
     }
 
-    private static NetEndpoint createLocalP2pEndpoint(Config config) throws ConfigException {
+    private static NetNode createLocalP2pNode(Config config) throws ConfigException {
         InetAddress listenAddress = null;
         // Local IP, hostname or interface to bind services to
         if (config.listen_address != null && config.listen_interface != null) {
@@ -151,7 +151,7 @@ public class ConfigDescriptor {
                 }
             }
         }
-        return new NetEndpoint(host, port);
+        return new NetNode(host, port);
     }
 
     private static InetAddress getNetworkInterfaceAddress(String intf, String configName, boolean preferIPv6)
@@ -181,20 +181,20 @@ public class ConfigDescriptor {
         }
     }
 
-    private static IEndpointSnitch createEndpointSnitch(ClusterConfig config) throws ConfigException {
+    private static INodeSnitch createNodeSnitch(ClusterConfig config) throws ConfigException {
         // end point snitch
-        if (config.endpoint_snitch == null) {
-            throw new ConfigException("Missing endpoint_snitch directive");
+        if (config.node_snitch == null) {
+            throw new ConfigException("Missing node_snitch directive");
         }
 
-        String className = config.endpoint_snitch;
+        String className = config.node_snitch;
         if (!className.contains("."))
-            className = IEndpointSnitch.class.getPackage().getName() + "." + className;
-        IEndpointSnitch snitch = Utils.construct(className, "snitch");
+            className = INodeSnitch.class.getPackage().getName() + "." + className;
+        INodeSnitch snitch = Utils.construct(className, "snitch");
         if (config.dynamic_snitch)
-            snitch = new DynamicEndpointSnitch(snitch);
+            snitch = new DynamicNodeSnitch(snitch);
 
-        EndpointSnitchInfo.create();
+        NodeSnitchInfo.create();
         return snitch;
     }
 
@@ -241,45 +241,43 @@ public class ConfigDescriptor {
         if (config.replication_strategy == null) {
             HashMap<String, String> map = new HashMap<>(1);
             map.put("replication_factor", "1");
-            defaultReplicationStrategy = new SimpleStrategy("system", getEndpointSnitch(), map);
+            defaultReplicationStrategy = new SimpleStrategy("system", getNodeSnitch(), map);
         } else {
             if (config.replication_strategy.name == null) {
                 throw new ConfigException("replication_strategy.name is missing.");
             }
             defaultReplicationStrategy = AbstractReplicationStrategy.createReplicationStrategy("system",
-                    config.replication_strategy.name, getEndpointSnitch(), config.replication_strategy.parameters);
+                    config.replication_strategy.name, getNodeSnitch(), config.replication_strategy.parameters);
         }
         return defaultReplicationStrategy;
     }
 
-    private static AbstractEndpointAssignmentStrategy createDefaultEndpointAssignmentStrategy(ClusterConfig config)
+    private static AbstractNodeAssignmentStrategy createDefaultNodeAssignmentStrategy(ClusterConfig config)
             throws ConfigException {
-        AbstractEndpointAssignmentStrategy defaultEndpointAssignmentStrategy;
-        if (config.endpoint_assignment_strategy == null) {
+        AbstractNodeAssignmentStrategy defaultNodeAssignmentStrategy;
+        if (config.node_assignment_strategy == null) {
             HashMap<String, String> map = new HashMap<>(1);
             map.put("assignment_factor", "1");
-            defaultEndpointAssignmentStrategy = new RandomEndpointAssignmentStrategy("system", getEndpointSnitch(),
-                    map);
+            defaultNodeAssignmentStrategy = new RandomNodeAssignmentStrategy("system", getNodeSnitch(), map);
         } else {
-            if (config.endpoint_assignment_strategy.name == null) {
-                throw new ConfigException("endpoint_assignment_strategy.name is missing.");
+            if (config.node_assignment_strategy.name == null) {
+                throw new ConfigException("node_assignment_strategy.name is missing.");
             }
-            defaultEndpointAssignmentStrategy = AbstractEndpointAssignmentStrategy.create("system",
-                    config.endpoint_assignment_strategy.name, getEndpointSnitch(),
-                    config.endpoint_assignment_strategy.parameters);
+            defaultNodeAssignmentStrategy = AbstractNodeAssignmentStrategy.create("system",
+                    config.node_assignment_strategy.name, getNodeSnitch(), config.node_assignment_strategy.parameters);
         }
-        return defaultEndpointAssignmentStrategy;
+        return defaultNodeAssignmentStrategy;
     }
 
     public static AbstractReplicationStrategy getDefaultReplicationStrategy() {
         return defaultReplicationStrategy;
     }
 
-    public static AbstractEndpointAssignmentStrategy getDefaultEndpointAssignmentStrategy() {
-        return defaultEndpointAssignmentStrategy;
+    public static AbstractNodeAssignmentStrategy getDefaultNodeAssignmentStrategy() {
+        return defaultNodeAssignmentStrategy;
     }
 
-    public static IEndpointSnitch getEndpointSnitch() {
+    public static INodeSnitch getNodeSnitch() {
         return snitch;
     }
 
@@ -308,16 +306,16 @@ public class ConfigDescriptor {
         config.cluster_config.phi_convict_threshold = phiConvictThreshold;
     }
 
-    public static Set<NetEndpoint> getSeeds() {
+    public static Set<NetNode> getSeeds() {
         return new HashSet<>(seedProvider.getSeeds());
     }
 
-    public static List<NetEndpoint> getSeedList() {
+    public static List<NetNode> getSeedList() {
         return seedProvider.getSeeds();
     }
 
-    public static NetEndpoint getLocalEndpoint() {
-        return localP2pEndpoint;
+    public static NetNode getLocalNode() {
+        return localP2pNode;
     }
 
     public static IInternodeAuthenticator getInternodeAuthenticator() {
@@ -360,7 +358,7 @@ public class ConfigDescriptor {
         return localDC;
     }
 
-    public static Comparator<NetEndpoint> getLocalComparator() {
+    public static Comparator<NetNode> getLocalComparator() {
         return localComparator;
     }
 

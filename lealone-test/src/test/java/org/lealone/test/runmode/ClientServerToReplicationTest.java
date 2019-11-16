@@ -31,7 +31,7 @@ public class ClientServerToReplicationTest extends RunModeTest {
     public void run() throws Exception {
         String dbName = ClientServerToReplicationTest.class.getSimpleName();
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
-        sql += " PARAMETERS (endpoint_assignment_strategy: 'RandomEndpointAssignmentStrategy', assignment_factor: 1)";
+        sql += " PARAMETERS (node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 1)";
         executeUpdate(sql);
 
         new Thread(() -> {
@@ -40,7 +40,7 @@ public class ClientServerToReplicationTest extends RunModeTest {
 
         sql = "ALTER DATABASE " + dbName + " RUN MODE replication";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2,";
-        sql += " endpoint_assignment_strategy: 'RandomEndpointAssignmentStrategy', assignment_factor: 2)";
+        sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
         executeUpdate(sql);
 
         // String p = " PARAMETERS(hostIds='1,2')";

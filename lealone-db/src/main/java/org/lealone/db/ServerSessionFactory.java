@@ -9,7 +9,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 /**
  * This class is responsible for creating new sessions.
@@ -81,19 +81,19 @@ public class ServerSessionFactory implements SessionFactory {
 
     private ServerSession createSession(String dbName, ConnectionInfo ci) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
-        String targetEndpoints;
+        String targetNodes;
         if (ci.isEmbedded()) {
-            targetEndpoints = null;
+            targetNodes = null;
         } else {
-            NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
-            targetEndpoints = database.getTargetEndpoints();
+            NetNode localNode = NetNode.getLocalTcpNode();
+            targetNodes = database.getTargetNodes();
             // 为null时总是认为当前节点就是数据库所在的节点
-            if (targetEndpoints == null) {
-                targetEndpoints = localEndpoint.getHostAndPort();
-            } else if (!database.isTargetEndpoint(localEndpoint)) {
+            if (targetNodes == null) {
+                targetNodes = localNode.getHostAndPort();
+            } else if (!database.isTargetNode(localNode)) {
                 ServerSession session = new ServerSession(database,
                         LealoneDatabase.getInstance().getSystemSession().getUser(), 0);
-                session.setTargetEndpoints(targetEndpoints);
+                session.setTargetNodes(targetNodes);
                 session.setRunMode(database.getRunMode());
                 session.setInvalid(true);
                 return session;
@@ -123,7 +123,7 @@ public class ServerSessionFactory implements SessionFactory {
             throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
         }
         ServerSession session = database.createSession(user, ci);
-        session.setTargetEndpoints(targetEndpoints);
+        session.setTargetNodes(targetNodes);
         session.setRunMode(database.getRunMode());
         return session;
     }

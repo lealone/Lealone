@@ -28,10 +28,10 @@ import java.util.concurrent.atomic.DoubleAdder;
 import org.lealone.common.concurrent.DebuggableScheduledThreadPoolExecutor;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.EndpointState;
+import org.lealone.p2p.gms.NodeState;
 import org.lealone.p2p.gms.Gossiper;
 import org.lealone.p2p.gms.VersionedValue;
 import org.lealone.p2p.util.Utils;
@@ -123,9 +123,9 @@ public class BackgroundActivityMonitor {
         return avg / NUM_CPUS;
     }
 
-    public double getSeverity(NetEndpoint endpoint) {
+    public double getSeverity(NetNode node) {
         VersionedValue event;
-        EndpointState state = Gossiper.instance.getEndpointState(endpoint);
+        NodeState state = Gossiper.instance.getNodeState(node);
         if (state != null && (event = state.getApplicationState(ApplicationState.SEVERITY)) != null)
             return Double.parseDouble(event.value);
         return 0.0;

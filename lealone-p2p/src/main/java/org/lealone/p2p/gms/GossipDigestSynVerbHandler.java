@@ -25,7 +25,7 @@ import java.util.Map;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.net.IVerbHandler;
 import org.lealone.p2p.net.MessageIn;
@@ -38,7 +38,7 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
 
     @Override
     public void doVerb(MessageIn<GossipDigestSyn> message, int id) {
-        NetEndpoint from = message.from;
+        NetNode from = message.from;
         if (logger.isTraceEnabled())
             logger.trace("Received a GossipDigestSynMessage from {}", from);
         if (!Gossiper.instance.isEnabled()) {
@@ -68,7 +68,7 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
         doSort(gDigestList);
 
         List<GossipDigest> deltaGossipDigestList = new ArrayList<>();
-        Map<NetEndpoint, EndpointState> deltaEpStateMap = new HashMap<>();
+        Map<NetNode, NodeState> deltaEpStateMap = new HashMap<>();
         Gossiper.instance.examineGossiper(gDigestList, deltaGossipDigestList, deltaEpStateMap);
         if (logger.isTraceEnabled())
             logger.trace("sending {} digests and {} deltas", deltaGossipDigestList.size(), deltaEpStateMap.size());
@@ -80,28 +80,28 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
     }
 
     /*
-     * First construct a map whose key is the endpoint in the GossipDigest and the value is the
+     * First construct a map whose key is the node in the GossipDigest and the value is the
      * GossipDigest itself. Then build a list of version differences i.e difference between the
-     * version in the GossipDigest and the version in the local state for a given NetEndpoint.
+     * version in the GossipDigest and the version in the local state for a given NetNode.
      * Sort this list. Now loop through the sorted list and retrieve the GossipDigest corresponding
-     * to the endpoint from the map that was initially constructed.
+     * to the node from the map that was initially constructed.
     */
     private void doSort(List<GossipDigest> gDigestList) {
-        /* Construct a map of endpoint to GossipDigest. */
-        Map<NetEndpoint, GossipDigest> epToDigestMap = new HashMap<>();
+        /* Construct a map of node to GossipDigest. */
+        Map<NetNode, GossipDigest> epToDigestMap = new HashMap<>();
         for (GossipDigest gDigest : gDigestList) {
-            epToDigestMap.put(gDigest.getEndpoint(), gDigest);
+            epToDigestMap.put(gDigest.getNode(), gDigest);
         }
 
         /*
          * These digests have their maxVersion set to the difference of the version
-         * of the local EndpointState and the version found in the GossipDigest.
+         * of the local NodeState and the version found in the GossipDigest.
         */
         List<GossipDigest> diffDigests = new ArrayList<>(gDigestList.size());
         for (GossipDigest gDigest : gDigestList) {
-            NetEndpoint ep = gDigest.getEndpoint();
-            EndpointState epState = Gossiper.instance.getEndpointState(ep);
-            int version = (epState != null) ? Gossiper.instance.getMaxEndpointStateVersion(epState) : 0;
+            NetNode ep = gDigest.getNode();
+            NodeState epState = Gossiper.instance.getNodeState(ep);
+            int version = (epState != null) ? Gossiper.instance.getMaxNodeStateVersion(epState) : 0;
             int diffVersion = Math.abs(version - gDigest.getMaxVersion());
             diffDigests.add(new GossipDigest(ep, gDigest.getGeneration(), diffVersion));
         }
@@ -110,11 +110,11 @@ public class GossipDigestSynVerbHandler implements IVerbHandler<GossipDigestSyn>
         Collections.sort(diffDigests);
         int size = diffDigests.size();
         /*
-         * Report the digests in descending order. This takes care of the endpoints
-         * that are far behind w.r.t this local endpoint
+         * Report the digests in descending order. This takes care of the nodes
+         * that are far behind w.r.t this local node
         */
         for (int i = size - 1; i >= 0; --i) {
-            gDigestList.add(epToDigestMap.get(diffDigests.get(i).getEndpoint()));
+            gDigestList.add(epToDigestMap.get(diffDigests.get(i).getNode()));
         }
     }
 }

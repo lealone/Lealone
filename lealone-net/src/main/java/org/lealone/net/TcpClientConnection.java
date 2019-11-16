@@ -117,7 +117,7 @@ public class TcpClientConnection extends TransferConnection {
                 boolean autoCommit = in.readBoolean();
                 session.setProtocolVersion(protocolVersion);
                 session.setAutoCommit(autoCommit);
-                session.setTargetEndpoints(in.readString());
+                session.setTargetNodes(in.readString());
                 session.setRunMode(RunMode.valueOf(in.readString()));
                 session.setInvalid(in.readBoolean());
             }
@@ -127,7 +127,7 @@ public class TcpClientConnection extends TransferConnection {
     @Override
     protected void handleResponse(TransferInputStream in, int packetId, int status) throws IOException {
         checkClosed();
-        String newTargetEndpoints = null;
+        String newTargetNodes = null;
         Session session = null;
         DbException e = null;
         if (status == Session.STATUS_OK) {
@@ -139,7 +139,7 @@ public class TcpClientConnection extends TransferConnection {
         } else if (status == Session.STATUS_RUN_MODE_CHANGED) {
             int sessionId = in.readInt();
             session = getSession(sessionId);
-            newTargetEndpoints = in.readString();
+            newTargetNodes = in.readString();
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
@@ -157,7 +157,7 @@ public class TcpClientConnection extends TransferConnection {
         if (e != null)
             ac.setDbException(e);
         ac.run(in);
-        if (newTargetEndpoints != null)
-            session.runModeChanged(newTargetEndpoints);
+        if (newTargetNodes != null)
+            session.runModeChanged(newTargetNodes);
     }
 }

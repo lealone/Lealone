@@ -170,7 +170,7 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     }
 
     @Override
-    public Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
-        return mainIndex.getEndpointToPageKeyMap(session, first, last);
+    public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
+        return mainIndex.getNodeToPageKeyMap(session, first, last);
     }
 }

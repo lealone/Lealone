@@ -210,9 +210,8 @@ public class DataType {
                 new String[] { "DECIMAL", "DEC" },
                 // 40 for ValueDecimal,
                 64);
-        add(Value.DECIMAL, Types.NUMERIC,
-                "BigDecimal", createDecimal(Integer.MAX_VALUE, ValueDecimal.DEFAULT_PRECISION,
-                        ValueDecimal.DEFAULT_SCALE, ValueDecimal.DEFAULT_DISPLAY_SIZE, true, false),
+        add(Value.DECIMAL, Types.NUMERIC, "BigDecimal", createDecimal(Integer.MAX_VALUE, ValueDecimal.DEFAULT_PRECISION,
+                ValueDecimal.DEFAULT_SCALE, ValueDecimal.DEFAULT_DISPLAY_SIZE, true, false),
                 new String[] { "NUMERIC", "NUMBER" }, 64);
         add(Value.FLOAT, Types.REAL, "Float",
                 createDecimal(ValueFloat.PRECISION, ValueFloat.PRECISION, 0, ValueFloat.DISPLAY_SIZE, false, false),

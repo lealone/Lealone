@@ -26,7 +26,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
 import org.lealone.db.Session;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
@@ -39,8 +39,8 @@ public class P2pConnection extends TransferConnection {
     private static final Logger logger = LoggerFactory.getLogger(P2pConnection.class);
 
     private String hostAndPort;
-    private NetEndpoint remoteEndpoint;
-    private NetEndpoint resetEndpoint; // pointer to the reset Address.
+    private NetNode remoteNode;
+    private NetNode resetNode; // pointer to the reset Address.
     // private ConnectionMetrics metrics;
     private int version;
 
@@ -69,13 +69,13 @@ public class P2pConnection extends TransferConnection {
         }
     }
 
-    synchronized void initTransfer(NetEndpoint remoteEndpoint, String localHostAndPort) throws Exception {
-        if (this.remoteEndpoint == null) {
-            this.remoteEndpoint = remoteEndpoint;
-            resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-            // metrics = new ConnectionMetrics(remoteEndpoint);
-            hostAndPort = remoteEndpoint.getHostAndPort();
-            version = MessagingService.instance().getVersion(ConfigDescriptor.getLocalEndpoint());
+    synchronized void initTransfer(NetNode remoteNode, String localHostAndPort) throws Exception {
+        if (this.remoteNode == null) {
+            this.remoteNode = remoteNode;
+            resetNode = ClusterMetaData.getPreferredIP(remoteNode);
+            // metrics = new ConnectionMetrics(remoteNode);
+            hostAndPort = remoteNode.getHostAndPort();
+            version = MessagingService.instance().getVersion(ConfigDescriptor.getLocalNode());
             writeInitPacket(localHostAndPort);
             MessagingService.instance().addConnection(this);
         }
@@ -99,9 +99,9 @@ public class P2pConnection extends TransferConnection {
             MessagingService.validateMagic(in.readInt());
             version = in.readInt();
             hostAndPort = in.readString();
-            remoteEndpoint = NetEndpoint.createP2P(hostAndPort);
-            resetEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-            // metrics = new ConnectionMetrics(remoteEndpoint);
+            remoteNode = NetNode.createP2P(hostAndPort);
+            resetNode = ClusterMetaData.getPreferredIP(remoteNode);
+            // metrics = new ConnectionMetrics(remoteNode);
             // transfer.writeResponseHeader(packetId, Session.STATUS_OK);
             // transfer.flush();
             MessagingService.instance().addConnection(this);
@@ -163,10 +163,10 @@ public class P2pConnection extends TransferConnection {
         // metrics.timeouts.mark();
     }
 
-    NetEndpoint endpoint() {
-        if (remoteEndpoint.equals(ConfigDescriptor.getLocalEndpoint()))
-            return ConfigDescriptor.getLocalEndpoint();
-        return resetEndpoint;
+    NetNode node() {
+        if (remoteNode.equals(ConfigDescriptor.getLocalNode()))
+            return ConfigDescriptor.getLocalNode();
+        return resetNode;
     }
 
     @Override
@@ -179,13 +179,13 @@ public class P2pConnection extends TransferConnection {
         // metrics.release();
     }
 
-    void reset(NetEndpoint remoteEndpoint) {
-        ClusterMetaData.updatePreferredIP(this.remoteEndpoint, remoteEndpoint);
-        resetEndpoint = remoteEndpoint;
+    void reset(NetNode remoteNode) {
+        ClusterMetaData.updatePreferredIP(this.remoteNode, remoteNode);
+        resetNode = remoteNode;
 
         // release previous metrics and create new one with reset address
         // metrics.release();
-        // metrics = new ConnectionMetrics(resetEndpoint);
+        // metrics = new ConnectionMetrics(resetNode);
     }
 
     /** messages that have not been retried yet */

@@ -225,9 +225,9 @@ public interface Session extends Closeable, Transaction.Participant {
 
     boolean isValid();
 
-    void setTargetEndpoints(String targetEndpoints);
+    void setTargetNodes(String targetNodes);
 
-    String getTargetEndpoints();
+    String getTargetNodes();
 
     void setRunMode(RunMode runMode);
 
@@ -248,9 +248,9 @@ public interface Session extends Closeable, Transaction.Participant {
 
     boolean isRunModeChanged();
 
-    String getNewTargetEndpoints();
+    String getNewTargetNodes();
 
-    void runModeChanged(String newTargetEndpoints);
+    void runModeChanged(String newTargetNodes);
 
     default void reconnectIfNeeded() {
     }

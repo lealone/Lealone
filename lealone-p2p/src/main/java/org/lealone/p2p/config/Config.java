@@ -59,7 +59,7 @@ public class Config {
 
         public String cluster_name = "Test Cluster";
 
-        public String endpoint_snitch;
+        public String node_snitch;
         public Boolean dynamic_snitch = true;
         public Integer dynamic_snitch_update_interval_in_ms = 100;
         public Integer dynamic_snitch_reset_interval_in_ms = 600000;
@@ -73,7 +73,7 @@ public class Config {
 
         public SeedProviderDef seed_provider;
         public ReplicationStrategyDef replication_strategy;
-        public EndpointAssignmentStrategyDef endpoint_assignment_strategy;
+        public NodeAssignmentStrategyDef node_assignment_strategy;
 
     }
 
@@ -99,7 +99,7 @@ public class Config {
     public static class ReplicationStrategyDef extends MapPropertyTypeDef {
     }
 
-    public static class EndpointAssignmentStrategyDef extends MapPropertyTypeDef {
+    public static class NodeAssignmentStrategyDef extends MapPropertyTypeDef {
     }
 
     public static class PluggableEngineDef extends MapPropertyTypeDef {

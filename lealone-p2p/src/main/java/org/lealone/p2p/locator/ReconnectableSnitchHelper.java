@@ -21,10 +21,10 @@ import java.net.UnknownHostException;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.EndpointState;
-import org.lealone.p2p.gms.IEndpointStateChangeSubscriber;
+import org.lealone.p2p.gms.NodeState;
+import org.lealone.p2p.gms.INodeStateChangeSubscriber;
 import org.lealone.p2p.gms.VersionedValue;
 import org.lealone.p2p.net.MessagingService;
 
@@ -33,25 +33,25 @@ import org.lealone.p2p.net.MessagingService;
  * Typically, this is for situations like EC2 where a node will have a public address and a private address,
  * where we connect on the public, discover the private, and reconnect on the private.
  */
-public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber {
+public class ReconnectableSnitchHelper implements INodeStateChangeSubscriber {
     private static final Logger logger = LoggerFactory.getLogger(ReconnectableSnitchHelper.class);
-    private final IEndpointSnitch snitch;
+    private final INodeSnitch snitch;
     private final String localDc;
     private final boolean preferLocal;
 
-    public ReconnectableSnitchHelper(IEndpointSnitch snitch, String localDc, boolean preferLocal) {
+    public ReconnectableSnitchHelper(INodeSnitch snitch, String localDc, boolean preferLocal) {
         this.snitch = snitch;
         this.localDc = localDc;
         this.preferLocal = preferLocal;
     }
 
-    private void reconnect(NetEndpoint publicAddress, VersionedValue localAddressValue) {
+    private void reconnect(NetNode publicAddress, VersionedValue localAddressValue) {
         try {
-            NetEndpoint localAddress = NetEndpoint.getByName(localAddressValue.value);
+            NetNode localAddress = NetNode.getByName(localAddressValue.value);
 
             if (snitch.getDatacenter(publicAddress).equals(localDc)
                     && MessagingService.instance().getVersion(publicAddress) == MessagingService.CURRENT_VERSION
-                    && !MessagingService.instance().getConnectionEndpoint(publicAddress).equals(localAddress)) {
+                    && !MessagingService.instance().getConnectionNode(publicAddress).equals(localAddress)) {
 
                 MessagingService.instance().reconnect(publicAddress, localAddress);
 
@@ -65,19 +65,19 @@ public class ReconnectableSnitchHelper implements IEndpointStateChangeSubscriber
     }
 
     @Override
-    public void onChange(NetEndpoint endpoint, ApplicationState state, VersionedValue value) {
+    public void onChange(NetNode node, ApplicationState state, VersionedValue value) {
         if (preferLocal && state == ApplicationState.INTERNAL_IP)
-            reconnect(endpoint, value);
+            reconnect(node, value);
     }
 
     @Override
-    public void onJoin(NetEndpoint endpoint, EndpointState epState) {
+    public void onJoin(NetNode node, NodeState epState) {
         if (preferLocal && epState.getApplicationState(ApplicationState.INTERNAL_IP) != null)
-            reconnect(endpoint, epState.getApplicationState(ApplicationState.INTERNAL_IP));
+            reconnect(node, epState.getApplicationState(ApplicationState.INTERNAL_IP));
     }
 
     @Override
-    public void onAlive(NetEndpoint endpoint, EndpointState state) {
-        onJoin(endpoint, state);
+    public void onAlive(NetNode node, NodeState state) {
+        onJoin(node, state);
     }
 }

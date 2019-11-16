@@ -20,30 +20,30 @@ package org.lealone.test.p2p;
 import org.junit.Test;
 import org.lealone.test.runmode.RunModeTest;
 
-public class EndpointAssignmentStrategyTest extends RunModeTest {
+public class NodeAssignmentStrategyTest extends RunModeTest {
 
-    public EndpointAssignmentStrategyTest() {
+    public NodeAssignmentStrategyTest() {
     }
 
     @Test
     @Override
     public void run() throws Exception {
-        String dbName = EndpointAssignmentStrategyTest.class.getSimpleName() + "_Random";
+        String dbName = NodeAssignmentStrategyTest.class.getSimpleName() + "_Random";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
-        sql += " endpoint_assignment_strategy: 'RandomEndpointAssignmentStrategy', assignment_factor: 3)";
+        sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 3)";
         executeUpdate(sql);
 
-        dbName = EndpointAssignmentStrategyTest.class.getSimpleName() + "_LoadBased";
+        dbName = NodeAssignmentStrategyTest.class.getSimpleName() + "_LoadBased";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
-        sql += " endpoint_assignment_strategy: 'LoadBasedEndpointAssignmentStrategy', assignment_factor: 2)";
+        sql += " node_assignment_strategy: 'LoadBasedNodeAssignmentStrategy', assignment_factor: 2)";
         executeUpdate(sql);
 
-        dbName = EndpointAssignmentStrategyTest.class.getSimpleName() + "_Manual";
+        dbName = NodeAssignmentStrategyTest.class.getSimpleName() + "_Manual";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
-        sql += " endpoint_assignment_strategy: 'ManualEndpointAssignmentStrategy', assignment_factor: 2, "
+        sql += " node_assignment_strategy: 'ManualNodeAssignmentStrategy', assignment_factor: 2, "
                 + "host_id_list: '127.0.0.1:7210,127.0.0.3:7210')";
         executeUpdate(sql);
     }

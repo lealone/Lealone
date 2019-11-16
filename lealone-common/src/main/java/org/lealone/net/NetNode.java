@@ -26,29 +26,29 @@ import java.net.UnknownHostException;
 
 import org.lealone.db.Constants;
 
-public class NetEndpoint implements Comparable<NetEndpoint> {
+public class NetNode implements Comparable<NetNode> {
 
-    private static NetEndpoint localTcpEndpoint = new NetEndpoint(Constants.DEFAULT_HOST, Constants.DEFAULT_TCP_PORT);
-    private static NetEndpoint localP2pEndpoint = new NetEndpoint(Constants.DEFAULT_HOST, Constants.DEFAULT_P2P_PORT);
+    private static NetNode localTcpNode = new NetNode(Constants.DEFAULT_HOST, Constants.DEFAULT_TCP_PORT);
+    private static NetNode localP2pNode = new NetNode(Constants.DEFAULT_HOST, Constants.DEFAULT_P2P_PORT);
 
-    public static void setLocalTcpEndpoint(String host, int port) {
-        localTcpEndpoint = new NetEndpoint(host, port);
+    public static void setLocalTcpNode(String host, int port) {
+        localTcpNode = new NetNode(host, port);
     }
 
-    public static NetEndpoint getLocalTcpEndpoint() {
-        return localTcpEndpoint;
+    public static NetNode getLocalTcpNode() {
+        return localTcpNode;
     }
 
     public static String getLocalTcpHostAndPort() {
-        return localTcpEndpoint.getHostAndPort();
+        return localTcpNode.getHostAndPort();
     }
 
-    public static void setLocalP2pEndpoint(String host, int port) {
-        localP2pEndpoint = new NetEndpoint(host, port);
+    public static void setLocalP2pNode(String host, int port) {
+        localP2pNode = new NetNode(host, port);
     }
 
-    public static NetEndpoint getLocalP2pEndpoint() {
-        return localP2pEndpoint;
+    public static NetNode getLocalP2pNode() {
+        return localP2pNode;
     }
 
     private final InetAddress inetAddress;
@@ -57,7 +57,7 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
     private final int port;
     private final String hostAndPort; // host + ":" + port;
 
-    public NetEndpoint(String host, int port) {
+    public NetNode(String host, int port) {
         this.host = host;
         this.port = port;
         inetSocketAddress = new InetSocketAddress(host, port);
@@ -65,7 +65,7 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
         hostAndPort = host + ":" + port;
     }
 
-    public NetEndpoint(InetAddress inetAddress, int port) {
+    public NetNode(InetAddress inetAddress, int port) {
         this.inetAddress = inetAddress;
         this.host = inetAddress.getHostAddress();
         this.port = port;
@@ -73,23 +73,23 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
         hostAndPort = host + ":" + port;
     }
 
-    public static NetEndpoint getByName(String str) throws UnknownHostException {
+    public static NetNode getByName(String str) throws UnknownHostException {
         return createP2P(str);
     }
 
-    public static NetEndpoint createP2P(String str) {
-        return new NetEndpoint(str, true);
+    public static NetNode createP2P(String str) {
+        return new NetNode(str, true);
     }
 
-    public static NetEndpoint createTCP(String str) {
-        return new NetEndpoint(str, false);
+    public static NetNode createTCP(String str) {
+        return new NetNode(str, false);
     }
 
-    public static NetEndpoint create(String str, boolean p2p) {
-        return new NetEndpoint(str, p2p);
+    public static NetNode create(String str, boolean p2p) {
+        return new NetNode(str, p2p);
     }
 
-    public NetEndpoint(String str, boolean p2p) {
+    public NetNode(String str, boolean p2p) {
         int port = p2p ? Constants.DEFAULT_P2P_PORT : Constants.DEFAULT_TCP_PORT;
         // IPv6: RFC 2732 format is '[a:b:c:d:e:f:g:h]' or
         // '[a:b:c:d:e:f:g:h]:port'
@@ -168,7 +168,7 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        NetEndpoint other = (NetEndpoint) obj;
+        NetNode other = (NetNode) obj;
         if (inetAddress == null) {
             if (other.inetAddress != null)
                 return false;
@@ -180,7 +180,7 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
     }
 
     @Override
-    public int compareTo(NetEndpoint o) {
+    public int compareTo(NetNode o) {
         int v = this.getHostAddress().compareTo(o.getHostAddress());
         if (v == 0) {
             return this.port - o.port;
@@ -195,10 +195,10 @@ public class NetEndpoint implements Comparable<NetEndpoint> {
         out.writeInt(getPort());
     }
 
-    public static NetEndpoint deserialize(DataInput in) throws IOException {
+    public static NetNode deserialize(DataInput in) throws IOException {
         byte[] bytes = new byte[in.readByte()];
         in.readFully(bytes, 0, bytes.length);
         int port = in.readInt();
-        return new NetEndpoint(InetAddress.getByAddress(bytes), port);
+        return new NetNode(InetAddress.getByAddress(bytes), port);
     }
 }

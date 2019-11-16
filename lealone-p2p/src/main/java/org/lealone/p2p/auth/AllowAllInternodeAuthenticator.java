@@ -19,11 +19,11 @@
 package org.lealone.p2p.auth;
 
 import org.lealone.common.exceptions.ConfigException;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 public class AllowAllInternodeAuthenticator implements IInternodeAuthenticator {
     @Override
-    public boolean authenticate(NetEndpoint remoteAddress, int remotePort) {
+    public boolean authenticate(NetNode remoteAddress, int remotePort) {
         return true;
     }
 

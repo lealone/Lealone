@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.aote.AMTransaction;
 import org.lealone.transaction.aote.TransactionalValue;
@@ -60,7 +60,7 @@ public class AOTransaction extends AMTransaction {
     }
 
     AOTransaction(AOTransactionEngine engine, long tid) {
-        super(engine, tid, NetEndpoint.getLocalTcpHostAndPort());
+        super(engine, tid, NetNode.getLocalTcpHostAndPort());
         transactionEngine = engine;
         logSyncService = engine.getLogSyncService();
     }

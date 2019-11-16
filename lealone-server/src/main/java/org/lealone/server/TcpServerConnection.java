@@ -127,7 +127,7 @@ public class TcpServerConnection extends TransferConnection {
             out.writeResponseHeader(packetId, Session.STATUS_OK);
             out.writeInt(clientVersion);
             out.writeBoolean(session.isAutoCommit());
-            out.writeString(session.getTargetEndpoints());
+            out.writeString(session.getTargetNodes());
             out.writeString(session.getRunMode().toString());
             out.writeBoolean(session.isInvalid());
             out.flush();
@@ -389,7 +389,7 @@ public class TcpServerConnection extends TransferConnection {
                 out.writeString(session.getTransaction().getLocalTransactionNames());
             }
             if (session.isRunModeChanged()) {
-                out.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
+                out.writeInt(sessionId).writeString(session.getNewTargetNodes());
             }
             int columnCount = result.getVisibleColumnCount();
             out.writeInt(columnCount);
@@ -443,7 +443,7 @@ public class TcpServerConnection extends TransferConnection {
                     TransferOutputStream out = createTransferOutputStream(session);
                     out.writeResponseHeader(packetId, getStatus(session));
                     if (session.isRunModeChanged()) {
-                        out.writeInt(sessionId).writeString(session.getNewTargetEndpoints());
+                        out.writeInt(sessionId).writeString(session.getNewTargetNodes());
                     }
                     if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
                             || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {

@@ -24,22 +24,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.net.IVersionedSerializer;
 import org.lealone.p2p.net.Message;
 import org.lealone.p2p.net.MessageType;
 
 /**
  * This ack gets sent out as a result of the receipt of a GossipDigestSynMessage by an
- * endpoint. This is the 2 stage of the 3 way messaging in the Gossip protocol.
+ * node. This is the 2 stage of the 3 way messaging in the Gossip protocol.
  */
 public class GossipDigestAck implements Message<GossipDigestAck> {
     public static final IVersionedSerializer<GossipDigestAck> serializer = new GossipDigestAckSerializer();
 
     final List<GossipDigest> gDigestList;
-    final Map<NetEndpoint, EndpointState> epStateMap;
+    final Map<NetNode, NodeState> epStateMap;
 
-    GossipDigestAck(List<GossipDigest> gDigestList, Map<NetEndpoint, EndpointState> epStateMap) {
+    GossipDigestAck(List<GossipDigest> gDigestList, Map<NetNode, NodeState> epStateMap) {
         this.gDigestList = gDigestList;
         this.epStateMap = epStateMap;
     }
@@ -48,7 +48,7 @@ public class GossipDigestAck implements Message<GossipDigestAck> {
         return gDigestList;
     }
 
-    Map<NetEndpoint, EndpointState> getEndpointStateMap() {
+    Map<NetNode, NodeState> getNodeStateMap() {
         return epStateMap;
     }
 
@@ -67,10 +67,10 @@ public class GossipDigestAck implements Message<GossipDigestAck> {
         public void serialize(GossipDigestAck gDigestAckMessage, DataOutput out, int version) throws IOException {
             GossipDigestSerializationHelper.serialize(gDigestAckMessage.gDigestList, out, version);
             out.writeInt(gDigestAckMessage.epStateMap.size());
-            for (Map.Entry<NetEndpoint, EndpointState> entry : gDigestAckMessage.epStateMap.entrySet()) {
-                NetEndpoint ep = entry.getKey();
+            for (Map.Entry<NetNode, NodeState> entry : gDigestAckMessage.epStateMap.entrySet()) {
+                NetNode ep = entry.getKey();
                 ep.serialize(out);
-                EndpointState.serializer.serialize(entry.getValue(), out, version);
+                NodeState.serializer.serialize(entry.getValue(), out, version);
             }
         }
 
@@ -78,11 +78,11 @@ public class GossipDigestAck implements Message<GossipDigestAck> {
         public GossipDigestAck deserialize(DataInput in, int version) throws IOException {
             List<GossipDigest> gDigestList = GossipDigestSerializationHelper.deserialize(in, version);
             int size = in.readInt();
-            Map<NetEndpoint, EndpointState> epStateMap = new HashMap<>(size);
+            Map<NetNode, NodeState> epStateMap = new HashMap<>(size);
 
             for (int i = 0; i < size; ++i) {
-                NetEndpoint ep = NetEndpoint.deserialize(in);
-                EndpointState epState = EndpointState.serializer.deserialize(in, version);
+                NetNode ep = NetNode.deserialize(in);
+                NodeState epState = NodeState.serializer.deserialize(in, version);
                 epStateMap.put(ep, epState);
             }
             return new GossipDigestAck(gDigestList, epStateMap);

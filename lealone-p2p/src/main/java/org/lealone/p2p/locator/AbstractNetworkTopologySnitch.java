@@ -17,31 +17,31 @@
  */
 package org.lealone.p2p.locator;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 /**
- * An endpoint snitch tells lealone information about network topology that it can use to route
+ * An node snitch tells lealone information about network topology that it can use to route
  * requests more efficiently.
  */
-public abstract class AbstractNetworkTopologySnitch extends AbstractEndpointSnitch {
+public abstract class AbstractNetworkTopologySnitch extends AbstractNodeSnitch {
     /**
-     * Return the rack for which an endpoint resides in
-     * @param endpoint a specified endpoint
+     * Return the rack for which an node resides in
+     * @param node a specified node
      * @return string of rack
      */
     @Override
-    abstract public String getRack(NetEndpoint endpoint);
+    abstract public String getRack(NetNode node);
 
     /**
-     * Return the data center for which an endpoint resides in
-     * @param endpoint a specified endpoint
+     * Return the data center for which an node resides in
+     * @param node a specified node
      * @return string of data center
      */
     @Override
-    abstract public String getDatacenter(NetEndpoint endpoint);
+    abstract public String getDatacenter(NetNode node);
 
     @Override
-    public int compareEndpoints(NetEndpoint address, NetEndpoint a1, NetEndpoint a2) {
+    public int compareNodes(NetNode address, NetNode a1, NetNode a2) {
         if (address.equals(a1) && !address.equals(a2))
             return -1;
         if (address.equals(a2) && !address.equals(a1))

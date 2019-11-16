@@ -23,18 +23,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.util.FileUtils;
 
 public class MessageIn<T> {
-    public final NetEndpoint from;
+    public final NetNode from;
     public final Verb verb;
     public final T payload;
     public final Map<String, byte[]> parameters;
     public final int version;
 
-    private MessageIn(NetEndpoint from, Verb verb, T payload, Map<String, byte[]> parameters, int version) {
+    private MessageIn(NetNode from, Verb verb, T payload, Map<String, byte[]> parameters, int version) {
         this.from = from;
         this.verb = verb;
         this.payload = payload;
@@ -62,7 +62,7 @@ public class MessageIn<T> {
     }
 
     public static MessageIn<?> read(DataInput in, int version, int id) throws IOException {
-        NetEndpoint from = NetEndpoint.deserialize(in);
+        NetNode from = NetNode.deserialize(in);
 
         Verb verb = Verb.values()[in.readInt()];
         int parameterCount = in.readInt();

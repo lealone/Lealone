@@ -72,7 +72,7 @@ class ReadResponseHandler {
     void onFailure() {
         int f = failuresUpdater.incrementAndGet(this);
 
-        if (totalBlockFor() + f >= totalEndpoints())
+        if (totalBlockFor() + f >= totalNodes())
             signal();
     }
 
@@ -100,7 +100,7 @@ class ReadResponseHandler {
             throw new ReadTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor, false);
         }
 
-        if (!successful && totalBlockFor() + failures >= totalEndpoints()) {
+        if (!successful && totalBlockFor() + failures >= totalNodes()) {
             throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor(), false);
         }
 
@@ -131,7 +131,7 @@ class ReadResponseHandler {
             throw new ReadTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor, false);
         }
 
-        if (!successful && totalBlockFor() + failures >= totalEndpoints()) {
+        if (!successful && totalBlockFor() + failures >= totalNodes()) {
             throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor(), false);
         }
 
@@ -146,7 +146,7 @@ class ReadResponseHandler {
         return r;
     }
 
-    int totalEndpoints() {
+    int totalNodes() {
         return n;
     }
 

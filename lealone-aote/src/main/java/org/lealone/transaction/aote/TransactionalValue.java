@@ -25,7 +25,7 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.UnsafeUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
@@ -576,7 +576,7 @@ public interface TransactionalValue {
             this.logId = transaction.undoLog.getLogId();
             this.oldValue = oldValue;
             this.oldValueType = oldValueType;
-            this.hostAndPort = NetEndpoint.getLocalTcpHostAndPort();
+            this.hostAndPort = NetNode.getLocalTcpHostAndPort();
             this.globalReplicationName = transaction.globalTransactionName;
             this.columnIndexes = columnIndexes;
             this.ref = ref;

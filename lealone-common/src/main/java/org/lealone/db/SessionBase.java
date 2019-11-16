@@ -39,14 +39,14 @@ public abstract class SessionBase implements Session {
     protected String replicationName;
     protected AtomicInteger nextId = new AtomicInteger(0);
 
-    protected String targetEndpoints;
+    protected String targetNodes;
     protected RunMode runMode;
     protected boolean invalid;
 
     protected boolean autoCommit = true;
     protected Transaction parentTransaction;
 
-    protected String newTargetEndpoints;
+    protected String newTargetNodes;
 
     protected TraceSystem traceSystem;
     protected boolean closed;
@@ -119,13 +119,13 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public void setTargetEndpoints(String targetEndpoints) {
-        this.targetEndpoints = targetEndpoints;
+    public void setTargetNodes(String targetNodes) {
+        this.targetNodes = targetNodes;
     }
 
     @Override
-    public String getTargetEndpoints() {
-        return targetEndpoints;
+    public String getTargetNodes() {
+        return targetNodes;
     }
 
     @Override
@@ -180,19 +180,19 @@ public abstract class SessionBase implements Session {
 
     @Override
     public boolean isRunModeChanged() {
-        return newTargetEndpoints != null;
+        return newTargetNodes != null;
     }
 
     @Override
-    public String getNewTargetEndpoints() {
-        String endpoints = newTargetEndpoints;
-        newTargetEndpoints = null;
-        return endpoints;
+    public String getNewTargetNodes() {
+        String nodes = newTargetNodes;
+        newTargetNodes = null;
+        return nodes;
     }
 
     @Override
-    public void runModeChanged(String newTargetEndpoints) {
-        this.newTargetEndpoints = newTargetEndpoints;
+    public void runModeChanged(String newTargetNodes) {
+        this.newTargetNodes = newTargetNodes;
     }
 
     public Trace getTrace(TraceModuleType traceModuleType) {

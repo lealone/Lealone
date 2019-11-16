@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.net.IVersionedSerializer;
 import org.lealone.p2p.net.Message;
 import org.lealone.p2p.net.MessageType;
@@ -35,13 +35,13 @@ import org.lealone.p2p.net.MessageType;
 public class GossipDigestAck2 implements Message<GossipDigestAck2> {
     public static final IVersionedSerializer<GossipDigestAck2> serializer = new GossipDigestAck2Serializer();
 
-    final Map<NetEndpoint, EndpointState> epStateMap;
+    final Map<NetNode, NodeState> epStateMap;
 
-    GossipDigestAck2(Map<NetEndpoint, EndpointState> epStateMap) {
+    GossipDigestAck2(Map<NetNode, NodeState> epStateMap) {
         this.epStateMap = epStateMap;
     }
 
-    Map<NetEndpoint, EndpointState> getEndpointStateMap() {
+    Map<NetNode, NodeState> getNodeStateMap() {
         return epStateMap;
     }
 
@@ -59,21 +59,21 @@ public class GossipDigestAck2 implements Message<GossipDigestAck2> {
         @Override
         public void serialize(GossipDigestAck2 ack2, DataOutput out, int version) throws IOException {
             out.writeInt(ack2.epStateMap.size());
-            for (Map.Entry<NetEndpoint, EndpointState> entry : ack2.epStateMap.entrySet()) {
-                NetEndpoint ep = entry.getKey();
+            for (Map.Entry<NetNode, NodeState> entry : ack2.epStateMap.entrySet()) {
+                NetNode ep = entry.getKey();
                 ep.serialize(out);
-                EndpointState.serializer.serialize(entry.getValue(), out, version);
+                NodeState.serializer.serialize(entry.getValue(), out, version);
             }
         }
 
         @Override
         public GossipDigestAck2 deserialize(DataInput in, int version) throws IOException {
             int size = in.readInt();
-            Map<NetEndpoint, EndpointState> epStateMap = new HashMap<>(size);
+            Map<NetNode, NodeState> epStateMap = new HashMap<>(size);
 
             for (int i = 0; i < size; ++i) {
-                NetEndpoint ep = NetEndpoint.deserialize(in);
-                EndpointState epState = EndpointState.serializer.deserialize(in, version);
+                NetNode ep = NetNode.deserialize(in);
+                NodeState epState = NodeState.serializer.deserialize(in, version);
                 epStateMap.put(ep, epState);
             }
             return new GossipDigestAck2(epStateMap);

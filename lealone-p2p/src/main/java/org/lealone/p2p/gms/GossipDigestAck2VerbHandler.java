@@ -21,7 +21,7 @@ import java.util.Map;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.net.IVerbHandler;
 import org.lealone.p2p.net.MessageIn;
 
@@ -31,7 +31,7 @@ public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck
     @Override
     public void doVerb(MessageIn<GossipDigestAck2> message, int id) {
         if (logger.isTraceEnabled()) {
-            NetEndpoint from = message.from;
+            NetNode from = message.from;
             logger.trace("Received a GossipDigestAck2Message from {}", from);
         }
         if (!Gossiper.instance.isEnabled()) {
@@ -39,7 +39,7 @@ public class GossipDigestAck2VerbHandler implements IVerbHandler<GossipDigestAck
                 logger.trace("Ignoring GossipDigestAck2Message because gossip is disabled");
             return;
         }
-        Map<NetEndpoint, EndpointState> remoteEpStateMap = message.payload.getEndpointStateMap();
+        Map<NetNode, NodeState> remoteEpStateMap = message.payload.getNodeStateMap();
         /* Notify the Failure Detector */
         Gossiper.instance.notifyFailureDetector(remoteEpStateMap);
         Gossiper.instance.applyStateLocally(remoteEpStateMap);

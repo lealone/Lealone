@@ -17,22 +17,32 @@
  */
 package org.lealone.net;
 
-public class NetEndpointManagerHolder {
+import java.util.HashSet;
+import java.util.Set;
 
-    private static NetEndpointManager netEndpointManager = LocalNetEndpointManager.getInstance();
+import org.lealone.db.IDatabase;
 
-    public static NetEndpointManager getNetEndpointManager() {
-        return netEndpointManager;
+public class LocalNetNodeManager implements NetNodeManager {
+
+    private static final LocalNetNodeManager INSTANCE = new LocalNetNodeManager();
+
+    public static LocalNetNodeManager getInstance() {
+        return INSTANCE;
     }
 
-    public static NetEndpointManager get() {
-        return netEndpointManager;
+    protected LocalNetNodeManager() {
     }
 
-    public static void set(NetEndpointManager m) {
-        if (m == null)
-            throw new NullPointerException("NetEndpointManager is null");
-        netEndpointManager = m;
+    @Override
+    public String[] assignNodes(IDatabase db) {
+        return new String[] { NetNode.getLocalTcpHostAndPort() };
+    }
+
+    @Override
+    public Set<NetNode> getLiveNodes() {
+        HashSet<NetNode> set = new HashSet<>(1);
+        set.add(NetNode.getLocalP2pNode());
+        return set;
     }
 
 }

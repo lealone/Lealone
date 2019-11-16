@@ -58,7 +58,7 @@ public class DropDatabase extends DatabaseStatement {
                     throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
             } else {
                 lealoneDB.removeDatabaseObject(session, db);
-                if (isTargetEndpoint(db)) {
+                if (isTargetNode(db)) {
                     // dropAllObjects(db);
                     if (deleteFiles) {
                         db.setDeleteFilesOnDisconnect(true);

@@ -294,5 +294,5 @@ public interface Index extends SchemaObject {
 
     StorageMap<? extends Object, ? extends Object> getStorageMap();
 
-    Map<String, List<PageKey>> getEndpointToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
+    Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
 }

@@ -19,32 +19,32 @@ package org.lealone.p2p.locator;
 
 import java.util.List;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 /**
- * A simple endpoint snitch implementation that treats Strategy order as proximity,
- * allowing non-read-repaired reads to prefer a single endpoint, which improves
+ * A simple node snitch implementation that treats Strategy order as proximity,
+ * allowing non-read-repaired reads to prefer a single node, which improves
  * cache locality.
  */
-public class SimpleSnitch extends AbstractEndpointSnitch {
+public class SimpleSnitch extends AbstractNodeSnitch {
     @Override
-    public String getRack(NetEndpoint endpoint) {
+    public String getRack(NetNode node) {
         return "rack1";
     }
 
     @Override
-    public String getDatacenter(NetEndpoint endpoint) {
+    public String getDatacenter(NetNode node) {
         return "datacenter1";
     }
 
     @Override
-    public void sortByProximity(final NetEndpoint address, List<NetEndpoint> addresses) {
+    public void sortByProximity(final NetNode address, List<NetNode> addresses) {
         // Optimization to avoid walking the list
     }
 
     @Override
-    public int compareEndpoints(NetEndpoint target, NetEndpoint a1, NetEndpoint a2) {
-        // Making all endpoints equal ensures we won't change the original ordering (since
+    public int compareNodes(NetNode target, NetNode a1, NetNode a2) {
+        // Making all nodes equal ensures we won't change the original ordering (since
         // Collections.sort is guaranteed to be stable)
         return 0;
     }

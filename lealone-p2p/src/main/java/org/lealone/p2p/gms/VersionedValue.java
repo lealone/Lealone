@@ -22,7 +22,7 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.net.IVersionedSerializer;
 import org.lealone.p2p.net.MessagingService;
 import org.lealone.p2p.util.Utils;
@@ -148,8 +148,8 @@ public class VersionedValue implements Comparable<VersionedValue> {
             return new VersionedValue(rackId);
         }
 
-        public VersionedValue endpoint(NetEndpoint endpoint) {
-            return new VersionedValue(endpoint.getHostAndPort());
+        public VersionedValue node(NetNode node) {
+            return new VersionedValue(node.getHostAndPort());
         }
 
         public VersionedValue releaseVersion() {

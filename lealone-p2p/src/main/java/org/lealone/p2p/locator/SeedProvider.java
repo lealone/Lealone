@@ -19,10 +19,10 @@ package org.lealone.p2p.locator;
 
 import java.util.List;
 
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
 public interface SeedProvider {
 
-    List<NetEndpoint> getSeeds();
+    List<NetNode> getSeeds();
 
 }

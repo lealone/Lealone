@@ -28,6 +28,6 @@ public class TwoDCNodeBase extends NodeBase {
 
     public TwoDCNodeBase() {
         nodeBaseDirPrefix = "cluster/twodc-";
-        endpoint_snitch = "GossipingPropertyFileSnitch";
+        node_snitch = "GossipingPropertyFileSnitch";
     }
 }

@@ -37,9 +37,9 @@ import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
-import org.lealone.net.NetEndpoint;
-import org.lealone.net.NetEndpointManager;
-import org.lealone.net.NetEndpointManagerHolder;
+import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManager;
+import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
@@ -60,15 +60,15 @@ public class SQLRouter {
     }
 
     public static int executeDatabaseStatement(IDatabase db, Session currentSession, StatementBase statement) {
-        NetEndpointManager m = NetEndpointManagerHolder.get();
-        Set<NetEndpoint> liveMembers = m.getLiveEndpoints();
-        NetEndpoint localEndpoint = NetEndpoint.getLocalP2pEndpoint();
-        liveMembers.remove(localEndpoint);
+        NetNodeManager m = NetNodeManagerHolder.get();
+        Set<NetNode> liveMembers = m.getLiveNodes();
+        NetNode localNode = NetNode.getLocalP2pNode();
+        liveMembers.remove(localNode);
         if (liveMembers.isEmpty())
             return 0;
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
-        for (NetEndpoint e : liveMembers) {
+        for (NetNode e : liveMembers) {
             String hostId = m.getHostId(e);
             sessions[i++] = currentSession.getNestedSession(hostId, true);
         }
@@ -98,8 +98,8 @@ public class SQLRouter {
     }
 
     private static int executeDefineStatement(StatementBase defineStatement) {
-        NetEndpointManager m = NetEndpointManagerHolder.get();
-        Set<NetEndpoint> liveMembers;
+        NetNodeManager m = NetNodeManagerHolder.get();
+        Set<NetNode> liveMembers;
         Session currentSession = defineStatement.getSession();
         IDatabase db = currentSession.getDatabase();
         String[] hostIds = db.getHostIds();
@@ -109,30 +109,30 @@ public class SQLRouter {
         } else {
             liveMembers = new HashSet<>(hostIds.length);
             for (String hostId : hostIds) {
-                liveMembers.add(m.getEndpoint(hostId));
+                liveMembers.add(m.getNode(hostId));
             }
         }
-        List<String> initReplicationEndpoints = null;
+        List<String> initReplicationNodes = null;
         // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
         if (defineStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
-            List<NetEndpoint> endpoints = m.getReplicationEndpoints(db, new HashSet<>(0), liveMembers);
-            if (!endpoints.isEmpty()) {
-                initReplicationEndpoints = new ArrayList<>(endpoints.size());
-                for (NetEndpoint e : endpoints) {
+            List<NetNode> nodes = m.getReplicationNodes(db, new HashSet<>(0), liveMembers);
+            if (!nodes.isEmpty()) {
+                initReplicationNodes = new ArrayList<>(nodes.size());
+                for (NetNode e : nodes) {
                     String hostId = m.getHostId(e);
-                    initReplicationEndpoints.add(hostId);
+                    initReplicationNodes.add(hostId);
                 }
             }
         }
 
         Session[] sessions = new Session[liveMembers.size()];
         int i = 0;
-        for (NetEndpoint e : liveMembers) {
+        for (NetNode e : liveMembers) {
             String hostId = m.getHostId(e);
-            sessions[i++] = currentSession.getNestedSession(hostId, !NetEndpoint.getLocalP2pEndpoint().equals(e));
+            sessions[i++] = currentSession.getNestedSession(hostId, !NetNode.getLocalP2pNode().equals(e));
         }
 
-        ReplicationSession rs = new ReplicationSession(sessions, initReplicationEndpoints);
+        ReplicationSession rs = new ReplicationSession(sessions, initReplicationNodes);
         rs.setAutoCommit(currentSession.isAutoCommit());
         rs.setRpcTimeout(m.getRpcTimeout());
 
@@ -181,10 +181,10 @@ public class SQLRouter {
         case SQLStatement.DELETE:
         case SQLStatement.UPDATE: {
             int updateCount = 0;
-            Map<String, List<PageKey>> endpointToPageKeyMap = statement.getEndpointToPageKeyMap();
-            int size = endpointToPageKeyMap.size();
+            Map<String, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
+            int size = nodeToPageKeyMap.size();
             if (size > 0) {
-                updateCount = maybeExecuteDistributedUpdate(statement, endpointToPageKeyMap, size > 1);
+                updateCount = maybeExecuteDistributedUpdate(statement, nodeToPageKeyMap, size > 1);
             }
             return updateCount;
         }
@@ -194,7 +194,7 @@ public class SQLRouter {
     }
 
     private static int maybeExecuteDistributedUpdate(StatementBase statement,
-            Map<String, List<PageKey>> endpointToPageKeyMap, boolean isBatch) {
+            Map<String, List<PageKey>> nodeToPageKeyMap, boolean isBatch) {
         beginTransaction(statement);
 
         boolean isTopTransaction = false;
@@ -223,7 +223,7 @@ public class SQLRouter {
             // :
             // }
 
-            int updateCount = maybeExecuteDistributedUpdate(statement, endpointToPageKeyMap);
+            int updateCount = maybeExecuteDistributedUpdate(statement, nodeToPageKeyMap);
             if (isTopTransaction)
                 session.asyncCommit(null);
             return updateCount;
@@ -243,20 +243,20 @@ public class SQLRouter {
     }
 
     private static int maybeExecuteDistributedUpdate(StatementBase statement,
-            Map<String, List<PageKey>> endpointToPageKeyMap) {
+            Map<String, List<PageKey>> nodeToPageKeyMap) {
         int updateCount = 0;
-        int size = endpointToPageKeyMap.size();
+        int size = nodeToPageKeyMap.size();
         String sql = statement.getPlanSQL(true);
         Session currentSession = statement.getSession();
         Session[] sessions = new Session[size];
         SQLCommand[] commands = new SQLCommand[size];
         ArrayList<Callable<Integer>> callables = new ArrayList<>(size);
         int i = 0;
-        for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
+        for (Entry<String, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
             String hostId = e.getKey();
             List<PageKey> pageKeys = e.getValue();
             sessions[i] = currentSession.getNestedSession(hostId,
-                    !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
+                    !NetNode.getLocalTcpNode().equals(NetNode.createTCP(hostId)));
             commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
             SQLCommand c = commands[i];
             callables.add(() -> {
@@ -299,8 +299,8 @@ public class SQLRouter {
         case SQLStatement.SELECT: {
             Select select = (Select) statement;
             Session currentSession = statement.getSession();
-            Map<String, List<PageKey>> endpointToPageKeyMap = statement.getEndpointToPageKeyMap();
-            int size = endpointToPageKeyMap.size();
+            Map<String, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
+            int size = nodeToPageKeyMap.size();
             if (size <= 0) {
                 return new LocalResult();
             }
@@ -311,11 +311,11 @@ public class SQLRouter {
             SQLCommand[] commands = new SQLCommand[size];
             ArrayList<Callable<Result>> callables = new ArrayList<>(size);
             int i = 0;
-            for (Entry<String, List<PageKey>> e : endpointToPageKeyMap.entrySet()) {
+            for (Entry<String, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
                 String hostId = e.getKey();
                 List<PageKey> pageKeys = e.getValue();
                 sessions[i] = currentSession.getNestedSession(hostId,
-                        !NetEndpoint.getLocalTcpEndpoint().equals(NetEndpoint.createTCP(hostId)));
+                        !NetNode.getLocalTcpNode().equals(NetNode.createTCP(hostId)));
                 commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
                 SQLCommand c = commands[i];
                 callables.add(() -> {
@@ -357,29 +357,28 @@ public class SQLRouter {
         }
     }
 
-    public static void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
-            String[] newEndpoints) {
-        ConcurrentUtils.submitTask("ScaleIn Endpoints", () -> {
+    public static void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
+            String[] newNodes) {
+        ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
             for (Storage storage : db.getStorages()) {
-                storage.scaleIn(db, oldRunMode, newRunMode, oldEndpoints, newEndpoints);
+                storage.scaleIn(db, oldRunMode, newRunMode, oldNodes, newNodes);
             }
         });
     }
 
-    public static void replicate(IDatabase db, RunMode oldRunMode, RunMode newRunMode,
-            String[] newReplicationEndpoints) {
+    public static void replicate(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationNodes) {
         ConcurrentUtils.submitTask("Replicate Pages", () -> {
             for (Storage storage : db.getStorages()) {
-                storage.replicate(db, newReplicationEndpoints, newRunMode);
+                storage.replicate(db, newReplicationNodes, newRunMode);
             }
         });
     }
 
-    public static void sharding(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
-            String[] newEndpoints) {
+    public static void sharding(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
+            String[] newNodes) {
         ConcurrentUtils.submitTask("Sharding Pages", () -> {
             for (Storage storage : db.getStorages()) {
-                storage.sharding(db, oldEndpoints, newEndpoints, newRunMode);
+                storage.sharding(db, oldNodes, newNodes, newRunMode);
             }
         });
     }

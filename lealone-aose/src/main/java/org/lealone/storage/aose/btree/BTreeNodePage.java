@@ -25,7 +25,7 @@ import java.util.concurrent.Callable;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.aose.btree.PageOperations.CallableOperation;
 import org.lealone.storage.aose.btree.PageOperations.TmpNodePage;
@@ -460,32 +460,32 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void moveAllLocalLeafPages(String[] oldEndpoints, String[] newEndpoints) {
+    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
         DistributedBTreeMap<?, ?> map = (DistributedBTreeMap<?, ?>) this.map;
-        Set<NetEndpoint> candidateEndpoints = DistributedBTreeMap.getCandidateEndpoints(map.db, newEndpoints);
+        Set<NetNode> candidateNodes = DistributedBTreeMap.getCandidateNodes(map.db, newNodes);
         for (int i = 0, len = keys.length; i <= len; i++) {
             if (!children[i].isRemotePage()) {
                 BTreePage p = getChildPage(i);
                 if (p.isNode()) {
-                    p.moveAllLocalLeafPages(oldEndpoints, newEndpoints);
+                    p.moveAllLocalLeafPages(oldNodes, newNodes);
                 } else {
                     List<String> replicationHostIds = p.getReplicationHostIds();
                     Object key = i == len ? keys[i - 1] : keys[i];
                     if (replicationHostIds == null) {
-                        oldEndpoints = new String[0];
+                        oldNodes = new String[0];
                     } else {
-                        oldEndpoints = new String[replicationHostIds.size()];
-                        replicationHostIds.toArray(oldEndpoints);
+                        oldNodes = new String[replicationHostIds.size()];
+                        replicationHostIds.toArray(oldNodes);
                     }
                     PageKey pk = new PageKey(key, i == 0);
-                    map.replicateOrMovePage(pk, p, this, i, oldEndpoints, false, candidateEndpoints);
+                    map.replicateOrMovePage(pk, p, this, i, oldNodes, false, candidateNodes);
                 }
             }
         }
     }
 
     @Override
-    void replicatePage(DataBuffer buff, NetEndpoint localEndpoint) {
+    void replicatePage(DataBuffer buff, NetNode localNode) {
         BTreeNodePage p = copy(false);
         // 这里不需要为PageReference生成PageKey，生成PageReference只是为了调用write时把子Page当成RemotePage
         int len = children.length;

@@ -22,7 +22,7 @@ import java.net.UnknownHostException;
 /**
  * MBean exposing standard Snitch info
  */
-public interface EndpointSnitchInfoMBean {
+public interface NodeSnitchInfoMBean {
     /**
      * Provides the Rack name depending on the respective snitch used, given the host name/ip
      * @param host

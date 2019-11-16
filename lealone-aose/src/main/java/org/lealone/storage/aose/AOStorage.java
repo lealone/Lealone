@@ -32,7 +32,7 @@ import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueString;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageBase;
 import org.lealone.storage.StorageCommand;
@@ -156,35 +156,35 @@ public class AOStorage extends StorageBase {
         return config.containsKey("readOnly");
     }
 
-    private List<NetEndpoint> getReplicationEndpoints(String[] replicationHostIds) {
-        return getReplicationEndpoints(Arrays.asList(replicationHostIds));
+    private List<NetNode> getReplicationNodes(String[] replicationHostIds) {
+        return getReplicationNodes(Arrays.asList(replicationHostIds));
     }
 
-    private List<NetEndpoint> getReplicationEndpoints(List<String> replicationHostIds) {
+    private List<NetNode> getReplicationNodes(List<String> replicationHostIds) {
         int size = replicationHostIds.size();
-        List<NetEndpoint> replicationEndpoints = new ArrayList<>(size);
+        List<NetNode> replicationNodes = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            replicationEndpoints.add(db.getEndpoint(replicationHostIds.get(i)));
+            replicationNodes.add(db.getNode(replicationHostIds.get(i)));
         }
-        return replicationEndpoints;
+        return replicationNodes;
     }
 
     @Override
-    public void replicate(Object dbObject, String[] newReplicationEndpoints, RunMode runMode) {
-        replicateRootPages(dbObject, null, newReplicationEndpoints, runMode);
+    public void replicate(Object dbObject, String[] newReplicationNodes, RunMode runMode) {
+        replicateRootPages(dbObject, null, newReplicationNodes, runMode);
     }
 
     @Override
-    public void sharding(Object dbObject, String[] oldEndpoints, String[] newEndpoints, RunMode runMode) {
-        replicateRootPages(dbObject, oldEndpoints, newEndpoints, runMode);
+    public void sharding(Object dbObject, String[] oldNodes, String[] newNodes, RunMode runMode) {
+        replicateRootPages(dbObject, oldNodes, newNodes, runMode);
     }
 
-    private void replicateRootPages(Object dbObject, String[] oldEndpoints, String[] targetEndpoints, RunMode runMode) {
-        List<NetEndpoint> replicationEndpoints = getReplicationEndpoints(targetEndpoints);
+    private void replicateRootPages(Object dbObject, String[] oldNodes, String[] targetNodes, RunMode runMode) {
+        List<NetNode> replicationNodes = getReplicationNodes(targetNodes);
         // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
         IDatabase db = (IDatabase) dbObject;
         Session session = db.createInternalSession(true);
-        ReplicationSession rs = db.createReplicationSession(session, replicationEndpoints);
+        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         int id = db.getId();
         String sysMapName = "t_" + id + "_0";
         try (DataBuffer p = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
@@ -193,9 +193,9 @@ public class AOStorage extends StorageBase {
             p.putInt(values.size());
             // SYS表放在前面，并且总是使用CLIENT_SERVER模式
             StorageMap<?, ?> sysMap = maps.remove(sysMapName);
-            replicateRootPage(db, sysMap, p, oldEndpoints, RunMode.CLIENT_SERVER);
+            replicateRootPage(db, sysMap, p, oldNodes, RunMode.CLIENT_SERVER);
             for (StorageMap<?, ?> map : values) {
-                replicateRootPage(db, map, p, oldEndpoints, runMode);
+                replicateRootPage(db, map, p, oldNodes, runMode);
             }
             ByteBuffer pageBuffer = p.getAndFlipBuffer();
             c.replicateRootPages(db.getShortName(), pageBuffer);
@@ -203,7 +203,7 @@ public class AOStorage extends StorageBase {
         }
     }
 
-    private void replicateRootPage(IDatabase db, StorageMap<?, ?> map, DataBuffer p, String[] oldEndpoints,
+    private void replicateRootPage(IDatabase db, StorageMap<?, ?> map, DataBuffer p, String[] oldNodes,
             RunMode runMode) {
         map = map.getRawMap();
         if (map instanceof DistributedBTreeMap) {
@@ -211,7 +211,7 @@ public class AOStorage extends StorageBase {
             ValueString.type.write(p, mapName);
 
             DistributedBTreeMap<?, ?> btreeMap = (DistributedBTreeMap<?, ?>) map;
-            btreeMap.setOldEndpoints(oldEndpoints);
+            btreeMap.setOldNodes(oldNodes);
             btreeMap.setDatabase(db);
             btreeMap.setRunMode(runMode);
             btreeMap.replicateRootPage(p);
@@ -219,20 +219,19 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
-    public void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldEndpoints,
-            String[] newEndpoints) {
+    public void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
         IDatabase db = (IDatabase) dbObject;
         for (StorageMap<?, ?> map : maps.values()) {
             map = map.getRawMap();
             if (map instanceof BTreeMap) {
                 DistributedBTreeMap<?, ?> btreeMap = (DistributedBTreeMap<?, ?>) map;
-                btreeMap.setOldEndpoints(oldEndpoints);
+                btreeMap.setOldNodes(oldNodes);
                 btreeMap.setDatabase(db);
                 btreeMap.setRunMode(newRunMode);
-                if (oldEndpoints == null) {
+                if (oldNodes == null) {
                     btreeMap.replicateAllRemotePages();
                 } else {
-                    btreeMap.moveAllLocalLeafPages(oldEndpoints, newEndpoints);
+                    btreeMap.moveAllLocalLeafPages(oldNodes, newNodes);
                 }
             }
         }

@@ -48,7 +48,7 @@ import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
 import org.lealone.net.WritableChannel;
@@ -130,7 +130,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     private final List<ILatencySubscriber> subscribers = new ArrayList<>();
 
     // protocol versions of the other nodes in the cluster
-    private final ConcurrentMap<NetEndpoint, Integer> versions = new ConcurrentHashMap<>();
+    private final ConcurrentMap<NetNode, Integer> versions = new ConcurrentHashMap<>();
 
     private final ConcurrentHashMap<String, P2pConnection> connections = new ConcurrentHashMap<>();
 
@@ -232,43 +232,42 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
      * @param address the host that replied to the message
      * @param latency
      */
-    public void maybeAddLatency(IAsyncCallback cb, NetEndpoint address, long latency) {
+    public void maybeAddLatency(IAsyncCallback cb, NetNode address, long latency) {
         if (cb.isLatencyForSnitch())
             addLatency(address, latency);
     }
 
-    public void addLatency(NetEndpoint address, long latency) {
+    public void addLatency(NetNode address, long latency) {
         for (ILatencySubscriber subscriber : subscribers)
             subscriber.receiveTiming(address, latency);
     }
 
-    public int sendRR(MessageOut message, NetEndpoint to, IAsyncCallback cb) {
+    public int sendRR(MessageOut message, NetNode to, IAsyncCallback cb) {
         return sendRR(message, to, cb, message.getTimeout(), false);
     }
 
-    public int sendRRWithFailure(MessageOut message, NetEndpoint to, IAsyncCallbackWithFailure cb) {
+    public int sendRRWithFailure(MessageOut message, NetNode to, IAsyncCallbackWithFailure cb) {
         return sendRR(message, to, cb, message.getTimeout(), true);
     }
 
     /**
-     * Send a non-mutation message to a given endpoint. This method specifies a callback
+     * Send a non-mutation message to a given node. This method specifies a callback
      * which is invoked with the actual response.
      *
      * @param message message to be sent.
-     * @param to      endpoint to which the message needs to be sent
+     * @param to      node to which the message needs to be sent
      * @param cb      callback interface which is used to pass the responses or
      *                suggest that a timeout occurred to the invoker of the send().
      * @param timeout the timeout used for expiration
      * @return an reference to message id used to match with the result
      */
-    public int sendRR(MessageOut message, NetEndpoint to, IAsyncCallback cb, long timeout, boolean failureCallback) {
+    public int sendRR(MessageOut message, NetNode to, IAsyncCallback cb, long timeout, boolean failureCallback) {
         int id = addCallback(message, to, cb, timeout, failureCallback);
         sendOneWay(failureCallback ? message.withParameter(FAILURE_CALLBACK_PARAM, ONE_BYTE) : message, id, to);
         return id;
     }
 
-    private int addCallback(MessageOut message, NetEndpoint to, IAsyncCallback cb, long timeout,
-            boolean failureCallback) {
+    private int addCallback(MessageOut message, NetNode to, IAsyncCallback cb, long timeout, boolean failureCallback) {
         int messageId = nextId();
         CallbackInfo previous = callbacks.put(messageId,
                 new CallbackInfo(to, cb, callbackDeserializers.get(message.verb), failureCallback), timeout);
@@ -276,27 +275,27 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         return messageId;
     }
 
-    public void sendOneWay(MessageOut message, NetEndpoint to) {
+    public void sendOneWay(MessageOut message, NetNode to) {
         sendOneWay(message, nextId(), to);
     }
 
-    public void sendReply(MessageOut message, int id, NetEndpoint to) {
+    public void sendReply(MessageOut message, int id, NetNode to) {
         sendOneWay(message, id, to);
     }
 
     /**
-     * Send a message to a given endpoint. This method adheres to the fire and forget
+     * Send a message to a given node. This method adheres to the fire and forget
      * style messaging.
      *
      * @param message messages to be sent.
-     * @param to      endpoint to which the message needs to be sent
+     * @param to      node to which the message needs to be sent
      */
-    public void sendOneWay(MessageOut message, int id, NetEndpoint to) {
+    public void sendOneWay(MessageOut message, int id, NetNode to) {
         if (logger.isTraceEnabled()) {
-            if (to.equals(ConfigDescriptor.getLocalEndpoint()))
+            if (to.equals(ConfigDescriptor.getLocalNode()))
                 logger.trace("Message-to-self {} going over MessagingService", message);
             else
-                logger.trace("{} sending {} to {}@{}", ConfigDescriptor.getLocalEndpoint(), message.verb, id, to);
+                logger.trace("{} sending {} to {}@{}", ConfigDescriptor.getLocalNode(), message.verb, id, to);
         }
 
         P2pConnection conn = getConnection(to);
@@ -304,9 +303,9 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
             conn.enqueue(message, id);
     }
 
-    public P2pConnection getConnection(NetEndpoint remoteEndpoint) {
-        remoteEndpoint = ClusterMetaData.getPreferredIP(remoteEndpoint);
-        String remoteHostAndPort = remoteEndpoint.getHostAndPort();
+    public P2pConnection getConnection(NetNode remoteNode) {
+        remoteNode = ClusterMetaData.getPreferredIP(remoteNode);
+        String remoteHostAndPort = remoteNode.getHostAndPort();
         P2pConnection conn = connections.get(remoteHostAndPort);
         if (conn == null) {
             synchronized (connections) {
@@ -317,14 +316,14 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                 Map<String, String> config = P2pServer.instance.getConfig();
                 NetFactory factory = NetFactoryManager.getFactory(config);
                 try {
-                    conn = (P2pConnection) factory.getNetClient().createConnection(config, remoteEndpoint, this);
-                    String localHostAndPort = ConfigDescriptor.getLocalEndpoint().getHostAndPort();
-                    conn.initTransfer(remoteEndpoint, localHostAndPort);
+                    conn = (P2pConnection) factory.getNetClient().createConnection(config, remoteNode, this);
+                    String localHostAndPort = ConfigDescriptor.getLocalNode().getHostAndPort();
+                    conn.initTransfer(remoteNode, localHostAndPort);
                     // connections.put(remoteHostAndPort, conn); //调用initTransfer成功后已经加到connections
                 } catch (Exception e) {
-                    String msg = "Failed to connect " + remoteEndpoint;
+                    String msg = "Failed to connect " + remoteNode;
                     // TODO 是否不应该立刻移除节点
-                    if (Gossiper.instance.tryRemoveEndpoint(remoteEndpoint)) {
+                    if (Gossiper.instance.tryRemoveNode(remoteNode)) {
                         logger.error(msg, e);
                         throw DbException.convert(e);
                     } else {
@@ -336,18 +335,18 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         return conn;
     }
 
-    public NetEndpoint getConnectionEndpoint(NetEndpoint to) {
-        return getConnection(to).endpoint();
+    public NetNode getConnectionNode(NetNode to) {
+        return getConnection(to).node();
     }
 
-    public void reconnect(NetEndpoint old, NetEndpoint to) {
+    public void reconnect(NetNode old, NetNode to) {
         getConnection(old).reset(to);
     }
 
     /**
      * called from gossiper when it notices a node is not responding.
      */
-    public void convict(NetEndpoint ep) {
+    public void convict(NetNode ep) {
         if (logger.isDebugEnabled())
             logger.debug("Resetting pool for {}", ep);
         getConnection(ep).reset();
@@ -372,32 +371,32 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         return callbacks.getAge(messageId);
     }
 
-    public void setVersion(NetEndpoint endpoint, int version) {
+    public void setVersion(NetNode node, int version) {
         if (logger.isDebugEnabled())
-            logger.debug("Setting version {} for {}", version, endpoint);
+            logger.debug("Setting version {} for {}", version, node);
 
-        versions.put(endpoint, version);
+        versions.put(node, version);
     }
 
-    public void removeVersion(NetEndpoint endpoint) {
+    public void removeVersion(NetNode node) {
         if (logger.isDebugEnabled())
-            logger.debug("Removing version for {}", endpoint);
-        versions.remove(endpoint);
+            logger.debug("Removing version for {}", node);
+        versions.remove(node);
     }
 
-    public int getVersion(NetEndpoint endpoint) {
-        Integer v = versions.get(endpoint);
+    public int getVersion(NetNode node) {
+        Integer v = versions.get(node);
         if (v == null) {
             // we don't know the version. assume current. we'll know soon enough if that was incorrect.
             if (logger.isTraceEnabled())
-                logger.trace("Assuming current protocol version for {}", endpoint);
+                logger.trace("Assuming current protocol version for {}", node);
             return MessagingService.CURRENT_VERSION;
         } else
             return Math.min(v, MessagingService.CURRENT_VERSION);
     }
 
-    public boolean knowsVersion(NetEndpoint endpoint) {
-        return versions.containsKey(endpoint);
+    public boolean knowsVersion(NetNode node) {
+        return versions.containsKey(node);
     }
 
     public void addConnection(P2pConnection conn) {
@@ -414,7 +413,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
         }
     }
 
-    public void removeConnection(NetEndpoint ep) {
+    public void removeConnection(NetNode ep) {
         removeConnection(ep.getHostAndPort());
     }
 
@@ -438,15 +437,15 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     // --------------以下是MessagingServiceMBean的API实现-------------
 
     @Override
-    public int getVersion(String endpoint) throws UnknownHostException {
-        return getVersion(NetEndpoint.getByName(endpoint));
+    public int getVersion(String node) throws UnknownHostException {
+        return getVersion(NetNode.getByName(node));
     }
 
     @Override
     public Map<String, Integer> getResponsePendingTasks() {
         Map<String, Integer> pendingTasks = new HashMap<>(connections.size());
         for (P2pConnection conn : connections.values())
-            pendingTasks.put(conn.endpoint().getHostAddress(), conn.getPendingMessages());
+            pendingTasks.put(conn.node().getHostAddress(), conn.getPendingMessages());
         return pendingTasks;
     }
 
@@ -454,7 +453,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     public Map<String, Long> getResponseCompletedTasks() {
         Map<String, Long> completedTasks = new HashMap<>(connections.size());
         for (P2pConnection conn : connections.values())
-            completedTasks.put(conn.endpoint().getHostAddress(), conn.getCompletedMesssages());
+            completedTasks.put(conn.node().getHostAddress(), conn.getCompletedMesssages());
         return completedTasks;
     }
 
@@ -475,7 +474,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
     public Map<String, Long> getTimeoutsPerHost() {
         Map<String, Long> result = new HashMap<>(connections.size());
         for (P2pConnection conn : connections.values()) {
-            result.put(conn.endpoint().getHostAddress(), conn.getTimeouts());
+            result.put(conn.node().getHostAddress(), conn.getTimeouts());
         }
         return result;
     }

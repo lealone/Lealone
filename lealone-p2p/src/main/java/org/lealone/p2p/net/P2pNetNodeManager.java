@@ -31,39 +31,39 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
-import org.lealone.net.NetEndpoint;
-import org.lealone.net.NetEndpointManager;
+import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManager;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gms.FailureDetector;
 import org.lealone.p2p.gms.Gossiper;
-import org.lealone.p2p.locator.AbstractEndpointAssignmentStrategy;
+import org.lealone.p2p.locator.AbstractNodeAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
 import org.lealone.p2p.locator.TopologyMetaData;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.storage.replication.ReplicationSession;
 
-public class P2pNetEndpointManager implements NetEndpointManager {
+public class P2pNetNodeManager implements NetNodeManager {
 
-    private static final P2pNetEndpointManager instance = new P2pNetEndpointManager();
+    private static final P2pNetNodeManager instance = new P2pNetNodeManager();
     private static final Random random = new Random();
 
     private static final Map<IDatabase, AbstractReplicationStrategy> replicationStrategies = new HashMap<>();
     private static final AbstractReplicationStrategy defaultReplicationStrategy = ConfigDescriptor
             .getDefaultReplicationStrategy();
 
-    private static final Map<IDatabase, AbstractEndpointAssignmentStrategy> endpointAssignmentStrategies = new HashMap<>();
-    private static final AbstractEndpointAssignmentStrategy defaultEndpointAssignmentStrategy = ConfigDescriptor
-            .getDefaultEndpointAssignmentStrategy();
+    private static final Map<IDatabase, AbstractNodeAssignmentStrategy> nodeAssignmentStrategies = new HashMap<>();
+    private static final AbstractNodeAssignmentStrategy defaultNodeAssignmentStrategy = ConfigDescriptor
+            .getDefaultNodeAssignmentStrategy();
 
-    public static P2pNetEndpointManager getInstance() {
+    public static P2pNetNodeManager getInstance() {
         return instance;
     }
 
-    protected P2pNetEndpointManager() {
+    protected P2pNetNodeManager() {
     }
 
     @Override
-    public Set<NetEndpoint> getLiveEndpoints() {
+    public Set<NetNode> getLiveNodes() {
         return Gossiper.instance.getLiveMembers();
     }
 
@@ -73,15 +73,15 @@ public class P2pNetEndpointManager implements NetEndpointManager {
     }
 
     @Override
-    public String[] assignEndpoints(IDatabase db) {
-        removeEndpointAssignmentStrategy(db); // 避免使用旧的
-        List<NetEndpoint> list = getEndpointAssignmentStrategy(db).assignEndpoints(new HashSet<>(0),
+    public String[] assignNodes(IDatabase db) {
+        removeNodeAssignmentStrategy(db); // 避免使用旧的
+        List<NetNode> list = getNodeAssignmentStrategy(db).assignNodes(new HashSet<>(0),
                 Gossiper.instance.getLiveMembers(), false);
 
         int size = list.size();
         String[] hostIds = new String[size];
         int i = 0;
-        for (NetEndpoint e : list) {
+        for (NetNode e : list) {
             String hostId = getHostId(e);
             if (hostId != null)
                 hostIds[i] = hostId;
@@ -92,12 +92,12 @@ public class P2pNetEndpointManager implements NetEndpointManager {
 
     public String[] getHostIdsOld(IDatabase db) {
         RunMode runMode = db.getRunMode();
-        Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
-        ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
+        Set<NetNode> liveMembers = Gossiper.instance.getLiveMembers();
+        ArrayList<NetNode> list = new ArrayList<>(liveMembers);
         int size = liveMembers.size();
         if (runMode == RunMode.CLIENT_SERVER) {
             int i = random.nextInt(size);
-            NetEndpoint addr = list.get(i);
+            NetNode addr = list.get(i);
             return new String[] { getHostId(addr) };
         } else if (runMode == RunMode.REPLICATION) {
             AbstractReplicationStrategy replicationStrategy = getReplicationStrategy(db);
@@ -116,7 +116,7 @@ public class P2pNetEndpointManager implements NetEndpointManager {
         return new String[0];
     }
 
-    private String[] getHostIds(ArrayList<NetEndpoint> list, int totalNodes, int needNodes) {
+    private String[] getHostIds(ArrayList<NetNode> list, int totalNodes, int needNodes) {
         Set<Integer> indexSet = new HashSet<>(needNodes);
         if (needNodes >= totalNodes) {
             needNodes = totalNodes;
@@ -144,39 +144,38 @@ public class P2pNetEndpointManager implements NetEndpointManager {
     }
 
     @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints) {
-        return createReplicationSession(session, replicationEndpoints, null);
+    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
+        return createReplicationSession(session, replicationNodes, null);
     }
 
     @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetEndpoint> replicationEndpoints,
+    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
             Boolean remote) {
-        NetEndpoint localEndpoint = ConfigDescriptor.getLocalEndpoint();
+        NetNode localNode = ConfigDescriptor.getLocalNode();
         TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
-        int size = replicationEndpoints.size();
+        int size = replicationNodes.size();
         Session[] sessions = new Session[size];
         int i = 0;
-        for (NetEndpoint e : replicationEndpoints) {
+        for (NetNode e : replicationNodes) {
             String id = md.getHostId(e);
-            sessions[i++] = session.getNestedSession(id,
-                    remote != null ? remote.booleanValue() : !localEndpoint.equals(e));
+            sessions[i++] = session.getNestedSession(id, remote != null ? remote.booleanValue() : !localNode.equals(e));
         }
         return createReplicationSession(session, sessions);
     }
 
     public ReplicationSession createReplicationSession(Session s, List<String> replicationHostIds, Boolean remote) {
         Session session = s;
-        NetEndpoint localEndpoint = NetEndpoint.getLocalTcpEndpoint();
+        NetNode localNode = NetNode.getLocalTcpNode();
         TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
         Gossiper gossiper = Gossiper.instance;
         int size = replicationHostIds.size();
         Session[] sessions = new Session[size];
         int i = 0;
         for (String hostId : replicationHostIds) {
-            NetEndpoint p2pEndpoint = md.getEndpoint(hostId);
-            NetEndpoint tcpEndpoint = gossiper.getTcpEndpoint(p2pEndpoint);
-            sessions[i++] = session.getNestedSession(tcpEndpoint.getHostAndPort(),
-                    remote != null ? remote.booleanValue() : !localEndpoint.equals(tcpEndpoint));
+            NetNode p2pNode = md.getNode(hostId);
+            NetNode tcpNode = gossiper.getTcpNode(p2pNode);
+            sessions[i++] = session.getNestedSession(tcpNode.getHostAndPort(),
+                    remote != null ? remote.booleanValue() : !localNode.equals(tcpNode));
         }
         return createReplicationSession(session, sessions);
     }
@@ -191,31 +190,31 @@ public class P2pNetEndpointManager implements NetEndpointManager {
     }
 
     @Override
-    public NetEndpoint getEndpoint(String hostId) {
-        return P2pServer.instance.getTopologyMetaData().getEndpoint(hostId);
+    public NetNode getNode(String hostId) {
+        return P2pServer.instance.getTopologyMetaData().getNode(hostId);
     }
 
     @Override
-    public String getHostId(NetEndpoint endpoint) {
-        return P2pServer.instance.getTopologyMetaData().getHostId(endpoint);
+    public String getHostId(NetNode node) {
+        return P2pServer.instance.getTopologyMetaData().getHostId(node);
     }
 
     @Override
-    public String[] getReplicationEndpoints(IDatabase db) {
+    public String[] getReplicationNodes(IDatabase db) {
         removeReplicationStrategy(db); // 避免使用旧的
         String[] oldHostIds = db.getHostIds();
         int size = oldHostIds.length;
-        List<NetEndpoint> oldReplicationEndpoints = new ArrayList<>(size);
+        List<NetNode> oldReplicationNodes = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            oldReplicationEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpoint(oldHostIds[i]));
+            oldReplicationNodes.add(P2pServer.instance.getTopologyMetaData().getNode(oldHostIds[i]));
         }
-        List<NetEndpoint> newReplicationEndpoints = getLiveReplicationEndpoints(db,
-                new HashSet<>(oldReplicationEndpoints), Gossiper.instance.getLiveMembers(), true);
+        List<NetNode> newReplicationNodes = getLiveReplicationNodes(db, new HashSet<>(oldReplicationNodes),
+                Gossiper.instance.getLiveMembers(), true);
 
-        size = newReplicationEndpoints.size();
+        size = newReplicationNodes.size();
         String[] hostIds = new String[size];
         int j = 0;
-        for (NetEndpoint e : newReplicationEndpoints) {
+        for (NetNode e : newReplicationNodes) {
             String hostId = getHostId(e);
             if (hostId != null)
                 hostIds[j++] = hostId;
@@ -224,14 +223,14 @@ public class P2pNetEndpointManager implements NetEndpointManager {
     }
 
     @Override
-    public String[] getShardingEndpoints(IDatabase db) {
-        HashSet<NetEndpoint> oldEndpoints = new HashSet<>();
+    public String[] getShardingNodes(IDatabase db) {
+        HashSet<NetNode> oldNodes = new HashSet<>();
         for (String hostId : db.getHostIds()) {
-            oldEndpoints.add(P2pServer.instance.getTopologyMetaData().getEndpoint(hostId));
+            oldNodes.add(P2pServer.instance.getTopologyMetaData().getNode(hostId));
         }
-        Set<NetEndpoint> liveMembers = Gossiper.instance.getLiveMembers();
-        liveMembers.removeAll(oldEndpoints);
-        ArrayList<NetEndpoint> list = new ArrayList<>(liveMembers);
+        Set<NetNode> liveMembers = Gossiper.instance.getLiveMembers();
+        liveMembers.removeAll(oldNodes);
+        ArrayList<NetNode> list = new ArrayList<>(liveMembers);
         int size = liveMembers.size();
         AbstractReplicationStrategy replicationStrategy = getReplicationStrategy(db);
         int replicationFactor = replicationStrategy.getReplicationFactor();
@@ -245,25 +244,24 @@ public class P2pNetEndpointManager implements NetEndpointManager {
     }
 
     @Override
-    public List<NetEndpoint> getReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints) {
-        return getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints, false);
+    public List<NetNode> getReplicationNodes(IDatabase db, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes) {
+        return getReplicationNodes(db, oldReplicationNodes, candidateNodes, false);
     }
 
-    private static List<NetEndpoint> getReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
-        return getReplicationStrategy(db).getReplicationEndpoints(P2pServer.instance.getTopologyMetaData(),
-                oldReplicationEndpoints, candidateEndpoints, includeOldReplicationEndpoints);
+    private static List<NetNode> getReplicationNodes(IDatabase db, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
+        return getReplicationStrategy(db).getReplicationNodes(P2pServer.instance.getTopologyMetaData(),
+                oldReplicationNodes, candidateNodes, includeOldReplicationNodes);
     }
 
-    private static List<NetEndpoint> getLiveReplicationEndpoints(IDatabase db, Set<NetEndpoint> oldReplicationEndpoints,
-            Set<NetEndpoint> candidateEndpoints, boolean includeOldReplicationEndpoints) {
-        List<NetEndpoint> endpoints = getReplicationEndpoints(db, oldReplicationEndpoints, candidateEndpoints,
-                includeOldReplicationEndpoints);
-        List<NetEndpoint> liveEps = new ArrayList<>(endpoints.size());
-        for (NetEndpoint endpoint : endpoints) {
-            if (FailureDetector.instance.isAlive(endpoint))
-                liveEps.add(endpoint);
+    private static List<NetNode> getLiveReplicationNodes(IDatabase db, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
+        List<NetNode> nodes = getReplicationNodes(db, oldReplicationNodes, candidateNodes, includeOldReplicationNodes);
+        List<NetNode> liveEps = new ArrayList<>(nodes.size());
+        for (NetNode node : nodes) {
+            if (FailureDetector.instance.isAlive(node))
+                liveEps.add(node);
         }
         return liveEps;
     }
@@ -284,32 +282,32 @@ public class P2pNetEndpointManager implements NetEndpointManager {
             }
 
             replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getShortName(), className,
-                    ConfigDescriptor.getEndpointSnitch(), map);
+                    ConfigDescriptor.getNodeSnitch(), map);
             replicationStrategies.put(db, replicationStrategy);
         }
         return replicationStrategy;
     }
 
-    private static void removeEndpointAssignmentStrategy(IDatabase db) {
-        endpointAssignmentStrategies.remove(db);
+    private static void removeNodeAssignmentStrategy(IDatabase db) {
+        nodeAssignmentStrategies.remove(db);
     }
 
-    private static AbstractEndpointAssignmentStrategy getEndpointAssignmentStrategy(IDatabase db) {
-        if (db.getEndpointAssignmentProperties() == null)
-            return defaultEndpointAssignmentStrategy;
-        AbstractEndpointAssignmentStrategy endpointAssignmentStrategy = endpointAssignmentStrategies.get(db);
-        if (endpointAssignmentStrategy == null) {
-            CaseInsensitiveMap<String> map = new CaseInsensitiveMap<>(db.getEndpointAssignmentProperties());
+    private static AbstractNodeAssignmentStrategy getNodeAssignmentStrategy(IDatabase db) {
+        if (db.getNodeAssignmentProperties() == null)
+            return defaultNodeAssignmentStrategy;
+        AbstractNodeAssignmentStrategy nodeAssignmentStrategy = nodeAssignmentStrategies.get(db);
+        if (nodeAssignmentStrategy == null) {
+            CaseInsensitiveMap<String> map = new CaseInsensitiveMap<>(db.getNodeAssignmentProperties());
             String className = map.remove("class");
             if (className == null) {
-                throw new ConfigException("Missing endpoint assignment strategy class");
+                throw new ConfigException("Missing node assignment strategy class");
             }
 
-            endpointAssignmentStrategy = AbstractEndpointAssignmentStrategy.create(db.getShortName(), className,
-                    ConfigDescriptor.getEndpointSnitch(), map);
-            endpointAssignmentStrategies.put(db, endpointAssignmentStrategy);
+            nodeAssignmentStrategy = AbstractNodeAssignmentStrategy.create(db.getShortName(), className,
+                    ConfigDescriptor.getNodeSnitch(), map);
+            nodeAssignmentStrategies.put(db, nodeAssignmentStrategy);
         }
-        return endpointAssignmentStrategy;
+        return nodeAssignmentStrategy;
     }
 
     @Override
@@ -319,19 +317,19 @@ public class P2pNetEndpointManager implements NetEndpointManager {
             replicationStrategy = defaultReplicationStrategy;
         else
             replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(null, strategyName,
-                    ConfigDescriptor.getEndpointSnitch(), null);
+                    ConfigDescriptor.getNodeSnitch(), null);
         return replicationStrategy.recognizedOptions();
     }
 
     @Override
-    public Collection<String> getRecognizedEndpointAssignmentStrategyOptions(String strategyName) {
-        AbstractEndpointAssignmentStrategy endpointAssignmentStrategy;
+    public Collection<String> getRecognizedNodeAssignmentStrategyOptions(String strategyName) {
+        AbstractNodeAssignmentStrategy nodeAssignmentStrategy;
         if (strategyName == null)
-            endpointAssignmentStrategy = defaultEndpointAssignmentStrategy;
+            nodeAssignmentStrategy = defaultNodeAssignmentStrategy;
         else
-            endpointAssignmentStrategy = AbstractEndpointAssignmentStrategy.create(null, strategyName,
-                    ConfigDescriptor.getEndpointSnitch(), null);
-        return endpointAssignmentStrategy.recognizedOptions();
+            nodeAssignmentStrategy = AbstractNodeAssignmentStrategy.create(null, strategyName,
+                    ConfigDescriptor.getNodeSnitch(), null);
+        return nodeAssignmentStrategy.recognizedOptions();
     }
 
     @Override
@@ -345,12 +343,12 @@ public class P2pNetEndpointManager implements NetEndpointManager {
     }
 
     @Override
-    public String getDefaultEndpointAssignmentStrategy() {
-        return defaultEndpointAssignmentStrategy.getClass().getSimpleName();
+    public String getDefaultNodeAssignmentStrategy() {
+        return defaultNodeAssignmentStrategy.getClass().getSimpleName();
     }
 
     @Override
-    public int getDefaultEndpointAssignmentFactor() {
-        return defaultEndpointAssignmentStrategy.getAssignmentFactor();
+    public int getDefaultNodeAssignmentFactor() {
+        return defaultNodeAssignmentStrategy.getAssignmentFactor();
     }
 }

@@ -25,12 +25,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigException;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
 
 public class LocalStrategy extends AbstractReplicationStrategy {
 
-    public LocalStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions) {
+    public LocalStrategy(String dbName, INodeSnitch snitch, Map<String, String> configOptions) {
         super(dbName, snitch, configOptions);
     }
 
@@ -53,18 +53,16 @@ public class LocalStrategy extends AbstractReplicationStrategy {
      * 覆盖默认实现，默认实现里要拷贝TopologyMetaData
      */
     @Override
-    public List<NetEndpoint> getReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
-            boolean includeOldReplicationEndpoints) {
-        ArrayList<NetEndpoint> list = new ArrayList<NetEndpoint>(1);
-        list.add(ConfigDescriptor.getLocalEndpoint());
+    public List<NetNode> getReplicationNodes(TopologyMetaData metaData, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
+        ArrayList<NetNode> list = new ArrayList<NetNode>(1);
+        list.add(ConfigDescriptor.getLocalNode());
         return list;
     }
 
     @Override
-    public List<NetEndpoint> calculateReplicationEndpoints(TopologyMetaData metaData,
-            Set<NetEndpoint> oldReplicationEndpoints, Set<NetEndpoint> candidateEndpoints,
-            boolean includeOldReplicationEndpoints) {
-        return Collections.singletonList(ConfigDescriptor.getLocalEndpoint());
+    public List<NetNode> calculateReplicationNodes(TopologyMetaData metaData, Set<NetNode> oldReplicationNodes,
+            Set<NetNode> candidateNodes, boolean includeOldReplicationNodes) {
+        return Collections.singletonList(ConfigDescriptor.getLocalNode());
     }
 }

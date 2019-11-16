@@ -19,8 +19,8 @@ package org.lealone.p2p.gms;
 
 public enum ApplicationState {
     HOST_ID,
-    TCP_ENDPOINT,
-    P2P_ENDPOINT,
+    TCP_NODE,
+    P2P_NODE,
     DC,
     RACK,
     RELEASE_VERSION,

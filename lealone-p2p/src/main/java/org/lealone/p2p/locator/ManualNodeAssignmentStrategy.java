@@ -26,11 +26,11 @@ import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.util.StringUtils;
-import org.lealone.net.NetEndpoint;
+import org.lealone.net.NetNode;
 
-public class ManualEndpointAssignmentStrategy extends AbstractEndpointAssignmentStrategy {
+public class ManualNodeAssignmentStrategy extends AbstractNodeAssignmentStrategy {
 
-    public ManualEndpointAssignmentStrategy(String dbName, IEndpointSnitch snitch, Map<String, String> configOptions) {
+    public ManualNodeAssignmentStrategy(String dbName, INodeSnitch snitch, Map<String, String> configOptions) {
         super(dbName, snitch, configOptions);
     }
 
@@ -57,27 +57,27 @@ public class ManualEndpointAssignmentStrategy extends AbstractEndpointAssignment
     }
 
     @Override
-    public List<NetEndpoint> assignEndpoints(TopologyMetaData metaData, Set<NetEndpoint> oldEndpoints,
-            Set<NetEndpoint> candidateEndpoints, boolean includeOldEndpoints) {
-        HashSet<NetEndpoint> all = new HashSet<>(candidateEndpoints);
-        all.removeAll(oldEndpoints);
+    public List<NetNode> assignNodes(TopologyMetaData metaData, Set<NetNode> oldNodes, Set<NetNode> candidateNodes,
+            boolean includeOldNodes) {
+        HashSet<NetNode> all = new HashSet<>(candidateNodes);
+        all.removeAll(oldNodes);
         int total = all.size();
         int need = getAssignmentFactor();
-        if (includeOldEndpoints)
-            need -= oldEndpoints.size();
+        if (includeOldNodes)
+            need -= oldNodes.size();
 
-        ArrayList<NetEndpoint> endpoints = new ArrayList<>(need);
+        ArrayList<NetNode> nodes = new ArrayList<>(need);
 
         if (total > 0) {
             int count = 0;
             String[] hostIds = StringUtils.arraySplit(configOptions.get("host_id_list"), ',');
             for (String hostId : hostIds) {
-                NetEndpoint e = metaData.getEndpoint(hostId);
+                NetNode e = metaData.getNode(hostId);
                 if (e == null) {
                     throw new ConfigException("HostId " + hostId + " not found.");
                 }
-                if (candidateEndpoints.contains(e)) {
-                    endpoints.add(e);
+                if (candidateNodes.contains(e)) {
+                    nodes.add(e);
                     if (++count >= need)
                         break;
                 }
@@ -85,9 +85,9 @@ public class ManualEndpointAssignmentStrategy extends AbstractEndpointAssignment
         }
 
         // 不够时，从原来的节点中取
-        if (endpoints.size() < need) {
-            getFromOldEndpoints(oldEndpoints, endpoints, need);
+        if (nodes.size() < need) {
+            getFromOldNodes(oldNodes, nodes, need);
         }
-        return endpoints;
+        return nodes;
     }
 }
