@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
@@ -43,22 +44,18 @@ import org.lealone.storage.Storage;
 public class AlterDatabase extends DatabaseStatement {
 
     private final Database db;
-    private final RunMode runMode;
-    private final Map<String, String> replicationProperties;
-    private final Map<String, String> endpointAssignmentProperties;
-    private final Map<String, String> parameters;
-
     private String[] newHostIds;
     private String[] oldHostIds;
 
-    public AlterDatabase(ServerSession session, Database db, RunMode runMode, Map<String, String> replicationProperties,
-            Map<String, String> endpointAssignmentProperties, Map<String, String> parameters) {
-        super(session);
+    public AlterDatabase(ServerSession session, Database db, RunMode runMode, Map<String, String> parameters) {
+        super(session, db.getName());
         this.db = db;
         this.runMode = runMode;
-        this.replicationProperties = replicationProperties;
-        this.endpointAssignmentProperties = endpointAssignmentProperties;
-        this.parameters = parameters;
+        if (parameters != null) {
+            this.parameters = new CaseInsensitiveMap<>(db.getParameters());
+            this.parameters.putAll(parameters);
+            validateParameters();
+        }
     }
 
     @Override
@@ -160,10 +157,6 @@ public class AlterDatabase extends DatabaseStatement {
         StatementBuilder sql = new StatementBuilder("ALTER DATABASE ");
         sql.append(db.getShortName());
         sql.append(" RUN MODE ").append(runMode.toString());
-        if (replicationProperties != null && !replicationProperties.isEmpty()) {
-            sql.append(" WITH REPLICATION STRATEGY");
-            Database.appendMap(sql, replicationProperties);
-        }
         sql.append(" PARAMETERS");
         Database.appendMap(sql, db.getParameters());
         this.sql = sql.toString();

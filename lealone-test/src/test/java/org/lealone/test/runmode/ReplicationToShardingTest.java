@@ -30,14 +30,13 @@ public class ReplicationToShardingTest extends RunModeTest {
     @Override
     public void run() throws Exception {
         String dbName = ReplicationToShardingTest.class.getSimpleName();
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
-                + "  RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE replication " //
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2)");
 
         new CrudTest(dbName).runTest();
 
-        executeUpdate("ALTER DATABASE " + dbName //
-                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)"
-                + " PARAMETERS (nodes=2)");
+        executeUpdate("ALTER DATABASE " + dbName + " RUN MODE sharding " //
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, nodes: 2)");
     }
 
     private static class CrudTest extends SqlTestBase {

@@ -34,9 +34,8 @@ public class ShardingToShardingTest extends RunModeTest {
 
     private void scaleOut() {
         String dbName = ShardingToShardingTest.class.getSimpleName() + "_scaleOut";
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
-                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)"
-                + " PARAMETERS (nodes=2)");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, nodes: 2)");
 
         crudTest(dbName);
 
@@ -45,9 +44,8 @@ public class ShardingToShardingTest extends RunModeTest {
 
     private void scaleIn() {
         String dbName = ShardingToShardingTest.class.getSimpleName() + "_scaleIn";
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
-                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)"
-                + " PARAMETERS (nodes=3)");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //
+                + "ARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, nodes: 3)");
 
         crudTest(dbName);
 

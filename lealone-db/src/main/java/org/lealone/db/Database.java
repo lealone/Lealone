@@ -2244,14 +2244,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (runMode != null) {
             sql.append(" RUN MODE ").append(runMode.toString());
         }
-        if (replicationProperties != null && !replicationProperties.isEmpty()) {
-            sql.append(" WITH REPLICATION STRATEGY");
-            appendMap(sql, replicationProperties);
-        }
-        if (endpointAssignmentProperties != null && !endpointAssignmentProperties.isEmpty()) {
-            sql.append(" WITH ENDPOINT ASSIGNMENT STRATEGY");
-            appendMap(sql, endpointAssignmentProperties);
-        }
         if (parameters != null && !parameters.isEmpty()) {
             sql.append(" PARAMETERS");
             appendMap(sql, parameters);

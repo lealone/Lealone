@@ -35,22 +35,22 @@ public class ReplicationToReplicationTest extends RunModeTest {
     private void scaleOut() {
         String dbName = ReplicationToReplicationTest.class.getSimpleName() + "_scaleOut";
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
-                + "  RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");
+                + "  RUN MODE replication PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2)");
 
         crudTest(dbName);
 
         executeUpdate("ALTER DATABASE " + dbName //
-                + " RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 3)");
+                + " RUN MODE replication PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 3)");
     }
 
     private void scaleIn() {
         String dbName = ReplicationToReplicationTest.class.getSimpleName() + "_scaleIn";
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
-                + "  RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 3)");
+                + "  RUN MODE replication PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 3)");
 
         crudTest(dbName);
 
         executeUpdate("ALTER DATABASE " + dbName //
-                + " RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");
+                + " RUN MODE replication PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2)");
     }
 }

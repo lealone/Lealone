@@ -70,14 +70,14 @@ public class DatabaseTest extends DbObjectTestBase {
 
         String dbName = "CreateDatabaseTest4";
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName //
-                + " RUN MODE REPLICATION WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:1)");
+                + " RUN MODE REPLICATION PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:1)");
         Database db = LealoneDatabase.getInstance().findDatabase(dbName);
         assertNotNull(db);
         assertNotNull(db.getReplicationProperties());
         assertTrue(db.getReplicationProperties().containsKey("class"));
 
         executeUpdate("ALTER DATABASE " + dbName //
-                + " RUN MODE REPLICATION WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor:2)");
+                + " RUN MODE REPLICATION PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:2)");
 
         db = LealoneDatabase.getInstance().findDatabase(dbName);
         assertNotNull(db);

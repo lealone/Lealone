@@ -30,21 +30,20 @@ public class EndpointAssignmentStrategyTest extends RunModeTest {
     public void run() throws Exception {
         String dbName = EndpointAssignmentStrategyTest.class.getSimpleName() + "_Random";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
-        sql += " WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)";
-        sql += " WITH ENDPOINT ASSIGNMENT STRATEGY (class: 'RandomEndpointAssignmentStrategy', assignment_factor: 3)";
+        sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
+        sql += " endpoint_assignment_strategy: 'RandomEndpointAssignmentStrategy', assignment_factor: 3)";
         executeUpdate(sql);
 
         dbName = EndpointAssignmentStrategyTest.class.getSimpleName() + "_LoadBased";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
-        sql += " WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)";
-        sql += " WITH ENDPOINT ASSIGNMENT STRATEGY (class: 'LoadBasedEndpointAssignmentStrategy', assignment_factor: 2)";
+        sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
+        sql += " endpoint_assignment_strategy: 'LoadBasedEndpointAssignmentStrategy', assignment_factor: 2)";
         executeUpdate(sql);
 
         dbName = EndpointAssignmentStrategyTest.class.getSimpleName() + "_Manual";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
-        sql += " WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)";
-        sql += " WITH ENDPOINT ASSIGNMENT STRATEGY "
-                + "(class: 'ManualEndpointAssignmentStrategy', assignment_factor: 2, "
+        sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
+        sql += " endpoint_assignment_strategy: 'ManualEndpointAssignmentStrategy', assignment_factor: 2, "
                 + "host_id_list: '127.0.0.1:7210,127.0.0.3:7210')";
         executeUpdate(sql);
     }

@@ -29,8 +29,8 @@ public class ReplicationToClientServerTest extends RunModeTest {
     @Override
     public void run() throws Exception {
         String dbName = ReplicationToClientServerTest.class.getSimpleName();
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
-                + " RUN MODE replication WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 2)");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE replication "
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2)");
 
         crudTest(dbName);
 

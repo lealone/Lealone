@@ -1254,7 +1254,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                     chars[i] = ' ';
                 }
 
-                // 对于WITH replication = {'class':'SimpleStrategy'会有bug，漏掉{后的单引号
+                // 对于PARAMETERS('replication_strategy':'SimpleStrategy')会有bug，漏掉(后的单引号
                 if (sql.charAt(i) == '\'')
                     i--;
                 break;

@@ -17,17 +17,13 @@
  */
 package org.lealone.sql.ddl;
 
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
 
-import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.DbSettings;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
@@ -41,28 +37,17 @@ import org.lealone.sql.SQLStatement;
  */
 public class CreateDatabase extends DatabaseStatement {
 
-    private final String dbName;
     private final boolean ifNotExists;
-    private final RunMode runMode;
-    private Map<String, String> replicationProperties;
-    private Map<String, String> endpointAssignmentProperties;
-    private final Map<String, String> parameters;
-    // private final Map<String, String> resourceQuota;
 
     public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, RunMode runMode,
-            Map<String, String> replicationProperties, Map<String, String> endpointAssignmentProperties,
             Map<String, String> parameters) {
-        super(session);
-        this.dbName = dbName;
+        super(session, dbName);
         this.ifNotExists = ifNotExists;
         this.runMode = runMode;
-        this.replicationProperties = replicationProperties;
-        this.endpointAssignmentProperties = endpointAssignmentProperties;
         if (parameters == null) {
             parameters = new CaseInsensitiveMap<>();
         }
         this.parameters = parameters;
-        // this.resourceQuota = resourceQuota;
     }
 
     @Override
@@ -116,86 +101,5 @@ public class CreateDatabase extends DatabaseStatement {
             }
         }
         return 0;
-    }
-
-    private void validateParameters() {
-        CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(this.parameters);
-        parameters.remove("hostIds");
-        String replicationStrategy = parameters.get("replication_strategy");
-        String endpointAssignmentStrategy = parameters.get("endpoint_assignment_strategy");
-
-        Collection<String> recognizedReplicationStrategyOptions = NetEndpointManagerHolder.get()
-                .getRecognizedReplicationStrategyOptions(replicationStrategy);
-        if (recognizedReplicationStrategyOptions == null) {
-            recognizedReplicationStrategyOptions = new HashSet<>(1);
-        } else {
-            recognizedReplicationStrategyOptions = new HashSet<>(recognizedReplicationStrategyOptions);
-        }
-        recognizedReplicationStrategyOptions.add("replication_strategy");
-
-        Collection<String> recognizedEndpointAssignmentStrategyOptions = NetEndpointManagerHolder.get()
-                .getRecognizedEndpointAssignmentStrategyOptions(endpointAssignmentStrategy);
-
-        if (recognizedEndpointAssignmentStrategyOptions == null) {
-            recognizedEndpointAssignmentStrategyOptions = new HashSet<>(1);
-        } else {
-            recognizedEndpointAssignmentStrategyOptions = new HashSet<>(recognizedEndpointAssignmentStrategyOptions);
-        }
-        recognizedEndpointAssignmentStrategyOptions.add("endpoint_assignment_strategy");
-
-        Collection<String> recognizedSettingOptions = DbSettings.getDefaultSettings().getSettings().keySet();
-        parameters.removeAll(recognizedReplicationStrategyOptions);
-        parameters.removeAll(recognizedEndpointAssignmentStrategyOptions);
-        parameters.removeAll(recognizedSettingOptions);
-        if (!parameters.isEmpty()) {
-            throw new ConfigException(String.format("Unrecognized parameters: %s for database %s, " //
-                    + "recognized replication strategy options: %s, " //
-                    + "endpoint assignment strategy options: %s, " //
-                    + "database setting options: %s", //
-                    parameters.keySet(), dbName, recognizedReplicationStrategyOptions,
-                    recognizedEndpointAssignmentStrategyOptions, recognizedSettingOptions));
-        }
-
-        parameters = (CaseInsensitiveMap<String>) this.parameters;
-        replicationProperties = new CaseInsensitiveMap<>();
-        if (!parameters.containsKey("replication_factor")) {
-            replicationProperties.put("replication_factor",
-                    NetEndpointManagerHolder.get().getDefaultReplicationFactor() + "");
-        }
-        if (replicationStrategy != null) {
-            replicationProperties.put("class", replicationStrategy);
-        } else {
-            replicationProperties.put("class", NetEndpointManagerHolder.get().getDefaultReplicationStrategy());
-        }
-        for (String option : recognizedReplicationStrategyOptions) {
-            if (parameters.containsKey(option))
-                replicationProperties.put(option, parameters.get(option));
-        }
-
-        endpointAssignmentProperties = new CaseInsensitiveMap<>();
-        if (!parameters.containsKey("assignment_factor")) {
-            endpointAssignmentProperties.put("assignment_factor",
-                    NetEndpointManagerHolder.get().getDefaultEndpointAssignmentFactor() + "");
-        }
-        if (endpointAssignmentStrategy != null) {
-            endpointAssignmentProperties.put("class", endpointAssignmentStrategy);
-        } else {
-            endpointAssignmentProperties.put("class",
-                    NetEndpointManagerHolder.get().getDefaultEndpointAssignmentStrategy());
-        }
-        for (String option : recognizedEndpointAssignmentStrategyOptions) {
-            if (parameters.containsKey(option))
-                endpointAssignmentProperties.put(option, parameters.get(option));
-        }
-        if (runMode == RunMode.CLIENT_SERVER) {
-            endpointAssignmentProperties.put("assignment_factor", "1");
-        } else if (runMode == RunMode.REPLICATION) {
-            endpointAssignmentProperties.put("assignment_factor", replicationProperties.get("replication_factor"));
-        } else if (runMode == RunMode.SHARDING) {
-            if (!parameters.containsKey("assignment_factor"))
-                endpointAssignmentProperties.put("assignment_factor", replicationProperties.get("replication_factor"));
-            // throw new ConfigException("In sharding mode, assignment_factor must be set");
-        }
-        // parameters剩下的当成database setting
     }
 }

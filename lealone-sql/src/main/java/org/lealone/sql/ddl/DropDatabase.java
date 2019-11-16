@@ -23,13 +23,11 @@ import org.lealone.sql.SQLStatement;
  */
 public class DropDatabase extends DatabaseStatement {
 
-    private final String dbName;
     private boolean ifExists;
     private boolean deleteFiles;
 
     public DropDatabase(ServerSession session, String dbName) {
-        super(session);
-        this.dbName = dbName;
+        super(session, dbName);
     }
 
     @Override

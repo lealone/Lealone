@@ -4227,37 +4227,12 @@ public class Parser implements SQLParser {
     private CreateDatabase parseCreateDatabase() {
         boolean ifNotExists = readIfNotExists();
         String dbName = readUniqueIdentifier();
-
         RunMode runMode = parseRunMode();
-        Map<String, String> replicationProperties = null;
-        Map<String, String> endpointAssignmentProperties = null;
-        // Map<String, String> resourceQuota = null;
         Map<String, String> parameters = null;
-        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING) {
-            if (readIf("WITH")) {
-                read("REPLICATION");
-                read("STRATEGY");
-                replicationProperties = parseParameters(true);
-                checkReplicationProperties(replicationProperties);
-            }
-        }
-
-        if (readIf("WITH")) {
-            read("ENDPOINT");
-            read("ASSIGNMENT");
-            read("STRATEGY");
-            endpointAssignmentProperties = parseParameters(true);
-            checkEndpointAssignmentProperties(endpointAssignmentProperties);
-        }
-        // if (readIf("RESOURCE")) {
-        // read("QUOTA");
-        // resourceQuota = parseParameters();
-        // }
         if (readIf("PARAMETERS")) {
             parameters = parseParameters();
         }
-        return new CreateDatabase(session, dbName, ifNotExists, runMode, replicationProperties,
-                endpointAssignmentProperties, parameters);
+        return new CreateDatabase(session, dbName, ifNotExists, runMode, parameters);
     }
 
     private CreateService parseCreateService() {
@@ -4340,17 +4315,6 @@ public class Parser implements SQLParser {
             }
         }
         return null;
-    }
-
-    private void checkReplicationProperties(Map<String, String> replicationProperties) {
-        if (replicationProperties != null && !replicationProperties.containsKey("class"))
-            throw DbException.get(ErrorCode.SYNTAX_ERROR_1, sqlCommand + ", missing replication strategy class");
-    }
-
-    private void checkEndpointAssignmentProperties(Map<String, String> endpointAssignmentProperties) {
-        if (endpointAssignmentProperties != null && !endpointAssignmentProperties.containsKey("class"))
-            throw DbException.get(ErrorCode.SYNTAX_ERROR_1,
-                    sqlCommand + ", missing endpoint assignment strategy class");
     }
 
     private CreateSchema parseCreateSchema() {
@@ -4739,28 +4703,11 @@ public class Parser implements SQLParser {
         String dbName = readUniqueIdentifier();
         Database db = LealoneDatabase.getInstance().getDatabase(dbName);
         RunMode runMode = parseRunMode();
-        Map<String, String> replicationProperties = null;
-        Map<String, String> endpointAssignmentProperties = null;
         Map<String, String> parameters = null;
-        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING) {
-            if (readIf("WITH")) {
-                read("REPLICATION");
-                read("STRATEGY");
-                replicationProperties = parseParameters(true);
-                checkReplicationProperties(replicationProperties);
-            }
-        }
-
-        if (readIf("WITH")) {
-            read("ENDPOINT");
-            read("ASSIGNMENT");
-            read("STRATEGY");
-            endpointAssignmentProperties = parseParameters(true);
-            checkEndpointAssignmentProperties(replicationProperties);
-        }
-        if (readIf("PARAMETERS"))
+        if (readIf("PARAMETERS")) {
             parameters = parseParameters();
-        return new AlterDatabase(session, db, runMode, replicationProperties, endpointAssignmentProperties, parameters);
+        }
+        return new AlterDatabase(session, db, runMode, parameters);
     }
 
     private AlterIndexRename parseAlterIndex() {

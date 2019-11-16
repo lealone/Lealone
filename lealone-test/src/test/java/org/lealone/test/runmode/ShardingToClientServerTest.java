@@ -29,9 +29,8 @@ public class ShardingToClientServerTest extends RunModeTest {
     @Override
     public void run() throws Exception {
         String dbName = ShardingToClientServerTest.class.getSimpleName();
-        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
-                + " RUN MODE sharding WITH REPLICATION STRATEGY (class: 'SimpleStrategy', replication_factor: 1)"
-                + " PARAMETERS (nodes=2)");
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, nodes: 2)");
 
         crudTest(dbName);
 
