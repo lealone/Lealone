@@ -450,5 +450,4 @@ public class Set extends ManipulationStatement {
             database.updateMeta(session, setting);
         }
     }
-
 }

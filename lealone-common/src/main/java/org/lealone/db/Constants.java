@@ -28,11 +28,9 @@ public class Constants {
 
     public static final String DEFAULT_STORAGE_ENGINE_NAME = "AOSE";
 
-    public static final String DEFAULT_SQL_ENGINE_NAME = PROJECT_NAME;
-
     public static final String DEFAULT_TRANSACTION_ENGINE_NAME = "AOTE";
 
-    public static final String DEFAULT_CONTAINER_ENGINE_NAME = "CGROUP";
+    public static final String DEFAULT_SQL_ENGINE_NAME = PROJECT_NAME;
 
     public static final String DEFAULT_NET_FACTORY_NAME = "nio";
 
@@ -55,7 +53,7 @@ public class Constants {
     /**
      * The build date is updated for each public release.
      */
-    public static final String BUILD_DATE = "2018-09-01";
+    public static final String BUILD_DATE = "2019-11-15";
 
     /**
      * The build id is incremented for each public release.
@@ -409,5 +407,4 @@ public class Constants {
     public static String getFullVersion() {
         return getVersion() + " (" + BUILD_DATE + ")";
     }
-
 }

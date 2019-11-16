@@ -40,6 +40,7 @@ class SettingsBase {
 }
 
 public class DbSettings extends SettingsBase {
+
     private static final DbSettings defaultSettings = new DbSettings(new HashMap<String, String>());
 
     public static DbSettings getDefaultSettings() {
@@ -112,27 +113,11 @@ public class DbSettings extends SettingsBase {
     public final boolean dbCloseOnExit = get("DB_CLOSE_ON_EXIT", true);
 
     /**
-     * Database setting <code>DEFAULT_CONNECTION</code> (default: false).<br />
-     * Whether Java functions can use
-     * <code>DriverManager.getConnection("jdbc:default:connection")</code> to
-     * get a database connection. This feature is disabled by default for
-     * performance reasons. Please note the Oracle JDBC driver will try to
-     * resolve this database URL if it is loaded before the H2 driver.
-     */
-    public boolean defaultConnection = get("DEFAULT_CONNECTION", false);
-
-    /**
      * Database setting <code>DEFAULT_ESCAPE</code> (default: \).<br />
      * The default escape character for LIKE comparisons. To select no escape
      * character, use an empty string.
      */
     public final String defaultEscape = get("DEFAULT_ESCAPE", "\\");
-
-    /**
-     * Database setting <code>DEFRAG_ALWAYS</code> (default: false).<br />
-     * Each time the database is closed, it is fully defragmented (SHUTDOWN DEFRAG).
-     */
-    public final boolean defragAlways = get("DEFRAG_ALWAYS", false); // TODO 这个参数可以用到存储引擎中
 
     /**
      * Database setting <code>DROP_RESTRICT</code> (default: true).<br />
@@ -166,8 +151,7 @@ public class DbSettings extends SettingsBase {
 
     /**
      * Database setting <code>LARGE_RESULT_BUFFER_SIZE</code> (default: 4096).<br />
-     * Buffer size for large result sets. Set this value to 0 to disable the
-     * buffer.
+     * Buffer size for large result sets. Set this value to 0 to disable the buffer.
      */
     public final int largeResultBufferSize = get("LARGE_RESULT_BUFFER_SIZE", 4 * 1024);
 
@@ -187,18 +171,16 @@ public class DbSettings extends SettingsBase {
      * Database setting <code>MAX_MEMORY_ROWS_DISTINCT</code> (default:
      * 10000).<br />
      * The maximum number of rows kept in-memory for SELECT DISTINCT queries. If
-     * more than this number of rows are in a result set, a temporary table is
-     * used.
+     * more than this number of rows are in a result set, a temporary table is used.
      */
     public final int maxMemoryRowsDistinct = get("MAX_MEMORY_ROWS_DISTINCT", 10000);
 
     /**
      * Database setting <code>MAX_QUERY_TIMEOUT</code> (default: 0).<br />
      * The maximum timeout of a query in milliseconds. The default is 0, meaning
-     * no limit. Please note the actual query timeout may be set to a lower
-     * value.
+     * no limit. Please note the actual query timeout may be set to a lower value.
      */
-    public int maxQueryTimeout = get("MAX_QUERY_TIMEOUT", 0);
+    public final int maxQueryTimeout = get("MAX_QUERY_TIMEOUT", 0);
 
     /**
      * Database setting <code>NESTED_JOINS</code> (default: true).<br />
@@ -221,8 +203,7 @@ public class DbSettings extends SettingsBase {
     public final boolean optimizeDistinct = get("OPTIMIZE_DISTINCT", true);
 
     /**
-     * Database setting <code>OPTIMIZE_EVALUATABLE_SUBQUERIES</code> (default:
-     * true).<br />
+     * Database setting <code>OPTIMIZE_EVALUATABLE_SUBQUERIES</code> (default: true).<br />
      * Optimize subqueries that are not dependent on the outer query.
      */
     public final boolean optimizeEvaluatableSubqueries = get("OPTIMIZE_EVALUATABLE_SUBQUERIES", true);
@@ -315,19 +296,11 @@ public class DbSettings extends SettingsBase {
 
     /**
      * Database setting <code>DEFAULT_TRANSACTION_ENGINE</code>
-     * (default: AMTE).<br />
+     * (default: AOTE).<br />
      * The default transaction engine.
      */
     public final String defaultTransactionEngine = get("DEFAULT_TRANSACTION_ENGINE",
             Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
-
-    /**
-     * Database setting <code>DEFAULT_CONTAINER_ENGINE</code>
-     * (default: CGROUP).<br />
-     * The default container engine.
-     */
-    public final String defaultContainerEngine = get("DEFAULT_CONTAINER_ENGINE",
-            Constants.DEFAULT_CONTAINER_ENGINE_NAME);
 
     /**
      * Database setting <code>COMPRESS</code>
@@ -342,16 +315,6 @@ public class DbSettings extends SettingsBase {
      * Persistent data.
      */
     public final boolean persistent = get("PERSISTENT", true);
-
-    public final int cpu = get("CPU", 0);
-
-    public final int memory = get("MEMORY", 0);
-
-    public final int net = get("NET", 0);
-
-    public final int blockIo = get("BLOCK_IO", 0);
-
-    public final int serviceLevel = get("SERVICE_LEVEL", 0);
 
     public final int cacheSize = get("CACHE_SIZE", Constants.DEFAULT_CACHE_SIZE);
     public final int pageSize = get("PAGE_SIZE", Constants.DEFAULT_PAGE_SIZE);
@@ -402,7 +365,7 @@ public class DbSettings extends SettingsBase {
      * @param defaultValue the default value
      * @return the setting
      */
-    protected String get(String key, String defaultValue) {
+    private String get(String key, String defaultValue) {
         StringBuilder buff = new StringBuilder(Constants.PROJECT_NAME_PREFIX);
         for (char c : key.toCharArray()) {
             if (c == '_') {
@@ -424,16 +387,6 @@ public class DbSettings extends SettingsBase {
     private byte[] convertHexToBytes(String key, String defaultValue) {
         String v = get(key, defaultValue);
         return v == null ? null : StringUtils.convertHexToBytes(v);
-    }
-
-    /**
-     * Check if the settings contains the given key.
-     *
-     * @param k the key
-     * @return true if they do
-     */
-    public boolean containsKey(String k) {
-        return settings.containsKey(k);
     }
 
     /**
