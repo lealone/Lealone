@@ -12,12 +12,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
-import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.ServerSession;
@@ -251,15 +249,6 @@ public class CreateService extends SchemaStatement {
 
     public void setStorageEngineName(String storageEngineName) {
         data.storageEngineName = storageEngineName;
-    }
-
-    public void setStorageEngineParams(Map<String, String> storageEngineParams) {
-        if (storageEngineParams instanceof CaseInsensitiveMap) {
-            data.storageEngineParams = (CaseInsensitiveMap<String>) storageEngineParams;
-        } else {
-            data.storageEngineParams = new CaseInsensitiveMap<>();
-            data.storageEngineParams.putAll(storageEngineParams);
-        }
     }
 
     @Override

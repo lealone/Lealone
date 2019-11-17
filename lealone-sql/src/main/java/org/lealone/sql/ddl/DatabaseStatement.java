@@ -19,7 +19,6 @@ package org.lealone.sql.ddl;
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
@@ -38,9 +37,9 @@ public abstract class DatabaseStatement extends DefinitionStatement {
 
     protected final String dbName;
     protected RunMode runMode;
-    protected Map<String, String> parameters;
-    protected Map<String, String> replicationProperties;
-    protected Map<String, String> nodeAssignmentProperties;
+    protected CaseInsensitiveMap<String> parameters;
+    protected CaseInsensitiveMap<String> replicationParameters;
+    protected CaseInsensitiveMap<String> nodeAssignmentParameters;
 
     protected DatabaseStatement(ServerSession session, String dbName) {
         super(session);
@@ -79,6 +78,8 @@ public abstract class DatabaseStatement extends DefinitionStatement {
     }
 
     protected void validateParameters() {
+        if (this.parameters == null)
+            this.parameters = new CaseInsensitiveMap<>();
         CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(this.parameters);
         parameters.remove("hostIds");
         String replicationStrategy = parameters.get("replication_strategy");
@@ -116,43 +117,43 @@ public abstract class DatabaseStatement extends DefinitionStatement {
                     recognizedNodeAssignmentStrategyOptions, recognizedSettingOptions));
         }
 
-        parameters = (CaseInsensitiveMap<String>) this.parameters;
-        replicationProperties = new CaseInsensitiveMap<>();
+        parameters = this.parameters;
+        replicationParameters = new CaseInsensitiveMap<>();
         if (!parameters.containsKey("replication_factor")) {
-            replicationProperties.put("replication_factor",
+            replicationParameters.put("replication_factor",
                     NetNodeManagerHolder.get().getDefaultReplicationFactor() + "");
         }
         if (replicationStrategy != null) {
-            replicationProperties.put("class", replicationStrategy);
+            replicationParameters.put("class", replicationStrategy);
         } else {
-            replicationProperties.put("class", NetNodeManagerHolder.get().getDefaultReplicationStrategy());
+            replicationParameters.put("class", NetNodeManagerHolder.get().getDefaultReplicationStrategy());
         }
         for (String option : recognizedReplicationStrategyOptions) {
             if (parameters.containsKey(option))
-                replicationProperties.put(option, parameters.get(option));
+                replicationParameters.put(option, parameters.get(option));
         }
 
-        nodeAssignmentProperties = new CaseInsensitiveMap<>();
+        nodeAssignmentParameters = new CaseInsensitiveMap<>();
         if (!parameters.containsKey("assignment_factor")) {
-            nodeAssignmentProperties.put("assignment_factor",
+            nodeAssignmentParameters.put("assignment_factor",
                     NetNodeManagerHolder.get().getDefaultNodeAssignmentFactor() + "");
         }
         if (nodeAssignmentStrategy != null) {
-            nodeAssignmentProperties.put("class", nodeAssignmentStrategy);
+            nodeAssignmentParameters.put("class", nodeAssignmentStrategy);
         } else {
-            nodeAssignmentProperties.put("class", NetNodeManagerHolder.get().getDefaultNodeAssignmentStrategy());
+            nodeAssignmentParameters.put("class", NetNodeManagerHolder.get().getDefaultNodeAssignmentStrategy());
         }
         for (String option : recognizedNodeAssignmentStrategyOptions) {
             if (parameters.containsKey(option))
-                nodeAssignmentProperties.put(option, parameters.get(option));
+                nodeAssignmentParameters.put(option, parameters.get(option));
         }
         if (runMode == RunMode.CLIENT_SERVER) {
-            nodeAssignmentProperties.put("assignment_factor", "1");
+            nodeAssignmentParameters.put("assignment_factor", "1");
         } else if (runMode == RunMode.REPLICATION) {
-            nodeAssignmentProperties.put("assignment_factor", replicationProperties.get("replication_factor"));
+            nodeAssignmentParameters.put("assignment_factor", replicationParameters.get("replication_factor"));
         } else if (runMode == RunMode.SHARDING) {
             if (!parameters.containsKey("assignment_factor"))
-                nodeAssignmentProperties.put("assignment_factor", replicationProperties.get("replication_factor"));
+                nodeAssignmentParameters.put("assignment_factor", replicationParameters.get("replication_factor"));
             // throw new ConfigException("In sharding mode, assignment_factor must be set");
         }
         // parameters剩下的当成database setting

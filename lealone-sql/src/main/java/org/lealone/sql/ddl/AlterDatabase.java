@@ -47,11 +47,11 @@ public class AlterDatabase extends DatabaseStatement {
     private String[] newHostIds;
     private String[] oldHostIds;
 
-    public AlterDatabase(ServerSession session, Database db, RunMode runMode, Map<String, String> parameters) {
+    public AlterDatabase(ServerSession session, Database db, RunMode runMode, CaseInsensitiveMap<String> parameters) {
         super(session, db.getName());
         this.db = db;
         this.runMode = runMode;
-        if (parameters != null) {
+        if (parameters != null && !parameters.isEmpty()) {
             this.parameters = new CaseInsensitiveMap<>(db.getParameters());
             this.parameters.putAll(parameters);
             validateParameters();
@@ -106,10 +106,10 @@ public class AlterDatabase extends DatabaseStatement {
             db.setRunMode(runMode);
         if (parameters != null)
             db.alterParameters(parameters);
-        if (replicationProperties != null)
-            db.setReplicationProperties(replicationProperties);
-        if (nodeAssignmentProperties != null)
-            db.setReplicationProperties(nodeAssignmentProperties);
+        if (replicationParameters != null)
+            db.setReplicationProperties(replicationParameters);
+        if (nodeAssignmentParameters != null)
+            db.setReplicationProperties(nodeAssignmentParameters);
     }
 
     private void updateLocalMeta() {
@@ -177,8 +177,8 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private void replication2Replication() {
-        int replicationFactorOld = getReplicationFactor(db.getReplicationProperties());
-        int replicationFactorNew = getReplicationFactor(replicationProperties);
+        int replicationFactorOld = getReplicationFactor(db.getReplicationParameters());
+        int replicationFactorNew = getReplicationFactor(replicationParameters);
         int value = replicationFactorNew - replicationFactorOld;
         int replicationNodes = Math.abs(value);
         if (value > 0) {
@@ -315,7 +315,7 @@ public class AlterDatabase extends DatabaseStatement {
                 }
 
                 Database newDB = new Database(db.getId(), db.getShortName(), parameters);
-                newDB.setReplicationProperties(replicationProperties);
+                newDB.setReplicationProperties(replicationParameters);
                 newDB.setRunMode(runMode);
                 lealoneDB.addDatabaseObject(session, newDB);
                 newDB.notifyRunModeChanged();
@@ -328,9 +328,9 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private void scaleInSharding2Replication() {
-        int replicationFactor = getReplicationFactor(db.getReplicationProperties());
-        if (replicationProperties != null) {
-            int rf = getReplicationFactor(replicationProperties);
+        int replicationFactor = getReplicationFactor(db.getReplicationParameters());
+        if (replicationParameters != null) {
+            int rf = getReplicationFactor(replicationParameters);
             if (rf < replicationFactor)
                 replicationFactor = rf;
         }

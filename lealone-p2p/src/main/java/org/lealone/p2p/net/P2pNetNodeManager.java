@@ -271,11 +271,11 @@ public class P2pNetNodeManager implements NetNodeManager {
     }
 
     private static AbstractReplicationStrategy getReplicationStrategy(IDatabase db) {
-        if (db.getReplicationProperties() == null)
+        if (db.getReplicationParameters() == null)
             return defaultReplicationStrategy;
         AbstractReplicationStrategy replicationStrategy = replicationStrategies.get(db);
         if (replicationStrategy == null) {
-            CaseInsensitiveMap<String> map = new CaseInsensitiveMap<>(db.getReplicationProperties());
+            CaseInsensitiveMap<String> map = new CaseInsensitiveMap<>(db.getReplicationParameters());
             String className = map.remove("class");
             if (className == null) {
                 throw new ConfigException("Missing replication strategy class");
@@ -293,11 +293,11 @@ public class P2pNetNodeManager implements NetNodeManager {
     }
 
     private static AbstractNodeAssignmentStrategy getNodeAssignmentStrategy(IDatabase db) {
-        if (db.getNodeAssignmentProperties() == null)
+        if (db.getNodeAssignmentParameters() == null)
             return defaultNodeAssignmentStrategy;
         AbstractNodeAssignmentStrategy nodeAssignmentStrategy = nodeAssignmentStrategies.get(db);
         if (nodeAssignmentStrategy == null) {
-            CaseInsensitiveMap<String> map = new CaseInsensitiveMap<>(db.getNodeAssignmentProperties());
+            CaseInsensitiveMap<String> map = new CaseInsensitiveMap<>(db.getNodeAssignmentParameters());
             String className = map.remove("class");
             if (className == null) {
                 throw new ConfigException("Missing node assignment strategy class");

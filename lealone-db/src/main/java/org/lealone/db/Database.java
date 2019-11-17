@@ -180,9 +180,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     private String storagePath; // 不使用原始的名称，而是用id替换数据库名
 
-    private Map<String, String> replicationProperties;
-    private ReplicationPropertiesChangeListener replicationPropertiesChangeListener;
-    private Map<String, String> nodeAssignmentProperties;
+    private Map<String, String> replicationParameters;
+    private Map<String, String> nodeAssignmentParameters;
 
     private RunMode runMode = RunMode.CLIENT_SERVER;
     private ConnectionInfo lastConnectionInfo;
@@ -279,31 +278,21 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     @Override
-    public Map<String, String> getReplicationProperties() {
-        return replicationProperties;
+    public Map<String, String> getReplicationParameters() {
+        return replicationParameters;
     }
 
     public void setReplicationProperties(Map<String, String> replicationProperties) {
-        this.replicationProperties = replicationProperties;
-        if (replicationPropertiesChangeListener != null)
-            replicationPropertiesChangeListener.replicationPropertiesChanged(this);
-    }
-
-    public void setReplicationPropertiesChangeListener(ReplicationPropertiesChangeListener listener) {
-        replicationPropertiesChangeListener = listener;
-    }
-
-    public static interface ReplicationPropertiesChangeListener {
-        void replicationPropertiesChanged(Database db);
+        this.replicationParameters = replicationProperties;
     }
 
     @Override
-    public Map<String, String> getNodeAssignmentProperties() {
-        return nodeAssignmentProperties;
+    public Map<String, String> getNodeAssignmentParameters() {
+        return nodeAssignmentParameters;
     }
 
     public void setNodeAssignmentProperties(Map<String, String> nodeAssignmentProperties) {
-        this.nodeAssignmentProperties = nodeAssignmentProperties;
+        this.nodeAssignmentParameters = nodeAssignmentProperties;
     }
 
     public void setRunMode(RunMode runMode) {
@@ -338,8 +327,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         db.storageBuilders.putAll(storageBuilders);
         db.storages.putAll(storages);
         db.runMode = runMode;
-        db.replicationProperties = replicationProperties;
-        db.replicationProperties = nodeAssignmentProperties;
+        db.replicationParameters = replicationParameters;
+        db.replicationParameters = nodeAssignmentParameters;
         db.lastConnectionInfo = lastConnectionInfo;
         db.init();
         LealoneDatabase.getInstance().getDatabasesMap().put(name, db);
@@ -2274,7 +2263,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public String getCreateSQL() {
-        return getCreateSQL(quoteIdentifier(name), parameters, replicationProperties, nodeAssignmentProperties,
+        return getCreateSQL(quoteIdentifier(name), parameters, replicationParameters, nodeAssignmentParameters,
                 runMode);
     }
 

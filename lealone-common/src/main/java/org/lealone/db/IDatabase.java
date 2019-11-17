@@ -54,9 +54,9 @@ public interface IDatabase {
 
     boolean isShardingMode();
 
-    Map<String, String> getReplicationProperties();
+    Map<String, String> getReplicationParameters();
 
-    Map<String, String> getNodeAssignmentProperties();
+    Map<String, String> getNodeAssignmentParameters();
 
     List<Storage> getStorages();
 

@@ -8,7 +8,6 @@ package org.lealone.sql.ddl;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
@@ -310,13 +309,8 @@ public class CreateTable extends SchemaStatement {
         data.storageEngineName = storageEngineName;
     }
 
-    public void setStorageEngineParams(Map<String, String> storageEngineParams) {
-        if (storageEngineParams instanceof CaseInsensitiveMap) {
-            data.storageEngineParams = (CaseInsensitiveMap<String>) storageEngineParams;
-        } else {
-            data.storageEngineParams = new CaseInsensitiveMap<>();
-            data.storageEngineParams.putAll(storageEngineParams);
-        }
+    public void setStorageEngineParams(CaseInsensitiveMap<String> storageEngineParams) {
+        data.storageEngineParams = storageEngineParams;
     }
 
     @Override

@@ -17,8 +17,6 @@
  */
 package org.lealone.sql.ddl;
 
-import java.util.Map;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StringUtils;
@@ -40,13 +38,10 @@ public class CreateDatabase extends DatabaseStatement {
     private final boolean ifNotExists;
 
     public CreateDatabase(ServerSession session, String dbName, boolean ifNotExists, RunMode runMode,
-            Map<String, String> parameters) {
+            CaseInsensitiveMap<String> parameters) {
         super(session, dbName);
         this.ifNotExists = ifNotExists;
         this.runMode = runMode;
-        if (parameters == null) {
-            parameters = new CaseInsensitiveMap<>();
-        }
         this.parameters = parameters;
     }
 
@@ -70,8 +65,8 @@ public class CreateDatabase extends DatabaseStatement {
             validateParameters();
             int id = getObjectId(lealoneDB);
             newDB = new Database(id, dbName, parameters);
-            newDB.setReplicationProperties(replicationProperties);
-            newDB.setNodeAssignmentProperties(nodeAssignmentProperties);
+            newDB.setReplicationProperties(replicationParameters);
+            newDB.setNodeAssignmentProperties(nodeAssignmentParameters);
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
                 String[] hostIds = NetNodeManagerHolder.get().assignNodes(newDB);

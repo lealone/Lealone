@@ -74,16 +74,16 @@ public class DatabaseTest extends DbObjectTestBase {
                 + " RUN MODE REPLICATION PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:1)");
         Database db = LealoneDatabase.getInstance().findDatabase(dbName);
         assertNotNull(db);
-        assertNotNull(db.getReplicationProperties());
-        assertTrue(db.getReplicationProperties().containsKey("class"));
+        assertNotNull(db.getReplicationParameters());
+        assertTrue(db.getReplicationParameters().containsKey("class"));
 
         executeUpdate("ALTER DATABASE " + dbName //
                 + " RUN MODE REPLICATION PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:2)");
 
         db = LealoneDatabase.getInstance().findDatabase(dbName);
         assertNotNull(db);
-        assertNotNull(db.getReplicationProperties());
-        assertEquals("2", db.getReplicationProperties().get("replication_factor"));
+        assertNotNull(db.getReplicationParameters());
+        assertEquals("2", db.getReplicationParameters().get("replication_factor"));
         // executeUpdate("DROP DATABASE IF EXISTS " + dbName);
     }
 }

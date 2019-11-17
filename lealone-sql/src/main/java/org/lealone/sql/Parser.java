@@ -10,9 +10,7 @@ import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.text.Collator;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.UnsupportedSchemaException;
@@ -4228,10 +4226,7 @@ public class Parser implements SQLParser {
         boolean ifNotExists = readIfNotExists();
         String dbName = readUniqueIdentifier();
         RunMode runMode = parseRunMode();
-        Map<String, String> parameters = null;
-        if (readIf("PARAMETERS")) {
-            parameters = parseParameters();
-        }
+        CaseInsensitiveMap<String> parameters = parseParameters();
         return new CreateDatabase(session, dbName, ifNotExists, runMode, parameters);
     }
 
@@ -4329,29 +4324,25 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private Map<String, String> parseParameters() {
-        return parseParameters(false);
-    }
-
-    private Map<String, String> parseParameters(boolean toLowerCase) {
-        read("(");
-        // HashMap<String, String> parameters = toLowerCase ? new HashMap<>() : new CaseInsensitiveMap<>();
+    private CaseInsensitiveMap<String> parseParameters() {
         // 参数名都是大小写不敏感的
-        HashMap<String, String> parameters = new CaseInsensitiveMap<>();
-        if (readIf(")"))
-            return parameters;
-        String k, v;
-        do {
-            k = readUniqueIdentifier();
-            if (toLowerCase)
-                k = k.toLowerCase();
-            if (readIf("=") || readIf(":"))
-                v = readString();
-            else
-                v = "1";
-            parameters.put(k, v);
-        } while (readIf(","));
-        read(")");
+        CaseInsensitiveMap<String> parameters = null;
+        if (readIf("PARAMETERS")) {
+            parameters = new CaseInsensitiveMap<>();
+            read("(");
+            if (readIf(")"))
+                return parameters;
+            String k, v;
+            do {
+                k = readUniqueIdentifier();
+                if (readIf("=") || readIf(":"))
+                    v = readString();
+                else
+                    v = "1";
+                parameters.put(k, v);
+            } while (readIf(","));
+            read(")");
+        }
         return parameters;
     }
 
@@ -4703,10 +4694,7 @@ public class Parser implements SQLParser {
         String dbName = readUniqueIdentifier();
         Database db = LealoneDatabase.getInstance().getDatabase(dbName);
         RunMode runMode = parseRunMode();
-        Map<String, String> parameters = null;
-        if (readIf("PARAMETERS")) {
-            parameters = parseParameters();
-        }
+        CaseInsensitiveMap<String> parameters = parseParameters();
         return new AlterDatabase(session, db, runMode, parameters);
     }
 
@@ -5715,9 +5703,7 @@ public class Parser implements SQLParser {
         } else if (database.getSettings().defaultStorageEngine != null) {
             command.setStorageEngineName(database.getSettings().defaultStorageEngine);
         }
-        if (readIf("PARAMETERS")) {
-            command.setStorageEngineParams(parseParameters());
-        }
+        command.setStorageEngineParams(parseParameters());
         if (temp) {
             if (readIf("ON")) {
                 read("COMMIT");
