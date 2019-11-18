@@ -22,7 +22,6 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.lealone.db.CommandParameter;
-import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.result.Result;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.replication.exceptions.ReadFailureException;
@@ -112,7 +111,7 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
     }
 
     @Override
-    public int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult) {
+    public int executeReplicationUpdate(String replicationName, ReplicationResult replicationResult) {
         return executeUpdate();
     }
 
@@ -121,7 +120,7 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
         final ArrayList<Exception> exceptions = new ArrayList<>(1);
-        final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w,
+        final ReplicationResult replicationResult = new ReplicationResult(session.n, session.w,
                 session.isAutoCommit(), this.commands);
 
         for (int i = 0; i < n; i++) {
@@ -130,7 +129,7 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
                 @Override
                 public void run() {
                     try {
-                        writeResponseHandler.response(c.executeUpdate(rn, commandUpdateResult));
+                        writeResponseHandler.response(c.executeReplicationUpdate(rn, replicationResult));
                     } catch (Exception e) {
                         writeResponseHandler.onFailure();
                         exceptions.add(e);
@@ -142,8 +141,8 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
 
         try {
             writeResponseHandler.getUpdateCount(session.rpcTimeoutMillis);
-            commandUpdateResult.validate();
-            return commandUpdateResult.getUpdateCount();
+            replicationResult.validate();
+            return replicationResult.getUpdateCount();
         } catch (WriteTimeoutException | WriteFailureException e) {
             if (tries < session.maxRries)
                 return executeUpdate(++tries);

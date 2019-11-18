@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.concurrent.Future;
 
-import org.lealone.db.CommandUpdateResult;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
@@ -134,7 +133,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
 
     @Override
     public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            CommandUpdateResult commandUpdateResult) {
+            ReplicationResult replicationResult) {
         return executeAppend(mapName, value, 1);
     }
 
@@ -143,7 +142,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
         final ArrayList<Exception> exceptions = new ArrayList<>(1);
-        final CommandUpdateResult commandUpdateResult = new CommandUpdateResult(session.n, session.w,
+        final ReplicationResult replicationResult = new ReplicationResult(session.n, session.w,
                 session.isAutoCommit(), this.commands);
 
         for (int i = 0; i < n; i++) {
@@ -152,7 +151,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
                 @Override
                 public void run() {
                     try {
-                        writeResponseHandler.response(c.executeAppend(rn, mapName, value.slice(), commandUpdateResult));
+                        writeResponseHandler.response(c.executeAppend(rn, mapName, value.slice(), replicationResult));
                     } catch (Exception e) {
                         writeResponseHandler.onFailure();
                         exceptions.add(e);
@@ -164,7 +163,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
 
         try {
             Object result = writeResponseHandler.getResult(session.rpcTimeoutMillis);
-            commandUpdateResult.validate();
+            replicationResult.validate();
             return result;
         } catch (WriteTimeoutException | WriteFailureException e) {
             if (tries < session.maxRries) {

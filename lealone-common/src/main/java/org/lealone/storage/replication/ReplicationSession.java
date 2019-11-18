@@ -29,8 +29,8 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.transaction.Transaction;
 
 public class ReplicationSession extends DelegatedSession {
-    private final Session[] sessions;
 
+    private final Session[] sessions;
     private final String[] servers;
     private final String serversStr;
 

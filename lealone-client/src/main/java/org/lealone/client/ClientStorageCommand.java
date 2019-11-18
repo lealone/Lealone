@@ -19,7 +19,6 @@ package org.lealone.client;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Session;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.AsyncCallback;
@@ -28,6 +27,7 @@ import org.lealone.net.TransferOutputStream;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
+import org.lealone.storage.replication.ReplicationResult;
 
 public class ClientStorageCommand implements StorageCommand {
 
@@ -108,7 +108,7 @@ public class ClientStorageCommand implements StorageCommand {
 
     @Override
     public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            CommandUpdateResult commandUpdateResult) {
+            ReplicationResult replicationResult) {
         Long result = null;
         int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
@@ -136,7 +136,7 @@ public class ClientStorageCommand implements StorageCommand {
         } catch (Exception e) {
             session.handleException(e);
         }
-        commandUpdateResult.addResult(this, result);
+        replicationResult.addResult(this, result);
         return ValueLong.get(result);
     }
 

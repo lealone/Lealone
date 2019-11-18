@@ -26,6 +26,7 @@ import org.lealone.storage.replication.exceptions.WriteFailureException;
 import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
 class WriteResponseHandler {
+
     private final SimpleCondition condition = new SimpleCondition();
     private final long start;
 

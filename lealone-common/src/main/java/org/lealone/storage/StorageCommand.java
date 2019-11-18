@@ -20,7 +20,7 @@ package org.lealone.storage;
 import java.nio.ByteBuffer;
 
 import org.lealone.db.Command;
-import org.lealone.db.CommandUpdateResult;
+import org.lealone.storage.replication.ReplicationResult;
 
 public interface StorageCommand extends Command {
 
@@ -29,7 +29,7 @@ public interface StorageCommand extends Command {
     Object executeGet(String mapName, ByteBuffer key);
 
     Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            CommandUpdateResult commandUpdateResult);
+            ReplicationResult replicationResult);
 
     LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan);
 

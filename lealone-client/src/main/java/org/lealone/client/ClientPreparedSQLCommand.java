@@ -16,7 +16,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
-import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
@@ -28,6 +27,7 @@ import org.lealone.net.AsyncCallback;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.storage.PageKey;
+import org.lealone.storage.replication.ReplicationResult;
 
 /**
  * Represents the client-side part of a prepared SQL statement.
@@ -161,7 +161,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected int update(String replicationName, CommandUpdateResult commandUpdateResult, List<PageKey> pageKeys,
+    protected int update(String replicationName, ReplicationResult replicationResult, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Integer>> handler) {
         checkParameters();
         prepareIfRequired();
@@ -184,7 +184,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             writeUpdateHeader(out, operation, packetId, packetType, replicationName, pageKeys);
             out.writeInt(commandId);
             writeParameters(out);
-            return getUpdateCount(out, packetId, isDistributedUpdate, commandUpdateResult, handler);
+            return getUpdateCount(out, packetId, isDistributedUpdate, replicationResult, handler);
         } catch (Exception e) {
             session.handleException(e);
         }

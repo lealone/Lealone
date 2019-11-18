@@ -21,11 +21,11 @@ import java.util.List;
 
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
-import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.storage.PageKey;
+import org.lealone.storage.replication.ReplicationResult;
 
 public interface SQLCommand extends Command {
 
@@ -92,7 +92,7 @@ public interface SQLCommand extends Command {
      * @param replicationName the replication name
      * @return the update count
      */
-    int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult);
+    int executeReplicationUpdate(String replicationName, ReplicationResult replicationResult);
 
     default void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
         executeUpdate();

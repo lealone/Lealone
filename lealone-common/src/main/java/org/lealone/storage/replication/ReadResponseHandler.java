@@ -27,6 +27,7 @@ import org.lealone.storage.replication.exceptions.ReadFailureException;
 import org.lealone.storage.replication.exceptions.ReadTimeoutException;
 
 class ReadResponseHandler {
+
     private final SimpleCondition condition = new SimpleCondition();
     private final long start;
 
@@ -161,5 +162,4 @@ class ReadResponseHandler {
     boolean isSuccessful() {
         return successful;
     }
-
 }

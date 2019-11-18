@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.storage.replication;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,8 +23,9 @@ import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.Command;
 
-public class CommandUpdateResult {
+public class ReplicationResult {
 
     private int updateCount;
     private final int n; // 复制集群节点总个数
@@ -32,7 +33,7 @@ public class CommandUpdateResult {
     private final boolean autoCommit;
     private final HashMap<Command, AtomicLong> results;
 
-    public CommandUpdateResult(int n, int w, boolean autoCommit, Command[] commands) {
+    public ReplicationResult(int n, int w, boolean autoCommit, Command[] commands) {
         this.n = n;
         this.w = w;
         this.autoCommit = autoCommit;

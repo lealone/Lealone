@@ -26,6 +26,7 @@ import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.replication.ReplicationResult;
 import org.lealone.transaction.Transaction;
 
 public class ServerStorageCommand implements StorageCommand {
@@ -68,11 +69,11 @@ public class ServerStorageCommand implements StorageCommand {
 
     @Override
     public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            CommandUpdateResult commandUpdateResult) {
+            ReplicationResult replicationResult) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.append(map.getValueType().read(value));
-        commandUpdateResult.addResult(this, ((ValueLong) result).getLong());
+        replicationResult.addResult(this, ((ValueLong) result).getLong());
         Transaction parentTransaction = session.getParentTransaction();
         if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
             parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());

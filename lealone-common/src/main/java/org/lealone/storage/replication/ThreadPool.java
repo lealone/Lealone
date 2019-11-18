@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ThreadPool {
+
     public final static ThreadPoolExecutor executor = getThreadPoolExecutor();
 
     private static ThreadPoolExecutor getThreadPoolExecutor() {
@@ -61,5 +62,4 @@ public class ThreadPool {
             return thread;
         }
     }
-
 }

@@ -16,7 +16,6 @@ import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.CommandParameter;
-import org.lealone.db.CommandUpdateResult;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.ServerSession;
@@ -34,6 +33,7 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.PageKey;
+import org.lealone.storage.replication.ReplicationResult;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -588,7 +588,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public int executeUpdate(String replicationName, CommandUpdateResult commandUpdateResult) {
+    public int executeReplicationUpdate(String replicationName, ReplicationResult replicationResult) {
         return update();
     }
 

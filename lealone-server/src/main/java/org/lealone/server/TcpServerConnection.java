@@ -574,8 +574,6 @@ public class TcpServerConnection extends TransferConnection {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
-            // if (operation == Session.COMMAND_STORAGE_REPLICATION_PUT)
-            // session.setReplicationName(transfer.readString());
             session.setReplicationName(in.readString());
             boolean raw = in.readBoolean();
 
