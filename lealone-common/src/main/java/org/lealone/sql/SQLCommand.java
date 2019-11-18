@@ -92,7 +92,7 @@ public interface SQLCommand extends Command {
      * @param replicationName the replication name
      * @return the update count
      */
-    int executeReplicationUpdate(String replicationName, ReplicationResult replicationResult);
+    int executeReplicaUpdate(String replicationName, ReplicationResult replicationResult);
 
     default void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
         executeUpdate();

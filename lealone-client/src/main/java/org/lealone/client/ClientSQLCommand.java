@@ -187,7 +187,7 @@ public class ClientSQLCommand implements SQLCommand {
     }
 
     @Override
-    public int executeReplicationUpdate(String replicationName, ReplicationResult replicationResult) {
+    public int executeReplicaUpdate(String replicationName, ReplicationResult replicationResult) {
         return update(replicationName, replicationResult, null, null);
     }
 

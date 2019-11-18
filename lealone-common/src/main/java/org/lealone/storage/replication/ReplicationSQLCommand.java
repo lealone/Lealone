@@ -111,7 +111,7 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
     }
 
     @Override
-    public int executeReplicationUpdate(String replicationName, ReplicationResult replicationResult) {
+    public int executeReplicaUpdate(String replicationName, ReplicationResult replicationResult) {
         return executeUpdate();
     }
 
@@ -129,7 +129,7 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
                 @Override
                 public void run() {
                     try {
-                        writeResponseHandler.response(c.executeReplicationUpdate(rn, replicationResult));
+                        writeResponseHandler.response(c.executeReplicaUpdate(rn, replicationResult));
                     } catch (Exception e) {
                         writeResponseHandler.onFailure();
                         exceptions.add(e);
