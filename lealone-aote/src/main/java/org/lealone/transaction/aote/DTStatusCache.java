@@ -23,13 +23,13 @@ import org.lealone.db.Constants;
 
 /**
  * 
- * 事务状态缓存，用于提高查询性能，有三种事务状态: 
+ * 分布式事务状态缓存，用于提高查询性能，有三种事务状态: 
  * <ul>-1: 事务状态未知</ul>
  * <ul>-2: 事务未正常提交</ul>
  * <ul>其他值: 事务正常提交</ul>
  *
  */
-class TransactionStatusCache {
+class DTStatusCache {
     // 桶个数
     private static final int BUCKET_NUMBER = Integer.valueOf(System.getProperty(
             Constants.PROJECT_NAME_PREFIX + "transaction.status.cache.bucket.number", Integer.toString(1 << 15)));

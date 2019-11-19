@@ -30,4 +30,9 @@ public class SystemSession extends ServerSession {
         // 所有通过SystemSession创建的表都不用Sharding
         return false;
     }
+
+    @Override
+    public RunMode getRunMode() {
+        return RunMode.CLIENT_SERVER;
+    }
 }

@@ -17,59 +17,51 @@
  */
 package org.lealone.transaction.aote;
 
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.lealone.db.Constants;
 import org.lealone.db.Session;
 import org.lealone.net.NetNode;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
-import org.lealone.transaction.aote.AMTransactionMap;
-import org.lealone.transaction.aote.TransactionalValue;
 
+//支持分布式场景(包括replication和sharding)
 public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
 
-    static class AOReplicationMap<K, V> extends AOTransactionMap<K, V> {
-
-        private final DistributedStorageMap<K, TransactionalValue> map;
-        private final Session session;
-        private final StorageDataType valueType;
-
-        AOReplicationMap(AOTransaction transaction, StorageMap<K, TransactionalValue> map) {
-            super(transaction, map);
-            this.map = (DistributedStorageMap<K, TransactionalValue>) map;
-            session = transaction.getSession();
-            valueType = getValueType();
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public V get(K key) {
-            return (V) map.replicationGet(session, key);
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public V put(K key, V value) {
-            return (V) map.replicationPut(session, key, value, valueType);
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public K append(V value) {
-            return (K) map.replicationAppend(session, value, valueType);
-        }
-    }
-
-    static final ConcurrentHashMap<String, String> replication = new ConcurrentHashMap<>();
-
     private final AOTransaction transaction;
+    private final DistributedStorageMap<K, TransactionalValue> map;
+    private final Session session;
+    private final StorageDataType valueType;
 
     AOTransactionMap(AOTransaction transaction, StorageMap<K, TransactionalValue> map) {
         super(transaction, map);
         this.transaction = transaction;
+        this.map = (DistributedStorageMap<K, TransactionalValue>) map;
+        session = transaction.getSession();
+        valueType = getValueType();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public V get(K key) {
+        return (V) map.replicationGet(session, key);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public V put(K key, V value) {
+        return (V) map.replicationPut(session, key, value, valueType);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public K append(V value) {
+        return (K) map.replicationAppend(session, value, valueType);
+    }
+
+    @Override
+    public void addIfAbsent(K key, V value, Transaction.Listener listener) {
+        map.replicationPut(session, key, value, valueType);
+        listener.operationComplete();
     }
 
     @Override
@@ -92,10 +84,11 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         } else if (data.getGlobalReplicationName() != null) {
             if (data.isReplicated())
                 return data;
-            else if (replication.containsKey(data.getGlobalReplicationName())) {
-                boolean isValid = validateReplication(data.getGlobalReplicationName());
+            else if (DTRValidator.containsReplication(data.getGlobalReplicationName())) {
+                boolean isValid = DTRValidator.validateReplication(data.getGlobalReplicationName(),
+                        transaction.validator);
                 if (isValid) {
-                    replication.remove(data.getGlobalReplicationName());
+                    DTRValidator.removeReplication(data.getGlobalReplicationName());
                     data.setReplicated(true);
                     return data;
                 }
@@ -109,87 +102,28 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         return null;
     }
 
-    private boolean validateReplication(String globalTransactionName) {
-        boolean isValid = true;
-        String[] names = globalTransactionName.split(",");
-        NetNode localHostAndPort = NetNode.getLocalTcpNode();
-        // 从1开始，第一个不是节点名
-        for (int i = 1, size = names.length; i < size && isValid; i++) {
-            String name = names[i];
-            if (name.indexOf(':') == -1) {
-                name += ":" + Constants.DEFAULT_TCP_PORT;
-            }
-
-            if (localHostAndPort.equals(NetNode.createTCP(name)))
-                continue;
-            isValid = isValid && transaction.validator.validate(name, "replication:" + globalTransactionName);
-        }
-        return isValid;
-    }
-
-    public boolean trySet(K key, V value) {
-        TransactionalValue oldValue = map.get(key);
-        TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, oldValue,
-                map.getValueType(), null);
-        String mapName = getName();
-        if (oldValue == null) {
-            // a new value
-            transaction.getUndoLog().add(mapName, key, oldValue, newValue);
-            TransactionalValue old = map.putIfAbsent(key, newValue);
-            if (old != null) {
-                transaction.getUndoLog().undo();
-                return false;
-            }
-            return true;
-        }
-        long tid = oldValue.getTid();
-        if (tid == 0) {
-            // committed
-            transaction.getUndoLog().add(mapName, key, oldValue, newValue);
-            // the transaction is committed:
-            // overwrite the value
-            if (!map.replace(key, oldValue, newValue)) {
-                // somebody else was faster
-                transaction.getUndoLog().undo();
-                return false;
-            }
-            oldValue.incrementVersion();
-            if (newValue.getGlobalReplicationName() != null)
-                replication.put(newValue.getGlobalReplicationName(), newValue.getGlobalReplicationName());
-            return true;
-        }
-        if (tid == transaction.transactionId) {
-            // added or updated by this transaction
-            transaction.getUndoLog().add(mapName, key, oldValue, newValue);
-            if (!map.replace(key, oldValue, newValue)) {
-                // strange, somebody overwrote the value
-                // even though the change was not committed
-                transaction.getUndoLog().undo();
-                return false;
-            }
-            oldValue.incrementVersion();
-            if (newValue.getGlobalReplicationName() != null)
-                replication.put(newValue.getGlobalReplicationName(), newValue.getGlobalReplicationName());
-            return true;
-        }
-
-        if (tid % 2 == 1) {
+    @Override
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
+        long tid = oldTransactionalValue.getTid();
+        if (tid != 0 && tid != transaction.transactionId && tid % 2 == 1) {
             boolean isValid = transaction.transactionEngine.validateTransaction(tid, transaction);
             if (isValid) {
                 transaction.commitAfterValidate(tid);
-                return trySet(key, value);
+            } else {
+                return Transaction.OPERATION_NEED_WAIT;
             }
         }
-        // the transaction is not yet committed
-        return false;
+        int ret = super.tryUpdateOrRemove(key, value, columnIndexes, oldTransactionalValue);
+        if (ret == Transaction.OPERATION_COMPLETE) {
+            oldTransactionalValue.incrementVersion();
+            if (transaction.globalTransactionName != null)
+                DTRValidator.addReplication(transaction.globalTransactionName);
+        }
+        return ret;
     }
 
     @Override
-    public AOTransactionMap<K, V> getInstance(Transaction transaction) {
-        AOTransaction t = (AOTransaction) transaction;
-        if (t.isShardingMode())
-            return new AOReplicationMap<>(t, map);
-        else
-            return new AOTransactionMap<>(t, map);
+    public AMTransactionMap<K, V> getInstance(Transaction transaction) {
+        return new AOTransactionMap<>((AOTransaction) transaction, map);
     }
 }

@@ -35,8 +35,8 @@ public class ReplicationTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationTest");
-        // stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int primary key, f2 long)");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int, f2 long)");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int primary key, f2 long)");
+        // stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int, f2 long)");
         // stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
 
         // 启动两个新事务更新同一行，可以用来测试Replication冲突的场景

@@ -17,6 +17,7 @@
  */
 package org.lealone.storage.aose.btree;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -383,10 +384,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public synchronized void clear() {
         checkWrite();
+        List<String> replicationHostIds = root.getReplicationHostIds();
         root.removeAllRecursive();
         size.set(0);
         newRoot(BTreeLeafPage.createEmpty(this));
         disableParallelIfNeeded();
+        root.setReplicationHostIds(replicationHostIds);
     }
 
     @Override

@@ -100,8 +100,8 @@ public class AOStorage extends StorageBase {
     }
 
     private boolean isDistributed(Map<String, String> parameters) {
-        if (parameters != null && parameters.containsKey("isShardingMode"))
-            return Boolean.parseBoolean(parameters.get("isShardingMode"));
+        if (parameters != null && parameters.containsKey("isDistributed"))
+            return Boolean.parseBoolean(parameters.get("isDistributed"));
         else
             return false;
     }

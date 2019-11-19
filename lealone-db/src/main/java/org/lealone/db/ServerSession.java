@@ -1199,7 +1199,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             return transaction;
 
         boolean isShardingMode = isShardingMode();
-        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, isShardingMode);
+        Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, getRunMode());
         transaction.setValidator(this);
         transaction.setSession(this);
         transaction.setGlobalTransactionName(replicationName);

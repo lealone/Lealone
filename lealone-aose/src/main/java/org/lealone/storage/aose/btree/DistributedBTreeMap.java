@@ -464,7 +464,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
     }
 
     private List<NetNode> getReplicationNodes(BTreePage p, Object key) {
-        if (p.isLeaf()) {
+        if (p.isLeaf() || p.isRemote()) {
             return getReplicationNodes(p);
         }
         int index = p.binarySearch(key);

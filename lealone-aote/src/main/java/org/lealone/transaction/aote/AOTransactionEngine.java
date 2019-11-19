@@ -19,12 +19,11 @@ package org.lealone.transaction.aote;
 
 import java.util.Map;
 
+import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
-import org.lealone.transaction.aote.AMTransactionEngine;
-import org.lealone.transaction.aote.TransactionalValue;
 
 public class AOTransactionEngine extends AMTransactionEngine {
 
@@ -37,27 +36,30 @@ public class AOTransactionEngine extends AMTransactionEngine {
     @Override
     public synchronized void init(Map<String, String> config) {
         super.init(config);
-        TransactionValidator.getInstance().start();
+        DTRValidator.getInstance().start();
     }
 
     @Override
     public void close() {
         super.close();
-        TransactionValidator.getInstance().close();
+        DTRValidator.getInstance().close();
     }
 
     @Override
-    protected AOTransaction createTransaction(long tid) {
-        return new AOTransaction(this, tid);
+    protected AMTransaction createTransaction(long tid, RunMode runMode) {
+        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)
+            return new AOTransaction(this, tid);
+        else
+            return new AMTransaction(this, tid);
     }
 
     @Override
     public boolean validateTransaction(String localTransactionName) {
-        return TransactionStatusTable.validateTransaction(localTransactionName);
+        return DTRValidator.validateTransaction(localTransactionName);
     }
 
     boolean validateTransaction(long tid, AOTransaction currentTransaction) {
-        return TransactionStatusTable.validateTransaction(NetNode.getLocalTcpHostAndPort(), tid, currentTransaction);
+        return DTRValidator.validateTransaction(NetNode.getLocalTcpHostAndPort(), tid, currentTransaction);
     }
 
     @Override

@@ -37,6 +37,7 @@ import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 import org.lealone.transaction.aote.log.UndoLogRecord;
 
+//只支持单机场景
 public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     private final AMTransaction transaction;
@@ -457,8 +458,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public AMTransactionMap<K, V> getInstance(Transaction transaction) {
-        AMTransaction t = (AMTransaction) transaction;
-        return new AMTransactionMap<>(t, map);
+        return new AMTransactionMap<>((AMTransaction) transaction, map);
     }
 
     @Override
@@ -685,7 +685,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     // 如果当前行(或列)已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，
     // 当前事务要让出当前线程。
     // 当value为null时代表delete，否则代表update。
-    private int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
         DataUtils.checkArgument(oldTransactionalValue != null, "The oldTransactionalValue may not be null");
         transaction.checkNotClosed();
         String mapName = getName();

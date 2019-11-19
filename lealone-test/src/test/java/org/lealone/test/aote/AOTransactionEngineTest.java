@@ -17,7 +17,6 @@
  */
 package org.lealone.test.aote;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Test;
@@ -39,21 +38,12 @@ public class AOTransactionEngineTest extends TestBase {
                 .getEngine(Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
         assertEquals(Constants.DEFAULT_TRANSACTION_ENGINE_NAME, te.getName());
 
-        Map<String, String> config = new HashMap<>();
-        config.put("base_dir", joinDirs("aote"));
-        config.put("redo_log_dir", "redo_log");
-        config.put("log_sync_type", "batch");
-        config.put("log_sync_batch_window", "10"); // 10ms
-
-        // config.put("log_sync_type", "periodic");
-        // config.put("log_sync_period", "500"); // 500ms
+        Map<String, String> config = AMTransactionEngineTest.getDefaultConfig();
 
         if (isDistributed) {
             config.put("host_and_port", Constants.DEFAULT_HOST + ":" + Constants.DEFAULT_TCP_PORT);
         }
-
         te.init(config);
-
         return te;
     }
 
@@ -72,7 +62,7 @@ public class AOTransactionEngineTest extends TestBase {
         TransactionEngine te = getTransactionEngine(false);
         Storage storage = getStorage();
 
-        Transaction t = te.beginTransaction(false, false);
+        Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap("test", storage);
         map.clear();
         map.put("1", "a");
@@ -87,7 +77,7 @@ public class AOTransactionEngineTest extends TestBase {
         } catch (IllegalStateException e) {
         }
 
-        t = te.beginTransaction(false, false);
+        t = te.beginTransaction(false);
         map = map.getInstance(t);
 
         assertNull(map.get("1"));
@@ -106,18 +96,18 @@ public class AOTransactionEngineTest extends TestBase {
 
         assertEquals(2, map.size());
 
-        Transaction t2 = te.beginTransaction(false, false);
+        Transaction t2 = te.beginTransaction(false);
         map = map.getInstance(t2);
         map.put("3", "c");
         map.put("4", "d");
         assertEquals(4, map.size());
 
-        Transaction t3 = te.beginTransaction(false, false);
+        Transaction t3 = te.beginTransaction(false);
         map = map.getInstance(t3);
         map.put("5", "f");
         assertEquals(3, map.size());
 
-        Transaction t4 = te.beginTransaction(false, false);
+        Transaction t4 = te.beginTransaction(false);
         map = map.getInstance(t4);
         map.remove("1");
         assertEquals(1, map.size());

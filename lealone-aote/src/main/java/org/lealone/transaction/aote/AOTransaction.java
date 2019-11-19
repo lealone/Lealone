@@ -30,9 +30,6 @@ import java.util.concurrent.Future;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
-import org.lealone.transaction.aote.AMTransaction;
-import org.lealone.transaction.aote.TransactionalValue;
-import org.lealone.transaction.aote.AOTransactionMap.AOReplicationMap;
 import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 
@@ -118,13 +115,9 @@ public class AOTransaction extends AMTransaction {
     }
 
     @Override
-    protected <K, V> AOTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
+    protected <K, V> AMTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
             Map<String, String> parameters) {
-        boolean isShardingMode = parameters == null ? false : Boolean.parseBoolean(parameters.get("isShardingMode"));
-        if (isShardingMode)
-            return new AOReplicationMap<>(this, map);
-        else
-            return new AOTransactionMap<>(this, map);
+        return new AOTransactionMap<>(this, map);
     }
 
     @Override
@@ -170,8 +163,7 @@ public class AOTransaction extends AMTransaction {
         if (isLocal()) {
             commitFinal();
         }
-        TransactionStatusTable.put(this, allLocalTransactionNames);
-        TransactionValidator.enqueue(this, allLocalTransactionNames);
+        DTRValidator.addTransaction(this, allLocalTransactionNames);
     }
 
     private RedoLogRecord createDistributedTransactionRedoLogRecord(String allLocalTransactionNames) {
@@ -254,5 +246,4 @@ public class AOTransaction extends AMTransaction {
         getLocalTransactionNames();
         return localTransactionNamesBuilder.toString();
     }
-
 }

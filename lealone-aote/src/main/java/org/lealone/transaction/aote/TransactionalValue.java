@@ -115,11 +115,6 @@ public interface TransactionalValue {
     }
 
     public static TransactionalValue createUncommitted(AMTransaction transaction, Object value,
-            TransactionalValue oldValue, StorageDataType oldValueType, int[] columnIndexes) {
-        return createUncommitted(transaction, value, oldValue, oldValueType, columnIndexes, null);
-    }
-
-    public static TransactionalValue createUncommitted(AMTransaction transaction, Object value,
             TransactionalValue oldValue, StorageDataType oldValueType, int[] columnIndexes, TransactionalValue ref) {
         boolean rowLock = false;
         if (oldValue == null || oldValue instanceof Exclusive) { // insert

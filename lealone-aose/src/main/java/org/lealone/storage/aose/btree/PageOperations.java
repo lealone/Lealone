@@ -136,7 +136,7 @@ public abstract class PageOperations {
                 p = map.gotoLeafPage(key);
 
                 // 处理分布式场景
-                if (p.getLeafPageMovePlan() != null) {
+                if (p.isRemote() || p.getLeafPageMovePlan() != null) {
                     writeRemote();
                     return PageOperationResult.SHIFTED;
                 }

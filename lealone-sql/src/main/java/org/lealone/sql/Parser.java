@@ -3961,8 +3961,6 @@ public class Parser implements SQLParser {
             return parseCreateAggregate(force);
         } else if (readIf("DATABASE")) {
             return parseCreateDatabase();
-        } else if (readIf("TENANT")) {
-            return parseCreateDatabase();
         } else if (readIf("SERVICE")) {
             return parseCreateService();
         }
@@ -4677,8 +4675,6 @@ public class Parser implements SQLParser {
         } else if (readIf("VIEW")) {
             return parseAlterView();
         } else if (readIf("DATABASE")) {
-            return parseAlterDatabase();
-        } else if (readIf("TENANT")) {
             return parseAlterDatabase();
         }
         throw getSyntaxError();

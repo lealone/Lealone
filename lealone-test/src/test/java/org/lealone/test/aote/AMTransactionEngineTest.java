@@ -72,7 +72,7 @@ public class AMTransactionEngineTest extends TestBase {
 
     public static Map<String, String> getDefaultConfig() {
         Map<String, String> config = new HashMap<>();
-        config.put("base_dir", joinDirs("amte"));
+        config.put("base_dir", joinDirs("aote"));
         config.put("redo_log_dir", "redo_log");
         config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_INSTANT);
         // config.put("checkpoint_service_loop_interval", "10"); // 10ms

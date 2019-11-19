@@ -29,14 +29,6 @@ public class ShardingTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
-        // DATABASE和TENANT是同义词，多租户时用TENANT更明确
-        // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB RUN MODE client_server");
-        // stmt.executeUpdate("ALTER DATABASE ShardingTestDB RUN MODE sharding");
-        // stmt.executeUpdate("CREATE TENANT IF NOT EXISTS ShardingTestDB RUN MODE client_server");
-        // stmt.executeUpdate("ALTER TENANT ShardingTestDB RUN MODE sharding");
-
-        // sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
-
         String dbName = "ShardingTestDB1";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName
                 + " RUN MODE sharding PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:1, nodes:7)";

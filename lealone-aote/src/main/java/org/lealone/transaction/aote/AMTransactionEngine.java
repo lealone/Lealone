@@ -31,6 +31,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.db.RunMode;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
@@ -172,23 +173,24 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     }
 
     @Override
-    public AMTransaction beginTransaction(boolean autoCommit, boolean isShardingMode) {
+    public AMTransaction beginTransaction(boolean autoCommit, RunMode runMode) {
         if (logSyncService == null) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
-        long tid = getTransactionId(autoCommit, isShardingMode);
-        AMTransaction t = createTransaction(tid);
+        long tid = getTransactionId(runMode == RunMode.SHARDING);
+        AMTransaction t = createTransaction(tid, runMode);
         t.setAutoCommit(autoCommit);
+        t.setRunMode(runMode);
         currentTransactions.put(tid, t);
         return t;
     }
 
-    private long getTransactionId(boolean autoCommit, boolean isShardingMode) {
+    private long getTransactionId(boolean isShardingMode) {
         // 分布式事务使用奇数的事务ID
-        if (!autoCommit && isShardingMode) {
+        if (isShardingMode)
             return nextOddTransactionId();
-        }
-        return nextEvenTransactionId();
+        else
+            return nextEvenTransactionId();
     }
 
     public long nextOddTransactionId() {
@@ -216,7 +218,7 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         return last;
     }
 
-    protected AMTransaction createTransaction(long tid) {
+    protected AMTransaction createTransaction(long tid, RunMode runMode) {
         return new AMTransaction(this, tid);
     }
 
@@ -236,7 +238,8 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         if (mapInfo == null)
             return null;
         else
-            return getTransactionMap(transaction, mapInfo.map);
+            return new AMTransactionMap<>((AMTransaction) transaction, mapInfo.map);
+        // return getTransactionMap(transaction, mapInfo.map);
     }
 
     protected TransactionMap<?, ?> getTransactionMap(Transaction transaction,

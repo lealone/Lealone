@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.ValueLong;
@@ -58,7 +59,7 @@ public class AMTransaction implements Transaction {
     private volatile int status;
     private int isolationLevel = Connection.TRANSACTION_READ_COMMITTED; // 默认是读已提交级别
     private boolean autoCommit;
-
+    private RunMode runMode;
     private Runnable asyncTask;
 
     // 被哪个事务锁住记录了
@@ -105,6 +106,10 @@ public class AMTransaction implements Transaction {
 
     public boolean isShardingMode() {
         return session != null && !session.isLocal() && session.isShardingMode();
+    }
+
+    public void setRunMode(RunMode runMode) {
+        this.runMode = runMode;
     }
 
     public boolean isCommitted() {
@@ -196,6 +201,14 @@ public class AMTransaction implements Transaction {
         if (valueType == null)
             valueType = new ObjectDataType();
         valueType = new TransactionalValueType(valueType);
+
+        if (parameters == null)
+            parameters = new HashMap<>(1);
+        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)
+            parameters.put("isDistributed", "true");
+        if (runMode == RunMode.SHARDING)
+            parameters.put("isShardingMode", "true");
+
         StorageMap<K, TransactionalValue> map = storage.openMap(name, keyType, valueType, parameters);
         if (!map.isInMemory()) {
             logSyncService.getRedoLog().redo(map);

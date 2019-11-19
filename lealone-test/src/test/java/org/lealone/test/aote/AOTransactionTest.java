@@ -17,7 +17,11 @@
  */
 package org.lealone.test.aote;
 
+import java.util.HashMap;
+
 import org.junit.Test;
+import org.lealone.db.RunMode;
+import org.lealone.db.value.ValueString;
 import org.lealone.storage.Storage;
 import org.lealone.test.TestBase;
 import org.lealone.transaction.Transaction;
@@ -66,8 +70,7 @@ public class AOTransactionTest extends TestBase {
     public void run() {
         TransactionEngine te = AOTransactionEngineTest.getTransactionEngine(true);
         Storage storage = AOTransactionEngineTest.getStorage();
-
-        Transaction t = te.beginTransaction(false, true);
+        Transaction t = te.beginTransaction(false, RunMode.SHARDING);
         t.setLocal(false);
 
         ParticipantTest p1 = new ParticipantTest();
@@ -88,13 +91,16 @@ public class AOTransactionTest extends TestBase {
         t.addLocalTransactionNames(alocalTransactionName1);
         t.addLocalTransactionNames(alocalTransactionName2);
 
-        TransactionMap<String, String> map = t.openMap("DistributedTransactionTest", storage);
+        HashMap<String, String> parameters = new HashMap<>(1);
+        parameters.put("initReplicationNodes", "127.0.0.1:7210");
+        TransactionMap<String, String> map = t.openMap("DistributedTransactionTest", ValueString.type, ValueString.type,
+                storage, parameters);
         map.clear();
         map.put("1", "a");
         map.put("2", "b");
         t.commit();
 
-        t = te.beginTransaction(false, true);
+        t = te.beginTransaction(false, RunMode.SHARDING);
         t.setLocal(false);
         t.setValidator(validatorTrue);
         map = map.getInstance(t);
@@ -110,7 +116,7 @@ public class AOTransactionTest extends TestBase {
         map.put("4", "d");
         t.commit();
 
-        t = te.beginTransaction(false, true);
+        t = te.beginTransaction(false, RunMode.SHARDING);
         t.setLocal(false);
         t.setValidator(validatorFalse);
         map = map.getInstance(t);

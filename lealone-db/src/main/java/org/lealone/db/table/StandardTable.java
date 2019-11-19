@@ -24,6 +24,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.RunMode;
 import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.DatabaseEventListener;
@@ -92,6 +93,9 @@ public class StandardTable extends Table {
             }
         }
         parameters.put("isShardingMode", data.session.isShardingMode() + "");
+        RunMode runMode = data.session.getRunMode();
+        if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING)
+            parameters.put("isDistributed", "true");
 
         isHidden = data.isHidden;
         nextAnalyze = database.getSettings().analyzeAuto;
