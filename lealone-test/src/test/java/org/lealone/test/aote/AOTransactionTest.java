@@ -85,14 +85,14 @@ public class AOTransactionTest extends TestBase {
         long tid1 = t.getTransactionId() + 2;
         long tid2 = t.getTransactionId() + 4;
 
-        String alocalTransactionName1 = "127.0.0.1:5210:" + tid1;
-        String alocalTransactionName2 = "127.0.0.1:5210:" + tid2;
+        String alocalTransactionName1 = "127.0.0.1:9210:" + tid1;
+        String alocalTransactionName2 = "127.0.0.1:9210:" + tid2;
 
         t.addLocalTransactionNames(alocalTransactionName1);
         t.addLocalTransactionNames(alocalTransactionName2);
 
         HashMap<String, String> parameters = new HashMap<>(1);
-        parameters.put("initReplicationNodes", "127.0.0.1:7210");
+        parameters.put("initReplicationNodes", "127.0.0.1:9210");
         TransactionMap<String, String> map = t.openMap("DistributedTransactionTest", ValueString.type, ValueString.type,
                 storage, parameters);
         map.clear();

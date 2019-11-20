@@ -46,7 +46,7 @@ protocol_server_engines:
   - name: TCP
     enabled: true
     parameters: {
-        port: 7210,
+        port: 9210,
         trace: false,
         allow_others: true,
         # white_list: "127.0.0.4,127.0.0.2",
@@ -59,7 +59,7 @@ protocol_server_engines:
   - name: P2P
     enabled: true
     parameters: {
-        port: 7211,
+        port: 9211,
         ssl: false
     }
 

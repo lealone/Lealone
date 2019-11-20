@@ -44,7 +44,7 @@ public class NodeAssignmentStrategyTest extends RunModeTest {
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
         sql += " node_assignment_strategy: 'ManualNodeAssignmentStrategy', assignment_factor: 2, "
-                + "host_id_list: '127.0.0.1:7210,127.0.0.3:7210')";
+                + "host_id_list: '127.0.0.1:9210,127.0.0.3:9210')";
         executeUpdate(sql);
     }
 }
