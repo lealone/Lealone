@@ -572,7 +572,7 @@ public interface TransactionalValue {
             this.oldValue = oldValue;
             this.oldValueType = oldValueType;
             this.hostAndPort = NetNode.getLocalTcpHostAndPort();
-            this.globalReplicationName = transaction.globalTransactionName;
+            this.globalReplicationName = transaction.globalReplicationName;
             this.columnIndexes = columnIndexes;
             this.ref = ref;
 

@@ -1202,7 +1202,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, getRunMode());
         transaction.setValidator(this);
         transaction.setSession(this);
-        transaction.setGlobalTransactionName(replicationName);
+        transaction.setGlobalReplicationName(replicationName);
 
         // TODO p != null && !p.isLocal()是否需要？
         if (isRoot && !autoCommit && isShardingMode && p != null && !p.isLocal())

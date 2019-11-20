@@ -116,8 +116,8 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
         int ret = super.tryUpdateOrRemove(key, value, columnIndexes, oldTransactionalValue);
         if (ret == Transaction.OPERATION_COMPLETE) {
             oldTransactionalValue.incrementVersion();
-            if (transaction.globalTransactionName != null)
-                DTRValidator.addReplication(transaction.globalTransactionName);
+            if (transaction.globalReplicationName != null)
+                DTRValidator.addReplication(transaction.globalReplicationName);
         }
         return ret;
     }

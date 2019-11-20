@@ -49,7 +49,7 @@ public class AMTransaction implements Transaction {
     public final long transactionId;
     public final String transactionName;
 
-    String globalTransactionName;
+    String globalReplicationName;
     UndoLog undoLog = new UndoLog();
 
     private final LogSyncService logSyncService;
@@ -86,13 +86,13 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
-    public String getGlobalTransactionName() {
-        return globalTransactionName;
+    public String getGlobalReplicationName() {
+        return globalReplicationName;
     }
 
     @Override
-    public void setGlobalTransactionName(String globalTransactionName) {
-        this.globalTransactionName = globalTransactionName;
+    public void setGlobalReplicationName(String globalReplicationName) {
+        this.globalReplicationName = globalReplicationName;
     }
 
     @Override

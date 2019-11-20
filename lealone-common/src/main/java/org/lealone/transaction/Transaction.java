@@ -82,9 +82,9 @@ public interface Transaction {
 
     String getLocalTransactionNames();
 
-    String getGlobalTransactionName();
+    String getGlobalReplicationName();
 
-    void setGlobalTransactionName(String globalTransactionName);
+    void setGlobalReplicationName(String globalReplicationName);
 
     void setValidator(Validator validator);
 
