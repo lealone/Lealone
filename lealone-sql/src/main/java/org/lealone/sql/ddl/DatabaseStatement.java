@@ -80,10 +80,12 @@ public abstract class DatabaseStatement extends DefinitionStatement {
     protected void validateParameters() {
         if (this.parameters == null)
             this.parameters = new CaseInsensitiveMap<>();
+
+        // 第一步: 验证可识别的参数
         CaseInsensitiveMap<String> parameters = new CaseInsensitiveMap<>(this.parameters);
-        parameters.remove("hostIds");
         String replicationStrategy = parameters.get("replication_strategy");
         String nodeAssignmentStrategy = parameters.get("node_assignment_strategy");
+        removeParameters(parameters);
 
         Collection<String> recognizedReplicationStrategyOptions = NetNodeManagerHolder.get()
                 .getRecognizedReplicationStrategyOptions(replicationStrategy);
@@ -117,7 +119,10 @@ public abstract class DatabaseStatement extends DefinitionStatement {
                     recognizedNodeAssignmentStrategyOptions, recognizedSettingOptions));
         }
 
-        parameters = this.parameters;
+        // 第二步: 初始化replicationParameters、nodeAssignmentParameters、database settings
+        parameters = new CaseInsensitiveMap<>(this.parameters);
+        removeParameters(parameters);
+
         replicationParameters = new CaseInsensitiveMap<>();
         if (!parameters.containsKey("replication_factor")) {
             replicationParameters.put("replication_factor",
@@ -154,8 +159,13 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         } else if (runMode == RunMode.SHARDING) {
             if (!parameters.containsKey("assignment_factor"))
                 nodeAssignmentParameters.put("assignment_factor", replicationParameters.get("replication_factor"));
-            // throw new ConfigException("In sharding mode, assignment_factor must be set");
         }
         // parameters剩下的当成database setting
+    }
+
+    private static void removeParameters(CaseInsensitiveMap<String> parameters) {
+        parameters.remove("hostIds");
+        parameters.remove("replication_strategy");
+        parameters.remove("node_assignment_strategy");
     }
 }

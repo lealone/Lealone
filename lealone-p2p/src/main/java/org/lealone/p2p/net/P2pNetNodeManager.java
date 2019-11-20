@@ -281,8 +281,8 @@ public class P2pNetNodeManager implements NetNodeManager {
                 throw new ConfigException("Missing replication strategy class");
             }
 
-            replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(db.getShortName(), className,
-                    ConfigDescriptor.getNodeSnitch(), map);
+            replicationStrategy = AbstractReplicationStrategy.create(db.getShortName(), className,
+                    ConfigDescriptor.getNodeSnitch(), map, true);
             replicationStrategies.put(db, replicationStrategy);
         }
         return replicationStrategy;
@@ -304,7 +304,7 @@ public class P2pNetNodeManager implements NetNodeManager {
             }
 
             nodeAssignmentStrategy = AbstractNodeAssignmentStrategy.create(db.getShortName(), className,
-                    ConfigDescriptor.getNodeSnitch(), map);
+                    ConfigDescriptor.getNodeSnitch(), map, true);
             nodeAssignmentStrategies.put(db, nodeAssignmentStrategy);
         }
         return nodeAssignmentStrategy;
@@ -316,8 +316,8 @@ public class P2pNetNodeManager implements NetNodeManager {
         if (strategyName == null)
             replicationStrategy = defaultReplicationStrategy;
         else
-            replicationStrategy = AbstractReplicationStrategy.createReplicationStrategy(null, strategyName,
-                    ConfigDescriptor.getNodeSnitch(), null);
+            replicationStrategy = AbstractReplicationStrategy.create(null, strategyName,
+                    ConfigDescriptor.getNodeSnitch(), null, false);
         return replicationStrategy.recognizedOptions();
     }
 
@@ -328,7 +328,7 @@ public class P2pNetNodeManager implements NetNodeManager {
             nodeAssignmentStrategy = defaultNodeAssignmentStrategy;
         else
             nodeAssignmentStrategy = AbstractNodeAssignmentStrategy.create(null, strategyName,
-                    ConfigDescriptor.getNodeSnitch(), null);
+                    ConfigDescriptor.getNodeSnitch(), null, false);
         return nodeAssignmentStrategy.recognizedOptions();
     }
 

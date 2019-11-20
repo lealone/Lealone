@@ -43,8 +43,8 @@ import org.lealone.p2p.config.Config.PluggableEngineDef;
 import org.lealone.p2p.locator.AbstractNodeAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
 import org.lealone.p2p.locator.DynamicNodeSnitch;
-import org.lealone.p2p.locator.NodeSnitchInfo;
 import org.lealone.p2p.locator.INodeSnitch;
+import org.lealone.p2p.locator.NodeSnitchInfo;
 import org.lealone.p2p.locator.RandomNodeAssignmentStrategy;
 import org.lealone.p2p.locator.SeedProvider;
 import org.lealone.p2p.locator.SimpleStrategy;
@@ -246,8 +246,8 @@ public class ConfigDescriptor {
             if (config.replication_strategy.name == null) {
                 throw new ConfigException("replication_strategy.name is missing.");
             }
-            defaultReplicationStrategy = AbstractReplicationStrategy.createReplicationStrategy("system",
-                    config.replication_strategy.name, getNodeSnitch(), config.replication_strategy.parameters);
+            defaultReplicationStrategy = AbstractReplicationStrategy.create("system", config.replication_strategy.name,
+                    getNodeSnitch(), config.replication_strategy.parameters, true);
         }
         return defaultReplicationStrategy;
     }
@@ -264,7 +264,8 @@ public class ConfigDescriptor {
                 throw new ConfigException("node_assignment_strategy.name is missing.");
             }
             defaultNodeAssignmentStrategy = AbstractNodeAssignmentStrategy.create("system",
-                    config.node_assignment_strategy.name, getNodeSnitch(), config.node_assignment_strategy.parameters);
+                    config.node_assignment_strategy.name, getNodeSnitch(), config.node_assignment_strategy.parameters,
+                    true);
         }
         return defaultNodeAssignmentStrategy;
     }

@@ -116,20 +116,21 @@ public abstract class AbstractReplicationStrategy {
         return strategy;
     }
 
-    public static AbstractReplicationStrategy createReplicationStrategy(String dbName,
+    public static AbstractReplicationStrategy create(String dbName,
             Class<? extends AbstractReplicationStrategy> strategyClass, INodeSnitch snitch,
-            Map<String, String> strategyOptions) {
+            Map<String, String> strategyOptions, boolean validate) {
         try {
             AbstractReplicationStrategy strategy = createInternal(dbName, strategyClass, snitch, strategyOptions);
 
             // Because we used to not properly validate unrecognized options, we only log a warning if we find one.
-            try {
-                strategy.validateExpectedOptions();
-            } catch (ConfigException e) {
-                logger.warn("Ignoring {}", e.getMessage());
+            if (validate) {
+                try {
+                    strategy.validateExpectedOptions();
+                } catch (ConfigException e) {
+                    logger.warn("Ignoring {}", e.getMessage());
+                }
+                strategy.validateOptions();
             }
-
-            strategy.validateOptions();
             return strategy;
         } catch (ConfigException e) {
             // If that happens at this point, there is nothing we can do about it.
@@ -137,10 +138,10 @@ public abstract class AbstractReplicationStrategy {
         }
     }
 
-    public static AbstractReplicationStrategy createReplicationStrategy(String dbName, String strategyClassName,
-            INodeSnitch snitch, Map<String, String> strategyOptions) {
+    public static AbstractReplicationStrategy create(String dbName, String strategyClassName, INodeSnitch snitch,
+            Map<String, String> strategyOptions, boolean validate) {
         Class<? extends AbstractReplicationStrategy> strategyClass = getClass(strategyClassName);
-        return createReplicationStrategy(dbName, strategyClass, snitch, strategyOptions);
+        return create(dbName, strategyClass, snitch, strategyOptions, validate);
     }
 
     public static Class<AbstractReplicationStrategy> getClass(String cls) throws ConfigException {
