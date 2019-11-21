@@ -17,67 +17,37 @@
  */
 package org.lealone.storage.replication;
 
-import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
-import org.lealone.common.concurrent.SimpleCondition;
-import org.lealone.db.result.Result;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.replication.exceptions.ReadFailureException;
 import org.lealone.storage.replication.exceptions.ReadTimeoutException;
 
-class ReadResponseHandler {
+class ReadResponseHandler<T> extends ReplicationHandler<T> {
 
-    private final SimpleCondition condition = new SimpleCondition();
-    private final long start;
-
-    private final ArrayList<Result> results;
-    private final ArrayList<Object> resultObjects;
-    private final int n;
     private final int r;
 
-    private final AtomicIntegerFieldUpdater<ReadResponseHandler> failuresUpdater = AtomicIntegerFieldUpdater
-            .newUpdater(ReadResponseHandler.class, "failures");
-    private volatile int failures = 0;
-
-    private volatile boolean successful = false;
-
-    ReadResponseHandler(int n) {
-        start = System.nanoTime();
-
-        this.n = n;
+    ReadResponseHandler(int n, AsyncHandler<AsyncResult<T>> topHandler) {
+        super(n, topHandler);
         // r = n / 2 + 1;
         r = 1; // 使用Write all read one模式
-        results = new ArrayList<>(n);
-        resultObjects = new ArrayList<>(n);
     }
 
-    synchronized void response(Result result) {
+    @Override
+    synchronized void response(AsyncResult<T> result) {
         results.add(result);
-
         if (!successful && results.size() >= r) {
             successful = true;
             signal();
+            if (topHandler != null) {
+                topHandler.handle(results.get(0));
+            }
         }
     }
 
-    synchronized void response(Object result) {
-        resultObjects.add(result);
-
-        if (!successful && resultObjects.size() >= r) {
-            successful = true;
-            signal();
-        }
-    }
-
-    void onFailure() {
-        int f = failuresUpdater.incrementAndGet(this);
-
-        if (totalBlockFor() + f >= totalNodes())
-            signal();
-    }
-
-    Result get(long rpcTimeoutMillis) {
+    @Override
+    void await(long rpcTimeoutMillis) {
         long requestTimeout = rpcTimeoutMillis;
 
         // 超时时间把调用构造函数开始直到调用get前的这段时间也算在内
@@ -104,62 +74,10 @@ class ReadResponseHandler {
         if (!successful && totalBlockFor() + failures >= totalNodes()) {
             throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor(), false);
         }
-
-        return results.get(0);
     }
 
-    Object getResultObject(long rpcTimeoutMillis) {
-        long requestTimeout = rpcTimeoutMillis;
-
-        // 超时时间把调用构造函数开始直到调用get前的这段时间也算在内
-        long timeout = TimeUnit.MILLISECONDS.toNanos(requestTimeout) - (System.nanoTime() - start);
-
-        boolean success;
-        try {
-            success = condition.await(timeout, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException ex) {
-            throw new AssertionError(ex);
-        }
-
-        if (!success) {
-            int blockedFor = totalBlockFor();
-            int acks = ackCount();
-            // It's pretty unlikely, but we can race between exiting await above and here, so
-            // that we could now have enough acks. In that case, we "lie" on the acks count to
-            // avoid sending confusing info to the user (see CASSANDRA-6491).
-            if (acks >= blockedFor)
-                acks = blockedFor - 1;
-            throw new ReadTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor, false);
-        }
-
-        if (!successful && totalBlockFor() + failures >= totalNodes()) {
-            throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor(), false);
-        }
-
-        return resultObjects.get(0);
-    }
-
-    void signal() {
-        condition.signalAll();
-    }
-
+    @Override
     int totalBlockFor() {
         return r;
-    }
-
-    int totalNodes() {
-        return n;
-    }
-
-    int ackCount() {
-        return results.size();
-    }
-
-    int getFailures() {
-        return failures;
-    }
-
-    boolean isSuccessful() {
-        return successful;
     }
 }

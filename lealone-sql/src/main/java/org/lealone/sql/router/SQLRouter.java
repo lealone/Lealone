@@ -27,7 +27,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
@@ -35,6 +34,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.net.NetNode;
@@ -47,8 +48,6 @@ import org.lealone.sql.dml.Select;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.Storage;
 import org.lealone.storage.replication.ReplicationSession;
-import org.lealone.storage.replication.ThreadPool;
-import org.lealone.transaction.Transaction;
 
 public class SQLRouter {
 
@@ -97,7 +96,8 @@ public class SQLRouter {
         }
     }
 
-    private static int executeDefineStatement(StatementBase defineStatement) {
+    private static int executeDefineStatement(StatementBase defineStatement,
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         NetNodeManager m = NetNodeManagerHolder.get();
         Set<NetNode> liveMembers;
         Session currentSession = defineStatement.getSession();
@@ -135,36 +135,18 @@ public class SQLRouter {
         ReplicationSession rs = new ReplicationSession(sessions, initReplicationNodes);
         rs.setAutoCommit(currentSession.isAutoCommit());
         rs.setRpcTimeout(m.getRpcTimeout());
-
-        AtomicInteger updateCount = new AtomicInteger();
-        Transaction.Listener listener = Transaction.getTransactionListener();
-        ThreadPool.executor.submit(() -> {
-            SQLCommand c = null;
-            try {
-                c = rs.createSQLCommand(defineStatement.getSQL(), -1);
-                updateCount.set(c.executeUpdate());
-                listener.operationComplete();
-            } catch (Exception e) {
-                DbException e2 = DbException.convert(DbException.getRootCause(e));
-                listener.setException(e2);
-                listener.operationUndo();
-                throw e2;
-            } finally {
-                if (c != null)
-                    c.close();
-            }
-        });
-        listener.await();
-        return updateCount.get();
+        SQLCommand c = rs.createSQLCommand(defineStatement.getSQL(), -1);
+        c.executeUpdateAsync(asyncHandler);
+        return 0;
     }
 
-    public static int executeUpdate(StatementBase statement) {
+    public static int executeUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         // CREATE/ALTER/DROP DATABASE语句在执行update时才知道涉及哪些节点
         if (statement.isDatabaseStatement()) {
             return statement.update();
         }
         if (statement.isDDL() && !statement.isLocal()) {
-            return executeDefineStatement(statement);
+            return executeDefineStatement(statement, asyncHandler);
         }
         if (statement.isLocal()) {
             return statement.update();

@@ -19,61 +19,45 @@ package org.lealone.storage.replication;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
-import org.lealone.common.concurrent.SimpleCondition;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.replication.exceptions.WriteFailureException;
 import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
-class WriteResponseHandler {
+class WriteResponseHandler<T> extends ReplicationHandler<T> {
 
-    private final SimpleCondition condition = new SimpleCondition();
-    private final long start;
-
-    private final ArrayList<Integer> updateCountList;
-    private final ArrayList<Object> resultList;
-    private final int n;
     private final int w;
+    private final ReplicationResult replicationResult;
 
-    private final AtomicIntegerFieldUpdater<WriteResponseHandler> failuresUpdater = AtomicIntegerFieldUpdater
-            .newUpdater(WriteResponseHandler.class, "failures");
-    private volatile int failures = 0;
-
-    private volatile boolean successful = false;
-
-    WriteResponseHandler(int n) {
-        start = System.nanoTime();
-
-        this.n = n;
+    WriteResponseHandler(int n, AsyncHandler<AsyncResult<T>> topHandler, ReplicationResult replicationResult) {
+        super(n, topHandler);
         // w = n / 2 + 1;
         w = n; // 使用Write all read one模式
-        updateCountList = new ArrayList<>(n);
-        resultList = new ArrayList<>(n);
+        this.replicationResult = replicationResult;
     }
 
-    synchronized void response(int updateCount) {
-        updateCountList.add(updateCount);
-        if (!successful && updateCountList.size() >= w) {
+    @Override
+    @SuppressWarnings("unchecked")
+    synchronized void response(AsyncResult<T> result) {
+        results.add(result);
+        if (!successful && results.size() >= w) {
             successful = true;
             signal();
+            Object ret = null;
+            if (replicationResult != null) {
+                ret = replicationResult.validate(getResults());
+            }
+            if (topHandler != null) {
+                if (ret != null)
+                    topHandler.handle((AsyncResult<T>) ret);
+                else
+                    topHandler.handle(results.get(0));
+            }
         }
     }
 
-    synchronized void response(Object result) {
-        resultList.add(result);
-        if (!successful && resultList.size() >= w) {
-            successful = true;
-            signal();
-        }
-    }
-
-    void onFailure() {
-        int f = failuresUpdater.incrementAndGet(this);
-
-        if (totalBlockFor() + f >= totalNodes())
-            signal();
-    }
-
+    @Override
     void await(long rpcTimeoutMillis) {
         long requestTimeout = rpcTimeoutMillis;
 
@@ -103,37 +87,16 @@ class WriteResponseHandler {
         }
     }
 
-    int getUpdateCount(long rpcTimeoutMillis) {
-        await(rpcTimeoutMillis);
-        return updateCountList.get(0);
+    ArrayList<T> getResults() {
+        int size = results.size();
+        ArrayList<T> results2 = new ArrayList<>(results.size());
+        for (int i = 0; i < size; i++)
+            results2.add(results.get(i).getResult());
+        return results2;
     }
 
-    Object getResult(long rpcTimeoutMillis) {
-        await(rpcTimeoutMillis);
-        return resultList.get(0);
-    }
-
-    private void signal() {
-        condition.signalAll();
-    }
-
-    private int totalBlockFor() {
+    @Override
+    int totalBlockFor() {
         return w;
-    }
-
-    private int totalNodes() {
-        return n;
-    }
-
-    private int ackCount() {
-        return updateCountList.size();
-    }
-
-    int getFailures() {
-        return failures;
-    }
-
-    boolean isSuccessful() {
-        return successful;
     }
 }

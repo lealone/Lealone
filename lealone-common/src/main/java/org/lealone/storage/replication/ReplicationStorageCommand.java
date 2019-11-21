@@ -22,8 +22,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map.Entry;
-import java.util.concurrent.Future;
 
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
@@ -44,181 +45,153 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
-        return executePut(mapName, key, value, raw, 1);
+    public Object put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
+            AsyncHandler<AsyncResult<Object>> handler) {
+        return executePut(mapName, key, value, raw, 1, handler);
     }
 
-    private Object executePut(final String mapName, final ByteBuffer key, final ByteBuffer value, final boolean raw,
-            int tries) {
+    private Object executePut(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, int tries,
+            AsyncHandler<AsyncResult<Object>> handler) {
         int n = session.n;
-        final String rn = session.createReplicationName();
-        final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Exception> exceptions = new ArrayList<>(1);
+        String rn = session.createReplicationName();
+        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(n, handler, null);
 
         for (int i = 0; i < n; i++) {
-            final ReplicaStorageCommand c = this.commands[i];
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        writeResponseHandler.response(c.executePut(rn, mapName, key.slice(), value.slice(), raw));
-                    } catch (Exception e) {
-                        writeResponseHandler.onFailure();
-                        exceptions.add(e);
-                    }
-                }
-            };
-            ThreadPool.executor.submit(command);
+            ReplicaStorageCommand c = commands[i];
+            c.executeReplicaPut(rn, mapName, key.slice(), value.slice(), raw, handler);
         }
-
-        try {
-            return writeResponseHandler.getResult(session.rpcTimeoutMillis);
-        } catch (WriteTimeoutException | WriteFailureException e) {
-            if (tries < session.maxRries) {
-                key.rewind();
-                value.rewind();
-                return executePut(mapName, key, value, raw, ++tries);
-            } else {
-                if (!exceptions.isEmpty())
-                    e.initCause(exceptions.get(0));
-                throw e;
+        if (handler == null) {
+            try {
+                return writeResponseHandler.getResult(session.rpcTimeoutMillis);
+            } catch (WriteTimeoutException | WriteFailureException e) {
+                if (tries < session.maxRries) {
+                    key.rewind();
+                    value.rewind();
+                    return executePut(mapName, key, value, raw, ++tries, handler);
+                } else {
+                    writeResponseHandler.initCause(e);
+                    throw e;
+                }
             }
+        } else {
+            return null;
         }
     }
 
     @Override
-    public Object executeGet(final String mapName, final ByteBuffer key) {
+    public Object get(String mapName, ByteBuffer key, AsyncHandler<AsyncResult<Object>> handler) {
         int n = session.n;
         int r = session.r;
         r = 1; // 使用Write all read one模式
-        final HashSet<ReplicaStorageCommand> seen = new HashSet<>();
-        final ReadResponseHandler readResponseHandler = new ReadResponseHandler(n);
-        final ArrayList<Exception> exceptions = new ArrayList<>(1);
+        HashSet<ReplicaStorageCommand> seen = new HashSet<>();
+        ReadResponseHandler<Object> readResponseHandler = new ReadResponseHandler<>(n, null);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
         for (int i = 0; i < r; i++) {
-            final ReplicaStorageCommand c = getRandomNode(seen);
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    Object result = null;
-                    try {
-                        result = c.executeGet(mapName, key);
-                        readResponseHandler.response(result);
-                    } catch (Exception e) {
-                        if (readResponseHandler != null) {
-                            readResponseHandler.onFailure();
-                            ReplicaStorageCommand c = getRandomNode(seen);
-                            if (c != null) {
-                                result = c.executeGet(mapName, key);
-                                readResponseHandler.response(result);
-                                return;
-                            }
-                        }
-                        exceptions.add(e);
-                    }
-                }
-            };
-            ThreadPool.executor.submit(command);
+            ReplicaStorageCommand c = getRandomNode(seen);
+            c.get(mapName, key, handler);
         }
 
-        try {
-            return readResponseHandler.getResultObject(session.rpcTimeoutMillis);
-        } catch (ReadTimeoutException | ReadFailureException e) {
-            if (!exceptions.isEmpty())
-                e.initCause(exceptions.get(0));
-            throw e;
+        if (handler == null) {
+            int tries = 1;
+            while (true) {
+                try {
+                    return readResponseHandler.getResult(session.rpcTimeoutMillis);
+                } catch (ReadTimeoutException | ReadFailureException e) {
+                    if (tries++ < session.maxRries) {
+                        ReplicaStorageCommand c = getRandomNode(seen);
+                        if (c != null) {
+                            c.get(mapName, key, handler);
+                            continue;
+                        }
+                    }
+                    readResponseHandler.initCause(e);
+                    throw e;
+                }
+            }
+        } else {
+            return null;
         }
     }
 
     @Override
-    public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            ReplicationResult replicationResult) {
-        return executeAppend(mapName, value, 1);
+    public Object append(String mapName, ByteBuffer value, ReplicationResult replicationResult,
+            AsyncHandler<AsyncResult<Object>> handler) {
+        return executeAppend(mapName, value, 1, handler);
     }
 
-    private Object executeAppend(final String mapName, final ByteBuffer value, int tries) {
+    private Object executeAppend(String mapName, ByteBuffer value, int tries,
+            AsyncHandler<AsyncResult<Object>> handler) {
         int n = session.n;
-        final String rn = session.createReplicationName();
-        final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Exception> exceptions = new ArrayList<>(1);
-        final ReplicationResult replicationResult = new ReplicationResult(session.n, session.w, session.isAutoCommit(),
-                this.commands);
+        String rn = session.createReplicationName();
+        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(n, null, null);
+        ReplicationResult replicationResult = new ReplicationResult(session, commands);
 
         for (int i = 0; i < n; i++) {
-            final ReplicaStorageCommand c = this.commands[i];
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        writeResponseHandler.response(c.executeAppend(rn, mapName, value.slice(), replicationResult));
-                    } catch (Exception e) {
-                        writeResponseHandler.onFailure();
-                        exceptions.add(e);
-                    }
-                }
-            };
-            ThreadPool.executor.submit(command);
+            commands[i].executeReplicaAppend(rn, mapName, value.slice(), replicationResult, handler);
         }
 
-        try {
-            Object result = writeResponseHandler.getResult(session.rpcTimeoutMillis);
-            replicationResult.validate();
-            return result;
-        } catch (WriteTimeoutException | WriteFailureException e) {
-            if (tries < session.maxRries) {
-                value.rewind();
-                return executeAppend(mapName, value, ++tries);
-            } else {
-                if (!exceptions.isEmpty())
-                    e.initCause(exceptions.get(0));
+        if (handler == null) {
+            try {
+                Object result = writeResponseHandler.getResult(session.rpcTimeoutMillis);
+                replicationResult.validate();
+                return result;
+            } catch (WriteTimeoutException | WriteFailureException e) {
+                if (tries < session.maxRries) {
+                    value.rewind();
+                    return executeAppend(mapName, value, ++tries, handler);
+                } else {
+                    writeResponseHandler.initCause(e);
+                    throw e;
+                }
+            }
+        } else {
+            return null;
+        }
+    }
+
+    @Override
+    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan,
+            AsyncHandler<AsyncResult<LeafPageMovePlan>> handler) {
+        return prepareMoveLeafPage(mapName, leafPageMovePlan, 3, handler);
+    }
+
+    private LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan, int tries,
+            AsyncHandler<AsyncResult<LeafPageMovePlan>> handler) {
+        int n = session.n;
+        ReplicationResult replicationResult = new ReplicationResult(session, commands) {
+            @Override
+            public Object validate(Object results) {
+                @SuppressWarnings("unchecked")
+                ArrayList<LeafPageMovePlan> plans = (ArrayList<LeafPageMovePlan>) results;
+                LeafPageMovePlan plan = getValidPlan(plans, n);
+                AsyncResult<LeafPageMovePlan> ar = new AsyncResult<>();
+                ar.setResult(plan);
+                return ar;
+            }
+        };
+        WriteResponseHandler<LeafPageMovePlan> writeResponseHandler = new WriteResponseHandler<>(n, handler,
+                replicationResult);
+
+        for (int i = 0; i < n; i++) {
+            commands[i].prepareMoveLeafPage(mapName, leafPageMovePlan, handler);
+        }
+        if (handler == null) {
+            try {
+                writeResponseHandler.await(session.rpcTimeoutMillis);
+                ArrayList<LeafPageMovePlan> plans = writeResponseHandler.getResults();
+                LeafPageMovePlan plan = getValidPlan(plans, n);
+                if (plan == null && --tries > 0) {
+                    leafPageMovePlan.incrementIndex();
+                    return prepareMoveLeafPage(mapName, leafPageMovePlan, tries, handler);
+                }
+                return plan;
+            } catch (WriteTimeoutException | WriteFailureException e) {
+                writeResponseHandler.initCause(e);
                 throw e;
             }
-        }
-    }
-
-    @Override
-    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
-        return prepareMoveLeafPage(mapName, leafPageMovePlan, 3);
-    }
-
-    private LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan, int tries) {
-        final int n = session.n;
-        final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Exception> exceptions = new ArrayList<>(1);
-        final ArrayList<LeafPageMovePlan> plans = new ArrayList<>(n);
-
-        for (int i = 0; i < n; i++) {
-            final ReplicaStorageCommand c = this.commands[i];
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        LeafPageMovePlan plan = c.prepareMoveLeafPage(mapName, leafPageMovePlan);
-                        plans.add(plan);
-                        writeResponseHandler.response(plan);
-                    } catch (Exception e) {
-                        writeResponseHandler.onFailure();
-                        exceptions.add(e);
-                    }
-                }
-            };
-            ThreadPool.executor.submit(command);
-        }
-
-        try {
-            writeResponseHandler.await(session.rpcTimeoutMillis);
-
-            LeafPageMovePlan plan = getValidPlan(plans, n);
-            if (plan == null && --tries > 0) {
-                leafPageMovePlan.incrementIndex();
-                return prepareMoveLeafPage(mapName, leafPageMovePlan, tries);
-            }
-            return plan;
-        } catch (WriteTimeoutException | WriteFailureException e) {
-            if (!exceptions.isEmpty())
-                e.initCause(exceptions.get(0));
-            throw e;
+        } else {
+            return null;
         }
     }
 
@@ -245,77 +218,28 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public void moveLeafPage(final String mapName, final PageKey pageKey, final ByteBuffer page,
-            final boolean addPage) {
-        int n = session.n;
-        ArrayList<Future<?>> futures = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            final ReplicaStorageCommand c = this.commands[i];
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    c.moveLeafPage(mapName, pageKey, page.slice(), addPage);
-                }
-            };
-            futures.add(ThreadPool.executor.submit(command));
-        }
-        for (Future<?> f : futures) {
-            try {
-                f.get();
-            } catch (Exception e) {
-                // ignore
-            }
+    public void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
+        for (int i = 0, n = session.n; i < n; i++) {
+            commands[i].moveLeafPage(mapName, pageKey, page.slice(), addPage);
         }
     }
 
     @Override
     public void replicateRootPages(String dbName, ByteBuffer rootPages) {
-        int n = session.n;
-        ArrayList<Future<?>> futures = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            final ReplicaStorageCommand c = this.commands[i];
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    c.replicateRootPages(dbName, rootPages.slice());
-                }
-            };
-            futures.add(ThreadPool.executor.submit(command));
-        }
-        for (Future<?> f : futures) {
-            try {
-                f.get();
-            } catch (Exception e) {
-                // ignore
-            }
+        for (int i = 0, n = session.n; i < n; i++) {
+            commands[i].replicateRootPages(dbName, rootPages.slice());
         }
     }
 
     @Override
-    public void removeLeafPage(final String mapName, final PageKey pageKey) {
-        int n = session.n;
-        ArrayList<Future<?>> futures = new ArrayList<>(n);
-        for (int i = 0; i < n; i++) {
-            final ReplicaStorageCommand c = this.commands[i];
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    c.removeLeafPage(mapName, pageKey);
-                }
-            };
-            futures.add(ThreadPool.executor.submit(command));
-        }
-        for (Future<?> f : futures) {
-            try {
-                f.get();
-            } catch (Exception e) {
-                // ignore
-            }
+    public void removeLeafPage(String mapName, PageKey pageKey) {
+        for (int i = 0, n = session.n; i < n; i++) {
+            commands[i].removeLeafPage(mapName, pageKey);
         }
     }
 
     @Override
-    public ByteBuffer readRemotePage(String mapName, PageKey pageKey) {
-        return commands[0].readRemotePage(mapName, pageKey);
+    public ByteBuffer readRemotePage(String mapName, PageKey pageKey, AsyncHandler<AsyncResult<ByteBuffer>> handler) {
+        return commands[0].readRemotePage(mapName, pageKey, handler);
     }
 }

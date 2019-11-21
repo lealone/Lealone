@@ -958,7 +958,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         protected boolean executeInternal() {
             session.setLastScopeIdentity(ValueNull.INSTANCE);
             if (pageKeys == null)
-                affectedRows = SQLRouter.executeUpdate(statement);
+                affectedRows = SQLRouter.executeUpdate(statement, asyncHandler);
             else
                 affectedRows = statement.executeUpdate(pageKeys);
             if (affectedRows >= 0) {

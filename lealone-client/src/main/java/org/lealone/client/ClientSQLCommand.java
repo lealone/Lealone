@@ -246,7 +246,6 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
                 int updateCount = in.readInt();
                 long key = in.readLong();
                 if (replicationResult != null) {
-                    replicationResult.setUpdateCount(updateCount);
                     replicationResult.addResult(ClientSQLCommand.this, key);
                 }
                 setResult(updateCount);

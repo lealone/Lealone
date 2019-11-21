@@ -46,20 +46,19 @@ public class AMTransaction implements Transaction {
     // 以下几个public或包级别的字段是在其他地方频繁使用的，
     // 为了使用方便或节省一点点性能开销就不通过getter方法访问了
     final AMTransactionEngine transactionEngine;
-    public final long transactionId;
-    public final String transactionName;
+    final long transactionId;
+    final String transactionName;
+    final LogSyncService logSyncService;
 
-    String globalReplicationName;
     UndoLog undoLog = new UndoLog();
-
-    private final LogSyncService logSyncService;
+    RunMode runMode;
+    String globalReplicationName;
 
     private HashMap<String, Integer> savepoints;
     private Session session;
     private volatile int status;
     private int isolationLevel = Connection.TRANSACTION_READ_COMMITTED; // 默认是读已提交级别
     private boolean autoCommit;
-    private RunMode runMode;
     private Runnable asyncTask;
 
     // 被哪个事务锁住记录了

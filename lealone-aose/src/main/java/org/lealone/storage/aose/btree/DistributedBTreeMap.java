@@ -123,7 +123,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
                     StorageCommand c = rs.createStorageCommand()) {
                 ByteBuffer keyBuffer = k.write(keyType, key);
                 ByteBuffer valueBuffer = v.write(valueType, value);
-                byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer, true);
+                byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, true, null);
                 if (oldValue != null) {
                     returnValue = valueType.read(ByteBuffer.wrap(oldValue));
                 }
@@ -242,7 +242,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
             ReplicationSession rs = db.createReplicationSession(session, oldReplicationNodes);
             try (StorageCommand c = rs.createStorageCommand()) {
                 LeafPageMovePlan plan = new LeafPageMovePlan(getLocalHostId(), newReplicationNodes, pageKey);
-                leafPageMovePlan = c.prepareMoveLeafPage(getName(), plan);
+                leafPageMovePlan = c.prepareMoveLeafPage(getName(), plan, null);
             }
 
             if (leafPageMovePlan == null)
@@ -517,7 +517,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
                 StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
             ByteBuffer valueBuffer = v.write(valueType, value);
-            byte[] oldValue = (byte[]) c.executePut(null, getName(), keyBuffer, valueBuffer, false);
+            byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, false, null);
             if (oldValue == null)
                 return null;
             return valueType.read(ByteBuffer.wrap(oldValue));
@@ -530,7 +530,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
-            byte[] value = (byte[]) c.executeGet(getName(), keyBuffer);
+            byte[] value = (byte[]) c.get(getName(), keyBuffer, null);
             if (value == null)
                 return null;
             return valueType.read(ByteBuffer.wrap(value));
@@ -543,7 +543,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer v = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer valueBuffer = v.write(valueType, value);
-            return c.executeAppend(null, getName(), valueBuffer, null);
+            return c.append(getName(), valueBuffer, null, null);
         }
     }
 

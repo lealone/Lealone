@@ -20,6 +20,8 @@ package org.lealone.client;
 import java.nio.ByteBuffer;
 
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.value.ValueLong;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.TransferInputStream;
@@ -43,7 +45,14 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
+    public Object put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
+            AsyncHandler<AsyncResult<Object>> handler) {
+        return executeReplicaPut(null, mapName, key, value, raw, handler);
+    }
+
+    @Override
+    public Object executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
+            boolean raw, AsyncHandler<AsyncResult<Object>> handler) {
         byte[] bytes = null;
         int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
@@ -62,7 +71,8 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
             }
             out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
             out.writeString(replicationName).writeBoolean(raw);
-            bytes = out.flushAndAwait(packetId, new AsyncCallback<byte[]>() {
+
+            bytes = getResult(packetId, out, handler, new AsyncCallback<byte[]>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -77,7 +87,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object executeGet(String mapName, ByteBuffer key) {
+    public Object get(String mapName, ByteBuffer key, AsyncHandler<AsyncResult<Object>> handler) {
         byte[] bytes = null;
         int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
@@ -92,7 +102,8 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
                 out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_GET);
             }
             out.writeString(mapName).writeByteBuffer(key);
-            bytes = out.flushAndAwait(packetId, new AsyncCallback<byte[]>() {
+
+            bytes = getResult(packetId, out, handler, new AsyncCallback<byte[]>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -107,8 +118,14 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            ReplicationResult replicationResult) {
+    public Object append(String mapName, ByteBuffer value, ReplicationResult replicationResult,
+            AsyncHandler<AsyncResult<Object>> handler) {
+        return executeReplicaAppend(null, mapName, value, replicationResult, handler);
+    }
+
+    @Override
+    public Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value,
+            ReplicationResult replicationResult, AsyncHandler<AsyncResult<Object>> handler) {
         Long result = null;
         int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
@@ -125,7 +142,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
             out.writeString(mapName).writeByteBuffer(value);
             out.writeString(replicationName);
 
-            result = out.flushAndAwait(packetId, new AsyncCallback<Long>() {
+            result = getResult(packetId, out, handler, new AsyncCallback<Long>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     if (isDistributed)
@@ -183,7 +200,8 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
+    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan,
+            AsyncHandler<AsyncResult<LeafPageMovePlan>> handler) {
         int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
@@ -191,7 +209,8 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
             out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE);
             out.writeString(mapName);
             leafPageMovePlan.serialize(out);
-            return out.flushAndAwait(packetId, new AsyncCallback<LeafPageMovePlan>() {
+
+            return getResult(packetId, out, handler, new AsyncCallback<LeafPageMovePlan>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     setResult(LeafPageMovePlan.deserialize(in));
@@ -204,14 +223,15 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public ByteBuffer readRemotePage(String mapName, PageKey pageKey) {
+    public ByteBuffer readRemotePage(String mapName, PageKey pageKey, AsyncHandler<AsyncResult<ByteBuffer>> handler) {
         int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
         try {
             session.traceOperation("COMMAND_STORAGE_READ_PAGE", packetId);
             out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_READ_PAGE);
             out.writeString(mapName).writePageKey(pageKey);
-            return out.flushAndAwait(packetId, new AsyncCallback<ByteBuffer>() {
+
+            return getResult(packetId, out, handler, new AsyncCallback<ByteBuffer>() {
                 @Override
                 public void runInternal(TransferInputStream in) throws Exception {
                     result = in.readByteBuffer();
@@ -221,5 +241,16 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
             session.handleException(e);
         }
         return null;
+    }
+
+    private static <T> T getResult(int packetId, TransferOutputStream out, AsyncHandler<?> handler, AsyncCallback<T> ac)
+            throws Exception {
+        if (handler != null) {
+            ac.setAsyncHandler(handler);
+            out.flush(packetId, ac);
+            return null;
+        } else {
+            return out.flushAndAwait(packetId, ac);
+        }
     }
 }

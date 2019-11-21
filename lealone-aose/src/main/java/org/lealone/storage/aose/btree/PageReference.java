@@ -123,7 +123,7 @@ public class PageReference {
         Session session = db.createInternalSession(true);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (StorageCommand c = rs.createStorageCommand()) {
-            ByteBuffer pageBuffer = c.readRemotePage(map.getName(), pageKey);
+            ByteBuffer pageBuffer = c.readRemotePage(map.getName(), pageKey, null);
             page = BTreePage.readReplicatedPage(map, pageBuffer);
         }
 

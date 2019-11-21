@@ -20,6 +20,8 @@ package org.lealone.db;
 import java.nio.ByteBuffer;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
@@ -43,7 +45,14 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object executePut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
+    public Object put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
+            AsyncHandler<AsyncResult<Object>> handler) {
+        return executeReplicaPut(null, mapName, key, value, raw, handler);
+    }
+
+    @Override
+    public Object executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
+            AsyncHandler<AsyncResult<Object>> handler) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         if (raw) {
@@ -61,15 +70,21 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object executeGet(String mapName, ByteBuffer key) {
+    public Object get(String mapName, ByteBuffer key, AsyncHandler<AsyncResult<Object>> handler) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.get(map.getKeyType().read(key));
         return result;
     }
 
     @Override
-    public Object executeAppend(String replicationName, String mapName, ByteBuffer value,
-            ReplicationResult replicationResult) {
+    public Object append(String mapName, ByteBuffer value, ReplicationResult replicationResult,
+            AsyncHandler<AsyncResult<Object>> handler) {
+        return executeReplicaAppend(null, mapName, value, replicationResult, handler);
+    }
+
+    @Override
+    public Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value,
+            ReplicationResult replicationResult, AsyncHandler<AsyncResult<Object>> handler) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.append(map.getValueType().read(value));
@@ -82,7 +97,8 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
+    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan,
+            AsyncHandler<AsyncResult<LeafPageMovePlan>> handler) {
         DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
                 .getStorageMap(mapName);
         return map.prepareMoveLeafPage(leafPageMovePlan);

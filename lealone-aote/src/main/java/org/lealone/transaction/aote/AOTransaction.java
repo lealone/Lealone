@@ -28,9 +28,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
-import org.lealone.transaction.aote.log.LogSyncService;
 import org.lealone.transaction.aote.log.RedoLogRecord;
 
 public class AOTransaction extends AMTransaction {
@@ -38,7 +38,6 @@ public class AOTransaction extends AMTransaction {
     private static final ExecutorService executorService = Executors.newCachedThreadPool();
 
     final AOTransactionEngine transactionEngine;
-    private final LogSyncService logSyncService;
 
     Validator validator;
 
@@ -59,7 +58,6 @@ public class AOTransaction extends AMTransaction {
     AOTransaction(AOTransactionEngine engine, long tid) {
         super(engine, tid, NetNode.getLocalTcpHostAndPort());
         transactionEngine = engine;
-        logSyncService = engine.getLogSyncService();
     }
 
     @Override
@@ -117,7 +115,10 @@ public class AOTransaction extends AMTransaction {
     @Override
     protected <K, V> AMTransactionMap<K, V> createTransactionMap(StorageMap<K, TransactionalValue> map,
             Map<String, String> parameters) {
-        return new AOTransactionMap<>(this, map);
+        if (runMode == RunMode.SHARDING)
+            return new DTransactionMap<>(this, map);
+        else
+            return new AOTransactionMap<>(this, map);
     }
 
     @Override

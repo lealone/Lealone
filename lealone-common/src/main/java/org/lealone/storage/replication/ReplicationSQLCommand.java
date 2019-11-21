@@ -17,7 +17,6 @@
  */
 package org.lealone.storage.replication;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
@@ -59,51 +58,51 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
     @Override
     public Result executeQuery(int maxRows) {
-        return executeQuery(maxRows, false);
+        return query(maxRows, false, null);
     }
 
     @Override
-    public Result executeQuery(final int maxRows, final boolean scrollable) {
+    public Result executeQuery(int maxRows, boolean scrollable) {
+        return query(maxRows, scrollable, null);
+    }
+
+    @Override
+    public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
+        query(maxRows, scrollable, handler);
+    }
+
+    private Result query(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
         int n = session.n;
         int r = session.r;
         r = 1; // 使用Write all read one模式
-        final HashSet<ReplicaSQLCommand> seen = new HashSet<>();
-        final ReadResponseHandler readResponseHandler = new ReadResponseHandler(n);
-        final ArrayList<Exception> exceptions = new ArrayList<>(1);
+        HashSet<ReplicaSQLCommand> seen = new HashSet<>();
+        ReadResponseHandler<Result> readResponseHandler = new ReadResponseHandler<>(n, handler);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
         for (int i = 0; i < r; i++) {
-            final ReplicaSQLCommand c = getRandomNode(seen);
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    Result result = null;
-                    try {
-                        result = c.executeQuery(maxRows, scrollable);
-                        readResponseHandler.response(result);
-                    } catch (Exception e) {
-                        exceptions.add(e);
-                        if (readResponseHandler != null) {
-                            readResponseHandler.onFailure();
-                            ReplicaSQLCommand c = getRandomNode(seen);
-                            if (c != null) {
-                                result = c.executeQuery(maxRows, scrollable);
-                                readResponseHandler.response(result);
-                                return;
-                            }
-                        }
-                    }
-                }
-            };
-            ThreadPool.executor.submit(command);
+            ReplicaSQLCommand c = getRandomNode(seen);
+            c.executeQueryAsync(maxRows, scrollable, readResponseHandler);
         }
 
-        try {
-            return readResponseHandler.get(session.rpcTimeoutMillis);
-        } catch (ReadTimeoutException | ReadFailureException e) {
-            if (!exceptions.isEmpty())
-                e.initCause(exceptions.get(0));
-            throw e;
+        if (handler == null) {
+            int tries = 1;
+            while (true) {
+                try {
+                    return readResponseHandler.getResult(session.rpcTimeoutMillis);
+                } catch (ReadTimeoutException | ReadFailureException e) {
+                    if (tries++ < session.maxRries) {
+                        ReplicaSQLCommand c = getRandomNode(seen);
+                        if (c != null) {
+                            c.executeQueryAsync(maxRows, scrollable, readResponseHandler);
+                            continue;
+                        }
+                    }
+                    readResponseHandler.initCause(e);
+                    throw e;
+                }
+            }
+        } else {
+            return null;
         }
     }
 
@@ -114,46 +113,31 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
     @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        executeUpdate();
+        executeUpdate(1, handler);
     }
 
     private int executeUpdate(int tries, AsyncHandler<AsyncResult<Integer>> handler) {
         int n = session.n;
-        final String rn = session.createReplicationName();
-        final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
-        final ArrayList<Exception> exceptions = new ArrayList<>(1);
-        final ReplicationResult replicationResult = new ReplicationResult(session.n, session.w, session.isAutoCommit(),
-                this.commands);
+        String rn = session.createReplicationName();
+        ReplicationResult replicationResult = new ReplicationResult(session, commands);
+        WriteResponseHandler<Integer> writeResponseHandler = new WriteResponseHandler<>(n, handler, replicationResult);
 
         for (int i = 0; i < n; i++) {
-            final ReplicaSQLCommand c = this.commands[i];
-            Runnable command = new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        c.executeReplicaUpdateAsync(rn, replicationResult, handler);
-                        writeResponseHandler.response(null);
-                    } catch (Exception e) {
-                        writeResponseHandler.onFailure();
-                        exceptions.add(e);
-                    }
-                }
-            };
-            ThreadPool.executor.submit(command);
+            commands[i].executeReplicaUpdateAsync(rn, replicationResult, writeResponseHandler);
         }
-
-        try {
-            writeResponseHandler.getUpdateCount(session.rpcTimeoutMillis);
-            replicationResult.validate();
-            return replicationResult.getUpdateCount();
-        } catch (WriteTimeoutException | WriteFailureException e) {
-            if (tries < session.maxRries)
-                return executeUpdate(++tries, handler);
-            else {
-                if (!exceptions.isEmpty())
-                    e.initCause(exceptions.get(0));
-                throw e;
+        if (handler == null) {
+            try {
+                return writeResponseHandler.getResult(session.rpcTimeoutMillis);
+            } catch (WriteTimeoutException | WriteFailureException e) {
+                if (tries < session.maxRries)
+                    return executeUpdate(++tries, handler);
+                else {
+                    writeResponseHandler.initCause(e);
+                    throw e;
+                }
             }
+        } else {
+            return 0;
         }
     }
 }

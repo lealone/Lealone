@@ -17,51 +17,18 @@
  */
 package org.lealone.transaction.aote;
 
-import org.lealone.db.Session;
 import org.lealone.net.NetNode;
-import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 
 //支持分布式场景(包括replication和sharding)
 public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
 
     private final AOTransaction transaction;
-    private final DistributedStorageMap<K, TransactionalValue> map;
-    private final Session session;
-    private final StorageDataType valueType;
 
     AOTransactionMap(AOTransaction transaction, StorageMap<K, TransactionalValue> map) {
         super(transaction, map);
         this.transaction = transaction;
-        this.map = (DistributedStorageMap<K, TransactionalValue>) map;
-        session = transaction.getSession();
-        valueType = getValueType();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public V get(K key) {
-        return (V) map.replicationGet(session, key);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public V put(K key, V value) {
-        return (V) map.replicationPut(session, key, value, valueType);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public K append(V value) {
-        return (K) map.replicationAppend(session, value, valueType);
-    }
-
-    @Override
-    public void addIfAbsent(K key, V value, Transaction.Listener listener) {
-        map.replicationPut(session, key, value, valueType);
-        listener.operationComplete();
     }
 
     @Override

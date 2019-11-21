@@ -26,28 +26,19 @@ import org.lealone.common.exceptions.DbException;
 
 public class ReplicationResult {
 
-    private int updateCount;
     private final int n; // 复制集群节点总个数
     private final int w; // 写成功的最少节点个数
     private final boolean autoCommit;
     private final HashMap<ReplicaCommand, AtomicLong> results;
 
-    public ReplicationResult(int n, int w, boolean autoCommit, ReplicaCommand[] commands) {
-        this.n = n;
-        this.w = w;
-        this.autoCommit = autoCommit;
+    public ReplicationResult(ReplicationSession session, ReplicaCommand[] commands) {
+        this.n = session.n;
+        this.w = session.w;
+        this.autoCommit = session.isAutoCommit();
         results = new HashMap<>(commands.length);
         for (ReplicaCommand c : commands) {
             results.put(c, new AtomicLong(-1));
         }
-    }
-
-    public int getUpdateCount() {
-        return updateCount;
-    }
-
-    public void setUpdateCount(int updateCount) {
-        this.updateCount = updateCount;
     }
 
     public void addResult(ReplicaCommand command, long result) {
@@ -58,7 +49,12 @@ public class ReplicationResult {
         old.set(result);
     }
 
-    public void validate() {
+    Object validate(Object results) {
+        validate();
+        return null;
+    }
+
+    void validate() {
         HashMap<Long, ArrayList<ReplicaCommand>> groupResults = new HashMap<>(1);
         for (Entry<ReplicaCommand, AtomicLong> e : results.entrySet()) {
             long v = e.getValue().get();
