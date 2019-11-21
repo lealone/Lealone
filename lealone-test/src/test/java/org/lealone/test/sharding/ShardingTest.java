@@ -29,26 +29,37 @@ public class ShardingTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
-        String dbName = "ShardingTestDB1";
-        sql = "CREATE DATABASE IF NOT EXISTS " + dbName
-                + " RUN MODE sharding PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor:1, nodes:7)";
-
-        sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
-        sql += " PARAMETERS (node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 1)";
-        // stmt.executeUpdate(sql);
+        String dbName = "ShardingTestDB";
 
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
-        sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 3)";
+        sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
         stmt.executeUpdate(sql);
 
-        // stmt.executeUpdate("ALTER DATABASE ShardingTestDB1 RUN MODE client_server");
-        // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS ShardingTestDB2 RUN MODE sharding
-        // PARAMETERS(hostIds='1,2')");
-
+        new TwoTablesTest(dbName).runTest();
+        // new ShardingFindTest(dbName).runTest();
         // new ShardingCrudTest(dbName).runTest();
+    }
 
-        new ShardingFindTest(dbName).runTest();
+    class TwoTablesTest extends SqlTestBase {
+
+        public TwoTablesTest(String dbName) {
+            super(dbName);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            executeUpdate("drop table IF EXISTS TwoTablesTest1");
+            executeUpdate("create table IF NOT EXISTS TwoTablesTest1(f1 int primary key, f2 int)");
+
+            executeUpdate("drop table IF EXISTS TwoTablesTest2");
+            executeUpdate("create table IF NOT EXISTS TwoTablesTest2(f1 int primary key, f2 int)");
+
+            conn.setAutoCommit(false);
+            executeUpdate("insert into TwoTablesTest1(f1, f2) values(10, 20)");
+            executeUpdate("insert into TwoTablesTest2(f1, f2) values(10, 20)");
+            conn.commit();
+        }
     }
 
     class ShardingFindTest extends SqlTestBase {

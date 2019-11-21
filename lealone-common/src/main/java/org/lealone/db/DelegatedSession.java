@@ -27,6 +27,8 @@ import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.replication.ReplicaSQLCommand;
+import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.transaction.Transaction;
 
 public class DelegatedSession implements Session {
@@ -70,13 +72,28 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
+        return session.createReplicaSQLCommand(sql, fetchSize);
+    }
+
+    @Override
     public StorageCommand createStorageCommand() {
         return session.createStorageCommand();
     }
 
     @Override
+    public ReplicaStorageCommand createReplicaStorageCommand() {
+        return session.createReplicaStorageCommand();
+    }
+
+    @Override
     public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
         return session.prepareSQLCommand(sql, fetchSize);
+    }
+
+    @Override
+    public ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
+        return session.prepareReplicaSQLCommand(sql, fetchSize);
     }
 
     @Override

@@ -24,9 +24,9 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.AsyncConnection;
-import org.lealone.net.NetNode;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
+import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
@@ -37,6 +37,8 @@ import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
+import org.lealone.storage.replication.ReplicaSQLCommand;
+import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -200,13 +202,31 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
+    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
+        checkClosed();
+        return new ClientSQLCommand(this, sql, fetchSize);
+    }
+
+    @Override
     public StorageCommand createStorageCommand() {
         checkClosed();
         return new ClientStorageCommand(this);
     }
 
     @Override
+    public ReplicaStorageCommand createReplicaStorageCommand() {
+        checkClosed();
+        return new ClientStorageCommand(this);
+    }
+
+    @Override
     public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
+        checkClosed();
+        return new ClientPreparedSQLCommand(this, sql, fetchSize);
+    }
+
+    @Override
+    public ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
         checkClosed();
         return new ClientPreparedSQLCommand(this, sql, fetchSize);
     }

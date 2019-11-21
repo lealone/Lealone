@@ -25,7 +25,6 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.replication.ReplicationResult;
 
 public interface SQLCommand extends Command {
 
@@ -85,14 +84,6 @@ public interface SQLCommand extends Command {
     default int executeUpdate(List<PageKey> pageKeys) {
         return executeUpdate();
     }
-
-    /**
-     * Execute the update command
-     *
-     * @param replicationName the replication name
-     * @return the update count
-     */
-    int executeReplicaUpdate(String replicationName, ReplicationResult replicationResult);
 
     default void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
         executeUpdate();

@@ -26,10 +26,10 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.StorageCommand;
+import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.storage.replication.ReplicationResult;
 
-public class ClientStorageCommand implements StorageCommand {
+public class ClientStorageCommand implements ReplicaStorageCommand {
 
     private final ClientSession session;
 

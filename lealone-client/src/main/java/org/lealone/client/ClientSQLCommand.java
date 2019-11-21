@@ -20,8 +20,8 @@ import org.lealone.db.result.Result;
 import org.lealone.net.AsyncCallback;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
-import org.lealone.sql.SQLCommand;
 import org.lealone.storage.PageKey;
+import org.lealone.storage.replication.ReplicaSQLCommand;
 import org.lealone.storage.replication.ReplicationResult;
 
 /**
@@ -31,7 +31,7 @@ import org.lealone.storage.replication.ReplicationResult;
  * @author H2 Group
  * @author zhh
  */
-public class ClientSQLCommand implements SQLCommand {
+public class ClientSQLCommand implements ReplicaSQLCommand {
 
     // 通过设为null来判断是否关闭了当前命令，所以没有加上final
     protected ClientSession session;
@@ -187,8 +187,9 @@ public class ClientSQLCommand implements SQLCommand {
     }
 
     @Override
-    public int executeReplicaUpdate(String replicationName, ReplicationResult replicationResult) {
-        return update(replicationName, replicationResult, null, null);
+    public void executeReplicaUpdateAsync(String replicationName, ReplicationResult replicationResult,
+            AsyncHandler<AsyncResult<Integer>> handler) {
+        update(replicationName, replicationResult, null, handler);
     }
 
     @Override
@@ -291,7 +292,7 @@ public class ClientSQLCommand implements SQLCommand {
     }
 
     @Override
-    public void replicationCommit(long validKey, boolean autoCommit) {
+    public void replicaCommit(long validKey, boolean autoCommit) {
         int packetId = session.getNextId();
         session.traceOperation("COMMAND_REPLICATION_COMMIT", packetId);
         TransferOutputStream out = session.newOut();
@@ -304,7 +305,7 @@ public class ClientSQLCommand implements SQLCommand {
     }
 
     @Override
-    public void replicationRollback() {
+    public void replicaRollback() {
         int packetId = session.getNextId();
         session.traceOperation("COMMAND_REPLICATION_ROLLBACK", packetId);
         try {

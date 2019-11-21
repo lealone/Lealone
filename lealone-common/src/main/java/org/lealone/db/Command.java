@@ -42,12 +42,6 @@ public interface Command extends AutoCloseable {
     default void close() {
     }
 
-    default void replicationCommit(long validKey, boolean autoCommit) {
-    }
-
-    default void replicationRollback() {
-    }
-
     default int getId() {
         return 0;
     }

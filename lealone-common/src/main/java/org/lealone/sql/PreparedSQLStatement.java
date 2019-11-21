@@ -24,8 +24,9 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.storage.PageKey;
+import org.lealone.storage.replication.ReplicaSQLCommand;
 
-public interface PreparedSQLStatement extends SQLStatement {
+public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
 
     public final static int MIN_PRIORITY = 1;
     public final static int NORM_PRIORITY = 5;

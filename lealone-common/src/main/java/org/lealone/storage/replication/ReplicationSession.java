@@ -108,25 +108,25 @@ public class ReplicationSession extends DelegatedSession {
 
     @Override
     public SQLCommand createSQLCommand(String sql, int fetchSize) {
-        SQLCommand[] commands = new SQLCommand[n];
+        ReplicaSQLCommand[] commands = new ReplicaSQLCommand[n];
         for (int i = 0; i < n; i++)
-            commands[i] = sessions[i].createSQLCommand(sql, fetchSize);
+            commands[i] = sessions[i].createReplicaSQLCommand(sql, fetchSize);
         return new ReplicationSQLCommand(this, commands);
     }
 
     @Override
     public SQLCommand prepareSQLCommand(String sql, int fetchSize) {
-        SQLCommand[] commands = new SQLCommand[n];
+        ReplicaSQLCommand[] commands = new ReplicaSQLCommand[n];
         for (int i = 0; i < n; i++)
-            commands[i] = sessions[i].prepareSQLCommand(sql, fetchSize);
+            commands[i] = sessions[i].prepareReplicaSQLCommand(sql, fetchSize);
         return new ReplicationSQLCommand(this, commands);
     }
 
     @Override
     public StorageCommand createStorageCommand() {
-        StorageCommand[] commands = new StorageCommand[n];
+        ReplicaStorageCommand[] commands = new ReplicaStorageCommand[n];
         for (int i = 0; i < n; i++)
-            commands[i] = sessions[i].createStorageCommand();
+            commands[i] = sessions[i].createReplicaStorageCommand();
         return new ReplicationStorageCommand(this, commands);
     }
 

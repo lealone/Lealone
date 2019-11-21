@@ -588,8 +588,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public int executeReplicaUpdate(String replicationName, ReplicationResult replicationResult) {
-        return update();
+    public void executeReplicaUpdateAsync(String replicationName, ReplicationResult replicationResult,
+            AsyncHandler<AsyncResult<Integer>> handler) {
+        update();
     }
 
     @Override

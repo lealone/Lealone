@@ -17,6 +17,8 @@ import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.replication.ReplicaSQLCommand;
+import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -95,7 +97,11 @@ public interface Session extends Closeable, Transaction.Participant {
 
     SQLCommand createSQLCommand(String sql, int fetchSize);
 
+    ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize);
+
     StorageCommand createStorageCommand();
+
+    ReplicaStorageCommand createReplicaStorageCommand();
 
     /**
      * Parse a command and prepare it for execution.
@@ -105,6 +111,8 @@ public interface Session extends Closeable, Transaction.Participant {
      * @return the prepared command
      */
     SQLCommand prepareSQLCommand(String sql, int fetchSize);
+
+    ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize);
 
     ParsedSQLStatement parseStatement(String sql);
 

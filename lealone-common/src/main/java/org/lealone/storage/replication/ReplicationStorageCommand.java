@@ -32,9 +32,9 @@ import org.lealone.storage.replication.exceptions.ReadTimeoutException;
 import org.lealone.storage.replication.exceptions.WriteFailureException;
 import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
-public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand> implements StorageCommand {
+class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand> implements StorageCommand {
 
-    public ReplicationStorageCommand(ReplicationSession session, StorageCommand[] commands) {
+    ReplicationStorageCommand(ReplicationSession session, ReplicaStorageCommand[] commands) {
         super(session, commands);
     }
 
@@ -56,7 +56,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
         final ArrayList<Exception> exceptions = new ArrayList<>(1);
 
         for (int i = 0; i < n; i++) {
-            final StorageCommand c = this.commands[i];
+            final ReplicaStorageCommand c = this.commands[i];
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
@@ -91,13 +91,13 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
         int n = session.n;
         int r = session.r;
         r = 1; // 使用Write all read one模式
-        final HashSet<StorageCommand> seen = new HashSet<>();
+        final HashSet<ReplicaStorageCommand> seen = new HashSet<>();
         final ReadResponseHandler readResponseHandler = new ReadResponseHandler(n);
         final ArrayList<Exception> exceptions = new ArrayList<>(1);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
         for (int i = 0; i < r; i++) {
-            final StorageCommand c = getRandomNode(seen);
+            final ReplicaStorageCommand c = getRandomNode(seen);
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
@@ -108,7 +108,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
                     } catch (Exception e) {
                         if (readResponseHandler != null) {
                             readResponseHandler.onFailure();
-                            StorageCommand c = getRandomNode(seen);
+                            ReplicaStorageCommand c = getRandomNode(seen);
                             if (c != null) {
                                 result = c.executeGet(mapName, key);
                                 readResponseHandler.response(result);
@@ -142,11 +142,11 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
         final ArrayList<Exception> exceptions = new ArrayList<>(1);
-        final ReplicationResult replicationResult = new ReplicationResult(session.n, session.w,
-                session.isAutoCommit(), this.commands);
+        final ReplicationResult replicationResult = new ReplicationResult(session.n, session.w, session.isAutoCommit(),
+                this.commands);
 
         for (int i = 0; i < n; i++) {
-            final StorageCommand c = this.commands[i];
+            final ReplicaStorageCommand c = this.commands[i];
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
@@ -189,7 +189,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
         final ArrayList<LeafPageMovePlan> plans = new ArrayList<>(n);
 
         for (int i = 0; i < n; i++) {
-            final StorageCommand c = this.commands[i];
+            final ReplicaStorageCommand c = this.commands[i];
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
@@ -250,7 +250,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
         int n = session.n;
         ArrayList<Future<?>> futures = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
-            final StorageCommand c = this.commands[i];
+            final ReplicaStorageCommand c = this.commands[i];
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
@@ -273,7 +273,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
         int n = session.n;
         ArrayList<Future<?>> futures = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
-            final StorageCommand c = this.commands[i];
+            final ReplicaStorageCommand c = this.commands[i];
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
@@ -296,7 +296,7 @@ public class ReplicationStorageCommand extends ReplicationCommand<StorageCommand
         int n = session.n;
         ArrayList<Future<?>> futures = new ArrayList<>(n);
         for (int i = 0; i < n; i++) {
-            final StorageCommand c = this.commands[i];
+            final ReplicaStorageCommand c = this.commands[i];
             Runnable command = new Runnable() {
                 @Override
                 public void run() {

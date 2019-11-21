@@ -22,14 +22,14 @@ import java.util.Random;
 
 import org.lealone.db.Command;
 
-public abstract class ReplicationCommand<T extends Command> implements Command {
+abstract class ReplicationCommand<T extends ReplicaCommand> implements Command {
 
     private static final Random random = new Random(System.currentTimeMillis());
 
     protected final ReplicationSession session;
     protected final T[] commands;
 
-    public ReplicationCommand(ReplicationSession session, T[] commands) {
+    protected ReplicationCommand(ReplicationSession session, T[] commands) {
         this.session = session;
         this.commands = commands;
     }

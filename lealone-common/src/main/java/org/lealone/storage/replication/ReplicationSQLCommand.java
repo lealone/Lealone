@@ -22,6 +22,8 @@ import java.util.HashSet;
 import java.util.List;
 
 import org.lealone.db.CommandParameter;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.replication.exceptions.ReadFailureException;
@@ -29,9 +31,9 @@ import org.lealone.storage.replication.exceptions.ReadTimeoutException;
 import org.lealone.storage.replication.exceptions.WriteFailureException;
 import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
-public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implements SQLCommand {
+class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implements SQLCommand {
 
-    public ReplicationSQLCommand(ReplicationSession session, SQLCommand[] commands) {
+    ReplicationSQLCommand(ReplicationSession session, ReplicaSQLCommand[] commands) {
         super(session, commands);
     }
 
@@ -65,13 +67,13 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
         int n = session.n;
         int r = session.r;
         r = 1; // 使用Write all read one模式
-        final HashSet<SQLCommand> seen = new HashSet<>();
+        final HashSet<ReplicaSQLCommand> seen = new HashSet<>();
         final ReadResponseHandler readResponseHandler = new ReadResponseHandler(n);
         final ArrayList<Exception> exceptions = new ArrayList<>(1);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
         for (int i = 0; i < r; i++) {
-            final SQLCommand c = getRandomNode(seen);
+            final ReplicaSQLCommand c = getRandomNode(seen);
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
@@ -83,7 +85,7 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
                         exceptions.add(e);
                         if (readResponseHandler != null) {
                             readResponseHandler.onFailure();
-                            SQLCommand c = getRandomNode(seen);
+                            ReplicaSQLCommand c = getRandomNode(seen);
                             if (c != null) {
                                 result = c.executeQuery(maxRows, scrollable);
                                 readResponseHandler.response(result);
@@ -107,29 +109,30 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
 
     @Override
     public int executeUpdate() {
-        return executeUpdate(1);
+        return executeUpdate(1, null);
     }
 
     @Override
-    public int executeReplicaUpdate(String replicationName, ReplicationResult replicationResult) {
-        return executeUpdate();
+    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
+        executeUpdate();
     }
 
-    private int executeUpdate(int tries) {
+    private int executeUpdate(int tries, AsyncHandler<AsyncResult<Integer>> handler) {
         int n = session.n;
         final String rn = session.createReplicationName();
         final WriteResponseHandler writeResponseHandler = new WriteResponseHandler(n);
         final ArrayList<Exception> exceptions = new ArrayList<>(1);
-        final ReplicationResult replicationResult = new ReplicationResult(session.n, session.w,
-                session.isAutoCommit(), this.commands);
+        final ReplicationResult replicationResult = new ReplicationResult(session.n, session.w, session.isAutoCommit(),
+                this.commands);
 
         for (int i = 0; i < n; i++) {
-            final SQLCommand c = this.commands[i];
+            final ReplicaSQLCommand c = this.commands[i];
             Runnable command = new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        writeResponseHandler.response(c.executeReplicaUpdate(rn, replicationResult));
+                        c.executeReplicaUpdateAsync(rn, replicationResult, handler);
+                        writeResponseHandler.response(null);
                     } catch (Exception e) {
                         writeResponseHandler.onFailure();
                         exceptions.add(e);
@@ -145,7 +148,7 @@ public class ReplicationSQLCommand extends ReplicationCommand<SQLCommand> implem
             return replicationResult.getUpdateCount();
         } catch (WriteTimeoutException | WriteFailureException e) {
             if (tries < session.maxRries)
-                return executeUpdate(++tries);
+                return executeUpdate(++tries, handler);
             else {
                 if (!exceptions.isEmpty())
                     e.initCause(exceptions.get(0));

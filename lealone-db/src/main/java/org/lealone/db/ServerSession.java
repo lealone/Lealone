@@ -39,6 +39,8 @@ import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.replication.ReplicaSQLCommand;
+import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 
@@ -405,7 +407,17 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
+    public ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize) {
+        return prepareStatement(sql, fetchSize);
+    }
+
+    @Override
     public StorageCommand createStorageCommand() {
+        return new ServerStorageCommand(this);
+    }
+
+    @Override
+    public ReplicaStorageCommand createReplicaStorageCommand() {
         return new ServerStorageCommand(this);
     }
 
@@ -418,6 +430,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
      */
     @Override
     public synchronized SQLCommand prepareSQLCommand(String sql, int fetchSize) {
+        return prepareStatement(sql, fetchSize);
+    }
+
+    @Override
+    public synchronized ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize) {
         return prepareStatement(sql, fetchSize);
     }
 

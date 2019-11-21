@@ -24,12 +24,12 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.storage.replication.ReplicationResult;
 import org.lealone.transaction.Transaction;
 
-public class ServerStorageCommand implements StorageCommand {
+public class ServerStorageCommand implements ReplicaStorageCommand {
 
     private final ServerSession session;
 
@@ -107,12 +107,12 @@ public class ServerStorageCommand implements StorageCommand {
     }
 
     @Override
-    public void replicationCommit(long validKey, boolean autoCommit) {
+    public void replicaCommit(long validKey, boolean autoCommit) {
         session.replicationCommit(validKey, autoCommit);
     }
 
     @Override
-    public void replicationRollback() {
+    public void replicaRollback() {
         session.rollback();
     }
 }
