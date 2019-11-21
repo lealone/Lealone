@@ -216,13 +216,13 @@ public interface Transaction {
         }
     }
 
-    public static class WaitigTransaction {
+    public static class WaitingTransaction {
 
         private final Object key;
         private final Transaction transaction;
         private final Listener listener;
 
-        public WaitigTransaction(Object key, Transaction transaction, Listener listener) {
+        public WaitingTransaction(Object key, Transaction transaction, Listener listener) {
             this.key = key;
             this.transaction = transaction;
             this.listener = listener;

@@ -41,7 +41,7 @@ import org.lealone.transaction.aote.log.UndoLog;
 
 public class AMTransaction implements Transaction {
 
-    private static final LinkedList<WaitigTransaction> EMPTY_LINKED_LIST = new LinkedList<>();
+    private static final LinkedList<WaitingTransaction> EMPTY_LINKED_LIST = new LinkedList<>();
 
     // 以下几个public或包级别的字段是在其他地方频繁使用的，
     // 为了使用方便或节省一点点性能开销就不通过getter方法访问了
@@ -65,7 +65,7 @@ public class AMTransaction implements Transaction {
     private volatile AMTransaction lockedBy;
     private long lockStartTime;
     // 有哪些事务在等待我释放锁
-    private final AtomicReference<LinkedList<WaitigTransaction>> waitingTransactionsRef = new AtomicReference<>(
+    private final AtomicReference<LinkedList<WaitingTransaction>> waitingTransactionsRef = new AtomicReference<>(
             EMPTY_LINKED_LIST);
 
     public AMTransaction(AMTransactionEngine engine, long tid) {
@@ -335,13 +335,13 @@ public class AMTransaction implements Transaction {
             transactionEngine.removeTransaction(transactionId);
 
         while (true) {
-            LinkedList<WaitigTransaction> waitigTransactions = waitingTransactionsRef.get();
-            if (waitigTransactions != null && waitigTransactions != EMPTY_LINKED_LIST) {
-                for (WaitigTransaction waitigTransaction : waitigTransactions) {
-                    waitigTransaction.wakeUp();
+            LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
+            if (waitingTransactions != null && waitingTransactions != EMPTY_LINKED_LIST) {
+                for (WaitingTransaction waitingTransaction : waitingTransactions) {
+                    waitingTransaction.wakeUp();
                 }
             }
-            if (waitingTransactionsRef.compareAndSet(waitigTransactions, null))
+            if (waitingTransactionsRef.compareAndSet(waitingTransactions, null))
                 break;
         }
         lockedBy = null;
@@ -349,15 +349,15 @@ public class AMTransaction implements Transaction {
 
     int addWaitingTransaction(Object key, AMTransaction transaction, Listener listener) {
         transaction.setStatus(STATUS_WAITING);
-        WaitigTransaction wt = new WaitigTransaction(key, transaction, listener);
+        WaitingTransaction wt = new WaitingTransaction(key, transaction, listener);
         while (true) {
             // 如果已经提交了，通知重试
             if (status == STATUS_CLOSED) {
                 transaction.setStatus(STATUS_OPEN);
                 return OPERATION_NEED_RETRY;
             }
-            LinkedList<WaitigTransaction> waitingTransactions = waitingTransactionsRef.get();
-            LinkedList<WaitigTransaction> newWaitingTransactions = new LinkedList<>(waitingTransactions);
+            LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
+            LinkedList<WaitingTransaction> newWaitingTransactions = new LinkedList<>(waitingTransactions);
             newWaitingTransactions.add(wt);
             if (waitingTransactionsRef.compareAndSet(waitingTransactions, newWaitingTransactions)) {
                 transaction.waitFor(this);
@@ -376,38 +376,38 @@ public class AMTransaction implements Transaction {
         if (lockedBy != null && lockStartTime != 0
                 && System.currentTimeMillis() - lockStartTime > session.getLockTimeout()) {
             boolean isDeadlock = false;
-            WaitigTransaction waitigTransaction = null;
-            LinkedList<WaitigTransaction> waitigTransactions = waitingTransactionsRef.get();
-            for (WaitigTransaction wt : waitigTransactions) {
+            WaitingTransaction waitingTransaction = null;
+            LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
+            for (WaitingTransaction wt : waitingTransactions) {
                 if (wt.getTransaction() == lockedBy) {
                     isDeadlock = true;
-                    waitigTransaction = wt;
+                    waitingTransaction = wt;
                     break;
                 }
             }
-            waitigTransactions = lockedBy.waitingTransactionsRef.get();
-            WaitigTransaction waitigTransaction2 = null;
-            for (WaitigTransaction wt : waitigTransactions) {
+            waitingTransactions = lockedBy.waitingTransactionsRef.get();
+            WaitingTransaction waitingTransaction2 = null;
+            for (WaitingTransaction wt : waitingTransactions) {
                 if (wt.getTransaction() == this) {
-                    waitigTransaction2 = wt;
+                    waitingTransaction2 = wt;
                     break;
                 }
             }
             if (isDeadlock) {
-                String msg = getMsg(transactionId, session, lockedBy, waitigTransaction2);
-                msg += "\r\n" + getMsg(lockedBy.transactionId, lockedBy.session, this, waitigTransaction);
+                String msg = getMsg(transactionId, session, lockedBy, waitingTransaction2);
+                msg += "\r\n" + getMsg(lockedBy.transactionId, lockedBy.session, this, waitingTransaction);
                 throw DbException.get(ErrorCode.DEADLOCK_1, msg);
             } else {
-                String msg = getMsg(transactionId, session, lockedBy, waitigTransaction2);
+                String msg = getMsg(transactionId, session, lockedBy, waitingTransaction2);
                 throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, msg);
             }
         }
     }
 
     private static String getMsg(long tid, Session session, AMTransaction transaction,
-            WaitigTransaction waitigTransaction) {
+            WaitingTransaction waitingTransaction) {
         return "transaction #" + tid + " in session " + session + " wait for transaction #" + transaction.transactionId
-                + " in session " + transaction.session + ", row key: " + waitigTransaction.getKey();
+                + " in session " + transaction.session + ", row key: " + waitingTransaction.getKey();
     }
 
     @Override
