@@ -64,7 +64,7 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
             try {
                 return writeResponseHandler.getResult(session.rpcTimeoutMillis);
             } catch (WriteTimeoutException | WriteFailureException e) {
-                if (tries < session.maxRries) {
+                if (tries < session.maxTries) {
                     key.rewind();
                     value.rewind();
                     return executePut(mapName, key, value, raw, ++tries, handler);
@@ -98,7 +98,7 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
                 try {
                     return readResponseHandler.getResult(session.rpcTimeoutMillis);
                 } catch (ReadTimeoutException | ReadFailureException e) {
-                    if (tries++ < session.maxRries) {
+                    if (tries++ < session.maxTries) {
                         ReplicaStorageCommand c = getRandomNode(seen);
                         if (c != null) {
                             c.get(mapName, key, handler);
@@ -137,7 +137,7 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
                 replicationResult.validate();
                 return result;
             } catch (WriteTimeoutException | WriteFailureException e) {
-                if (tries < session.maxRries) {
+                if (tries < session.maxTries) {
                     value.rewind();
                     return executeAppend(mapName, value, ++tries, handler);
                 } else {

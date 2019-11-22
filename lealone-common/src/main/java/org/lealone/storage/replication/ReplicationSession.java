@@ -41,8 +41,8 @@ public class ReplicationSession extends DelegatedSession {
     private final String hostName;
     private final AtomicInteger counter = new AtomicInteger(1);
 
-    int maxRries = 5;
-    long rpcTimeoutMillis = 2000L;
+    int maxTries = 5;
+    long rpcTimeoutMillis;
 
     public ReplicationSession(Session[] sessions) {
         this(sessions, null);
@@ -51,6 +51,7 @@ public class ReplicationSession extends DelegatedSession {
     public ReplicationSession(Session[] sessions, List<String> initReplicationNodes) {
         super(sessions[0]);
         this.sessions = sessions;
+        this.rpcTimeoutMillis = sessions[0].getNetworkTimeout();
 
         String replicationNodes = null;
         if (initReplicationNodes != null) {
@@ -87,8 +88,8 @@ public class ReplicationSession extends DelegatedSession {
         }
     }
 
-    public void setMaxRries(int maxRries) {
-        this.maxRries = maxRries;
+    public void setMaxTries(int maxTries) {
+        this.maxTries = maxTries;
     }
 
     public void setRpcTimeout(long rpcTimeoutMillis) {

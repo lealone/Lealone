@@ -18,12 +18,9 @@
 package org.lealone.storage.replication;
 
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.storage.replication.exceptions.WriteFailureException;
-import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
 class WriteResponseHandler<T> extends ReplicationHandler<T> {
 
@@ -58,33 +55,13 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
     }
 
     @Override
-    void await(long rpcTimeoutMillis) {
-        long requestTimeout = rpcTimeoutMillis;
+    boolean isRead() {
+        return false;
+    }
 
-        // 超时时间把调用构造函数开始直到调用get前的这段时间也算在内
-        long timeout = TimeUnit.MILLISECONDS.toNanos(requestTimeout) - (System.nanoTime() - start);
-
-        boolean success;
-        try {
-            success = condition.await(timeout, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException ex) {
-            throw new AssertionError(ex);
-        }
-
-        if (!success) {
-            int blockedFor = totalBlockFor();
-            int acks = ackCount();
-            // It's pretty unlikely, but we can race between exiting await above and here, so
-            // that we could now have enough acks. In that case, we "lie" on the acks count to
-            // avoid sending confusing info to the user (see CASSANDRA-6491).
-            if (acks >= blockedFor)
-                acks = blockedFor - 1;
-            throw new WriteTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor);
-        }
-
-        if (!successful && totalBlockFor() + failures >= totalNodes()) {
-            throw new WriteFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor());
-        }
+    @Override
+    int totalBlockFor() {
+        return w;
     }
 
     ArrayList<T> getResults() {
@@ -93,10 +70,5 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
         for (int i = 0; i < size; i++)
             results2.add(results.get(i).getResult());
         return results2;
-    }
-
-    @Override
-    int totalBlockFor() {
-        return w;
     }
 }

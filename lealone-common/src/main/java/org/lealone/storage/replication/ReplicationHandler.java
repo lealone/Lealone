@@ -18,27 +18,31 @@
 package org.lealone.storage.replication;
 
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.lealone.common.concurrent.SimpleCondition;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.storage.replication.exceptions.ReadFailureException;
+import org.lealone.storage.replication.exceptions.ReadTimeoutException;
+import org.lealone.storage.replication.exceptions.WriteFailureException;
+import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
 abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
 
     protected final long start;
     protected final int n;
     protected final AsyncHandler<AsyncResult<T>> topHandler;
-
-    protected final SimpleCondition condition = new SimpleCondition();
     protected final CopyOnWriteArrayList<AsyncResult<T>> results = new CopyOnWriteArrayList<>();
 
+    private final SimpleCondition condition = new SimpleCondition();
     private final CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
 
     @SuppressWarnings("rawtypes")
     private final AtomicIntegerFieldUpdater<ReplicationHandler> failuresUpdater = AtomicIntegerFieldUpdater
             .newUpdater(ReplicationHandler.class, "failures");
-    protected volatile int failures = 0;
+    private volatile int failures = 0;
     protected volatile boolean successful = false;
 
     public ReplicationHandler(int n, AsyncHandler<AsyncResult<T>> topHandler) {
@@ -51,7 +55,49 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
 
     abstract int totalBlockFor();
 
-    abstract void await(long rpcTimeoutMillis);
+    abstract boolean isRead();
+
+    void await(long rpcTimeoutMillis) {
+        // 超时时间把调用构造函数开始直到调用get前的这段时间也算在内
+        long timeout = rpcTimeoutMillis > 0
+                ? TimeUnit.MILLISECONDS.toNanos(rpcTimeoutMillis) - (System.nanoTime() - start)
+                : rpcTimeoutMillis;
+
+        boolean success;
+        try {
+            if (timeout > 0) {
+                success = condition.await(timeout, TimeUnit.NANOSECONDS);
+            } else {
+                condition.await();
+                success = true;
+            }
+        } catch (InterruptedException ex) {
+            throw new AssertionError(ex);
+        }
+        if (!successful) {
+            if (!success) {
+                int blockedFor = totalBlockFor();
+                int acks = ackCount();
+                // It's pretty unlikely, but we can race between exiting await above and here, so
+                // that we could now have enough acks. In that case, we "lie" on the acks count to
+                // avoid sending confusing info to the user (see CASSANDRA-6491).
+                if (acks >= blockedFor)
+                    acks = blockedFor - 1;
+                if (isRead())
+                    throw new ReadTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor, false);
+                else
+                    throw new WriteTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor);
+            }
+
+            if (totalBlockFor() + failures >= totalNodes()) {
+                if (isRead())
+                    throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor(),
+                            false);
+                else
+                    throw new WriteFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor());
+            }
+        }
+    }
 
     T getResult(long rpcTimeoutMillis) {
         await(rpcTimeoutMillis);

@@ -90,7 +90,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                 try {
                     return readResponseHandler.getResult(session.rpcTimeoutMillis);
                 } catch (ReadTimeoutException | ReadFailureException e) {
-                    if (tries++ < session.maxRries) {
+                    if (tries++ < session.maxTries) {
                         ReplicaSQLCommand c = getRandomNode(seen);
                         if (c != null) {
                             c.executeQueryAsync(maxRows, scrollable, readResponseHandler);
@@ -129,7 +129,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             try {
                 return writeResponseHandler.getResult(session.rpcTimeoutMillis);
             } catch (WriteTimeoutException | WriteFailureException e) {
-                if (tries < session.maxRries)
+                if (tries < session.maxTries)
                     return executeUpdate(++tries, handler);
                 else {
                     writeResponseHandler.initCause(e);

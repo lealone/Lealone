@@ -26,15 +26,11 @@ import org.lealone.common.exceptions.DbException;
 
 public class ReplicationResult {
 
-    private final int n; // 复制集群节点总个数
-    private final int w; // 写成功的最少节点个数
-    private final boolean autoCommit;
+    private final ReplicationSession session;
     private final HashMap<ReplicaCommand, AtomicLong> results;
 
     public ReplicationResult(ReplicationSession session, ReplicaCommand[] commands) {
-        this.n = session.n;
-        this.w = session.w;
-        this.autoCommit = session.isAutoCommit();
+        this.session = session;
         results = new HashMap<>(commands.length);
         for (ReplicaCommand c : commands) {
             results.put(c, new AtomicLong(-1));
@@ -55,6 +51,10 @@ public class ReplicationResult {
     }
 
     void validate() {
+        final int n = session.n; // 复制集群节点总个数
+        final int w = session.w; // 写成功的最少节点个数
+        final boolean autoCommit = session.isAutoCommit();
+
         HashMap<Long, ArrayList<ReplicaCommand>> groupResults = new HashMap<>(1);
         for (Entry<ReplicaCommand, AtomicLong> e : results.entrySet()) {
             long v = e.getValue().get();
