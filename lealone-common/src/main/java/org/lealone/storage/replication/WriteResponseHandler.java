@@ -18,38 +18,65 @@
 package org.lealone.storage.replication;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 
 class WriteResponseHandler<T> extends ReplicationHandler<T> {
 
-    private final int w;
-    private final ReplicationResult replicationResult;
+    static interface ReplicationResultHandler<T> {
+        T handleResults(List<T> results);
+    }
 
-    WriteResponseHandler(int n, AsyncHandler<AsyncResult<T>> topHandler, ReplicationResult replicationResult) {
-        super(n, topHandler);
+    private final int w;
+    private final ReplicaCommand[] commands;
+    private final ReplicationResultHandler<T> replicationResultHandler;
+
+    WriteResponseHandler(ReplicationSession session, ReplicaCommand[] commands,
+            AsyncHandler<AsyncResult<T>> topHandler) {
+        this(session, commands, topHandler, null);
+    }
+
+    WriteResponseHandler(ReplicationSession session, ReplicaCommand[] commands, AsyncHandler<AsyncResult<T>> topHandler,
+            ReplicationResultHandler<T> replicationResultHandler) {
+        super(session.n, topHandler);
         // w = n / 2 + 1;
         w = n; // 使用Write all read one模式
-        this.replicationResult = replicationResult;
+
+        // 手动提交事务的场景不用执行副本提交
+        if (!session.isAutoCommit())
+            commands = null;
+        this.commands = commands;
+        this.replicationResultHandler = replicationResultHandler;
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     synchronized void response(AsyncResult<T> result) {
         results.add(result);
         if (!successful && results.size() >= w) {
             successful = true;
-            signal();
-            Object ret = null;
-            if (replicationResult != null) {
-                ret = replicationResult.validate(getResults());
-            }
-            if (topHandler != null) {
-                if (ret != null)
-                    topHandler.handle((AsyncResult<T>) ret);
-                else
-                    topHandler.handle(results.get(0));
+            try {
+                AsyncResult<T> ar = null;
+                if (replicationResultHandler != null) {
+                    T ret = replicationResultHandler.handleResults(getResults());
+                    ar = new AsyncResult<>();
+                    ar.setResult(ret);
+                }
+                if (commands != null) {
+                    for (ReplicaCommand c : commands) {
+                        c.replicaCommit(-1, true);
+                    }
+                }
+
+                if (topHandler != null) {
+                    if (ar != null)
+                        topHandler.handle(ar);
+                    else
+                        topHandler.handle(results.get(0));
+                }
+            } finally {
+                signal();
             }
         }
     }

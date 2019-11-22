@@ -23,6 +23,5 @@ import org.lealone.sql.SQLCommand;
 
 public interface ReplicaSQLCommand extends ReplicaCommand, SQLCommand {
 
-    void executeReplicaUpdateAsync(String replicationName, ReplicationResult replicationResult,
-            AsyncHandler<AsyncResult<Integer>> handler);
+    void executeReplicaUpdateAsync(String replicationName, AsyncHandler<AsyncResult<Integer>> handler);
 }

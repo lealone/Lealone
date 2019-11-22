@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
 
-public class ReplicationResult {
+class ReplicationResult {
 
     private final ReplicationSession session;
     private final HashMap<ReplicaCommand, AtomicLong> results;
@@ -51,6 +51,13 @@ public class ReplicationResult {
     }
 
     void validate() {
+        boolean autoCommit = session.isAutoCommit();
+        for (ReplicaCommand c : results.keySet()) {
+            c.replicaCommit(-1, autoCommit);
+        }
+    }
+
+    void validate0() {
         final int n = session.n; // 复制集群节点总个数
         final int w = session.w; // 写成功的最少节点个数
         final boolean autoCommit = session.isAutoCommit();

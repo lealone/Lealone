@@ -29,7 +29,6 @@ import org.lealone.net.TransferOutputStream;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaStorageCommand;
-import org.lealone.storage.replication.ReplicationResult;
 
 public class ClientStorageCommand implements ReplicaStorageCommand {
 
@@ -118,14 +117,13 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object append(String mapName, ByteBuffer value, ReplicationResult replicationResult,
-            AsyncHandler<AsyncResult<Object>> handler) {
-        return executeReplicaAppend(null, mapName, value, replicationResult, handler);
+    public Object append(String mapName, ByteBuffer value, AsyncHandler<AsyncResult<Object>> handler) {
+        return executeReplicaAppend(null, mapName, value, handler);
     }
 
     @Override
     public Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value,
-            ReplicationResult replicationResult, AsyncHandler<AsyncResult<Object>> handler) {
+            AsyncHandler<AsyncResult<Object>> handler) {
         Long result = null;
         int packetId = session.getNextId();
         TransferOutputStream out = session.newOut();
@@ -153,7 +151,6 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
         } catch (Exception e) {
             session.handleException(e);
         }
-        replicationResult.addResult(this, result);
         return ValueLong.get(result);
     }
 

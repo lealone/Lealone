@@ -27,7 +27,6 @@ import org.lealone.net.AsyncCallback;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.replication.ReplicationResult;
 
 /**
  * Represents the client-side part of a prepared SQL statement.
@@ -161,8 +160,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected int update(String replicationName, ReplicationResult replicationResult, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Integer>> handler) {
+    protected int update(String replicationName, List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
         checkParameters();
         prepareIfRequired();
         String operation;
@@ -184,7 +182,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             writeUpdateHeader(out, operation, packetId, packetType, replicationName, pageKeys);
             out.writeInt(commandId);
             writeParameters(out);
-            return getUpdateCount(out, packetId, isDistributedUpdate, replicationResult, handler);
+            return getUpdateCount(out, packetId, isDistributedUpdate, handler);
         } catch (Exception e) {
             session.handleException(e);
         }

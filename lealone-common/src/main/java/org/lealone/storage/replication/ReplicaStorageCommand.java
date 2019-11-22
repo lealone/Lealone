@@ -28,7 +28,7 @@ public interface ReplicaStorageCommand extends ReplicaCommand, StorageCommand {
     Object executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
             AsyncHandler<AsyncResult<Object>> handler);
 
-    Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value, ReplicationResult replicationResult,
+    Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value,
             AsyncHandler<AsyncResult<Object>> handler);
 
 }

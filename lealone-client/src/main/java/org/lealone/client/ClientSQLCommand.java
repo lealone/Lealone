@@ -22,7 +22,6 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
-import org.lealone.storage.replication.ReplicationResult;
 
 /**
  * Represents the client-side part of a SQL statement.
@@ -178,27 +177,25 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
 
     @Override
     public int executeUpdate() {
-        return update(null, null, null, null);
+        return update(null, null, null);
     }
 
     @Override
     public int executeUpdate(List<PageKey> pageKeys) {
-        return update(null, null, pageKeys, null);
+        return update(null, pageKeys, null);
     }
 
     @Override
-    public void executeReplicaUpdateAsync(String replicationName, ReplicationResult replicationResult,
-            AsyncHandler<AsyncResult<Integer>> handler) {
-        update(replicationName, replicationResult, null, handler);
+    public void executeReplicaUpdateAsync(String replicationName, AsyncHandler<AsyncResult<Integer>> handler) {
+        update(replicationName, null, handler);
     }
 
     @Override
     public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        update(null, null, null, handler);
+        update(null, null, handler);
     }
 
-    protected int update(String replicationName, ReplicationResult replicationResult, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Integer>> handler) {
+    protected int update(String replicationName, List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
         String operation;
         int packetType;
         boolean isDistributedUpdate = isDistributed();
@@ -218,7 +215,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
             TransferOutputStream out = session.newOut();
             writeUpdateHeader(out, operation, packetId, packetType, replicationName, pageKeys);
             out.writeString(sql);
-            return getUpdateCount(out, packetId, isDistributedUpdate, replicationResult, handler);
+            return getUpdateCount(out, packetId, isDistributedUpdate, handler);
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -235,7 +232,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     protected int getUpdateCount(TransferOutputStream out, int packetId, boolean isDistributedUpdate,
-            ReplicationResult replicationResult, AsyncHandler<AsyncResult<Integer>> handler) throws IOException {
+            AsyncHandler<AsyncResult<Integer>> handler) throws IOException {
         isQuery = false;
         AsyncCallback<Integer> ac = new AsyncCallback<Integer>() {
             @Override
@@ -244,10 +241,6 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
                     session.getParentTransaction().addLocalTransactionNames(in.readString());
 
                 int updateCount = in.readInt();
-                long key = in.readLong();
-                if (replicationResult != null) {
-                    replicationResult.addResult(ClientSQLCommand.this, key);
-                }
                 setResult(updateCount);
                 if (handler != null) {
                     AsyncResult<Integer> r = new AsyncResult<>();

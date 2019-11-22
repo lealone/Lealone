@@ -462,10 +462,14 @@ public class StandardPrimaryIndex extends IndexBase {
         } else {
             Value value = first.getValue(mainIndexColumn);
             ValueLong v;
-            if (value instanceof ValueLong)
-                v = (ValueLong) value;
-            else
-                v = ValueLong.get(value.getLong());
+            if (value != null) {
+                if (value instanceof ValueLong)
+                    v = (ValueLong) value;
+                else
+                    v = ValueLong.get(value.getLong());
+            } else {
+                v = null;
+            }
             if (v == null) {
                 min = ValueLong.get(first.getKey());
             } else {
@@ -479,10 +483,14 @@ public class StandardPrimaryIndex extends IndexBase {
         } else {
             Value value = first.getValue(mainIndexColumn);
             ValueLong v;
-            if (value instanceof ValueLong)
-                v = (ValueLong) value;
-            else
-                v = ValueLong.get(value.getLong());
+            if (value != null) {
+                if (value instanceof ValueLong)
+                    v = (ValueLong) value;
+                else
+                    v = ValueLong.get(value.getLong());
+            } else {
+                v = null;
+            }
             if (v == null) {
                 max = ValueLong.get(last.getKey());
             } else {

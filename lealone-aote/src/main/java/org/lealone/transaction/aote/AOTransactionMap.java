@@ -90,6 +90,27 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
     }
 
     @Override
+    protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue) {
+        return addWaitingTransaction(key, oldTransactionalValue, null);
+    }
+
+    @Override
+    protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
+            Transaction.Listener listener) {
+        if (transaction.globalReplicationName != null) {
+            if (DTRValidator.handleReplicationConflict(key, transaction.globalReplicationName, transaction.validator)) {
+                transaction.transactionEngine.getTransaction(oldTransactionalValue.getTid()).getUndoLog().undo();
+                oldTransactionalValue.rollback();
+                return Transaction.OPERATION_NEED_RETRY;
+            }
+        }
+        if (listener != null)
+            return super.addWaitingTransaction(key, oldTransactionalValue, listener);
+        else
+            return super.addWaitingTransaction(key, oldTransactionalValue);
+    }
+
+    @Override
     public AMTransactionMap<K, V> getInstance(Transaction transaction) {
         return new AOTransactionMap<>((AOTransaction) transaction, map);
     }

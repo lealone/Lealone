@@ -28,7 +28,7 @@ import org.lealone.test.sql.SqlTestBase;
 
 public class ReplicationTest extends SqlTestBase {
 
-    private static final String REPLICATION_DB_NAME = "ReplicationTestDB4";
+    private static final String REPLICATION_DB_NAME = "ReplicationTestDB";
 
     public ReplicationTest() {
         // super(REPLICATION_DB_NAME, RunMode.REPLICATION); // 自动创建一个使用复制模式的ReplicationTestDB数据库
@@ -42,11 +42,11 @@ public class ReplicationTest extends SqlTestBase {
                 + " RUN MODE replication  PARAMETERS (replication_factor: 2)";
         stmt.executeUpdate(sql);
 
-        // new SyncReplicationTest().runTest();
-        new AsyncReplicationTest().runTest();
+        // new AsyncReplicationTest().runTest();
+        new ReplicationConflictTest().runTest();
     }
 
-    class AsyncReplicationTest extends SqlTestBase {
+    static class AsyncReplicationTest extends SqlTestBase {
 
         public AsyncReplicationTest() {
             super(REPLICATION_DB_NAME);
@@ -80,9 +80,9 @@ public class ReplicationTest extends SqlTestBase {
         }
     }
 
-    class SyncReplicationTest extends SqlTestBase {
+    static class ReplicationConflictTest extends SqlTestBase {
 
-        public SyncReplicationTest() {
+        public ReplicationConflictTest() {
             super(REPLICATION_DB_NAME);
         }
 
@@ -90,12 +90,11 @@ public class ReplicationTest extends SqlTestBase {
         protected void test() throws Exception {
             stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationTest");
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int primary key, f2 long)");
-            // stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int, f2 long)");
-            // stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
+            stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
 
             // 启动两个新事务更新同一行，可以用来测试Replication冲突的场景
-            Thread t1 = new Thread(new CrudTest("INSERT INTO ReplicationTest(f1, f2) VALUES(3, 4)"));
-            Thread t2 = new Thread(new CrudTest("INSERT INTO ReplicationTest(f1, f2) VALUES(5, 6)"));
+            Thread t1 = new Thread(new CrudTest());
+            Thread t2 = new Thread(new CrudTest());
             t1.start();
             t2.start();
             t1.join();
@@ -111,18 +110,14 @@ public class ReplicationTest extends SqlTestBase {
     }
 
     private static class CrudTest extends SqlTestBase implements Runnable {
-        String insert;
-
-        public CrudTest(String insert) {
+        public CrudTest() {
             super(REPLICATION_DB_NAME);
-            this.insert = insert;
         }
 
         @Override
         protected void test() throws Exception {
-            stmt.executeUpdate(insert);
             // conn.setAutoCommit(false);
-            // stmt.executeUpdate("update ReplicationTest set f2 = 20 where f1 = 1");
+            stmt.executeUpdate("update ReplicationTest set f2 = f2+20 where f1 = 1");
             // conn.commit();
 
             sql = "select * from ReplicationTest where _rowid_=1";

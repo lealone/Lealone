@@ -715,7 +715,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         return addWaitingTransaction(key, (TransactionalValue) oldTransactionalValue, listener);
     }
 
-    private int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue) {
+    protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue) {
         Object object = Thread.currentThread();
         if (object instanceof Transaction.Listener)
             return addWaitingTransaction(key, oldTransactionalValue, (Transaction.Listener) object);
@@ -724,7 +724,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         // throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
     }
 
-    private int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
+    protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
             Transaction.Listener listener) {
         AMTransaction t = transaction.transactionEngine.getTransaction(oldTransactionalValue.getTid());
         return t.addWaitingTransaction(key, transaction, listener);

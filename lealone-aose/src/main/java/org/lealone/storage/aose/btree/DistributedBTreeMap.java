@@ -543,7 +543,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer v = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer valueBuffer = v.write(valueType, value);
-            return c.append(getName(), valueBuffer, null, null);
+            return c.append(getName(), valueBuffer, null);
         }
     }
 

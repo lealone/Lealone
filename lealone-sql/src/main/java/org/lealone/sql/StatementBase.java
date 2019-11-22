@@ -33,7 +33,6 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.replication.ReplicationResult;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -588,8 +587,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public void executeReplicaUpdateAsync(String replicationName, ReplicationResult replicationResult,
-            AsyncHandler<AsyncResult<Integer>> handler) {
+    public void executeReplicaUpdateAsync(String replicationName, AsyncHandler<AsyncResult<Integer>> handler) {
         update();
     }
 

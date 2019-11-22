@@ -450,7 +450,6 @@ public class TcpServerConnection extends TransferConnection {
                         out.writeString(session.getTransaction().getLocalTransactionNames());
                     }
                     out.writeInt(updateCount);
-                    out.writeLong(session.getLastRowKey());
                     out.flush();
                 } catch (Exception e) {
                     sendError(session, packetId, e);

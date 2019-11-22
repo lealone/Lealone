@@ -117,13 +117,11 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
     }
 
     private int executeUpdate(int tries, AsyncHandler<AsyncResult<Integer>> handler) {
-        int n = session.n;
         String rn = session.createReplicationName();
-        ReplicationResult replicationResult = new ReplicationResult(session, commands);
-        WriteResponseHandler<Integer> writeResponseHandler = new WriteResponseHandler<>(n, handler, replicationResult);
+        WriteResponseHandler<Integer> writeResponseHandler = new WriteResponseHandler<>(session, commands, handler);
 
-        for (int i = 0; i < n; i++) {
-            commands[i].executeReplicaUpdateAsync(rn, replicationResult, writeResponseHandler);
+        for (int i = 0; i < session.n; i++) {
+            commands[i].executeReplicaUpdateAsync(rn, writeResponseHandler);
         }
         if (handler == null) {
             try {

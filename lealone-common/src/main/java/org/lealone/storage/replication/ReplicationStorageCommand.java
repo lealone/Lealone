@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map.Entry;
 
 import org.lealone.db.async.AsyncHandler;
@@ -28,6 +29,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
+import org.lealone.storage.replication.WriteResponseHandler.ReplicationResultHandler;
 import org.lealone.storage.replication.exceptions.ReadFailureException;
 import org.lealone.storage.replication.exceptions.ReadTimeoutException;
 import org.lealone.storage.replication.exceptions.WriteFailureException;
@@ -52,11 +54,10 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
 
     private Object executePut(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, int tries,
             AsyncHandler<AsyncResult<Object>> handler) {
-        int n = session.n;
         String rn = session.createReplicationName();
-        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(n, handler, null);
+        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(session, commands, handler);
 
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < session.n; i++) {
             ReplicaStorageCommand c = commands[i];
             c.executeReplicaPut(rn, mapName, key.slice(), value.slice(), raw, handler);
         }
@@ -115,27 +116,22 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public Object append(String mapName, ByteBuffer value, ReplicationResult replicationResult,
-            AsyncHandler<AsyncResult<Object>> handler) {
+    public Object append(String mapName, ByteBuffer value, AsyncHandler<AsyncResult<Object>> handler) {
         return executeAppend(mapName, value, 1, handler);
     }
 
     private Object executeAppend(String mapName, ByteBuffer value, int tries,
             AsyncHandler<AsyncResult<Object>> handler) {
-        int n = session.n;
         String rn = session.createReplicationName();
-        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(n, null, null);
-        ReplicationResult replicationResult = new ReplicationResult(session, commands);
+        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(session, commands, handler);
 
-        for (int i = 0; i < n; i++) {
-            commands[i].executeReplicaAppend(rn, mapName, value.slice(), replicationResult, handler);
+        for (int i = 0; i < session.n; i++) {
+            commands[i].executeReplicaAppend(rn, mapName, value.slice(), writeResponseHandler);
         }
 
         if (handler == null) {
             try {
-                Object result = writeResponseHandler.getResult(session.rpcTimeoutMillis);
-                replicationResult.validate();
-                return result;
+                return writeResponseHandler.getResult(session.rpcTimeoutMillis);
             } catch (WriteTimeoutException | WriteFailureException e) {
                 if (tries < session.maxTries) {
                     value.rewind();
@@ -157,33 +153,26 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     private LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan, int tries,
-            AsyncHandler<AsyncResult<LeafPageMovePlan>> handler) {
+            AsyncHandler<AsyncResult<LeafPageMovePlan>> topHandler) {
         int n = session.n;
-        ReplicationResult replicationResult = new ReplicationResult(session, commands) {
-            @Override
-            public Object validate(Object results) {
-                @SuppressWarnings("unchecked")
-                ArrayList<LeafPageMovePlan> plans = (ArrayList<LeafPageMovePlan>) results;
-                LeafPageMovePlan plan = getValidPlan(plans, n);
-                AsyncResult<LeafPageMovePlan> ar = new AsyncResult<>();
-                ar.setResult(plan);
-                return ar;
-            }
+        ReplicationResultHandler<LeafPageMovePlan> replicationResultHandler = results -> {
+            LeafPageMovePlan plan = getValidPlan(results, n);
+            return plan;
         };
-        WriteResponseHandler<LeafPageMovePlan> writeResponseHandler = new WriteResponseHandler<>(n, handler,
-                replicationResult);
+        WriteResponseHandler<LeafPageMovePlan> writeResponseHandler = new WriteResponseHandler<>(session, commands,
+                topHandler, replicationResultHandler);
 
         for (int i = 0; i < n; i++) {
-            commands[i].prepareMoveLeafPage(mapName, leafPageMovePlan, handler);
+            commands[i].prepareMoveLeafPage(mapName, leafPageMovePlan, writeResponseHandler);
         }
-        if (handler == null) {
+        if (topHandler == null) {
             try {
                 writeResponseHandler.await(session.rpcTimeoutMillis);
-                ArrayList<LeafPageMovePlan> plans = writeResponseHandler.getResults();
+                List<LeafPageMovePlan> plans = writeResponseHandler.getResults();
                 LeafPageMovePlan plan = getValidPlan(plans, n);
                 if (plan == null && --tries > 0) {
                     leafPageMovePlan.incrementIndex();
-                    return prepareMoveLeafPage(mapName, leafPageMovePlan, tries, handler);
+                    return prepareMoveLeafPage(mapName, leafPageMovePlan, tries, topHandler);
                 }
                 return plan;
             } catch (WriteTimeoutException | WriteFailureException e) {
@@ -195,7 +184,7 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
         }
     }
 
-    private LeafPageMovePlan getValidPlan(ArrayList<LeafPageMovePlan> plans, int n) {
+    private LeafPageMovePlan getValidPlan(List<LeafPageMovePlan> plans, int n) {
         HashMap<String, ArrayList<LeafPageMovePlan>> groupPlans = new HashMap<>(1);
         for (LeafPageMovePlan p : plans) {
             ArrayList<LeafPageMovePlan> group = groupPlans.get(p.moverHostId);

@@ -1401,6 +1401,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
     @Override
     public void replicationCommit(long validKey, boolean autoCommit) {
+        // 这段代码已经废弃
         if (validKey != -1) {
             if (transaction != null) {
                 transaction.replicationPrepareCommit(validKey);
@@ -1429,11 +1430,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         if (autoCommit) {
             commit();
         }
-    }
-
-    public void copyLastReplicationStatusTo(ServerSession newSession) {
-        newSession.lastRow = lastRow;
-        newSession.lastIndex = lastIndex;
     }
 
     private void clean() {

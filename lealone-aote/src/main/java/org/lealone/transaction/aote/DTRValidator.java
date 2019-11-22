@@ -189,6 +189,10 @@ class DTRValidator extends Thread {
         return isValid;
     }
 
+    static boolean handleReplicationConflict(Object key, String replicationName, Validator validator) {
+        return validateReplication(replicationName, validator);
+    }
+
     private DTRValidator() {
         super(DTRValidator.class.getSimpleName());
         setDaemon(true);

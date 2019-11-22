@@ -22,13 +22,11 @@ import java.nio.ByteBuffer;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.value.ValueLong;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.replication.ReplicaStorageCommand;
-import org.lealone.storage.replication.ReplicationResult;
 import org.lealone.transaction.Transaction;
 
 public class ServerStorageCommand implements ReplicaStorageCommand {
@@ -51,8 +49,8 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
-            AsyncHandler<AsyncResult<Object>> handler) {
+    public Object executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
+            boolean raw, AsyncHandler<AsyncResult<Object>> handler) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         if (raw) {
@@ -77,18 +75,16 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object append(String mapName, ByteBuffer value, ReplicationResult replicationResult,
-            AsyncHandler<AsyncResult<Object>> handler) {
-        return executeReplicaAppend(null, mapName, value, replicationResult, handler);
+    public Object append(String mapName, ByteBuffer value, AsyncHandler<AsyncResult<Object>> handler) {
+        return executeReplicaAppend(null, mapName, value, handler);
     }
 
     @Override
     public Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value,
-            ReplicationResult replicationResult, AsyncHandler<AsyncResult<Object>> handler) {
+            AsyncHandler<AsyncResult<Object>> handler) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.append(map.getValueType().read(value));
-        replicationResult.addResult(this, ((ValueLong) result).getLong());
         Transaction parentTransaction = session.getParentTransaction();
         if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
             parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
