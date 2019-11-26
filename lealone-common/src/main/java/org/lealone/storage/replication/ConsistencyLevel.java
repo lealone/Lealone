@@ -18,6 +18,7 @@
 package org.lealone.storage.replication;
 
 public enum ConsistencyLevel {
+    ALL(0),
     QUORUM(1),
     LOCAL_QUORUM(2, true),
     EACH_QUORUM(3);
@@ -36,5 +37,24 @@ public enum ConsistencyLevel {
 
     public boolean isDatacenterLocal() {
         return isDCLocal;
+    }
+
+    public static ConsistencyLevel getLevel(String code) {
+        return getLevel(Integer.parseInt(code));
+    }
+
+    public static ConsistencyLevel getLevel(int code) {
+        switch (code) {
+        case 0:
+            return ConsistencyLevel.ALL;
+        case 1:
+            return ConsistencyLevel.QUORUM;
+        case 2:
+            return ConsistencyLevel.LOCAL_QUORUM;
+        case 3:
+            return ConsistencyLevel.EACH_QUORUM;
+        default:
+            return ConsistencyLevel.ALL;
+        }
     }
 }

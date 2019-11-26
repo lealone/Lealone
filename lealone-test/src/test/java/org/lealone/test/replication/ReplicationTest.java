@@ -90,15 +90,17 @@ public class ReplicationTest extends SqlTestBase {
         protected void test() throws Exception {
             stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationTest");
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int primary key, f2 long)");
-            stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
 
             // 启动两个新事务更新同一行，可以用来测试Replication冲突的场景
-            Thread t1 = new Thread(new CrudTest());
+            Thread t1 = new Thread(new InsertTest());
             Thread t2 = new Thread(new CrudTest());
+            Thread t3 = new Thread(new QueryTest());
             t1.start();
             t2.start();
+            t3.start();
             t1.join();
             t2.join();
+            t3.join();
 
             ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM ReplicationTest");
             // assertTrue(rs.next());
@@ -106,6 +108,39 @@ public class ReplicationTest extends SqlTestBase {
             // assertEquals(20, rs.getLong(2));
             rs.close();
             // stmt.executeUpdate("DELETE FROM ReplicationTest WHERE f1 = 1");
+        }
+    }
+
+    private static class InsertTest extends SqlTestBase implements Runnable {
+        public InsertTest() {
+            super(REPLICATION_DB_NAME);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
+        }
+
+        @Override
+        public void run() {
+            runTest();
+        }
+    }
+
+    private static class QueryTest extends SqlTestBase implements Runnable {
+        public QueryTest() {
+            super(REPLICATION_DB_NAME);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            sql = "select * from ReplicationTest where f1 = 1";
+            printResultSet();
+        }
+
+        @Override
+        public void run() {
+            runTest();
         }
     }
 

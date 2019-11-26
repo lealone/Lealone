@@ -29,6 +29,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Constants;
 import org.lealone.net.NetNode;
+import org.lealone.storage.replication.ConsistencyLevel;
 import org.lealone.transaction.Transaction.Validator;
 
 //效验分布式事务和复制是否成功
@@ -172,21 +173,33 @@ class DTRValidator extends Thread {
     }
 
     static boolean validateReplication(String replicationName, Validator validator) {
-        boolean isValid = true;
+        int validNodes = 0;
         String[] names = replicationName.split(",");
         NetNode localHostAndPort = NetNode.getLocalTcpNode();
-        // 从1开始，第一个不是节点名
-        for (int i = 1, size = names.length; i < size && isValid; i++) {
+        ConsistencyLevel consistencyLevel = ConsistencyLevel.getLevel(names[1]);
+        int size;
+        if (consistencyLevel == ConsistencyLevel.ALL)
+            size = names.length - 2;
+        else
+            size = (names.length - 2) / 2 + 1;
+
+        // 从2开始，前两个不是节点名
+        for (int i = 2, length = names.length; i < length; i++) {
             String name = names[i];
             if (name.indexOf(':') == -1) {
                 name += ":" + Constants.DEFAULT_TCP_PORT;
             }
-
-            if (localHostAndPort.equals(NetNode.createTCP(name)))
-                continue;
-            isValid = isValid && validator.validate(name, "replication:" + replicationName);
+            if (localHostAndPort.equals(NetNode.createTCP(name))) {
+                if (DTRValidator.containsReplication(replicationName)) {
+                    if (++validNodes >= size)
+                        return true;
+                }
+            } else if (validator.validate(name, "replication:" + replicationName)) {
+                if (++validNodes >= size)
+                    return true;
+            }
         }
-        return isValid;
+        return false;
     }
 
     static boolean handleReplicationConflict(Object key, String replicationName, Validator validator) {

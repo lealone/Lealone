@@ -81,7 +81,7 @@ public class Scheduler extends Thread
         long last;
 
         SessionInfo(TcpServerConnection conn, Session session, int sessionId, int sessionTimeout) {
-            scheduler = ScheduleService.getScheduler();
+            scheduler = ScheduleService.getSchedulerForSession();
             preparedCommands = new ConcurrentLinkedQueue<>();
             this.conn = conn;
             this.session = session;

@@ -30,6 +30,7 @@ public class ScheduleService {
 
     private static Scheduler[] schedulers;
     private static final AtomicInteger index = new AtomicInteger(0);
+    private static final AtomicInteger indexForSession = new AtomicInteger(0);
 
     static void init(Map<String, String> config) {
         int schedulerCount;
@@ -71,5 +72,9 @@ public class ScheduleService {
 
     static Scheduler getScheduler() {
         return schedulers[index.getAndIncrement() % schedulers.length];
+    }
+
+    static Scheduler getSchedulerForSession() {
+        return schedulers[indexForSession.getAndIncrement() % schedulers.length];
     }
 }

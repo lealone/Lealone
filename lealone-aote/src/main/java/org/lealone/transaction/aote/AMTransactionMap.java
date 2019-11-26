@@ -631,6 +631,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     if (old.getValue() == null) {
                         if (tryUpdate(key, value, old) == Transaction.OPERATION_COMPLETE) {
                             listener.operationComplete();
+                            afterAddComplete();
                         } else {
                             listener.operationUndo();
                         }
@@ -642,6 +643,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     }
                 } else {
                     listener.operationComplete();
+                    afterAddComplete();
                 }
             } else {
                 r.setUndone(true);
@@ -649,6 +651,9 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             }
         };
         map.putIfAbsent(key, ref, handler);
+    }
+
+    protected void afterAddComplete() {
     }
 
     @Override

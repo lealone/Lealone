@@ -133,6 +133,8 @@ public class AOTransaction extends AMTransaction {
     public void commit() {
         if (local) {
             commitLocal();
+            if (globalReplicationName != null)
+                DTRValidator.removeReplication(globalReplicationName);
         } else {
             commit(null);
         }

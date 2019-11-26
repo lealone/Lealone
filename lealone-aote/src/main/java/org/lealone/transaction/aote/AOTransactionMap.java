@@ -70,6 +70,12 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
     }
 
     @Override
+    protected void afterAddComplete() {
+        if (transaction.globalReplicationName != null)
+            DTRValidator.addReplication(transaction.globalReplicationName);
+    }
+
+    @Override
     protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
         long tid = oldTransactionalValue.getTid();
         if (tid != 0 && tid != transaction.transactionId && tid % 2 == 1) {

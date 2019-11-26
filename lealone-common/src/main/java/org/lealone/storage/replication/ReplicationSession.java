@@ -44,6 +44,8 @@ public class ReplicationSession extends DelegatedSession {
     int maxTries = 5;
     long rpcTimeoutMillis;
 
+    private ConsistencyLevel consistencyLevel = ConsistencyLevel.ALL;
+
     public ReplicationSession(Session[] sessions) {
         this(sessions, null);
     }
@@ -96,10 +98,18 @@ public class ReplicationSession extends DelegatedSession {
         this.rpcTimeoutMillis = rpcTimeoutMillis;
     }
 
+    public ConsistencyLevel getConsistencyLevel() {
+        return consistencyLevel;
+    }
+
+    public void setConsistencyLevel(ConsistencyLevel consistencyLevel) {
+        this.consistencyLevel = consistencyLevel;
+    }
+
     String createReplicationName() {
         StringBuilder n = new StringBuilder(hostName);
         n.append("_").append(System.nanoTime() / 1000).append("_").append(counter.getAndIncrement());
-        n.append(',').append(serversStr);
+        n.append(',').append(consistencyLevel.code).append(',').append(serversStr);
         String replicationName = n.toString();
         for (Session s : sessions) {
             s.setReplicationName(replicationName);
