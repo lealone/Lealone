@@ -563,6 +563,24 @@ public class TcpServerConnection extends TransferConnection {
             session.rollback();
             break;
         }
+        case Session.COMMAND_REPLICATION_CHECK_CONFLICT: {
+            String mapName = in.readString();
+            ByteBuffer key = in.readByteBuffer();
+            String replicationName = in.readString();
+            String ret = session.checkReplicationConflict(mapName, key, replicationName);
+            TransferOutputStream out = createTransferOutputStream(session);
+            writeResponseHeader(out, session, packetId);
+            out.writeString(ret);
+            out.flush();
+            break;
+        }
+        case Session.COMMAND_REPLICATION_HANDLE_CONFLICT: {
+            String mapName = in.readString();
+            ByteBuffer key = in.readByteBuffer();
+            String replicationName = in.readString();
+            session.handleReplicationConflict(mapName, key, replicationName);
+            break;
+        }
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT:
         case Session.COMMAND_STORAGE_PUT:
         case Session.COMMAND_STORAGE_REPLICATION_PUT: {

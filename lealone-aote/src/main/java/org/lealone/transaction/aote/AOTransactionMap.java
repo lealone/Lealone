@@ -17,6 +17,9 @@
  */
 package org.lealone.transaction.aote;
 
+import java.nio.ByteBuffer;
+
+import org.lealone.db.DataBuffer;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
@@ -104,7 +107,14 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
     protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
             Transaction.Listener listener) {
         if (transaction.globalReplicationName != null) {
-            if (DTRValidator.handleReplicationConflict(key, transaction.globalReplicationName, transaction.validator)) {
+            ByteBuffer keyBuff;
+            try (DataBuffer buff = DataBuffer.create()) {
+                getKeyType().write(buff, key);
+                keyBuff = buff.getAndCopyBuffer();
+            }
+            String candidateReplicationName = DTRValidator.handleReplicationConflict(getName(), keyBuff,
+                    transaction.globalReplicationName, transaction.validator);
+            if (candidateReplicationName.equals(transaction.globalReplicationName)) {
                 transaction.transactionEngine.getTransaction(oldTransactionalValue.getTid()).getUndoLog().undo();
                 oldTransactionalValue.rollback();
                 return Transaction.OPERATION_NEED_RETRY;

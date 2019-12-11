@@ -6,6 +6,7 @@
 package org.lealone.client;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.sql.Connection;
 
 import org.lealone.common.exceptions.DbException;
@@ -440,6 +441,37 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         } catch (Exception e) {
             handleException(e);
             return false;
+        }
+    }
+
+    @Override
+    public String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
+        try {
+            TransferOutputStream out = newOut();
+            int packetId = getNextId();
+            out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_CHECK_CONFLICT);
+            out.writeString(mapName).writeByteBuffer(key).writeString(replicationName);
+            return out.flushAndAwait(packetId, new AsyncCallback<String>() {
+                @Override
+                public void runInternal(TransferInputStream in) throws Exception {
+                    setResult(in.readString());
+                }
+            });
+        } catch (Exception e) {
+            handleException(e);
+            return null;
+        }
+    }
+
+    @Override
+    public void handleReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
+        try {
+            TransferOutputStream out = newOut();
+            int packetId = getNextId();
+            out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_HANDLE_CONFLICT);
+            out.writeString(mapName).writeByteBuffer(key).writeString(replicationName).flush();
+        } catch (Exception e) {
+            handleException(e);
         }
     }
 

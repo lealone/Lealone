@@ -17,6 +17,7 @@
  */
 package org.lealone.transaction;
 
+import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -156,6 +157,15 @@ public interface Transaction {
         boolean validate(String localTransactionName);
 
         boolean validate(String hostAndPort, String localTransactionName);
+
+        default String checkReplicationConflict(String mapName, ByteBuffer key, String hostAndPort,
+                String replicationName) {
+            return null;
+        }
+
+        default void handleReplicationConflict(String mapName, ByteBuffer key, String hostAndPort,
+                String replicationName) {
+        }
     }
 
     interface Listener {

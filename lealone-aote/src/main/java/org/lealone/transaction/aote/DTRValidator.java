@@ -17,13 +17,16 @@
  */
 package org.lealone.transaction.aote;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -202,8 +205,57 @@ class DTRValidator extends Thread {
         return false;
     }
 
-    static boolean handleReplicationConflict(Object key, String replicationName, Validator validator) {
-        return validateReplication(replicationName, validator);
+    static String handleReplicationConflict(String mapName, ByteBuffer key, String replicationName,
+            Validator validator) {
+        // 第一步: 获取各节点的锁占用情况
+        String[] names = replicationName.split(",");
+        boolean[] local = new boolean[names.length];
+        NetNode localHostAndPort = NetNode.getLocalTcpNode();
+        int size = names.length - 2;
+        String[] replicationNames = new String[size];
+        int replicationNameIndex = 0;
+
+        // 从2开始，前两个不是节点名
+        for (int i = 2, length = names.length; i < length; i++) {
+            String name = names[i];
+            if (name.indexOf(':') == -1) {
+                name += ":" + Constants.DEFAULT_TCP_PORT;
+                names[i] = name;
+            }
+            if (localHostAndPort.equals(NetNode.createTCP(name))) {
+                replicationNames[replicationNameIndex++] = replicationName;
+                local[i] = true;
+            } else {
+                replicationNames[replicationNameIndex++] = validator.checkReplicationConflict(mapName, key, name,
+                        replicationName);
+            }
+        }
+        // 第二步: 分析锁冲突(因为是基于轻量级锁来实现复制的，锁冲突也就意味着复制发生了冲突)
+        // 1. 如果客户端C拿到的行锁数>=2，保留C，撤销其他的
+        // 2. 如果没有一个客户端拿到的行锁数>=2，那么按复制名的自然序保留排在最前面的那个，撤销之后的
+        int quorum = size / 2 + 1;
+        String candidateReplicationName = null;
+        TreeMap<String, AtomicInteger> map = new TreeMap<>();
+        for (String rn : replicationNames) {
+            AtomicInteger count = map.get(rn);
+            if (count == null) {
+                count = new AtomicInteger(0);
+                map.put(rn, count);
+            }
+            if (count.incrementAndGet() >= quorum)
+                candidateReplicationName = rn;
+        }
+        if (candidateReplicationName == null)
+            candidateReplicationName = map.firstKey();
+
+        // 第三步: 处理锁冲突
+        for (int i = 2, length = names.length; i < length; i++) {
+            String name = names[i];
+            if (!local[i]) {
+                validator.handleReplicationConflict(mapName, key, name, replicationName);
+            }
+        }
+        return candidateReplicationName;
     }
 
     private DTRValidator() {

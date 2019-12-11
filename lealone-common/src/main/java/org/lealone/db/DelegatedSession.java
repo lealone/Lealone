@@ -192,6 +192,16 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
+        return session.checkReplicationConflict(mapName, key, replicationName);
+    }
+
+    @Override
+    public void handleReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
+        session.handleReplicationConflict(mapName, key, replicationName);
+    }
+
+    @Override
     public void commit(String allLocalTransactionNames) {
         session.commit(allLocalTransactionNames);
     }

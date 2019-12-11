@@ -43,6 +43,7 @@ import org.lealone.storage.replication.ReplicaSQLCommand;
 import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
+import org.lealone.transaction.TransactionMap;
 
 /**
  * A session represents an embedded database connection. When using the server
@@ -1293,6 +1294,62 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             // 不参与当前事务，所以不用当成当前session的嵌套session
             s = SessionPool.getSession(this, url, true);
             return s.validateTransaction(localTransactionName);
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        } finally {
+            SessionPool.release(s);
+        }
+    }
+
+    @Override
+    public String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
+        TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(mapName);
+        String ret;
+        if (map.tryLock(map.getKeyType().read(key))) {
+            transaction.setGlobalReplicationName(replicationName);
+            ret = replicationName;
+        } else {
+            ret = transaction.getGlobalReplicationName();
+        }
+        return ret;
+    }
+
+    @Override
+    public String checkReplicationConflict(String mapName, ByteBuffer key, String hostAndPort, String replicationName) {
+        Session s = null;
+        try {
+            String dbName = getDatabase().getShortName();
+            String url = createURL(dbName, hostAndPort);
+            // 不参与当前事务，所以不用当成当前session的嵌套session
+            s = SessionPool.getSession(this, url, true);
+            return s.checkReplicationConflict(mapName, key, replicationName);
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        } finally {
+            SessionPool.release(s);
+        }
+    }
+
+    @Override
+    public void handleReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
+        if (!transaction.getGlobalReplicationName().equals(replicationName)) {
+            transaction.rollbackToSavepoint(transaction.getSavepointId() - 1);
+            TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(mapName);
+            if (map.tryLock(map.getKeyType().read(key))) {
+                transaction.setGlobalReplicationName(replicationName);
+            }
+        }
+    }
+
+    @Override
+    public void handleReplicationConflict(String mapName, ByteBuffer key, String hostAndPort, String replicationName) {
+        Session s = null;
+        try {
+            String dbName = getDatabase().getShortName();
+            String url = createURL(dbName, hostAndPort);
+            // 不参与当前事务，所以不用当成当前session的嵌套session
+            s = SessionPool.getSession(this, url, true);
+            s.handleReplicationConflict(mapName, key, replicationName);
         } catch (Exception e) {
             throw DbException.convert(e);
         } finally {

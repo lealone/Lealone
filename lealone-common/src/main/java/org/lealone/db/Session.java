@@ -57,6 +57,8 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_REPLICATION_PREPARED_UPDATE = 81;
     public static final int COMMAND_REPLICATION_COMMIT = 82;
     public static final int COMMAND_REPLICATION_ROLLBACK = 83;
+    public static final int COMMAND_REPLICATION_CHECK_CONFLICT = 84;
+    public static final int COMMAND_REPLICATION_HANDLE_CONFLICT = 85;
 
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_QUERY = 100;
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY = 101;
@@ -194,6 +196,10 @@ public interface Session extends Closeable, Transaction.Participant {
     void setRoot(boolean isRoot);
 
     boolean validateTransaction(String localTransactionName);
+
+    String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName);
+
+    void handleReplicationConflict(String mapName, ByteBuffer key, String replicationName);
 
     void commit(String allLocalTransactionNames);
 
