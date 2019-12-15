@@ -17,6 +17,7 @@
  */
 package org.lealone.transaction.aote;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map.Entry;
@@ -774,5 +775,20 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Object getTransactionalValue(K key) {
         return map.get(key);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public String checkReplicationConflict(ByteBuffer key, String replicationName) {
+        String ret;
+        K k = (K) getKeyType().read(key);
+        TransactionalValue tv = (TransactionalValue) getTransactionalValue(k);
+        if (tryLock(k, tv)) {
+            transaction.setGlobalReplicationName(replicationName);
+            ret = replicationName;
+        } else {
+            ret = tv.getGlobalReplicationName();
+        }
+        return ret;
     }
 }

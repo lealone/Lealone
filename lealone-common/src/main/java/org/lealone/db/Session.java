@@ -292,4 +292,6 @@ public interface Session extends Closeable, Transaction.Participant {
     default int getLockTimeout() {
         return Integer.MAX_VALUE;
     }
+
+    String getLocalHostAndPort();
 }

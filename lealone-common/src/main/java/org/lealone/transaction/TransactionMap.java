@@ -18,6 +18,7 @@
  */
 package org.lealone.transaction;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
@@ -121,4 +122,8 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     public Object getTransactionalValue(K key);
 
     public int addWaitingTransaction(Object key, Object oldTransactionalValue, Transaction.Listener listener);
+
+    public default String checkReplicationConflict(ByteBuffer key, String replicationName) {
+        return null;
+    }
 }

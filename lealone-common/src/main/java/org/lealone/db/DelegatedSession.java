@@ -370,4 +370,9 @@ public class DelegatedSession implements Session {
     public void cancelStatement(int statementId) {
         session.cancelStatement(statementId);
     }
+
+    @Override
+    public String getLocalHostAndPort() {
+        return session.getLocalHostAndPort();
+    }
 }

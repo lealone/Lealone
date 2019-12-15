@@ -6,6 +6,9 @@
 package org.lealone.client;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.sql.Connection;
 
@@ -520,5 +523,25 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public int getNetworkTimeout() {
         return ci.getNetworkTimeout();
+    }
+
+    @Override
+    public String getLocalHostAndPort() {
+        try {
+            SocketAddress sa = tcpConnection.getWritableChannel().getSocketChannel().getLocalAddress();
+            String host;
+            int port;
+            if (sa instanceof InetSocketAddress) {
+                InetSocketAddress address = (InetSocketAddress) sa;
+                host = address.getHostString();
+                port = address.getPort();
+            } else {
+                host = InetAddress.getLocalHost().getHostAddress();
+                port = 0;
+            }
+            return host + ":" + port;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

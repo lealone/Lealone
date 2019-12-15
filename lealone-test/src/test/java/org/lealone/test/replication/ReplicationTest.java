@@ -39,7 +39,7 @@ public class ReplicationTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         sql = "CREATE DATABASE IF NOT EXISTS " + REPLICATION_DB_NAME
-                + " RUN MODE replication  PARAMETERS (replication_factor: 2)";
+                + " RUN MODE replication  PARAMETERS (replication_factor: 3)";
         stmt.executeUpdate(sql);
 
         // new AsyncReplicationTest().runTest();
@@ -93,14 +93,17 @@ public class ReplicationTest extends SqlTestBase {
 
             // 启动两个新事务更新同一行，可以用来测试Replication冲突的场景
             Thread t1 = new Thread(new InsertTest());
-            Thread t2 = new Thread(new CrudTest());
-            Thread t3 = new Thread(new QueryTest());
+            Thread t2 = new Thread(new UpdateTest(200));
+            Thread t3 = new Thread(new UpdateTest(300));
+            Thread t4 = new Thread(new UpdateTest(400));
             t1.start();
             t2.start();
             t3.start();
+            t4.start();
             t1.join();
             t2.join();
             t3.join();
+            t4.join();
 
             ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM ReplicationTest");
             // assertTrue(rs.next());
@@ -111,50 +114,39 @@ public class ReplicationTest extends SqlTestBase {
         }
     }
 
-    private static class InsertTest extends SqlTestBase implements Runnable {
-        public InsertTest() {
-            super(REPLICATION_DB_NAME);
-        }
-
+    static class InsertTest extends CrudTest {
         @Override
         protected void test() throws Exception {
             stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
         }
-
-        @Override
-        public void run() {
-            runTest();
-        }
     }
 
-    private static class QueryTest extends SqlTestBase implements Runnable {
-        public QueryTest() {
-            super(REPLICATION_DB_NAME);
-        }
-
+    static class QueryTest extends CrudTest {
         @Override
         protected void test() throws Exception {
             sql = "select * from ReplicationTest where f1 = 1";
             printResultSet();
         }
-
-        @Override
-        public void run() {
-            runTest();
-        }
     }
 
-    private static class CrudTest extends SqlTestBase implements Runnable {
-        public CrudTest() {
-            super(REPLICATION_DB_NAME);
+    static class UpdateTest extends CrudTest {
+        int value;
+
+        public UpdateTest(int v) {
+            value = v;
         }
 
         @Override
         protected void test() throws Exception {
             // conn.setAutoCommit(false);
-            stmt.executeUpdate("update ReplicationTest set f2 = f2+20 where f1 = 1");
+            stmt.executeUpdate("update ReplicationTest set f2 = " + value + " where f1 = 1");
             // conn.commit();
+        }
+    }
 
+    static class SelectTest extends CrudTest {
+        @Override
+        protected void test() throws Exception {
             sql = "select * from ReplicationTest where _rowid_=1";
             printResultSet();
             sql = "select * from ReplicationTest where _rowid_=1";
@@ -163,6 +155,12 @@ public class ReplicationTest extends SqlTestBase {
             printResultSet();
             sql = "select * from ReplicationTest where _rowid_=1";
             printResultSet();
+        }
+    }
+
+    static abstract class CrudTest extends SqlTestBase implements Runnable {
+        public CrudTest() {
+            super(REPLICATION_DB_NAME);
         }
 
         @Override

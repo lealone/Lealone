@@ -31,6 +31,7 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
+import org.lealone.net.NetNode;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -1276,7 +1277,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, a[0], a[1]);
             // 不参与当前事务，所以不用当成当前session的嵌套session
-            s = SessionPool.getSession(this, url, true);
+            s = SessionPool.getSession(this, url);
             return s.validateTransaction(localTransactionName);
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -1292,7 +1293,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, hostAndPort);
             // 不参与当前事务，所以不用当成当前session的嵌套session
-            s = SessionPool.getSession(this, url, true);
+            s = SessionPool.getSession(this, url);
             return s.validateTransaction(localTransactionName);
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -1304,14 +1305,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     @Override
     public String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
         TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(mapName);
-        String ret;
-        if (map.tryLock(map.getKeyType().read(key))) {
-            transaction.setGlobalReplicationName(replicationName);
-            ret = replicationName;
-        } else {
-            ret = transaction.getGlobalReplicationName();
-        }
-        return ret;
+        return map.checkReplicationConflict(key, replicationName);
     }
 
     @Override
@@ -1321,7 +1315,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, hostAndPort);
             // 不参与当前事务，所以不用当成当前session的嵌套session
-            s = SessionPool.getSession(this, url, true);
+            s = SessionPool.getSession(this, url);
             return s.checkReplicationConflict(mapName, key, replicationName);
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -1348,7 +1342,7 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
             String dbName = getDatabase().getShortName();
             String url = createURL(dbName, hostAndPort);
             // 不参与当前事务，所以不用当成当前session的嵌套session
-            s = SessionPool.getSession(this, url, true);
+            s = SessionPool.getSession(this, url);
             s.handleReplicationConflict(mapName, key, replicationName);
         } catch (Exception e) {
             throw DbException.convert(e);
@@ -1520,5 +1514,10 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     public void cancelStatement(int statementId) {
         if (currentCommand != null && currentCommand.getId() == statementId)
             currentCommand.cancel();
+    }
+
+    @Override
+    public String getLocalHostAndPort() {
+        return NetNode.getLocalTcpHostAndPort();
     }
 }

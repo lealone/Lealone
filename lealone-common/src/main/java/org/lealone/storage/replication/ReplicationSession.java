@@ -17,8 +17,6 @@
  */
 package org.lealone.storage.replication;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -34,17 +32,17 @@ public class ReplicationSession extends DelegatedSession {
     private final String[] servers;
     private final String serversStr;
 
+    private final String replicationNamePrefix;
+    private final AtomicInteger counter = new AtomicInteger(1);
+
+    private ConsistencyLevel consistencyLevel = ConsistencyLevel.ALL;
+
     final int n; // 复制集群节点总个数
     final int w; // 写成功的最少节点个数
     final int r; // 读成功的最少节点个数
 
-    private final String hostName;
-    private final AtomicInteger counter = new AtomicInteger(1);
-
     int maxTries = 5;
     long rpcTimeoutMillis;
-
-    private ConsistencyLevel consistencyLevel = ConsistencyLevel.ALL;
 
     public ReplicationSession(Session[] sessions) {
         this(sessions, null);
@@ -76,18 +74,13 @@ public class ReplicationSession extends DelegatedSession {
             servers[i] = sessions[i].getConnectionInfo().getServers();
             buff.append(servers[i]);
         }
-
         serversStr = buff.toString();
 
-        try {
-            String hostName = InetAddress.getLocalHost().getHostAddress();
-            if (replicationNodes != null) {
-                hostName = replicationNodes + "@" + hostName;
-            }
-            this.hostName = hostName;
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e);
+        String replicationNamePrefix = getLocalHostAndPort() + "_" + getSessionId() + "_";
+        if (replicationNodes != null) {
+            replicationNamePrefix = replicationNodes + "@" + replicationNamePrefix;
         }
+        this.replicationNamePrefix = replicationNamePrefix;
     }
 
     public void setMaxTries(int maxTries) {
@@ -106,9 +99,10 @@ public class ReplicationSession extends DelegatedSession {
         this.consistencyLevel = consistencyLevel;
     }
 
+    // 复制名的格式: hostName:port_sessionId_time_counter,consistencyLevel,serversStr
     String createReplicationName() {
-        StringBuilder n = new StringBuilder(hostName);
-        n.append("_").append(System.nanoTime() / 1000).append("_").append(counter.getAndIncrement());
+        StringBuilder n = new StringBuilder(replicationNamePrefix);
+        n.append(System.nanoTime() / 1000).append("_").append(counter.getAndIncrement());
         n.append(',').append(consistencyLevel.code).append(',').append(serversStr);
         String replicationName = n.toString();
         for (Session s : sessions) {

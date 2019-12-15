@@ -46,6 +46,10 @@ public class SessionPool {
         return queue;
     }
 
+    public static Session getSession(ServerSession originalSession, String url) {
+        return getSession(originalSession, url, true);
+    }
+
     public static Session getSession(ServerSession originalSession, String url, boolean remote) {
         Session session = remote ? getQueue(url).poll() : null; // 在本地创建session时不用从缓存队列中找
 
@@ -80,6 +84,7 @@ public class SessionPool {
             queue.offer(session);
     }
 
+    @Deprecated
     public static Command getCommand(ServerSession originalSession, PreparedSQLStatement prepared, //
             String url, String sql) throws Exception {
         Session session = originalSession.getSession(url);
@@ -119,5 +124,4 @@ public class SessionPool {
 
         return command;
     }
-
 }
