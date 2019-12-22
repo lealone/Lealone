@@ -32,8 +32,8 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.server.protocol.InitPacket;
-import org.lealone.server.protocol.InitPacketAck;
+import org.lealone.server.protocol.session.SessionInit;
+import org.lealone.server.protocol.session.SessionInitAck;
 
 /**
  * An async tcp client connection.
@@ -132,8 +132,8 @@ public class TcpClientConnection extends TransferConnection {
     public void writeInitPacket2(final Session session) throws Exception {
         checkClosed();
         ConnectionInfo ci = session.getConnectionInfo();
-        InitPacket message = new InitPacket(ci);
-        InitPacketAck ack = session.sendSync(message);
+        SessionInit packet = new SessionInit(ci);
+        SessionInitAck ack = session.sendSync(packet);
         session.setProtocolVersion(ack.clientVersion);
         session.setAutoCommit(ack.autoCommit);
         session.setTargetNodes(ack.targetNodes);
@@ -144,8 +144,8 @@ public class TcpClientConnection extends TransferConnection {
     public void writeInitPacketAsync(final Session session, AsyncHandler<AsyncResult<Session>> asyncHandler) {
         checkClosed();
         ConnectionInfo ci = session.getConnectionInfo();
-        InitPacket message = new InitPacket(ci);
-        session.<InitPacketAck> sendAsync(message, ack -> {
+        SessionInit packet = new SessionInit(ci);
+        session.<SessionInitAck> sendAsync(packet, ack -> {
             session.setProtocolVersion(ack.clientVersion);
             session.setAutoCommit(ack.autoCommit);
             session.setTargetNodes(ack.targetNodes);

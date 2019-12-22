@@ -38,6 +38,11 @@ import org.lealone.server.protocol.result.ResultClose;
 import org.lealone.server.protocol.result.ResultFetchRows;
 import org.lealone.server.protocol.result.ResultFetchRowsAck;
 import org.lealone.server.protocol.result.ResultReset;
+import org.lealone.server.protocol.session.SessionCancelStatement;
+import org.lealone.server.protocol.session.SessionClose;
+import org.lealone.server.protocol.session.SessionInit;
+import org.lealone.server.protocol.session.SessionInitAck;
+import org.lealone.server.protocol.session.SessionSetAutoCommit;
 import org.lealone.server.protocol.storage.StorageAppend;
 import org.lealone.server.protocol.storage.StorageAppendAck;
 import org.lealone.server.protocol.storage.StorageGet;
@@ -69,6 +74,12 @@ public class PacketDecoders {
     }
 
     static {
+        register(PacketType.SESSION_INIT, SessionInit.decoder);
+        register(PacketType.SESSION_INIT_ACK, SessionInitAck.decoder);
+        register(PacketType.SESSION_CANCEL_STATEMENT, SessionCancelStatement.decoder);
+        register(PacketType.SESSION_SET_AUTO_COMMIT, SessionSetAutoCommit.decoder);
+        register(PacketType.SESSION_CLOSE, SessionClose.decoder);
+
         register(PacketType.RESULT_FETCH_ROWS, ResultFetchRows.decoder);
         register(PacketType.RESULT_FETCH_ROWS_ACK, ResultFetchRowsAck.decoder);
         register(PacketType.RESULT_CHANGE_ID, ResultChangeId.decoder);

@@ -30,4 +30,8 @@ public interface PacketHandler<P extends Packet> {
     default Packet handle(TcpServerConnection conn, ServerSession session, P packet) {
         return handle(session, packet);
     }
+
+    default Packet handle(TcpServerConnection conn, ServerSession session, int sessionId, P packet, int packetId) {
+        return handle(conn, session, packet);
+    }
 }

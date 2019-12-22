@@ -46,12 +46,12 @@ import org.lealone.server.Scheduler.SessionInfo;
 import org.lealone.server.handler.CachedInputStream;
 import org.lealone.server.handler.PacketHandler;
 import org.lealone.server.handler.PacketHandlers;
-import org.lealone.server.protocol.InitPacket;
-import org.lealone.server.protocol.InitPacketAck;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.server.protocol.result.ResultFetchRowsAck;
+import org.lealone.server.protocol.session.SessionInit;
+import org.lealone.server.protocol.session.SessionInitAck;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.PageKey;
 
@@ -132,7 +132,7 @@ public class TcpServerConnection extends TransferConnection {
 
     void readInitPacketV2(TransferInputStream in, int packetId, int sessionId) {
         try {
-            InitPacket packet = InitPacket.decoder.decode(in, 0);
+            SessionInit packet = SessionInit.decoder.decode(in, 0);
             ConnectionInfo ci = packet.ci;
             String baseDir = tcpServer.getBaseDir();
             if (baseDir == null) {
@@ -148,7 +148,7 @@ public class TcpServerConnection extends TransferConnection {
 
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, Session.STATUS_OK);
-            InitPacketAck ack = new InitPacketAck(packet.clientVersion, session.isAutoCommit(),
+            SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit(),
                     session.getTargetNodes(), session.getRunMode(), session.isInvalid());
             ack.encode(out, packet.clientVersion);
             out.flush();
@@ -215,7 +215,7 @@ public class TcpServerConnection extends TransferConnection {
         sendError(null, packetId, e);
     }
 
-    private void closeSession(int packetId, int sessionId) {
+    public void closeSession(int packetId, int sessionId) {
         SessionInfo si = getSessionInfo(sessionId);
         if (si != null) {
             closeSession(si);
@@ -498,7 +498,6 @@ public class TcpServerConnection extends TransferConnection {
     private void handleRequest(TransferInputStream in, int packetId, int packetType, SessionInfo si)
             throws IOException {
         Session session = si.session;
-        int sessionId = si.sessionId;
         switch (packetType) {
         case Session.COMMAND_PREPARE_READ_PARAMS:
         case Session.COMMAND_PREPARE: {
@@ -565,28 +564,6 @@ public class TcpServerConnection extends TransferConnection {
             }
             break;
         }
-        case Session.SESSION_SET_AUTO_COMMIT: {
-            boolean autoCommit = in.readBoolean();
-            session.setAutoCommit(autoCommit);
-            TransferOutputStream out = createTransferOutputStream(session);
-            out.writeResponseHeader(packetId, Session.STATUS_OK).flush();
-            break;
-        }
-        case Session.SESSION_CLOSE: {
-            closeSession(packetId, sessionId);
-            break;
-        }
-        case Session.SESSION_CANCEL_STATEMENT: {
-            int statementId = in.readInt();
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.remove(statementId, false);
-            if (command != null) {
-                command.cancel();
-                command.close();
-            } else {
-                session.cancelStatement(statementId);
-            }
-            break;
-        }
         default:
             handleOtherRequest(in, packetId, packetType, si);
         }
@@ -601,7 +578,7 @@ public class TcpServerConnection extends TransferConnection {
         @SuppressWarnings("unchecked")
         PacketHandler<Packet> handler = (PacketHandler<Packet>) PacketHandlers.getHandler(packetType);
         if (handler != null) {
-            Packet ack = handler.handle(this, (ServerSession) session, packet);
+            Packet ack = handler.handle(this, (ServerSession) session, si.sessionId, packet, packetId);
             if (ack != null) {
                 TransferOutputStream out = createTransferOutputStream(session);
                 writeResponseHeader(out, session, packetId);

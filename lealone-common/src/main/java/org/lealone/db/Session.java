@@ -34,9 +34,6 @@ public interface Session extends Closeable, Transaction.Participant {
     // 命令值会包含在协议包中不能随便改动，不同类型的命令值之间有意设置了间隔，用于后续加新命令
 
     public static final int SESSION_INIT = 0;
-    public static final int SESSION_CANCEL_STATEMENT = 1;
-    public static final int SESSION_SET_AUTO_COMMIT = 2;
-    public static final int SESSION_CLOSE = 3;
 
     public static final int COMMAND_QUERY = 40;
     public static final int COMMAND_UPDATE = 41;

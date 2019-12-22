@@ -5,7 +5,6 @@
  */
 package org.lealone.client;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -44,6 +43,9 @@ import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionCommit;
 import org.lealone.server.protocol.dt.DistributedTransactionRollback;
 import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
+import org.lealone.server.protocol.session.SessionCancelStatement;
+import org.lealone.server.protocol.session.SessionClose;
+import org.lealone.server.protocol.session.SessionSetAutoCommit;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -222,8 +224,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public void cancelStatement(int statementId) {
         try {
-            newOut().writeRequestHeader(Session.SESSION_CANCEL_STATEMENT).writeInt(statementId).flush();
-        } catch (IOException e) {
+            sendAsync(new SessionCancelStatement(statementId));
+        } catch (Exception e) {
             trace.debug(e, "could not cancel statement");
         }
     }
@@ -238,13 +240,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     private void setAutoCommitSend(boolean autoCommit) {
         try {
-            TransferOutputStream out = newOut();
-            int packetId = getNextId();
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            out.writeRequestHeader(packetId, Session.SESSION_SET_AUTO_COMMIT);
-            out.writeBoolean(autoCommit);
-            out.flushAndAwait(packetId);
-        } catch (IOException e) {
+            sendSync(new SessionSetAutoCommit(autoCommit));
+        } catch (Exception e) {
             handleException(e);
         }
     }
@@ -300,10 +298,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             RuntimeException closeError = null;
             synchronized (this) {
                 try {
-                    traceOperation("SESSION_CLOSE", 0);
                     // 只有当前Session有效时服务器端才持有对应的session
                     if (isValid()) {
-                        newOut().writeRequestHeader(Session.SESSION_CLOSE).flush();
+                        sendAsync(new SessionClose());
                         tcpConnection.removeSession(sessionId);
                     }
                 } catch (RuntimeException e) {

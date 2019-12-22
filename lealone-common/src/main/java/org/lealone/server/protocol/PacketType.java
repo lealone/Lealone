@@ -22,10 +22,10 @@ public enum PacketType {
     // 命令值会包含在协议包中不能随便改动，不同类型的命令值之间有意设置了间隔，用于后续加新命令
 
     SESSION_INIT(0),
-    SESSION_CANCEL_STATEMENT(1),
-    SESSION_SET_AUTO_COMMIT(2),
-    SESSION_CLOSE(3),
-    SESSION_INIT_ACK(4),
+    SESSION_INIT_ACK(1),
+    SESSION_CANCEL_STATEMENT(2),
+    SESSION_SET_AUTO_COMMIT(3),
+    SESSION_CLOSE(4),
 
     RESULT_FETCH_ROWS(20),
     RESULT_FETCH_ROWS_ACK(20),

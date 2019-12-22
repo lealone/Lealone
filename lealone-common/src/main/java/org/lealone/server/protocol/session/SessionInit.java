@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.session;
 
 import java.io.IOException;
 
@@ -25,18 +25,21 @@ import org.lealone.db.Constants;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class InitPacket implements Packet {
+public class SessionInit implements Packet {
 
     public final ConnectionInfo ci;
     public final int clientVersion;
 
-    public InitPacket(ConnectionInfo ci) {
+    public SessionInit(ConnectionInfo ci) {
         this.ci = ci;
         this.clientVersion = 0;
     }
 
-    public InitPacket(ConnectionInfo ci, int clientVersion) {
+    public SessionInit(ConnectionInfo ci, int clientVersion) {
         this.ci = ci;
         this.clientVersion = clientVersion;
     }
@@ -69,11 +72,11 @@ public class InitPacket implements Packet {
         }
     }
 
-    public static final PacketDecoder<InitPacket> decoder = new Decoder();
+    public static final PacketDecoder<SessionInit> decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<InitPacket> {
+    private static class Decoder implements PacketDecoder<SessionInit> {
         @Override
-        public InitPacket decode(NetInputStream in, int version) throws IOException {
+        public SessionInit decode(NetInputStream in, int version) throws IOException {
             int minClientVersion = in.readInt();
             if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_MIN) {
                 throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion,
@@ -90,7 +93,7 @@ public class InitPacket implements Packet {
                 clientVersion = minClientVersion;
             }
             ConnectionInfo ci = createConnectionInfo(in);
-            return new InitPacket(ci, clientVersion);
+            return new SessionInit(ci, clientVersion);
         }
 
         private ConnectionInfo createConnectionInfo(NetInputStream in) throws IOException {
