@@ -38,7 +38,6 @@ import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
-import org.lealone.db.value.Value;
 import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
@@ -53,6 +52,7 @@ import org.lealone.server.protocol.InitPacketAck;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
+import org.lealone.server.protocol.result.ResultFetchRowsAck;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.PageKey;
 
@@ -287,29 +287,6 @@ public class TcpServerConnection extends TransferConnection {
         out.writeInt(result.getNullable(i));
     }
 
-    private static void writeRow(TransferOutputStream out, Result result, int count) throws IOException {
-        try {
-            int visibleColumnCount = result.getVisibleColumnCount();
-            for (int i = 0; i < count; i++) {
-                if (result.next()) {
-                    out.writeBoolean(true);
-                    Value[] v = result.currentRow();
-                    for (int j = 0; j < visibleColumnCount; j++) {
-                        out.writeValue(v[j]);
-                    }
-                } else {
-                    out.writeBoolean(false);
-                    break;
-                }
-            }
-        } catch (Throwable e) {
-            // 如果取结果集的下一行记录时发生了异常，
-            // 结果集包必须加一个结束标记，结果集包后面跟一个异常包。
-            out.writeBoolean(false);
-            throw DbException.convert(e);
-        }
-    }
-
     private static int getStatus(Session session) {
         if (session.isClosed()) {
             return Session.STATUS_CLOSED;
@@ -423,7 +400,7 @@ public class TcpServerConnection extends TransferConnection {
             int fetch = fetchSize;
             if (rowCount != -1)
                 fetch = Math.min(rowCount, fetchSize);
-            writeRow(out, result, fetch);
+            ResultFetchRowsAck.writeRow(out, result, fetch);
             out.flush();
         } catch (Exception e) {
             sendError(session, packetId, e);
@@ -636,37 +613,6 @@ public class TcpServerConnection extends TransferConnection {
             }
             break;
         }
-        case Session.RESULT_FETCH_ROWS: {
-            int resultId = in.readInt();
-            int count = in.readInt();
-            Result result = (Result) cache.get(resultId);
-            TransferOutputStream out = createTransferOutputStream(session);
-            out.writeResponseHeader(packetId, Session.STATUS_OK);
-            writeRow(out, result, count);
-            out.flush();
-            break;
-        }
-        case Session.RESULT_RESET: {
-            int resultId = in.readInt();
-            Result result = (Result) cache.get(resultId);
-            result.reset();
-            break;
-        }
-        case Session.RESULT_CHANGE_ID: {
-            int oldId = in.readInt();
-            int newId = in.readInt();
-            AutoCloseable obj = cache.remove(oldId, false);
-            cache.put(newId, obj);
-            break;
-        }
-        case Session.RESULT_CLOSE: {
-            int resultId = in.readInt();
-            Result result = (Result) cache.remove(resultId, true);
-            if (result != null) {
-                result.close();
-            }
-            break;
-        }
         case Session.SESSION_SET_AUTO_COMMIT: {
             boolean autoCommit = in.readBoolean();
             session.setAutoCommit(autoCommit);
@@ -718,6 +664,14 @@ public class TcpServerConnection extends TransferConnection {
 
     public void addCache(Integer k, AutoCloseable v) {
         cache.put(k, v);
+    }
+
+    public AutoCloseable getCache(Integer k) {
+        return cache.get(k);
+    }
+
+    public AutoCloseable removeCache(Integer k, boolean ifAvailable) {
+        return cache.remove(k, ifAvailable);
     }
 
     public SmallLRUCache<Long, CachedInputStream> getLobs() {

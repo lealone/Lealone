@@ -28,6 +28,7 @@ public enum PacketType {
     SESSION_INIT_ACK(4),
 
     RESULT_FETCH_ROWS(20),
+    RESULT_FETCH_ROWS_ACK(20),
     RESULT_CHANGE_ID(21),
     RESULT_RESET(22),
     RESULT_CLOSE(23),

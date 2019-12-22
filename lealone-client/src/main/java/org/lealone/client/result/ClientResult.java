@@ -11,14 +11,15 @@ import java.util.ArrayList;
 import org.lealone.client.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
-import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
-import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferInputStream;
-import org.lealone.net.TransferOutputStream;
+import org.lealone.server.protocol.result.ResultChangeId;
+import org.lealone.server.protocol.result.ResultClose;
+import org.lealone.server.protocol.result.ResultFetchRows;
+import org.lealone.server.protocol.result.ResultFetchRowsAck;
+import org.lealone.server.protocol.result.ResultReset;
 
 /**
  * The client side part of a result set that is kept on the server.
@@ -121,10 +122,9 @@ public abstract class ClientResult implements Result {
         if (resultId > 0) {
             session.checkClosed();
             try {
-                session.traceOperation("RESULT_RESET", resultId);
-                session.newOut().writeRequestHeader(Session.RESULT_RESET).writeInt(resultId).flush();
-            } catch (IOException e) {
-                throw DbException.convertIOException(e, null);
+                session.sendAsync(new ResultReset(resultId));
+            } catch (Exception e) {
+                throw DbException.convert(e);
             }
         }
     }
@@ -155,10 +155,9 @@ public abstract class ClientResult implements Result {
         }
         try {
             if (resultId > 0) {
-                session.traceOperation("RESULT_CLOSE", resultId);
-                session.newOut().writeRequestHeader(Session.RESULT_CLOSE).writeInt(resultId).flush();
+                session.sendAsync(new ResultClose(resultId));
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             session.getTrace().error(e, "close");
         } finally {
             session = null;
@@ -166,18 +165,10 @@ public abstract class ClientResult implements Result {
     }
 
     protected void sendFetch(int fetchSize) throws IOException {
-        TransferOutputStream out = session.newOut();
-        int packetId = session.getNextId();
-        session.traceOperation("RESULT_FETCH_ROWS", resultId);
-        out.writeRequestHeader(packetId, Session.RESULT_FETCH_ROWS).writeInt(resultId).writeInt(fetchSize);
         // 释放buffer
         in.closeInputStream();
-        in = out.flushAndAwait(packetId, new AsyncCallback<TransferInputStream>() {
-            @Override
-            public void runInternal(NetInputStream in) throws Exception {
-                setResult((TransferInputStream) in);
-            }
-        });
+        ResultFetchRowsAck ack = session.sendSync(new ResultFetchRows(resultId, fetchSize));
+        in = (TransferInputStream) ack.in;
     }
 
     @Override
@@ -194,13 +185,11 @@ public abstract class ClientResult implements Result {
             if (resultId > 0 && resultId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS / 2) {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
-                session.traceOperation("CHANGE_ID", resultId);
-                session.newOut().writeRequestHeader(Session.RESULT_CHANGE_ID).writeInt(resultId).writeInt(newId)
-                        .flush();
+                session.sendAsync(new ResultChangeId(resultId, newId));
                 resultId = newId;
             }
-        } catch (IOException e) {
-            throw DbException.convertIOException(e, null);
+        } catch (Exception e) {
+            throw DbException.convert(e);
         }
     }
 

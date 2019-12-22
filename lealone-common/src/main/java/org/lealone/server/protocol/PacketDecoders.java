@@ -30,6 +30,11 @@ import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
 import org.lealone.server.protocol.replication.ReplicationCommit;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
 import org.lealone.server.protocol.replication.ReplicationRollback;
+import org.lealone.server.protocol.result.ResultChangeId;
+import org.lealone.server.protocol.result.ResultClose;
+import org.lealone.server.protocol.result.ResultFetchRows;
+import org.lealone.server.protocol.result.ResultFetchRowsAck;
+import org.lealone.server.protocol.result.ResultReset;
 import org.lealone.server.protocol.storage.StorageAppend;
 import org.lealone.server.protocol.storage.StorageAppendAck;
 import org.lealone.server.protocol.storage.StorageGet;
@@ -61,6 +66,12 @@ public class PacketDecoders {
     }
 
     static {
+        register(PacketType.RESULT_FETCH_ROWS, ResultFetchRows.decoder);
+        register(PacketType.RESULT_FETCH_ROWS_ACK, ResultFetchRowsAck.decoder);
+        register(PacketType.RESULT_CHANGE_ID, ResultChangeId.decoder);
+        register(PacketType.RESULT_RESET, ResultReset.decoder);
+        register(PacketType.RESULT_CLOSE, ResultClose.decoder);
+
         register(PacketType.COMMAND_READ_LOB, ReadLob.decoder);
         register(PacketType.COMMAND_READ_LOB_ACK, ReadLobAck.decoder);
 

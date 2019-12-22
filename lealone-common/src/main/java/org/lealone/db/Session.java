@@ -38,11 +38,6 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int SESSION_SET_AUTO_COMMIT = 2;
     public static final int SESSION_CLOSE = 3;
 
-    public static final int RESULT_FETCH_ROWS = 20;
-    public static final int RESULT_CHANGE_ID = 21;
-    public static final int RESULT_RESET = 22;
-    public static final int RESULT_CLOSE = 23;
-
     public static final int COMMAND_QUERY = 40;
     public static final int COMMAND_UPDATE = 41;
 
