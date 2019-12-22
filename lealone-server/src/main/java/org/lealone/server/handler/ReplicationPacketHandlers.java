@@ -20,11 +20,11 @@ package org.lealone.server.handler;
 import org.lealone.db.ServerSession;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.ReplicationCheckConflict;
-import org.lealone.server.protocol.ReplicationCheckConflictAck;
-import org.lealone.server.protocol.ReplicationCommit;
-import org.lealone.server.protocol.ReplicationHandleConflict;
-import org.lealone.server.protocol.ReplicationRollback;
+import org.lealone.server.protocol.replication.ReplicationCheckConflict;
+import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
+import org.lealone.server.protocol.replication.ReplicationCommit;
+import org.lealone.server.protocol.replication.ReplicationHandleConflict;
+import org.lealone.server.protocol.replication.ReplicationRollback;
 
 public class ReplicationPacketHandlers extends PacketHandlers {
 

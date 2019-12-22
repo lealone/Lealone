@@ -15,37 +15,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class ReplicationUpdateAck implements AckPacket {
+public class StorageGetAck implements AckPacket {
 
-    public final int updateCount;
+    public final ByteBuffer result;
+    public final String localTransactionNames;
 
-    public ReplicationUpdateAck(int updateCount) {
-        this.updateCount = updateCount;
+    public StorageGetAck(ByteBuffer result, String localTransactionNames) {
+        this.result = result;
+        this.localTransactionNames = localTransactionNames;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_UPDATE_ACK;
+        return PacketType.COMMAND_STORAGE_GET_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(updateCount);
+        out.writeByteBuffer(result).writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<ReplicationUpdateAck> {
+    private static class Decoder implements PacketDecoder<StorageGetAck> {
         @Override
-        public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationUpdateAck(in.readInt());
+        public StorageGetAck decode(NetInputStream in, int version) throws IOException {
+            return new StorageGetAck(in.readByteBuffer(), in.readString());
         }
     }
 }

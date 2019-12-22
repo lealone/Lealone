@@ -15,39 +15,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class ReplicationCommit implements NoAckPacket {
+public class StorageReadPageAck implements AckPacket {
 
-    public final long validKey;
-    public final boolean autoCommit;
+    public final ByteBuffer page;
 
-    public ReplicationCommit(long validKey, boolean autoCommit) {
-        this.validKey = validKey;
-        this.autoCommit = autoCommit;
+    public StorageReadPageAck(ByteBuffer page) {
+        this.page = page;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_COMMIT;
+        return PacketType.COMMAND_STORAGE_READ_PAGE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeLong(validKey).writeBoolean(autoCommit);
+        out.writeByteBuffer(page);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<ReplicationCommit> {
+    private static class Decoder implements PacketDecoder<StorageReadPageAck> {
         @Override
-        public ReplicationCommit decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationCommit(in.readLong(), in.readBoolean());
+        public StorageReadPageAck decode(NetInputStream in, int version) throws IOException {
+            return new StorageReadPageAck(in.readByteBuffer());
         }
     }
 }

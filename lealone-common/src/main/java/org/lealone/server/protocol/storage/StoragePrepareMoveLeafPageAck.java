@@ -15,39 +15,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
+import org.lealone.storage.LeafPageMovePlan;
 
-public class DistributedTransactionRollbackSavepoint implements NoAckPacket {
+public class StoragePrepareMoveLeafPageAck implements AckPacket {
 
-    public final String name;
+    public final LeafPageMovePlan leafPageMovePlan;
 
-    public DistributedTransactionRollbackSavepoint(String name) {
-        this.name = name;
+    public StoragePrepareMoveLeafPageAck(LeafPageMovePlan leafPageMovePlan) {
+        this.leafPageMovePlan = leafPageMovePlan;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT;
+        return PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(name);
+        leafPageMovePlan.serialize(out);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionRollbackSavepoint> {
+    private static class Decoder implements PacketDecoder<StoragePrepareMoveLeafPageAck> {
         @Override
-        public DistributedTransactionRollbackSavepoint decode(NetInputStream in, int version)
-                throws IOException {
-            String name = in.readString();
-            return new DistributedTransactionRollbackSavepoint(name);
+        public StoragePrepareMoveLeafPageAck decode(NetInputStream in, int version) throws IOException {
+            LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(in);
+            return new StoragePrepareMoveLeafPageAck(leafPageMovePlan);
         }
     }
 }

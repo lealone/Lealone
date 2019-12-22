@@ -15,38 +15,48 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class ReplicationCheckConflictAck implements AckPacket {
+public class ReplicationHandleConflict implements NoAckPacket {
 
+    public final String mapName;
+    public final ByteBuffer key;
     public final String replicationName;
 
-    public ReplicationCheckConflictAck(String replicationName) {
+    public ReplicationHandleConflict(String mapName, ByteBuffer key, String replicationName) {
+        this.mapName = mapName;
+        this.key = key;
         this.replicationName = replicationName;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT_ACK;
+        return PacketType.COMMAND_REPLICATION_HANDLE_CONFLICT;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(replicationName);
+        out.writeString(mapName).writeByteBuffer(key).writeString(replicationName);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<ReplicationCheckConflictAck> {
+    private static class Decoder implements PacketDecoder<ReplicationHandleConflict> {
         @Override
-        public ReplicationCheckConflictAck decode(NetInputStream in, int version) throws IOException {
+        public ReplicationHandleConflict decode(NetInputStream in, int version) throws IOException {
+            String mapName = in.readString();
+            ByteBuffer key = in.readByteBuffer();
             String replicationName = in.readString();
-            return new ReplicationCheckConflictAck(replicationName);
+            return new ReplicationHandleConflict(mapName, key, replicationName);
         }
     }
 }

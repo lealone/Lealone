@@ -15,40 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StoragePutAck implements AckPacket {
+public class ReplicationRollback implements NoAckPacket {
 
-    public final ByteBuffer result;
-    public final String localTransactionNames;
-
-    public StoragePutAck(ByteBuffer result, String localTransactionNames) {
-        this.result = result;
-        this.localTransactionNames = localTransactionNames;
+    public ReplicationRollback() {
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_PUT_ACK;
+        return PacketType.COMMAND_REPLICATION_ROLLBACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeByteBuffer(result).writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StoragePutAck> {
+    private static class Decoder implements PacketDecoder<ReplicationRollback> {
         @Override
-        public StoragePutAck decode(NetInputStream in, int version) throws IOException {
-            return new StoragePutAck(in.readByteBuffer(), in.readString());
+        public ReplicationRollback decode(NetInputStream in, int version) throws IOException {
+            return new ReplicationRollback();
         }
     }
 }

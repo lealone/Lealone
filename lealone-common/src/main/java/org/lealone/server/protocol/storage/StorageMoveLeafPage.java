@@ -15,45 +15,55 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
+import org.lealone.storage.PageKey;
 
-public class ReplicationHandleConflict implements NoAckPacket {
+public class StorageMoveLeafPage implements NoAckPacket {
 
     public final String mapName;
-    public final ByteBuffer key;
-    public final String replicationName;
+    public final PageKey pageKey;
+    public final ByteBuffer page;
+    public final boolean addPage;
 
-    public ReplicationHandleConflict(String mapName, ByteBuffer key, String replicationName) {
+    public StorageMoveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
         this.mapName = mapName;
-        this.key = key;
-        this.replicationName = replicationName;
+        this.pageKey = pageKey;
+        this.page = page;
+        this.addPage = addPage;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_HANDLE_CONFLICT;
+        return PacketType.COMMAND_STORAGE_MOVE_LEAF_PAGE;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName).writeByteBuffer(key).writeString(replicationName);
+        out.writeString(mapName);
+        out.writePageKey(pageKey);
+        out.writeByteBuffer(page);
+        out.writeBoolean(addPage);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<ReplicationHandleConflict> {
+    private static class Decoder implements PacketDecoder<StorageMoveLeafPage> {
         @Override
-        public ReplicationHandleConflict decode(NetInputStream in, int version) throws IOException {
+        public StorageMoveLeafPage decode(NetInputStream in, int version) throws IOException {
             String mapName = in.readString();
-            ByteBuffer key = in.readByteBuffer();
-            String replicationName = in.readString();
-            return new ReplicationHandleConflict(mapName, key, replicationName);
+            PageKey pageKey = in.readPageKey();
+            ByteBuffer page = in.readByteBuffer();
+            boolean addPage = in.readBoolean();
+            return new StorageMoveLeafPage(mapName, pageKey, page, addPage);
         }
     }
 }

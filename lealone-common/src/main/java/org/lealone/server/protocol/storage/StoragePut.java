@@ -15,50 +15,59 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StorageAppend implements Packet {
+public class StoragePut implements Packet {
 
     public final String mapName;
+    public final ByteBuffer key;
     public final ByteBuffer value;
     public final boolean isDistributedTransaction;
     public final String replicationName;
+    public final boolean raw;
 
-    public StorageAppend(String mapName, ByteBuffer value, boolean isDistributedTransaction, String replicationName) {
+    public StoragePut(String mapName, ByteBuffer key, ByteBuffer value, boolean isDistributedTransaction,
+            String replicationName, boolean raw) {
         this.mapName = mapName;
+        this.key = key;
         this.value = value;
         this.isDistributedTransaction = isDistributedTransaction;
         this.replicationName = replicationName;
+        this.raw = raw;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_APPEND;
+        return PacketType.COMMAND_STORAGE_PUT;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_STORAGE_APPEND_ACK;
+        return PacketType.COMMAND_STORAGE_PUT_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName).writeByteBuffer(value).writeBoolean(isDistributedTransaction)
-                .writeString(replicationName);
+        out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value).writeBoolean(isDistributedTransaction)
+                .writeString(replicationName).writeBoolean(raw);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageAppend> {
+    private static class Decoder implements PacketDecoder<StoragePut> {
         @Override
-        public StorageAppend decode(NetInputStream in, int version) throws IOException {
-            return new StorageAppend(in.readString(), in.readByteBuffer(), in.readBoolean(), in.readString());
+        public StoragePut decode(NetInputStream in, int version) throws IOException {
+            return new StoragePut(in.readString(), in.readByteBuffer(), in.readByteBuffer(), in.readBoolean(),
+                    in.readString(), in.readBoolean());
         }
     }
 }

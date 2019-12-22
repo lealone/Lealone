@@ -15,40 +15,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StorageGetAck implements AckPacket {
+public class DistributedTransactionCommit implements NoAckPacket {
 
-    public final ByteBuffer result;
-    public final String localTransactionNames;
+    public final String allLocalTransactionNames;
 
-    public StorageGetAck(ByteBuffer result, String localTransactionNames) {
-        this.result = result;
-        this.localTransactionNames = localTransactionNames;
+    public DistributedTransactionCommit(String allLocalTransactionNames) {
+        this.allLocalTransactionNames = allLocalTransactionNames;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_GET_ACK;
+        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeByteBuffer(result).writeString(localTransactionNames);
+        out.writeString(allLocalTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageGetAck> {
+    private static class Decoder implements PacketDecoder<DistributedTransactionCommit> {
         @Override
-        public StorageGetAck decode(NetInputStream in, int version) throws IOException {
-            return new StorageGetAck(in.readByteBuffer(), in.readString());
+        public DistributedTransactionCommit decode(NetInputStream in, int version) throws IOException {
+            String allLocalTransactionNames = in.readString();
+            return new DistributedTransactionCommit(allLocalTransactionNames);
         }
     }
 }

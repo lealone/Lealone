@@ -15,43 +15,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.storage.PageKey;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StorageRemoveLeafPage implements NoAckPacket {
+public class DistributedTransactionValidateAck implements AckPacket {
 
-    public final String mapName;
-    public final PageKey pageKey;
+    public final boolean isValid;
 
-    public StorageRemoveLeafPage(String mapName, PageKey pageKey) {
-        this.mapName = mapName;
-        this.pageKey = pageKey;
+    public DistributedTransactionValidateAck(boolean isValid) {
+        this.isValid = isValid;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_REMOVE_LEAF_PAGE;
+        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName);
-        out.writePageKey(pageKey);
+        out.writeBoolean(isValid);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageRemoveLeafPage> {
+    private static class Decoder implements PacketDecoder<DistributedTransactionValidateAck> {
         @Override
-        public StorageRemoveLeafPage decode(NetInputStream in, int version) throws IOException {
-            String mapName = in.readString();
-            PageKey pageKey = in.readPageKey();
-            return new StorageRemoveLeafPage(mapName, pageKey);
+        public DistributedTransactionValidateAck decode(NetInputStream in, int version) throws IOException {
+            return new DistributedTransactionValidateAck(in.readBoolean());
         }
     }
 }

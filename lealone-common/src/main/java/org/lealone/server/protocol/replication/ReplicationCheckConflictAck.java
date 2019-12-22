@@ -15,43 +15,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StorageReplicateRootPages implements NoAckPacket {
+public class ReplicationCheckConflictAck implements AckPacket {
 
-    public final String dbName;
-    public final ByteBuffer rootPages;
+    public final String replicationName;
 
-    public StorageReplicateRootPages(String dbName, ByteBuffer rootPages) {
-        this.dbName = dbName;
-        this.rootPages = rootPages;
+    public ReplicationCheckConflictAck(String replicationName) {
+        this.replicationName = replicationName;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_REPLICATE_ROOT_PAGES;
+        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(dbName);
-        out.writeByteBuffer(rootPages);
+        out.writeString(replicationName);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageReplicateRootPages> {
+    private static class Decoder implements PacketDecoder<ReplicationCheckConflictAck> {
         @Override
-        public StorageReplicateRootPages decode(NetInputStream in, int version) throws IOException {
-            String dbName = in.readString();
-            ByteBuffer rootPages = in.readByteBuffer();
-            return new StorageReplicateRootPages(dbName, rootPages);
+        public ReplicationCheckConflictAck decode(NetInputStream in, int version) throws IOException {
+            String replicationName = in.readString();
+            return new ReplicationCheckConflictAck(replicationName);
         }
     }
 }

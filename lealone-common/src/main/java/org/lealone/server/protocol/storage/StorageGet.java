@@ -15,48 +15,52 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.storage.PageKey;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StorageReadPage implements Packet {
+public class StorageGet implements Packet {
 
     public final String mapName;
-    public final PageKey pageKey;
+    public final ByteBuffer key;
+    public final boolean isDistributedTransaction;
 
-    public StorageReadPage(String mapName, PageKey pageKey) {
+    public StorageGet(String mapName, ByteBuffer key, boolean isDistributedTransaction) {
         this.mapName = mapName;
-        this.pageKey = pageKey;
+        this.key = key;
+        this.isDistributedTransaction = isDistributedTransaction;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_READ_PAGE;
+        return PacketType.COMMAND_STORAGE_GET;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_STORAGE_READ_PAGE_ACK;
+        return PacketType.COMMAND_STORAGE_GET_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeString(mapName);
-        out.writePageKey(pageKey);
+        out.writeByteBuffer(key);
+        out.writeBoolean(isDistributedTransaction);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageReadPage> {
+    private static class Decoder implements PacketDecoder<StorageGet> {
         @Override
-        public StorageReadPage decode(NetInputStream in, int version) throws IOException {
-            String mapName = in.readString();
-            PageKey pageKey = in.readPageKey();
-            return new StorageReadPage(mapName, pageKey);
+        public StorageGet decode(NetInputStream in, int version) throws IOException {
+            return new StorageGet(in.readString(), in.readByteBuffer(), in.readBoolean());
         }
     }
 }

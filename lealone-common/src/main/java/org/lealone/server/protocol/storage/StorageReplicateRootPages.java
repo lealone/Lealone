@@ -15,50 +15,46 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class ReplicationCheckConflict implements Packet {
+public class StorageReplicateRootPages implements NoAckPacket {
 
-    public final String mapName;
-    public final ByteBuffer key;
-    public final String replicationName;
+    public final String dbName;
+    public final ByteBuffer rootPages;
 
-    public ReplicationCheckConflict(String mapName, ByteBuffer key, String replicationName) {
-        this.mapName = mapName;
-        this.key = key;
-        this.replicationName = replicationName;
+    public StorageReplicateRootPages(String dbName, ByteBuffer rootPages) {
+        this.dbName = dbName;
+        this.rootPages = rootPages;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT;
-    }
-
-    @Override
-    public PacketType getAckType() {
-        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT_ACK;
+        return PacketType.COMMAND_STORAGE_REPLICATE_ROOT_PAGES;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName).writeByteBuffer(key).writeString(replicationName);
+        out.writeString(dbName);
+        out.writeByteBuffer(rootPages);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<ReplicationCheckConflict> {
+    private static class Decoder implements PacketDecoder<StorageReplicateRootPages> {
         @Override
-        public ReplicationCheckConflict decode(NetInputStream in, int version) throws IOException {
-            String mapName = in.readString();
-            ByteBuffer key = in.readByteBuffer();
-            String replicationName = in.readString();
-            return new ReplicationCheckConflict(mapName, key, replicationName);
+        public StorageReplicateRootPages decode(NetInputStream in, int version) throws IOException {
+            String dbName = in.readString();
+            ByteBuffer rootPages = in.readByteBuffer();
+            return new StorageReplicateRootPages(dbName, rootPages);
         }
     }
 }

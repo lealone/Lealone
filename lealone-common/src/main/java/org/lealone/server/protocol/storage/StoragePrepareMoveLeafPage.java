@@ -15,49 +15,51 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
+import org.lealone.storage.LeafPageMovePlan;
 
-public class StorageGet implements Packet {
+public class StoragePrepareMoveLeafPage implements Packet {
 
     public final String mapName;
-    public final ByteBuffer key;
-    public final boolean isDistributedTransaction;
+    public final LeafPageMovePlan leafPageMovePlan;
 
-    public StorageGet(String mapName, ByteBuffer key, boolean isDistributedTransaction) {
+    public StoragePrepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
         this.mapName = mapName;
-        this.key = key;
-        this.isDistributedTransaction = isDistributedTransaction;
+        this.leafPageMovePlan = leafPageMovePlan;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_GET;
+        return PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_STORAGE_GET_ACK;
+        return PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeString(mapName);
-        out.writeByteBuffer(key);
-        out.writeBoolean(isDistributedTransaction);
+        leafPageMovePlan.serialize(out);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageGet> {
+    private static class Decoder implements PacketDecoder<StoragePrepareMoveLeafPage> {
         @Override
-        public StorageGet decode(NetInputStream in, int version) throws IOException {
-            return new StorageGet(in.readString(), in.readByteBuffer(), in.readBoolean());
+        public StoragePrepareMoveLeafPage decode(NetInputStream in, int version) throws IOException {
+            String mapName = in.readString();
+            LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(in);
+            return new StoragePrepareMoveLeafPage(mapName, leafPageMovePlan);
         }
     }
 }

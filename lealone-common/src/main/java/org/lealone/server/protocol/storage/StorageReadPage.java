@@ -15,33 +15,51 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
+import org.lealone.storage.PageKey;
 
-public class DistributedTransactionRollback implements NoAckPacket {
+public class StorageReadPage implements Packet {
 
-    public DistributedTransactionRollback() {
+    public final String mapName;
+    public final PageKey pageKey;
+
+    public StorageReadPage(String mapName, PageKey pageKey) {
+        this.mapName = mapName;
+        this.pageKey = pageKey;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK;
+        return PacketType.COMMAND_STORAGE_READ_PAGE;
+    }
+
+    @Override
+    public PacketType getAckType() {
+        return PacketType.COMMAND_STORAGE_READ_PAGE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
+        out.writeString(mapName);
+        out.writePageKey(pageKey);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionRollback> {
+    private static class Decoder implements PacketDecoder<StorageReadPage> {
         @Override
-        public DistributedTransactionRollback decode(NetInputStream in, int version) throws IOException {
-            return new DistributedTransactionRollback();
+        public StorageReadPage decode(NetInputStream in, int version) throws IOException {
+            String mapName = in.readString();
+            PageKey pageKey = in.readPageKey();
+            return new StorageReadPage(mapName, pageKey);
         }
     }
 }

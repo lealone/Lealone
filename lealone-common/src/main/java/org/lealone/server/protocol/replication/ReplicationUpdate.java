@@ -15,34 +15,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.CommandUpdate;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 import org.lealone.storage.PageKey;
 
-public class CommandUpdate implements Packet {
+public class ReplicationUpdate implements Packet {
 
     public final List<PageKey> pageKeys;
     public final String sql;
+    public final String replicationName;
 
-    public CommandUpdate(List<PageKey> pageKeys, String sql) {
+    public ReplicationUpdate(List<PageKey> pageKeys, String sql, String replicationName) {
         this.pageKeys = pageKeys;
         this.sql = sql;
+        this.replicationName = replicationName;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_UPDATE;
+        return PacketType.COMMAND_REPLICATION_UPDATE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_UPDATE_ACK;
+        return PacketType.COMMAND_REPLICATION_UPDATE_ACK;
     }
 
     @Override
@@ -58,31 +63,18 @@ public class CommandUpdate implements Packet {
             }
         }
         out.writeString(sql);
+        out.writeString(replicationName);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<CommandUpdate> {
+    private static class Decoder implements PacketDecoder<ReplicationUpdate> {
         @Override
-        public CommandUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = readPageKeys(in);
+        public ReplicationUpdate decode(NetInputStream in, int version) throws IOException {
+            List<PageKey> pageKeys = CommandUpdate.readPageKeys(in);
             String sql = in.readString();
-            return new CommandUpdate(pageKeys, sql);
+            String replicationName = in.readString();
+            return new ReplicationUpdate(pageKeys, sql, replicationName);
         }
-    }
-
-    public static List<PageKey> readPageKeys(NetInputStream in) throws IOException {
-        ArrayList<PageKey> pageKeys;
-        int size = in.readInt();
-        if (size > 0) {
-            pageKeys = new ArrayList<>(size);
-            for (int i = 0; i < size; i++) {
-                PageKey pk = in.readPageKey();
-                pageKeys.add(pk);
-            }
-        } else {
-            pageKeys = null;
-        }
-        return pageKeys;
     }
 }

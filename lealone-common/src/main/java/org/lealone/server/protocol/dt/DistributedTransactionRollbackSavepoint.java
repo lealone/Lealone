@@ -15,48 +15,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StoragePrepareMoveLeafPage implements Packet {
+public class DistributedTransactionRollbackSavepoint implements NoAckPacket {
 
-    public final String mapName;
-    public final LeafPageMovePlan leafPageMovePlan;
+    public final String name;
 
-    public StoragePrepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
-        this.mapName = mapName;
-        this.leafPageMovePlan = leafPageMovePlan;
+    public DistributedTransactionRollbackSavepoint(String name) {
+        this.name = name;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE;
-    }
-
-    @Override
-    public PacketType getAckType() {
-        return PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK;
+        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName);
-        leafPageMovePlan.serialize(out);
+        out.writeString(name);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StoragePrepareMoveLeafPage> {
+    private static class Decoder implements PacketDecoder<DistributedTransactionRollbackSavepoint> {
         @Override
-        public StoragePrepareMoveLeafPage decode(NetInputStream in, int version) throws IOException {
-            String mapName = in.readString();
-            LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(in);
-            return new StoragePrepareMoveLeafPage(mapName, leafPageMovePlan);
+        public DistributedTransactionRollbackSavepoint decode(NetInputStream in, int version)
+                throws IOException {
+            String name = in.readString();
+            return new DistributedTransactionRollbackSavepoint(name);
         }
     }
 }

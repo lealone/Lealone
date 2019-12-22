@@ -15,52 +15,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.storage.PageKey;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StorageMoveLeafPage implements NoAckPacket {
+public class ReplicationUpdateAck implements AckPacket {
 
-    public final String mapName;
-    public final PageKey pageKey;
-    public final ByteBuffer page;
-    public final boolean addPage;
+    public final int updateCount;
 
-    public StorageMoveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
-        this.mapName = mapName;
-        this.pageKey = pageKey;
-        this.page = page;
-        this.addPage = addPage;
+    public ReplicationUpdateAck(int updateCount) {
+        this.updateCount = updateCount;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_MOVE_LEAF_PAGE;
+        return PacketType.COMMAND_REPLICATION_UPDATE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName);
-        out.writePageKey(pageKey);
-        out.writeByteBuffer(page);
-        out.writeBoolean(addPage);
+        out.writeInt(updateCount);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageMoveLeafPage> {
+    private static class Decoder implements PacketDecoder<ReplicationUpdateAck> {
         @Override
-        public StorageMoveLeafPage decode(NetInputStream in, int version) throws IOException {
-            String mapName = in.readString();
-            PageKey pageKey = in.readPageKey();
-            ByteBuffer page = in.readByteBuffer();
-            boolean addPage = in.readBoolean();
-            return new StorageMoveLeafPage(mapName, pageKey, page, addPage);
+        public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
+            return new ReplicationUpdateAck(in.readInt());
         }
     }
 }

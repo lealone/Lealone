@@ -15,46 +15,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.storage.PageKey;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class DistributedTransactionValidate implements Packet {
+public class DistributedTransactionUpdateAck implements AckPacket {
 
-    public final String localTransactionName;
+    public final int updateCount;
+    public final String localTransactionNames;
 
-    public DistributedTransactionValidate(String localTransactionName) {
-        this.localTransactionName = localTransactionName;
+    public DistributedTransactionUpdateAck(int updateCount, String localTransactionNames) {
+        this.updateCount = updateCount;
+        this.localTransactionNames = localTransactionNames;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE;
-    }
-
-    @Override
-    public PacketType getAckType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE_ACK;
+        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(localTransactionName);
+        out.writeInt(updateCount).writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionUpdate> {
+    private static class Decoder implements PacketDecoder<DistributedTransactionUpdateAck> {
         @Override
-        public DistributedTransactionUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = CommandUpdate.readPageKeys(in);
-            String sql = in.readString();
-            return new DistributedTransactionUpdate(pageKeys, sql);
+        public DistributedTransactionUpdateAck decode(NetInputStream in, int version) throws IOException {
+            return new DistributedTransactionUpdateAck(in.readInt(), in.readString());
         }
     }
 }

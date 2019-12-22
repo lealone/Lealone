@@ -23,12 +23,12 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.server.protocol.CommandUpdate;
 import org.lealone.server.protocol.CommandUpdateAck;
-import org.lealone.server.protocol.DistributedTransactionUpdate;
-import org.lealone.server.protocol.DistributedTransactionUpdateAck;
-import org.lealone.server.protocol.ReplicationCommit;
-import org.lealone.server.protocol.ReplicationRollback;
-import org.lealone.server.protocol.ReplicationUpdate;
-import org.lealone.server.protocol.ReplicationUpdateAck;
+import org.lealone.server.protocol.dt.DistributedTransactionUpdate;
+import org.lealone.server.protocol.dt.DistributedTransactionUpdateAck;
+import org.lealone.server.protocol.replication.ReplicationCommit;
+import org.lealone.server.protocol.replication.ReplicationRollback;
+import org.lealone.server.protocol.replication.ReplicationUpdate;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 

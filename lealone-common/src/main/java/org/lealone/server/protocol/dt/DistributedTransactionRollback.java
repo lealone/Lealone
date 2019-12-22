@@ -15,39 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class DistributedTransactionUpdateAck implements AckPacket {
+public class DistributedTransactionRollback implements NoAckPacket {
 
-    public final int updateCount;
-    public final String localTransactionNames;
-
-    public DistributedTransactionUpdateAck(int updateCount, String localTransactionNames) {
-        this.updateCount = updateCount;
-        this.localTransactionNames = localTransactionNames;
+    public DistributedTransactionRollback() {
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE_ACK;
+        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(updateCount).writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionUpdateAck> {
+    private static class Decoder implements PacketDecoder<DistributedTransactionRollback> {
         @Override
-        public DistributedTransactionUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new DistributedTransactionUpdateAck(in.readInt(), in.readString());
+        public DistributedTransactionRollback decode(NetInputStream in, int version) throws IOException {
+            return new DistributedTransactionRollback();
         }
     }
 }

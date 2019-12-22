@@ -15,38 +15,46 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
+import org.lealone.storage.PageKey;
 
-public class DistributedTransactionCommit implements NoAckPacket {
+public class StorageRemoveLeafPage implements NoAckPacket {
 
-    public final String allLocalTransactionNames;
+    public final String mapName;
+    public final PageKey pageKey;
 
-    public DistributedTransactionCommit(String allLocalTransactionNames) {
-        this.allLocalTransactionNames = allLocalTransactionNames;
+    public StorageRemoveLeafPage(String mapName, PageKey pageKey) {
+        this.mapName = mapName;
+        this.pageKey = pageKey;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT;
+        return PacketType.COMMAND_STORAGE_REMOVE_LEAF_PAGE;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(allLocalTransactionNames);
+        out.writeString(mapName);
+        out.writePageKey(pageKey);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionCommit> {
+    private static class Decoder implements PacketDecoder<StorageRemoveLeafPage> {
         @Override
-        public DistributedTransactionCommit decode(NetInputStream in, int version) throws IOException {
-            String allLocalTransactionNames = in.readString();
-            return new DistributedTransactionCommit(allLocalTransactionNames);
+        public StorageRemoveLeafPage decode(NetInputStream in, int version) throws IOException {
+            String mapName = in.readString();
+            PageKey pageKey = in.readPageKey();
+            return new StorageRemoveLeafPage(mapName, pageKey);
         }
     }
 }

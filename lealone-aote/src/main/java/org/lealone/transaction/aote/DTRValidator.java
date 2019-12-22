@@ -29,10 +29,10 @@ import org.lealone.db.Constants;
 import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.net.NetNode;
-import org.lealone.server.protocol.DistributedTransactionValidate;
-import org.lealone.server.protocol.DistributedTransactionValidateAck;
-import org.lealone.server.protocol.ReplicationCheckConflict;
-import org.lealone.server.protocol.ReplicationCheckConflictAck;
+import org.lealone.server.protocol.dt.DistributedTransactionValidate;
+import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
+import org.lealone.server.protocol.replication.ReplicationCheckConflict;
+import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
 import org.lealone.storage.replication.ConsistencyLevel;
 
 //效验分布式事务和复制是否成功

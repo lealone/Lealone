@@ -15,58 +15,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.util.List;
+import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.storage.PageKey;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class DistributedTransactionUpdate implements Packet {
+public class ReplicationCheckConflict implements Packet {
 
-    public final List<PageKey> pageKeys;
-    public final String sql;
+    public final String mapName;
+    public final ByteBuffer key;
+    public final String replicationName;
 
-    public DistributedTransactionUpdate(List<PageKey> pageKeys, String sql) {
-        this.pageKeys = pageKeys;
-        this.sql = sql;
+    public ReplicationCheckConflict(String mapName, ByteBuffer key, String replicationName) {
+        this.mapName = mapName;
+        this.key = key;
+        this.replicationName = replicationName;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE;
+        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE_ACK;
+        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        if (pageKeys == null) {
-            out.writeInt(0);
-        } else {
-            int size = pageKeys.size();
-            out.writeInt(size);
-            for (int i = 0; i < size; i++) {
-                PageKey pk = pageKeys.get(i);
-                out.writePageKey(pk);
-            }
-        }
-        out.writeString(sql);
+        out.writeString(mapName).writeByteBuffer(key).writeString(replicationName);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionUpdate> {
+    private static class Decoder implements PacketDecoder<ReplicationCheckConflict> {
         @Override
-        public DistributedTransactionUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = CommandUpdate.readPageKeys(in);
-            String sql = in.readString();
-            return new DistributedTransactionUpdate(pageKeys, sql);
+        public ReplicationCheckConflict decode(NetInputStream in, int version) throws IOException {
+            String mapName = in.readString();
+            ByteBuffer key = in.readByteBuffer();
+            String replicationName = in.readString();
+            return new ReplicationCheckConflict(mapName, key, replicationName);
         }
     }
 }

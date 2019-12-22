@@ -15,38 +15,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.storage;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StorageReadPageAck implements AckPacket {
+public class StoragePutAck implements AckPacket {
 
-    public final ByteBuffer page;
+    public final ByteBuffer result;
+    public final String localTransactionNames;
 
-    public StorageReadPageAck(ByteBuffer page) {
-        this.page = page;
+    public StoragePutAck(ByteBuffer result, String localTransactionNames) {
+        this.result = result;
+        this.localTransactionNames = localTransactionNames;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_READ_PAGE_ACK;
+        return PacketType.COMMAND_STORAGE_PUT_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeByteBuffer(page);
+        out.writeByteBuffer(result).writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageReadPageAck> {
+    private static class Decoder implements PacketDecoder<StoragePutAck> {
         @Override
-        public StorageReadPageAck decode(NetInputStream in, int version) throws IOException {
-            return new StorageReadPageAck(in.readByteBuffer());
+        public StoragePutAck decode(NetInputStream in, int version) throws IOException {
+            return new StoragePutAck(in.readByteBuffer(), in.readString());
         }
     }
 }

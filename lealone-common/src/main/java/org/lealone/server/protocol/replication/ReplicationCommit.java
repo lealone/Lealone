@@ -15,39 +15,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.server.protocol.NoAckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class StoragePrepareMoveLeafPageAck implements AckPacket {
+public class ReplicationCommit implements NoAckPacket {
 
-    public final LeafPageMovePlan leafPageMovePlan;
+    public final long validKey;
+    public final boolean autoCommit;
 
-    public StoragePrepareMoveLeafPageAck(LeafPageMovePlan leafPageMovePlan) {
-        this.leafPageMovePlan = leafPageMovePlan;
+    public ReplicationCommit(long validKey, boolean autoCommit) {
+        this.validKey = validKey;
+        this.autoCommit = autoCommit;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK;
+        return PacketType.COMMAND_REPLICATION_COMMIT;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        leafPageMovePlan.serialize(out);
+        out.writeLong(validKey).writeBoolean(autoCommit);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StoragePrepareMoveLeafPageAck> {
+    private static class Decoder implements PacketDecoder<ReplicationCommit> {
         @Override
-        public StoragePrepareMoveLeafPageAck decode(NetInputStream in, int version) throws IOException {
-            LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(in);
-            return new StoragePrepareMoveLeafPageAck(leafPageMovePlan);
+        public ReplicationCommit decode(NetInputStream in, int version) throws IOException {
+            return new ReplicationCommit(in.readLong(), in.readBoolean());
         }
     }
 }
