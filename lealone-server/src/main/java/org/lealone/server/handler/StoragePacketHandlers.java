@@ -43,7 +43,7 @@ import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 
-public class StoragePacketHandlers extends PacketHandlers {
+class StoragePacketHandlers extends PacketHandlers {
 
     static {
         register(PacketType.COMMAND_STORAGE_PUT, new Put());

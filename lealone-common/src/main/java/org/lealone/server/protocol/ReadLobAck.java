@@ -15,26 +15,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.handler;
+package org.lealone.server.protocol;
 
-import java.util.HashMap;
+import java.io.IOException;
 
-import org.lealone.server.protocol.Packet;
-import org.lealone.server.protocol.PacketType;
+import org.lealone.net.NetInputStream;
+import org.lealone.net.NetOutputStream;
 
-public class PacketHandlers {
+public class ReadLobAck implements AckPacket {
 
-    private static HashMap<Integer, PacketHandler<? extends Packet>> handlers = new HashMap<>();
+    public final byte[] buff;
 
-    public static void register(PacketType type, PacketHandler<? extends Packet> decoder) {
-        handlers.put(type.value, decoder);
+    public ReadLobAck(byte[] buff) {
+        this.buff = buff;
     }
 
-    public static PacketHandler<? extends Packet> getHandler(int type) {
-        return handlers.get(type);
+    @Override
+    public PacketType getType() {
+        return PacketType.COMMAND_READ_LOB_ACK;
     }
 
-    static {
-        register(PacketType.COMMAND_READ_LOB, new ReadLobHandler());
+    @Override
+    public void encode(NetOutputStream out, int version) throws IOException {
+        out.writeBytes(buff);
+    }
+
+    public static final Decoder decoder = new Decoder();
+
+    private static class Decoder implements PacketDecoder<ReadLobAck> {
+        @Override
+        public ReadLobAck decode(NetInputStream in, int version) throws IOException {
+            return new ReadLobAck(in.readBytes());
+        }
     }
 }

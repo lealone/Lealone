@@ -61,6 +61,9 @@ public class PacketDecoders {
     }
 
     static {
+        register(PacketType.COMMAND_READ_LOB, ReadLob.decoder);
+        register(PacketType.COMMAND_READ_LOB_ACK, ReadLobAck.decoder);
+
         register(PacketType.COMMAND_REPLICATION_COMMIT, ReplicationCommit.decoder);
         register(PacketType.COMMAND_REPLICATION_ROLLBACK, ReplicationRollback.decoder);
         register(PacketType.COMMAND_REPLICATION_CHECK_CONFLICT, ReplicationCheckConflict.decoder);

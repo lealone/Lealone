@@ -199,6 +199,7 @@ public class TransferOutputStream implements NetOutputStream {
      * @param x the value
      * @return itself
      */
+    @Override
     public TransferOutputStream writeLong(long x) throws IOException {
         out.writeLong(x);
         return this;
@@ -376,7 +377,7 @@ public class TransferOutputStream implements NetOutputStream {
                     writeLong(-1);
                     writeInt(lob.getTableId());
                     writeLong(lob.getLobId());
-                    writeBytes(calculateLobMac(lob.getLobId()));
+                    writeBytes(calculateLobMac(session, lob.getLobId()));
                     writeLong(lob.getPrecision());
                     break;
                 }
@@ -454,15 +455,15 @@ public class TransferOutputStream implements NetOutputStream {
      * @param lobId the lobId
      * @throws DbException if the HMAC does not match
      */
-    public void verifyLobMac(byte[] hmac, long lobId) {
-        byte[] result = calculateLobMac(lobId);
+    public static void verifyLobMac(Session session, byte[] hmac, long lobId) {
+        byte[] result = calculateLobMac(session, lobId);
         if (!Utils.compareSecure(hmac, result)) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1,
                     "Invalid lob hmac; possibly the connection was re-opened internally");
         }
     }
 
-    private byte[] calculateLobMac(long lobId) {
+    private static byte[] calculateLobMac(Session session, long lobId) {
         byte[] lobMacSalt = null;
         if (session != null) {
             lobMacSalt = session.getLobMacSalt();

@@ -17,10 +17,7 @@
  */
 package org.lealone.server;
 
-import java.io.ByteArrayInputStream;
-import java.io.FilterInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +28,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
-import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.Pair;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.CommandParameter;
@@ -43,13 +39,13 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueLob;
 import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.server.Scheduler.SessionInfo;
+import org.lealone.server.handler.CachedInputStream;
 import org.lealone.server.handler.PacketHandler;
 import org.lealone.server.handler.PacketHandlers;
 import org.lealone.server.protocol.InitPacket;
@@ -58,7 +54,6 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.storage.LobStorage;
 import org.lealone.storage.PageKey;
 
 /**
@@ -694,41 +689,6 @@ public class TcpServerConnection extends TransferConnection {
             }
             break;
         }
-        case Session.COMMAND_READ_LOB: {
-            if (lobs == null) {
-                lobs = SmallLRUCache.newInstance(
-                        Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
-            }
-            long lobId = in.readLong();
-            byte[] hmac = in.readBytes();
-            CachedInputStream cachedInputStream = lobs.get(lobId);
-            if (cachedInputStream == null) {
-                cachedInputStream = new CachedInputStream(null);
-                lobs.put(lobId, cachedInputStream);
-            }
-            long offset = in.readLong();
-            int length = in.readInt();
-            TransferOutputStream out = createTransferOutputStream(session);
-            out.verifyLobMac(hmac, lobId);
-            if (cachedInputStream.getPos() != offset) {
-                LobStorage lobStorage = session.getDataHandler().getLobStorage();
-                // only the lob id is used
-                ValueLob lob = ValueLob.create(Value.BLOB, null, -1, lobId, hmac, -1);
-                InputStream lobIn = lobStorage.getInputStream(lob, hmac, -1);
-                cachedInputStream = new CachedInputStream(lobIn);
-                lobs.put(lobId, cachedInputStream);
-                lobIn.skip(offset);
-            }
-            // limit the buffer size
-            length = Math.min(16 * Constants.IO_BUFFER_SIZE, length);
-            byte[] buff = new byte[length];
-            length = IOUtils.readFully(cachedInputStream, buff, length);
-            out.writeResponseHeader(packetId, Session.STATUS_OK);
-            out.writeInt(length);
-            out.writeBytes(buff, 0, length);
-            out.flush();
-            break;
-        }
         default:
             handleOtherRequest(in, packetId, packetType, si);
         }
@@ -760,50 +720,11 @@ public class TcpServerConnection extends TransferConnection {
         cache.put(k, v);
     }
 
-    /**
-     * An input stream with a position.
-     */
-    private static class CachedInputStream extends FilterInputStream {
-
-        private static final ByteArrayInputStream DUMMY = new ByteArrayInputStream(new byte[0]);
-        private long pos;
-
-        CachedInputStream(InputStream in) {
-            super(in == null ? DUMMY : in);
-            if (in == null) {
-                pos = -1;
-            }
+    public SmallLRUCache<Long, CachedInputStream> getLobs() {
+        if (lobs == null) {
+            lobs = SmallLRUCache.newInstance(
+                    Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
         }
-
-        @Override
-        public int read(byte[] buff, int off, int len) throws IOException {
-            len = super.read(buff, off, len);
-            if (len > 0) {
-                pos += len;
-            }
-            return len;
-        }
-
-        @Override
-        public int read() throws IOException {
-            int x = in.read();
-            if (x >= 0) {
-                pos++;
-            }
-            return x;
-        }
-
-        @Override
-        public long skip(long n) throws IOException {
-            n = super.skip(n);
-            if (n > 0) {
-                pos += n;
-            }
-            return n;
-        }
-
-        public long getPos() {
-            return pos;
-        }
+        return lobs;
     }
 }

@@ -38,6 +38,8 @@ import org.lealone.net.TransferOutputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
+import org.lealone.server.protocol.ReadLob;
+import org.lealone.server.protocol.ReadLobAck;
 import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionCommit;
 import org.lealone.server.protocol.dt.DistributedTransactionRollback;
@@ -419,25 +421,11 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
         try {
-            TransferOutputStream out = newOut();
-            int packetId = getNextId();
-            traceOperation("LOB_READ", (int) lobId);
-            out.writeRequestHeader(packetId, Session.COMMAND_READ_LOB);
-            out.writeLong(lobId);
-            out.writeBytes(hmac);
-            out.writeLong(offset);
-            out.writeInt(length);
-            return out.flushAndAwait(packetId, new AsyncCallback<Integer>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    int length = in.readInt();
-                    if (length > 0) {
-                        in.readBytes(buff, off, length);
-                    }
-                    setResult(length);
-                }
-            });
-        } catch (IOException e) {
+            ReadLobAck ack = sendSync(new ReadLob(lobId, hmac, offset, length));
+            if (ack.buff != null && ack.buff.length < 0) {
+                System.arraycopy(ack.buff, 0, buff, off, length);
+            }
+        } catch (Exception e) {
             handleException(e);
         }
         return 1;

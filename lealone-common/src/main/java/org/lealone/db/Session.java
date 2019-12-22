@@ -52,7 +52,6 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_PREPARED_UPDATE = 53;
 
     public static final int COMMAND_GET_META_DATA = 70;
-    public static final int COMMAND_READ_LOB = 71;
     public static final int COMMAND_CLOSE = 72;
 
     public static final int COMMAND_REPLICATION_UPDATE = 80;

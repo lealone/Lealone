@@ -26,7 +26,7 @@ import org.lealone.server.protocol.replication.ReplicationCommit;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
 import org.lealone.server.protocol.replication.ReplicationRollback;
 
-public class ReplicationPacketHandlers extends PacketHandlers {
+class ReplicationPacketHandlers extends PacketHandlers {
 
     static {
         register(PacketType.COMMAND_REPLICATION_COMMIT, new Commit());

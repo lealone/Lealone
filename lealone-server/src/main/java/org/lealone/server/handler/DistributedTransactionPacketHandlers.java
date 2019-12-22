@@ -27,7 +27,7 @@ import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionValidate;
 import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
 
-public class DistributedTransactionPacketHandlers extends PacketHandlers {
+class DistributedTransactionPacketHandlers extends PacketHandlers {
 
     static {
         register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT, new Commit());
