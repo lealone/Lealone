@@ -29,6 +29,11 @@ import org.lealone.db.Constants;
 import org.lealone.db.RunMode;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
+import org.lealone.server.protocol.InitPacket;
+import org.lealone.server.protocol.InitPacketAck;
 
 /**
  * An async tcp client connection.
@@ -112,7 +117,7 @@ public class TcpClientConnection extends TransferConnection {
         }
         out.flushAndAwait(packetId, ci.getNetworkTimeout(), new AsyncCallback<Void>() {
             @Override
-            public void runInternal(TransferInputStream in) throws Exception {
+            public void runInternal(NetInputStream in) throws Exception {
                 int protocolVersion = in.readInt();
                 boolean autoCommit = in.readBoolean();
                 session.setProtocolVersion(protocolVersion);
@@ -121,6 +126,32 @@ public class TcpClientConnection extends TransferConnection {
                 session.setRunMode(RunMode.valueOf(in.readString()));
                 session.setInvalid(in.readBoolean());
             }
+        });
+    }
+
+    public void writeInitPacket2(final Session session) throws Exception {
+        checkClosed();
+        ConnectionInfo ci = session.getConnectionInfo();
+        InitPacket message = new InitPacket(ci);
+        InitPacketAck ack = session.sendSync(message);
+        session.setProtocolVersion(ack.clientVersion);
+        session.setAutoCommit(ack.autoCommit);
+        session.setTargetNodes(ack.targetNodes);
+        session.setRunMode(ack.runMode);
+        session.setInvalid(ack.invalid);
+    }
+
+    public void writeInitPacketAsync(final Session session, AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        checkClosed();
+        ConnectionInfo ci = session.getConnectionInfo();
+        InitPacket message = new InitPacket(ci);
+        session.<InitPacketAck> send(message, ack -> {
+            session.setProtocolVersion(ack.clientVersion);
+            session.setAutoCommit(ack.autoCommit);
+            session.setTargetNodes(ack.targetNodes);
+            session.setRunMode(ack.runMode);
+            session.setInvalid(ack.invalid);
+            asyncHandler.handle(new AsyncResult<>(session));
         });
     }
 

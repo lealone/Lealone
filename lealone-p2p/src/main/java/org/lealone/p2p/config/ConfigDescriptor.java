@@ -36,8 +36,6 @@ import org.lealone.common.security.EncryptionOptions.ClientEncryptionOptions;
 import org.lealone.common.security.EncryptionOptions.ServerEncryptionOptions;
 import org.lealone.db.Constants;
 import org.lealone.net.NetNode;
-import org.lealone.p2p.auth.AllowAllInternodeAuthenticator;
-import org.lealone.p2p.auth.IInternodeAuthenticator;
 import org.lealone.p2p.config.Config.ClusterConfig;
 import org.lealone.p2p.config.Config.PluggableEngineDef;
 import org.lealone.p2p.locator.AbstractNodeAssignmentStrategy;
@@ -48,9 +46,9 @@ import org.lealone.p2p.locator.NodeSnitchInfo;
 import org.lealone.p2p.locator.RandomNodeAssignmentStrategy;
 import org.lealone.p2p.locator.SeedProvider;
 import org.lealone.p2p.locator.SimpleStrategy;
-import org.lealone.p2p.net.Verb;
 import org.lealone.p2p.server.P2pServerEngine;
 import org.lealone.p2p.util.Utils;
+import org.lealone.server.protocol.PacketType;
 
 public class ConfigDescriptor {
 
@@ -60,7 +58,6 @@ public class ConfigDescriptor {
     private static String localDC;
     private static Comparator<NetNode> localComparator;
     private static SeedProvider seedProvider;
-    private static IInternodeAuthenticator internodeAuthenticator;
     private static AbstractReplicationStrategy defaultReplicationStrategy;
     private static AbstractNodeAssignmentStrategy defaultNodeAssignmentStrategy;
 
@@ -95,7 +92,6 @@ public class ConfigDescriptor {
         };
 
         seedProvider = createSeedProvider(config.cluster_config);
-        internodeAuthenticator = createInternodeAuthenticator(config.cluster_config);
         defaultReplicationStrategy = createDefaultReplicationStrategy(config.cluster_config);
         defaultNodeAssignmentStrategy = createDefaultNodeAssignmentStrategy(config.cluster_config);
     }
@@ -224,17 +220,6 @@ public class ConfigDescriptor {
         return seedProvider;
     }
 
-    private static IInternodeAuthenticator createInternodeAuthenticator(ClusterConfig config) throws ConfigException {
-        IInternodeAuthenticator internodeAuthenticator;
-        if (config.internode_authenticator != null)
-            internodeAuthenticator = Utils.construct(config.internode_authenticator, "internode_authenticator");
-        else
-            internodeAuthenticator = new AllowAllInternodeAuthenticator();
-
-        internodeAuthenticator.validateConfiguration();
-        return internodeAuthenticator;
-    }
-
     private static AbstractReplicationStrategy createDefaultReplicationStrategy(ClusterConfig config)
             throws ConfigException {
         AbstractReplicationStrategy defaultReplicationStrategy;
@@ -294,8 +279,8 @@ public class ConfigDescriptor {
         return config.cluster_config.cross_node_timeout;
     }
 
-    // not part of the Verb enum so we can change timeouts easily via JMX
-    public static long getTimeout(Verb verb) {
+    // not part of the PacketType enum so we can change timeouts easily via JMX
+    public static long getTimeout(PacketType packetType) {
         return getRpcTimeout();
     }
 
@@ -317,10 +302,6 @@ public class ConfigDescriptor {
 
     public static NetNode getLocalNode() {
         return localP2pNode;
-    }
-
-    public static IInternodeAuthenticator getInternodeAuthenticator() {
-        return internodeAuthenticator;
     }
 
     public static int getDynamicUpdateInterval() {
@@ -378,5 +359,4 @@ public class ConfigDescriptor {
         String arch = System.getProperty("os.arch");
         return arch.contains("64") || arch.contains("sparcv9");
     }
-
 }

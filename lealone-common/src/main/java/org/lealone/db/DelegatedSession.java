@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -212,6 +214,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public void connectAsync(boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        session.connectAsync(allowRedirect, asyncHandler);
+    }
+
+    @Override
     public String getURL() {
         return session.getURL();
     }
@@ -230,6 +237,11 @@ public class DelegatedSession implements Session {
     public ConnectionInfo getConnectionInfo() {
         return session.getConnectionInfo();
     }
+
+    // @Override
+    // public ConnectionInfo getConnectionInfo(String newHostAndPort) {
+    // return session.getConnectionInfo(newHostAndPort);
+    // }
 
     @Override
     public boolean isLocal() {

@@ -26,14 +26,19 @@ import org.lealone.db.Session;
 import org.lealone.db.SessionBase;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.net.AsyncCallback;
+import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
+import org.lealone.net.NetInputStream;
 import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
-import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -116,6 +121,11 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         return this;
     }
 
+    @Override
+    public void connectAsync(boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        openAsync(asyncHandler);
+    }
+
     // 在AutoReconnectSession类中有单独使用，所以用包访问级别
     TcpClientConnection open() {
         if (tcpConnection != null)
@@ -143,6 +153,48 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             throw DbException.convert(e);
         }
         return tcpConnection;
+    }
+
+    void openAsync(AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        if (tcpConnection != null) {
+            asyncHandler.handle(new AsyncResult<>(this));
+            return;
+        }
+
+        try {
+            NetNode node = NetNode.createTCP(server);
+            NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
+            CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
+            // 多个客户端session会共用同一条TCP连接
+            factory.getNetClient().createConnectionAsync(config, node, ar -> {
+                if (ar.isSucceeded()) {
+                    AsyncConnection conn = ar.getResult();
+                    if (!(conn instanceof TcpClientConnection)) {
+                        throw DbException.throwInternalError("not tcp client connection: " + conn.getClass().getName());
+                    }
+                    tcpConnection = (TcpClientConnection) conn;
+                    // 每一个通过网络传输的协议包都会带上sessionId，
+                    // 这样就能在同一条TCP连接中区分不同的客户端session了
+                    sessionId = tcpConnection.getNextId();
+                    tcpConnection.writeInitPacketAsync(this, ar2 -> {
+                        if (ar2.isSucceeded()) {
+                            Session s = ar2.getResult();
+                            if (s.isValid()) {
+                                tcpConnection.addSession(sessionId, s);
+                                asyncHandler.handle(new AsyncResult<>(s));
+                            }
+                        }
+                    });
+                }
+            });
+        } catch (Throwable e) {
+            closeTraceSystem();
+            throw DbException.convert(e);
+        }
+    }
+
+    InetSocketAddress getInetSocketAddress() {
+        return tcpConnection.getInetSocketAddress();
     }
 
     public TransferOutputStream newOut() {
@@ -374,7 +426,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             out.writeInt(length);
             return out.flushAndAwait(packetId, new AsyncCallback<Integer>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     int length = in.readInt();
                     if (length > 0) {
                         in.readBytes(buff, off, length);
@@ -437,7 +489,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             out.writeString(localTransactionName);
             return out.flushAndAwait(packetId, new AsyncCallback<Boolean>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     setResult(in.readBoolean());
                 }
             });
@@ -456,7 +508,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             out.writeString(mapName).writeByteBuffer(key).writeString(replicationName);
             return out.flushAndAwait(packetId, new AsyncCallback<String>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     setResult(in.readString());
                 }
             });
@@ -542,6 +594,96 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             return host + ":" + port;
         } catch (Exception e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public <T> void send(Packet packet, AsyncHandler<T> handler) {
+        try {
+            TransferOutputStream out = newOut();
+            int packetId = getNextId();
+            out.writeRequestHeader(packetId, packet.getType());
+            packet.encode(out, 0);
+
+            AsyncCallback<Packet> ac = new AsyncCallback<Packet>() {
+                @Override
+                @SuppressWarnings("unchecked")
+                public void runInternal(NetInputStream in) throws Exception {
+                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
+                    Packet message = decoder.decode(in, 0);
+                    setResult(message);
+                    if (ah != null) {
+                        ah.handle(message);
+                    }
+                }
+            };
+            if (handler != null) {
+                ac.setAsyncHandler(handler);
+                out.flush(packetId, ac);
+            } else {
+                out.flushAndAwait(packetId, ac);
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    @Override
+    public <T> void send(Packet packet, int packetId, AsyncHandler<T> handler) {
+        try {
+            TransferOutputStream out = newOut();
+            out.writeRequestHeader(packetId, packet.getType());
+            packet.encode(out, 0);
+
+            AsyncCallback<Packet> ac = new AsyncCallback<Packet>() {
+                @Override
+                @SuppressWarnings("unchecked")
+                public void runInternal(NetInputStream in) throws Exception {
+                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
+                    Packet message = decoder.decode(in, 0);
+                    setResult(message);
+                    if (ah != null) {
+                        ah.handle(message);
+                    }
+                }
+            };
+            if (handler != null) {
+                ac.setAsyncHandler(handler);
+                out.flush(packetId, ac);
+            } else {
+                out.flushAndAwait(packetId, ac);
+            }
+        } catch (Exception e) {
+            throw DbException.convert(e);
+        }
+    }
+
+    @Override
+    public <T extends Packet> T sendSync(Packet packet) {
+        int packetId = getNextId();
+        return sendSync(packet, packetId);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T extends Packet> T sendSync(Packet packet, int packetId) {
+        traceOperation(packet.getType().name(), packetId);
+        try {
+            TransferOutputStream out = newOut();
+            out.writeRequestHeader(packetId, packet.getType());
+            packet.encode(out, 0);
+
+            AsyncCallback<Packet> ac = new AsyncCallback<Packet>() {
+                @Override
+                public void runInternal(NetInputStream in) throws Exception {
+                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
+                    Packet message = decoder.decode(in, 0);
+                    setResult(message);
+                }
+            };
+            return (T) out.flushAndAwait(packetId, ac);
+        } catch (Exception e) {
+            throw DbException.convert(e);
         }
     }
 }

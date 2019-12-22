@@ -26,12 +26,19 @@ import java.util.TreeMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Constants;
+import org.lealone.db.Session;
+import org.lealone.db.async.AsyncHandler;
 import org.lealone.net.NetNode;
+import org.lealone.server.protocol.DistributedTransactionValidate;
+import org.lealone.server.protocol.DistributedTransactionValidateAck;
+import org.lealone.server.protocol.ReplicationCheckConflict;
+import org.lealone.server.protocol.ReplicationCheckConflictAck;
 import org.lealone.storage.replication.ConsistencyLevel;
 import org.lealone.transaction.Transaction.Validator;
 
@@ -86,6 +93,31 @@ class DTRValidator extends Thread {
             backlog.put(new QueuedMessage(transaction, allLocalTransactionNames));
         } catch (InterruptedException e) {
             throw new AssertionError(e);
+        }
+        validateTransactionAsync(transaction, allLocalTransactionNames.split(","));
+    }
+
+    private static void validateTransactionAsync(AOTransaction transaction, String[] allLocalTransactionNames) {
+        AtomicBoolean isFullSuccessful = new AtomicBoolean(true);
+        AtomicInteger size = new AtomicInteger(allLocalTransactionNames.length);
+        AsyncHandler<DistributedTransactionValidateAck> handler = ack -> {
+            isFullSuccessful.compareAndSet(true, ack.isValid);
+            int index = size.decrementAndGet();
+            if (index == 0 && isFullSuccessful.get()) {
+                transaction.commitAfterValidate(transaction.transactionId);
+            }
+        };
+        String localHostAndPort = NetNode.getLocalTcpHostAndPort();
+        for (String localTransactionName : allLocalTransactionNames) {
+            if (!localTransactionName.startsWith(localHostAndPort)) {
+                String[] a = localTransactionName.split(":");
+                String hostAndPort = a[0] + ":" + a[1];
+                DistributedTransactionValidate packet = new DistributedTransactionValidate(
+                        localTransactionName);
+                transaction.getSession().send(packet, hostAndPort, handler);
+            } else {
+                size.decrementAndGet();
+            }
         }
     }
 
@@ -256,6 +288,66 @@ class DTRValidator extends Thread {
             }
         }
         return candidateReplicationName;
+    }
+
+    static String handleReplicationConflict(String mapName, ByteBuffer key, String replicationName, Session session) {
+        // 第一步: 获取各节点的锁占用情况
+        String[] names = replicationName.split(",");
+        boolean[] local = new boolean[names.length];
+        NetNode localHostAndPort = NetNode.getLocalTcpNode();
+        int size = names.length - 2;
+        String[] replicationNames = new String[size];
+        AtomicInteger replicationNameIndex = new AtomicInteger();
+
+        AsyncHandler<ReplicationCheckConflictAck> handler = ack -> {
+            int index = replicationNameIndex.getAndIncrement();
+            replicationNames[index] = ack.replicationName;
+            if (index == size - 1) {
+                // 第二步: 分析锁冲突(因为是基于轻量级锁来实现复制的，锁冲突也就意味着复制发生了冲突)
+                // 1. 如果客户端C拿到的行锁数>=2，保留C，撤销其他的
+                // 2. 如果没有一个客户端拿到的行锁数>=2，那么按复制名的自然序保留排在最前面的那个，撤销之后的
+                int quorum = size / 2 + 1;
+                String candidateReplicationName = null;
+                TreeMap<String, AtomicInteger> map = new TreeMap<>();
+                for (String rn : replicationNames) {
+                    AtomicInteger count = map.get(rn);
+                    if (count == null) {
+                        count = new AtomicInteger(0);
+                        map.put(rn, count);
+                    }
+                    if (count.incrementAndGet() >= quorum)
+                        candidateReplicationName = rn;
+                }
+                if (candidateReplicationName == null)
+                    candidateReplicationName = map.firstKey();
+
+                // 第三步: 处理锁冲突
+                for (int i = 2, length = names.length; i < length; i++) {
+                    String name = names[i];
+                    if (!local[i]) {
+                        ReplicationCheckConflict packet = new ReplicationCheckConflict(mapName, key, replicationName);
+                        session.send(packet, name, null);
+                    }
+                }
+            }
+        };
+
+        // 从2开始，前两个不是节点名
+        for (int i = 2, length = names.length; i < length; i++) {
+            String name = names[i];
+            if (name.indexOf(':') == -1) {
+                name += ":" + Constants.DEFAULT_TCP_PORT;
+                names[i] = name;
+            }
+            if (localHostAndPort.equals(NetNode.createTCP(name))) {
+                replicationNames[replicationNameIndex.getAndIncrement()] = replicationName;
+                local[i] = true;
+            } else {
+                ReplicationCheckConflict packet = new ReplicationCheckConflict(mapName, key, replicationName);
+                session.send(packet, name, handler);
+            }
+        }
+        return null;
     }
 
     private DTRValidator() {

@@ -14,12 +14,19 @@ import org.lealone.client.result.RowCountDeterminedClientResult;
 import org.lealone.client.result.RowCountUndeterminedClientResult;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
-import org.lealone.net.AsyncCallback;
+import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
+import org.lealone.server.protocol.DistributedTransactionUpdate;
+import org.lealone.server.protocol.DistributedTransactionUpdateAck;
+import org.lealone.server.protocol.ReplicationUpdate;
+import org.lealone.server.protocol.ReplicationUpdateAck;
+import org.lealone.server.protocol.CommandUpdate;
+import org.lealone.server.protocol.CommandUpdateAck;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 
@@ -147,7 +154,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
         isQuery = true;
         AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
             @Override
-            public void runInternal(TransferInputStream in) throws Exception {
+            public void runInternal(NetInputStream in) throws Exception {
                 if (isDistributedQuery)
                     session.getParentTransaction().addLocalTransactionNames(in.readString());
 
@@ -155,9 +162,11 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
                 int rowCount = in.readInt();
                 ClientResult result;
                 if (rowCount < 0)
-                    result = new RowCountUndeterminedClientResult(session, in, resultId, columnCount, fetch);
+                    result = new RowCountUndeterminedClientResult(session, (TransferInputStream) in, resultId,
+                            columnCount, fetch);
                 else
-                    result = new RowCountDeterminedClientResult(session, in, resultId, columnCount, rowCount, fetch);
+                    result = new RowCountDeterminedClientResult(session, (TransferInputStream) in, resultId,
+                            columnCount, rowCount, fetch);
                 setResult(result);
                 if (handler != null) {
                     AsyncResult<Result> r = new AsyncResult<>();
@@ -236,7 +245,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
         isQuery = false;
         AsyncCallback<Integer> ac = new AsyncCallback<Integer>() {
             @Override
-            public void runInternal(TransferInputStream in) throws Exception {
+            public void runInternal(NetInputStream in) throws Exception {
                 if (isDistributedUpdate)
                     session.getParentTransaction().addLocalTransactionNames(in.readString());
 
@@ -258,6 +267,46 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
             updateCount = out.flushAndAwait(packetId, ac);
         }
         return updateCount;
+    }
+
+    protected int update2(String replicationName, List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+        isQuery = false;
+        int packetId = session.getNextId();
+        commandId = packetId;
+        boolean isDistributedUpdate = isDistributed();
+        if (isDistributedUpdate) {
+            DistributedTransactionUpdate packet = new DistributedTransactionUpdate(pageKeys, sql);
+            if (handler == null) {
+                DistributedTransactionUpdateAck ack = session.sendSync(packet, packetId);
+                return ack.updateCount;
+            } else {
+                session.<DistributedTransactionUpdateAck> send(packet, packetId, ack -> {
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                    handler.handle(new AsyncResult<>(ack.updateCount));
+                });
+            }
+        } else if (replicationName != null) {
+            ReplicationUpdate packet = new ReplicationUpdate(pageKeys, sql, replicationName);
+            if (handler == null) {
+                ReplicationUpdateAck ack = session.sendSync(packet, packetId);
+                return ack.updateCount;
+            } else {
+                session.<ReplicationUpdateAck> send(packet, packetId, ack -> {
+                    handler.handle(new AsyncResult<>(ack.updateCount));
+                });
+            }
+        } else {
+            CommandUpdate packet = new CommandUpdate(pageKeys, sql);
+            if (handler == null) {
+                CommandUpdateAck ack = session.sendSync(packet, packetId);
+                return ack.updateCount;
+            } else {
+                session.<CommandUpdateAck> send(packet, packetId, ack -> {
+                    handler.handle(new AsyncResult<>(ack.updateCount));
+                });
+            }
+        }
+        return 0;
     }
 
     @Override
@@ -329,7 +378,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     protected int[] getResultAsync(TransferOutputStream out, int packetId, int size) throws IOException {
         return out.flushAndAwait(packetId, new AsyncCallback<int[]>() {
             @Override
-            public void runInternal(TransferInputStream in) throws Exception {
+            public void runInternal(NetInputStream in) throws Exception {
                 int[] result = new int[size];
                 for (int i = 0; i < size; i++)
                     result[i] = in.readInt();

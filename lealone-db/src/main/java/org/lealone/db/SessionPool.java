@@ -22,6 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 
@@ -71,6 +73,30 @@ public class SessionPool {
             session = ci.createSession().connect(false);
         }
         return session;
+    }
+
+    public static void getSessionAsync(ServerSession originalSession, String url,
+            AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        getSessionAsync(originalSession, url, true, asyncHandler);
+    }
+
+    public static void getSessionAsync(ServerSession originalSession, String url, boolean remote,
+            AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        ConnectionInfo oldCi = originalSession.getConnectionInfo();
+        // 未来新加的代码如果忘记设置这个字段，出问题时方便查找原因
+        if (oldCi == null) {
+            throw DbException.throwInternalError();
+        }
+
+        ConnectionInfo ci = new ConnectionInfo(url, oldCi.getProperties());
+        ci.setProperty("IS_LOCAL", "true");
+        ci.setUserName(oldCi.getUserName());
+        ci.setUserPasswordHash(oldCi.getUserPasswordHash());
+        ci.setFilePasswordHash(oldCi.getFilePasswordHash());
+        ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
+        ci.setRemote(remote);
+        // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
+        ci.createSession().connectAsync(false, asyncHandler);
     }
 
     public static void release(Session session) {

@@ -26,10 +26,18 @@ public interface NetInputStream {
 
     int readInt() throws IOException;
 
+    long readLong() throws IOException;
+
     String readString() throws IOException;
 
     ByteBuffer readByteBuffer() throws IOException;
 
     PageKey readPageKey() throws IOException;
+
+    boolean readBoolean() throws IOException;
+
+    byte[] readBytes() throws IOException;
+
+    void readBytes(byte[] buff, int off, int len) throws IOException;
 
 }

@@ -31,7 +31,7 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.Pair;
 import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
-import org.lealone.p2p.gms.FailureDetector;
+import org.lealone.p2p.gossip.FailureDetector;
 import org.lealone.p2p.server.P2pServer;
 
 public class TopologyMetaData {

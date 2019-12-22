@@ -12,6 +12,9 @@ import java.nio.ByteBuffer;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
+import org.lealone.server.protocol.Packet;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -213,6 +216,12 @@ public interface Session extends Closeable, Transaction.Participant {
 
     Session connect(boolean allowRedirect);
 
+    default void connectAsync(AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        connectAsync(true, asyncHandler);
+    }
+
+    void connectAsync(boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler);
+
     String getURL();
 
     String getReplicationName();
@@ -220,6 +229,8 @@ public interface Session extends Closeable, Transaction.Participant {
     void setReplicationName(String replicationName);
 
     ConnectionInfo getConnectionInfo();
+
+    // ConnectionInfo getConnectionInfo(String newHostAndPort);
 
     boolean isLocal();
 
@@ -294,4 +305,28 @@ public interface Session extends Closeable, Transaction.Participant {
     }
 
     String getLocalHostAndPort();
+
+    default <T> void send(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
+        send(packet, handler);
+    }
+
+    default <T> void send(Packet packet, AsyncHandler<T> handler) {
+    }
+
+    default <T> void send(Packet packet, int packetId, AsyncHandler<T> handler) {
+    }
+
+    default <T extends Packet> T sendSync(Packet packet) {
+        return null;
+    }
+
+    default <T extends Packet> T sendSync(Packet packet, int packetId) {
+        return null;
+    }
+
+    // default <T> void sendMessage(Message message, String hostAndPort, AsyncCallback<T> asyncCallback) {
+    // }
+    //
+    // default void receiveMessage(NetInputStream in, int operation) throws IOException {
+    // }
 }

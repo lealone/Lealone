@@ -20,11 +20,11 @@ package org.lealone.client;
 import java.nio.ByteBuffer;
 
 import org.lealone.db.Session;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.value.ValueLong;
-import org.lealone.net.AsyncCallback;
-import org.lealone.net.TransferInputStream;
+import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
@@ -73,7 +73,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
 
             bytes = getResult(packetId, out, handler, new AsyncCallback<byte[]>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     if (isDistributed)
                         session.getParentTransaction().addLocalTransactionNames(in.readString());
                     setResult(in.readBytes());
@@ -104,7 +104,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
 
             bytes = getResult(packetId, out, handler, new AsyncCallback<byte[]>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     if (isDistributed)
                         session.getParentTransaction().addLocalTransactionNames(in.readString());
                     setResult(in.readBytes());
@@ -142,7 +142,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
 
             result = getResult(packetId, out, handler, new AsyncCallback<Long>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     if (isDistributed)
                         session.getParentTransaction().addLocalTransactionNames(in.readString());
                     setResult(in.readLong());
@@ -209,7 +209,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
 
             return getResult(packetId, out, handler, new AsyncCallback<LeafPageMovePlan>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     setResult(LeafPageMovePlan.deserialize(in));
                 }
             });
@@ -230,7 +230,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
 
             return getResult(packetId, out, handler, new AsyncCallback<ByteBuffer>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     result = in.readByteBuffer();
                 }
             });

@@ -30,10 +30,10 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetNode;
 import org.lealone.p2p.config.Config;
-import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.NodeState;
-import org.lealone.p2p.gms.Gossiper;
-import org.lealone.p2p.gms.VersionedValue;
+import org.lealone.p2p.gossip.ApplicationState;
+import org.lealone.p2p.gossip.Gossiper;
+import org.lealone.p2p.gossip.NodeState;
+import org.lealone.p2p.gossip.VersionedValue;
 import org.lealone.p2p.util.Utils;
 
 public class BackgroundActivityMonitor {

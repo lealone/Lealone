@@ -24,12 +24,12 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetClientBase;
@@ -56,9 +56,6 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
                 nioEventLoopAdapter = new NioEventLoopAdapter(config, "client_nio_event_loop_interval", 1000); // 默认1秒
                 ConcurrentUtils.submitTask("ClientNioEventLoopService", () -> {
                     NioNetClient.this.run();
-                });
-                ShutdownHookUtils.addShutdownHook(this, () -> {
-                    close();
                 });
             } catch (IOException e) {
                 throw new RuntimeException("Failed to open NioEventLoopAdapter", e);
@@ -109,28 +106,29 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
 
         ClientAttachment attachment = (ClientAttachment) att;
         AsyncConnection conn;
-        try {
-            channel.finishConnect();
-            nioEventLoopAdapter.addSocketChannel(channel);
-            NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
-            if (attachment.connectionManager != null) {
-                conn = attachment.connectionManager.createConnection(writableChannel, false);
-            } else {
-                conn = new TcpClientConnection(writableChannel, this);
-            }
-            conn.setInetSocketAddress(attachment.inetSocketAddress);
-            addConnection(attachment.inetSocketAddress, conn);
-            attachment.conn = conn;
-            channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
-        } finally {
-            attachment.latch.countDown();
+        channel.finishConnect();
+        nioEventLoopAdapter.addSocketChannel(channel);
+        NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
+        if (attachment.connectionManager != null) {
+            conn = attachment.connectionManager.createConnection(writableChannel, false);
+        } else {
+            conn = new TcpClientConnection(writableChannel, this);
         }
+        conn.setInetSocketAddress(attachment.inetSocketAddress);
+        addConnection(attachment.inetSocketAddress, conn);
+        attachment.conn = conn;
+        if (attachment.asyncHandler != null) {
+            AsyncResult<AsyncConnection> ar = new AsyncResult<>();
+            ar.setResult(conn);
+            attachment.asyncHandler.handle(ar);
+        }
+        channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
     }
 
     private static class ClientAttachment extends NioNetServer.Attachment {
         AsyncConnectionManager connectionManager;
         InetSocketAddress inetSocketAddress;
-        CountDownLatch latch;
+        AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler;
     }
 
     @Override
@@ -150,7 +148,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
 
     @Override
     protected void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
-            CountDownLatch latch) throws Exception {
+            AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         int socketRecvBuffer = 16 * 1024;
         int socketSendBuffer = 8 * 1024;
@@ -168,13 +166,15 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             ClientAttachment attachment = new ClientAttachment();
             attachment.connectionManager = connectionManager;
             attachment.inetSocketAddress = inetSocketAddress;
-            attachment.latch = latch;
+            attachment.asyncHandler = asyncHandler;
 
             register(channel, SelectionKey.OP_CONNECT, attachment);
             channel.connect(inetSocketAddress);
         } catch (Exception e) {
             closeChannel(channel);
-            throw e;
+            AsyncResult<AsyncConnection> ar = new AsyncResult<>();
+            ar.setCause(e);
+            asyncHandler.handle(ar);
         }
     }
 

@@ -24,6 +24,13 @@ public class AsyncResult<T> {
     protected boolean succeeded;
     protected boolean failed;
 
+    public AsyncResult() {
+    }
+
+    public AsyncResult(T result) {
+        setResult(result);
+    }
+
     public T getResult() {
         return result;
     }
@@ -59,5 +66,4 @@ public class AsyncResult<T> {
     public void setFailed(boolean failed) {
         this.failed = failed;
     }
-
 }

@@ -20,7 +20,6 @@ package org.lealone.p2p.server;
 import java.util.Map;
 
 import org.lealone.net.NetNodeManagerHolder;
-import org.lealone.p2p.net.P2pNetNodeManager;
 import org.lealone.server.ProtocolServer;
 import org.lealone.server.ProtocolServerEngineBase;
 

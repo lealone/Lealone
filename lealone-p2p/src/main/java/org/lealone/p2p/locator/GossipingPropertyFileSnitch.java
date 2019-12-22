@@ -21,18 +21,18 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.ConfigException;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
-import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.NodeState;
-import org.lealone.p2p.gms.Gossiper;
+import org.lealone.p2p.gossip.ApplicationState;
+import org.lealone.p2p.gossip.Gossiper;
+import org.lealone.p2p.gossip.NodeState;
 import org.lealone.p2p.server.ClusterMetaData;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.ResourceWatcher;
 import org.lealone.p2p.util.Utils;
-import org.lealone.p2p.util.WrappedRunnable;
 
 public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
     private static final Logger logger = LoggerFactory.getLogger(GossipingPropertyFileSnitch.class);
@@ -64,10 +64,11 @@ public class GossipingPropertyFileSnitch extends AbstractNetworkTopologySnitch {
             if (fileName == null)
                 fileName = SnitchProperties.RACKDC_PROPERTY_FILENAME;
             Utils.resourceToFile(fileName);
-            Runnable runnable = new WrappedRunnable() {
-                @Override
-                protected void runMayThrow() throws ConfigException {
+            Runnable runnable = () -> {
+                try {
                     reloadConfiguration();
+                } catch (Exception e) {
+                    throw DbException.convert(e);
                 }
             };
             ResourceWatcher.watch(fileName, runnable, refreshPeriodInSeconds * 1000);

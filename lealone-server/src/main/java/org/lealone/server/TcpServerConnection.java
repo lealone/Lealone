@@ -40,6 +40,7 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
@@ -53,6 +54,13 @@ import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.server.Scheduler.SessionInfo;
+import org.lealone.server.handler.PacketHandler;
+import org.lealone.server.handler.PacketHandlers;
+import org.lealone.server.protocol.InitPacket;
+import org.lealone.server.protocol.InitPacketAck;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
@@ -130,6 +138,33 @@ public class TcpServerConnection extends TransferConnection {
             out.writeString(session.getTargetNodes());
             out.writeString(session.getRunMode().toString());
             out.writeBoolean(session.isInvalid());
+            out.flush();
+        } catch (Throwable e) {
+            sendError(null, packetId, e);
+        }
+    }
+
+    void readInitPacketV2(TransferInputStream in, int packetId, int sessionId) {
+        try {
+            InitPacket packet = InitPacket.decoder.decode(in, 0);
+            ConnectionInfo ci = packet.ci;
+            String baseDir = tcpServer.getBaseDir();
+            if (baseDir == null) {
+                baseDir = SysProperties.getBaseDirSilently();
+            }
+            // 强制使用服务器端的基目录
+            if (baseDir != null) {
+                ci.setBaseDir(baseDir);
+            }
+            Session session = createSession(ci, sessionId);
+            session.setProtocolVersion(packet.clientVersion);
+            in.setSession(session);
+
+            TransferOutputStream out = createTransferOutputStream(session);
+            out.writeResponseHeader(packetId, Session.STATUS_OK);
+            InitPacketAck ack = new InitPacketAck(packet.clientVersion, session.isAutoCommit(),
+                    session.getTargetNodes(), session.getRunMode(), session.isInvalid());
+            ack.encode(out, packet.clientVersion);
             out.flush();
         } catch (Throwable e) {
             sendError(null, packetId, e);
@@ -553,34 +588,6 @@ public class TcpServerConnection extends TransferConnection {
             executeUpdateAsync(in, packetId, operation, si, true);
             break;
         }
-        case Session.COMMAND_REPLICATION_COMMIT: {
-            long validKey = in.readLong();
-            boolean autoCommit = in.readBoolean();
-            session.replicationCommit(validKey, autoCommit);
-            break;
-        }
-        case Session.COMMAND_REPLICATION_ROLLBACK: {
-            session.rollback();
-            break;
-        }
-        case Session.COMMAND_REPLICATION_CHECK_CONFLICT: {
-            String mapName = in.readString();
-            ByteBuffer key = in.readByteBuffer();
-            String replicationName = in.readString();
-            String ret = session.checkReplicationConflict(mapName, key, replicationName);
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            out.writeString(ret);
-            out.flush();
-            break;
-        }
-        case Session.COMMAND_REPLICATION_HANDLE_CONFLICT: {
-            String mapName = in.readString();
-            ByteBuffer key = in.readByteBuffer();
-            String replicationName = in.readString();
-            session.handleReplicationConflict(mapName, key, replicationName);
-            break;
-        }
         case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT:
         case Session.COMMAND_STORAGE_PUT:
         case Session.COMMAND_STORAGE_REPLICATION_PUT: {
@@ -749,34 +756,6 @@ public class TcpServerConnection extends TransferConnection {
             out.flush();
             break;
         }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT: {
-            session.commit(in.readString());
-            // 不需要发回响应
-            break;
-        }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK: {
-            session.rollback();
-            // 不需要发回响应
-            break;
-        }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT:
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT: {
-            String name = in.readString();
-            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT)
-                session.addSavepoint(name);
-            else
-                session.rollbackToSavepoint(name);
-            // 不需要发回响应
-            break;
-        }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE: {
-            boolean isValid = session.validateTransaction(in.readString());
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            out.writeBoolean(isValid);
-            out.flush();
-            break;
-        }
         case Session.COMMAND_BATCH_STATEMENT_UPDATE: {
             int size = in.readInt();
             int[] result = new int[size];
@@ -912,9 +891,34 @@ public class TcpServerConnection extends TransferConnection {
             break;
         }
         default:
+            handleOtherRequest(in, packetId, operation, si);
+        }
+    }
+
+    private void handleOtherRequest(TransferInputStream in, int packetId, int operation, SessionInfo si)
+            throws IOException {
+        Session session = si.session;
+        int version = 0;
+        PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(operation);
+        Packet message = decoder.decode(in, version);
+        @SuppressWarnings("unchecked")
+        PacketHandler<Packet> handler = (PacketHandler<Packet>) PacketHandlers.getHandler(operation);
+        if (handler != null) {
+            Packet ack = handler.handle(this, (ServerSession) session, message);
+            if (ack != null) {
+                TransferOutputStream out = createTransferOutputStream(session);
+                writeResponseHeader(out, session, packetId);
+                ack.encode(out, version);
+                out.flush();
+            }
+        } else {
             logger.warn("Unknow operation: {}", operation);
             close();
         }
+    }
+
+    public void addCache(Integer k, AutoCloseable v) {
+        cache.put(k, v);
     }
 
     /**

@@ -19,13 +19,18 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.net.AsyncCallback;
+import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
+import org.lealone.server.protocol.Prepare;
+import org.lealone.server.protocol.PrepareAck;
+import org.lealone.server.protocol.PrepareReadParams;
+import org.lealone.server.protocol.PrepareReadParamsAck;
 import org.lealone.storage.PageKey;
 
 /**
@@ -67,13 +72,13 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             out.writeInt(commandId).writeString(sql);
             out.flushAndAwait(packetId, new AsyncCallback<Void>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     isQuery = in.readBoolean();
                     if (readParams) {
                         int paramCount = in.readInt();
                         for (int i = 0; i < paramCount; i++) {
                             ClientCommandParameter p = new ClientCommandParameter(i);
-                            p.readMetaData(in);
+                            p.readMetaData((TransferInputStream) in);
                             parameters.add(p);
                         }
                     }
@@ -81,6 +86,22 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             });
         } catch (IOException e) {
             session.handleException(e);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private void prepare2(boolean readParams) {
+        // Prepared SQL的ID，每次执行时都发给后端
+        commandId = session.getNextId();
+        if (readParams) {
+            PrepareReadParams packet = new PrepareReadParams(commandId, sql);
+            PrepareReadParamsAck ack = session.sendSync(packet);
+            isQuery = ack.isQuery;
+            parameters = new ArrayList<>(ack.params);
+        } else {
+            Prepare packet = new Prepare(commandId, sql);
+            PrepareAck ack = session.sendSync(packet);
+            isQuery = ack.isQuery;
         }
     }
 
@@ -111,9 +132,10 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             out.writeInt(commandId);
             AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
                 @Override
-                public void runInternal(TransferInputStream in) throws Exception {
+                public void runInternal(NetInputStream in) throws Exception {
                     int columnCount = in.readInt();
-                    ClientResult result = new RowCountDeterminedClientResult(session, in, -1, columnCount, 0, 0);
+                    ClientResult result = new RowCountDeterminedClientResult(session, (TransferInputStream) in, -1,
+                            columnCount, 0, 0);
                     setResult(result);
                 }
             };

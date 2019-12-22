@@ -28,7 +28,7 @@ import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.net.NetNode;
-import org.lealone.p2p.gms.Gossiper;
+import org.lealone.p2p.gossip.Gossiper;
 
 public class LoadBasedNodeAssignmentStrategy extends AbstractNodeAssignmentStrategy {
 

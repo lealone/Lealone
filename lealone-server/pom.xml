@@ -35,5 +35,10 @@
             <artifactId>lealone-net</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.lealone</groupId>
+            <artifactId>lealone-sql</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 </project>

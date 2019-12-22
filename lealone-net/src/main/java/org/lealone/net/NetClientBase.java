@@ -23,6 +23,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.lealone.common.util.ShutdownHookUtils;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
+
 public abstract class NetClientBase implements NetClient {
 
     // 使用InetSocketAddress为key而不是字符串，是因为像localhost和127.0.0.1这两种不同格式实际都是同一个意思，
@@ -36,25 +40,47 @@ public abstract class NetClientBase implements NetClient {
 
     protected abstract void openInternal(Map<String, String> config);
 
+    protected abstract void closeInternal();
+
     protected abstract void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
-            CountDownLatch latch) throws Throwable;
+            AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler);
 
     @Override
     public AsyncConnection createConnection(Map<String, String> config, NetNode node) {
-        // checkClosed(); //创建连接时不检查关闭状态，这样允许重用NetClient实例，如果之前的实例关闭了，重新打开即可
-        return createConnection(config, node, null);
+        return createConnection(config, node, null, null);
+    }
+
+    @Override
+    public AsyncConnection createConnection(Map<String, String> config, NetNode node,
+            AsyncConnectionManager connectionManager) {
+        return createConnection(config, node, connectionManager, null);
+    }
+
+    @Override
+    public void createConnectionAsync(Map<String, String> config, NetNode node,
+            AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler) {
+        createConnection(config, node, null, asyncHandler);
+    }
+
+    @Override
+    public void createConnectionAsync(Map<String, String> config, NetNode node,
+            AsyncConnectionManager connectionManager, AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler) {
+        createConnection(config, node, connectionManager, asyncHandler);
     }
 
     private synchronized void open(Map<String, String> config) {
         if (opened.get())
             return;
         openInternal(config);
+        ShutdownHookUtils.addShutdownHook(this, () -> {
+            close();
+        });
         opened.set(true);
     }
 
-    @Override
-    public AsyncConnection createConnection(Map<String, String> config, NetNode node,
-            AsyncConnectionManager connectionManager) {
+    private AsyncConnection createConnection(Map<String, String> config, NetNode node,
+            AsyncConnectionManager connectionManager, AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler) {
+        // checkClosed(); //创建连接时不检查关闭状态，这样允许重用NetClient实例，如果之前的实例关闭了，重新打开即可
         if (!opened.get()) {
             open(config);
         }
@@ -64,16 +90,23 @@ public abstract class NetClientBase implements NetClient {
             synchronized (this) {
                 asyncConnection = getConnection(inetSocketAddress);
                 if (asyncConnection == null) {
-                    CountDownLatch latch = new CountDownLatch(1);
-                    try {
-                        createConnectionInternal(node, connectionManager, latch);
-                        latch.await();
-                    } catch (Throwable e) {
-                        throw new RuntimeException("Cannot connect to " + inetSocketAddress, e);
-                    }
-                    asyncConnection = getConnection(inetSocketAddress);
-                    if (asyncConnection == null) {
-                        throw new RuntimeException("Cannot connect to " + inetSocketAddress);
+                    if (asyncHandler == null) {
+                        try {
+                            CountDownLatch latch = new CountDownLatch(1);
+                            createConnectionInternal(node, connectionManager, ar -> {
+                                latch.countDown();
+                            });
+                            latch.await();
+                        } catch (Throwable e) {
+                            throw new RuntimeException("Cannot connect to " + inetSocketAddress, e);
+                        }
+
+                        asyncConnection = getConnection(inetSocketAddress);
+                        if (asyncConnection == null) {
+                            throw new RuntimeException("Cannot connect to " + inetSocketAddress);
+                        }
+                    } else {
+                        createConnectionInternal(node, connectionManager, asyncHandler);
                     }
                 }
             }
@@ -123,8 +156,5 @@ public abstract class NetClientBase implements NetClient {
         if (isClosed()) {
             throw new RuntimeException("NetClient is closed");
         }
-    }
-
-    protected void closeInternal() {
     }
 }

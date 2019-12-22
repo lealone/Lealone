@@ -22,11 +22,11 @@ import java.net.UnknownHostException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.net.NetNode;
-import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.NodeState;
-import org.lealone.p2p.gms.INodeStateChangeSubscriber;
-import org.lealone.p2p.gms.VersionedValue;
-import org.lealone.p2p.net.MessagingService;
+import org.lealone.p2p.gossip.ApplicationState;
+import org.lealone.p2p.gossip.INodeStateChangeSubscriber;
+import org.lealone.p2p.gossip.NodeState;
+import org.lealone.p2p.gossip.VersionedValue;
+import org.lealone.p2p.server.MessagingService;
 
 /**
  * Sidekick helper for snitches that want to reconnect from one IP addr for a node to another.

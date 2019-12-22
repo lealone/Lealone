@@ -24,12 +24,20 @@ import org.lealone.storage.PageKey;
 
 public interface NetOutputStream {
 
+    void setSSL(boolean ssl);
+
     NetOutputStream writeInt(int x) throws IOException;
+
+    NetOutputStream writeLong(long x) throws IOException;
 
     NetOutputStream writeString(String s) throws IOException;
 
     NetOutputStream writeByteBuffer(ByteBuffer data) throws IOException;
 
     NetOutputStream writePageKey(PageKey pk) throws IOException;
+
+    NetOutputStream writeBytes(byte[] data) throws IOException;
+
+    NetOutputStream writeBoolean(boolean x) throws IOException;
 
 }

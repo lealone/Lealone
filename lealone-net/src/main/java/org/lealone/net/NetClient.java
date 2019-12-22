@@ -20,12 +20,21 @@ package org.lealone.net;
 import java.net.InetSocketAddress;
 import java.util.Map;
 
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
+
 public interface NetClient {
 
     AsyncConnection createConnection(Map<String, String> config, NetNode node);
 
     AsyncConnection createConnection(Map<String, String> config, NetNode node,
             AsyncConnectionManager connectionManager);
+
+    void createConnectionAsync(Map<String, String> config, NetNode node,
+            AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler);
+
+    void createConnectionAsync(Map<String, String> config, NetNode node, AsyncConnectionManager connectionManager,
+            AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler);
 
     void removeConnection(InetSocketAddress inetSocketAddress);
 

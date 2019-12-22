@@ -19,6 +19,8 @@ import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
@@ -32,6 +34,9 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetNode;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.ReplicationCheckConflict;
+import org.lealone.server.protocol.ReplicationHandleConflict;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -1308,6 +1313,21 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return map.checkReplicationConflict(key, replicationName);
     }
 
+    public String checkReplicationConflict(ReplicationCheckConflict packet) {
+        TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(packet.mapName);
+        return map.checkReplicationConflict(packet.key, packet.replicationName);
+    }
+
+    public void handleReplicationConflict(ReplicationHandleConflict packet) {
+        if (!transaction.getGlobalReplicationName().equals(packet.replicationName)) {
+            transaction.rollbackToSavepoint(transaction.getSavepointId() - 1);
+            TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(packet.mapName);
+            if (map.tryLock(map.getKeyType().read(packet.key))) {
+                transaction.setGlobalReplicationName(packet.replicationName);
+            }
+        }
+    }
+
     @Override
     public String checkReplicationConflict(String mapName, ByteBuffer key, String hostAndPort, String replicationName) {
         Session s = null;
@@ -1374,6 +1394,11 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     @Override
     public Session connect(boolean allowRedirect) {
         return this;
+    }
+
+    @Override
+    public void connectAsync(boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        asyncHandler.handle(new AsyncResult<>(this));
     }
 
     @Override
@@ -1520,4 +1545,33 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     public String getLocalHostAndPort() {
         return NetNode.getLocalTcpHostAndPort();
     }
+
+    @Override
+    public <T> void send(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
+        String dbName = getDatabase().getShortName();
+        String url = createURL(dbName, hostAndPort);
+        // 不参与当前事务，所以不用当成当前session的嵌套session
+        SessionPool.getSessionAsync(this, url, ar -> {
+            if (ar.isSucceeded()) {
+                Session s = ar.getResult();
+                s.send(packet, hostAndPort, handler);
+            }
+        });
+    }
+
+    // @Override
+    // public <T> void send(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
+    // Session s = null;
+    // try {
+    // String dbName = getDatabase().getShortName();
+    // String url = createURL(dbName, hostAndPort);
+    // // 不参与当前事务，所以不用当成当前session的嵌套session
+    // s = SessionPool.getSession(this, url);
+    // s.send(packet, hostAndPort, handler);
+    // } catch (Exception e) {
+    // throw DbException.convert(e);
+    // } finally {
+    // SessionPool.release(s);
+    // }
+    // }
 }

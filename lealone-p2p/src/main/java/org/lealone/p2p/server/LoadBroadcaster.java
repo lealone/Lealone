@@ -28,11 +28,11 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetNode;
-import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.NodeState;
-import org.lealone.p2p.gms.Gossiper;
-import org.lealone.p2p.gms.INodeStateChangeSubscriber;
-import org.lealone.p2p.gms.VersionedValue;
+import org.lealone.p2p.gossip.ApplicationState;
+import org.lealone.p2p.gossip.Gossiper;
+import org.lealone.p2p.gossip.INodeStateChangeSubscriber;
+import org.lealone.p2p.gossip.NodeState;
+import org.lealone.p2p.gossip.VersionedValue;
 
 public class LoadBroadcaster implements INodeStateChangeSubscriber {
 

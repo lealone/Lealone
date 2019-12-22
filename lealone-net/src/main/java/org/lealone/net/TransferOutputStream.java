@@ -22,6 +22,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
@@ -31,6 +32,7 @@ import org.lealone.db.value.ValueResultSet;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
 import org.lealone.db.value.ValueUuid;
+import org.lealone.server.protocol.PacketType;
 import org.lealone.storage.PageKey;
 
 /**
@@ -79,6 +81,11 @@ public class TransferOutputStream implements NetOutputStream {
         return this;
     }
 
+    public TransferOutputStream writeRequestHeader(int packetId, PacketType packetType) throws IOException {
+        writeByte(REQUEST).writeInt(packetId).writeInt(packetType.value).writeInt(session.getSessionId());
+        return this;
+    }
+
     public TransferOutputStream writeRequestHeaderWithoutSessionId(int packetId, int packetType) throws IOException {
         writeByte(REQUEST).writeInt(packetId).writeInt(packetType);
         return this;
@@ -107,6 +114,7 @@ public class TransferOutputStream implements NetOutputStream {
         return session;
     }
 
+    @Override
     public void setSSL(boolean ssl) {
         // this.ssl = ssl;
     }
@@ -156,6 +164,7 @@ public class TransferOutputStream implements NetOutputStream {
      * @param x the value
      * @return itself
      */
+    @Override
     public TransferOutputStream writeBoolean(boolean x) throws IOException {
         out.writeByte((byte) (x ? 1 : 0));
         return this;
@@ -265,6 +274,7 @@ public class TransferOutputStream implements NetOutputStream {
      * @param data the value
      * @return itself
      */
+    @Override
     public TransferOutputStream writeBytes(byte[] data) throws IOException {
         if (data == null) {
             writeInt(-1);

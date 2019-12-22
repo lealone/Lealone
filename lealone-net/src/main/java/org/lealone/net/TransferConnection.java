@@ -28,6 +28,7 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 
 public abstract class TransferConnection extends AsyncConnection {
 

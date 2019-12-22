@@ -13,9 +13,10 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.net.AsyncCallback;
+import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 
@@ -173,8 +174,8 @@ public abstract class ClientResult implements Result {
         in.closeInputStream();
         in = out.flushAndAwait(packetId, new AsyncCallback<TransferInputStream>() {
             @Override
-            public void runInternal(TransferInputStream in) throws Exception {
-                setResult(in);
+            public void runInternal(NetInputStream in) throws Exception {
+                setResult((TransferInputStream) in);
             }
         });
     }

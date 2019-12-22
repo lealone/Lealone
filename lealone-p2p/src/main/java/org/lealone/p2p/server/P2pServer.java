@@ -34,23 +34,21 @@ import org.lealone.common.util.Pair;
 import org.lealone.db.Constants;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
-import org.lealone.net.NetNode;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;
+import org.lealone.net.NetNode;
 import org.lealone.net.NetServer;
 import org.lealone.net.WritableChannel;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.ConfigDescriptor;
-import org.lealone.p2p.gms.ApplicationState;
-import org.lealone.p2p.gms.NodeState;
-import org.lealone.p2p.gms.Gossiper;
-import org.lealone.p2p.gms.INodeStateChangeSubscriber;
-import org.lealone.p2p.gms.VersionedValue;
-import org.lealone.p2p.gms.VersionedValue.VersionedValueFactory;
+import org.lealone.p2p.gossip.ApplicationState;
+import org.lealone.p2p.gossip.Gossiper;
+import org.lealone.p2p.gossip.INodeStateChangeSubscriber;
+import org.lealone.p2p.gossip.NodeState;
+import org.lealone.p2p.gossip.VersionedValue;
+import org.lealone.p2p.gossip.VersionedValue.VersionedValueFactory;
 import org.lealone.p2p.locator.INodeSnitch;
 import org.lealone.p2p.locator.TopologyMetaData;
-import org.lealone.p2p.net.MessagingService;
-import org.lealone.p2p.net.P2pConnection;
 import org.lealone.p2p.util.FileUtils;
 import org.lealone.p2p.util.Utils;
 import org.lealone.server.DelegatedProtocolServer;
@@ -559,11 +557,6 @@ public class P2pServer extends DelegatedProtocolServer implements INodeStateChan
     }
 
     public void decommission() {
-    }
-
-    public boolean authenticate(String host) {
-        return true;
-        // return ConfigDescriptor.getInternodeAuthenticator().authenticate(socket.remoteAddress(), 990);
     }
 
     @Override
