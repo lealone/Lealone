@@ -33,6 +33,9 @@ import org.lealone.server.protocol.PrepareReadParams;
 import org.lealone.server.protocol.PrepareReadParamsAck;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
+import org.lealone.server.protocol.ps.PreparedStatementClose;
+import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
+import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
 import org.lealone.storage.PageKey;
 
 /**
@@ -125,23 +128,12 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         if (!isQuery) {
             return null;
         }
-        TransferOutputStream out = session.newOut();
-        int packetId = session.getNextId();
         prepareIfRequired();
         try {
-            session.traceOperation("COMMAND_GET_META_DATA", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_GET_META_DATA);
-            out.writeInt(commandId);
-            AsyncCallback<ClientResult> ac = new AsyncCallback<ClientResult>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    int columnCount = in.readInt();
-                    ClientResult result = new RowCountDeterminedClientResult(session, (TransferInputStream) in, -1,
-                            columnCount, 0, 0);
-                    setResult(result);
-                }
-            };
-            return out.flushAndAwait(packetId, ac);
+            PreparedStatementGetMetaDataAck ack = session.sendSync(new PreparedStatementGetMetaData(commandId));
+            ClientResult result = new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, -1,
+                    ack.columnCount, 0, 0);
+            return result;
         } catch (IOException e) {
             session.handleException(e);
         }
@@ -235,8 +227,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         int packetId = session.getNextId();
         session.traceOperation("COMMAND_CLOSE", packetId);
         try {
-            session.newOut().writeRequestHeader(packetId, Session.COMMAND_CLOSE).writeInt(commandId).flush();
-        } catch (IOException e) {
+            session.sendAsync(new PreparedStatementClose(commandId));
+        } catch (Exception e) {
             session.getTrace().error(e, "close session");
         }
         if (parameters != null) {

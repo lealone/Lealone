@@ -28,6 +28,9 @@ import org.lealone.server.protocol.dt.DistributedTransactionRollback;
 import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionValidate;
 import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
+import org.lealone.server.protocol.ps.PreparedStatementClose;
+import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
+import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
 import org.lealone.server.protocol.replication.ReplicationCommit;
@@ -85,6 +88,10 @@ public class PacketDecoders {
         register(PacketType.RESULT_CHANGE_ID, ResultChangeId.decoder);
         register(PacketType.RESULT_RESET, ResultReset.decoder);
         register(PacketType.RESULT_CLOSE, ResultClose.decoder);
+
+        register(PacketType.COMMAND_PREPARED_STATEMENT_GET_META_DATA, PreparedStatementGetMetaData.decoder);
+        register(PacketType.COMMAND_PREPARED_STATEMENT_GET_META_DATA_ACK, PreparedStatementGetMetaDataAck.decoder);
+        register(PacketType.COMMAND_PREPARED_STATEMENT_CLOSE, PreparedStatementClose.decoder);
 
         register(PacketType.COMMAND_BATCH_STATEMENT_UPDATE, BatchStatementUpdate.decoder);
         register(PacketType.COMMAND_BATCH_STATEMENT_UPDATE_ACK, BatchStatementUpdateAck.decoder);

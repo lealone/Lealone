@@ -49,6 +49,7 @@ import org.lealone.server.handler.PacketHandlers;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
+import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
 import org.lealone.server.protocol.result.ResultFetchRowsAck;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
@@ -267,25 +268,6 @@ public class TcpServerConnection extends TransferConnection {
         out.writeInt(p.getNullable());
     }
 
-    /**
-     * Write a result column to the given output.
-     *
-     * @param result the result
-     * @param i the column index
-     */
-    private static void writeColumn(TransferOutputStream out, Result result, int i) throws IOException {
-        out.writeString(result.getAlias(i));
-        out.writeString(result.getSchemaName(i));
-        out.writeString(result.getTableName(i));
-        out.writeString(result.getColumnName(i));
-        out.writeInt(result.getColumnType(i));
-        out.writeLong(result.getColumnPrecision(i));
-        out.writeInt(result.getColumnScale(i));
-        out.writeInt(result.getDisplaySize(i));
-        out.writeBoolean(result.isAutoIncrement(i));
-        out.writeInt(result.getNullable(i));
-    }
-
     private static int getStatus(Session session) {
         if (session.isClosed()) {
             return Session.STATUS_CLOSED;
@@ -385,7 +367,7 @@ public class TcpServerConnection extends TransferConnection {
             int rowCount = result.getRowCount();
             out.writeInt(rowCount);
             for (int i = 0; i < columnCount; i++) {
-                writeColumn(out, result, i);
+                PreparedStatementGetMetaDataAck.writeColumn(out, result, i);
             }
             int fetch = fetchSize;
             if (rowCount != -1)
@@ -540,28 +522,6 @@ public class TcpServerConnection extends TransferConnection {
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
             executeUpdateAsync(in, packetId, packetType, si, true);
-            break;
-        }
-        case Session.COMMAND_GET_META_DATA: {
-            int commandId = in.readInt();
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.get(commandId);
-            Result result = command.getMetaData();
-            int columnCount = result.getVisibleColumnCount();
-            TransferOutputStream out = createTransferOutputStream(session);
-            out.writeResponseHeader(packetId, Session.STATUS_OK);
-            out.writeInt(columnCount);
-            for (int i = 0; i < columnCount; i++) {
-                writeColumn(out, result, i);
-            }
-            out.flush();
-            break;
-        }
-        case Session.COMMAND_CLOSE: {
-            int commandId = in.readInt();
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.remove(commandId, true);
-            if (command != null) {
-                command.close();
-            }
             break;
         }
         default:
