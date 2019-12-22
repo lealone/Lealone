@@ -89,6 +89,7 @@ public class TransferInputStream implements NetInputStream {
      *
      * @return the value
      */
+    @Override
     public boolean readBoolean() throws IOException {
         return in.readByte() == 1;
     }
@@ -117,6 +118,7 @@ public class TransferInputStream implements NetInputStream {
      *
      * @return the value
      */
+    @Override
     public long readLong() throws IOException {
         return in.readLong();
     }
@@ -178,6 +180,7 @@ public class TransferInputStream implements NetInputStream {
      *
      * @return the value
      */
+    @Override
     public byte[] readBytes() throws IOException {
         int len = readInt();
         if (len == -1) {
@@ -195,6 +198,7 @@ public class TransferInputStream implements NetInputStream {
      * @param off the offset
      * @param len the number of bytes to read
      */
+    @Override
     public void readBytes(byte[] buff, int off, int len) throws IOException {
         in.readFully(buff, off, len);
     }
@@ -211,6 +215,7 @@ public class TransferInputStream implements NetInputStream {
     *
     * @return the value
     */
+    @Override
     public Value readValue() throws IOException {
         int type = readInt();
         switch (type) {

@@ -31,6 +31,8 @@ import org.lealone.server.protocol.Prepare;
 import org.lealone.server.protocol.PrepareAck;
 import org.lealone.server.protocol.PrepareReadParams;
 import org.lealone.server.protocol.PrepareReadParamsAck;
+import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
+import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.storage.PageKey;
 
 /**
@@ -259,22 +261,11 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     public int[] executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_BATCH_STATEMENT_PREPARED_UPDATE", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE);
-            out.writeInt(commandId);
-            int size = batchParameters.size();
-            out.writeInt(size);
-            for (int i = 0; i < size; i++) {
-                Value[] values = batchParameters.get(i);
-                int len = values.length;
-                for (int j = 0; j < len; j++)
-                    out.writeValue(values[j]);
-            }
-            return getResultAsync(out, packetId, size);
-        } catch (IOException e) {
+            BatchStatementUpdateAck ack = session
+                    .sendSync(new BatchStatementPreparedUpdate(commandId, batchParameters.size(), batchParameters));
+            return ack.results;
+        } catch (Exception e) {
             session.handleException(e);
         }
         return null;

@@ -18,7 +18,6 @@
 package org.lealone.server;
 
 import java.io.IOException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -297,15 +296,6 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    private static void writeBatchResult(TransferOutputStream out, Session session, int packetId, int[] result)
-            throws IOException {
-        writeResponseHeader(out, session, packetId);
-        for (int i = 0; i < result.length; i++)
-            out.writeInt(result[i]);
-
-        out.flush();
-    }
-
     protected static void writeResponseHeader(TransferOutputStream out, Session session, int packetId)
             throws IOException {
         out.writeResponseHeader(packetId, getStatus(session));
@@ -565,44 +555,6 @@ public class TcpServerConnection extends TransferConnection {
                 writeColumn(out, result, i);
             }
             out.flush();
-            break;
-        }
-        case Session.COMMAND_BATCH_STATEMENT_UPDATE: {
-            int size = in.readInt();
-            int[] result = new int[size];
-            for (int i = 0; i < size; i++) {
-                String sql = in.readString();
-                PreparedSQLStatement command = session.prepareStatement(sql, -1);
-                try {
-                    result[i] = command.executeUpdate();
-                } catch (Exception e) {
-                    result[i] = Statement.EXECUTE_FAILED;
-                }
-            }
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeBatchResult(out, session, packetId, result);
-            break;
-        }
-        case Session.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE: {
-            int commandId = in.readInt();
-            int size = in.readInt();
-            PreparedSQLStatement command = (PreparedSQLStatement) cache.get(commandId);
-            List<? extends CommandParameter> params = command.getParameters();
-            int paramsSize = params.size();
-            int[] result = new int[size];
-            for (int i = 0; i < size; i++) {
-                for (int j = 0; j < paramsSize; j++) {
-                    CommandParameter p = params.get(j);
-                    p.setValue(in.readValue());
-                }
-                try {
-                    result[i] = command.executeUpdate();
-                } catch (Exception e) {
-                    result[i] = Statement.EXECUTE_FAILED;
-                }
-            }
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeBatchResult(out, session, packetId, result);
             break;
         }
         case Session.COMMAND_CLOSE: {

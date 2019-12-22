@@ -57,9 +57,6 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_UPDATE = 102;
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE = 103;
 
-    public static final int COMMAND_BATCH_STATEMENT_UPDATE = 140;
-    public static final int COMMAND_BATCH_STATEMENT_PREPARED_UPDATE = 141;
-
     public static final int COMMAND_P2P_MESSAGE = 300;
 
     public static final int STATUS_OK = 1000;

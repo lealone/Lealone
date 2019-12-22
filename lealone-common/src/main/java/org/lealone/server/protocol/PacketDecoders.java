@@ -19,6 +19,9 @@ package org.lealone.server.protocol;
 
 import java.util.HashMap;
 
+import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
+import org.lealone.server.protocol.batch.BatchStatementUpdate;
+import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionCommit;
 import org.lealone.server.protocol.dt.DistributedTransactionRollback;
@@ -71,6 +74,10 @@ public class PacketDecoders {
         register(PacketType.RESULT_CHANGE_ID, ResultChangeId.decoder);
         register(PacketType.RESULT_RESET, ResultReset.decoder);
         register(PacketType.RESULT_CLOSE, ResultClose.decoder);
+
+        register(PacketType.COMMAND_BATCH_STATEMENT_UPDATE, BatchStatementUpdate.decoder);
+        register(PacketType.COMMAND_BATCH_STATEMENT_UPDATE_ACK, BatchStatementUpdateAck.decoder);
+        register(PacketType.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE, BatchStatementPreparedUpdate.decoder);
 
         register(PacketType.COMMAND_READ_LOB, ReadLob.decoder);
         register(PacketType.COMMAND_READ_LOB_ACK, ReadLobAck.decoder);

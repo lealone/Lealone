@@ -23,6 +23,8 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.server.protocol.CommandUpdate;
 import org.lealone.server.protocol.CommandUpdateAck;
+import org.lealone.server.protocol.batch.BatchStatementUpdate;
+import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DistributedTransactionUpdate;
 import org.lealone.server.protocol.dt.DistributedTransactionUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationCommit;
@@ -353,33 +355,14 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     public int[] executeBatchSQLCommands(List<String> batchCommands) {
-        int packetId = session.getNextId();
-        commandId = packetId;
-        TransferOutputStream out = session.newOut();
+        commandId = session.getNextId();
         try {
-            session.traceOperation("COMMAND_BATCH_STATEMENT_UPDATE", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_BATCH_STATEMENT_UPDATE);
-            int size = batchCommands.size();
-            out.writeInt(size);
-            for (int i = 0; i < size; i++) {
-                out.writeString(batchCommands.get(i));
-            }
-            return getResultAsync(out, packetId, size);
-        } catch (IOException e) {
+            BatchStatementUpdateAck ack = session
+                    .sendSync(new BatchStatementUpdate(batchCommands.size(), batchCommands), commandId);
+            return ack.results;
+        } catch (Exception e) {
             session.handleException(e);
         }
         return null;
-    }
-
-    protected int[] getResultAsync(TransferOutputStream out, int packetId, int size) throws IOException {
-        return out.flushAndAwait(packetId, new AsyncCallback<int[]>() {
-            @Override
-            public void runInternal(NetInputStream in) throws Exception {
-                int[] result = new int[size];
-                for (int i = 0; i < size; i++)
-                    result[i] = in.readInt();
-                setResult(result);
-            }
-        });
     }
 }
