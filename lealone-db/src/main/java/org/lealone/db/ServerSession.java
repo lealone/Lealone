@@ -56,7 +56,7 @@ import org.lealone.transaction.TransactionMap;
  * mode, this object resides on the server side and communicates with a
  * Session object on the client side.
  */
-public class ServerSession extends SessionBase implements Transaction.Validator {
+public class ServerSession extends SessionBase {
     /**
      * The prefix of generated identifiers. It may not have letters, because
      * they are case sensitive.
@@ -1224,7 +1224,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
 
         boolean isShardingMode = isShardingMode();
         Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, getRunMode());
-        transaction.setValidator(this);
         transaction.setSession(this);
         transaction.setGlobalReplicationName(replicationName);
 
@@ -1269,48 +1268,8 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return sessionCache.get(url);
     }
 
-    @Override
     public boolean validateTransaction(String localTransactionName) {
         return database.getTransactionEngine().validateTransaction(localTransactionName);
-    }
-
-    @Override
-    public boolean validate(String localTransactionName) {
-        String[] a = localTransactionName.split(":");
-        Session s = null;
-        try {
-            String dbName = getDatabase().getShortName();
-            String url = createURL(dbName, a[0], a[1]);
-            // 不参与当前事务，所以不用当成当前session的嵌套session
-            s = SessionPool.getSession(this, url);
-            return s.validateTransaction(localTransactionName);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            SessionPool.release(s);
-        }
-    }
-
-    @Override
-    public boolean validate(String hostAndPort, String localTransactionName) {
-        Session s = null;
-        try {
-            String dbName = getDatabase().getShortName();
-            String url = createURL(dbName, hostAndPort);
-            // 不参与当前事务，所以不用当成当前session的嵌套session
-            s = SessionPool.getSession(this, url);
-            return s.validateTransaction(localTransactionName);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            SessionPool.release(s);
-        }
-    }
-
-    @Override
-    public String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
-        TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(mapName);
-        return map.checkReplicationConflict(key, replicationName);
     }
 
     public String checkReplicationConflict(ReplicationCheckConflict packet) {
@@ -1326,57 +1285,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
                 transaction.setGlobalReplicationName(packet.replicationName);
             }
         }
-    }
-
-    @Override
-    public String checkReplicationConflict(String mapName, ByteBuffer key, String hostAndPort, String replicationName) {
-        Session s = null;
-        try {
-            String dbName = getDatabase().getShortName();
-            String url = createURL(dbName, hostAndPort);
-            // 不参与当前事务，所以不用当成当前session的嵌套session
-            s = SessionPool.getSession(this, url);
-            return s.checkReplicationConflict(mapName, key, replicationName);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            SessionPool.release(s);
-        }
-    }
-
-    @Override
-    public void handleReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
-        if (!transaction.getGlobalReplicationName().equals(replicationName)) {
-            transaction.rollbackToSavepoint(transaction.getSavepointId() - 1);
-            TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(mapName);
-            if (map.tryLock(map.getKeyType().read(key))) {
-                transaction.setGlobalReplicationName(replicationName);
-            }
-        }
-    }
-
-    @Override
-    public void handleReplicationConflict(String mapName, ByteBuffer key, String hostAndPort, String replicationName) {
-        Session s = null;
-        try {
-            String dbName = getDatabase().getShortName();
-            String url = createURL(dbName, hostAndPort);
-            // 不参与当前事务，所以不用当成当前session的嵌套session
-            s = SessionPool.getSession(this, url);
-            s.handleReplicationConflict(mapName, key, replicationName);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            SessionPool.release(s);
-        }
-    }
-
-    private static String createURL(String dbName, String host, String port) {
-        StringBuilder url = new StringBuilder(100);
-        url.append(Constants.URL_PREFIX).append(Constants.URL_TCP).append("//");
-        url.append(host).append(":").append(port);
-        url.append("/").append(dbName);
-        return url.toString();
     }
 
     private static String createURL(String dbName, String hostAndPort) {
@@ -1431,7 +1339,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
     }
 
-    @Override
     public void replicateRootPages(String dbName, ByteBuffer rootPages) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
         if (!database.isInitialized()) {
@@ -1475,7 +1382,6 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
         return lastRow.getKey();
     }
 
-    @Override
     public void replicationCommit(long validKey, boolean autoCommit) {
         // 这段代码已经废弃
         if (validKey != -1) {
@@ -1547,31 +1453,23 @@ public class ServerSession extends SessionBase implements Transaction.Validator 
     }
 
     @Override
-    public <T> void send(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
+    public <T> void sendAsync(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
         String dbName = getDatabase().getShortName();
         String url = createURL(dbName, hostAndPort);
         // 不参与当前事务，所以不用当成当前session的嵌套session
         SessionPool.getSessionAsync(this, url, ar -> {
             if (ar.isSucceeded()) {
                 Session s = ar.getResult();
-                s.send(packet, hostAndPort, handler);
+                s.sendAsync(packet, hostAndPort, handler);
             }
         });
     }
 
-    // @Override
-    // public <T> void send(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
-    // Session s = null;
-    // try {
-    // String dbName = getDatabase().getShortName();
-    // String url = createURL(dbName, hostAndPort);
-    // // 不参与当前事务，所以不用当成当前session的嵌套session
-    // s = SessionPool.getSession(this, url);
-    // s.send(packet, hostAndPort, handler);
-    // } catch (Exception e) {
-    // throw DbException.convert(e);
-    // } finally {
-    // SessionPool.release(s);
-    // }
-    // }
+    @Override
+    public <T extends Packet> T sendSync(Packet packet, String hostAndPort) {
+        String dbName = getDatabase().getShortName();
+        String url = createURL(dbName, hostAndPort);
+        // 不参与当前事务，所以不用当成当前session的嵌套session
+        return SessionPool.getSession(this, url).sendSync(packet);
+    }
 }

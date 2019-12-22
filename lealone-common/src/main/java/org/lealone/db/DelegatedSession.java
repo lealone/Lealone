@@ -17,8 +17,6 @@
  */
 package org.lealone.db;
 
-import java.nio.ByteBuffer;
-
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
@@ -189,21 +187,6 @@ public class DelegatedSession implements Session {
     }
 
     @Override
-    public boolean validateTransaction(String localTransactionName) {
-        return session.validateTransaction(localTransactionName);
-    }
-
-    @Override
-    public String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
-        return session.checkReplicationConflict(mapName, key, replicationName);
-    }
-
-    @Override
-    public void handleReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
-        session.handleReplicationConflict(mapName, key, replicationName);
-    }
-
-    @Override
     public void commit(String allLocalTransactionNames) {
         session.commit(allLocalTransactionNames);
     }
@@ -238,11 +221,6 @@ public class DelegatedSession implements Session {
         return session.getConnectionInfo();
     }
 
-    // @Override
-    // public ConnectionInfo getConnectionInfo(String newHostAndPort) {
-    // return session.getConnectionInfo(newHostAndPort);
-    // }
-
     @Override
     public boolean isLocal() {
         return session.isLocal();
@@ -256,11 +234,6 @@ public class DelegatedSession implements Session {
     @Override
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         return session.getStorageMap(mapName);
-    }
-
-    @Override
-    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
-        session.replicateRootPages(dbName, rootPages);
     }
 
     @Override
@@ -321,11 +294,6 @@ public class DelegatedSession implements Session {
     @Override
     public long getLastRowKey() {
         return session.getLastRowKey();
-    }
-
-    @Override
-    public void replicationCommit(long validKey, boolean autoCommit) {
-        session.replicationCommit(validKey, autoCommit);
     }
 
     @Override

@@ -39,8 +39,6 @@ public class AOTransaction extends AMTransaction {
 
     final AOTransactionEngine transactionEngine;
 
-    Validator validator;
-
     private boolean local = true; // 默认是true，如果是分布式事务才设为false
 
     // 协调者或参与者自身的本地事务名
@@ -98,11 +96,6 @@ public class AOTransaction extends AMTransaction {
             return null;
         localTransactionNamesBuilder = buff;
         return buff.toString();
-    }
-
-    @Override
-    public void setValidator(Validator validator) {
-        this.validator = validator;
     }
 
     @Override

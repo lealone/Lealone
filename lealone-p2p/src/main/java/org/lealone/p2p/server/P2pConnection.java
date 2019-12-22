@@ -54,8 +54,8 @@ public class P2pConnection extends TransferConnection {
     }
 
     @Override
-    protected void handleRequest(TransferInputStream in, int packetId, int operation) throws IOException {
-        switch (operation) {
+    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
+        switch (packetType) {
         case Session.SESSION_INIT: {
             readInitPacket(in, packetId);
             break;
@@ -65,7 +65,7 @@ public class P2pConnection extends TransferConnection {
             break;
         }
         default:
-            logger.warn("Unknow operation: {}", operation);
+            logger.warn("Unknow packet type: {}", packetType);
             close();
         }
     }

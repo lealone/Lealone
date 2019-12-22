@@ -44,7 +44,7 @@ public abstract class TransferConnection extends AsyncConnection {
         return new TransferOutputStream(this, session, writableChannel);
     }
 
-    protected void handleRequest(TransferInputStream in, int packetId, int operation) throws IOException {
+    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
         throw DbException.throwInternalError("handleRequest");
     }
 
@@ -167,8 +167,8 @@ public abstract class TransferConnection extends AsyncConnection {
         boolean isRequest = in.readByte() == TransferOutputStream.REQUEST;
         int packetId = in.readInt();
         if (isRequest) {
-            int operation = in.readInt();
-            handleRequest(in, packetId, operation);
+            int packetType = in.readInt();
+            handleRequest(in, packetId, packetType);
         } else {
             int status = in.readInt();
             handleResponse(in, packetId, status);

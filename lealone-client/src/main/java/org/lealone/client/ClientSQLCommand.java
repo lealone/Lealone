@@ -21,12 +21,14 @@ import org.lealone.db.result.Result;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
-import org.lealone.server.protocol.DistributedTransactionUpdate;
-import org.lealone.server.protocol.DistributedTransactionUpdateAck;
-import org.lealone.server.protocol.ReplicationUpdate;
-import org.lealone.server.protocol.ReplicationUpdateAck;
 import org.lealone.server.protocol.CommandUpdate;
 import org.lealone.server.protocol.CommandUpdateAck;
+import org.lealone.server.protocol.DistributedTransactionUpdate;
+import org.lealone.server.protocol.DistributedTransactionUpdateAck;
+import org.lealone.server.protocol.ReplicationCommit;
+import org.lealone.server.protocol.ReplicationRollback;
+import org.lealone.server.protocol.ReplicationUpdate;
+import org.lealone.server.protocol.ReplicationUpdateAck;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 
@@ -280,7 +282,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
                 DistributedTransactionUpdateAck ack = session.sendSync(packet, packetId);
                 return ack.updateCount;
             } else {
-                session.<DistributedTransactionUpdateAck> send(packet, packetId, ack -> {
+                session.<DistributedTransactionUpdateAck> sendAsync(packet, packetId, ack -> {
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                     handler.handle(new AsyncResult<>(ack.updateCount));
                 });
@@ -291,7 +293,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
                 ReplicationUpdateAck ack = session.sendSync(packet, packetId);
                 return ack.updateCount;
             } else {
-                session.<ReplicationUpdateAck> send(packet, packetId, ack -> {
+                session.<ReplicationUpdateAck> sendAsync(packet, packetId, ack -> {
                     handler.handle(new AsyncResult<>(ack.updateCount));
                 });
             }
@@ -301,7 +303,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
                 CommandUpdateAck ack = session.sendSync(packet, packetId);
                 return ack.updateCount;
             } else {
-                session.<CommandUpdateAck> send(packet, packetId, ack -> {
+                session.<CommandUpdateAck> sendAsync(packet, packetId, ack -> {
                     handler.handle(new AsyncResult<>(ack.updateCount));
                 });
             }
@@ -334,24 +336,18 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
 
     @Override
     public void replicaCommit(long validKey, boolean autoCommit) {
-        int packetId = session.getNextId();
-        session.traceOperation("COMMAND_REPLICATION_COMMIT", packetId);
-        TransferOutputStream out = session.newOut();
         try {
-            out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_COMMIT);
-            out.writeLong(validKey).writeBoolean(autoCommit).flush();
-        } catch (IOException e) {
+            session.sendAsync(new ReplicationCommit(validKey, autoCommit));
+        } catch (Exception e) {
             session.getTrace().error(e, "replicationCommit");
         }
     }
 
     @Override
     public void replicaRollback() {
-        int packetId = session.getNextId();
-        session.traceOperation("COMMAND_REPLICATION_ROLLBACK", packetId);
         try {
-            session.newOut().writeRequestHeader(packetId, Session.COMMAND_REPLICATION_ROLLBACK).flush();
-        } catch (IOException e) {
+            session.sendAsync(new ReplicationRollback());
+        } catch (Exception e) {
             session.getTrace().error(e, "replicationRollback");
         }
     }

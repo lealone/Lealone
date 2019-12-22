@@ -18,6 +18,7 @@
 package org.lealone.server.protocol;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
@@ -25,13 +26,13 @@ import org.lealone.net.NetOutputStream;
 public class StoragePut implements Packet {
 
     public final String mapName;
-    public final byte[] key;
-    public final byte[] value;
+    public final ByteBuffer key;
+    public final ByteBuffer value;
     public final boolean isDistributedTransaction;
     public final String replicationName;
     public final boolean raw;
 
-    public StoragePut(String mapName, byte[] key, byte[] value, boolean isDistributedTransaction,
+    public StoragePut(String mapName, ByteBuffer key, ByteBuffer value, boolean isDistributedTransaction,
             String replicationName, boolean raw) {
         this.mapName = mapName;
         this.key = key;
@@ -53,7 +54,7 @@ public class StoragePut implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName).writeBytes(key).writeBytes(value).writeBoolean(isDistributedTransaction)
+        out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value).writeBoolean(isDistributedTransaction)
                 .writeString(replicationName).writeBoolean(raw);
     }
 
@@ -62,8 +63,8 @@ public class StoragePut implements Packet {
     private static class Decoder implements PacketDecoder<StoragePut> {
         @Override
         public StoragePut decode(NetInputStream in, int version) throws IOException {
-            return new StoragePut(in.readString(), in.readBytes(), in.readBytes(), in.readBoolean(), in.readString(),
-                    in.readBoolean());
+            return new StoragePut(in.readString(), in.readByteBuffer(), in.readByteBuffer(), in.readBoolean(),
+                    in.readString(), in.readBoolean());
         }
     }
 }

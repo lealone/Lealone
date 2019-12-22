@@ -7,7 +7,6 @@
 package org.lealone.db;
 
 import java.io.Closeable;
-import java.nio.ByteBuffer;
 
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
@@ -58,39 +57,14 @@ public interface Session extends Closeable, Transaction.Participant {
 
     public static final int COMMAND_REPLICATION_UPDATE = 80;
     public static final int COMMAND_REPLICATION_PREPARED_UPDATE = 81;
-    public static final int COMMAND_REPLICATION_COMMIT = 82;
-    public static final int COMMAND_REPLICATION_ROLLBACK = 83;
-    public static final int COMMAND_REPLICATION_CHECK_CONFLICT = 84;
-    public static final int COMMAND_REPLICATION_HANDLE_CONFLICT = 85;
 
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_QUERY = 100;
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY = 101;
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_UPDATE = 102;
     public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE = 103;
 
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_COMMIT = 120;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK = 121;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT = 122;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT = 123;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE = 124;
-
     public static final int COMMAND_BATCH_STATEMENT_UPDATE = 140;
     public static final int COMMAND_BATCH_STATEMENT_PREPARED_UPDATE = 141;
-
-    public static final int COMMAND_STORAGE_PUT = 160;
-    public static final int COMMAND_STORAGE_REPLICATION_PUT = 161;
-    public static final int COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT = 162;
-    public static final int COMMAND_STORAGE_APPEND = 164;
-    public static final int COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND = 165;
-
-    public static final int COMMAND_STORAGE_GET = 170;
-    public static final int COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET = 171;
-
-    public static final int COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE = 180;
-    public static final int COMMAND_STORAGE_MOVE_LEAF_PAGE = 181;
-    public static final int COMMAND_STORAGE_REMOVE_LEAF_PAGE = 182;
-    public static final int COMMAND_STORAGE_REPLICATE_ROOT_PAGES = 183;
-    public static final int COMMAND_STORAGE_READ_PAGE = 184;
 
     public static final int COMMAND_P2P_MESSAGE = 300;
 
@@ -197,12 +171,6 @@ public interface Session extends Closeable, Transaction.Participant {
 
     void setRoot(boolean isRoot);
 
-    boolean validateTransaction(String localTransactionName);
-
-    String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName);
-
-    void handleReplicationConflict(String mapName, ByteBuffer key, String replicationName);
-
     void commit(String allLocalTransactionNames);
 
     void asyncCommit(Runnable asyncTask);
@@ -229,15 +197,11 @@ public interface Session extends Closeable, Transaction.Participant {
 
     ConnectionInfo getConnectionInfo();
 
-    // ConnectionInfo getConnectionInfo(String newHostAndPort);
-
     boolean isLocal();
 
     boolean isShardingMode();
 
     StorageMap<Object, Object> getStorageMap(String mapName);
-
-    void replicateRootPages(String dbName, ByteBuffer rootPages);
 
     int getNextId();
 
@@ -258,8 +222,6 @@ public interface Session extends Closeable, Transaction.Participant {
     RunMode getRunMode();
 
     long getLastRowKey();
-
-    void replicationCommit(long validKey, boolean autoCommit);
 
     default void setLobMacSalt(byte[] lobMacSalt) {
     }
@@ -295,6 +257,10 @@ public interface Session extends Closeable, Transaction.Participant {
     default void setProtocolVersion(int version) {
     }
 
+    default int getProtocolVersion() {
+        return Constants.TCP_PROTOCOL_VERSION_CURRENT;
+    }
+
     int getNetworkTimeout();
 
     void cancelStatement(int statementId);
@@ -305,27 +271,29 @@ public interface Session extends Closeable, Transaction.Participant {
 
     String getLocalHostAndPort();
 
-    default <T> void send(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
-        send(packet, handler);
+    default <T> void sendAsync(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
+        sendAsync(packet, handler);
     }
 
-    default <T> void send(Packet packet, AsyncHandler<T> handler) {
+    default <T> void sendAsync(Packet packet) {
+        sendAsync(packet, null);
     }
 
-    default <T> void send(Packet packet, int packetId, AsyncHandler<T> handler) {
+    default <T> void sendAsync(Packet packet, AsyncHandler<T> handler) {
+    }
+
+    default <T> void sendAsync(Packet packet, int packetId, AsyncHandler<T> handler) {
     }
 
     default <T extends Packet> T sendSync(Packet packet) {
         return null;
     }
 
+    default <T extends Packet> T sendSync(Packet packet, String hostAndPort) {
+        return sendSync(packet);
+    }
+
     default <T extends Packet> T sendSync(Packet packet, int packetId) {
         return null;
     }
-
-    // default <T> void sendMessage(Message message, String hostAndPort, AsyncCallback<T> asyncCallback) {
-    // }
-    //
-    // default void receiveMessage(NetInputStream in, int operation) throws IOException {
-    // }
 }

@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 import java.sql.Connection;
 
 import org.lealone.common.exceptions.DbException;
@@ -36,6 +35,10 @@ import org.lealone.net.NetInputStream;
 import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
 import org.lealone.net.TransferOutputStream;
+import org.lealone.server.protocol.DistributedTransactionAddSavepoint;
+import org.lealone.server.protocol.DistributedTransactionCommit;
+import org.lealone.server.protocol.DistributedTransactionRollback;
+import org.lealone.server.protocol.DistributedTransactionRollbackSavepoint;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
@@ -444,9 +447,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
-            newOut().writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT)
-                    .writeString(allLocalTransactionNames).flush();
-        } catch (IOException e) {
+            sendAsync(new DistributedTransactionCommit(allLocalTransactionNames));
+        } catch (Exception e) {
             handleException(e);
         }
     }
@@ -454,8 +456,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void rollbackTransaction() {
         try {
-            newOut().writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK).flush();
-        } catch (IOException e) {
+            sendAsync(new DistributedTransactionRollback());
+        } catch (Exception e) {
             handleException(e);
         }
     }
@@ -463,9 +465,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void addSavepoint(String name) {
         try {
-            newOut().writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT).writeString(name)
-                    .flush();
-        } catch (IOException e) {
+            sendAsync(new DistributedTransactionAddSavepoint(name));
+        } catch (Exception e) {
             handleException(e);
         }
     }
@@ -473,58 +474,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void rollbackToSavepoint(String name) {
         try {
-            newOut().writeRequestHeader(Session.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT).writeString(name)
-                    .flush();
-        } catch (IOException e) {
-            handleException(e);
-        }
-    }
-
-    @Override
-    public synchronized boolean validateTransaction(String localTransactionName) {
-        try {
-            TransferOutputStream out = newOut();
-            int packetId = getNextId();
-            out.writeRequestHeader(packetId, Session.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE);
-            out.writeString(localTransactionName);
-            return out.flushAndAwait(packetId, new AsyncCallback<Boolean>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    setResult(in.readBoolean());
-                }
-            });
-        } catch (Exception e) {
-            handleException(e);
-            return false;
-        }
-    }
-
-    @Override
-    public String checkReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
-        try {
-            TransferOutputStream out = newOut();
-            int packetId = getNextId();
-            out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_CHECK_CONFLICT);
-            out.writeString(mapName).writeByteBuffer(key).writeString(replicationName);
-            return out.flushAndAwait(packetId, new AsyncCallback<String>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    setResult(in.readString());
-                }
-            });
-        } catch (Exception e) {
-            handleException(e);
-            return null;
-        }
-    }
-
-    @Override
-    public void handleReplicationConflict(String mapName, ByteBuffer key, String replicationName) {
-        try {
-            TransferOutputStream out = newOut();
-            int packetId = getNextId();
-            out.writeRequestHeader(packetId, Session.COMMAND_REPLICATION_HANDLE_CONFLICT);
-            out.writeString(mapName).writeByteBuffer(key).writeString(replicationName).flush();
+            sendAsync(new DistributedTransactionRollbackSavepoint(name));
         } catch (Exception e) {
             handleException(e);
         }
@@ -598,49 +548,25 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
-    public <T> void send(Packet packet, AsyncHandler<T> handler) {
-        try {
-            TransferOutputStream out = newOut();
-            int packetId = getNextId();
-            out.writeRequestHeader(packetId, packet.getType());
-            packet.encode(out, 0);
-
-            AsyncCallback<Packet> ac = new AsyncCallback<Packet>() {
-                @Override
-                @SuppressWarnings("unchecked")
-                public void runInternal(NetInputStream in) throws Exception {
-                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
-                    Packet message = decoder.decode(in, 0);
-                    setResult(message);
-                    if (ah != null) {
-                        ah.handle(message);
-                    }
-                }
-            };
-            if (handler != null) {
-                ac.setAsyncHandler(handler);
-                out.flush(packetId, ac);
-            } else {
-                out.flushAndAwait(packetId, ac);
-            }
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        }
+    public <T> void sendAsync(Packet packet, AsyncHandler<T> handler) {
+        int packetId = getNextId();
+        sendAsync(packet, packetId, handler);
     }
 
     @Override
-    public <T> void send(Packet packet, int packetId, AsyncHandler<T> handler) {
+    public <T> void sendAsync(Packet packet, int packetId, AsyncHandler<T> handler) {
+        traceOperation(packet.getType().name(), packetId);
         try {
             TransferOutputStream out = newOut();
             out.writeRequestHeader(packetId, packet.getType());
-            packet.encode(out, 0);
+            packet.encode(out, getProtocolVersion());
 
             AsyncCallback<Packet> ac = new AsyncCallback<Packet>() {
                 @Override
                 @SuppressWarnings("unchecked")
                 public void runInternal(NetInputStream in) throws Exception {
                     PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
-                    Packet message = decoder.decode(in, 0);
+                    Packet message = decoder.decode(in, getProtocolVersion());
                     setResult(message);
                     if (ah != null) {
                         ah.handle(message);
@@ -671,13 +597,13 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             TransferOutputStream out = newOut();
             out.writeRequestHeader(packetId, packet.getType());
-            packet.encode(out, 0);
+            packet.encode(out, getProtocolVersion());
 
             AsyncCallback<Packet> ac = new AsyncCallback<Packet>() {
                 @Override
                 public void runInternal(NetInputStream in) throws Exception {
                     PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
-                    Packet message = decoder.decode(in, 0);
+                    Packet message = decoder.decode(in, getProtocolVersion());
                     setResult(message);
                 }
             };

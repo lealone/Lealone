@@ -145,7 +145,7 @@ public class TcpClientConnection extends TransferConnection {
         checkClosed();
         ConnectionInfo ci = session.getConnectionInfo();
         InitPacket message = new InitPacket(ci);
-        session.<InitPacketAck> send(message, ack -> {
+        session.<InitPacketAck> sendAsync(message, ack -> {
             session.setProtocolVersion(ack.clientVersion);
             session.setAutoCommit(ack.autoCommit);
             session.setTargetNodes(ack.targetNodes);

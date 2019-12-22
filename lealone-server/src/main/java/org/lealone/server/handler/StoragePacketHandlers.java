@@ -71,8 +71,8 @@ public class StoragePacketHandlers extends PacketHandlers {
             }
 
             StorageDataType valueType = map.getValueType();
-            Object k = map.getKeyType().read(ByteBuffer.wrap(packet.key));
-            Object v = valueType.read(ByteBuffer.wrap(packet.value));
+            Object k = map.getKeyType().read(packet.key);
+            Object v = valueType.read(packet.value);
             Object result = map.put(k, v);
 
             ByteBuffer resultByteBuffer;
@@ -104,7 +104,7 @@ public class StoragePacketHandlers extends PacketHandlers {
             session.setReplicationName(packet.replicationName);
 
             StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
-            Object v = map.getValueType().read(ByteBuffer.wrap(packet.value));
+            Object v = map.getValueType().read(packet.value);
             Object result = map.append(v);
             String localTransactionNames;
             if (packet.isDistributedTransaction) {
@@ -124,7 +124,7 @@ public class StoragePacketHandlers extends PacketHandlers {
                 session.setRoot(false);
             }
             StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
-            Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(packet.key)));
+            Object result = map.get(map.getKeyType().read(packet.key));
             ByteBuffer resultByteBuffer;
             if (result != null) {
                 try (DataBuffer writeBuffer = DataBuffer.create()) {

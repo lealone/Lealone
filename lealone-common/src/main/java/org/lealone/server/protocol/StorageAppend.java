@@ -18,6 +18,7 @@
 package org.lealone.server.protocol;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
@@ -25,11 +26,11 @@ import org.lealone.net.NetOutputStream;
 public class StorageAppend implements Packet {
 
     public final String mapName;
-    public final byte[] value;
+    public final ByteBuffer value;
     public final boolean isDistributedTransaction;
     public final String replicationName;
 
-    public StorageAppend(String mapName, byte[] value, boolean isDistributedTransaction, String replicationName) {
+    public StorageAppend(String mapName, ByteBuffer value, boolean isDistributedTransaction, String replicationName) {
         this.mapName = mapName;
         this.value = value;
         this.isDistributedTransaction = isDistributedTransaction;
@@ -48,7 +49,8 @@ public class StorageAppend implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName).writeBytes(value).writeBoolean(isDistributedTransaction).writeString(replicationName);
+        out.writeString(mapName).writeByteBuffer(value).writeBoolean(isDistributedTransaction)
+                .writeString(replicationName);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -56,7 +58,7 @@ public class StorageAppend implements Packet {
     private static class Decoder implements PacketDecoder<StorageAppend> {
         @Override
         public StorageAppend decode(NetInputStream in, int version) throws IOException {
-            return new StorageAppend(in.readString(), in.readBytes(), in.readBoolean(), in.readString());
+            return new StorageAppend(in.readString(), in.readByteBuffer(), in.readBoolean(), in.readString());
         }
     }
 }

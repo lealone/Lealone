@@ -172,10 +172,6 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
-    public void setValidator(Validator validator) {
-    }
-
-    @Override
     public void addParticipant(Participant participant) {
     }
 

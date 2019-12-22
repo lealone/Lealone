@@ -17,8 +17,6 @@
  */
 package org.lealone.transaction.aote;
 
-import java.util.Map;
-
 import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
@@ -31,18 +29,6 @@ public class AOTransactionEngine extends AMTransactionEngine {
 
     public AOTransactionEngine() {
         super(NAME);
-    }
-
-    @Override
-    public synchronized void init(Map<String, String> config) {
-        super.init(config);
-        DTRValidator.getInstance().start();
-    }
-
-    @Override
-    public void close() {
-        super.close();
-        DTRValidator.getInstance().close();
     }
 
     @Override

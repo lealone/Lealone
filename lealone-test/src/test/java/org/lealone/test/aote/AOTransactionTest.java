@@ -48,24 +48,6 @@ public class AOTransactionTest extends TestBase {
         }
     }
 
-    private static class ValidatorTest implements Transaction.Validator {
-        private final boolean validateResult;
-
-        public ValidatorTest(boolean validateResult) {
-            this.validateResult = validateResult;
-        }
-
-        @Override
-        public boolean validate(String localTransactionName) {
-            return validateResult;
-        }
-
-        @Override
-        public boolean validate(String hostAndPort, String localTransactionName) {
-            return validateResult;
-        }
-    }
-
     @Test
     public void run() {
         TransactionEngine te = AOTransactionEngineTest.getTransactionEngine(true);
@@ -75,12 +57,9 @@ public class AOTransactionTest extends TestBase {
 
         ParticipantTest p1 = new ParticipantTest();
         ParticipantTest p2 = new ParticipantTest();
-        ValidatorTest validatorTrue = new ValidatorTest(true);
-        ValidatorTest validatorFalse = new ValidatorTest(false);
 
         t.addParticipant(p1);
         t.addParticipant(p2);
-        t.setValidator(validatorTrue);
 
         long tid1 = t.getTransactionId() + 2;
         long tid2 = t.getTransactionId() + 4;
@@ -102,14 +81,12 @@ public class AOTransactionTest extends TestBase {
 
         t = te.beginTransaction(false, RunMode.SHARDING);
         t.setLocal(false);
-        t.setValidator(validatorTrue);
         map = map.getInstance(t);
         assertEquals("a", map.get("1"));
         assertEquals("b", map.get("2"));
 
         t.addParticipant(p1);
         t.addParticipant(p2);
-        t.setValidator(validatorFalse);
         t.addLocalTransactionNames(alocalTransactionName1);
         t.addLocalTransactionNames(alocalTransactionName2);
         map.put("3", "c");
@@ -118,7 +95,6 @@ public class AOTransactionTest extends TestBase {
 
         t = te.beginTransaction(false, RunMode.SHARDING);
         t.setLocal(false);
-        t.setValidator(validatorFalse);
         map = map.getInstance(t);
         assertEquals(null, map.get("3"));
         assertEquals(null, map.get("4"));

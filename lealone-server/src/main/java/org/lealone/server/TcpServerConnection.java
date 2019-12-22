@@ -354,7 +354,7 @@ public class TcpServerConnection extends TransferConnection {
         return pageKeys;
     }
 
-    protected void executeQueryAsync(TransferInputStream in, int packetId, int operation, SessionInfo si,
+    protected void executeQueryAsync(TransferInputStream in, int packetId, int packetType, SessionInfo si,
             boolean prepared) throws IOException {
         final Session session = si.session;
         final int sessionId = si.sessionId;
@@ -364,8 +364,8 @@ public class TcpServerConnection extends TransferConnection {
         int fetchSize = in.readInt();
         boolean scrollable = in.readBoolean();
 
-        if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
-                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
+        if (packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
+                || packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
             session.setAutoCommit(false);
             session.setRoot(false);
         }
@@ -385,13 +385,13 @@ public class TcpServerConnection extends TransferConnection {
         stmt.setFetchSize(fetchSize);
 
         // 允许其他扩展跳过正常的流程
-        if (executeQueryAsync(packetId, operation, session, sessionId, stmt, resultId, fetchSize)) {
+        if (executeQueryAsync(packetId, packetType, session, sessionId, stmt, resultId, fetchSize)) {
             return;
         }
         PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, ar -> {
             if (ar.isSucceeded()) {
                 Result result = ar.getResult();
-                sendResult(packetId, operation, session, sessionId, result, resultId, fetchSize);
+                sendResult(packetId, packetType, session, sessionId, result, resultId, fetchSize);
             } else {
                 sendError(session, packetId, ar.getCause());
             }
@@ -400,19 +400,19 @@ public class TcpServerConnection extends TransferConnection {
         addPreparedCommandToQueue(packetId, si, stmt, yieldable);
     }
 
-    protected boolean executeQueryAsync(int packetId, int operation, Session session, int sessionId,
+    protected boolean executeQueryAsync(int packetId, int packetType, Session session, int sessionId,
             PreparedSQLStatement stmt, int resultId, int fetchSize) throws IOException {
         return false;
     }
 
-    protected void sendResult(int packetId, int operation, Session session, int sessionId, Result result, int resultId,
+    protected void sendResult(int packetId, int packetType, Session session, int sessionId, Result result, int resultId,
             int fetchSize) {
         cache.put(resultId, result);
         try {
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, getStatus(session));
-            if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
-                    || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
+            if (packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
+                    || packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
                 out.writeString(session.getTransaction().getLocalTransactionNames());
             }
             if (session.isRunModeChanged()) {
@@ -435,16 +435,16 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    protected void executeUpdateAsync(TransferInputStream in, int packetId, int operation, SessionInfo si,
+    protected void executeUpdateAsync(TransferInputStream in, int packetId, int packetType, SessionInfo si,
             boolean prepared) throws IOException {
         final Session session = si.session;
         final int sessionId = si.sessionId;
 
-        if (operation == Session.COMMAND_REPLICATION_UPDATE
-                || operation == Session.COMMAND_REPLICATION_PREPARED_UPDATE) {
+        if (packetType == Session.COMMAND_REPLICATION_UPDATE
+                || packetType == Session.COMMAND_REPLICATION_PREPARED_UPDATE) {
             session.setReplicationName(in.readString());
-        } else if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
-                || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
+        } else if (packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
+                || packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
             session.setAutoCommit(false);
             session.setRoot(false);
         }
@@ -472,8 +472,8 @@ public class TcpServerConnection extends TransferConnection {
                     if (session.isRunModeChanged()) {
                         out.writeInt(sessionId).writeString(session.getNewTargetNodes());
                     }
-                    if (operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
-                            || operation == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
+                    if (packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
+                            || packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
                         out.writeString(session.getTransaction().getLocalTransactionNames());
                     }
                     out.writeInt(updateCount);
@@ -497,14 +497,14 @@ public class TcpServerConnection extends TransferConnection {
 
     // 这个方法是由网络事件循环线程执行的
     @Override
-    protected void handleRequest(TransferInputStream in, int packetId, int operation) throws IOException {
+    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
         // 这里的sessionId是客户端session的id，每个数据包都会带这个字段
         int sessionId = in.readInt();
         SessionInfo si = getSessionInfo(sessionId);
         if (si == null) {
             // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
             // 之后此session相关的请求包和命令都由固定的调度器负责处理。
-            if (operation == Session.SESSION_INIT) {
+            if (packetType == Session.SESSION_INIT) {
                 ScheduleService.getScheduler().handle(() -> {
                     try {
                         readInitPacket(in, packetId, sessionId);
@@ -521,9 +521,9 @@ public class TcpServerConnection extends TransferConnection {
             in.setSession(si.session);
             si.getScheduler().handle(() -> {
                 try {
-                    handleRequest(in, packetId, operation, si);
+                    handleRequest(in, packetId, packetType, si);
                 } catch (Throwable e) {
-                    logger.error("Failed to handle request, packetId: " + packetId + ", operation: " + operation, e);
+                    logger.error("Failed to handle request, packetId: " + packetId + ", packetType: " + packetType, e);
                     sendError(si.session, packetId, e);
                 } finally {
                     // in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
@@ -533,10 +533,11 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     // 这个方法就已经是由调度器线程执行了
-    private void handleRequest(TransferInputStream in, int packetId, int operation, SessionInfo si) throws IOException {
+    private void handleRequest(TransferInputStream in, int packetId, int packetType, SessionInfo si)
+            throws IOException {
         Session session = si.session;
         int sessionId = si.sessionId;
-        switch (operation) {
+        switch (packetType) {
         case Session.COMMAND_PREPARE_READ_PARAMS:
         case Session.COMMAND_PREPARE: {
             int commandId = in.readInt();
@@ -548,7 +549,7 @@ public class TcpServerConnection extends TransferConnection {
             TransferOutputStream out = createTransferOutputStream(session);
             writeResponseHeader(out, session, packetId);
             out.writeBoolean(isQuery);
-            if (operation == Session.COMMAND_PREPARE_READ_PARAMS) {
+            if (packetType == Session.COMMAND_PREPARE_READ_PARAMS) {
                 List<? extends CommandParameter> params = command.getParameters();
                 out.writeInt(params.size());
                 for (CommandParameter p : params) {
@@ -560,24 +561,24 @@ public class TcpServerConnection extends TransferConnection {
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY:
         case Session.COMMAND_QUERY: {
-            executeQueryAsync(in, packetId, operation, si, false);
+            executeQueryAsync(in, packetId, packetType, si, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
         case Session.COMMAND_PREPARED_QUERY: {
-            executeQueryAsync(in, packetId, operation, si, true);
+            executeQueryAsync(in, packetId, packetType, si, true);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
         case Session.COMMAND_UPDATE:
         case Session.COMMAND_REPLICATION_UPDATE: {
-            executeUpdateAsync(in, packetId, operation, si, false);
+            executeUpdateAsync(in, packetId, packetType, si, false);
             break;
         }
         case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
-            executeUpdateAsync(in, packetId, operation, si, true);
+            executeUpdateAsync(in, packetId, packetType, si, true);
             break;
         }
         case Session.COMMAND_GET_META_DATA: {
@@ -729,20 +730,20 @@ public class TcpServerConnection extends TransferConnection {
             break;
         }
         default:
-            handleOtherRequest(in, packetId, operation, si);
+            handleOtherRequest(in, packetId, packetType, si);
         }
     }
 
-    private void handleOtherRequest(TransferInputStream in, int packetId, int operation, SessionInfo si)
+    private void handleOtherRequest(TransferInputStream in, int packetId, int packetType, SessionInfo si)
             throws IOException {
         Session session = si.session;
-        int version = 0;
-        PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(operation);
-        Packet message = decoder.decode(in, version);
+        int version = session.getProtocolVersion();
+        PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
+        Packet packet = decoder.decode(in, version);
         @SuppressWarnings("unchecked")
-        PacketHandler<Packet> handler = (PacketHandler<Packet>) PacketHandlers.getHandler(operation);
+        PacketHandler<Packet> handler = (PacketHandler<Packet>) PacketHandlers.getHandler(packetType);
         if (handler != null) {
-            Packet ack = handler.handle(this, (ServerSession) session, message);
+            Packet ack = handler.handle(this, (ServerSession) session, packet);
             if (ack != null) {
                 TransferOutputStream out = createTransferOutputStream(session);
                 writeResponseHeader(out, session, packetId);
@@ -750,7 +751,7 @@ public class TcpServerConnection extends TransferConnection {
                 out.flush();
             }
         } else {
-            logger.warn("Unknow operation: {}", operation);
+            logger.warn("Unknow packet type: {}", packetType);
             close();
         }
     }

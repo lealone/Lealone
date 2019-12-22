@@ -56,7 +56,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
                 return data;
             else if (DTRValidator.containsReplication(data.getGlobalReplicationName())) {
                 boolean isValid = DTRValidator.validateReplication(data.getGlobalReplicationName(),
-                        transaction.validator);
+                        transaction.getSession());
                 if (isValid) {
                     DTRValidator.removeReplication(data.getGlobalReplicationName());
                     data.setReplicated(true);
@@ -113,7 +113,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
                 keyBuff = buff.getAndCopyBuffer();
             }
             String candidateReplicationName = DTRValidator.handleReplicationConflict(getName(), keyBuff,
-                    transaction.globalReplicationName, transaction.validator);
+                    transaction.globalReplicationName, transaction.getSession());
             if (candidateReplicationName.equals(transaction.globalReplicationName)) {
                 transaction.transactionEngine.getTransaction(oldTransactionalValue.getTid()).getUndoLog().undo();
                 oldTransactionalValue.rollback();

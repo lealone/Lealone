@@ -19,13 +19,22 @@ package org.lealone.client;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.db.Session;
-import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.value.ValueLong;
-import org.lealone.net.NetInputStream;
-import org.lealone.net.TransferOutputStream;
+import org.lealone.server.protocol.StorageAppend;
+import org.lealone.server.protocol.StorageAppendAck;
+import org.lealone.server.protocol.StorageGet;
+import org.lealone.server.protocol.StorageGetAck;
+import org.lealone.server.protocol.StorageMoveLeafPage;
+import org.lealone.server.protocol.StoragePrepareMoveLeafPage;
+import org.lealone.server.protocol.StoragePrepareMoveLeafPageAck;
+import org.lealone.server.protocol.StoragePut;
+import org.lealone.server.protocol.StoragePutAck;
+import org.lealone.server.protocol.StorageReadPage;
+import org.lealone.server.protocol.StorageReadPageAck;
+import org.lealone.server.protocol.StorageRemoveLeafPage;
+import org.lealone.server.protocol.StorageReplicateRootPages;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaStorageCommand;
@@ -52,68 +61,50 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     @Override
     public Object executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
             boolean raw, AsyncHandler<AsyncResult<Object>> handler) {
-        byte[] bytes = null;
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
             boolean isDistributed = session.getParentTransaction() != null
                     && !session.getParentTransaction().isAutoCommit();
-            if (isDistributed) {
-                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT);
-            } else if (replicationName != null) {
-                session.traceOperation("COMMAND_STORAGE_REPLICATION_PUT", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_REPLICATION_PUT);
-            } else {
-                session.traceOperation("COMMAND_STORAGE_PUT", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_PUT);
-            }
-            out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value);
-            out.writeString(replicationName).writeBoolean(raw);
-
-            bytes = getResult(packetId, out, handler, new AsyncCallback<byte[]>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
+            StoragePut packet = new StoragePut(mapName, key, value, isDistributed, replicationName, raw);
+            if (handler != null) {
+                session.<StoragePutAck> sendAsync(packet, ack -> {
                     if (isDistributed)
-                        session.getParentTransaction().addLocalTransactionNames(in.readString());
-                    setResult(in.readBytes());
-                }
-            });
+                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                    handler.handle(new AsyncResult<>(ack.result));
+                });
+            } else {
+                StorageAppendAck ack = session.sendSync(packet);
+                if (isDistributed)
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ack.result;
+            }
         } catch (Exception e) {
             session.handleException(e);
         }
-        return bytes;
+        return null;
     }
 
     @Override
     public Object get(String mapName, ByteBuffer key, AsyncHandler<AsyncResult<Object>> handler) {
-        byte[] bytes = null;
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
             boolean isDistributed = session.getParentTransaction() != null
                     && !session.getParentTransaction().isAutoCommit();
-            if (isDistributed) {
-                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET);
-            } else {
-                session.traceOperation("COMMAND_STORAGE_GET", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_GET);
-            }
-            out.writeString(mapName).writeByteBuffer(key);
-
-            bytes = getResult(packetId, out, handler, new AsyncCallback<byte[]>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
+            StorageGet packet = new StorageGet(mapName, key, isDistributed);
+            if (handler != null) {
+                session.<StorageGetAck> sendAsync(packet, ack -> {
                     if (isDistributed)
-                        session.getParentTransaction().addLocalTransactionNames(in.readString());
-                    setResult(in.readBytes());
-                }
-            });
+                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                    handler.handle(new AsyncResult<>(ack.result));
+                });
+            } else {
+                StorageGetAck ack = session.sendSync(packet);
+                if (isDistributed)
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ack.result;
+            }
         } catch (Exception e) {
             session.handleException(e);
         }
-        return bytes;
+        return null;
     }
 
     @Override
@@ -124,45 +115,32 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     @Override
     public Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value,
             AsyncHandler<AsyncResult<Object>> handler) {
-        Long result = null;
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
             boolean isDistributed = session.getParentTransaction() != null
                     && !session.getParentTransaction().isAutoCommit();
-            if (isDistributed) {
-                session.traceOperation("COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND);
-            } else {
-                session.traceOperation("COMMAND_STORAGE_APPEND", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_APPEND);
-            }
-            out.writeString(mapName).writeByteBuffer(value);
-            out.writeString(replicationName);
-
-            result = getResult(packetId, out, handler, new AsyncCallback<Long>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
+            StorageAppend packet = new StorageAppend(mapName, value, isDistributed, replicationName);
+            if (handler != null) {
+                session.<StorageAppendAck> sendAsync(packet, ack -> {
                     if (isDistributed)
-                        session.getParentTransaction().addLocalTransactionNames(in.readString());
-                    setResult(in.readLong());
-                }
-            });
+                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                    handler.handle(new AsyncResult<>(ack.result));
+                });
+            } else {
+                StorageAppendAck ack = session.sendSync(packet);
+                if (isDistributed)
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ValueLong.get(ack.result);
+            }
         } catch (Exception e) {
             session.handleException(e);
         }
-        return ValueLong.get(result);
+        return null;
     }
 
     @Override
     public void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_MOVE_LEAF_PAGE", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_MOVE_LEAF_PAGE);
-            out.writeString(mapName).writePageKey(pageKey).writeByteBuffer(page).writeBoolean(addPage);
-            out.flush();
+            session.sendAsync(new StorageMoveLeafPage(mapName, pageKey, page, addPage));
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -170,13 +148,8 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
 
     @Override
     public void replicateRootPages(String dbName, ByteBuffer rootPages) {
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_REPLICATE_ROOT_PAGES", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_REPLICATE_ROOT_PAGES);
-            out.writeString(dbName).writeByteBuffer(rootPages);
-            out.flush();
+            session.sendAsync(new StorageReplicateRootPages(dbName, rootPages));
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -184,13 +157,8 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
 
     @Override
     public void removeLeafPage(String mapName, PageKey pageKey) {
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_REMOVE_LEAF_PAGE", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE);
-            out.writeString(mapName).writePageKey(pageKey);
-            out.flush();
+            session.sendAsync(new StorageRemoveLeafPage(mapName, pageKey));
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -199,20 +167,16 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     @Override
     public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan,
             AsyncHandler<AsyncResult<LeafPageMovePlan>> handler) {
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE);
-            out.writeString(mapName);
-            leafPageMovePlan.serialize(out);
-
-            return getResult(packetId, out, handler, new AsyncCallback<LeafPageMovePlan>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    setResult(LeafPageMovePlan.deserialize(in));
-                }
-            });
+            StoragePrepareMoveLeafPage packet = new StoragePrepareMoveLeafPage(mapName, leafPageMovePlan);
+            if (handler != null) {
+                session.<StoragePrepareMoveLeafPageAck> sendAsync(packet, ack -> {
+                    handler.handle(new AsyncResult<>(ack.leafPageMovePlan));
+                });
+            } else {
+                StoragePrepareMoveLeafPageAck ack = session.sendSync(packet);
+                return ack.leafPageMovePlan;
+            }
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -221,33 +185,19 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
 
     @Override
     public ByteBuffer readRemotePage(String mapName, PageKey pageKey, AsyncHandler<AsyncResult<ByteBuffer>> handler) {
-        int packetId = session.getNextId();
-        TransferOutputStream out = session.newOut();
         try {
-            session.traceOperation("COMMAND_STORAGE_READ_PAGE", packetId);
-            out.writeRequestHeader(packetId, Session.COMMAND_STORAGE_READ_PAGE);
-            out.writeString(mapName).writePageKey(pageKey);
-
-            return getResult(packetId, out, handler, new AsyncCallback<ByteBuffer>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    result = in.readByteBuffer();
-                }
-            });
+            StorageReadPage packet = new StorageReadPage(mapName, pageKey);
+            if (handler != null) {
+                session.<StorageReadPageAck> sendAsync(packet, ack -> {
+                    handler.handle(new AsyncResult<>(ack.page));
+                });
+            } else {
+                StorageReadPageAck ack = session.sendSync(packet);
+                return ack.page;
+            }
         } catch (Exception e) {
             session.handleException(e);
         }
         return null;
-    }
-
-    private static <T> T getResult(int packetId, TransferOutputStream out, AsyncHandler<?> handler, AsyncCallback<T> ac)
-            throws Exception {
-        if (handler != null) {
-            ac.setAsyncHandler(handler);
-            out.flush(packetId, ac);
-            return null;
-        } else {
-            return out.flushAndAwait(packetId, ac);
-        }
     }
 }

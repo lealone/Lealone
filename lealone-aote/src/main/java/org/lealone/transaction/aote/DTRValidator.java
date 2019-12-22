@@ -18,19 +18,13 @@
 package org.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.common.logging.Logger;
-import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.Constants;
 import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
@@ -40,13 +34,10 @@ import org.lealone.server.protocol.DistributedTransactionValidateAck;
 import org.lealone.server.protocol.ReplicationCheckConflict;
 import org.lealone.server.protocol.ReplicationCheckConflictAck;
 import org.lealone.storage.replication.ConsistencyLevel;
-import org.lealone.transaction.Transaction.Validator;
 
 //效验分布式事务和复制是否成功
 //DT表示Distributed Transaction，R表示Replication
-class DTRValidator extends Thread {
-
-    private static final Logger logger = LoggerFactory.getLogger(DTRValidator.class);
+class DTRValidator {
 
     private static final Map<String, DTStatusCache> hostAndPortMap = new HashMap<>();
 
@@ -55,25 +46,6 @@ class DTRValidator extends Thread {
 
     // key: replicationName, value: replicationName.
     private static final ConcurrentHashMap<String, String> replications = new ConcurrentHashMap<>();
-
-    private static final QueuedMessage closeSentinel = new QueuedMessage(null, null);
-    private static final BlockingQueue<QueuedMessage> backlog = new LinkedBlockingQueue<>();
-
-    private static final DTRValidator instance = new DTRValidator();
-
-    static DTRValidator getInstance() {
-        return instance;
-    }
-
-    private static class QueuedMessage {
-        final AOTransaction t;
-        final String allLocalTransactionNames;
-
-        QueuedMessage(AOTransaction t, String allLocalTransactionNames) {
-            this.t = t;
-            this.allLocalTransactionNames = allLocalTransactionNames;
-        }
-    }
 
     private static DTStatusCache newCache(String hostAndPort) {
         synchronized (DTRValidator.class) {
@@ -89,11 +61,6 @@ class DTRValidator extends Thread {
     static void addTransaction(AOTransaction transaction, String allLocalTransactionNames) {
         Object[] v = { allLocalTransactionNames, transaction.getCommitTimestamp() };
         dTransactions.put(transaction.transactionName, v);
-        try {
-            backlog.put(new QueuedMessage(transaction, allLocalTransactionNames));
-        } catch (InterruptedException e) {
-            throw new AssertionError(e);
-        }
         validateTransactionAsync(transaction, allLocalTransactionNames.split(","));
     }
 
@@ -112,29 +79,11 @@ class DTRValidator extends Thread {
             if (!localTransactionName.startsWith(localHostAndPort)) {
                 String[] a = localTransactionName.split(":");
                 String hostAndPort = a[0] + ":" + a[1];
-                DistributedTransactionValidate packet = new DistributedTransactionValidate(
-                        localTransactionName);
-                transaction.getSession().send(packet, hostAndPort, handler);
+                DistributedTransactionValidate packet = new DistributedTransactionValidate(localTransactionName);
+                transaction.getSession().sendAsync(packet, hostAndPort, handler);
             } else {
                 size.decrementAndGet();
             }
-        }
-    }
-
-    private static void validateTransaction(QueuedMessage qm) {
-        String[] allLocalTransactionNames = qm.allLocalTransactionNames.split(",");
-        boolean isFullSuccessful = true;
-        String localHostAndPort = NetNode.getLocalTcpHostAndPort();
-        for (String localTransactionName : allLocalTransactionNames) {
-            if (!localTransactionName.startsWith(localHostAndPort)) {
-                if (!qm.t.validator.validate(localTransactionName)) {
-                    isFullSuccessful = false;
-                    break;
-                }
-            }
-        }
-        if (isFullSuccessful) {
-            qm.t.commitAfterValidate(qm.t.transactionId);
         }
     }
 
@@ -178,7 +127,7 @@ class DTRValidator extends Thread {
 
         for (String localTransactionName : allLocalTransactionNames) {
             if (!oldTransactionName.equals(localTransactionName)) {
-                if (!currentTransaction.validator.validate(localTransactionName)) {
+                if (!validateRemoteTransaction(localTransactionName, currentTransaction.getSession())) {
                     isFullSuccessful = false;
                     break;
                 }
@@ -195,6 +144,18 @@ class DTRValidator extends Thread {
         }
     }
 
+    private static boolean validateRemoteTransaction(String localTransactionName, Session session) {
+        String[] a = localTransactionName.split(":");
+        String hostAndPort = a[0] + ":" + a[1];
+        return validateRemoteTransaction(hostAndPort, localTransactionName, session);
+    }
+
+    private static boolean validateRemoteTransaction(String hostAndPort, String localTransactionName, Session session) {
+        DistributedTransactionValidate packet = new DistributedTransactionValidate(localTransactionName);
+        DistributedTransactionValidateAck ack = session.sendSync(packet, hostAndPort);
+        return ack.isValid;
+    }
+
     static void addReplication(String replicationName) {
         replications.put(replicationName, replicationName);
     }
@@ -207,7 +168,7 @@ class DTRValidator extends Thread {
         replications.remove(replicationName);
     }
 
-    static boolean validateReplication(String replicationName, Validator validator) {
+    static boolean validateReplication(String replicationName, Session session) {
         int validNodes = 0;
         String[] names = replicationName.split(",");
         NetNode localHostAndPort = NetNode.getLocalTcpNode();
@@ -229,65 +190,12 @@ class DTRValidator extends Thread {
                     if (++validNodes >= size)
                         return true;
                 }
-            } else if (validator.validate(name, "replication:" + replicationName)) {
+            } else if (validateRemoteTransaction(name, "replication:" + replicationName, session)) {
                 if (++validNodes >= size)
                     return true;
             }
         }
         return false;
-    }
-
-    static String handleReplicationConflict(String mapName, ByteBuffer key, String replicationName,
-            Validator validator) {
-        // 第一步: 获取各节点的锁占用情况
-        String[] names = replicationName.split(",");
-        boolean[] local = new boolean[names.length];
-        NetNode localHostAndPort = NetNode.getLocalTcpNode();
-        int size = names.length - 2;
-        String[] replicationNames = new String[size];
-        int replicationNameIndex = 0;
-
-        // 从2开始，前两个不是节点名
-        for (int i = 2, length = names.length; i < length; i++) {
-            String name = names[i];
-            if (name.indexOf(':') == -1) {
-                name += ":" + Constants.DEFAULT_TCP_PORT;
-                names[i] = name;
-            }
-            if (localHostAndPort.equals(NetNode.createTCP(name))) {
-                replicationNames[replicationNameIndex++] = replicationName;
-                local[i] = true;
-            } else {
-                replicationNames[replicationNameIndex++] = validator.checkReplicationConflict(mapName, key, name,
-                        replicationName);
-            }
-        }
-        // 第二步: 分析锁冲突(因为是基于轻量级锁来实现复制的，锁冲突也就意味着复制发生了冲突)
-        // 1. 如果客户端C拿到的行锁数>=2，保留C，撤销其他的
-        // 2. 如果没有一个客户端拿到的行锁数>=2，那么按复制名的自然序保留排在最前面的那个，撤销之后的
-        int quorum = size / 2 + 1;
-        String candidateReplicationName = null;
-        TreeMap<String, AtomicInteger> map = new TreeMap<>();
-        for (String rn : replicationNames) {
-            AtomicInteger count = map.get(rn);
-            if (count == null) {
-                count = new AtomicInteger(0);
-                map.put(rn, count);
-            }
-            if (count.incrementAndGet() >= quorum)
-                candidateReplicationName = rn;
-        }
-        if (candidateReplicationName == null)
-            candidateReplicationName = map.firstKey();
-
-        // 第三步: 处理锁冲突
-        for (int i = 2, length = names.length; i < length; i++) {
-            String name = names[i];
-            if (!local[i]) {
-                validator.handleReplicationConflict(mapName, key, name, replicationName);
-            }
-        }
-        return candidateReplicationName;
     }
 
     static String handleReplicationConflict(String mapName, ByteBuffer key, String replicationName, Session session) {
@@ -326,7 +234,7 @@ class DTRValidator extends Thread {
                     String name = names[i];
                     if (!local[i]) {
                         ReplicationCheckConflict packet = new ReplicationCheckConflict(mapName, key, replicationName);
-                        session.send(packet, name, null);
+                        session.sendAsync(packet, name, null);
                     }
                 }
             }
@@ -344,44 +252,9 @@ class DTRValidator extends Thread {
                 local[i] = true;
             } else {
                 ReplicationCheckConflict packet = new ReplicationCheckConflict(mapName, key, replicationName);
-                session.send(packet, name, handler);
+                session.sendAsync(packet, name, handler);
             }
         }
         return null;
-    }
-
-    private DTRValidator() {
-        super(DTRValidator.class.getSimpleName());
-        setDaemon(true);
-    }
-
-    void close() {
-        backlog.clear();
-        backlog.add(closeSentinel);
-    }
-
-    @Override
-    public void run() {
-        int maxElements = 32;
-        List<QueuedMessage> drainedMessages = new ArrayList<>(maxElements);
-        while (true) {
-            if (backlog.drainTo(drainedMessages, maxElements) == 0) {
-                try {
-                    drainedMessages.add(backlog.take());
-                } catch (InterruptedException e) {
-                    logger.warn("Failed to take queued message", e);
-                }
-            }
-            for (QueuedMessage qm : drainedMessages) {
-                if (closeSentinel == qm)
-                    return;
-                try {
-                    validateTransaction(qm);
-                } catch (Throwable e) {
-                    logger.warn("Failed to validate transaction: " + qm.t, e);
-                }
-            }
-            drainedMessages.clear();
-        }
     }
 }

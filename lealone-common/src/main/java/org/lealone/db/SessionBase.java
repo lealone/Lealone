@@ -19,7 +19,6 @@ package org.lealone.db;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
@@ -74,11 +73,6 @@ public abstract class SessionBase implements Session {
     @Override
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         throw DbException.getUnsupportedException("getStorageMap");
-    }
-
-    @Override
-    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
-        throw DbException.getUnsupportedException("replicateRootPages");
     }
 
     @Override
@@ -141,10 +135,6 @@ public abstract class SessionBase implements Session {
     @Override
     public long getLastRowKey() {
         return 0;
-    }
-
-    @Override
-    public void replicationCommit(long validKey, boolean autoCommit) {
     }
 
     @Override
