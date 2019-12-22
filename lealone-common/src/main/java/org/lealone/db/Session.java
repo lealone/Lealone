@@ -80,7 +80,6 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int COMMAND_STORAGE_PUT = 160;
     public static final int COMMAND_STORAGE_REPLICATION_PUT = 161;
     public static final int COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT = 162;
-    public static final int COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_REPLICATION_PUT = 163;
     public static final int COMMAND_STORAGE_APPEND = 164;
     public static final int COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND = 165;
 

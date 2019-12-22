@@ -21,14 +21,12 @@ import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -39,7 +37,6 @@ import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
-import org.lealone.db.DataBuffer;
 import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
@@ -47,7 +44,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
-import org.lealone.db.value.ValueLong;
 import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
@@ -62,12 +58,8 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.storage.DistributedStorageMap;
-import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.StorageMap;
-import org.lealone.storage.type.StorageDataType;
 
 /**
  * 这里只处理客户端通过TCP连到服务器端后的协议，可以在一个TCP连接中打开多个session
@@ -586,160 +578,6 @@ public class TcpServerConnection extends TransferConnection {
         case Session.COMMAND_PREPARED_UPDATE:
         case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
             executeUpdateAsync(in, packetId, operation, si, true);
-            break;
-        }
-        case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT:
-        case Session.COMMAND_STORAGE_PUT:
-        case Session.COMMAND_STORAGE_REPLICATION_PUT: {
-            String mapName = in.readString();
-            byte[] key = in.readBytes();
-            byte[] value = in.readBytes();
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-            session.setReplicationName(in.readString());
-            boolean raw = in.readBoolean();
-
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            if (raw) {
-                map = map.getRawMap();
-            }
-
-            StorageDataType valueType = map.getValueType();
-            Object k = map.getKeyType().read(ByteBuffer.wrap(key));
-            Object v = valueType.read(ByteBuffer.wrap(value));
-            Object result = map.put(k, v);
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_PUT)
-                out.writeString(session.getTransaction().getLocalTransactionNames());
-
-            if (result != null) {
-                try (DataBuffer writeBuffer = DataBuffer.create()) {
-                    valueType.write(writeBuffer, result);
-                    ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
-                    out.writeByteBuffer(buffer);
-                }
-            } else {
-                out.writeByteBuffer(null);
-            }
-            out.flush();
-            break;
-        }
-        case Session.COMMAND_STORAGE_APPEND:
-        case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND: {
-            String mapName = in.readString();
-            byte[] value = in.readBytes();
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-            session.setReplicationName(in.readString());
-
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            Object v = map.getValueType().read(ByteBuffer.wrap(value));
-            Object result = map.append(v);
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_APPEND)
-                out.writeString(session.getTransaction().getLocalTransactionNames());
-            out.writeLong(((ValueLong) result).getLong());
-            out.flush();
-            break;
-        }
-        case Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET:
-        case Session.COMMAND_STORAGE_GET: {
-            String mapName = in.readString();
-            byte[] key = in.readBytes();
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET) {
-                session.setAutoCommit(false);
-                session.setRoot(false);
-            }
-
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
-            Object result = map.get(map.getKeyType().read(ByteBuffer.wrap(key)));
-
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            if (operation == Session.COMMAND_STORAGE_DISTRIBUTED_TRANSACTION_GET)
-                out.writeString(session.getTransaction().getLocalTransactionNames());
-
-            if (result != null) {
-                try (DataBuffer writeBuffer = DataBuffer.create()) {
-                    map.getValueType().write(writeBuffer, result);
-                    ByteBuffer buffer = writeBuffer.getAndFlipBuffer();
-                    out.writeByteBuffer(buffer);
-                }
-            } else {
-                out.writeByteBuffer(null);
-            }
-            out.flush();
-            break;
-        }
-        case Session.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE: {
-            String mapName = in.readString();
-            LeafPageMovePlan leafPageMovePlan = LeafPageMovePlan.deserialize(in);
-
-            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                    .getStorageMap(mapName);
-            leafPageMovePlan = map.prepareMoveLeafPage(leafPageMovePlan);
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            leafPageMovePlan.serialize(out);
-            out.flush();
-            break;
-        }
-        case Session.COMMAND_STORAGE_MOVE_LEAF_PAGE: {
-            String mapName = in.readString();
-            PageKey pageKey = in.readPageKey();
-            ByteBuffer page = in.readByteBuffer();
-            boolean addPage = in.readBoolean();
-            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                    .getStorageMap(mapName);
-            ConcurrentUtils.submitTask("Add Leaf Page", () -> {
-                map.addLeafPage(pageKey, page, addPage);
-            });
-            // map.addLeafPage(pageKey, page, addPage);
-            // writeResponseHeader(out, session, packetId);
-            // transfer.flush();
-            break;
-        }
-        case Session.COMMAND_STORAGE_REPLICATE_ROOT_PAGES: {
-            final String dbName = in.readString();
-            final ByteBuffer rootPages = in.readByteBuffer();
-            final Session s = session;
-            ConcurrentUtils.submitTask("Replicate Root Pages", () -> {
-                s.replicateRootPages(dbName, rootPages);
-            });
-
-            // session.replicateRootPages(dbName, rootPages);
-            // writeResponseHeader(out, session, packetId);
-            // transfer.flush();
-            break;
-        }
-        case Session.COMMAND_STORAGE_READ_PAGE: {
-            String mapName = in.readString();
-            PageKey pageKey = in.readPageKey();
-            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                    .getStorageMap(mapName);
-            ByteBuffer page = map.readPage(pageKey);
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            out.writeByteBuffer(page);
-            out.flush();
-            break;
-        }
-        case Session.COMMAND_STORAGE_REMOVE_LEAF_PAGE: {
-            String mapName = in.readString();
-            PageKey pageKey = in.readPageKey();
-
-            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                    .getStorageMap(mapName);
-            map.removeLeafPage(pageKey);
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            out.flush();
             break;
         }
         case Session.COMMAND_GET_META_DATA: {
