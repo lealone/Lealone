@@ -17,8 +17,6 @@
  */
 package org.lealone.server.protocol;
 
-import java.util.HashMap;
-
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
@@ -62,20 +60,21 @@ import org.lealone.server.protocol.storage.StorageReadPageAck;
 import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
 import org.lealone.server.protocol.storage.StorageReplicateRootPages;
 
+@SuppressWarnings({ "rawtypes", "unchecked" })
 public class PacketDecoders {
 
-    private static HashMap<Integer, PacketDecoder<? extends Packet>> decoders = new HashMap<>();
+    private static PacketDecoder[] decoders = new PacketDecoder[PacketType.VOID.value];
 
     public static void register(PacketType type, PacketDecoder<? extends Packet> decoder) {
-        decoders.put(type.value, decoder);
+        decoders[type.value] = decoder;
     }
 
     public static PacketDecoder<? extends Packet> getDecoder(PacketType type) {
-        return decoders.get(type.value);
+        return decoders[type.value];
     }
 
     public static PacketDecoder<? extends Packet> getDecoder(int type) {
-        return decoders.get(type);
+        return decoders[type];
     }
 
     static {
@@ -85,12 +84,6 @@ public class PacketDecoders {
         register(PacketType.SESSION_SET_AUTO_COMMIT, SessionSetAutoCommit.decoder);
         register(PacketType.SESSION_CLOSE, SessionClose.decoder);
 
-        register(PacketType.RESULT_FETCH_ROWS, ResultFetchRows.decoder);
-        register(PacketType.RESULT_FETCH_ROWS_ACK, ResultFetchRowsAck.decoder);
-        register(PacketType.RESULT_CHANGE_ID, ResultChangeId.decoder);
-        register(PacketType.RESULT_RESET, ResultReset.decoder);
-        register(PacketType.RESULT_CLOSE, ResultClose.decoder);
-
         register(PacketType.PREPARED_STATEMENT_GET_META_DATA, PreparedStatementGetMetaData.decoder);
         register(PacketType.PREPARED_STATEMENT_GET_META_DATA_ACK, PreparedStatementGetMetaDataAck.decoder);
         register(PacketType.PREPARED_STATEMENT_CLOSE, PreparedStatementClose.decoder);
@@ -98,6 +91,12 @@ public class PacketDecoders {
         register(PacketType.BATCH_STATEMENT_UPDATE, BatchStatementUpdate.decoder);
         register(PacketType.BATCH_STATEMENT_UPDATE_ACK, BatchStatementUpdateAck.decoder);
         register(PacketType.BATCH_STATEMENT_PREPARED_UPDATE, BatchStatementPreparedUpdate.decoder);
+
+        register(PacketType.RESULT_FETCH_ROWS, ResultFetchRows.decoder);
+        register(PacketType.RESULT_FETCH_ROWS_ACK, ResultFetchRowsAck.decoder);
+        register(PacketType.RESULT_CHANGE_ID, ResultChangeId.decoder);
+        register(PacketType.RESULT_RESET, ResultReset.decoder);
+        register(PacketType.RESULT_CLOSE, ResultClose.decoder);
 
         register(PacketType.LOB_READ, LobRead.decoder);
         register(PacketType.LOB_READ_ACK, LobReadAck.decoder);

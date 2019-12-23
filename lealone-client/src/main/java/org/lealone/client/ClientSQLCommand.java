@@ -21,8 +21,6 @@ import org.lealone.db.result.Result;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
-import org.lealone.server.protocol.CommandUpdate;
-import org.lealone.server.protocol.CommandUpdateAck;
 import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DistributedTransactionUpdate;
@@ -31,6 +29,8 @@ import org.lealone.server.protocol.replication.ReplicationCommit;
 import org.lealone.server.protocol.replication.ReplicationRollback;
 import org.lealone.server.protocol.replication.ReplicationUpdate;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
+import org.lealone.server.protocol.statement.StatementUpdate;
+import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 
@@ -300,12 +300,12 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
                 });
             }
         } else {
-            CommandUpdate packet = new CommandUpdate(pageKeys, sql);
+            StatementUpdate packet = new StatementUpdate(pageKeys, sql);
             if (handler == null) {
-                CommandUpdateAck ack = session.sendSync(packet, packetId);
+                StatementUpdateAck ack = session.sendSync(packet, packetId);
                 return ack.updateCount;
             } else {
-                session.<CommandUpdateAck> sendAsync(packet, packetId, ack -> {
+                session.<StatementUpdateAck> sendAsync(packet, packetId, ack -> {
                     handler.handle(new AsyncResult<>(ack.updateCount));
                 });
             }

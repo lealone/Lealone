@@ -33,7 +33,7 @@ import org.lealone.sql.PreparedSQLStatement;
 
 class BatchStatementPacketHandlers extends PacketHandlers {
 
-    static {
+    static void register() {
         register(PacketType.BATCH_STATEMENT_UPDATE, new Update());
         register(PacketType.BATCH_STATEMENT_PREPARED_UPDATE, new PreparedUpdate());
     }

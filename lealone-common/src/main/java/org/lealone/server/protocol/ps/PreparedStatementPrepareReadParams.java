@@ -15,31 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.ps;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class Prepare implements Packet {
+public class PreparedStatementPrepareReadParams implements Packet {
 
     public final int commandId;
     public final String sql;
 
-    public Prepare(int commandId, String sql) {
+    public PreparedStatementPrepareReadParams(int commandId, String sql) {
         this.commandId = commandId;
         this.sql = sql;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.PREPARED_STATEMENT_PREPARE;
+        return PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.PREPARED_STATEMENT_PREPARE_ACK;
+        return PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS_ACK;
     }
 
     @Override
@@ -49,12 +52,12 @@ public class Prepare implements Packet {
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<Prepare> {
+    private static class Decoder implements PacketDecoder<PreparedStatementPrepareReadParams> {
         @Override
-        public Prepare decode(NetInputStream in, int version) throws IOException {
+        public PreparedStatementPrepareReadParams decode(NetInputStream in, int version) throws IOException {
             int commandId = in.readInt();
             String sql = in.readString();
-            return new Prepare(commandId, sql);
+            return new PreparedStatementPrepareReadParams(commandId, sql);
         }
     }
 }

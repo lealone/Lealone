@@ -22,10 +22,10 @@ import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.CommandUpdate;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.storage.PageKey;
 
 public class ReplicationUpdate implements Packet {
@@ -71,7 +71,7 @@ public class ReplicationUpdate implements Packet {
     private static class Decoder implements PacketDecoder<ReplicationUpdate> {
         @Override
         public ReplicationUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = CommandUpdate.readPageKeys(in);
+            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
             String sql = in.readString();
             String replicationName = in.readString();
             return new ReplicationUpdate(pageKeys, sql, replicationName);

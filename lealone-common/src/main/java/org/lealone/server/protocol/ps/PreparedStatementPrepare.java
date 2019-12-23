@@ -15,37 +15,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.ps;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class PrepareAck implements AckPacket {
+public class PreparedStatementPrepare implements Packet {
 
-    public final boolean isQuery;
+    public final int commandId;
+    public final String sql;
 
-    public PrepareAck(boolean isQuery) {
-        this.isQuery = isQuery;
+    public PreparedStatementPrepare(int commandId, String sql) {
+        this.commandId = commandId;
+        this.sql = sql;
     }
 
     @Override
     public PacketType getType() {
+        return PacketType.PREPARED_STATEMENT_PREPARE;
+    }
+
+    @Override
+    public PacketType getAckType() {
         return PacketType.PREPARED_STATEMENT_PREPARE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeBoolean(isQuery);
+        out.writeInt(commandId).writeString(sql);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<PrepareAck> {
+    private static class Decoder implements PacketDecoder<PreparedStatementPrepare> {
         @Override
-        public PrepareAck decode(NetInputStream in, int version) throws IOException {
-            return new PrepareAck(in.readBoolean());
+        public PreparedStatementPrepare decode(NetInputStream in, int version) throws IOException {
+            int commandId = in.readInt();
+            String sql = in.readString();
+            return new PreparedStatementPrepare(commandId, sql);
         }
     }
 }

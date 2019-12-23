@@ -28,7 +28,7 @@ import org.lealone.server.protocol.replication.ReplicationRollback;
 
 class ReplicationPacketHandlers extends PacketHandlers {
 
-    static {
+    static void register() {
         register(PacketType.REPLICATION_COMMIT, new Commit());
         register(PacketType.REPLICATION_ROLLBACK, new Rollback());
         register(PacketType.REPLICATION_CHECK_CONFLICT, new CheckConflict());

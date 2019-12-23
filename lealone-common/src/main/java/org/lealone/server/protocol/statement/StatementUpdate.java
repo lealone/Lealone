@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.statement;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,14 +23,17 @@ import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 import org.lealone.storage.PageKey;
 
-public class CommandUpdate implements Packet {
+public class StatementUpdate implements Packet {
 
     public final List<PageKey> pageKeys;
     public final String sql;
 
-    public CommandUpdate(List<PageKey> pageKeys, String sql) {
+    public StatementUpdate(List<PageKey> pageKeys, String sql) {
         this.pageKeys = pageKeys;
         this.sql = sql;
     }
@@ -62,12 +65,12 @@ public class CommandUpdate implements Packet {
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<CommandUpdate> {
+    private static class Decoder implements PacketDecoder<StatementUpdate> {
         @Override
-        public CommandUpdate decode(NetInputStream in, int version) throws IOException {
+        public StatementUpdate decode(NetInputStream in, int version) throws IOException {
             List<PageKey> pageKeys = readPageKeys(in);
             String sql = in.readString();
-            return new CommandUpdate(pageKeys, sql);
+            return new StatementUpdate(pageKeys, sql);
         }
     }
 

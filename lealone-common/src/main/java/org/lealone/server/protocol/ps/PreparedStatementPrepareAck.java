@@ -15,37 +15,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.ps;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class CommandUpdateAck implements AckPacket {
+public class PreparedStatementPrepareAck implements AckPacket {
 
-    public final int updateCount;
+    public final boolean isQuery;
 
-    public CommandUpdateAck(int updateCount) {
-        this.updateCount = updateCount;
+    public PreparedStatementPrepareAck(boolean isQuery) {
+        this.isQuery = isQuery;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.STATEMENT_UPDATE_ACK;
+        return PacketType.PREPARED_STATEMENT_PREPARE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(updateCount);
+        out.writeBoolean(isQuery);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<CommandUpdateAck> {
+    private static class Decoder implements PacketDecoder<PreparedStatementPrepareAck> {
         @Override
-        public CommandUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new CommandUpdateAck(in.readInt());
+        public PreparedStatementPrepareAck decode(NetInputStream in, int version) throws IOException {
+            return new PreparedStatementPrepareAck(in.readBoolean());
         }
     }
 }

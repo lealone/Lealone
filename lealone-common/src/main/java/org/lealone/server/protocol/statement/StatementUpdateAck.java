@@ -15,46 +15,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.statement;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class PrepareReadParams implements Packet {
+public class StatementUpdateAck implements AckPacket {
 
-    public final int commandId;
-    public final String sql;
+    public final int updateCount;
 
-    public PrepareReadParams(int commandId, String sql) {
-        this.commandId = commandId;
-        this.sql = sql;
+    public StatementUpdateAck(int updateCount) {
+        this.updateCount = updateCount;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS;
-    }
-
-    @Override
-    public PacketType getAckType() {
-        return PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS_ACK;
+        return PacketType.STATEMENT_UPDATE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(commandId).writeString(sql);
+        out.writeInt(updateCount);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<PrepareReadParams> {
+    private static class Decoder implements PacketDecoder<StatementUpdateAck> {
         @Override
-        public PrepareReadParams decode(NetInputStream in, int version) throws IOException {
-            int commandId = in.readInt();
-            String sql = in.readString();
-            return new PrepareReadParams(commandId, sql);
+        public StatementUpdateAck decode(NetInputStream in, int version) throws IOException {
+            return new StatementUpdateAck(in.readInt());
         }
     }
 }

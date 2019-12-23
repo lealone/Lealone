@@ -17,20 +17,8 @@
  */
 package org.lealone.server.handler;
 
-import org.lealone.db.ServerSession;
-import org.lealone.server.TcpServerConnection;
-import org.lealone.server.protocol.Packet;
-import org.lealone.server.protocol.Prepare;
-import org.lealone.server.protocol.PrepareAck;
-import org.lealone.sql.PreparedSQLStatement;
+public class StatementPacketHandlers extends PacketHandlers {
 
-public class PrepareHandler implements PacketHandler<Prepare> {
-    @Override
-    public Packet handle(TcpServerConnection conn, ServerSession session, Prepare packet) {
-        PreparedSQLStatement command = session.prepareStatement(packet.sql, -1);
-        command.setId(packet.commandId);
-        conn.addCache(packet.commandId, command);
-        boolean isQuery = command.isQuery();
-        return new PrepareAck(isQuery);
+    static void register() {
     }
 }

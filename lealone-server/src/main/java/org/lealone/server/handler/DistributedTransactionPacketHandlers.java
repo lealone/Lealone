@@ -29,7 +29,7 @@ import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
 
 class DistributedTransactionPacketHandlers extends PacketHandlers {
 
-    static {
+    static void register() {
         register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT, new Commit());
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK, new Rollback());
         register(PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, new AddSavepoint());

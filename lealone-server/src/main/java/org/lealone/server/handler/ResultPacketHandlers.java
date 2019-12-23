@@ -30,7 +30,7 @@ import org.lealone.server.protocol.result.ResultReset;
 
 class ResultPacketHandlers extends PacketHandlers {
 
-    static {
+    static void register() {
         register(PacketType.RESULT_FETCH_ROWS, new FetchRows());
         register(PacketType.RESULT_CHANGE_ID, new ChangeId());
         register(PacketType.RESULT_RESET, new Reset());

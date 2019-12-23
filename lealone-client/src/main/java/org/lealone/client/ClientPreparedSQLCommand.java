@@ -27,15 +27,15 @@ import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
-import org.lealone.server.protocol.Prepare;
-import org.lealone.server.protocol.PrepareAck;
-import org.lealone.server.protocol.PrepareReadParams;
-import org.lealone.server.protocol.PrepareReadParamsAck;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
+import org.lealone.server.protocol.ps.PreparedStatementPrepare;
+import org.lealone.server.protocol.ps.PreparedStatementPrepareAck;
+import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParams;
+import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParamsAck;
 import org.lealone.storage.PageKey;
 
 /**
@@ -99,13 +99,13 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         // Prepared SQL的ID，每次执行时都发给后端
         commandId = session.getNextId();
         if (readParams) {
-            PrepareReadParams packet = new PrepareReadParams(commandId, sql);
-            PrepareReadParamsAck ack = session.sendSync(packet);
+            PreparedStatementPrepareReadParams packet = new PreparedStatementPrepareReadParams(commandId, sql);
+            PreparedStatementPrepareReadParamsAck ack = session.sendSync(packet);
             isQuery = ack.isQuery;
             parameters = new ArrayList<>(ack.params);
         } else {
-            Prepare packet = new Prepare(commandId, sql);
-            PrepareAck ack = session.sendSync(packet);
+            PreparedStatementPrepare packet = new PreparedStatementPrepare(commandId, sql);
+            PreparedStatementPrepareAck ack = session.sendSync(packet);
             isQuery = ack.isQuery;
         }
     }

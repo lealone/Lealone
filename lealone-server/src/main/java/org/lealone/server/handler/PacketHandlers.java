@@ -17,24 +17,35 @@
  */
 package org.lealone.server.handler;
 
-import java.util.HashMap;
-
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 
+@SuppressWarnings("rawtypes")
 public class PacketHandlers {
 
-    private static HashMap<Integer, PacketHandler<? extends Packet>> handlers = new HashMap<>();
+    private static PacketHandler[] handlers = new PacketHandler[PacketType.VOID.value];
 
-    public static void register(PacketType type, PacketHandler<? extends Packet> decoder) {
-        handlers.put(type.value, decoder);
+    public static void register(PacketType type, PacketHandler<? extends Packet> handler) {
+        handlers[type.value] = handler;
     }
 
-    public static PacketHandler<? extends Packet> getHandler(int type) {
-        return handlers.get(type);
+    public static PacketHandler getHandler(PacketType type) {
+        return handlers[type.value];
+    }
+
+    public static PacketHandler getHandler(int type) {
+        return handlers[type];
     }
 
     static {
-        register(PacketType.LOB_READ, new ReadLobHandler());
+        SessionPacketHandlers.register();
+        PreparedStatementPacketHandlers.register();
+        StatementPacketHandlers.register();
+        BatchStatementPacketHandlers.register();
+        ResultPacketHandlers.register();
+        LobPacketHandlers.register();
+        ReplicationPacketHandlers.register();
+        DistributedTransactionPacketHandlers.register();
+        StoragePacketHandlers.register();
     }
 }

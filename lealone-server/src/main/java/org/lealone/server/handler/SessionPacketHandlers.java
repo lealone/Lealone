@@ -29,7 +29,7 @@ import org.lealone.sql.PreparedSQLStatement;
 
 class SessionPacketHandlers extends PacketHandlers {
 
-    static {
+    static void register() {
         register(PacketType.SESSION_INIT, new Init());
         register(PacketType.SESSION_CANCEL_STATEMENT, new CancelStatement());
         register(PacketType.SESSION_SET_AUTO_COMMIT, new SetAutoCommit());

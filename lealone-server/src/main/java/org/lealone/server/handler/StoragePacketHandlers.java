@@ -45,7 +45,7 @@ import org.lealone.storage.type.StorageDataType;
 
 class StoragePacketHandlers extends PacketHandlers {
 
-    static {
+    static void register() {
         register(PacketType.STORAGE_PUT, new Put());
         register(PacketType.STORAGE_APPEND, new Append());
         register(PacketType.STORAGE_GET, new Get());

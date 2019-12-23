@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.ps;
 
 import java.io.IOException;
 import java.sql.ResultSetMetaData;
@@ -28,13 +28,16 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class PrepareReadParamsAck implements AckPacket {
+public class PreparedStatementPrepareReadParamsAck implements AckPacket {
 
     public final boolean isQuery;
     public final List<? extends CommandParameter> params;
 
-    public PrepareReadParamsAck(boolean isQuery, List<? extends CommandParameter> params) {
+    public PreparedStatementPrepareReadParamsAck(boolean isQuery, List<? extends CommandParameter> params) {
         this.isQuery = isQuery;
         this.params = params;
     }
@@ -67,9 +70,9 @@ public class PrepareReadParamsAck implements AckPacket {
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<PrepareReadParamsAck> {
+    private static class Decoder implements PacketDecoder<PreparedStatementPrepareReadParamsAck> {
         @Override
-        public PrepareReadParamsAck decode(NetInputStream in, int version) throws IOException {
+        public PreparedStatementPrepareReadParamsAck decode(NetInputStream in, int version) throws IOException {
             boolean isQuery = in.readBoolean();
             int paramCount = in.readInt();
             ArrayList<CommandParameter> params = new ArrayList<>(paramCount);
@@ -78,7 +81,7 @@ public class PrepareReadParamsAck implements AckPacket {
                 p.readMetaData(in);
                 params.add(p);
             }
-            return new PrepareReadParamsAck(isQuery, params);
+            return new PreparedStatementPrepareReadParamsAck(isQuery, params);
         }
     }
 

@@ -28,7 +28,6 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.Pair;
-import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
@@ -43,7 +42,7 @@ import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
 import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.server.Scheduler.SessionInfo;
-import org.lealone.server.handler.CachedInputStream;
+import org.lealone.server.handler.LobPacketHandlers.LobCache;
 import org.lealone.server.handler.PacketHandler;
 import org.lealone.server.handler.PacketHandlers;
 import org.lealone.server.protocol.Packet;
@@ -73,7 +72,7 @@ public class TcpServerConnection extends TransferConnection {
     private final ConcurrentHashMap<Integer, SessionInfo> sessions = new ConcurrentHashMap<>();
     private final TcpServer tcpServer;
     private final ExpiringMap<Integer, AutoCloseable> cache;
-    private SmallLRUCache<Long, CachedInputStream> lobs; // 大多数情况下都不使用lob，所以延迟初始化
+    private LobCache lobCache; // 大多数情况下都不使用lob，所以延迟初始化
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
@@ -563,11 +562,10 @@ public class TcpServerConnection extends TransferConnection {
         return cache.remove(k, ifAvailable);
     }
 
-    public SmallLRUCache<Long, CachedInputStream> getLobs() {
-        if (lobs == null) {
-            lobs = SmallLRUCache.newInstance(
-                    Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+    public LobCache getLobCache() {
+        if (lobCache == null) {
+            lobCache = new LobCache();
         }
-        return lobs;
+        return lobCache;
     }
 }
