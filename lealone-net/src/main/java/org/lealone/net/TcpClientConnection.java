@@ -32,6 +32,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
 
@@ -101,7 +102,7 @@ public class TcpClientConnection extends TransferConnection {
         int packetId = getNextId();
         TransferOutputStream out = createTransferOutputStream(session);
         out.setSSL(ci.isSSL());
-        out.writeRequestHeader(packetId, Session.SESSION_INIT);
+        out.writeRequestHeader(packetId, PacketType.SESSION_INIT.value);
         out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
         out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
         out.writeString(ci.getDatabaseShortName());
@@ -127,18 +128,6 @@ public class TcpClientConnection extends TransferConnection {
                 session.setInvalid(in.readBoolean());
             }
         });
-    }
-
-    public void writeInitPacket2(final Session session) throws Exception {
-        checkClosed();
-        ConnectionInfo ci = session.getConnectionInfo();
-        SessionInit packet = new SessionInit(ci);
-        SessionInitAck ack = session.sendSync(packet);
-        session.setProtocolVersion(ack.clientVersion);
-        session.setAutoCommit(ack.autoCommit);
-        session.setTargetNodes(ack.targetNodes);
-        session.setRunMode(ack.runMode);
-        session.setInvalid(ack.invalid);
     }
 
     public void writeInitPacketAsync(final Session session, AsyncHandler<AsyncResult<Session>> asyncHandler) {

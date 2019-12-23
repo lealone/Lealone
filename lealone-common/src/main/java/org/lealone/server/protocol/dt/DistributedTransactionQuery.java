@@ -23,33 +23,39 @@ import java.util.List;
 import org.lealone.net.NetInputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.statement.StatementQuery;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.storage.PageKey;
 
-public class DistributedTransactionUpdate extends StatementUpdate {
+public class DistributedTransactionQuery extends StatementQuery {
 
-    public DistributedTransactionUpdate(List<PageKey> pageKeys, String sql) {
-        super(pageKeys, sql);
+    public DistributedTransactionQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize,
+            boolean scrollable, String sql) {
+        super(pageKeys, resultId, maxRows, fetchSize, scrollable, sql);
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE;
+        return PacketType.DISTRIBUTED_TRANSACTION_QUERY;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_QUERY_ACK;
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionUpdate> {
+    private static class Decoder implements PacketDecoder<DistributedTransactionQuery> {
         @Override
-        public DistributedTransactionUpdate decode(NetInputStream in, int version) throws IOException {
+        public DistributedTransactionQuery decode(NetInputStream in, int version) throws IOException {
             List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
+            int resultId = in.readInt();
+            int maxRows = in.readInt();
+            int fetchSize = in.readInt();
+            boolean scrollable = in.readBoolean();
             String sql = in.readString();
-            return new DistributedTransactionUpdate(pageKeys, sql);
+            return new DistributedTransactionQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, sql);
         }
     }
 }

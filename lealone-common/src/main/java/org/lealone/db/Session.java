@@ -31,28 +31,6 @@ import org.lealone.transaction.Transaction;
  */
 public interface Session extends Closeable, Transaction.Participant {
 
-    // 命令值会包含在协议包中不能随便改动，不同类型的命令值之间有意设置了间隔，用于后续加新命令
-
-    public static final int SESSION_INIT = 0;
-
-    public static final int COMMAND_QUERY = 40;
-    public static final int COMMAND_UPDATE = 41;
-
-    public static final int COMMAND_PREPARE = 50;
-    public static final int COMMAND_PREPARE_READ_PARAMS = 51;
-    public static final int COMMAND_PREPARED_QUERY = 52;
-    public static final int COMMAND_PREPARED_UPDATE = 53;
-
-    public static final int COMMAND_REPLICATION_UPDATE = 80;
-    public static final int COMMAND_REPLICATION_PREPARED_UPDATE = 81;
-
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_QUERY = 100;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY = 101;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_UPDATE = 102;
-    public static final int COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE = 103;
-
-    public static final int COMMAND_P2P_MESSAGE = 300;
-
     public static final int STATUS_OK = 1000;
     public static final int STATUS_CLOSED = 1001;
     public static final int STATUS_ERROR = 1002;

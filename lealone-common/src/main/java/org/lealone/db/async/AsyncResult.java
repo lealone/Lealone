@@ -31,6 +31,10 @@ public class AsyncResult<T> {
         setResult(result);
     }
 
+    public AsyncResult(Throwable cause) {
+        setCause(cause);
+    }
+
     public T getResult() {
         return result;
     }

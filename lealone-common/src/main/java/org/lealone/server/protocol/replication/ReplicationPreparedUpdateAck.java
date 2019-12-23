@@ -15,41 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol.dt;
+package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.storage.PageKey;
 
-public class DistributedTransactionUpdate extends StatementUpdate {
+public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
 
-    public DistributedTransactionUpdate(List<PageKey> pageKeys, String sql) {
-        super(pageKeys, sql);
+    public ReplicationPreparedUpdateAck(int updateCount) {
+        super(updateCount);
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE;
-    }
-
-    @Override
-    public PacketType getAckType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK;
+        return PacketType.REPLICATION_PREPARED_UPDATE_ACK;
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionUpdate> {
+    private static class Decoder implements PacketDecoder<ReplicationPreparedUpdateAck> {
         @Override
-        public DistributedTransactionUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
-            String sql = in.readString();
-            return new DistributedTransactionUpdate(pageKeys, sql);
+        public ReplicationPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
+            return new ReplicationPreparedUpdateAck(in.readInt());
         }
     }
 }

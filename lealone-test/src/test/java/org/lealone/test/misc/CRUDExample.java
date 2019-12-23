@@ -22,6 +22,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 import org.junit.Assert;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.net.nio.NioNetFactory;
 import org.lealone.test.TestBase;
 
@@ -30,7 +31,7 @@ public class CRUDExample {
     public static void main(String[] args) throws Exception {
         TestBase test = new TestBase();
         test.setNetFactoryName(NioNetFactory.NAME);
-        Connection conn = test.getConnection();
+        Connection conn = test.getConnection(LealoneDatabase.NAME);
         crud(conn);
     }
 
@@ -53,5 +54,4 @@ public class CRUDExample {
         stmt.close();
         conn.close();
     }
-
 }

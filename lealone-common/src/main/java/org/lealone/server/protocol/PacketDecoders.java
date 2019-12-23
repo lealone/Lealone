@@ -22,8 +22,16 @@ import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionCommit;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedQuery;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedQueryAck;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedUpdate;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedUpdateAck;
+import org.lealone.server.protocol.dt.DistributedTransactionQuery;
+import org.lealone.server.protocol.dt.DistributedTransactionQueryAck;
 import org.lealone.server.protocol.dt.DistributedTransactionRollback;
 import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
+import org.lealone.server.protocol.dt.DistributedTransactionUpdate;
+import org.lealone.server.protocol.dt.DistributedTransactionUpdateAck;
 import org.lealone.server.protocol.dt.DistributedTransactionValidate;
 import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
 import org.lealone.server.protocol.lob.LobRead;
@@ -31,11 +39,21 @@ import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
+import org.lealone.server.protocol.ps.PreparedStatementPrepare;
+import org.lealone.server.protocol.ps.PreparedStatementPrepareAck;
+import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParams;
+import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParamsAck;
+import org.lealone.server.protocol.ps.PreparedStatementQuery;
+import org.lealone.server.protocol.ps.PreparedStatementUpdate;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
 import org.lealone.server.protocol.replication.ReplicationCommit;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
+import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
+import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationRollback;
+import org.lealone.server.protocol.replication.ReplicationUpdate;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.result.ResultChangeId;
 import org.lealone.server.protocol.result.ResultClose;
 import org.lealone.server.protocol.result.ResultFetchRows;
@@ -46,6 +64,10 @@ import org.lealone.server.protocol.session.SessionClose;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
+import org.lealone.server.protocol.statement.StatementQuery;
+import org.lealone.server.protocol.statement.StatementQueryAck;
+import org.lealone.server.protocol.statement.StatementUpdate;
+import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.server.protocol.storage.StorageAppend;
 import org.lealone.server.protocol.storage.StorageAppendAck;
 import org.lealone.server.protocol.storage.StorageGet;
@@ -84,9 +106,22 @@ public class PacketDecoders {
         register(PacketType.SESSION_SET_AUTO_COMMIT, SessionSetAutoCommit.decoder);
         register(PacketType.SESSION_CLOSE, SessionClose.decoder);
 
+        register(PacketType.PREPARED_STATEMENT_PREPARE, PreparedStatementPrepare.decoder);
+        register(PacketType.PREPARED_STATEMENT_PREPARE_ACK, PreparedStatementPrepareAck.decoder);
+        register(PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS, PreparedStatementPrepareReadParams.decoder);
+        register(PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS_ACK, PreparedStatementPrepareReadParamsAck.decoder);
+        register(PacketType.PREPARED_STATEMENT_QUERY, PreparedStatementQuery.decoder);
+        // register(PacketType.PREPARED_STATEMENT_QUERY_ACK, PreparedStatementQueryAck.decoder);
+        register(PacketType.PREPARED_STATEMENT_UPDATE, PreparedStatementUpdate.decoder);
+        // register(PacketType.PREPARED_STATEMENT_UPDATE_ACK, PreparedStatementUpdateAck.decoder);
         register(PacketType.PREPARED_STATEMENT_GET_META_DATA, PreparedStatementGetMetaData.decoder);
         register(PacketType.PREPARED_STATEMENT_GET_META_DATA_ACK, PreparedStatementGetMetaDataAck.decoder);
         register(PacketType.PREPARED_STATEMENT_CLOSE, PreparedStatementClose.decoder);
+
+        register(PacketType.STATEMENT_QUERY, StatementQuery.decoder);
+        register(PacketType.STATEMENT_QUERY_ACK, StatementQueryAck.decoder);
+        register(PacketType.STATEMENT_UPDATE, StatementUpdate.decoder);
+        register(PacketType.STATEMENT_UPDATE_ACK, StatementUpdateAck.decoder);
 
         register(PacketType.BATCH_STATEMENT_UPDATE, BatchStatementUpdate.decoder);
         register(PacketType.BATCH_STATEMENT_UPDATE_ACK, BatchStatementUpdateAck.decoder);
@@ -101,11 +136,25 @@ public class PacketDecoders {
         register(PacketType.LOB_READ, LobRead.decoder);
         register(PacketType.LOB_READ_ACK, LobReadAck.decoder);
 
+        register(PacketType.REPLICATION_UPDATE, ReplicationUpdate.decoder);
+        register(PacketType.REPLICATION_UPDATE_ACK, ReplicationUpdateAck.decoder);
+        register(PacketType.REPLICATION_PREPARED_UPDATE, ReplicationPreparedUpdate.decoder);
+        register(PacketType.REPLICATION_PREPARED_UPDATE_ACK, ReplicationPreparedUpdateAck.decoder);
         register(PacketType.REPLICATION_COMMIT, ReplicationCommit.decoder);
         register(PacketType.REPLICATION_ROLLBACK, ReplicationRollback.decoder);
         register(PacketType.REPLICATION_CHECK_CONFLICT, ReplicationCheckConflict.decoder);
         register(PacketType.REPLICATION_CHECK_CONFLICT_ACK, ReplicationCheckConflictAck.decoder);
         register(PacketType.REPLICATION_HANDLE_CONFLICT, ReplicationHandleConflict.decoder);
+
+        register(PacketType.DISTRIBUTED_TRANSACTION_QUERY, DistributedTransactionQuery.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_QUERY_ACK, DistributedTransactionQueryAck.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY, DistributedTransactionPreparedQuery.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY_ACK, DistributedTransactionPreparedQueryAck.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_UPDATE, DistributedTransactionUpdate.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK, DistributedTransactionUpdateAck.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE, DistributedTransactionPreparedUpdate.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE_ACK,
+                DistributedTransactionPreparedUpdateAck.decoder);
 
         register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT, DistributedTransactionCommit.decoder);
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK, DistributedTransactionRollback.decoder);

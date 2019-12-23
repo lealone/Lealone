@@ -70,7 +70,7 @@ public class P2pPacketOut<T extends P2pPacket> {
             out.write(entry.getValue());
         }
 
-        out.writeInt(packet.getType().value);
+        // out.writeInt(packet.getType().value);
         packet.encode(transferOut, version);
 
         // out.writeInt(0); // 先设为0

@@ -558,12 +558,8 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     }
                 }
             };
-            if (handler != null) {
-                ac.setAsyncHandler(handler);
-                out.flush(packetId, ac);
-            } else {
-                out.flushAndAwait(packetId, ac);
-            }
+            ac.setAsyncHandler(handler);
+            out.flush(packetId, ac);
         } catch (Exception e) {
             throw DbException.convert(e);
         }

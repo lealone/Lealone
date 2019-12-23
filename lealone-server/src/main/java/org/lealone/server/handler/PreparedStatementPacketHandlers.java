@@ -22,6 +22,7 @@ import java.util.List;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
+import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
@@ -32,6 +33,8 @@ import org.lealone.server.protocol.ps.PreparedStatementPrepare;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareAck;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParams;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParamsAck;
+import org.lealone.server.protocol.ps.PreparedStatementQuery;
+import org.lealone.server.protocol.ps.PreparedStatementUpdate;
 import org.lealone.sql.PreparedSQLStatement;
 
 class PreparedStatementPacketHandlers extends PacketHandlers {
@@ -39,6 +42,8 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
     static void register() {
         register(PacketType.PREPARED_STATEMENT_PREPARE, new Prepare());
         register(PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS, new PrepareReadParams());
+        register(PacketType.PREPARED_STATEMENT_QUERY, new Query());
+        register(PacketType.PREPARED_STATEMENT_UPDATE, new Update());
         register(PacketType.PREPARED_STATEMENT_GET_META_DATA, new GetMetaData());
         register(PacketType.PREPARED_STATEMENT_CLOSE, new Close());
     }
@@ -64,6 +69,20 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
             boolean isQuery = command.isQuery();
             List<? extends CommandParameter> params = command.getParameters();
             return new PreparedStatementPrepareReadParamsAck(isQuery, params);
+        }
+    }
+
+    private static class Query extends PreparedQueryPacketHandler<PreparedStatementQuery> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, PreparedStatementQuery packet) {
+            return handlePacket(task, packet);
+        }
+    }
+
+    private static class Update extends PreparedUpdatePacketHandler<PreparedStatementUpdate> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, PreparedStatementUpdate packet) {
+            return handlePacket(task, packet);
         }
     }
 

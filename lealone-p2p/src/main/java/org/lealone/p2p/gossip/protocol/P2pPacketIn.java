@@ -64,7 +64,7 @@ public class P2pPacketIn<T extends P2pPacket> {
         return sbuf.toString();
     }
 
-    public static P2pPacketIn<?> read(TransferInputStream transfer, DataInput in, int version, int id)
+    public static P2pPacketIn<?> read(TransferInputStream transfer, DataInput in, int version, int id, int packetType)
             throws IOException {
         NetNode from = NetNode.deserialize(in);
         int parameterCount = in.readInt();
@@ -90,7 +90,6 @@ public class P2pPacketIn<T extends P2pPacket> {
         // if (payloadSize == 0)
         // return new P2pPacketIn<>(from, null, parameters, version);
 
-        int packetType = in.readInt();
         PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
         P2pPacket packet = (P2pPacket) decoder.decode(transfer, version);
         return new P2pPacketIn<>(from, packet, parameters, version);

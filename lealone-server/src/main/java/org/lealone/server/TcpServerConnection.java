@@ -18,8 +18,6 @@
 package org.lealone.server;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -28,14 +26,11 @@ import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.Pair;
-import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
-import org.lealone.db.ServerSession;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.result.Result;
 import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
@@ -43,17 +38,11 @@ import org.lealone.net.WritableChannel;
 import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.server.Scheduler.SessionInfo;
 import org.lealone.server.handler.LobPacketHandlers.LobCache;
-import org.lealone.server.handler.PacketHandler;
-import org.lealone.server.handler.PacketHandlers;
 import org.lealone.server.protocol.Packet;
-import org.lealone.server.protocol.PacketDecoder;
-import org.lealone.server.protocol.PacketDecoders;
-import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
-import org.lealone.server.protocol.result.ResultFetchRowsAck;
+import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
 import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.storage.PageKey;
 
 /**
  * 这里只处理客户端通过TCP连到服务器端后的协议，可以在一个TCP连接中打开多个session
@@ -246,27 +235,6 @@ public class TcpServerConnection extends TransferConnection {
         cache.close();
     }
 
-    protected static void readParameters(TransferInputStream in, PreparedSQLStatement command) throws IOException {
-        int len = in.readInt();
-        List<? extends CommandParameter> params = command.getParameters();
-        for (int i = 0; i < len; i++) {
-            CommandParameter p = params.get(i);
-            p.setValue(in.readValue());
-        }
-    }
-
-    /**
-     * Write the parameter meta data to the transfer object.
-     *
-     * @param p the parameter
-     */
-    private static void writeParameterMetaData(TransferOutputStream out, CommandParameter p) throws IOException {
-        out.writeInt(p.getType());
-        out.writeLong(p.getPrecision());
-        out.writeInt(p.getScale());
-        out.writeInt(p.getNullable());
-    }
-
     private static int getStatus(Session session) {
         if (session.isClosed()) {
             return Session.STATUS_CLOSED;
@@ -282,160 +250,25 @@ public class TcpServerConnection extends TransferConnection {
         out.writeResponseHeader(packetId, getStatus(session));
     }
 
-    protected static List<PageKey> readPageKeys(TransferInputStream in) throws IOException {
-        ArrayList<PageKey> pageKeys;
-        int size = in.readInt();
-        if (size > 0) {
-            pageKeys = new ArrayList<>(size);
-            for (int i = 0; i < size; i++) {
-                PageKey pk = in.readPageKey();
-                pageKeys.add(pk);
-            }
-        } else {
-            pageKeys = null;
-        }
-        return pageKeys;
-    }
-
-    protected void executeQueryAsync(TransferInputStream in, int packetId, int packetType, SessionInfo si,
-            boolean prepared) throws IOException {
-        final Session session = si.session;
-        final int sessionId = si.sessionId;
-
-        int resultId = in.readInt();
-        int maxRows = in.readInt();
-        int fetchSize = in.readInt();
-        boolean scrollable = in.readBoolean();
-
-        if (packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
-                || packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
-
-        List<PageKey> pageKeys = readPageKeys(in);
-        PreparedSQLStatement stmt;
-        if (prepared) {
-            int commandId = in.readInt();
-            stmt = (PreparedSQLStatement) cache.get(commandId);
-            readParameters(in, stmt);
-        } else {
-            // 客户端的非Prepared语句不需要缓存
-            String sql = in.readString();
-            stmt = session.prepareStatement(sql, fetchSize);
-            stmt.setId(packetId);
-        }
-        stmt.setFetchSize(fetchSize);
-
-        // 允许其他扩展跳过正常的流程
-        if (executeQueryAsync(packetId, packetType, session, sessionId, stmt, resultId, fetchSize)) {
-            return;
-        }
-        PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, ar -> {
-            if (ar.isSucceeded()) {
-                Result result = ar.getResult();
-                sendResult(packetId, packetType, session, sessionId, result, resultId, fetchSize);
-            } else {
-                sendError(session, packetId, ar.getCause());
-            }
-        });
-        yieldable.setPageKeys(pageKeys);
-        addPreparedCommandToQueue(packetId, si, stmt, yieldable);
-    }
-
-    protected boolean executeQueryAsync(int packetId, int packetType, Session session, int sessionId,
-            PreparedSQLStatement stmt, int resultId, int fetchSize) throws IOException {
-        return false;
-    }
-
-    protected void sendResult(int packetId, int packetType, Session session, int sessionId, Result result, int resultId,
-            int fetchSize) {
-        cache.put(resultId, result);
-        try {
-            TransferOutputStream out = createTransferOutputStream(session);
-            out.writeResponseHeader(packetId, getStatus(session));
-            if (packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY
-                    || packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY) {
-                out.writeString(session.getTransaction().getLocalTransactionNames());
-            }
-            if (session.isRunModeChanged()) {
-                out.writeInt(sessionId).writeString(session.getNewTargetNodes());
-            }
-            int columnCount = result.getVisibleColumnCount();
-            out.writeInt(columnCount);
-            int rowCount = result.getRowCount();
-            out.writeInt(rowCount);
-            for (int i = 0; i < columnCount; i++) {
-                PreparedStatementGetMetaDataAck.writeColumn(out, result, i);
-            }
-            int fetch = fetchSize;
-            if (rowCount != -1)
-                fetch = Math.min(rowCount, fetchSize);
-            ResultFetchRowsAck.writeRow(out, result, fetch);
-            out.flush();
-        } catch (Exception e) {
-            sendError(session, packetId, e);
-        }
-    }
-
-    protected void executeUpdateAsync(TransferInputStream in, int packetId, int packetType, SessionInfo si,
-            boolean prepared) throws IOException {
-        final Session session = si.session;
-        final int sessionId = si.sessionId;
-
-        if (packetType == Session.COMMAND_REPLICATION_UPDATE
-                || packetType == Session.COMMAND_REPLICATION_PREPARED_UPDATE) {
-            session.setReplicationName(in.readString());
-        } else if (packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
-                || packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
-            session.setAutoCommit(false);
-            session.setRoot(false);
-        }
-
-        List<PageKey> pageKeys = readPageKeys(in);
-        PreparedSQLStatement stmt;
-        if (prepared) {
-            int commandId = in.readInt();
-            stmt = (PreparedSQLStatement) cache.get(commandId);
-            readParameters(in, stmt);
-        } else {
-            // 客户端的非Prepared语句不需要缓存
-            String sql = in.readString();
-            stmt = session.prepareStatement(sql, -1);
-            // 非Prepared语句执行一次就结束，所以可以用packetId当唯一标识，一般用来执行客户端发起的取消操作
-            stmt.setId(packetId);
-        }
-
-        PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
-            if (ar.isSucceeded()) {
-                int updateCount = ar.getResult();
-                try {
-                    TransferOutputStream out = createTransferOutputStream(session);
-                    out.writeResponseHeader(packetId, getStatus(session));
-                    if (session.isRunModeChanged()) {
-                        out.writeInt(sessionId).writeString(session.getNewTargetNodes());
-                    }
-                    if (packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE
-                            || packetType == Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE) {
-                        out.writeString(session.getTransaction().getLocalTransactionNames());
-                    }
-                    out.writeInt(updateCount);
-                    out.flush();
-                } catch (Exception e) {
-                    sendError(session, packetId, e);
-                }
-            } else {
-                sendError(session, packetId, ar.getCause());
-            }
-        });
-        yieldable.setPageKeys(pageKeys);
-        addPreparedCommandToQueue(packetId, si, stmt, yieldable);
-    }
-
-    private void addPreparedCommandToQueue(int packetId, SessionInfo si, PreparedSQLStatement stmt,
+    public void addPreparedCommandToQueue(int packetId, SessionInfo si, PreparedSQLStatement stmt,
             PreparedSQLStatement.Yieldable<?> yieldable) {
         PreparedCommand pc = new PreparedCommand(this, packetId, si, stmt, yieldable);
         si.addCommand(pc);
+    }
+
+    public void sendResponse(PacketDeliveryTask task, Packet packet) {
+        Session session = task.session;
+        try {
+            TransferOutputStream out = createTransferOutputStream(session);
+            out.writeResponseHeader(task.packetId, getStatus(session));
+            if (session.isRunModeChanged()) {
+                out.writeInt(task.sessionId).writeString(session.getNewTargetNodes());
+            }
+            packet.encode(out, session.getProtocolVersion());
+            out.flush();
+        } catch (Exception e) {
+            sendError(session, task.packetId, e);
+        }
     }
 
     // 这个方法是由网络事件循环线程执行的
@@ -447,7 +280,7 @@ public class TcpServerConnection extends TransferConnection {
         if (si == null) {
             // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
             // 之后此session相关的请求包和命令都由固定的调度器负责处理。
-            if (packetType == Session.SESSION_INIT) {
+            if (packetType == PacketType.SESSION_INIT.value) {
                 ScheduleService.getScheduler().handle(() -> {
                     try {
                         readInitPacket(in, packetId, sessionId);
@@ -462,91 +295,8 @@ public class TcpServerConnection extends TransferConnection {
         } else {
             si.updateLastTime();
             in.setSession(si.session);
-            si.getScheduler().handle(() -> {
-                try {
-                    handleRequest(in, packetId, packetType, si);
-                } catch (Throwable e) {
-                    logger.error("Failed to handle request, packetId: " + packetId + ", packetType: " + packetType, e);
-                    sendError(si.session, packetId, e);
-                } finally {
-                    // in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
-                }
-            });
-        }
-    }
-
-    // 这个方法就已经是由调度器线程执行了
-    private void handleRequest(TransferInputStream in, int packetId, int packetType, SessionInfo si)
-            throws IOException {
-        Session session = si.session;
-        switch (packetType) {
-        case Session.COMMAND_PREPARE_READ_PARAMS:
-        case Session.COMMAND_PREPARE: {
-            int commandId = in.readInt();
-            String sql = in.readString();
-            PreparedSQLStatement command = session.prepareStatement(sql, -1);
-            command.setId(commandId);
-            cache.put(commandId, command);
-            boolean isQuery = command.isQuery();
-            TransferOutputStream out = createTransferOutputStream(session);
-            writeResponseHeader(out, session, packetId);
-            out.writeBoolean(isQuery);
-            if (packetType == Session.COMMAND_PREPARE_READ_PARAMS) {
-                List<? extends CommandParameter> params = command.getParameters();
-                out.writeInt(params.size());
-                for (CommandParameter p : params) {
-                    writeParameterMetaData(out, p);
-                }
-            }
-            out.flush();
-            break;
-        }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_QUERY:
-        case Session.COMMAND_QUERY: {
-            executeQueryAsync(in, packetId, packetType, si, false);
-            break;
-        }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY:
-        case Session.COMMAND_PREPARED_QUERY: {
-            executeQueryAsync(in, packetId, packetType, si, true);
-            break;
-        }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE:
-        case Session.COMMAND_UPDATE:
-        case Session.COMMAND_REPLICATION_UPDATE: {
-            executeUpdateAsync(in, packetId, packetType, si, false);
-            break;
-        }
-        case Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE:
-        case Session.COMMAND_PREPARED_UPDATE:
-        case Session.COMMAND_REPLICATION_PREPARED_UPDATE: {
-            executeUpdateAsync(in, packetId, packetType, si, true);
-            break;
-        }
-        default:
-            handleOtherRequest(in, packetId, packetType, si);
-        }
-    }
-
-    private void handleOtherRequest(TransferInputStream in, int packetId, int packetType, SessionInfo si)
-            throws IOException {
-        Session session = si.session;
-        int version = session.getProtocolVersion();
-        PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
-        Packet packet = decoder.decode(in, version);
-        @SuppressWarnings("unchecked")
-        PacketHandler<Packet> handler = (PacketHandler<Packet>) PacketHandlers.getHandler(packetType);
-        if (handler != null) {
-            Packet ack = handler.handle(this, (ServerSession) session, si.sessionId, packet, packetId);
-            if (ack != null) {
-                TransferOutputStream out = createTransferOutputStream(session);
-                writeResponseHeader(out, session, packetId);
-                ack.encode(out, version);
-                out.flush();
-            }
-        } else {
-            logger.warn("Unknow packet type: {}", packetType);
-            close();
+            PacketDeliveryTask task = new PacketDeliveryTask(this, in, packetId, packetType, si);
+            si.getScheduler().handle(task);
         }
     }
 

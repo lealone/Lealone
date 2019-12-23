@@ -18,23 +18,102 @@
 package org.lealone.server.handler;
 
 import org.lealone.db.ServerSession;
+import org.lealone.db.Session;
+import org.lealone.db.result.Result;
+import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionCommit;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedQuery;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedQueryAck;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedUpdate;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedUpdateAck;
+import org.lealone.server.protocol.dt.DistributedTransactionQuery;
+import org.lealone.server.protocol.dt.DistributedTransactionQueryAck;
 import org.lealone.server.protocol.dt.DistributedTransactionRollback;
 import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
+import org.lealone.server.protocol.dt.DistributedTransactionUpdate;
+import org.lealone.server.protocol.dt.DistributedTransactionUpdateAck;
 import org.lealone.server.protocol.dt.DistributedTransactionValidate;
 import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
 
 class DistributedTransactionPacketHandlers extends PacketHandlers {
 
     static void register() {
+        register(PacketType.DISTRIBUTED_TRANSACTION_QUERY, new Query());
+        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY, new PreparedQuery());
+        register(PacketType.DISTRIBUTED_TRANSACTION_UPDATE, new Update());
+        register(PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE, new PreparedUpdate());
         register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT, new Commit());
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK, new Rollback());
         register(PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, new AddSavepoint());
         register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT, new RollbackSavepoint());
         register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE, new Validate());
+    }
+
+    private static class Query extends QueryPacketHandler<DistributedTransactionQuery> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, DistributedTransactionQuery packet) {
+            Session session = task.session;
+            session.setAutoCommit(false);
+            session.setRoot(false);
+            return handlePacket(task, packet);
+        }
+
+        @Override
+        protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
+            return new DistributedTransactionQueryAck(result, rowCount, fetch,
+                    task.session.getTransaction().getLocalTransactionNames());
+        }
+    }
+
+    private static class PreparedQuery extends PreparedQueryPacketHandler<DistributedTransactionPreparedQuery> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, DistributedTransactionPreparedQuery packet) {
+            final Session session = task.session;
+            session.setAutoCommit(false);
+            session.setRoot(false);
+            return handlePacket(task, packet);
+        }
+
+        @Override
+        protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
+            return new DistributedTransactionPreparedQueryAck(result, rowCount, fetch,
+                    task.session.getTransaction().getLocalTransactionNames());
+        }
+    }
+
+    private static class Update extends UpdatePacketHandler<DistributedTransactionUpdate> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, DistributedTransactionUpdate packet) {
+            final Session session = task.session;
+            session.setAutoCommit(false);
+            session.setRoot(false);
+            return handlePacket(task, packet);
+        }
+
+        @Override
+        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+            return new DistributedTransactionUpdateAck(updateCount,
+                    task.session.getTransaction().getLocalTransactionNames());
+        }
+    }
+
+    private static class PreparedUpdate extends PreparedUpdatePacketHandler<DistributedTransactionPreparedUpdate> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, DistributedTransactionPreparedUpdate packet) {
+            final Session session = task.session;
+            session.setAutoCommit(false);
+            session.setRoot(false);
+            return handlePacket(task, packet);
+        }
+
+        @Override
+        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+            return new DistributedTransactionPreparedUpdateAck(updateCount,
+                    task.session.getTransaction().getLocalTransactionNames());
+        }
     }
 
     private static class Commit implements PacketHandler<DistributedTransactionCommit> {

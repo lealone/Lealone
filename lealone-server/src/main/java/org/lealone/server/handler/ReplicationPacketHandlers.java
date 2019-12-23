@@ -18,21 +18,57 @@
 package org.lealone.server.handler;
 
 import org.lealone.db.ServerSession;
+import org.lealone.db.Session;
+import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
 import org.lealone.server.protocol.replication.ReplicationCommit;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
+import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
+import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationRollback;
+import org.lealone.server.protocol.replication.ReplicationUpdate;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 
 class ReplicationPacketHandlers extends PacketHandlers {
 
     static void register() {
+        register(PacketType.REPLICATION_UPDATE, new Update());
+        register(PacketType.REPLICATION_PREPARED_UPDATE, new PreparedUpdate());
         register(PacketType.REPLICATION_COMMIT, new Commit());
         register(PacketType.REPLICATION_ROLLBACK, new Rollback());
         register(PacketType.REPLICATION_CHECK_CONFLICT, new CheckConflict());
         register(PacketType.REPLICATION_HANDLE_CONFLICT, new HandleConflict());
+    }
+
+    private static class Update extends UpdatePacketHandler<ReplicationUpdate> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, ReplicationUpdate packet) {
+            final Session session = task.session;
+            session.setReplicationName(packet.replicationName);
+            return handlePacket(task, packet);
+        }
+
+        @Override
+        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+            return new ReplicationUpdateAck(updateCount);
+        }
+    }
+
+    private static class PreparedUpdate extends PreparedUpdatePacketHandler<ReplicationPreparedUpdate> {
+        @Override
+        public Packet handle(PacketDeliveryTask task, ReplicationPreparedUpdate packet) {
+            final Session session = task.session;
+            session.setReplicationName(packet.replicationName);
+            return handlePacket(task, packet);
+        }
+
+        @Override
+        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+            return new ReplicationPreparedUpdateAck(updateCount);
+        }
     }
 
     private static class Commit implements PacketHandler<ReplicationCommit> {

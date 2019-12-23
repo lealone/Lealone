@@ -6,7 +6,6 @@
 package org.lealone.client;
 
 import java.io.IOException;
-import java.sql.ResultSetMetaData;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,19 +15,18 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
-import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
-import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
-import org.lealone.net.NetInputStream;
 import org.lealone.net.TransferInputStream;
-import org.lealone.net.TransferOutputStream;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedQuery;
+import org.lealone.server.protocol.dt.DistributedTransactionPreparedUpdate;
+import org.lealone.server.protocol.dt.DistributedTransactionQueryAck;
+import org.lealone.server.protocol.dt.DistributedTransactionUpdateAck;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
@@ -36,6 +34,11 @@ import org.lealone.server.protocol.ps.PreparedStatementPrepare;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareAck;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParams;
 import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParamsAck;
+import org.lealone.server.protocol.ps.PreparedStatementQuery;
+import org.lealone.server.protocol.ps.PreparedStatementUpdate;
+import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
+import org.lealone.server.protocol.statement.StatementQueryAck;
+import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.storage.PageKey;
 
 /**
@@ -61,41 +64,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         return CLIENT_PREPARED_SQL_COMMAND;
     }
 
-    private void prepare(final boolean readParams) {
-        // Prepared SQL的ID，每次执行时都发给后端
-        commandId = session.getNextId();
-        int packetId = session.getNextId();
-        try {
-            TransferOutputStream out = session.newOut();
-            if (readParams) {
-                session.traceOperation("COMMAND_PREPARE_READ_PARAMS", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_PREPARE_READ_PARAMS);
-            } else {
-                session.traceOperation("COMMAND_PREPARE", packetId);
-                out.writeRequestHeader(packetId, Session.COMMAND_PREPARE);
-            }
-            out.writeInt(commandId).writeString(sql);
-            out.flushAndAwait(packetId, new AsyncCallback<Void>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    isQuery = in.readBoolean();
-                    if (readParams) {
-                        int paramCount = in.readInt();
-                        for (int i = 0; i < paramCount; i++) {
-                            ClientCommandParameter p = new ClientCommandParameter(i);
-                            p.readMetaData((TransferInputStream) in);
-                            parameters.add(p);
-                        }
-                    }
-                }
-            });
-        } catch (IOException e) {
-            session.handleException(e);
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private void prepare2(boolean readParams) {
+    private void prepare(boolean readParams) {
         // Prepared SQL的ID，每次执行时都发给后端
         commandId = session.getNextId();
         if (readParams) {
@@ -143,19 +112,9 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     @Override
     protected Result query(int maxRows, boolean scrollable, List<PageKey> pageKeys,
             AsyncHandler<AsyncResult<Result>> handler) {
+        isQuery = true;
         checkParameters();
         prepareIfRequired();
-        String operation;
-        int packetType;
-        int packetId = session.getNextId();
-        boolean isDistributedQuery = isDistributed();
-        if (isDistributedQuery) {
-            operation = "COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY";
-            packetType = Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_QUERY;
-        } else {
-            operation = "COMMAND_PREPARED_QUERY";
-            packetType = Session.COMMAND_PREPARED_QUERY;
-        }
         int fetch;
         if (scrollable) {
             fetch = Integer.MAX_VALUE;
@@ -163,12 +122,51 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             fetch = fetchSize;
         }
         try {
-            TransferOutputStream out = session.newOut();
             int resultId = session.getNextId();
-            writeQueryHeader(out, operation, packetId, packetType, resultId, maxRows, fetch, scrollable, pageKeys);
-            out.writeInt(commandId);
-            writeParameters(out);
-            return getQueryResult(out, packetId, isDistributedQuery, fetch, resultId, handler);
+
+            int size = parameters.size();
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i++) {
+                values[i] = parameters.get(i).getValue();
+            }
+
+            if (isDistributed()) {
+                DistributedTransactionPreparedQuery packet = new DistributedTransactionPreparedQuery(pageKeys, resultId,
+                        maxRows, fetch, scrollable, commandId, size, values);
+                if (handler != null) {
+                    session.<DistributedTransactionQueryAck> sendAsync(packet, ack -> {
+                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                        ClientResult result;
+                        try {
+                            result = getQueryResult(ack, fetch, resultId);
+                            handler.handle(new AsyncResult<Result>(result));
+                        } catch (IOException e) {
+                            handler.handle(new AsyncResult<Result>(e));
+                        }
+                    });
+                } else {
+                    DistributedTransactionQueryAck ack = session.sendSync(packet);
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                    return getQueryResult(ack, fetch, resultId);
+                }
+            } else {
+                PreparedStatementQuery packet = new PreparedStatementQuery(pageKeys, resultId, maxRows, fetch,
+                        scrollable, commandId, size, values);
+                if (handler != null) {
+                    session.<StatementQueryAck> sendAsync(packet, ack -> {
+                        ClientResult result;
+                        try {
+                            result = getQueryResult(ack, fetch, resultId);
+                            handler.handle(new AsyncResult<Result>(result));
+                        } catch (IOException e) {
+                            handler.handle(new AsyncResult<Result>(e));
+                        }
+                    });
+                } else {
+                    StatementQueryAck ack = session.sendSync(packet);
+                    return getQueryResult(ack, fetch, resultId);
+                }
+            }
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -179,26 +177,40 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     protected int update(String replicationName, List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
         checkParameters();
         prepareIfRequired();
-        String operation;
-        int packetType;
-        int packetId = session.getNextId();
-        boolean isDistributedUpdate = isDistributed();
-        if (isDistributedUpdate) {
-            operation = "COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE";
-            packetType = Session.COMMAND_DISTRIBUTED_TRANSACTION_PREPARED_UPDATE;
-        } else if (replicationName != null) {
-            operation = "COMMAND_REPLICATION_PREPARED_UPDATE";
-            packetType = Session.COMMAND_REPLICATION_PREPARED_UPDATE;
-        } else {
-            operation = "COMMAND_PREPARED_UPDATE";
-            packetType = Session.COMMAND_PREPARED_UPDATE;
-        }
         try {
-            TransferOutputStream out = session.newOut();
-            writeUpdateHeader(out, operation, packetId, packetType, replicationName, pageKeys);
-            out.writeInt(commandId);
-            writeParameters(out);
-            return getUpdateCount(out, packetId, isDistributedUpdate, handler);
+            int size = parameters.size();
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i++) {
+                values[i] = parameters.get(i).getValue();
+            }
+            if (isDistributed()) {
+                DistributedTransactionPreparedUpdate packet = new DistributedTransactionPreparedUpdate(pageKeys,
+                        commandId, size, values);
+                if (handler != null) {
+                    session.<DistributedTransactionUpdateAck> sendAsync(packet, ack -> {
+                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                        handler.handle(new AsyncResult<Integer>(ack.updateCount));
+                    });
+                } else {
+                    DistributedTransactionUpdateAck ack = session.sendSync(packet);
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                    return ack.updateCount;
+                }
+            } else {
+                PreparedStatementUpdate packet;
+                if (replicationName != null)
+                    packet = new ReplicationPreparedUpdate(pageKeys, commandId, size, values, replicationName);
+                else
+                    packet = new PreparedStatementUpdate(pageKeys, commandId, size, values);
+                if (handler != null) {
+                    session.<StatementUpdateAck> sendAsync(packet, ack -> {
+                        handler.handle(new AsyncResult<Integer>(ack.updateCount));
+                    });
+                } else {
+                    StatementUpdateAck ack = session.sendSync(packet);
+                    return ack.updateCount;
+                }
+            }
         } catch (Exception e) {
             session.handleException(e);
         }
@@ -208,14 +220,6 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     private void checkParameters() {
         for (CommandParameter p : parameters) {
             p.checkSet();
-        }
-    }
-
-    private void writeParameters(TransferOutputStream out) throws IOException {
-        int len = parameters.size();
-        out.writeInt(len);
-        for (CommandParameter p : parameters) {
-            out.writeValue(p.getValue());
         }
     }
 
@@ -261,89 +265,5 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             session.handleException(e);
         }
         return null;
-    }
-
-    /**
-     * A client side parameter.
-     */
-    private static class ClientCommandParameter implements CommandParameter {
-
-        private final int index;
-        private Value value;
-        private int dataType = Value.UNKNOWN;
-        private long precision;
-        private int scale;
-        private int nullable = ResultSetMetaData.columnNullableUnknown;
-
-        public ClientCommandParameter(int index) {
-            this.index = index;
-        }
-
-        @Override
-        public int getIndex() {
-            return index;
-        }
-
-        @Override
-        public void setValue(Value newValue, boolean closeOld) {
-            if (closeOld && value != null) {
-                value.close();
-            }
-            value = newValue;
-        }
-
-        @Override
-        public void setValue(Value value) {
-            this.value = value;
-        }
-
-        @Override
-        public Value getValue() {
-            return value;
-        }
-
-        @Override
-        public void checkSet() {
-            if (value == null) {
-                throw DbException.get(ErrorCode.PARAMETER_NOT_SET_1, "#" + (index + 1));
-            }
-        }
-
-        @Override
-        public boolean isValueSet() {
-            return value != null;
-        }
-
-        @Override
-        public int getType() {
-            return value == null ? dataType : value.getType();
-        }
-
-        @Override
-        public long getPrecision() {
-            return value == null ? precision : value.getPrecision();
-        }
-
-        @Override
-        public int getScale() {
-            return value == null ? scale : value.getScale();
-        }
-
-        @Override
-        public int getNullable() {
-            return nullable;
-        }
-
-        /**
-         * Read the parameter meta data from the out object.
-         *
-         * @param in the TransferInputStream
-         */
-        public void readMetaData(TransferInputStream in) throws IOException {
-            dataType = in.readInt();
-            precision = in.readLong();
-            scale = in.readInt();
-            nullable = in.readInt();
-        }
     }
 }

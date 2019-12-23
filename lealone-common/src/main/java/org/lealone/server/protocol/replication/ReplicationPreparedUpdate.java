@@ -20,30 +20,33 @@ package org.lealone.server.protocol.replication;
 import java.io.IOException;
 import java.util.List;
 
+import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.ps.PreparedStatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.storage.PageKey;
 
-public class ReplicationUpdate extends StatementUpdate {
+public class ReplicationPreparedUpdate extends PreparedStatementUpdate {
 
     public final String replicationName;
 
-    public ReplicationUpdate(List<PageKey> pageKeys, String sql, String replicationName) {
-        super(pageKeys, sql);
+    public ReplicationPreparedUpdate(List<PageKey> pageKeys, int commandId, int size, Value[] parameters,
+            String replicationName) {
+        super(pageKeys, commandId, size, parameters);
         this.replicationName = replicationName;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.REPLICATION_UPDATE;
+        return PacketType.REPLICATION_PREPARED_UPDATE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.REPLICATION_UPDATE_ACK;
+        return PacketType.REPLICATION_PREPARED_UPDATE_ACK;
     }
 
     @Override
@@ -54,13 +57,17 @@ public class ReplicationUpdate extends StatementUpdate {
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<ReplicationUpdate> {
+    private static class Decoder implements PacketDecoder<ReplicationPreparedUpdate> {
         @Override
-        public ReplicationUpdate decode(NetInputStream in, int version) throws IOException {
+        public ReplicationPreparedUpdate decode(NetInputStream in, int version) throws IOException {
             List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
-            String sql = in.readString();
+            int commandId = in.readInt();
+            int size = in.readInt();
+            Value[] parameters = new Value[size];
+            for (int i = 0; i < size; i++)
+                parameters[i] = in.readValue();
             String replicationName = in.readString();
-            return new ReplicationUpdate(pageKeys, sql, replicationName);
+            return new ReplicationPreparedUpdate(pageKeys, commandId, size, parameters, replicationName);
         }
     }
 }

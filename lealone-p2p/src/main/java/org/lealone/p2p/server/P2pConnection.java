@@ -21,10 +21,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-import org.lealone.common.logging.Logger;
-import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.JVMStabilityInspector;
-import org.lealone.db.Session;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetNode;
 import org.lealone.net.TransferConnection;
@@ -34,10 +31,9 @@ import org.lealone.net.WritableChannel;
 import org.lealone.p2p.config.ConfigDescriptor;
 import org.lealone.p2p.gossip.protocol.P2pPacketIn;
 import org.lealone.p2p.gossip.protocol.P2pPacketOut;
+import org.lealone.server.protocol.PacketType;
 
 public class P2pConnection extends TransferConnection {
-
-    private static final Logger logger = LoggerFactory.getLogger(P2pConnection.class);
 
     private String hostAndPort;
     private NetNode remoteNode;
@@ -55,18 +51,10 @@ public class P2pConnection extends TransferConnection {
 
     @Override
     protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
-        switch (packetType) {
-        case Session.SESSION_INIT: {
+        if (packetType == PacketType.SESSION_INIT.value) {
             readInitPacket(in, packetId);
-            break;
-        }
-        case Session.COMMAND_P2P_MESSAGE: {
-            receiveMessage(in, packetId);
-            break;
-        }
-        default:
-            logger.warn("Unknow packet type: {}", packetType);
-            close();
+        } else {
+            receiveMessage(in, packetId, packetType);
         }
     }
 
@@ -85,14 +73,11 @@ public class P2pConnection extends TransferConnection {
     private void writeInitPacket(String localHostAndPort) throws Exception {
         int packetId = 0;
         TransferOutputStream transferOut = createTransferOutputStream(null);
-        transferOut.writeRequestHeaderWithoutSessionId(packetId, Session.SESSION_INIT);
+        transferOut.writeRequestHeaderWithoutSessionId(packetId, PacketType.SESSION_INIT.value);
         transferOut.writeInt(MessagingService.PROTOCOL_MAGIC);
         transferOut.writeInt(version);
         transferOut.writeString(localHostAndPort);
-        // AsyncCallback<Void> ac = new AsyncCallback<>();
-        // transfer.addAsyncCallback(packetId, ac);
         transferOut.flush();
-        // ac.await();
     }
 
     private void readInitPacket(TransferInputStream in, int packetId) {
@@ -121,21 +106,21 @@ public class P2pConnection extends TransferConnection {
     }
 
     // 不需要加synchronized，因为会创建新的临时DataOutputStream
-    private void sendMessage(P2pPacketOut<?> message, int id, long timestamp) throws IOException {
+    private void sendMessage(P2pPacketOut<?> packetOut, int id, long timestamp) throws IOException {
         checkClosed();
         TransferOutputStream transferOut = createTransferOutputStream(null);
         DataOutputStream out = transferOut.getDataOutputStream();
-        transferOut.writeRequestHeaderWithoutSessionId(id, Session.COMMAND_P2P_MESSAGE);
+        transferOut.writeRequestHeaderWithoutSessionId(id, packetOut.packet.getType().value);
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
 
         // int cast cuts off the high-order half of the timestamp, which we can assume remains
         // the same between now and when the recipient reconstructs it.
         out.writeInt((int) timestamp);
-        message.serialize(transferOut, out, version);
+        packetOut.serialize(transferOut, out, version);
         transferOut.flush();
     }
 
-    private void receiveMessage(TransferInputStream transfer, int packetId) throws IOException {
+    private void receiveMessage(TransferInputStream transfer, int packetId, int packetType) throws IOException {
         DataInputStream in = transfer.getDataInputStream();
         MessagingService.validateMagic(in.readInt());
         long timestamp = System.currentTimeMillis();
@@ -144,7 +129,7 @@ public class P2pConnection extends TransferConnection {
         if (ConfigDescriptor.hasCrossNodeTimeout())
             timestamp = (timestamp & 0xFFFFFFFF00000000L) | (((partial & 0xFFFFFFFFL) << 2) >> 2);
 
-        P2pPacketIn<?> message = P2pPacketIn.read(transfer, in, version, packetId);
+        P2pPacketIn<?> message = P2pPacketIn.read(transfer, in, version, packetId, packetType);
         if (message != null) {
             P2pPacketDeliveryTask task = new P2pPacketDeliveryTask(message, packetId, timestamp);
             AsyncTaskHandlerFactory.getAsyncTaskHandler().handle(task);

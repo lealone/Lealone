@@ -18,6 +18,7 @@
 package org.lealone.server.handler;
 
 import org.lealone.db.ServerSession;
+import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
@@ -68,9 +69,8 @@ class SessionPacketHandlers extends PacketHandlers {
 
     private static class Close implements PacketHandler<SessionClose> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, int sessionId, SessionClose packet,
-                int packetId) {
-            conn.closeSession(packetId, sessionId);
+        public Packet handle(PacketDeliveryTask task, SessionClose packet) {
+            task.conn.closeSession(task.packetId, task.sessionId);
             return null;
         }
     }
