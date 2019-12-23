@@ -35,6 +35,6 @@ public class PacketHandlers {
     }
 
     static {
-        register(PacketType.COMMAND_READ_LOB, new ReadLobHandler());
+        register(PacketType.LOB_READ, new ReadLobHandler());
     }
 }

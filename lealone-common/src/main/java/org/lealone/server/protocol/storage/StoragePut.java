@@ -47,12 +47,12 @@ public class StoragePut implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_PUT;
+        return PacketType.STORAGE_PUT;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_STORAGE_PUT_ACK;
+        return PacketType.STORAGE_PUT_ACK;
     }
 
     @Override

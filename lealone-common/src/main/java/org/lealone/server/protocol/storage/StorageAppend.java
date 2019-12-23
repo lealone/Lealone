@@ -42,12 +42,12 @@ public class StorageAppend implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_APPEND;
+        return PacketType.STORAGE_APPEND;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_STORAGE_APPEND_ACK;
+        return PacketType.STORAGE_APPEND_ACK;
     }
 
     @Override

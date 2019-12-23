@@ -38,7 +38,7 @@ public class StoragePutAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_PUT_ACK;
+        return PacketType.STORAGE_PUT_ACK;
     }
 
     @Override

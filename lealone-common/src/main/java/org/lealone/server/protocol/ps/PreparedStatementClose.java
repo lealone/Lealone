@@ -35,7 +35,7 @@ public class PreparedStatementClose implements NoAckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_PREPARED_STATEMENT_CLOSE;
+        return PacketType.PREPARED_STATEMENT_CLOSE;
     }
 
     @Override

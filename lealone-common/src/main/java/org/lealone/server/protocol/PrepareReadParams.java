@@ -34,12 +34,12 @@ public class PrepareReadParams implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_PREPARE_READ_PARAMS;
+        return PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_PREPARE_READ_PARAMS_ACK;
+        return PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS_ACK;
     }
 
     @Override

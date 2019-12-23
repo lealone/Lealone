@@ -30,13 +30,13 @@ import org.lealone.db.value.ValueLob;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;
-import org.lealone.server.protocol.ReadLob;
-import org.lealone.server.protocol.ReadLobAck;
+import org.lealone.server.protocol.lob.LobRead;
+import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.storage.LobStorage;
 
-class ReadLobHandler implements PacketHandler<ReadLob> {
+class ReadLobHandler implements PacketHandler<LobRead> {
     @Override
-    public Packet handle(TcpServerConnection conn, ServerSession session, ReadLob packet) {
+    public Packet handle(TcpServerConnection conn, ServerSession session, LobRead packet) {
         long lobId = packet.lobId;
         byte[] hmac = packet.hmac;
         long offset = packet.offset;
@@ -67,7 +67,7 @@ class ReadLobHandler implements PacketHandler<ReadLob> {
                 System.arraycopy(buff, 0, newBuff, 0, length);
                 buff = newBuff;
             }
-            return new ReadLobAck(buff);
+            return new LobReadAck(buff);
         } catch (IOException e) {
             throw DbException.convert(e);
         }

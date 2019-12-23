@@ -35,7 +35,7 @@ public class ReplicationCheckConflictAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT_ACK;
+        return PacketType.REPLICATION_CHECK_CONFLICT_ACK;
     }
 
     @Override

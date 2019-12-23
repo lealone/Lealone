@@ -37,12 +37,12 @@ public class CommandUpdate implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_UPDATE;
+        return PacketType.STATEMENT_UPDATE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_UPDATE_ACK;
+        return PacketType.STATEMENT_UPDATE_ACK;
     }
 
     @Override

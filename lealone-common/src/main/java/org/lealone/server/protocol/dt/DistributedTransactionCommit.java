@@ -35,7 +35,7 @@ public class DistributedTransactionCommit implements NoAckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT;
+        return PacketType.DISTRIBUTED_TRANSACTION_COMMIT;
     }
 
     @Override

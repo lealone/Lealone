@@ -32,7 +32,7 @@ public class ReplicationRollback implements NoAckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_ROLLBACK;
+        return PacketType.REPLICATION_ROLLBACK;
     }
 
     @Override

@@ -34,12 +34,12 @@ public class Prepare implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_PREPARE;
+        return PacketType.PREPARED_STATEMENT_PREPARE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_PREPARE_ACK;
+        return PacketType.PREPARED_STATEMENT_PREPARE_ACK;
     }
 
     @Override

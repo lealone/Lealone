@@ -37,7 +37,7 @@ public class StorageAppendAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_APPEND_ACK;
+        return PacketType.STORAGE_APPEND_ACK;
     }
 
     @Override

@@ -35,12 +35,12 @@ public class PreparedStatementGetMetaData implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_PREPARED_STATEMENT_GET_META_DATA;
+        return PacketType.PREPARED_STATEMENT_GET_META_DATA;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_PREPARED_STATEMENT_GET_META_DATA_ACK;
+        return PacketType.PREPARED_STATEMENT_GET_META_DATA_ACK;
     }
 
     @Override

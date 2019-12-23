@@ -30,11 +30,11 @@ import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
 class DistributedTransactionPacketHandlers extends PacketHandlers {
 
     static {
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT, new Commit());
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK, new Rollback());
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, new AddSavepoint());
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT, new RollbackSavepoint());
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE, new Validate());
+        register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT, new Commit());
+        register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK, new Rollback());
+        register(PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, new AddSavepoint());
+        register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT, new RollbackSavepoint());
+        register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE, new Validate());
     }
 
     private static class Commit implements PacketHandler<DistributedTransactionCommit> {

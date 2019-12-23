@@ -36,7 +36,7 @@ public class StorageReadPageAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_READ_PAGE_ACK;
+        return PacketType.STORAGE_READ_PAGE_ACK;
     }
 
     @Override

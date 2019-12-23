@@ -38,12 +38,12 @@ public class StorageReadPage implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_READ_PAGE;
+        return PacketType.STORAGE_READ_PAGE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_STORAGE_READ_PAGE_ACK;
+        return PacketType.STORAGE_READ_PAGE_ACK;
     }
 
     @Override

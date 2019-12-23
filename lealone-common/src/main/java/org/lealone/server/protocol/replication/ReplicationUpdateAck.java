@@ -35,7 +35,7 @@ public class ReplicationUpdateAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_UPDATE_ACK;
+        return PacketType.REPLICATION_UPDATE_ACK;
     }
 
     @Override

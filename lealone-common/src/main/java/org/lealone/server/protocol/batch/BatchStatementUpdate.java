@@ -39,12 +39,12 @@ public class BatchStatementUpdate implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_BATCH_STATEMENT_UPDATE;
+        return PacketType.BATCH_STATEMENT_UPDATE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_BATCH_STATEMENT_UPDATE_ACK;
+        return PacketType.BATCH_STATEMENT_UPDATE_ACK;
     }
 
     @Override

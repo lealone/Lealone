@@ -28,6 +28,8 @@ import org.lealone.server.protocol.dt.DistributedTransactionRollback;
 import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionValidate;
 import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
+import org.lealone.server.protocol.lob.LobRead;
+import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
@@ -89,43 +91,43 @@ public class PacketDecoders {
         register(PacketType.RESULT_RESET, ResultReset.decoder);
         register(PacketType.RESULT_CLOSE, ResultClose.decoder);
 
-        register(PacketType.COMMAND_PREPARED_STATEMENT_GET_META_DATA, PreparedStatementGetMetaData.decoder);
-        register(PacketType.COMMAND_PREPARED_STATEMENT_GET_META_DATA_ACK, PreparedStatementGetMetaDataAck.decoder);
-        register(PacketType.COMMAND_PREPARED_STATEMENT_CLOSE, PreparedStatementClose.decoder);
+        register(PacketType.PREPARED_STATEMENT_GET_META_DATA, PreparedStatementGetMetaData.decoder);
+        register(PacketType.PREPARED_STATEMENT_GET_META_DATA_ACK, PreparedStatementGetMetaDataAck.decoder);
+        register(PacketType.PREPARED_STATEMENT_CLOSE, PreparedStatementClose.decoder);
 
-        register(PacketType.COMMAND_BATCH_STATEMENT_UPDATE, BatchStatementUpdate.decoder);
-        register(PacketType.COMMAND_BATCH_STATEMENT_UPDATE_ACK, BatchStatementUpdateAck.decoder);
-        register(PacketType.COMMAND_BATCH_STATEMENT_PREPARED_UPDATE, BatchStatementPreparedUpdate.decoder);
+        register(PacketType.BATCH_STATEMENT_UPDATE, BatchStatementUpdate.decoder);
+        register(PacketType.BATCH_STATEMENT_UPDATE_ACK, BatchStatementUpdateAck.decoder);
+        register(PacketType.BATCH_STATEMENT_PREPARED_UPDATE, BatchStatementPreparedUpdate.decoder);
 
-        register(PacketType.COMMAND_READ_LOB, ReadLob.decoder);
-        register(PacketType.COMMAND_READ_LOB_ACK, ReadLobAck.decoder);
+        register(PacketType.LOB_READ, LobRead.decoder);
+        register(PacketType.LOB_READ_ACK, LobReadAck.decoder);
 
-        register(PacketType.COMMAND_REPLICATION_COMMIT, ReplicationCommit.decoder);
-        register(PacketType.COMMAND_REPLICATION_ROLLBACK, ReplicationRollback.decoder);
-        register(PacketType.COMMAND_REPLICATION_CHECK_CONFLICT, ReplicationCheckConflict.decoder);
-        register(PacketType.COMMAND_REPLICATION_CHECK_CONFLICT_ACK, ReplicationCheckConflictAck.decoder);
-        register(PacketType.COMMAND_REPLICATION_HANDLE_CONFLICT, ReplicationHandleConflict.decoder);
+        register(PacketType.REPLICATION_COMMIT, ReplicationCommit.decoder);
+        register(PacketType.REPLICATION_ROLLBACK, ReplicationRollback.decoder);
+        register(PacketType.REPLICATION_CHECK_CONFLICT, ReplicationCheckConflict.decoder);
+        register(PacketType.REPLICATION_CHECK_CONFLICT_ACK, ReplicationCheckConflictAck.decoder);
+        register(PacketType.REPLICATION_HANDLE_CONFLICT, ReplicationHandleConflict.decoder);
 
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_COMMIT, DistributedTransactionCommit.decoder);
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK, DistributedTransactionRollback.decoder);
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, DistributedTransactionAddSavepoint.decoder);
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT,
+        register(PacketType.DISTRIBUTED_TRANSACTION_COMMIT, DistributedTransactionCommit.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK, DistributedTransactionRollback.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT, DistributedTransactionAddSavepoint.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT,
                 DistributedTransactionRollbackSavepoint.decoder);
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE, DistributedTransactionValidate.decoder);
-        register(PacketType.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE_ACK, DistributedTransactionValidateAck.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE, DistributedTransactionValidate.decoder);
+        register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE_ACK, DistributedTransactionValidateAck.decoder);
 
-        register(PacketType.COMMAND_STORAGE_PUT, StoragePut.decoder);
-        register(PacketType.COMMAND_STORAGE_PUT_ACK, StoragePutAck.decoder);
-        register(PacketType.COMMAND_STORAGE_APPEND, StorageAppend.decoder);
-        register(PacketType.COMMAND_STORAGE_APPEND_ACK, StorageAppendAck.decoder);
-        register(PacketType.COMMAND_STORAGE_GET, StorageGet.decoder);
-        register(PacketType.COMMAND_STORAGE_GET_ACK, StorageGetAck.decoder);
-        register(PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE, StoragePrepareMoveLeafPage.decoder);
-        register(PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK, StoragePrepareMoveLeafPageAck.decoder);
-        register(PacketType.COMMAND_STORAGE_MOVE_LEAF_PAGE, StorageMoveLeafPage.decoder);
-        register(PacketType.COMMAND_STORAGE_REPLICATE_ROOT_PAGES, StorageReplicateRootPages.decoder);
-        register(PacketType.COMMAND_STORAGE_READ_PAGE, StorageReadPage.decoder);
-        register(PacketType.COMMAND_STORAGE_READ_PAGE_ACK, StorageReadPageAck.decoder);
-        register(PacketType.COMMAND_STORAGE_REMOVE_LEAF_PAGE, StorageRemoveLeafPage.decoder);
+        register(PacketType.STORAGE_PUT, StoragePut.decoder);
+        register(PacketType.STORAGE_PUT_ACK, StoragePutAck.decoder);
+        register(PacketType.STORAGE_APPEND, StorageAppend.decoder);
+        register(PacketType.STORAGE_APPEND_ACK, StorageAppendAck.decoder);
+        register(PacketType.STORAGE_GET, StorageGet.decoder);
+        register(PacketType.STORAGE_GET_ACK, StorageGetAck.decoder);
+        register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE, StoragePrepareMoveLeafPage.decoder);
+        register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK, StoragePrepareMoveLeafPageAck.decoder);
+        register(PacketType.STORAGE_MOVE_LEAF_PAGE, StorageMoveLeafPage.decoder);
+        register(PacketType.STORAGE_REPLICATE_ROOT_PAGES, StorageReplicateRootPages.decoder);
+        register(PacketType.STORAGE_READ_PAGE, StorageReadPage.decoder);
+        register(PacketType.STORAGE_READ_PAGE_ACK, StorageReadPageAck.decoder);
+        register(PacketType.STORAGE_REMOVE_LEAF_PAGE, StorageRemoveLeafPage.decoder);
     }
 }

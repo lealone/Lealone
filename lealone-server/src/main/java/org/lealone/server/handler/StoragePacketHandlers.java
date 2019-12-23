@@ -46,14 +46,14 @@ import org.lealone.storage.type.StorageDataType;
 class StoragePacketHandlers extends PacketHandlers {
 
     static {
-        register(PacketType.COMMAND_STORAGE_PUT, new Put());
-        register(PacketType.COMMAND_STORAGE_APPEND, new Append());
-        register(PacketType.COMMAND_STORAGE_GET, new Get());
-        register(PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE, new PrepareMoveLeafPage());
-        register(PacketType.COMMAND_STORAGE_MOVE_LEAF_PAGE, new MoveLeafPage());
-        register(PacketType.COMMAND_STORAGE_REPLICATE_ROOT_PAGES, new ReplicateRootPages());
-        register(PacketType.COMMAND_STORAGE_READ_PAGE, new ReadPage());
-        register(PacketType.COMMAND_STORAGE_REMOVE_LEAF_PAGE, new RemoveLeafPage());
+        register(PacketType.STORAGE_PUT, new Put());
+        register(PacketType.STORAGE_APPEND, new Append());
+        register(PacketType.STORAGE_GET, new Get());
+        register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE, new PrepareMoveLeafPage());
+        register(PacketType.STORAGE_MOVE_LEAF_PAGE, new MoveLeafPage());
+        register(PacketType.STORAGE_REPLICATE_ROOT_PAGES, new ReplicateRootPages());
+        register(PacketType.STORAGE_READ_PAGE, new ReadPage());
+        register(PacketType.STORAGE_REMOVE_LEAF_PAGE, new RemoveLeafPage());
     }
 
     private static class Put implements PacketHandler<StoragePut> {

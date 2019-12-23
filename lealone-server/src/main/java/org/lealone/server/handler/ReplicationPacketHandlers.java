@@ -29,10 +29,10 @@ import org.lealone.server.protocol.replication.ReplicationRollback;
 class ReplicationPacketHandlers extends PacketHandlers {
 
     static {
-        register(PacketType.COMMAND_REPLICATION_COMMIT, new Commit());
-        register(PacketType.COMMAND_REPLICATION_ROLLBACK, new Rollback());
-        register(PacketType.COMMAND_REPLICATION_CHECK_CONFLICT, new CheckConflict());
-        register(PacketType.COMMAND_REPLICATION_HANDLE_CONFLICT, new HandleConflict());
+        register(PacketType.REPLICATION_COMMIT, new Commit());
+        register(PacketType.REPLICATION_ROLLBACK, new Rollback());
+        register(PacketType.REPLICATION_CHECK_CONFLICT, new CheckConflict());
+        register(PacketType.REPLICATION_HANDLE_CONFLICT, new HandleConflict());
     }
 
     private static class Commit implements PacketHandler<ReplicationCommit> {

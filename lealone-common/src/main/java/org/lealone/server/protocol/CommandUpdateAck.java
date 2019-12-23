@@ -32,7 +32,7 @@ public class CommandUpdateAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_UPDATE_ACK;
+        return PacketType.STATEMENT_UPDATE_ACK;
     }
 
     @Override

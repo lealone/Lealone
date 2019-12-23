@@ -27,11 +27,11 @@ import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
 import org.lealone.sql.PreparedSQLStatement;
 
-class PreparedStatementHandlers extends PacketHandlers {
+class PreparedStatementPacketHandlers extends PacketHandlers {
 
     static {
-        register(PacketType.COMMAND_PREPARED_STATEMENT_GET_META_DATA, new GetMetaData());
-        register(PacketType.RESULT_CLOSE, new Close());
+        register(PacketType.PREPARED_STATEMENT_GET_META_DATA, new GetMetaData());
+        register(PacketType.PREPARED_STATEMENT_CLOSE, new Close());
     }
 
     private static class GetMetaData implements PacketHandler<PreparedStatementGetMetaData> {

@@ -32,7 +32,7 @@ public class DistributedTransactionRollback implements NoAckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_ROLLBACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK;
     }
 
     @Override

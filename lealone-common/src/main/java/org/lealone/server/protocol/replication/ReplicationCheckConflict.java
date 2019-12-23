@@ -40,12 +40,12 @@ public class ReplicationCheckConflict implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT;
+        return PacketType.REPLICATION_CHECK_CONFLICT;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_REPLICATION_CHECK_CONFLICT_ACK;
+        return PacketType.REPLICATION_CHECK_CONFLICT_ACK;
     }
 
     @Override

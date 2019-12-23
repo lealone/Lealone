@@ -38,7 +38,7 @@ public class StorageReplicateRootPages implements NoAckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_REPLICATE_ROOT_PAGES;
+        return PacketType.STORAGE_REPLICATE_ROOT_PAGES;
     }
 
     @Override

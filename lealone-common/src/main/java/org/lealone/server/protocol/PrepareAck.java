@@ -32,7 +32,7 @@ public class PrepareAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_PREPARE_ACK;
+        return PacketType.PREPARED_STATEMENT_PREPARE_ACK;
     }
 
     @Override

@@ -36,7 +36,7 @@ public class StoragePrepareMoveLeafPageAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK;
+        return PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK;
     }
 
     @Override

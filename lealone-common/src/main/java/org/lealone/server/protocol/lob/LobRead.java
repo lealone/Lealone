@@ -15,21 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.server.protocol.lob;
 
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.Packet;
+import org.lealone.server.protocol.PacketDecoder;
+import org.lealone.server.protocol.PacketType;
 
-public class ReadLob implements Packet {
+public class LobRead implements Packet {
 
     public final long lobId;
     public final byte[] hmac;
     public final long offset;
     public final int length;
 
-    public ReadLob(long lobId, byte[] hmac, long offset, int length) {
+    public LobRead(long lobId, byte[] hmac, long offset, int length) {
         this.lobId = lobId;
         this.hmac = hmac;
         this.offset = offset;
@@ -38,12 +41,12 @@ public class ReadLob implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_READ_LOB;
+        return PacketType.LOB_READ;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_READ_LOB_ACK;
+        return PacketType.LOB_READ_ACK;
     }
 
     @Override
@@ -53,10 +56,10 @@ public class ReadLob implements Packet {
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<ReadLob> {
+    private static class Decoder implements PacketDecoder<LobRead> {
         @Override
-        public ReadLob decode(NetInputStream in, int version) throws IOException {
-            return new ReadLob(in.readLong(), in.readBytes(), in.readLong(), in.readInt());
+        public LobRead decode(NetInputStream in, int version) throws IOException {
+            return new LobRead(in.readLong(), in.readBytes(), in.readLong(), in.readInt());
         }
     }
 }

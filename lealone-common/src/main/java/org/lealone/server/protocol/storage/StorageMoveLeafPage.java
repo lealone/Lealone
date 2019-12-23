@@ -43,7 +43,7 @@ public class StorageMoveLeafPage implements NoAckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_MOVE_LEAF_PAGE;
+        return PacketType.STORAGE_MOVE_LEAF_PAGE;
     }
 
     @Override

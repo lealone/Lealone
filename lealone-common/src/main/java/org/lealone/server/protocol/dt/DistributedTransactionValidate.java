@@ -38,12 +38,12 @@ public class DistributedTransactionValidate implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE;
+        return PacketType.DISTRIBUTED_TRANSACTION_VALIDATE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_VALIDATE_ACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_VALIDATE_ACK;
     }
 
     @Override

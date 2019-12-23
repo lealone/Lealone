@@ -40,12 +40,12 @@ public class StorageGet implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_STORAGE_GET;
+        return PacketType.STORAGE_GET;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_STORAGE_GET_ACK;
+        return PacketType.STORAGE_GET_ACK;
     }
 
     @Override

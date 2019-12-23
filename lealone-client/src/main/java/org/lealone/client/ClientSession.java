@@ -37,12 +37,12 @@ import org.lealone.net.TransferOutputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
-import org.lealone.server.protocol.ReadLob;
-import org.lealone.server.protocol.ReadLobAck;
 import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionCommit;
 import org.lealone.server.protocol.dt.DistributedTransactionRollback;
 import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
+import org.lealone.server.protocol.lob.LobRead;
+import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.session.SessionCancelStatement;
 import org.lealone.server.protocol.session.SessionClose;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
@@ -418,7 +418,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
         try {
-            ReadLobAck ack = sendSync(new ReadLob(lobId, hmac, offset, length));
+            LobReadAck ack = sendSync(new LobRead(lobId, hmac, offset, length));
             if (ack.buff != null && ack.buff.length < 0) {
                 System.arraycopy(ack.buff, 0, buff, off, length);
             }

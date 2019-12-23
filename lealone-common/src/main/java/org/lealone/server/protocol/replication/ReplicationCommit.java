@@ -37,7 +37,7 @@ public class ReplicationCommit implements NoAckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_COMMIT;
+        return PacketType.REPLICATION_COMMIT;
     }
 
     @Override

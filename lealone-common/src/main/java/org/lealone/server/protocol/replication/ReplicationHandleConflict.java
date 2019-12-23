@@ -40,7 +40,7 @@ public class ReplicationHandleConflict implements NoAckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_REPLICATION_HANDLE_CONFLICT;
+        return PacketType.REPLICATION_HANDLE_CONFLICT;
     }
 
     @Override

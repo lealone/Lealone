@@ -40,12 +40,12 @@ public class DistributedTransactionUpdate implements Packet {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE;
+        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.COMMAND_DISTRIBUTED_TRANSACTION_UPDATE_ACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK;
     }
 
     @Override

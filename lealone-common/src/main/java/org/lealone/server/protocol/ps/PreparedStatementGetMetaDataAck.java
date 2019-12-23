@@ -46,7 +46,7 @@ public class PreparedStatementGetMetaDataAck implements AckPacket {
 
     @Override
     public PacketType getType() {
-        return PacketType.COMMAND_PREPARED_STATEMENT_GET_META_DATA_ACK;
+        return PacketType.PREPARED_STATEMENT_GET_META_DATA_ACK;
     }
 
     @Override
