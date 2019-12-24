@@ -107,10 +107,13 @@ public abstract class NetClientBase implements NetClient {
                         }
                     } else {
                         createConnectionInternal(node, connectionManager, asyncHandler);
+                        return null;
                     }
                 }
             }
         }
+        if (asyncHandler != null)
+            asyncHandler.handle(new AsyncResult<>(asyncConnection));
         return asyncConnection;
     }
 

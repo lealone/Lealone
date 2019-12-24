@@ -41,6 +41,8 @@ import org.lealone.db.Constants;
 import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
@@ -90,14 +92,39 @@ public class JdbcConnection extends TraceObject implements Connection {
             session = ci.createSession().connect();
             user = ci.getUserName();
             url = ci.getURL(); // 不含参数
-
-            trace = getTrace(TraceObjectType.CONNECTION);
-            if (isInfoEnabled()) {
-                String format = "Connection %s = DriverManager.getConnection(%s, %s, \"\");";
-                infoCode(format, getTraceObjectName(), quote(url), quote(user));
-            }
+            initTrace();
         } catch (Exception e) {
             throw logAndConvert(e);
+        }
+    }
+
+    public JdbcConnection(String url, Properties info, AsyncHandler<AsyncResult<JdbcConnection>> handler) {
+        this(new ConnectionInfo(url, info), handler);
+    }
+
+    public JdbcConnection(ConnectionInfo ci, AsyncHandler<AsyncResult<JdbcConnection>> handler) {
+        user = ci.getUserName();
+        url = ci.getURL();
+        try {
+            ci.createSession().connectAsync(true, ar -> {
+                if (ar.isSucceeded()) {
+                    session = ar.getResult();
+                    initTrace();
+                    handler.handle(new AsyncResult<>(JdbcConnection.this));
+                } else {
+                    handler.handle(new AsyncResult<>(ar.getCause()));
+                }
+            });
+        } catch (Exception e) {
+            handler.handle(new AsyncResult<>(e));
+        }
+    }
+
+    private void initTrace() {
+        trace = getTrace(TraceObjectType.CONNECTION);
+        if (isInfoEnabled()) {
+            String format = "Connection %s = DriverManager.getConnection(%s, %s, \"\");";
+            infoCode(format, getTraceObjectName(), quote(url), quote(user));
         }
     }
 

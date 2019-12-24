@@ -16,6 +16,8 @@ import java.util.logging.Logger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 
 /**
  * The database driver. An application should not use this class directly. 
@@ -155,4 +157,56 @@ public class JdbcDriver implements java.sql.Driver {
         }
     }
 
+    public static JdbcConnection getConnection(String url) throws SQLException {
+        Properties info = new Properties();
+        return getConnection(url, info);
+    }
+
+    public static JdbcConnection getConnection(String url, String user, String password) throws SQLException {
+        Properties info = new Properties();
+        if (user != null) {
+            info.put("user", user);
+        }
+        if (password != null) {
+            info.put("password", password);
+        }
+        return getConnection(url, info);
+    }
+
+    public static JdbcConnection getConnection(String url, Properties info) throws SQLException {
+        if (info == null) {
+            info = new Properties();
+        }
+        return new JdbcConnection(url, info);
+    }
+
+    public static void getConnectionAsync(String url, AsyncHandler<AsyncResult<JdbcConnection>> handler)
+            throws SQLException {
+        Properties info = new Properties();
+        getConnectionAsync(url, info, handler);
+    }
+
+    public static void getConnectionAsync(String url, String user, String password,
+            AsyncHandler<AsyncResult<JdbcConnection>> handler) throws SQLException {
+        Properties info = new Properties();
+        if (user != null) {
+            info.put("user", user);
+        }
+        if (password != null) {
+            info.put("password", password);
+        }
+        getConnectionAsync(url, info, handler);
+    }
+
+    public static void getConnectionAsync(String url, Properties info,
+            AsyncHandler<AsyncResult<JdbcConnection>> handler) throws SQLException {
+        if (info == null) {
+            info = new Properties();
+        }
+        try {
+            new JdbcConnection(url, info, handler);
+        } catch (Exception e) {
+            handler.handle(new AsyncResult<>(e));
+        }
+    }
 }
