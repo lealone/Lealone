@@ -7,7 +7,7 @@ package org.lealone.db.auth;
 
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 
 /**
  * Represents a role. Roles can be granted to users, and to other roles.

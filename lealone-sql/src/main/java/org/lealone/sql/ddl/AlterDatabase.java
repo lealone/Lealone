@@ -30,7 +30,7 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLStatement;

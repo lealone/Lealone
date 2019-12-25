@@ -12,7 +12,7 @@ import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;

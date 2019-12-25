@@ -19,7 +19,7 @@ package org.lealone.client.result;
 
 import java.io.IOException;
 
-import org.lealone.client.ClientSession;
+import org.lealone.client.session.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.Value;
 import org.lealone.net.TransferInputStream;

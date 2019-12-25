@@ -26,8 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.Constants;
-import org.lealone.db.Session;
 import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.server.protocol.dt.DistributedTransactionValidate;
 import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;

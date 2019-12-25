@@ -11,11 +11,11 @@ import java.util.Arrays;
 
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
-import org.lealone.db.ServerSession;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;

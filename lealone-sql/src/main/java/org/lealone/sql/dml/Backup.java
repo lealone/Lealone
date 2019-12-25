@@ -6,7 +6,7 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 

@@ -11,6 +11,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.result.SearchRow;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.PreparedSQLStatement;

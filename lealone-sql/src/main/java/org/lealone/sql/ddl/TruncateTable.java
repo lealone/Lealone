@@ -8,10 +8,10 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 

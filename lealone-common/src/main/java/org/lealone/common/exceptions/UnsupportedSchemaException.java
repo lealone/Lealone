@@ -17,7 +17,7 @@
  */
 package org.lealone.common.exceptions;
 
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 
 public class UnsupportedSchemaException extends RuntimeException {
 

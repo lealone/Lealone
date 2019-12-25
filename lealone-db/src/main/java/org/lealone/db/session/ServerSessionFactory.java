@@ -3,12 +3,18 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.session;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Database;
+import org.lealone.db.LealoneDatabase;
+import org.lealone.db.SetTypes;
+import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
+import org.lealone.db.session.SessionFactory;
 import org.lealone.net.NetNode;
 
 /**

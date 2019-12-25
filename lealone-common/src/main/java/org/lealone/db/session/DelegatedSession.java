@@ -15,11 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.db.session;
 
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.DataHandler;
+import org.lealone.db.IDatabase;
+import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.sql.ParsedSQLStatement;

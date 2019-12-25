@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.client;
+package org.lealone.client.session;
 
 import java.net.InetSocketAddress;
 import java.util.Random;
@@ -27,12 +27,12 @@ import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.DelegatedSession;
 import org.lealone.db.RunMode;
-import org.lealone.db.Session;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.DelegatedSession;
+import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.storage.replication.ReplicationSession;
 

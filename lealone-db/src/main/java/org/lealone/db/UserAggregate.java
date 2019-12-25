@@ -12,6 +12,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.api.Aggregate;
 import org.lealone.db.api.AggregateFunction;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.DataType;
 
 /**

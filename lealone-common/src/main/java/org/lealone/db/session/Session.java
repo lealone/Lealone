@@ -4,13 +4,18 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.session;
 
 import java.io.Closeable;
 
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
+import org.lealone.db.IDatabase;
+import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.server.protocol.Packet;

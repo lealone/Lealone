@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.client;
+package org.lealone.client.command;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,6 +11,7 @@ import java.util.List;
 
 import org.lealone.client.result.ClientResult;
 import org.lealone.client.result.RowCountDeterminedClientResult;
+import org.lealone.client.session.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;

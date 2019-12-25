@@ -9,8 +9,8 @@ import java.math.BigInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.ServerSession;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.session.ServerSession;
 
 /**
  * A sequence is created using the statement

@@ -17,8 +17,8 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.StatementBase;

@@ -17,7 +17,7 @@
  */
 package org.lealone.transaction.aote;
 
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;

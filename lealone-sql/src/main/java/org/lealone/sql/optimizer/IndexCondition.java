@@ -14,9 +14,9 @@ import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.ServerSession;
 import org.lealone.db.index.IndexConditionType;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.TableType;
 import org.lealone.db.value.CompareMode;

@@ -9,10 +9,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;

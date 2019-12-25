@@ -15,24 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.client.session;
 
-import org.lealone.db.auth.User;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.session.Session;
+import org.lealone.db.session.SessionFactory;
 
-public class SystemSession extends ServerSession {
+public class ClientSessionFactory implements SessionFactory {
 
-    public SystemSession(Database database, User user, int id) {
-        super(database, user, id);
+    private static final ClientSessionFactory instance = new ClientSessionFactory();
+
+    public static ClientSessionFactory getInstance() {
+        return instance;
+    }
+
+    private ClientSessionFactory() {
     }
 
     @Override
-    public boolean isShardingMode() {
-        // 所有通过SystemSession创建的表都不用Sharding
-        return false;
-    }
-
-    @Override
-    public RunMode getRunMode() {
-        return RunMode.CLIENT_SERVER;
+    public Session createSession(ConnectionInfo ci) {
+        return new AutoReconnectSession(ci);
     }
 }

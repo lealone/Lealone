@@ -5,6 +5,7 @@
  */
 package org.lealone.db;
 
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 
 /**

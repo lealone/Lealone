@@ -30,7 +30,7 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManager;
 import org.lealone.p2p.config.ConfigDescriptor;

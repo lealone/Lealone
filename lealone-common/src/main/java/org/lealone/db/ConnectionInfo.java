@@ -17,6 +17,8 @@ import org.lealone.common.security.SHA256;
 import org.lealone.common.util.SortedProperties;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.session.Session;
+import org.lealone.db.session.SessionFactory;
 import org.lealone.storage.fs.FilePathEncrypt;
 import org.lealone.storage.fs.FileUtils;
 
@@ -671,9 +673,9 @@ public class ConnectionInfo implements Cloneable {
                 String className;
                 // 要使用反射，避免编译期依赖
                 if (remote) {
-                    className = "org.lealone.client.ClientSessionFactory";
+                    className = "org.lealone.client.session.ClientSessionFactory";
                 } else {
-                    className = "org.lealone.db.ServerSessionFactory";
+                    className = "org.lealone.db.session.ServerSessionFactory";
                 }
                 sessionFactory = (SessionFactory) Class.forName(className).getMethod("getInstance").invoke(null);
             } catch (Exception e) {

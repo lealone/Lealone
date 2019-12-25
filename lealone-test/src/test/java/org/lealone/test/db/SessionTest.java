@@ -18,8 +18,8 @@
 package org.lealone.test.db;
 
 import org.junit.Test;
-import org.lealone.db.ServerSessionFactory;
-import org.lealone.db.Session;
+import org.lealone.db.session.ServerSessionFactory;
+import org.lealone.db.session.Session;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.test.UnitTestBase;
 

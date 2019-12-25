@@ -6,8 +6,8 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.session.ServerSession;
 
 /**
  * This class represents a non-transaction statement that involves a schema.

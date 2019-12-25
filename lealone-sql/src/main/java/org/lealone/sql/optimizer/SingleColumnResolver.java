@@ -6,7 +6,7 @@
  */
 package org.lealone.sql.optimizer;
 
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.sql.IExpression;

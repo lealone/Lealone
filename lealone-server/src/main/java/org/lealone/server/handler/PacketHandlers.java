@@ -20,8 +20,8 @@ package org.lealone.server.handler;
 import java.util.List;
 
 import org.lealone.db.CommandParameter;
-import org.lealone.db.Session;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.Session;
 import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;

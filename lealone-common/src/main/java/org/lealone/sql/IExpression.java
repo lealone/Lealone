@@ -19,7 +19,7 @@ package org.lealone.sql;
 
 import java.util.Set;
 
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 import org.lealone.db.value.Value;
 
 public interface IExpression {

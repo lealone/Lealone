@@ -15,26 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.client;
+package org.lealone.db.session;
 
-import org.lealone.db.ConnectionInfo;
-import org.lealone.db.Session;
-import org.lealone.db.SessionFactory;
+public enum SessionStatus {
 
-public class ClientSessionFactory implements SessionFactory {
-
-    private static final ClientSessionFactory instance = new ClientSessionFactory();
-
-    public static ClientSessionFactory getInstance() {
-        return instance;
-    }
-
-    private ClientSessionFactory() {
-    }
-
-    @Override
-    public Session createSession(ConnectionInfo ci) {
-        return new AutoReconnectSession(ci);
-    }
+    NO_TRANSACTION,
+    COMMITTING_TRANSACTION,
+    TRANSACTION_NOT_COMMIT,
+    SESSION_CLOSED,
+    EXCLUSIVE_MODE;
 
 }

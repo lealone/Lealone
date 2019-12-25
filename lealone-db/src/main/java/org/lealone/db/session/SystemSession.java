@@ -15,14 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.db.session;
 
-public enum SessionStatus {
+import org.lealone.db.Database;
+import org.lealone.db.RunMode;
+import org.lealone.db.auth.User;
 
-    NO_TRANSACTION,
-    COMMITTING_TRANSACTION,
-    TRANSACTION_NOT_COMMIT,
-    SESSION_CLOSED,
-    EXCLUSIVE_MODE;
+public class SystemSession extends ServerSession {
 
+    public SystemSession(Database database, User user, int id) {
+        super(database, user, id);
+    }
+
+    @Override
+    public boolean isShardingMode() {
+        // 所有通过SystemSession创建的表都不用Sharding
+        return false;
+    }
+
+    @Override
+    public RunMode getRunMode() {
+        return RunMode.CLIENT_SERVER;
+    }
 }

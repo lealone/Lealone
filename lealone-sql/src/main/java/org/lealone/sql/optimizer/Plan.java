@@ -9,7 +9,7 @@ package org.lealone.sql.optimizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.optimizer.TableFilter.TableFilterVisitor;

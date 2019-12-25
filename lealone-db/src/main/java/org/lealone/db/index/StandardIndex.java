@@ -7,8 +7,8 @@ package org.lealone.db.index;
 
 import java.util.List;
 
-import org.lealone.db.ServerSession;
 import org.lealone.db.result.Row;
+import org.lealone.db.session.ServerSession;
 
 public interface StandardIndex extends Index {
 

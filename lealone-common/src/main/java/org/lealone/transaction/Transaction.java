@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.StorageDataType;
 

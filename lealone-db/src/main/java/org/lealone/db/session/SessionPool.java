@@ -15,15 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.db.session;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.Command;
+import org.lealone.db.CommandParameter;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.SysProperties;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.Session;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 

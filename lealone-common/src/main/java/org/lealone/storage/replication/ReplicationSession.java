@@ -20,8 +20,8 @@ package org.lealone.storage.replication;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.db.DelegatedSession;
-import org.lealone.db.Session;
+import org.lealone.db.session.DelegatedSession;
+import org.lealone.db.session.Session;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.transaction.Transaction;

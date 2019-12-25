@@ -7,7 +7,7 @@
 package org.lealone.sql.expression;
 
 import org.lealone.common.util.StatementBuilder;
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;

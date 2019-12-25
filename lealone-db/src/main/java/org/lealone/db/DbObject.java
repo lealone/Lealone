@@ -7,6 +7,8 @@ package org.lealone.db;
 
 import java.util.List;
 
+import org.lealone.db.session.ServerSession;
+
 /**
  * A database object such as a table, an index, or a user.
  */

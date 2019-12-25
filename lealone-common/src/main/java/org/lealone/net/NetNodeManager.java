@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.lealone.db.IDatabase;
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 import org.lealone.storage.replication.ReplicationSession;
 
 public interface NetNodeManager {

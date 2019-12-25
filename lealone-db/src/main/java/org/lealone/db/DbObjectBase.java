@@ -7,6 +7,8 @@ package org.lealone.db;
 
 import java.util.List;
 
+import org.lealone.db.session.ServerSession;
+
 /**
  * The base class for all database objects.
  */

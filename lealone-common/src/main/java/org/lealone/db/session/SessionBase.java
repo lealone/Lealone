@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db;
+package org.lealone.db.session;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,6 +27,11 @@ import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.trace.TraceSystem;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Constants;
+import org.lealone.db.RunMode;
+import org.lealone.db.SetTypes;
+import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.StorageMap;

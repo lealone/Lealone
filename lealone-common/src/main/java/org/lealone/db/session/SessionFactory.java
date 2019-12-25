@@ -4,7 +4,9 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.session;
+
+import org.lealone.db.ConnectionInfo;
 
 /**
  * A class that implements this interface can create new database sessions.
@@ -22,5 +24,4 @@ public interface SessionFactory {
     default Session createSession(String url) {
         return createSession(new ConnectionInfo(url));
     }
-
 }

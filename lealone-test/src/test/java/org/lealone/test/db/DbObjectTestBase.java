@@ -22,13 +22,13 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.ServerSession;
-import org.lealone.db.ServerSessionFactory;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.ServerSessionFactory;
 import org.lealone.test.UnitTestBase;
 
 public class DbObjectTestBase extends UnitTestBase {

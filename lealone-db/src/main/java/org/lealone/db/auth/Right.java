@@ -10,8 +10,8 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectBase;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.ServerSession;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 
 /**

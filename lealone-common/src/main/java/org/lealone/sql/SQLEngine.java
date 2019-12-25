@@ -19,7 +19,7 @@ package org.lealone.sql;
 
 import org.lealone.db.CommandParameter;
 import org.lealone.db.PluggableEngine;
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 import org.lealone.db.value.Value;
 
 public interface SQLEngine extends PluggableEngine {

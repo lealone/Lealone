@@ -11,7 +11,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.ServerSession;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexBase;
 import org.lealone.db.index.IndexType;
@@ -19,6 +18,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.IndexColumn;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;

@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.session;
 
 import java.nio.ByteBuffer;
 import java.sql.Connection;
@@ -18,6 +18,17 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.SmallLRUCache;
+import org.lealone.db.Command;
+import org.lealone.db.ConnectionInfo;
+import org.lealone.db.Constants;
+import org.lealone.db.DataHandler;
+import org.lealone.db.Database;
+import org.lealone.db.LealoneDatabase;
+import org.lealone.db.Procedure;
+import org.lealone.db.ServerStorageCommand;
+import org.lealone.db.SetTypes;
+import org.lealone.db.Setting;
+import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
@@ -337,7 +348,7 @@ public class ServerSession extends SessionBase {
      *
      * @param constraint the constraint
      */
-    void removeLocalTempTableConstraint(Constraint constraint) {
+    public void removeLocalTempTableConstraint(Constraint constraint) {
         if (localTempTableConstraints != null) {
             localTempTableConstraints.remove(constraint.getName());
             synchronized (database) {

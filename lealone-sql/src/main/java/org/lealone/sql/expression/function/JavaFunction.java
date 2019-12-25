@@ -8,8 +8,8 @@ package org.lealone.sql.expression.function;
 
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Constants;
-import org.lealone.db.ServerSession;
 import org.lealone.db.schema.FunctionAlias;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;

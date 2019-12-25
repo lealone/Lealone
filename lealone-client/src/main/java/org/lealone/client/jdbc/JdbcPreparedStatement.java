@@ -28,7 +28,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 
-import org.lealone.client.ClientPreparedSQLCommand;
+import org.lealone.client.command.ClientPreparedSQLCommand;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.DateTimeUtils;

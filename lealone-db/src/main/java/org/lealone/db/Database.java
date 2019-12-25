@@ -53,6 +53,9 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.TriggerObject;
+import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.Session;
+import org.lealone.db.session.SystemSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.IndexColumn;
@@ -663,7 +666,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param testHash the hash code
      * @return true if the cipher algorithm and the password match
      */
-    boolean validateFilePasswordHash(String testCipher, byte[] testHash) {
+    public boolean validateFilePasswordHash(String testCipher, byte[] testHash) {
         if (!StringUtils.equals(testCipher, dbSettings.cipher)) {
             return false;
         }
@@ -2507,7 +2510,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         throw DbException.throwInternalError(mapName + " not found");
     }
 
-    void setLastConnectionInfo(ConnectionInfo ci) {
+    public void setLastConnectionInfo(ConnectionInfo ci) {
         lastConnectionInfo = ci;
     }
 

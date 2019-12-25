@@ -52,5 +52,4 @@ public class ClientServiceProxy {
             throw new RuntimeException("Failed to execute service: " + serviceName, e);
         }
     }
-
 }

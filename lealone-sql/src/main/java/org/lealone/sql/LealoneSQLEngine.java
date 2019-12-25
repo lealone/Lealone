@@ -21,8 +21,8 @@ import java.util.Map;
 
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
-import org.lealone.db.Session;
 import org.lealone.db.schema.Sequence;
+import org.lealone.db.session.Session;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SequenceValue;
@@ -37,7 +37,7 @@ public class LealoneSQLEngine implements SQLEngine {
 
     @Override
     public SQLParser createParser(Session session) {
-        return new Parser((org.lealone.db.ServerSession) session);
+        return new Parser((org.lealone.db.session.ServerSession) session);
     }
 
     @Override

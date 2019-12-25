@@ -9,8 +9,8 @@ package org.lealone.sql.dml;
 import java.util.ArrayList;
 
 import org.lealone.db.Procedure;
-import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.ServerSession;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;

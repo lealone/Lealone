@@ -17,7 +17,7 @@
  */
 package org.lealone.sql.admin;
 
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.ProtocolServerEngineManager;
 

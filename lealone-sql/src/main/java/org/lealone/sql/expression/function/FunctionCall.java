@@ -5,7 +5,7 @@
  */
 package org.lealone.sql.expression.function;
 
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.ValueResultSet;
 import org.lealone.sql.expression.Expression;
 

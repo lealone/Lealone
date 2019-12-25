@@ -13,19 +13,19 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 
-import org.lealone.client.ClientSQLCommand;
+import org.lealone.client.command.ClientSQLCommand;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.Session;
 import org.lealone.sql.SQLCommand;
 
 /**

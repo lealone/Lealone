@@ -11,8 +11,8 @@ import java.util.Arrays;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
-import org.lealone.db.ServerSession;
 import org.lealone.db.SysProperties;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;

@@ -21,7 +21,7 @@ import java.nio.ByteBuffer;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.ValueLong;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;

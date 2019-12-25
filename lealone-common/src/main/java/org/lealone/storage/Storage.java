@@ -22,9 +22,14 @@ import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.RunMode;
+import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 
 public interface Storage {
+
+    default <K, V> StorageMap<K, V> openMap(String name, Map<String, String> parameters) {
+        return openMap(name, new ObjectDataType(), new ObjectDataType(), parameters);
+    }
 
     <K, V> StorageMap<K, V> openMap(String name, StorageDataType keyType, StorageDataType valueType,
             Map<String, String> parameters);

@@ -8,9 +8,9 @@ package org.lealone.sql.dml;
 
 import java.sql.ResultSet;
 
-import org.lealone.db.ServerSession;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;

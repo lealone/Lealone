@@ -25,10 +25,10 @@ import java.util.UUID;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
-import org.lealone.db.Session;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
+import org.lealone.db.session.Session;
 
 /**
  * This class contains meta data information about data types,

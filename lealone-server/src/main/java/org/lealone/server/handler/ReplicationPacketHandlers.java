@@ -17,8 +17,8 @@
  */
 package org.lealone.server.handler;
 
-import org.lealone.db.ServerSession;
-import org.lealone.db.Session;
+import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.Session;
 import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;

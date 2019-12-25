@@ -7,12 +7,12 @@
 package org.lealone.sql.dml;
 
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.ServerSession;
 import org.lealone.db.api.Trigger;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;

@@ -8,7 +8,7 @@ package org.lealone.client.result;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import org.lealone.client.ClientSession;
+import org.lealone.client.session.ClientSession;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.SysProperties;

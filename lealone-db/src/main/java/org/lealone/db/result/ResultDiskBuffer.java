@@ -14,7 +14,7 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.Database;
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.storage.fs.FileStorage;
 

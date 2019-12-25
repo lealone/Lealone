@@ -21,7 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lealone.db.IDatabase;
-import org.lealone.db.Session;
+import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;

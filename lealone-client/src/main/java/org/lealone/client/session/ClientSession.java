@@ -3,13 +3,17 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.client;
+package org.lealone.client.session;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.sql.Connection;
 
+import org.lealone.client.command.ClientPreparedSQLCommand;
+import org.lealone.client.command.ClientSQLCommand;
+import org.lealone.client.storage.ClientLobStorage;
+import org.lealone.client.storage.ClientStorageCommand;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.LealoneException;
 import org.lealone.common.trace.Trace;
@@ -20,13 +24,13 @@ import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
-import org.lealone.db.Session;
-import org.lealone.db.SessionBase;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.Session;
+import org.lealone.db.session.SessionBase;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetFactory;
 import org.lealone.net.NetFactoryManager;

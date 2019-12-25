@@ -10,9 +10,9 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import org.lealone.common.util.BitField;
-import org.lealone.db.ServerSession;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.SortOrder;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.db.util.Permutations;
 import org.lealone.sql.expression.Expression;

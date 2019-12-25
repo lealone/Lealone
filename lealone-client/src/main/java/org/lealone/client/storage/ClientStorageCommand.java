@@ -15,10 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.client;
+package org.lealone.client.storage;
 
 import java.nio.ByteBuffer;
 
+import org.lealone.client.session.ClientSession;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.value.ValueLong;
@@ -72,7 +73,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
                     handler.handle(new AsyncResult<>(ack.result));
                 });
             } else {
-                StorageAppendAck ack = session.sendSync(packet);
+                StoragePutAck ack = session.sendSync(packet);
                 if (isDistributed)
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                 return ack.result;

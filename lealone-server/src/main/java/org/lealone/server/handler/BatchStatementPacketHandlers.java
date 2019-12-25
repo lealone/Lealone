@@ -21,7 +21,7 @@ import java.sql.Statement;
 import java.util.List;
 
 import org.lealone.db.CommandParameter;
-import org.lealone.db.ServerSession;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;

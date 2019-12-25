@@ -7,8 +7,8 @@
 package org.lealone.sql.expression.condition;
 
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.ServerSession;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.dml.Query;

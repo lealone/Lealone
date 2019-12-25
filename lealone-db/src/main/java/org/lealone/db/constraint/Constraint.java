@@ -11,11 +11,11 @@ import java.util.Set;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.ServerSession;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObjectBase;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 
