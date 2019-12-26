@@ -13,8 +13,9 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.User;
-import org.lealone.db.session.SessionFactory;
 import org.lealone.net.NetNode;
 
 /**
@@ -235,5 +236,12 @@ public class ServerSessionFactory implements SessionFactory {
                 throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
             }
         }
+    }
+
+    @Override
+    public void createSessionAsync(ConnectionInfo ci, boolean allowRedirect,
+            AsyncHandler<AsyncResult<Session>> asyncHandler) {
+        Session s = createSession(ci);
+        asyncHandler.handle(new AsyncResult<>(s));
     }
 }

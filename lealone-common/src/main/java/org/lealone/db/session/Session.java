@@ -17,7 +17,6 @@ import org.lealone.db.DataHandler;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.server.protocol.Packet;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
@@ -144,18 +143,6 @@ public interface Session extends Closeable, Transaction.Participant {
     void asyncCommit(Runnable asyncTask);
 
     void asyncCommitComplete();
-
-    default Session connect() {
-        return connect(true);
-    }
-
-    Session connect(boolean allowRedirect);
-
-    default void connectAsync(AsyncHandler<AsyncResult<Session>> asyncHandler) {
-        connectAsync(true, asyncHandler);
-    }
-
-    void connectAsync(boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler);
 
     String getURL();
 

@@ -18,7 +18,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.exceptions.LealoneException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
-import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
@@ -28,14 +27,9 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionBase;
-import org.lealone.net.AsyncConnection;
-import org.lealone.net.NetFactory;
-import org.lealone.net.NetFactoryManager;
 import org.lealone.net.NetInputStream;
-import org.lealone.net.NetNode;
 import org.lealone.net.TcpClientConnection;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.server.protocol.Packet;
@@ -84,9 +78,9 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private LobStorage lobStorage;
 
     private TcpClientConnection tcpConnection;
-    private int sessionId;
+    private final int sessionId;
 
-    ClientSession(ConnectionInfo ci, String server, Session parent) {
+    ClientSession(ConnectionInfo ci, String server, Session parent, TcpClientConnection tcpConnection, int sessionId) {
         if (!ci.isRemote()) {
             throw DbException.throwInternalError();
         }
@@ -99,6 +93,13 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
         initTraceSystem(ci);
         trace = traceSystem == null ? Trace.NO_TRACE : traceSystem.getTrace(TraceModuleType.JDBC);
+        this.tcpConnection = tcpConnection;
+        this.sessionId = sessionId;
+    }
+
+    @Override
+    public String toString() {
+        return "ClientSession[" + sessionId + ", " + server + "]";
     }
 
     @Override
@@ -108,13 +109,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public int getNextId() {
-        if (tcpConnection == null) {
-            if (sessionId <= 0) {
-                open();
-            } else {
-                checkClosed();
-            }
-        }
+        checkClosed();
         return tcpConnection.getNextId();
     }
 
@@ -124,84 +119,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             return 0;
         }
         return tcpConnection.getCurrentId();
-    }
-
-    @Override
-    public Session connect(boolean allowRedirect) {
-        open();
-        return this;
-    }
-
-    @Override
-    public void connectAsync(boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler) {
-        openAsync(asyncHandler);
-    }
-
-    // 在AutoReconnectSession类中有单独使用，所以用包访问级别
-    TcpClientConnection open() {
-        if (tcpConnection != null)
-            return tcpConnection;
-
-        try {
-            NetNode node = NetNode.createTCP(server);
-            NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
-            CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
-            // 多个客户端session会共用同一条TCP连接
-            AsyncConnection conn = factory.getNetClient().createConnection(config, node);
-            if (!(conn instanceof TcpClientConnection)) {
-                throw DbException.throwInternalError("not tcp client connection: " + conn.getClass().getName());
-            }
-            tcpConnection = (TcpClientConnection) conn;
-            // 每一个通过网络传输的协议包都会带上sessionId，
-            // 这样就能在同一条TCP连接中区分不同的客户端session了
-            sessionId = tcpConnection.getNextId();
-            tcpConnection.writeInitPacket(this);
-            if (isValid()) {
-                tcpConnection.addSession(sessionId, this);
-            }
-        } catch (Throwable e) {
-            closeTraceSystem();
-            throw DbException.convert(e);
-        }
-        return tcpConnection;
-    }
-
-    void openAsync(AsyncHandler<AsyncResult<Session>> asyncHandler) {
-        if (tcpConnection != null) {
-            asyncHandler.handle(new AsyncResult<>(this));
-            return;
-        }
-
-        try {
-            NetNode node = NetNode.createTCP(server);
-            NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
-            CaseInsensitiveMap<String> config = new CaseInsensitiveMap<>(ci.getProperties());
-            // 多个客户端session会共用同一条TCP连接
-            factory.getNetClient().createConnectionAsync(config, node, ar -> {
-                if (ar.isSucceeded()) {
-                    AsyncConnection conn = ar.getResult();
-                    if (!(conn instanceof TcpClientConnection)) {
-                        throw DbException.throwInternalError("not tcp client connection: " + conn.getClass().getName());
-                    }
-                    tcpConnection = (TcpClientConnection) conn;
-                    // 每一个通过网络传输的协议包都会带上sessionId，
-                    // 这样就能在同一条TCP连接中区分不同的客户端session了
-                    sessionId = tcpConnection.getNextId();
-                    tcpConnection.writeInitPacketAsync(this, ar2 -> {
-                        if (ar2.isSucceeded()) {
-                            Session s = ar2.getResult();
-                            if (s.isValid()) {
-                                tcpConnection.addSession(sessionId, s);
-                                asyncHandler.handle(new AsyncResult<>(s));
-                            }
-                        }
-                    });
-                }
-            });
-        } catch (Throwable e) {
-            closeTraceSystem();
-            throw DbException.convert(e);
-        }
     }
 
     InetSocketAddress getInetSocketAddress() {

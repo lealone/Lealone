@@ -24,8 +24,6 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -193,16 +191,6 @@ public class DelegatedSession implements Session {
     @Override
     public void commit(String allLocalTransactionNames) {
         session.commit(allLocalTransactionNames);
-    }
-
-    @Override
-    public Session connect(boolean allowRedirect) {
-        return session.connect(allowRedirect);
-    }
-
-    @Override
-    public void connectAsync(boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler) {
-        session.connectAsync(allowRedirect, asyncHandler);
     }
 
     @Override

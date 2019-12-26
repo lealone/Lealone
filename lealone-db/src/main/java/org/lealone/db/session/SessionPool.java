@@ -28,7 +28,6 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.SysProperties;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.session.Session;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 
@@ -75,7 +74,7 @@ public class SessionPool {
             ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
             ci.setRemote(remote);
             // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
-            session = ci.createSession().connect(false);
+            session = ci.getSessionFactory().createSession(ci, false);
         }
         return session;
     }
@@ -101,7 +100,7 @@ public class SessionPool {
         ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
         ci.setRemote(remote);
         // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
-        ci.createSession().connectAsync(false, asyncHandler);
+        ci.getSessionFactory().createSessionAsync(ci, false, asyncHandler);
     }
 
     public static void release(Session session) {

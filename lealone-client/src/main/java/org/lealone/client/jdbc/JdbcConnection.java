@@ -40,8 +40,6 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.CompareMode;
@@ -89,7 +87,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     public JdbcConnection(ConnectionInfo ci) throws SQLException {
         try {
             // this will return an embedded or server connection
-            session = ci.createSession().connect();
+            session = ci.getSessionFactory().createSession(ci);
             user = ci.getUserName();
             url = ci.getURL(); // 不含参数
             initTrace();
@@ -98,26 +96,11 @@ public class JdbcConnection extends TraceObject implements Connection {
         }
     }
 
-    public JdbcConnection(String url, Properties info, AsyncHandler<AsyncResult<JdbcConnection>> handler) {
-        this(new ConnectionInfo(url, info), handler);
-    }
-
-    public JdbcConnection(ConnectionInfo ci, AsyncHandler<AsyncResult<JdbcConnection>> handler) {
+    public JdbcConnection(Session session, ConnectionInfo ci) {
+        this.session = session;
         user = ci.getUserName();
         url = ci.getURL();
-        try {
-            ci.createSession().connectAsync(true, ar -> {
-                if (ar.isSucceeded()) {
-                    session = ar.getResult();
-                    initTrace();
-                    handler.handle(new AsyncResult<>(JdbcConnection.this));
-                } else {
-                    handler.handle(new AsyncResult<>(ar.getCause()));
-                }
-            });
-        } catch (Exception e) {
-            handler.handle(new AsyncResult<>(e));
-        }
+        initTrace();
     }
 
     private void initTrace() {

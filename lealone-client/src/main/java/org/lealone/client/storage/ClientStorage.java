@@ -36,7 +36,7 @@ public class ClientStorage extends StorageBase {
         super(null);
 
         ConnectionInfo ci = new ConnectionInfo(url);
-        session = ci.createSession().connect();
+        session = ci.createSession();
     }
 
     public Session getSession() {

@@ -31,7 +31,6 @@ import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
@@ -1308,16 +1307,6 @@ public class ServerSession extends SessionBase {
 
     public SQLParser getParser() {
         return database.createParser(this);
-    }
-
-    @Override
-    public Session connect(boolean allowRedirect) {
-        return this;
-    }
-
-    @Override
-    public void connectAsync(boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler) {
-        asyncHandler.handle(new AsyncResult<>(this));
     }
 
     @Override

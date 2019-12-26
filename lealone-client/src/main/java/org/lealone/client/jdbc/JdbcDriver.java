@@ -15,9 +15,11 @@ import java.util.Properties;
 import java.util.logging.Logger;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.Session;
 
 /**
  * The database driver. An application should not use this class directly. 
@@ -204,7 +206,16 @@ public class JdbcDriver implements java.sql.Driver {
             info = new Properties();
         }
         try {
-            new JdbcConnection(url, info, handler);
+            ConnectionInfo ci = new ConnectionInfo(url, info);
+            ci.getSessionFactory().createSessionAsync(ci, ar -> {
+                if (ar.isSucceeded()) {
+                    Session s = ar.getResult();
+                    JdbcConnection conn = new JdbcConnection(s, ci);
+                    handler.handle(new AsyncResult<>(conn));
+                } else {
+                    handler.handle(new AsyncResult<>(ar.getCause()));
+                }
+            });
         } catch (Exception e) {
             handler.handle(new AsyncResult<>(e));
         }

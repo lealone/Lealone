@@ -24,17 +24,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.db.ConnectionInfo;
-import org.lealone.db.Constants;
-import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
-import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.session.SessionInit;
-import org.lealone.server.protocol.session.SessionInitAck;
 
 /**
  * An async tcp client connection.
@@ -94,54 +86,6 @@ public class TcpClientConnection extends TransferConnection {
         // netClient.removeConnection(inetSocketAddress);
         // }
         return session;
-    }
-
-    public void writeInitPacket(final Session session) throws Exception {
-        checkClosed();
-        ConnectionInfo ci = session.getConnectionInfo();
-        int packetId = getNextId();
-        TransferOutputStream out = createTransferOutputStream(session);
-        out.setSSL(ci.isSSL());
-        out.writeRequestHeader(packetId, PacketType.SESSION_INIT.value);
-        out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // minClientVersion
-        out.writeInt(Constants.TCP_PROTOCOL_VERSION_1); // maxClientVersion
-        out.writeString(ci.getDatabaseShortName());
-        out.writeString(ci.getURL()); // 不带参数的URL
-        out.writeString(ci.getUserName());
-        out.writeBytes(ci.getUserPasswordHash());
-        out.writeBytes(ci.getFilePasswordHash());
-        out.writeBytes(ci.getFileEncryptionKey());
-        String[] keys = ci.getKeys();
-        out.writeInt(keys.length);
-        for (String key : keys) {
-            out.writeString(key).writeString(ci.getProperty(key));
-        }
-        out.flushAndAwait(packetId, ci.getNetworkTimeout(), new AsyncCallback<Void>() {
-            @Override
-            public void runInternal(NetInputStream in) throws Exception {
-                int protocolVersion = in.readInt();
-                boolean autoCommit = in.readBoolean();
-                session.setProtocolVersion(protocolVersion);
-                session.setAutoCommit(autoCommit);
-                session.setTargetNodes(in.readString());
-                session.setRunMode(RunMode.valueOf(in.readString()));
-                session.setInvalid(in.readBoolean());
-            }
-        });
-    }
-
-    public void writeInitPacketAsync(final Session session, AsyncHandler<AsyncResult<Session>> asyncHandler) {
-        checkClosed();
-        ConnectionInfo ci = session.getConnectionInfo();
-        SessionInit packet = new SessionInit(ci);
-        session.<SessionInitAck> sendAsync(packet, ack -> {
-            session.setProtocolVersion(ack.clientVersion);
-            session.setAutoCommit(ack.autoCommit);
-            session.setTargetNodes(ack.targetNodes);
-            session.setRunMode(ack.runMode);
-            session.setInvalid(ack.invalid);
-            asyncHandler.handle(new AsyncResult<>(session));
-        });
     }
 
     @Override
