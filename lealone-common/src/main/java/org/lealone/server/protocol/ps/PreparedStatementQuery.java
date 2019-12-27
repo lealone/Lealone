@@ -23,30 +23,21 @@ import java.util.List;
 import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.QueryPacket;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.storage.PageKey;
 
-public class PreparedStatementQuery implements Packet {
+public class PreparedStatementQuery extends QueryPacket {
 
-    public final List<PageKey> pageKeys;
-    public final int resultId;
-    public final int maxRows;
-    public final int fetchSize;
-    public final boolean scrollable;
     public final int commandId;
     public final int size;
     public final Value[] parameters;
 
     public PreparedStatementQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize, boolean scrollable,
             int commandId, int size, Value[] parameters) {
-        this.pageKeys = pageKeys;
-        this.resultId = resultId;
-        this.maxRows = maxRows;
-        this.fetchSize = fetchSize;
-        this.scrollable = scrollable;
+        super(pageKeys, resultId, maxRows, fetchSize, scrollable);
         this.commandId = commandId;
         this.size = size;
         this.parameters = parameters;
@@ -64,17 +55,7 @@ public class PreparedStatementQuery implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        if (pageKeys == null) {
-            out.writeInt(0);
-        } else {
-            int size = pageKeys.size();
-            out.writeInt(size);
-            for (int i = 0; i < size; i++) {
-                PageKey pk = pageKeys.get(i);
-                out.writePageKey(pk);
-            }
-        }
-        out.writeInt(resultId).writeInt(maxRows).writeInt(fetchSize).writeBoolean(scrollable);
+        super.encode(out, version);
         out.writeInt(commandId);
         out.writeInt(size);
         for (int i = 0; i < size; i++) {

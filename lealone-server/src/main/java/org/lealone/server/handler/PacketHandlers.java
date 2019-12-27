@@ -21,10 +21,10 @@ import java.util.List;
 
 import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
-import org.lealone.db.session.Session;
 import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.QueryPacket;
 import org.lealone.server.protocol.ps.PreparedStatementQuery;
 import org.lealone.server.protocol.ps.PreparedStatementUpdate;
 import org.lealone.server.protocol.statement.StatementQuery;
@@ -63,180 +63,110 @@ public class PacketHandlers {
         StoragePacketHandlers.register();
     }
 
-    static abstract class UpdatePacketHandler<P extends StatementUpdate> implements PacketHandler<P> {
+    private static abstract class UpdateBase<P extends Packet> implements PacketHandler<P> {
+
+        protected void createYieldableUpdate(PacketDeliveryTask task, PreparedSQLStatement stmt,
+                List<PageKey> pageKeys) {
+            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
+                if (ar.isSucceeded()) {
+                    int updateCount = ar.getResult();
+                    task.conn.sendResponse(task, createAckPacket(task, updateCount));
+                } else {
+                    task.conn.sendError(task.session, task.packetId, ar.getCause());
+                }
+            });
+            yieldable.setPageKeys(pageKeys);
+            task.conn.addPreparedCommandToQueue(task.packetId, task.si, stmt, yieldable);
+        }
+
+        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
+            return new StatementUpdateAck(updateCount);
+        }
+    }
+
+    static abstract class UpdatePacketHandler<P extends StatementUpdate> extends UpdateBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet) {
-            final Session session = task.session;
-
             // 客户端的非Prepared语句不需要缓存
-            PreparedSQLStatement stmt = session.prepareStatement(packet.sql, -1);
+            PreparedSQLStatement stmt = task.session.prepareStatement(packet.sql, -1);
             // 非Prepared语句执行一次就结束，所以可以用packetId当唯一标识，一般用来执行客户端发起的取消操作
             stmt.setId(task.packetId);
-
-            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
-                if (ar.isSucceeded()) {
-                    int updateCount = ar.getResult();
-                    task.conn.sendResponse(task, createAckPacket(task, updateCount));
-                } else {
-                    task.conn.sendError(session, task.packetId, ar.getCause());
-                }
-            });
-            yieldable.setPageKeys(packet.pageKeys);
-            task.conn.addPreparedCommandToQueue(task.packetId, task.si, stmt, yieldable);
+            createYieldableUpdate(task, stmt, packet.pageKeys);
             return null;
-        }
-
-        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            return new StatementUpdateAck(updateCount);
         }
     }
 
-    static abstract class PreparedUpdatePacketHandler<P extends PreparedStatementUpdate> implements PacketHandler<P> {
+    static abstract class PreparedUpdatePacketHandler<P extends PreparedStatementUpdate> extends UpdateBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet) {
-            final Session session = task.session;
-
-            List<PageKey> pageKeys = packet.pageKeys;
             PreparedSQLStatement stmt = (PreparedSQLStatement) task.conn.getCache(packet.commandId);
             List<? extends CommandParameter> params = stmt.getParameters();
             for (int i = 0; i < packet.size; i++) {
                 CommandParameter p = params.get(i);
                 p.setValue(packet.parameters[i]);
             }
-
-            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableUpdate(ar -> {
-                if (ar.isSucceeded()) {
-                    int updateCount = ar.getResult();
-                    task.conn.sendResponse(task, createAckPacket(task, updateCount));
-                } else {
-                    task.conn.sendError(session, task.packetId, ar.getCause());
-                }
-            });
-            yieldable.setPageKeys(pageKeys);
-            task.conn.addPreparedCommandToQueue(task.packetId, task.si, stmt, yieldable);
+            createYieldableUpdate(task, stmt, packet.pageKeys);
             return null;
-        }
-
-        protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            return new StatementUpdateAck(updateCount);
         }
     }
 
-    static abstract class QueryPacketHandler<P extends StatementQuery> implements PacketHandler<P> {
+    private static abstract class QueryBase<P extends QueryPacket> implements PacketHandler<P> {
+
+        protected void createYieldableQuery(PacketDeliveryTask task, PreparedSQLStatement stmt, QueryPacket packet) {
+
+            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(packet.maxRows, packet.scrollable,
+                    ar -> {
+                        if (ar.isSucceeded()) {
+                            Result result = ar.getResult();
+                            sendResult(task, packet, result);
+                        } else {
+                            task.conn.sendError(task.session, task.packetId, ar.getCause());
+                        }
+                    });
+            yieldable.setPageKeys(packet.pageKeys);
+            task.conn.addPreparedCommandToQueue(task.packetId, task.si, stmt, yieldable);
+        }
+
+        protected void sendResult(PacketDeliveryTask task, QueryPacket packet, Result result) {
+            task.conn.addCache(packet.resultId, result);
+            try {
+                int rowCount = result.getRowCount();
+                int fetch = packet.fetchSize;
+                if (rowCount != -1)
+                    fetch = Math.min(rowCount, packet.fetchSize);
+                task.conn.sendResponse(task, createAckPacket(task, result, rowCount, fetch));
+            } catch (Exception e) {
+                task.conn.sendError(task.session, task.packetId, e);
+            }
+        }
+
+        protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
+            return new StatementQueryAck(result, rowCount, fetch);
+        }
+    }
+
+    static abstract class QueryPacketHandler<P extends StatementQuery> extends QueryBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet) {
-            final Session session = task.session;
-            final int sessionId = task.sessionId;
-
-            int resultId = packet.resultId;
-            int maxRows = packet.maxRows;
-            int fetchSize = packet.fetchSize;
-            boolean scrollable = packet.scrollable;
-
-            List<PageKey> pageKeys = packet.pageKeys;
             // 客户端的非Prepared语句不需要缓存
-            PreparedSQLStatement stmt = session.prepareStatement(packet.sql, fetchSize);
+            PreparedSQLStatement stmt = task.session.prepareStatement(packet.sql, packet.fetchSize);
             stmt.setId(task.packetId);
-            stmt.setFetchSize(fetchSize);
-
-            // 允许其他扩展跳过正常的流程
-            if (executeQueryAsync(task.packetId, task.packetType, session, sessionId, stmt, resultId, fetchSize)) {
-                return null;
-            }
-            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, ar -> {
-                if (ar.isSucceeded()) {
-                    Result result = ar.getResult();
-                    sendResult(task, task.packetId, task.packetType, session, sessionId, result, resultId, fetchSize);
-                } else {
-                    task.conn.sendError(session, task.packetId, ar.getCause());
-                }
-            });
-            yieldable.setPageKeys(pageKeys);
-            task.conn.addPreparedCommandToQueue(task.packetId, task.si, stmt, yieldable);
+            createYieldableQuery(task, stmt, packet);
             return null;
-        }
-
-        protected boolean executeQueryAsync(int packetId, int packetType, Session session, int sessionId,
-                PreparedSQLStatement stmt, int resultId, int fetchSize) {
-            return false;
-        }
-
-        protected void sendResult(PacketDeliveryTask task, int packetId, int packetType, Session session, int sessionId,
-                Result result, int resultId, int fetchSize) {
-            task.conn.addCache(resultId, result);
-            try {
-                int rowCount = result.getRowCount();
-                int fetch = fetchSize;
-                if (rowCount != -1)
-                    fetch = Math.min(rowCount, fetchSize);
-                task.conn.sendResponse(task, createAckPacket(task, result, rowCount, fetch));
-            } catch (Exception e) {
-                task.conn.sendError(session, packetId, e);
-            }
-        }
-
-        protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
-            return new StatementQueryAck(result, rowCount, fetch);
         }
     }
 
-    static abstract class PreparedQueryPacketHandler<P extends PreparedStatementQuery> implements PacketHandler<P> {
+    static abstract class PreparedQueryPacketHandler<P extends PreparedStatementQuery> extends QueryBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet) {
-            final Session session = task.session;
-            final int sessionId = task.sessionId;
-
-            int resultId = packet.resultId;
-            int maxRows = packet.maxRows;
-            int fetchSize = packet.fetchSize;
-            boolean scrollable = packet.scrollable;
-
-            List<PageKey> pageKeys = packet.pageKeys;
             PreparedSQLStatement stmt = (PreparedSQLStatement) task.conn.getCache(packet.commandId);
             List<? extends CommandParameter> params = stmt.getParameters();
             for (int i = 0; i < packet.size; i++) {
                 CommandParameter p = params.get(i);
                 p.setValue(packet.parameters[i]);
             }
-
-            // 允许其他扩展跳过正常的流程
-            if (executeQueryAsync(task.packetId, task.packetType, session, sessionId, stmt, resultId, fetchSize)) {
-                return null;
-            }
-            PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(maxRows, scrollable, ar -> {
-                if (ar.isSucceeded()) {
-                    Result result = ar.getResult();
-                    sendResult(task, task.packetId, task.packetType, session, sessionId, result, resultId, fetchSize);
-                } else {
-                    task.conn.sendError(session, task.packetId, ar.getCause());
-                }
-            });
-            yieldable.setPageKeys(pageKeys);
-            task.conn.addPreparedCommandToQueue(task.packetId, task.si, stmt, yieldable);
+            createYieldableQuery(task, stmt, packet);
             return null;
-        }
-
-        protected boolean executeQueryAsync(int packetId, int packetType, Session session, int sessionId,
-                PreparedSQLStatement stmt, int resultId, int fetchSize) {
-            return false;
-        }
-
-        protected void sendResult(PacketDeliveryTask task, int packetId, int packetType, Session session, int sessionId,
-                Result result, int resultId, int fetchSize) {
-            task.conn.addCache(resultId, result);
-            try {
-                int rowCount = result.getRowCount();
-                int fetch = fetchSize;
-                if (rowCount != -1)
-                    fetch = Math.min(rowCount, fetchSize);
-                task.conn.sendResponse(task, createAckPacket(task, result, rowCount, fetch));
-            } catch (Exception e) {
-                task.conn.sendError(session, packetId, e);
-            }
-        }
-
-        protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
-            return new StatementQueryAck(result, rowCount, fetch);
         }
     }
 }

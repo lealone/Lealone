@@ -22,27 +22,18 @@ import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.QueryPacket;
 import org.lealone.storage.PageKey;
 
-public class StatementQuery implements Packet {
+public class StatementQuery extends QueryPacket {
 
-    public final List<PageKey> pageKeys;
-    public final int resultId;
-    public final int maxRows;
-    public final int fetchSize;
-    public final boolean scrollable;
     public final String sql;
 
     public StatementQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize, boolean scrollable,
             String sql) {
-        this.pageKeys = pageKeys;
-        this.resultId = resultId;
-        this.maxRows = maxRows;
-        this.fetchSize = fetchSize;
-        this.scrollable = scrollable;
+        super(pageKeys, resultId, maxRows, fetchSize, scrollable);
         this.sql = sql;
     }
 
@@ -58,17 +49,8 @@ public class StatementQuery implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        if (pageKeys == null) {
-            out.writeInt(0);
-        } else {
-            int size = pageKeys.size();
-            out.writeInt(size);
-            for (int i = 0; i < size; i++) {
-                PageKey pk = pageKeys.get(i);
-                out.writePageKey(pk);
-            }
-        }
-        out.writeInt(resultId).writeInt(maxRows).writeInt(fetchSize).writeBoolean(scrollable).writeString(sql);
+        super.encode(out, version);
+        out.writeString(sql);
     }
 
     public static final Decoder decoder = new Decoder();
