@@ -21,15 +21,12 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.Pair;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
-import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
@@ -60,7 +57,7 @@ public class TcpServerConnection extends TransferConnection {
     // 然后由调度器根据优先级从多个队列中依次取出执行。
     private final ConcurrentHashMap<Integer, SessionInfo> sessions = new ConcurrentHashMap<>();
     private final TcpServer tcpServer;
-    private final ExpiringMap<Integer, AutoCloseable> cache;
+    private final ExpiringMap<Integer, AutoCloseable> cache; // 缓存PreparedStatement和结果集
     private LobCache lobCache; // 大多数情况下都不使用lob，所以延迟初始化
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, boolean isServer) {
@@ -80,46 +77,31 @@ public class TcpServerConnection extends TransferConnection {
                 });
     }
 
-    /**
-     * @see org.lealone.net.TcpClientConnection#writeInitPacket
-     */
-    private void readInitPacket(TransferInputStream in, int packetId, int sessionId) {
-        try {
-            int minClientVersion = in.readInt();
-            if (minClientVersion < Constants.TCP_PROTOCOL_VERSION_MIN) {
-                throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion,
-                        "" + Constants.TCP_PROTOCOL_VERSION_MIN);
-            } else if (minClientVersion > Constants.TCP_PROTOCOL_VERSION_MAX) {
-                throw DbException.get(ErrorCode.DRIVER_VERSION_ERROR_2, "" + minClientVersion,
-                        "" + Constants.TCP_PROTOCOL_VERSION_MAX);
-            }
-            int clientVersion;
-            int maxClientVersion = in.readInt();
-            if (maxClientVersion >= Constants.TCP_PROTOCOL_VERSION_MAX) {
-                clientVersion = Constants.TCP_PROTOCOL_VERSION_CURRENT;
+    // 这个方法是由网络事件循环线程执行的
+    @Override
+    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
+        // 这里的sessionId是客户端session的id，每个数据包都会带这个字段
+        int sessionId = in.readInt();
+        SessionInfo si = sessions.get(sessionId);
+        if (si == null) {
+            // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
+            // 之后此session相关的请求包和命令都由固定的调度器负责处理。
+            if (packetType == PacketType.SESSION_INIT.value) {
+                ScheduleService.getScheduler().handle(() -> {
+                    readInitPacket(in, packetId, sessionId);
+                });
             } else {
-                clientVersion = minClientVersion;
+                sessionNotFound(packetId, sessionId);
             }
-
-            ConnectionInfo ci = createConnectionInfo(in);
-            Session session = createSession(ci, sessionId);
-            session.setProtocolVersion(clientVersion);
-            in.setSession(session);
-
-            TransferOutputStream out = createTransferOutputStream(session);
-            out.writeResponseHeader(packetId, Session.STATUS_OK);
-            out.writeInt(clientVersion);
-            out.writeBoolean(session.isAutoCommit());
-            out.writeString(session.getTargetNodes());
-            out.writeString(session.getRunMode().toString());
-            out.writeBoolean(session.isInvalid());
-            out.flush();
-        } catch (Throwable e) {
-            sendError(null, packetId, e);
+        } else {
+            si.updateLastTime();
+            in.setSession(si.session);
+            PacketDeliveryTask task = new PacketDeliveryTask(this, in, packetId, packetType, si);
+            si.getScheduler().handle(task);
         }
     }
 
-    void readInitPacketV2(TransferInputStream in, int packetId, int sessionId) {
+    private void readInitPacket(TransferInputStream in, int packetId, int sessionId) {
         try {
             SessionInit packet = SessionInit.decoder.decode(in, 0);
             ConnectionInfo ci = packet.ci;
@@ -142,38 +124,9 @@ public class TcpServerConnection extends TransferConnection {
             ack.encode(out, packet.clientVersion);
             out.flush();
         } catch (Throwable e) {
+            logger.error("Failed to create session, packetId: " + packetId + ", sessionId: " + sessionId, e);
             sendError(null, packetId, e);
         }
-    }
-
-    private ConnectionInfo createConnectionInfo(TransferInputStream in) throws IOException {
-        String dbName = in.readString();
-        String originalURL = in.readString();
-        String userName = in.readString();
-        ConnectionInfo ci = new ConnectionInfo(originalURL, dbName);
-
-        ci.setUserName(userName);
-        ci.setUserPasswordHash(in.readBytes());
-        ci.setFilePasswordHash(in.readBytes());
-        ci.setFileEncryptionKey(in.readBytes());
-
-        int len = in.readInt();
-        for (int i = 0; i < len; i++) {
-            String key = in.readString();
-            String value = in.readString();
-            ci.addProperty(key, value, true); // 一些不严谨的client driver可能会发送重复的属性名
-        }
-        ci.initTraceProperty();
-
-        String baseDir = tcpServer.getBaseDir();
-        if (baseDir == null) {
-            baseDir = SysProperties.getBaseDirSilently();
-        }
-        // 强制使用服务器端的基目录
-        if (baseDir != null) {
-            ci.setBaseDir(baseDir);
-        }
-        return ci;
     }
 
     private Session createSession(ConnectionInfo ci, int sessionId) {
@@ -192,10 +145,6 @@ public class TcpServerConnection extends TransferConnection {
         return session;
     }
 
-    private SessionInfo getSessionInfo(int sessionId) {
-        return sessions.get(sessionId);
-    }
-
     private void sessionNotFound(int packetId, int sessionId) {
         String msg = "Server session not found, maybe closed or timeout. client session id: " + sessionId;
         RuntimeException e = new RuntimeException(msg);
@@ -205,7 +154,7 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     public void closeSession(int packetId, int sessionId) {
-        SessionInfo si = getSessionInfo(sessionId);
+        SessionInfo si = sessions.get(sessionId);
         if (si != null) {
             closeSession(si);
         } else {
@@ -233,6 +182,7 @@ public class TcpServerConnection extends TransferConnection {
         }
         sessions.clear();
         cache.close();
+        lobCache = null;
     }
 
     private static int getStatus(Session session) {
@@ -243,11 +193,6 @@ public class TcpServerConnection extends TransferConnection {
         } else {
             return Session.STATUS_OK;
         }
-    }
-
-    protected static void writeResponseHeader(TransferOutputStream out, Session session, int packetId)
-            throws IOException {
-        out.writeResponseHeader(packetId, getStatus(session));
     }
 
     public void addPreparedCommandToQueue(int packetId, SessionInfo si, PreparedSQLStatement stmt,
@@ -268,35 +213,6 @@ public class TcpServerConnection extends TransferConnection {
             out.flush();
         } catch (Exception e) {
             sendError(session, task.packetId, e);
-        }
-    }
-
-    // 这个方法是由网络事件循环线程执行的
-    @Override
-    protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
-        // 这里的sessionId是客户端session的id，每个数据包都会带这个字段
-        int sessionId = in.readInt();
-        SessionInfo si = getSessionInfo(sessionId);
-        if (si == null) {
-            // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
-            // 之后此session相关的请求包和命令都由固定的调度器负责处理。
-            if (packetType == PacketType.SESSION_INIT.value) {
-                ScheduleService.getScheduler().handle(() -> {
-                    try {
-                        readInitPacket(in, packetId, sessionId);
-                    } catch (Throwable e) {
-                        logger.error("Failed to create session, packetId: " + packetId, e);
-                        sendError(null, packetId, e);
-                    }
-                });
-            } else {
-                sessionNotFound(packetId, sessionId);
-            }
-        } else {
-            si.updateLastTime();
-            in.setSession(si.session);
-            PacketDeliveryTask task = new PacketDeliveryTask(this, in, packetId, packetType, si);
-            si.getScheduler().handle(task);
         }
     }
 

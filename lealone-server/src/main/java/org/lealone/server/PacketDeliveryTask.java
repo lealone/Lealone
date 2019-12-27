@@ -22,7 +22,6 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.TransferInputStream;
-import org.lealone.net.TransferOutputStream;
 import org.lealone.server.Scheduler.SessionInfo;
 import org.lealone.server.handler.PacketHandler;
 import org.lealone.server.handler.PacketHandlers;
@@ -74,10 +73,7 @@ public class PacketDeliveryTask implements AsyncTask {
         if (handler != null) {
             Packet ack = handler.handle(this, packet);
             if (ack != null) {
-                TransferOutputStream out = conn.createTransferOutputStream(session);
-                TcpServerConnection.writeResponseHeader(out, session, packetId);
-                ack.encode(out, version);
-                out.flush();
+                conn.sendResponse(this, ack);
             }
         } else {
             logger.warn("Unknow packet type: {}", packetType);

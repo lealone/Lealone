@@ -24,25 +24,15 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.session.SessionCancelStatement;
 import org.lealone.server.protocol.session.SessionClose;
-import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
 import org.lealone.sql.PreparedSQLStatement;
 
 class SessionPacketHandlers extends PacketHandlers {
 
     static void register() {
-        register(PacketType.SESSION_INIT, new Init());
         register(PacketType.SESSION_CANCEL_STATEMENT, new CancelStatement());
         register(PacketType.SESSION_SET_AUTO_COMMIT, new SetAutoCommit());
         register(PacketType.SESSION_CLOSE, new Close());
-    }
-
-    // TODO
-    private static class Init implements PacketHandler<SessionInit> {
-        @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, SessionInit packet) {
-            return null;
-        }
     }
 
     private static class CancelStatement implements PacketHandler<SessionCancelStatement> {
