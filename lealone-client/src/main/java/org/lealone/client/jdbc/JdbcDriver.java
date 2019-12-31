@@ -17,9 +17,8 @@ import java.util.logging.Logger;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
-import org.lealone.db.session.Session;
+import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.Future;
 
 /**
  * The database driver. An application should not use this class directly. 
@@ -159,37 +158,11 @@ public class JdbcDriver implements java.sql.Driver {
         }
     }
 
-    public static JdbcConnection getConnection(String url) throws SQLException {
-        Properties info = new Properties();
-        return getConnection(url, info);
+    public static Future<JdbcConnection> getConnection(String url) {
+        return getConnection(url, null);
     }
 
-    public static JdbcConnection getConnection(String url, String user, String password) throws SQLException {
-        Properties info = new Properties();
-        if (user != null) {
-            info.put("user", user);
-        }
-        if (password != null) {
-            info.put("password", password);
-        }
-        return getConnection(url, info);
-    }
-
-    public static JdbcConnection getConnection(String url, Properties info) throws SQLException {
-        if (info == null) {
-            info = new Properties();
-        }
-        return new JdbcConnection(url, info);
-    }
-
-    public static void getConnectionAsync(String url, AsyncHandler<AsyncResult<JdbcConnection>> handler)
-            throws SQLException {
-        Properties info = new Properties();
-        getConnectionAsync(url, info, handler);
-    }
-
-    public static void getConnectionAsync(String url, String user, String password,
-            AsyncHandler<AsyncResult<JdbcConnection>> handler) throws SQLException {
+    public static Future<JdbcConnection> getConnection(String url, String user, String password) {
         Properties info = new Properties();
         if (user != null) {
             info.put("user", user);
@@ -197,27 +170,25 @@ public class JdbcDriver implements java.sql.Driver {
         if (password != null) {
             info.put("password", password);
         }
-        getConnectionAsync(url, info, handler);
+        return getConnection(url, info);
     }
 
-    public static void getConnectionAsync(String url, Properties info,
-            AsyncHandler<AsyncResult<JdbcConnection>> handler) throws SQLException {
+    public static Future<JdbcConnection> getConnection(String url, Properties info) {
         if (info == null) {
             info = new Properties();
         }
+        AsyncCallback<JdbcConnection> ac = new AsyncCallback<>();
         try {
             ConnectionInfo ci = new ConnectionInfo(url, info);
-            ci.getSessionFactory().createSessionAsync(ci, ar -> {
-                if (ar.isSucceeded()) {
-                    Session s = ar.getResult();
-                    JdbcConnection conn = new JdbcConnection(s, ci);
-                    handler.handle(new AsyncResult<>(conn));
-                } else {
-                    handler.handle(new AsyncResult<>(ar.getCause()));
-                }
+            ci.getSessionFactory().createSession(ci).onSuccess(s -> {
+                JdbcConnection conn = new JdbcConnection(s, ci);
+                ac.setAsyncResult(conn);
+            }).onFailure(t -> {
+                ac.setAsyncResult(t);
             });
-        } catch (Exception e) {
-            handler.handle(new AsyncResult<>(e));
+        } catch (Throwable t) {
+            ac.setAsyncResult(t);
         }
+        return ac;
     }
 }

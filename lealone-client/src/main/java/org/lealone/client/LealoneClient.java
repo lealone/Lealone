@@ -17,43 +17,26 @@
  */
 package org.lealone.client;
 
-import java.sql.SQLException;
 import java.util.Properties;
 
 import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.client.jdbc.JdbcDriver;
 import org.lealone.client.storage.ClientStorage;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.storage.Storage;
 
 public class LealoneClient {
 
-    public static JdbcConnection getConnection(String url) throws SQLException {
+    public static Future<JdbcConnection> getConnection(String url) {
         return JdbcDriver.getConnection(url);
     }
 
-    public static JdbcConnection getConnection(String url, String user, String password) throws SQLException {
+    public static Future<JdbcConnection> getConnection(String url, String user, String password) {
         return JdbcDriver.getConnection(url, user, password);
     }
 
-    public static JdbcConnection getConnection(String url, Properties info) throws SQLException {
+    public static Future<JdbcConnection> getConnection(String url, Properties info) {
         return JdbcDriver.getConnection(url, info);
-    }
-
-    public static void getConnectionAsync(String url, AsyncHandler<AsyncResult<JdbcConnection>> handler)
-            throws SQLException {
-        JdbcDriver.getConnectionAsync(url, handler);
-    }
-
-    public static void getConnectionAsync(String url, String user, String password,
-            AsyncHandler<AsyncResult<JdbcConnection>> handler) throws SQLException {
-        JdbcDriver.getConnectionAsync(url, user, password, handler);
-    }
-
-    public static void getConnectionAsync(String url, Properties info,
-            AsyncHandler<AsyncResult<JdbcConnection>> handler) throws SQLException {
-        JdbcDriver.getConnectionAsync(url, info, handler);
     }
 
     public static Storage getStorage(String url) {

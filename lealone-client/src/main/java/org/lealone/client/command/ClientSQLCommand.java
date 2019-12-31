@@ -13,11 +13,12 @@ import org.lealone.client.result.ClientResult;
 import org.lealone.client.result.RowCountDeterminedClientResult;
 import org.lealone.client.result.RowCountUndeterminedClientResult;
 import org.lealone.client.session.ClientSession;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.CommandParameter;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.net.TransferInputStream;
+import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.batch.BatchStatementUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DistributedTransactionQuery;
@@ -77,27 +78,11 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public Result executeQuery(int maxRows) {
-        return query(maxRows, false, null, null);
+    public Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+        return query(maxRows, scrollable, pageKeys);
     }
 
-    @Override
-    public Result executeQuery(int maxRows, boolean scrollable) {
-        return query(maxRows, scrollable, null, null);
-    }
-
-    @Override
-    public Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
-        return query(maxRows, scrollable, pageKeys, null);
-    }
-
-    @Override
-    public void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        query(maxRows, scrollable, null, handler);
-    }
-
-    protected Result query(int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Result>> handler) {
+    protected Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         isQuery = true;
         int fetch;
         if (scrollable) {
@@ -109,42 +94,18 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
             int packetId = session.getNextId();
             commandId = packetId;
             int resultId = session.getNextId();
-
+            Packet packet;
             if (isDistributed()) {
-                DistributedTransactionQuery packet = new DistributedTransactionQuery(pageKeys, resultId, maxRows, fetch,
-                        scrollable, sql);
-                if (handler != null) {
-                    session.<DistributedTransactionQueryAck> sendAsync(packet, packetId, ack -> {
-                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                        ClientResult result;
-                        try {
-                            result = getQueryResult(ack, fetch, resultId);
-                            handler.handle(new AsyncResult<Result>(result));
-                        } catch (IOException e) {
-                            handler.handle(new AsyncResult<Result>(e));
-                        }
-                    });
-                } else {
-                    DistributedTransactionQueryAck ack = session.sendSync(packet, packetId);
+                packet = new DistributedTransactionQuery(pageKeys, resultId, maxRows, fetch, scrollable, sql);
+                return session.<Result, DistributedTransactionQueryAck> send(packet, packetId, ack -> {
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                     return getQueryResult(ack, fetch, resultId);
-                }
+                });
             } else {
-                StatementQuery packet = new StatementQuery(pageKeys, resultId, maxRows, fetch, scrollable, sql);
-                if (handler != null) {
-                    session.<StatementQueryAck> sendAsync(packet, packetId, ack -> {
-                        ClientResult result;
-                        try {
-                            result = getQueryResult(ack, fetch, resultId);
-                            handler.handle(new AsyncResult<Result>(result));
-                        } catch (IOException e) {
-                            handler.handle(new AsyncResult<Result>(e));
-                        }
-                    });
-                } else {
-                    StatementQueryAck ack = session.sendSync(packet, packetId);
+                packet = new StatementQuery(pageKeys, resultId, maxRows, fetch, scrollable, sql);
+                return session.<Result, StatementQueryAck> send(packet, packetId, ack -> {
                     return getQueryResult(ack, fetch, resultId);
-                }
+                });
             }
         } catch (Exception e) {
             session.handleException(e);
@@ -152,16 +113,20 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
         return null;
     }
 
-    protected ClientResult getQueryResult(StatementQueryAck ack, int fetch, int resultId) throws IOException {
+    protected ClientResult getQueryResult(StatementQueryAck ack, int fetch, int resultId) {
         int columnCount = ack.columnCount;
         int rowCount = ack.rowCount;
-        ClientResult result;
-        if (rowCount < 0)
-            result = new RowCountUndeterminedClientResult(session, (TransferInputStream) ack.in, resultId, columnCount,
-                    fetch);
-        else
-            result = new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, resultId, columnCount,
-                    rowCount, fetch);
+        ClientResult result = null;
+        try {
+            if (rowCount < 0)
+                result = new RowCountUndeterminedClientResult(session, (TransferInputStream) ack.in, resultId,
+                        columnCount, fetch);
+            else
+                result = new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, resultId,
+                        columnCount, rowCount, fetch);
+        } catch (IOException e) {
+            throw DbException.convert(e);
+        }
         return result;
     }
 
@@ -170,61 +135,34 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public int executeUpdate() {
-        return update(null, null, null);
+    public Future<Integer> executeUpdate(List<PageKey> pageKeys) {
+        return update(null, pageKeys);
     }
 
     @Override
-    public int executeUpdate(List<PageKey> pageKeys) {
-        return update(null, pageKeys, null);
+    public Future<Integer> executeReplicaUpdate(String replicationName) {
+        return update(replicationName, null);
     }
 
-    @Override
-    public void executeReplicaUpdateAsync(String replicationName, AsyncHandler<AsyncResult<Integer>> handler) {
-        update(replicationName, null, handler);
-    }
-
-    @Override
-    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        update(null, null, handler);
-    }
-
-    protected int update(String replicationName, List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
-        try {
-            int packetId = session.getNextId();
-            commandId = packetId;
-
-            if (isDistributed()) {
-                DistributedTransactionUpdate packet = new DistributedTransactionUpdate(pageKeys, sql);
-                if (handler != null) {
-                    session.<DistributedTransactionUpdateAck> sendAsync(packet, packetId, ack -> {
-                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                        handler.handle(new AsyncResult<Integer>(ack.updateCount));
-                    });
-                } else {
-                    DistributedTransactionUpdateAck ack = session.sendSync(packet, packetId);
-                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                    return ack.updateCount;
-                }
-            } else {
-                StatementUpdate packet;
-                if (replicationName != null)
-                    packet = new ReplicationUpdate(pageKeys, sql, replicationName);
-                else
-                    packet = new StatementUpdate(pageKeys, sql);
-                if (handler != null) {
-                    session.<StatementUpdateAck> sendAsync(packet, packetId, ack -> {
-                        handler.handle(new AsyncResult<Integer>(ack.updateCount));
-                    });
-                } else {
-                    StatementUpdateAck ack = session.sendSync(packet, packetId);
-                    return ack.updateCount;
-                }
-            }
-        } catch (Exception e) {
-            session.handleException(e);
+    protected Future<Integer> update(String replicationName, List<PageKey> pageKeys) {
+        int packetId = session.getNextId();
+        commandId = packetId;
+        Packet packet;
+        if (isDistributed()) {
+            packet = new DistributedTransactionUpdate(pageKeys, sql);
+            return session.<Integer, DistributedTransactionUpdateAck> send(packet, packetId, ack -> {
+                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ack.updateCount;
+            });
+        } else {
+            if (replicationName != null)
+                packet = new ReplicationUpdate(pageKeys, sql, replicationName);
+            else
+                packet = new StatementUpdate(pageKeys, sql);
+            return session.<Integer, StatementUpdateAck> send(packet, packetId, ack -> {
+                return ack.updateCount;
+            });
         }
-        return 0;
     }
 
     @Override
@@ -253,7 +191,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     @Override
     public void replicaCommit(long validKey, boolean autoCommit) {
         try {
-            session.sendAsync(new ReplicationCommit(validKey, autoCommit));
+            session.send(new ReplicationCommit(validKey, autoCommit));
         } catch (Exception e) {
             session.getTrace().error(e, "replicationCommit");
         }
@@ -262,7 +200,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     @Override
     public void replicaRollback() {
         try {
-            session.sendAsync(new ReplicationRollback());
+            session.send(new ReplicationRollback());
         } catch (Exception e) {
             session.getTrace().error(e, "replicationRollback");
         }
@@ -271,9 +209,9 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     public int[] executeBatchSQLCommands(List<String> batchCommands) {
         commandId = session.getNextId();
         try {
-            BatchStatementUpdateAck ack = session
-                    .sendSync(new BatchStatementUpdate(batchCommands.size(), batchCommands), commandId);
-            return ack.results;
+            Future<BatchStatementUpdateAck> ack = session
+                    .send(new BatchStatementUpdate(batchCommands.size(), batchCommands), commandId);
+            return ack.get().results;
         } catch (Exception e) {
             session.handleException(e);
         }

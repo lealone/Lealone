@@ -87,7 +87,7 @@ public class SQLRouter {
         SQLCommand c = null;
         try {
             c = rs.createSQLCommand(sql, -1);
-            return c.executeUpdate();
+            return c.executeUpdate().get();
         } catch (Exception e) {
             throw DbException.convert(e);
         } finally {
@@ -136,7 +136,7 @@ public class SQLRouter {
         rs.setAutoCommit(currentSession.isAutoCommit());
         rs.setRpcTimeout(m.getRpcTimeout());
         SQLCommand c = rs.createSQLCommand(defineStatement.getSQL(), -1);
-        c.executeUpdateAsync(asyncHandler);
+        c.executeUpdate().onComplete(asyncHandler);
         return 0;
     }
 
@@ -242,7 +242,7 @@ public class SQLRouter {
             commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
             SQLCommand c = commands[i];
             callables.add(() -> {
-                return c.executeUpdate(pageKeys);
+                return c.executeUpdate(pageKeys).get();
             });
             i++;
         }
@@ -301,7 +301,7 @@ public class SQLRouter {
                 commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
                 SQLCommand c = commands[i];
                 callables.add(() -> {
-                    return c.executeQuery(maxRows, false, pageKeys);
+                    return c.executeQuery(maxRows, false, pageKeys).get();
                 });
                 i++;
             }

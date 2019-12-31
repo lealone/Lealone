@@ -119,8 +119,9 @@ public class TcpClientConnection extends TransferConnection {
             return;
         }
         if (e != null)
-            ac.setDbException(e);
-        ac.run(in);
+            ac.setAsyncResult(e);
+        else
+            ac.run(in);
         if (newTargetNodes != null)
             session.runModeChanged(newTargetNodes);
     }

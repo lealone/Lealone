@@ -19,39 +19,36 @@ package org.lealone.db.async;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.net.NetInputStream;
 
-@SuppressWarnings("rawtypes")
-public class AsyncCallback<T> {
+public class AsyncCallback<T> implements Future<T> {
 
-    protected T result;
-    protected DbException e;
-    protected CountDownLatch latch = new CountDownLatch(1);
+    protected volatile boolean runEnd;
+    protected volatile AsyncHandler<AsyncResult<T>> completeHandler;
+    protected volatile AsyncHandler<T> successHandler;
+    protected volatile AsyncHandler<Throwable> failureHandler;
+    protected volatile AsyncResult<T> asyncResult;
 
-    protected AsyncHandler ah;
-    protected boolean runEnd;
+    protected final AtomicReference<LatchObject> latchObjectRef = new AtomicReference<>();
+
+    private static class LatchObject {
+        final CountDownLatch latch;
+
+        public LatchObject(CountDownLatch latch) {
+            this.latch = latch;
+        }
+    }
 
     public AsyncCallback() {
     }
 
-    public void setAsyncHandler(AsyncHandler ah) {
-        this.ah = ah;
-    }
-
-    public void setDbException(DbException e) {
-        this.e = e;
-    }
-
     public void setDbException(DbException e, boolean cancel) {
-        this.e = e;
+        setAsyncResult(e);
         if (cancel)
-            latch.countDown();
-    }
-
-    public void setResult(T result) {
-        this.result = result;
+            countDown();
     }
 
     public T getResult() {
@@ -59,8 +56,7 @@ public class AsyncCallback<T> {
     }
 
     public T getResult(long timeoutMillis) {
-        await(timeoutMillis);
-        return result;
+        return await(timeoutMillis);
     }
 
     public void await() {
@@ -68,44 +64,113 @@ public class AsyncCallback<T> {
     }
 
     public T await(long timeoutMillis) {
-        try {
-            if (timeoutMillis > 0)
-                latch.await(timeoutMillis, TimeUnit.MILLISECONDS);
-            else
-                latch.await();
-            if (e != null)
-                throw e;
+        if (latchObjectRef.compareAndSet(null, new LatchObject(new CountDownLatch(1)))) {
+            CountDownLatch latch = latchObjectRef.get().latch;
+            try {
+                if (timeoutMillis > 0)
+                    latch.await(timeoutMillis, TimeUnit.MILLISECONDS);
+                else
+                    latch.await();
+                if (asyncResult != null && asyncResult.isFailed())
+                    throw DbException.convert(asyncResult.getCause());
 
-            // 如果没有执行过run，抛出合适的异常
-            if (!runEnd) {
-                throw new RuntimeException("time out");
+                // 如果没有执行过run，抛出合适的异常
+                if (!runEnd) {
+                    throw new RuntimeException("time out");
+                }
+            } catch (InterruptedException e) {
+                throw DbException.convert(e);
             }
-        } catch (InterruptedException e) {
-            throw DbException.convert(e);
+            if (asyncResult != null)
+                return asyncResult.getResult();
+            else
+                return null;
+        } else {
+            if (asyncResult.isFailed())
+                throw DbException.convert(asyncResult.getCause());
+            else
+                return asyncResult.getResult();
         }
-        return result;
     }
 
-    @SuppressWarnings("unchecked")
     public final void run(NetInputStream in) {
         // 放在最前面，不能放在最后面，
         // 否则调用了countDown，但是在设置runEnd为true前，调用await的线程读到的是false就会抛异常
         runEnd = true;
-        if (e == null) {
+        if (asyncResult == null) {
             try {
                 runInternal(in);
             } catch (Throwable t) {
-                e = DbException.convert(t);
+                setAsyncResult(t);
             }
-        } else if (ah != null) {
-            AsyncResult r = new AsyncResult();
-            r.setCause(e);
-            ah.handle(r);
         }
-        if (ah == null)
-            latch.countDown();
     }
 
     protected void runInternal(NetInputStream in) throws Exception {
+    }
+
+    @Override
+    public T get() {
+        return getResult();
+    }
+
+    @Override
+    public T get(long timeoutMillis) {
+        return getResult(timeoutMillis);
+    }
+
+    @Override
+    public Future<T> onSuccess(AsyncHandler<T> handler) {
+        successHandler = handler;
+        if (asyncResult != null && asyncResult.isSucceeded())
+            handler.handle(asyncResult.getResult());
+        return this;
+    }
+
+    @Override
+    public Future<T> onFailure(AsyncHandler<Throwable> handler) {
+        failureHandler = handler;
+        if (asyncResult != null && asyncResult.isFailed())
+            handler.handle(asyncResult.getCause());
+        return this;
+    }
+
+    @Override
+    public Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler) {
+        completeHandler = handler;
+        if (asyncResult != null)
+            handler.handle(asyncResult);
+        return this;
+    }
+
+    public void setAsyncResult(Throwable cause) {
+        setAsyncResult(new AsyncResult<>(cause));
+    }
+
+    public void setAsyncResult(T result) {
+        setAsyncResult(new AsyncResult<>(result));
+    }
+
+    public void setAsyncResult(AsyncResult<T> asyncResult) {
+        runEnd = true;
+        this.asyncResult = asyncResult;
+        try {
+            if (completeHandler != null)
+                completeHandler.handle(asyncResult);
+
+            if (successHandler != null && asyncResult != null && asyncResult.isSucceeded())
+                successHandler.handle(asyncResult.getResult());
+
+            if (failureHandler != null && asyncResult != null && asyncResult.isFailed())
+                failureHandler.handle(asyncResult.getCause());
+        } finally {
+            countDown();
+        }
+    }
+
+    private void countDown() {
+        if (!latchObjectRef.compareAndSet(null, new LatchObject(null))) {
+            latchObjectRef.get().latch.countDown();
+        }
     }
 }

@@ -41,7 +41,7 @@ public abstract class TransferConnection extends AsyncConnection {
     }
 
     public TransferOutputStream createTransferOutputStream(Session session) {
-        return new TransferOutputStream(this, session, writableChannel);
+        return new TransferOutputStream(session, writableChannel);
     }
 
     protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {

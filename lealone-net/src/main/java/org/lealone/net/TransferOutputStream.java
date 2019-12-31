@@ -21,7 +21,6 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -51,13 +50,11 @@ public class TransferOutputStream implements NetOutputStream {
     public static final byte REQUEST = 1;
     public static final byte RESPONSE = 2;
 
-    private final TransferConnection conn;
     private final Session session;
     private final DataOutputStream out;
     private final ResettableBufferOutputStream resettableOutputStream;
 
-    public TransferOutputStream(TransferConnection conn, Session session, WritableChannel writableChannel) {
-        this.conn = conn;
+    public TransferOutputStream(Session session, WritableChannel writableChannel) {
         this.session = session;
         resettableOutputStream = new ResettableBufferOutputStream(writableChannel, BUFFER_SIZE);
         out = new DataOutputStream(resettableOutputStream);
@@ -123,39 +120,9 @@ public class TransferOutputStream implements NetOutputStream {
      * Write pending changes.
      */
     public void flush() throws IOException {
-        checkSessionClosed();
-        resettableOutputStream.flush();
-    }
-
-    public void flush(int packetId, AsyncCallback<?> ac) throws IOException {
-        checkSessionClosed();
-        conn.addAsyncCallback(packetId, ac); // 要先注册回调再flush
-        resettableOutputStream.flush();
-    }
-
-    public void flushAndAwait(int packetId) throws IOException {
-        flushAndAwait(packetId, new AsyncCallback<Void>()); // 注意不能用静态实例
-    }
-
-    public <T> T flushAndAwait(int packetId, AsyncCallback<T> ac) throws IOException {
-        long timeoutMillis;
-        if (session != null)
-            timeoutMillis = session.getNetworkTimeout();
-        else
-            timeoutMillis = -1;
-        return flushAndAwait(packetId, timeoutMillis, ac);
-    }
-
-    public <T> T flushAndAwait(int packetId, long timeoutMillis, AsyncCallback<T> ac) throws IOException {
-        checkSessionClosed();
-        conn.addAsyncCallback(packetId, ac);
-        resettableOutputStream.flush();
-        return ac.await(timeoutMillis);
-    }
-
-    private void checkSessionClosed() {
         if (session != null) // 一些场景允许为null
             session.checkClosed();
+        resettableOutputStream.flush();
     }
 
     /**
@@ -312,6 +279,7 @@ public class TransferOutputStream implements NetOutputStream {
      *
      * @param v the value
      */
+    @Override
     public void writeValue(Value v) throws IOException {
         int type = v.getType();
         writeInt(type);

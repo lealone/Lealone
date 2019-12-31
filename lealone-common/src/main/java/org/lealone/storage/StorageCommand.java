@@ -20,20 +20,17 @@ package org.lealone.storage;
 import java.nio.ByteBuffer;
 
 import org.lealone.db.Command;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 
 public interface StorageCommand extends Command {
 
-    Object put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
-            AsyncHandler<AsyncResult<Object>> handler);
+    Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw);
 
-    Object get(String mapName, ByteBuffer key, AsyncHandler<AsyncResult<Object>> handler);
+    Future<Object> get(String mapName, ByteBuffer key);
 
-    Object append(String mapName, ByteBuffer value, AsyncHandler<AsyncResult<Object>> handler);
+    Future<Object> append(String mapName, ByteBuffer value);
 
-    LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan,
-            AsyncHandler<AsyncResult<LeafPageMovePlan>> handler);
+    Future<LeafPageMovePlan> prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan);
 
     void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage);
 
@@ -41,7 +38,7 @@ public interface StorageCommand extends Command {
 
     void removeLeafPage(String mapName, PageKey pageKey);
 
-    default ByteBuffer readRemotePage(String mapName, PageKey pageKey, AsyncHandler<AsyncResult<ByteBuffer>> handler) {
+    default Future<ByteBuffer> readRemotePage(String mapName, PageKey pageKey) {
         return null;
     }
 }

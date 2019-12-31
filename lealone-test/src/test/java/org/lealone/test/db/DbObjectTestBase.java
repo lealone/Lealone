@@ -45,17 +45,17 @@ public class DbObjectTestBase extends UnitTestBase {
         setEmbedded(true);
         addConnectionParameter("DATABASE_TO_UPPER", "false"); // 不转成大写
         ConnectionInfo ci = new ConnectionInfo(getURL(DB_NAME));
-        session = ServerSessionFactory.getInstance().createSession(ci);
+        session = (ServerSession) ServerSessionFactory.getInstance().createSession(ci).get();
         db = session.getDatabase();
         schema = db.findSchema(Constants.SCHEMA_MAIN);
     }
 
     public int executeUpdate(String sql) {
-        return session.prepareStatementLocal(sql).executeUpdate();
+        return session.prepareStatementLocal(sql).executeUpdate().get();
     }
 
     public Result executeQuery(String sql) {
-        return session.prepareStatementLocal(sql).executeQuery(0, false);
+        return session.prepareStatementLocal(sql).executeQuery(0, false).get();
     }
 
     // index从1开始

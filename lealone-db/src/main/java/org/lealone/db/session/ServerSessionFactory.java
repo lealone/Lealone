@@ -13,8 +13,7 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.SetTypes;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.net.NetNode;
 
@@ -38,14 +37,12 @@ public class ServerSessionFactory implements SessionFactory {
     private ServerSessionFactory() {
     }
 
-    // 覆盖默认实现，返回的是ServerSession，避免调用者在使用ServerSession时产生不必要的类型转换
     @Override
-    public ServerSession createSession(String url) {
-        return createSession(new ConnectionInfo(url));
+    public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
+        return Future.succeededFuture(createServerSession(ci));
     }
 
-    @Override
-    public ServerSession createSession(ConnectionInfo ci) {
+    private ServerSession createServerSession(ConnectionInfo ci) {
         String dbName = ci.getDatabaseShortName();
         // 内嵌数据库，如果不存在，则自动创建
         if (ci.isEmbedded() && LealoneDatabase.getInstance().findDatabase(dbName) == null) {
@@ -54,7 +51,7 @@ public class ServerSessionFactory implements SessionFactory {
         try {
             ServerSession session;
             for (int i = 0;; i++) {
-                session = createSession(dbName, ci);
+                session = createServerSession(dbName, ci);
                 if (session != null) {
                     break;
                 }
@@ -86,7 +83,7 @@ public class ServerSessionFactory implements SessionFactory {
         }
     }
 
-    private ServerSession createSession(String dbName, ConnectionInfo ci) {
+    private ServerSession createServerSession(String dbName, ConnectionInfo ci) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
         String targetNodes;
         if (ci.isEmbedded()) {
@@ -236,12 +233,5 @@ public class ServerSessionFactory implements SessionFactory {
                 throw DbException.get(ErrorCode.WRONG_USER_OR_PASSWORD);
             }
         }
-    }
-
-    @Override
-    public void createSessionAsync(ConnectionInfo ci, boolean allowRedirect,
-            AsyncHandler<AsyncResult<Session>> asyncHandler) {
-        Session s = createSession(ci);
-        asyncHandler.handle(new AsyncResult<>(s));
     }
 }

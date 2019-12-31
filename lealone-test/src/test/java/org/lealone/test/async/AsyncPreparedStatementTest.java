@@ -23,12 +23,13 @@ import java.util.concurrent.CountDownLatch;
 
 import org.lealone.client.jdbc.JdbcPreparedStatement;
 import org.lealone.client.jdbc.JdbcStatement;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
 
 public class AsyncPreparedStatementTest {
 
     public static void main(String[] args) throws Exception {
-        Connection conn = new TestBase().getConnection();
+        Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
         JdbcStatement stmt = (JdbcStatement) conn.createStatement();
         stmt.executeUpdate("DROP TABLE IF EXISTS test");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");

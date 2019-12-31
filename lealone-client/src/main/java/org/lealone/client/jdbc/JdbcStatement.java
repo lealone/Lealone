@@ -22,8 +22,10 @@ import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
 import org.lealone.sql.SQLCommand;
@@ -70,67 +72,52 @@ public class JdbcStatement extends TraceObject implements Statement {
      */
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
-        return executeQuery(sql, null, false);
+        return executeQueryInternal(sql, true).get();
     }
 
-    public void executeQueryAsync(String sql, AsyncHandler<AsyncResult<ResultSet>> handler) throws SQLException {
-        executeQuery(sql, handler, true);
+    public Future<ResultSet> executeQueryAsync(String sql) {
+        return executeQueryInternal(sql, false);
     }
 
-    private ResultSet executeQuery(String sql, AsyncHandler<AsyncResult<ResultSet>> handler, boolean async)
-            throws SQLException {
+    public Future<ResultSet> executeQueryAsync(String sql, AsyncHandler<AsyncResult<ResultSet>> handler) {
+        return executeQueryAsync(sql).onComplete(handler);
+    }
+
+    private Future<ResultSet> executeQueryInternal(String sql, boolean sync) {
         try {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id,
-                        "executeQuery" + (async ? "Async" : "") + "(" + quote(sql) + ")");
+                        "executeQuery" + (sync ? "" : "Async") + "(" + quote(sql) + ")");
             }
             checkClosed();
-            closeOldResultSet();
             sql = JdbcConnection.translateSQL(sql, escapeProcessing);
             SQLCommand command = conn.createSQLCommand(sql, fetchSize);
             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-            setExecutingStatement(command);
-            if (async) {
-                AsyncHandler<AsyncResult<Result>> h = new AsyncHandler<AsyncResult<Result>>() {
-                    @Override
-                    public void handle(AsyncResult<Result> ar) {
-                        JdbcResultSet resultSet = null;
-                        if (ar.isSucceeded()) {
-                            Result r = ar.getResult();
-                            resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet,
-                                    scrollable, updatable);
-                            resultSet.setCommand(command);
-                        }
-                        setExecutingStatement(null);
-
-                        if (handler != null) {
-                            AsyncResult<ResultSet> r2 = new AsyncResult<>();
-                            if (ar.isSucceeded())
-                                r2.setResult(resultSet);
-                            else
-                                r2.setCause(ar.getCause());
-                            handler.handle(r2);
-                        }
-                    }
-                };
-                command.executeQueryAsync(maxRows, scrollable, h);
-                return null;
-            } else {
-                Result result;
-                try {
-                    result = command.executeQuery(maxRows, scrollable);
-                } finally {
-                    setExecutingStatement(null);
+            AsyncCallback<ResultSet> ac = new AsyncCallback<>();
+            command.executeQuery(maxRows, scrollable).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    Result r = ar.getResult();
+                    JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet,
+                            scrollable, updatable);
+                    resultSet.setCommand(command);
+                    ac.setAsyncResult(resultSet);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
                 }
-                // command.close(); //关闭结果集时再关闭
-                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                resultSet.setCommand(command);
-                return resultSet;
+            });
+            if (sync) {
+                closeOldResultSet();
+                setExecutingStatement(command);
+                ac.onComplete(ar -> {
+                    setExecutingStatement(null);
+                    // command.close(); //关闭结果集时再关闭
+                });
             }
+            return ac;
         } catch (Exception e) {
-            throw logAndConvert(e);
+            return Future.failedFuture(logAndConvert(e));
         }
     }
 
@@ -154,52 +141,100 @@ public class JdbcStatement extends TraceObject implements Statement {
      */
     @Override
     public int executeUpdate(String sql) throws SQLException {
-        try {
-            debugCodeCall("executeUpdate", sql);
-            return executeUpdateInternal(sql, null, false);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
+        debugCodeCall("executeUpdate", sql);
+        return executeUpdateInternal(sql, true).get();
     }
 
-    public void executeUpdateAsync(String sql, AsyncHandler<AsyncResult<Integer>> handler) throws SQLException {
-        try {
-            debugCodeCall("executeUpdateAsync", sql);
-            executeUpdateInternal(sql, handler, true);
-        } catch (Exception e) {
-            throw logAndConvert(e);
+    /**
+     * Executes a statement and returns the update count.
+     * This method just calls executeUpdate(String sql) internally.
+     * The method getGeneratedKeys supports at most one columns and row.
+     *
+     * @param sql the SQL statement
+     * @param autoGeneratedKeys ignored
+     * @return the update count (number of row affected by an insert,
+     *         update or delete, or 0 if no rows or the statement was a
+     *         create, drop, commit or rollback)
+     * @throws SQLException if a database error occurred or a
+     *         select statement was executed
+     */
+    @Override
+    public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
+        if (isDebugEnabled()) {
+            debugCode("executeUpdate(" + quote(sql) + ", " + autoGeneratedKeys + ");");
         }
+        return executeUpdateInternal(sql, true).get();
     }
 
-    private int executeUpdateInternal(String sql, AsyncHandler<AsyncResult<Integer>> handler, boolean async)
-            throws SQLException {
-        checkClosed();
-        closeOldResultSet();
-        sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-        SQLCommand command = conn.createSQLCommand(sql, fetchSize);
-        setExecutingStatement(command);
-        if (async) {
-            AsyncHandler<AsyncResult<Integer>> h = new AsyncHandler<AsyncResult<Integer>>() {
-                @Override
-                public void handle(AsyncResult<Integer> ar) {
-                    if (ar.isSucceeded())
-                        updateCount = ar.getResult();
+    /**
+     * Executes a statement and returns the update count.
+     * This method just calls executeUpdate(String sql) internally.
+     * The method getGeneratedKeys supports at most one columns and row.
+     *
+     * @param sql the SQL statement
+     * @param columnIndexes ignored
+     * @return the update count (number of row affected by an insert,
+     *         update or delete, or 0 if no rows or the statement was a
+     *         create, drop, commit or rollback)
+     * @throws SQLException if a database error occurred or a
+     *         select statement was executed
+     */
+    @Override
+    public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
+        if (isDebugEnabled()) {
+            debugCode("executeUpdate(" + quote(sql) + ", " + quoteIntArray(columnIndexes) + ");");
+        }
+        return executeUpdateInternal(sql, true).get();
+    }
+
+    /**
+     * Executes a statement and returns the update count.
+     * This method just calls executeUpdate(String sql) internally.
+     * The method getGeneratedKeys supports at most one columns and row.
+     *
+     * @param sql the SQL statement
+     * @param columnNames ignored
+     * @return the update count (number of row affected by an insert,
+     *         update or delete, or 0 if no rows or the statement was a
+     *         create, drop, commit or rollback)
+     * @throws SQLException if a database error occurred or a
+     *         select statement was executed
+     */
+    @Override
+    public int executeUpdate(String sql, String[] columnNames) throws SQLException {
+        if (isDebugEnabled()) {
+            debugCode("executeUpdate(" + quote(sql) + ", " + quoteArray(columnNames) + ");");
+        }
+        return executeUpdateInternal(sql, true).get();
+    }
+
+    public Future<Integer> executeUpdateAsync(String sql) {
+        debugCodeCall("executeUpdateAsync", sql);
+        return executeUpdateInternal(sql, false);
+    }
+
+    public Future<Integer> executeUpdateAsync(String sql, AsyncHandler<AsyncResult<Integer>> handler) {
+        return executeUpdateAsync(sql).onComplete(handler);
+    }
+
+    private Future<Integer> executeUpdateInternal(String sql, boolean sync) {
+        try {
+            checkClosed();
+            sql = JdbcConnection.translateSQL(sql, escapeProcessing);
+            SQLCommand command = conn.createSQLCommand(sql, fetchSize);
+            Future<Integer> future = command.executeUpdate();
+            if (sync) {
+                closeOldResultSet();
+                setExecutingStatement(command);
+                future.onComplete(ar -> {
                     // 设置完后再调用handle，否则有可能当前语句提前关闭了
                     setExecutingStatement(null);
                     command.close();
-                    handler.handle(ar);
-                }
-            };
-            command.executeUpdateAsync(h);
-            return -1;
-        } else {
-            try {
-                updateCount = command.executeUpdate();
-            } finally {
-                setExecutingStatement(null);
+                });
             }
-            command.close();
-            return updateCount;
+            return future;
+        } catch (Exception e) {
+            return Future.failedFuture(logAndConvert(e));
         }
     }
 
@@ -260,12 +295,12 @@ public class JdbcStatement extends TraceObject implements Statement {
                 returnsResultSet = true;
                 boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                 boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                Result result = command.executeQuery(maxRows, scrollable);
+                Result result = command.executeQuery(maxRows, scrollable).get();
                 int id = getNextTraceId(TraceObjectType.RESULT_SET);
                 resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
             } else {
                 returnsResultSet = false;
-                updateCount = command.executeUpdate();
+                updateCount = command.executeUpdate().get();
             }
         } finally {
             setExecutingStatement(null);
@@ -752,7 +787,7 @@ public class JdbcStatement extends TraceObject implements Statement {
                 for (int i = 0; i < size; i++) {
                     String sql = batchCommands.get(i);
                     try {
-                        result[i] = executeUpdateInternal(sql, null, false);
+                        result[i] = executeUpdateInternal(sql, true).get();
                     } catch (Exception re) {
                         SQLException e = logAndConvert(re);
                         if (next == null) {
@@ -846,81 +881,6 @@ public class JdbcStatement extends TraceObject implements Statement {
                 throw DbException.getInvalidValueException("current", current);
             }
             return false;
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Executes a statement and returns the update count.
-     * This method just calls executeUpdate(String sql) internally.
-     * The method getGeneratedKeys supports at most one columns and row.
-     *
-     * @param sql the SQL statement
-     * @param autoGeneratedKeys ignored
-     * @return the update count (number of row affected by an insert,
-     *         update or delete, or 0 if no rows or the statement was a
-     *         create, drop, commit or rollback)
-     * @throws SQLException if a database error occurred or a
-     *         select statement was executed
-     */
-    @Override
-    public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
-        try {
-            if (isDebugEnabled()) {
-                debugCode("executeUpdate(" + quote(sql) + ", " + autoGeneratedKeys + ");");
-            }
-            return executeUpdateInternal(sql, null, false);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Executes a statement and returns the update count.
-     * This method just calls executeUpdate(String sql) internally.
-     * The method getGeneratedKeys supports at most one columns and row.
-     *
-     * @param sql the SQL statement
-     * @param columnIndexes ignored
-     * @return the update count (number of row affected by an insert,
-     *         update or delete, or 0 if no rows or the statement was a
-     *         create, drop, commit or rollback)
-     * @throws SQLException if a database error occurred or a
-     *         select statement was executed
-     */
-    @Override
-    public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
-        try {
-            if (isDebugEnabled()) {
-                debugCode("executeUpdate(" + quote(sql) + ", " + quoteIntArray(columnIndexes) + ");");
-            }
-            return executeUpdateInternal(sql, null, false);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Executes a statement and returns the update count.
-     * This method just calls executeUpdate(String sql) internally.
-     * The method getGeneratedKeys supports at most one columns and row.
-     *
-     * @param sql the SQL statement
-     * @param columnNames ignored
-     * @return the update count (number of row affected by an insert,
-     *         update or delete, or 0 if no rows or the statement was a
-     *         create, drop, commit or rollback)
-     * @throws SQLException if a database error occurred or a
-     *         select statement was executed
-     */
-    @Override
-    public int executeUpdate(String sql, String[] columnNames) throws SQLException {
-        try {
-            if (isDebugEnabled()) {
-                debugCode("executeUpdate(" + quote(sql) + ", " + quoteArray(columnNames) + ");");
-            }
-            return executeUpdateInternal(sql, null, false);
         } catch (Exception e) {
             throw logAndConvert(e);
         }

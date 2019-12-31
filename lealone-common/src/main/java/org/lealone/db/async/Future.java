@@ -15,12 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage.replication;
+package org.lealone.db.async;
 
-import org.lealone.db.async.Future;
-import org.lealone.sql.SQLCommand;
+public interface Future<T> {
 
-public interface ReplicaSQLCommand extends ReplicaCommand, SQLCommand {
+    static <T> Future<T> succeededFuture(T result) {
+        return new SucceededFuture<>(result);
+    }
 
-    Future<Integer> executeReplicaUpdate(String replicationName);
+    static <T> Future<T> failedFuture(Throwable t) {
+        return new FailedFuture<>(t);
+    }
+
+    T get();
+
+    T get(long timeoutMillis);
+
+    Future<T> onSuccess(AsyncHandler<T> handler);
+
+    Future<T> onFailure(AsyncHandler<Throwable> handler);
+
+    Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler);
 }

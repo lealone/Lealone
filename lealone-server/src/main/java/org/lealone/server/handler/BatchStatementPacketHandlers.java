@@ -47,7 +47,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                 String sql = packet.batchStatements.get(i);
                 PreparedSQLStatement command = session.prepareStatement(sql, -1);
                 try {
-                    results[i] = command.executeUpdate();
+                    results[i] = command.executeUpdate().get();
                 } catch (Exception e) {
                     results[i] = Statement.EXECUTE_FAILED;
                 }
@@ -71,7 +71,7 @@ class BatchStatementPacketHandlers extends PacketHandlers {
                     p.setValue(values[j]);
                 }
                 try {
-                    results[i] = command.executeUpdate();
+                    results[i] = command.executeUpdate().get();
                 } catch (Exception e) {
                     results[i] = Statement.EXECUTE_FAILED;
                 }

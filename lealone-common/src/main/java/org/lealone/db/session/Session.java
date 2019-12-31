@@ -16,7 +16,9 @@ import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
-import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.Future;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
@@ -226,29 +228,33 @@ public interface Session extends Closeable, Transaction.Participant {
 
     String getLocalHostAndPort();
 
-    default <T> void sendAsync(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
-        sendAsync(packet, handler);
+    @SuppressWarnings("unchecked")
+    default <P extends AckPacket> Future<P> send(Packet packet) {
+        return send(packet, p -> {
+            return (P) p;
+        });
     }
 
-    default <T> void sendAsync(Packet packet) {
-        sendAsync(packet, null);
+    @SuppressWarnings("unchecked")
+    default <P extends AckPacket> Future<P> send(Packet packet, int packetId) {
+        return send(packet, packetId, p -> {
+            return (P) p;
+        });
     }
 
-    default <T> void sendAsync(Packet packet, AsyncHandler<T> handler) {
+    @SuppressWarnings("unchecked")
+    default <P extends AckPacket> Future<P> send(Packet packet, String hostAndPort) {
+        return send(packet, hostAndPort, p -> {
+            return (P) p;
+        });
     }
 
-    default <T> void sendAsync(Packet packet, int packetId, AsyncHandler<T> handler) {
+    default <R, P extends AckPacket> Future<R> send(Packet packet, String hostAndPort,
+            AckPacketHandler<R, P> ackPacketHandler) {
+        return send(packet, ackPacketHandler);
     }
 
-    default <T extends Packet> T sendSync(Packet packet) {
-        return null;
-    }
+    <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler);
 
-    default <T extends Packet> T sendSync(Packet packet, String hostAndPort) {
-        return sendSync(packet);
-    }
-
-    default <T extends Packet> T sendSync(Packet packet, int packetId) {
-        return null;
-    }
+    <R, P extends AckPacket> Future<R> send(Packet packet, int packetId, AckPacketHandler<R, P> ackPacketHandler);
 }

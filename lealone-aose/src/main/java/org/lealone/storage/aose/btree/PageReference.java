@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lealone.db.IDatabase;
+import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.storage.PageKey;
@@ -123,7 +124,8 @@ public class PageReference {
         Session session = db.createInternalSession(true);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (StorageCommand c = rs.createStorageCommand()) {
-            ByteBuffer pageBuffer = c.readRemotePage(map.getName(), pageKey, null);
+            Future<ByteBuffer> f = c.readRemotePage(map.getName(), pageKey);
+            ByteBuffer pageBuffer = f.get();
             page = BTreePage.readReplicatedPage(map, pageBuffer);
         }
 

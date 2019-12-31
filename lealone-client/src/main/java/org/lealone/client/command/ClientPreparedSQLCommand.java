@@ -17,11 +17,11 @@ import org.lealone.common.trace.Trace;
 import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.SysProperties;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.Value;
 import org.lealone.net.TransferInputStream;
+import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
 import org.lealone.server.protocol.dt.DistributedTransactionPreparedQuery;
@@ -70,12 +70,14 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         commandId = session.getNextId();
         if (readParams) {
             PreparedStatementPrepareReadParams packet = new PreparedStatementPrepareReadParams(commandId, sql);
-            PreparedStatementPrepareReadParamsAck ack = session.sendSync(packet);
+            Future<PreparedStatementPrepareReadParamsAck> f = session.send(packet);
+            PreparedStatementPrepareReadParamsAck ack = f.get();
             isQuery = ack.isQuery;
             parameters = new ArrayList<>(ack.params);
         } else {
             PreparedStatementPrepare packet = new PreparedStatementPrepare(commandId, sql);
-            PreparedStatementPrepareAck ack = session.sendSync(packet);
+            Future<PreparedStatementPrepareAck> f = session.send(packet);
+            PreparedStatementPrepareAck ack = f.get();
             isQuery = ack.isQuery;
         }
     }
@@ -100,7 +102,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         }
         prepareIfRequired();
         try {
-            PreparedStatementGetMetaDataAck ack = session.sendSync(new PreparedStatementGetMetaData(commandId));
+            Future<PreparedStatementGetMetaDataAck> f = session.send(new PreparedStatementGetMetaData(commandId));
+            PreparedStatementGetMetaDataAck ack = f.get();
             ClientResult result = new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, -1,
                     ack.columnCount, 0, 0);
             return result;
@@ -111,8 +114,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected Result query(int maxRows, boolean scrollable, List<PageKey> pageKeys,
-            AsyncHandler<AsyncResult<Result>> handler) {
+    protected Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         isQuery = true;
         checkParameters();
         prepareIfRequired();
@@ -130,43 +132,20 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             for (int i = 0; i < size; i++) {
                 values[i] = parameters.get(i).getValue();
             }
-
+            Packet packet;
             if (isDistributed()) {
-                DistributedTransactionPreparedQuery packet = new DistributedTransactionPreparedQuery(pageKeys, resultId,
-                        maxRows, fetch, scrollable, commandId, size, values);
-                if (handler != null) {
-                    session.<DistributedTransactionQueryAck> sendAsync(packet, ack -> {
-                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                        ClientResult result;
-                        try {
-                            result = getQueryResult(ack, fetch, resultId);
-                            handler.handle(new AsyncResult<Result>(result));
-                        } catch (IOException e) {
-                            handler.handle(new AsyncResult<Result>(e));
-                        }
-                    });
-                } else {
-                    DistributedTransactionQueryAck ack = session.sendSync(packet);
+                packet = new DistributedTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable,
+                        commandId, size, values);
+                return session.<Result, DistributedTransactionQueryAck> send(packet, ack -> {
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                     return getQueryResult(ack, fetch, resultId);
-                }
+                });
             } else {
-                PreparedStatementQuery packet = new PreparedStatementQuery(pageKeys, resultId, maxRows, fetch,
-                        scrollable, commandId, size, values);
-                if (handler != null) {
-                    session.<StatementQueryAck> sendAsync(packet, ack -> {
-                        ClientResult result;
-                        try {
-                            result = getQueryResult(ack, fetch, resultId);
-                            handler.handle(new AsyncResult<Result>(result));
-                        } catch (IOException e) {
-                            handler.handle(new AsyncResult<Result>(e));
-                        }
-                    });
-                } else {
-                    StatementQueryAck ack = session.sendSync(packet);
+                packet = new PreparedStatementQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId, size,
+                        values);
+                return session.<Result, StatementQueryAck> send(packet, ack -> {
                     return getQueryResult(ack, fetch, resultId);
-                }
+                });
             }
         } catch (Exception e) {
             session.handleException(e);
@@ -175,47 +154,30 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected int update(String replicationName, List<PageKey> pageKeys, AsyncHandler<AsyncResult<Integer>> handler) {
+    protected Future<Integer> update(String replicationName, List<PageKey> pageKeys) {
         checkParameters();
         prepareIfRequired();
-        try {
-            int size = parameters.size();
-            Value[] values = new Value[size];
-            for (int i = 0; i < size; i++) {
-                values[i] = parameters.get(i).getValue();
-            }
-            if (isDistributed()) {
-                DistributedTransactionPreparedUpdate packet = new DistributedTransactionPreparedUpdate(pageKeys,
-                        commandId, size, values);
-                if (handler != null) {
-                    session.<DistributedTransactionUpdateAck> sendAsync(packet, ack -> {
-                        session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                        handler.handle(new AsyncResult<Integer>(ack.updateCount));
-                    });
-                } else {
-                    DistributedTransactionUpdateAck ack = session.sendSync(packet);
-                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                    return ack.updateCount;
-                }
-            } else {
-                PreparedStatementUpdate packet;
-                if (replicationName != null)
-                    packet = new ReplicationPreparedUpdate(pageKeys, commandId, size, values, replicationName);
-                else
-                    packet = new PreparedStatementUpdate(pageKeys, commandId, size, values);
-                if (handler != null) {
-                    session.<StatementUpdateAck> sendAsync(packet, ack -> {
-                        handler.handle(new AsyncResult<Integer>(ack.updateCount));
-                    });
-                } else {
-                    StatementUpdateAck ack = session.sendSync(packet);
-                    return ack.updateCount;
-                }
-            }
-        } catch (Exception e) {
-            session.handleException(e);
+        int size = parameters.size();
+        Value[] values = new Value[size];
+        for (int i = 0; i < size; i++) {
+            values[i] = parameters.get(i).getValue();
         }
-        return 0;
+        Packet packet;
+        if (isDistributed()) {
+            packet = new DistributedTransactionPreparedUpdate(pageKeys, commandId, size, values);
+            return session.<Integer, DistributedTransactionUpdateAck> send(packet, ack -> {
+                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ack.updateCount;
+            });
+        } else {
+            if (replicationName != null)
+                packet = new ReplicationPreparedUpdate(pageKeys, commandId, size, values, replicationName);
+            else
+                packet = new PreparedStatementUpdate(pageKeys, commandId, size, values);
+            return session.<Integer, StatementUpdateAck> send(packet, ack -> {
+                return ack.updateCount;
+            });
+        }
     }
 
     private void checkParameters() {
@@ -232,7 +194,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         int packetId = session.getNextId();
         session.traceOperation("COMMAND_CLOSE", packetId);
         try {
-            session.sendAsync(new PreparedStatementClose(commandId));
+            session.send(new PreparedStatementClose(commandId));
         } catch (Exception e) {
             session.getTrace().error(e, "close session");
         }
@@ -259,8 +221,10 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
 
     public int[] executeBatchPreparedSQLCommands(List<Value[]> batchParameters) {
         try {
-            BatchStatementUpdateAck ack = session
-                    .sendSync(new BatchStatementPreparedUpdate(commandId, batchParameters.size(), batchParameters));
+
+            Future<BatchStatementUpdateAck> f = session
+                    .send(new BatchStatementPreparedUpdate(commandId, batchParameters.size(), batchParameters));
+            BatchStatementUpdateAck ack = f.get();
             return ack.results;
         } catch (Exception e) {
             session.handleException(e);

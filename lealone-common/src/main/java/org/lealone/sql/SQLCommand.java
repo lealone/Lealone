@@ -21,8 +21,7 @@ import java.util.List;
 
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.storage.PageKey;
 
@@ -55,7 +54,9 @@ public interface SQLCommand extends Command {
      * @param maxRows the maximum number of rows returned
      * @return the result
      */
-    Result executeQuery(int maxRows);
+    default Future<Result> executeQuery(int maxRows) {
+        return executeQuery(maxRows, false, null);
+    }
 
     /**
      * Execute the query.
@@ -64,28 +65,20 @@ public interface SQLCommand extends Command {
      * @param scrollable if the result set must be scrollable
      * @return the result
      */
-    Result executeQuery(int maxRows, boolean scrollable);
-
-    default Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
-        return executeQuery(maxRows, scrollable);
+    default Future<Result> executeQuery(int maxRows, boolean scrollable) {
+        return executeQuery(maxRows, scrollable, null);
     }
 
-    default void executeQueryAsync(int maxRows, boolean scrollable, AsyncHandler<AsyncResult<Result>> handler) {
-        executeQuery(maxRows, scrollable);
-    }
+    Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys);
 
     /**
      * Execute the update command
      *
      * @return the update count
      */
-    int executeUpdate();
-
-    default int executeUpdate(List<PageKey> pageKeys) {
-        return executeUpdate();
+    default Future<Integer> executeUpdate() {
+        return executeUpdate(null);
     }
 
-    default void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        executeUpdate();
-    }
+    Future<Integer> executeUpdate(List<PageKey> pageKeys);
 }

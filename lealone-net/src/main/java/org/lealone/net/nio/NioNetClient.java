@@ -28,8 +28,7 @@ import java.util.Set;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.AsyncConnectionManager;
 import org.lealone.net.NetClientBase;
@@ -115,20 +114,19 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             conn = new TcpClientConnection(writableChannel, this);
         }
         conn.setInetSocketAddress(attachment.inetSocketAddress);
-        addConnection(attachment.inetSocketAddress, conn);
-        attachment.conn = conn;
-        if (attachment.asyncHandler != null) {
-            AsyncResult<AsyncConnection> ar = new AsyncResult<>();
-            ar.setResult(conn);
-            attachment.asyncHandler.handle(ar);
+        AsyncConnection conn2 = addConnection(attachment.inetSocketAddress, conn);
+        attachment.conn = conn2;
+        if (attachment.ac != null) {
+            attachment.ac.setAsyncResult(conn2);
         }
-        channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
+        if (conn2 == conn)
+            channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
     }
 
     private static class ClientAttachment extends NioNetServer.Attachment {
         AsyncConnectionManager connectionManager;
         InetSocketAddress inetSocketAddress;
-        AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler;
+        AsyncCallback<AsyncConnection> ac;
     }
 
     @Override
@@ -148,7 +146,7 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
 
     @Override
     protected void createConnectionInternal(NetNode node, AsyncConnectionManager connectionManager,
-            AsyncHandler<AsyncResult<AsyncConnection>> asyncHandler) {
+            AsyncCallback<AsyncConnection> ac) {
         InetSocketAddress inetSocketAddress = node.getInetSocketAddress();
         int socketRecvBuffer = 16 * 1024;
         int socketSendBuffer = 8 * 1024;
@@ -166,15 +164,13 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             ClientAttachment attachment = new ClientAttachment();
             attachment.connectionManager = connectionManager;
             attachment.inetSocketAddress = inetSocketAddress;
-            attachment.asyncHandler = asyncHandler;
+            attachment.ac = ac;
 
             register(channel, SelectionKey.OP_CONNECT, attachment);
             channel.connect(inetSocketAddress);
         } catch (Exception e) {
             closeChannel(channel);
-            AsyncResult<AsyncConnection> ar = new AsyncResult<>();
-            ar.setCause(e);
-            asyncHandler.handle(ar);
+            ac.setAsyncResult(e);
         }
     }
 
@@ -188,11 +184,11 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         if (channel == null) {
             return;
         }
-        try {
-            InetSocketAddress inetSocketAddress = (InetSocketAddress) channel.getRemoteAddress();
-            removeConnection(inetSocketAddress);
-        } catch (Exception e1) {
-        }
+        // try {
+        // InetSocketAddress inetSocketAddress = (InetSocketAddress) channel.getRemoteAddress();
+        // removeConnection(inetSocketAddress);
+        // } catch (Exception e1) {
+        // }
         nioEventLoopAdapter.closeChannel(channel);
     }
 

@@ -122,7 +122,7 @@ public abstract class ClientResult implements Result {
         if (resultId > 0) {
             session.checkClosed();
             try {
-                session.sendAsync(new ResultReset(resultId));
+                session.send(new ResultReset(resultId));
             } catch (Exception e) {
                 throw DbException.convert(e);
             }
@@ -155,7 +155,7 @@ public abstract class ClientResult implements Result {
         }
         try {
             if (resultId > 0) {
-                session.sendAsync(new ResultClose(resultId));
+                session.send(new ResultClose(resultId));
             }
         } catch (Exception e) {
             session.getTrace().error(e, "close");
@@ -167,7 +167,7 @@ public abstract class ClientResult implements Result {
     protected void sendFetch(int fetchSize) throws IOException {
         // 释放buffer
         in.closeInputStream();
-        ResultFetchRowsAck ack = session.sendSync(new ResultFetchRows(resultId, fetchSize));
+        ResultFetchRowsAck ack = session.<ResultFetchRowsAck> send(new ResultFetchRows(resultId, fetchSize)).get();
         in = (TransferInputStream) ack.in;
     }
 
@@ -185,7 +185,7 @@ public abstract class ClientResult implements Result {
             if (resultId > 0 && resultId <= session.getCurrentId() - SysProperties.SERVER_CACHED_OBJECTS / 2) {
                 // object is too old - we need to map it to a new id
                 int newId = session.getNextId();
-                session.sendAsync(new ResultChangeId(resultId, newId));
+                session.send(new ResultChangeId(resultId, newId));
                 resultId = newId;
             }
         } catch (Exception e) {

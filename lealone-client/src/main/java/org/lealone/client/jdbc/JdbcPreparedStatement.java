@@ -36,8 +36,10 @@ import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -97,56 +99,49 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      */
     @Override
     public ResultSet executeQuery() throws SQLException {
-        return executeQuery(null, false);
+        return executeQueryInternal(true).get();
     }
 
-    public void executeQueryAsync(AsyncHandler<AsyncResult<ResultSet>> handler) throws SQLException {
-        executeQuery(handler, true);
+    public Future<ResultSet> executeQueryAsync() {
+        return executeQueryInternal(false);
     }
 
-    private ResultSet executeQuery(AsyncHandler<AsyncResult<ResultSet>> handler, boolean async) throws SQLException {
+    public Future<ResultSet> executeQueryAsync(AsyncHandler<AsyncResult<ResultSet>> handler) {
+        return executeQueryAsync().onComplete(handler);
+    }
+
+    private Future<ResultSet> executeQueryInternal(boolean sync) {
         try {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
                 debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id,
-                        async ? "executeQueryAsync()" : "executeQuery()");
+                        sync ? "executeQuery()" : "executeQueryAsync()");
             }
             checkClosed();
             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
             boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-            if (async) {
-                AsyncHandler<AsyncResult<Result>> h = new AsyncHandler<AsyncResult<Result>>() {
-                    @Override
-                    public void handle(AsyncResult<Result> ar) {
-                        Result r = ar.getResult();
-                        if (handler != null) {
-                            JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id,
-                                    closedByResultSet, scrollable, updatable, cachedColumnLabelMap);
-                            AsyncResult<ResultSet> r2 = new AsyncResult<>();
-                            r2.setResult(resultSet);
-                            handler.handle(r2);
-                        } else {
-                            r.close();
-                        }
-                    }
-                };
-                command.executeQueryAsync(maxRows, scrollable, h);
-                return null;
-            } else {
+            AsyncCallback<ResultSet> ac = new AsyncCallback<>();
+            command.executeQuery(maxRows, scrollable).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    Result r = ar.getResult();
+                    JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id,
+                            closedByResultSet, scrollable, updatable, cachedColumnLabelMap);
+                    resultSet.setCommand(command);
+                    ac.setAsyncResult(resultSet);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
+            if (sync) {
                 closeOldResultSet();
                 setExecutingStatement(command);
-                Result result;
-                try {
-                    result = command.executeQuery(maxRows, scrollable);
-                } finally {
+                ac.onComplete(ar -> {
                     setExecutingStatement(null);
-                }
-                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable,
-                        cachedColumnLabelMap);
-                return resultSet;
+                });
             }
+            return ac;
         } catch (Exception e) {
-            throw logAndConvert(e);
+            return Future.failedFuture(logAndConvert(e));
         }
     }
 
@@ -168,39 +163,33 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      */
     @Override
     public int executeUpdate() throws SQLException {
-        try {
-            debugCodeCall("executeUpdate");
-            checkClosed();
-            return executeUpdateInternal(null, false);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
+        debugCodeCall("executeUpdate");
+        return executeUpdateInternal(true).get();
     }
 
-    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) throws SQLException {
-        try {
-            debugCodeCall("executeUpdateAsync");
-            checkClosed();
-            executeUpdateInternal(handler, true);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
+    public Future<Integer> executeUpdateAsync() {
+        debugCodeCall("executeUpdateAsync");
+        return executeUpdateInternal(false);
     }
 
-    private int executeUpdateInternal(AsyncHandler<AsyncResult<Integer>> handler, boolean async) throws SQLException {
-        if (async) {
-            updateCount = -1;
-            command.executeUpdateAsync(handler);
-            return updateCount;
-        } else {
-            closeOldResultSet();
-            setExecutingStatement(command);
-            try {
-                updateCount = command.executeUpdate();
-            } finally {
-                setExecutingStatement(null);
+    public Future<Integer> executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
+        return executeUpdateAsync().onComplete(handler);
+    }
+
+    private Future<Integer> executeUpdateInternal(boolean sync) {
+        try {
+            checkClosed();
+            Future<Integer> future = command.executeUpdate();
+            if (sync) {
+                closeOldResultSet();
+                setExecutingStatement(command);
+                future.onComplete(ar -> {
+                    setExecutingStatement(null);
+                });
             }
-            return updateCount;
+            return future;
+        } catch (Exception e) {
+            return Future.failedFuture(logAndConvert(e));
         }
     }
 
@@ -229,11 +218,11 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                     returnsResultSet = true;
                     boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
                     boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                    Result result = command.executeQuery(maxRows, scrollable);
+                    Result result = command.executeQuery(maxRows, scrollable).get();
                     resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
                 } else {
                     returnsResultSet = false;
-                    updateCount = command.executeUpdate();
+                    updateCount = command.executeUpdate().get();
                 }
             } finally {
                 setExecutingStatement(null);
@@ -1165,7 +1154,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                         param.setValue(value, false);
                     }
                     try {
-                        result[i] = executeUpdateInternal(null, false);
+                        result[i] = executeUpdateInternal(true).get();
                     } catch (Exception re) {
                         SQLException e = logAndConvert(re);
                         if (next == null) {

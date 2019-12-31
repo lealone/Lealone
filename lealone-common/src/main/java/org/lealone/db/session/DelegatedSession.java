@@ -24,6 +24,10 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
+import org.lealone.db.async.Future;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.AckPacketHandler;
+import org.lealone.server.protocol.Packet;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -346,5 +350,16 @@ public class DelegatedSession implements Session {
     @Override
     public String getLocalHostAndPort() {
         return session.getLocalHostAndPort();
+    }
+
+    @Override
+    public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
+        return session.send(packet, ackPacketHandler);
+    }
+
+    @Override
+    public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
+            AckPacketHandler<R, P> ackPacketHandler) {
+        return session.send(packet, packetId, ackPacketHandler);
     }
 }

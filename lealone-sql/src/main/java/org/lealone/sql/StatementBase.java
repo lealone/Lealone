@@ -23,6 +23,7 @@ import org.lealone.db.api.DatabaseEventListener;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.StandardTable;
@@ -551,30 +552,15 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Result executeQuery(int maxRows) {
-        return query(maxRows);
-    }
-
-    @Override
-    public Result executeQuery(int maxRows, boolean scrollable) {
-        return query(maxRows);
-    }
-
-    @Override
-    public Result executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    public Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         TableFilter tf = getTableFilter();
         if (tf != null)
             tf.setPageKeys(pageKeys);
-        return query(maxRows);
+        return Future.succeededFuture(query(maxRows));
     }
 
     @Override
-    public int executeUpdate() {
-        return executeUpdate(null);
-    }
-
-    @Override
-    public int executeUpdate(List<PageKey> pageKeys) {
+    public Future<Integer> executeUpdate(List<PageKey> pageKeys) {
         TableFilter tf = getTableFilter();
         if (tf != null)
             tf.setPageKeys(pageKeys);
@@ -583,12 +569,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         YieldableBase<Integer> yieldable = createYieldableUpdate(null);
         yieldable.setPageKeys(pageKeys);
         yieldable.run();
-        return yieldable.getResult();
+        return Future.succeededFuture(yieldable.getResult());
     }
 
     @Override
-    public void executeReplicaUpdateAsync(String replicationName, AsyncHandler<AsyncResult<Integer>> handler) {
-        update();
+    public Future<Integer> executeReplicaUpdate(String replicationName) {
+        return executeUpdate(null);
     }
 
     @Override
@@ -619,11 +605,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     public String getPlanSQL(boolean isDistributed) {
         return getSQL();
-    }
-
-    @Override
-    public void executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        createYieldableUpdate(asyncHandler).run();
     }
 
     @Override
@@ -958,7 +939,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             if (pageKeys == null)
                 affectedRows = SQLRouter.executeUpdate(statement, asyncHandler);
             else
-                affectedRows = statement.executeUpdate(pageKeys);
+                affectedRows = statement.executeUpdate(pageKeys).get();
             if (affectedRows >= 0) {
                 setResult(Integer.valueOf(affectedRows), affectedRows);
                 return false;
@@ -980,7 +961,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             if (pageKeys == null)
                 result = SQLRouter.executeQuery(statement, maxRows);
             else
-                result = statement.executeQuery(maxRows, scrollable, pageKeys);
+                result = statement.executeQuery(maxRows, scrollable, pageKeys).get();
             if (result != null) {
                 setResult(result, result.getRowCount());
                 return false;

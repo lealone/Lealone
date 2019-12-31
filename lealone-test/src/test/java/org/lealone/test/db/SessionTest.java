@@ -31,7 +31,7 @@ public class SessionTest extends UnitTestBase {
         setEmbedded(true);
 
         String url = getURL();
-        Session session = ServerSessionFactory.getInstance().createSession(url);
+        Session session = ServerSessionFactory.getInstance().createSession(url).get();
 
         String sql = "CREATE TABLE IF NOT EXISTS SessionTest(f1 int, f2 int)";
         int fetchSize = 0;

@@ -37,6 +37,7 @@ import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.storage.DistributedStorageMap;
@@ -123,7 +124,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
                     StorageCommand c = rs.createStorageCommand()) {
                 ByteBuffer keyBuffer = k.write(keyType, key);
                 ByteBuffer valueBuffer = v.write(valueType, value);
-                byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, true, null);
+                byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, true).get();
                 if (oldValue != null) {
                     returnValue = valueType.read(ByteBuffer.wrap(oldValue));
                 }
@@ -242,7 +243,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
             ReplicationSession rs = db.createReplicationSession(session, oldReplicationNodes);
             try (StorageCommand c = rs.createStorageCommand()) {
                 LeafPageMovePlan plan = new LeafPageMovePlan(getLocalHostId(), newReplicationNodes, pageKey);
-                leafPageMovePlan = c.prepareMoveLeafPage(getName(), plan, null);
+                leafPageMovePlan = c.prepareMoveLeafPage(getName(), plan).get();
             }
 
             if (leafPageMovePlan == null)
@@ -517,7 +518,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
                 StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
             ByteBuffer valueBuffer = v.write(valueType, value);
-            byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, false, null);
+            byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, false).get();
             if (oldValue == null)
                 return null;
             return valueType.read(ByteBuffer.wrap(oldValue));
@@ -530,7 +531,7 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
-            ByteBuffer value = (ByteBuffer) c.get(getName(), keyBuffer, null);
+            ByteBuffer value = (ByteBuffer) c.get(getName(), keyBuffer).get();
             if (value == null)
                 return null;
             return valueType.read(value);
@@ -543,7 +544,8 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer v = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer valueBuffer = v.write(valueType, value);
-            return c.append(getName(), valueBuffer, null);
+            Future<Object> f = c.append(getName(), valueBuffer);
+            return f.get();
         }
     }
 

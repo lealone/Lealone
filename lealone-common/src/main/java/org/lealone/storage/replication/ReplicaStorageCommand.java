@@ -19,16 +19,14 @@ package org.lealone.storage.replication;
 
 import java.nio.ByteBuffer;
 
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.storage.StorageCommand;
 
 public interface ReplicaStorageCommand extends ReplicaCommand, StorageCommand {
 
-    Object executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
-            AsyncHandler<AsyncResult<Object>> handler);
+    Future<Object> executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
+            boolean raw);
 
-    Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value,
-            AsyncHandler<AsyncResult<Object>> handler);
+    Future<Object> executeReplicaAppend(String replicationName, String mapName, ByteBuffer value);
 
 }

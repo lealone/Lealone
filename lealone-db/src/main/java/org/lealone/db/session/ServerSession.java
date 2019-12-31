@@ -30,7 +30,8 @@ import org.lealone.db.SetTypes;
 import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
@@ -44,6 +45,8 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetNode;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
@@ -1453,23 +1456,34 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    public <T> void sendAsync(Packet packet, String hostAndPort, AsyncHandler<T> handler) {
+    public <R, P extends AckPacket> Future<R> send(Packet packet, String hostAndPort,
+            AckPacketHandler<R, P> ackPacketHandler) {
         String dbName = getDatabase().getShortName();
         String url = createURL(dbName, hostAndPort);
+
+        AsyncCallback<R> ac = new AsyncCallback<>();
         // 不参与当前事务，所以不用当成当前session的嵌套session
-        SessionPool.getSessionAsync(this, url, ar -> {
+        SessionPool.getSessionAsync(this, url).onComplete(ar -> {
             if (ar.isSucceeded()) {
                 Session s = ar.getResult();
-                s.sendAsync(packet, hostAndPort, handler);
+                s.send(packet, hostAndPort, ackPacketHandler).onComplete(ar2 -> {
+                    ac.setAsyncResult(ar2);
+                });
+            } else {
+                ac.setAsyncResult(ar.getCause());
             }
         });
+        return ac;
     }
 
     @Override
-    public <T extends Packet> T sendSync(Packet packet, String hostAndPort) {
-        String dbName = getDatabase().getShortName();
-        String url = createURL(dbName, hostAndPort);
-        // 不参与当前事务，所以不用当成当前session的嵌套session
-        return SessionPool.getSession(this, url).sendSync(packet);
+    public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
+        throw DbException.throwInternalError();
+    }
+
+    @Override
+    public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
+            AckPacketHandler<R, P> ackPacketHandler) {
+        throw DbException.throwInternalError();
     }
 }

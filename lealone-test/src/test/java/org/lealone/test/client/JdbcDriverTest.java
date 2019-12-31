@@ -19,7 +19,6 @@ package org.lealone.test.client;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcDriver;
@@ -29,26 +28,36 @@ import org.lealone.test.TestBase;
 public class JdbcDriverTest extends TestBase {
     @Test
     public void run() throws Exception {
-        CountDownLatch latch = new CountDownLatch(2);
         String url = getURL(LealoneDatabase.NAME);
-        JdbcDriver.getConnectionAsync(url, ar -> {
-            Connection conn = ar.getResult();
+
+        new Thread(() -> {
+            JdbcDriver.getConnection(url).get();
+        }).start();
+
+        new Thread(() -> {
+            JdbcDriver.getConnection(url).get();
+        }).start();
+
+        JdbcDriver.getConnection(url).onSuccess(conn -> {
             assertNotNull(conn);
             try {
                 conn.close();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-            latch.countDown();
-        });
-        JdbcDriver.getConnectionAsync("invalid url", ar -> {
-            assertTrue(ar.isFailed());
-            assertNotNull(ar.getCause());
-            latch.countDown();
-        });
-        latch.await();
+        }).get();
 
-        Connection conn = JdbcDriver.getConnection(url);
+        try {
+            JdbcDriver.getConnection("invalid url").onComplete(ar -> {
+                assertTrue(ar.isFailed());
+                assertNotNull(ar.getCause());
+            }).get(); // get方法会抛出异常
+            fail();
+        } catch (Throwable t) {
+            System.out.println(t.getMessage());
+        }
+
+        Connection conn = JdbcDriver.getConnection(url).get();
         assertNotNull(conn);
         conn.close();
     }

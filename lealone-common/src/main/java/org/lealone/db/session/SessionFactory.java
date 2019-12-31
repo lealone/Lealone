@@ -7,8 +7,7 @@
 package org.lealone.db.session;
 
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 
 /**
  * A class that implements this interface can create new database sessions.
@@ -21,19 +20,18 @@ public interface SessionFactory {
      * @param ci the connection parameters
      * @return the new session
      */
-    Session createSession(ConnectionInfo ci);
-
-    default Session createSession(String url) {
-        return createSession(new ConnectionInfo(url));
+    default Future<Session> createSession(ConnectionInfo ci) {
+        return createSession(ci, true);
     }
 
-    default Session createSession(ConnectionInfo ci, boolean allowRedirect) {
-        return createSession(ci);
+    default Future<Session> createSession(String url) {
+        try {
+
+            return createSession(new ConnectionInfo(url), true);
+        } catch (Throwable t) {
+            return Future.failedFuture(t);
+        }
     }
 
-    default void createSessionAsync(ConnectionInfo ci, AsyncHandler<AsyncResult<Session>> asyncHandlerl) {
-        createSessionAsync(ci, true, asyncHandlerl);
-    }
-
-    void createSessionAsync(ConnectionInfo ci, boolean allowRedirect, AsyncHandler<AsyncResult<Session>> asyncHandler);
+    Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect);
 }

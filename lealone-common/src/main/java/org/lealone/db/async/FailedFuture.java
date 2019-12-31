@@ -15,12 +15,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage.replication;
+package org.lealone.db.async;
 
-import org.lealone.db.async.Future;
-import org.lealone.sql.SQLCommand;
+import org.lealone.common.exceptions.DbException;
 
-public interface ReplicaSQLCommand extends ReplicaCommand, SQLCommand {
+class FailedFuture<T> implements Future<T> {
 
-    Future<Integer> executeReplicaUpdate(String replicationName);
+    private final Throwable cause;
+
+    public FailedFuture(Throwable cause) {
+        this.cause = cause;
+    }
+
+    @Override
+    public T get() {
+        throw DbException.convert(cause);
+    }
+
+    @Override
+    public T get(long timeoutMillis) {
+        return get();
+    }
+
+    @Override
+    public Future<T> onSuccess(AsyncHandler<T> handler) {
+        return this;
+    }
+
+    @Override
+    public Future<T> onFailure(AsyncHandler<Throwable> handler) {
+        handler.handle(cause);
+        return this;
+    }
+
+    @Override
+    public Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler) {
+        handler.handle(new AsyncResult<>(cause));
+        return this;
+    }
 }

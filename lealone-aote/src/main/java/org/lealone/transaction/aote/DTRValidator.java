@@ -26,9 +26,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.Constants;
-import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
+import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.dt.DistributedTransactionValidate;
 import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
@@ -67,12 +68,13 @@ class DTRValidator {
     private static void validateTransactionAsync(AOTransaction transaction, String[] allLocalTransactionNames) {
         AtomicBoolean isFullSuccessful = new AtomicBoolean(true);
         AtomicInteger size = new AtomicInteger(allLocalTransactionNames.length);
-        AsyncHandler<DistributedTransactionValidateAck> handler = ack -> {
+        AckPacketHandler<Void, DistributedTransactionValidateAck> handler = ack -> {
             isFullSuccessful.compareAndSet(true, ack.isValid);
             int index = size.decrementAndGet();
             if (index == 0 && isFullSuccessful.get()) {
                 transaction.commitAfterValidate(transaction.transactionId);
             }
+            return null;
         };
         String localHostAndPort = NetNode.getLocalTcpHostAndPort();
         for (String localTransactionName : allLocalTransactionNames) {
@@ -80,7 +82,7 @@ class DTRValidator {
                 String[] a = localTransactionName.split(":");
                 String hostAndPort = a[0] + ":" + a[1];
                 DistributedTransactionValidate packet = new DistributedTransactionValidate(localTransactionName);
-                transaction.getSession().sendAsync(packet, hostAndPort, handler);
+                transaction.getSession().send(packet, hostAndPort, handler);
             } else {
                 size.decrementAndGet();
             }
@@ -152,8 +154,8 @@ class DTRValidator {
 
     private static boolean validateRemoteTransaction(String hostAndPort, String localTransactionName, Session session) {
         DistributedTransactionValidate packet = new DistributedTransactionValidate(localTransactionName);
-        DistributedTransactionValidateAck ack = session.sendSync(packet, hostAndPort);
-        return ack.isValid;
+        Future<DistributedTransactionValidateAck> ack = session.send(packet, hostAndPort);
+        return ack.get().isValid;
     }
 
     static void addReplication(String replicationName) {
@@ -207,7 +209,7 @@ class DTRValidator {
         String[] replicationNames = new String[size];
         AtomicInteger replicationNameIndex = new AtomicInteger();
 
-        AsyncHandler<ReplicationCheckConflictAck> handler = ack -> {
+        AckPacketHandler<Void, ReplicationCheckConflictAck> handler = ack -> {
             int index = replicationNameIndex.getAndIncrement();
             replicationNames[index] = ack.replicationName;
             if (index == size - 1) {
@@ -234,10 +236,11 @@ class DTRValidator {
                     String name = names[i];
                     if (!local[i]) {
                         ReplicationCheckConflict packet = new ReplicationCheckConflict(mapName, key, replicationName);
-                        session.sendAsync(packet, name, null);
+                        session.send(packet, name);
                     }
                 }
             }
+            return null;
         };
 
         // 从2开始，前两个不是节点名
@@ -252,7 +255,7 @@ class DTRValidator {
                 local[i] = true;
             } else {
                 ReplicationCheckConflict packet = new ReplicationCheckConflict(mapName, key, replicationName);
-                session.sendAsync(packet, name, handler);
+                session.send(packet, name, handler);
             }
         }
         return null;

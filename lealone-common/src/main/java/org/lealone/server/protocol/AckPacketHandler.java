@@ -15,12 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.storage.replication;
+package org.lealone.server.protocol;
 
-import org.lealone.db.async.Future;
-import org.lealone.sql.SQLCommand;
-
-public interface ReplicaSQLCommand extends ReplicaCommand, SQLCommand {
-
-    Future<Integer> executeReplicaUpdate(String replicationName);
+public interface AckPacketHandler<R, P extends AckPacket> {
+    R handle(P ack);
 }

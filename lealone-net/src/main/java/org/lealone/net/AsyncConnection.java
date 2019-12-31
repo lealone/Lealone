@@ -49,9 +49,9 @@ public abstract class AsyncConnection {
     }
 
     public void close() {
+        closed = true;
         if (writableChannel != null) {
             writableChannel.close();
-            closed = true;
         }
     }
 

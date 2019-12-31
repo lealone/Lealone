@@ -26,15 +26,18 @@ import org.lealone.db.DataHandler;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
-import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionBase;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.TcpClientConnection;
 import org.lealone.net.TransferOutputStream;
+import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
+import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
 import org.lealone.server.protocol.dt.DistributedTransactionCommit;
 import org.lealone.server.protocol.dt.DistributedTransactionRollback;
@@ -62,39 +65,35 @@ import org.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
-// 一个ClientSession对应一条JdbcConnection，
+// 一个ClientSession对应一条JdbcConnection，多个ClientSession其用一个TcpClientConnection。
 // 同JdbcConnection一样，每个ClientSession对象也不是线程安全的，只能在单线程中使用。
 // 另外，每个ClientSession只对应一个server，
-// 虽然ConnectionInfo允许在JDBC URL中指定多个server，但是放在AutoReconnectSession中处理了。
+// 虽然ConnectionInfo允许在JDBC URL中指定多个server，但是放在ClientSessionFactory中处理了。
 public class ClientSession extends SessionBase implements DataHandler, Transaction.Participant {
 
+    private final TcpClientConnection tcpConnection;
     private final ConnectionInfo ci;
     private final String server;
     private final Session parent;
+    private final int sessionId;
     private final String cipher;
     private final byte[] fileEncryptionKey;
     private final Trace trace;
     private final Object lobSyncObject = new Object();
     private LobStorage lobStorage;
 
-    private TcpClientConnection tcpConnection;
-    private final int sessionId;
-
-    ClientSession(ConnectionInfo ci, String server, Session parent, TcpClientConnection tcpConnection, int sessionId) {
-        if (!ci.isRemote()) {
-            throw DbException.throwInternalError();
-        }
+    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent, int sessionId) {
+        this.tcpConnection = tcpConnection;
         this.ci = ci;
         this.server = server;
         this.parent = parent;
+        this.sessionId = sessionId;
 
         cipher = ci.getProperty("CIPHER");
         fileEncryptionKey = cipher == null ? null : MathUtils.secureRandomBytes(32);
 
         initTraceSystem(ci);
         trace = traceSystem == null ? Trace.NO_TRACE : traceSystem.getTrace(TraceModuleType.JDBC);
-        this.tcpConnection = tcpConnection;
-        this.sessionId = sessionId;
     }
 
     @Override
@@ -115,9 +114,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public int getCurrentId() {
-        if (tcpConnection == null) {
-            return 0;
-        }
         return tcpConnection.getCurrentId();
     }
 
@@ -145,7 +141,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public void cancelStatement(int statementId) {
         try {
-            sendAsync(new SessionCancelStatement(statementId));
+            send(new SessionCancelStatement(statementId));
         } catch (Exception e) {
             trace.debug(e, "could not cancel statement");
         }
@@ -162,7 +158,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private void setAutoCommitSend(boolean autoCommit) {
         try {
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            sendSync(new SessionSetAutoCommit(autoCommit));
+            send(new SessionSetAutoCommit(autoCommit)).get();
         } catch (Exception e) {
             handleException(e);
         }
@@ -221,7 +217,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 try {
                     // 只有当前Session有效时服务器端才持有对应的session
                     if (isValid()) {
-                        sendAsync(new SessionClose());
+                        send(new SessionClose());
                         tcpConnection.removeSession(sessionId);
                     }
                 } catch (RuntimeException e) {
@@ -232,7 +228,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                 }
                 closeTraceSystem();
             }
-            tcpConnection = null;
             if (closeError != null) {
                 throw closeError;
             }
@@ -339,7 +334,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
         try {
-            LobReadAck ack = sendSync(new LobRead(lobId, hmac, offset, length));
+            LobReadAck ack = this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).get();
             if (ack.buff != null && ack.buff.length < 0) {
                 System.arraycopy(ack.buff, 0, buff, off, length);
             }
@@ -353,7 +348,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
-            sendAsync(new DistributedTransactionCommit(allLocalTransactionNames));
+            send(new DistributedTransactionCommit(allLocalTransactionNames));
         } catch (Exception e) {
             handleException(e);
         }
@@ -362,7 +357,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void rollbackTransaction() {
         try {
-            sendAsync(new DistributedTransactionRollback());
+            send(new DistributedTransactionRollback());
         } catch (Exception e) {
             handleException(e);
         }
@@ -371,7 +366,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void addSavepoint(String name) {
         try {
-            sendAsync(new DistributedTransactionAddSavepoint(name));
+            send(new DistributedTransactionAddSavepoint(name));
         } catch (Exception e) {
             handleException(e);
         }
@@ -380,7 +375,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void rollbackToSavepoint(String name) {
         try {
-            sendAsync(new DistributedTransactionRollbackSavepoint(name));
+            send(new DistributedTransactionRollbackSavepoint(name));
         } catch (Exception e) {
             handleException(e);
         }
@@ -454,64 +449,41 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
-    public <T> void sendAsync(Packet packet, AsyncHandler<T> handler) {
+    public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
         int packetId = getNextId();
-        sendAsync(packet, packetId, handler);
-    }
-
-    @Override
-    public <T> void sendAsync(Packet packet, int packetId, AsyncHandler<T> handler) {
-        traceOperation(packet.getType().name(), packetId);
-        try {
-            TransferOutputStream out = newOut();
-            out.writeRequestHeader(packetId, packet.getType());
-            packet.encode(out, getProtocolVersion());
-
-            AsyncCallback<Packet> ac = new AsyncCallback<Packet>() {
-                @Override
-                @SuppressWarnings("unchecked")
-                public void runInternal(NetInputStream in) throws Exception {
-                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
-                    Packet message = decoder.decode(in, getProtocolVersion());
-                    setResult(message);
-                    if (ah != null) {
-                        ah.handle(message);
-                    }
-                }
-            };
-            ac.setAsyncHandler(handler);
-            out.flush(packetId, ac);
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        }
-    }
-
-    @Override
-    public <T extends Packet> T sendSync(Packet packet) {
-        int packetId = getNextId();
-        return sendSync(packet, packetId);
+        return send(packet, packetId, ackPacketHandler);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T extends Packet> T sendSync(Packet packet, int packetId) {
+    public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
+            AckPacketHandler<R, P> ackPacketHandler) {
         traceOperation(packet.getType().name(), packetId);
+        AsyncCallback<R> ac = new AsyncCallback<R>() {
+            @Override
+            public void runInternal(NetInputStream in) throws Exception {
+                PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
+                Packet packet = decoder.decode(in, getProtocolVersion());
+                if (ackPacketHandler != null) {
+                    try {
+                        setAsyncResult(ackPacketHandler.handle((P) packet));
+                    } catch (Throwable e) {
+                        setAsyncResult(e);
+                    }
+                }
+            }
+        };
+        if (packet.getAckType() != PacketType.VOID) {
+            tcpConnection.addAsyncCallback(packetId, ac);
+        }
         try {
             TransferOutputStream out = newOut();
             out.writeRequestHeader(packetId, packet.getType());
             packet.encode(out, getProtocolVersion());
-
-            AsyncCallback<Packet> ac = new AsyncCallback<Packet>() {
-                @Override
-                public void runInternal(NetInputStream in) throws Exception {
-                    PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packet.getAckType());
-                    Packet message = decoder.decode(in, getProtocolVersion());
-                    setResult(message);
-                }
-            };
-            return (T) out.flushAndAwait(packetId, ac);
-        } catch (Exception e) {
-            throw DbException.convert(e);
+            out.flush();
+        } catch (Throwable e) {
+            ac.setAsyncResult(e);
         }
+        return ac;
     }
 }

@@ -22,17 +22,31 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import org.lealone.client.jdbc.JdbcStatement;
+import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
 
 public class AsyncJdbcStatementTest {
 
     public static void main(String[] args) throws Exception {
-        Connection conn = new TestBase().getConnection();
+        Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
         JdbcStatement stmt = (JdbcStatement) conn.createStatement();
-        stmt.executeUpdate("DROP TABLE IF EXISTS test");
+        // stmt.executeUpdate("DROP TABLE IF EXISTS test");
+
+        stmt.executeUpdateAsync("DROP TABLE IF EXISTS test").onSuccess(updateCount -> {
+            System.out.println("updateCount: " + updateCount);
+        }).onFailure(e -> {
+            e.printStackTrace();
+        }).get();
+
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
         String sql = "INSERT INTO test(f1, f2) VALUES(1, 2)";
         stmt.executeUpdate(sql);
+
+        stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(3, 3)").onSuccess(updateCount -> {
+            System.out.println("updateCount: " + updateCount);
+        }).onFailure(e -> {
+            e.printStackTrace();
+        }).get();
 
         stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(2, 2)", res -> {
             if (res.isSucceeded()) {

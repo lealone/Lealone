@@ -26,8 +26,7 @@ import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.SysProperties;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 
@@ -74,18 +73,16 @@ public class SessionPool {
             ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
             ci.setRemote(remote);
             // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
-            session = ci.getSessionFactory().createSession(ci, false);
+            session = ci.getSessionFactory().createSession(ci, false).get();
         }
         return session;
     }
 
-    public static void getSessionAsync(ServerSession originalSession, String url,
-            AsyncHandler<AsyncResult<Session>> asyncHandler) {
-        getSessionAsync(originalSession, url, true, asyncHandler);
+    public static Future<Session> getSessionAsync(ServerSession originalSession, String url) {
+        return getSessionAsync(originalSession, url, true);
     }
 
-    public static void getSessionAsync(ServerSession originalSession, String url, boolean remote,
-            AsyncHandler<AsyncResult<Session>> asyncHandler) {
+    public static Future<Session> getSessionAsync(ServerSession originalSession, String url, boolean remote) {
         ConnectionInfo oldCi = originalSession.getConnectionInfo();
         // 未来新加的代码如果忘记设置这个字段，出问题时方便查找原因
         if (oldCi == null) {
@@ -100,7 +97,7 @@ public class SessionPool {
         ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
         ci.setRemote(remote);
         // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
-        ci.getSessionFactory().createSessionAsync(ci, false, asyncHandler);
+        return ci.getSessionFactory().createSession(ci, false);
     }
 
     public static void release(Session session) {

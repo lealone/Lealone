@@ -664,7 +664,7 @@ public class ConnectionInfo implements Cloneable {
     }
 
     public Session createSession() {
-        return getSessionFactory().createSession(this);
+        return getSessionFactory().createSession(this).get();
     }
 
     public SessionFactory getSessionFactory() {

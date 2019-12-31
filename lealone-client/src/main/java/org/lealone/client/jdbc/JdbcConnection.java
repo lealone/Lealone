@@ -87,7 +87,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     public JdbcConnection(ConnectionInfo ci) throws SQLException {
         try {
             // this will return an embedded or server connection
-            session = ci.getSessionFactory().createSession(ci);
+            session = ci.getSessionFactory().createSession(ci).get();
             user = ci.getUserName();
             url = ci.getURL(); // 不含参数
             initTrace();
@@ -479,7 +479,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("isReadOnly");
             checkClosed();
             getReadOnly = prepareSQLCommand("CALL READONLY()", getReadOnly);
-            Result result = getReadOnly.executeQuery(0, false);
+            Result result = getReadOnly.executeQuery(0, false).get();
             result.next();
             boolean readOnly = result.currentRow()[0].getBoolean().booleanValue();
             return readOnly;
@@ -517,7 +517,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             checkClosed();
             if (catalog == null) {
                 SQLCommand command = prepareSQLCommand("CALL DATABASE()", Integer.MAX_VALUE);
-                Result result = command.executeQuery(0, false);
+                Result result = command.executeQuery(0, false).get();
                 result.next();
                 catalog = result.currentRow()[0].getString();
                 command.close();
@@ -667,7 +667,7 @@ public class JdbcConnection extends TraceObject implements Connection {
                 getQueryTimeout = prepareSQLCommand("SELECT VALUE FROM INFORMATION_SCHEMA.SETTINGS WHERE NAME=?",
                         getQueryTimeout);
                 getQueryTimeout.getParameters().get(0).setValue(ValueString.get("QUERY_TIMEOUT"), false);
-                Result result = getQueryTimeout.executeQuery(0, false);
+                Result result = getQueryTimeout.executeQuery(0, false).get();
                 result.next();
                 int queryTimeout = result.currentRow()[0].getInt();
                 result.close();
@@ -695,7 +695,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("getTransactionIsolation");
             checkClosed();
             getLockMode = prepareSQLCommand("CALL LOCK_MODE()", getLockMode);
-            Result result = getLockMode.executeQuery(0, false);
+            Result result = getLockMode.executeQuery(0, false).get();
             result.next();
             int lockMode = result.currentRow()[0].getInt();
             result.close();
@@ -1369,7 +1369,7 @@ public class JdbcConnection extends TraceObject implements Connection {
     ResultSet getGeneratedKeys(JdbcStatement stat, int id) {
         getGeneratedKeys = prepareSQLCommand("SELECT SCOPE_IDENTITY() WHERE SCOPE_IDENTITY() IS NOT NULL",
                 getGeneratedKeys);
-        Result result = getGeneratedKeys.executeQuery(0, false);
+        Result result = getGeneratedKeys.executeQuery(0, false).get();
         ResultSet rs = new JdbcResultSet(this, stat, result, id, false, true, false);
         return rs;
     }

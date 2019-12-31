@@ -20,8 +20,7 @@ package org.lealone.db;
 import java.nio.ByteBuffer;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.session.ServerSession;
 import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
@@ -44,14 +43,13 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Object put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
-            AsyncHandler<AsyncResult<Object>> handler) {
-        return executeReplicaPut(null, mapName, key, value, raw, handler);
+    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
+        return executeReplicaPut(null, mapName, key, value, raw);
     }
 
     @Override
-    public Object executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
-            boolean raw, AsyncHandler<AsyncResult<Object>> handler) {
+    public Future<Object> executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
+            boolean raw) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         if (raw) {
@@ -64,25 +62,24 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
 
         try (DataBuffer b = DataBuffer.create()) {
             ByteBuffer valueBuffer = b.write(map.getValueType(), result);
-            return valueBuffer.array();
+            return Future.succeededFuture(valueBuffer.array());
         }
     }
 
     @Override
-    public Object get(String mapName, ByteBuffer key, AsyncHandler<AsyncResult<Object>> handler) {
+    public Future<Object> get(String mapName, ByteBuffer key) {
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.get(map.getKeyType().read(key));
-        return result;
+        return Future.succeededFuture(result);
     }
 
     @Override
-    public Object append(String mapName, ByteBuffer value, AsyncHandler<AsyncResult<Object>> handler) {
-        return executeReplicaAppend(null, mapName, value, handler);
+    public Future<Object> append(String mapName, ByteBuffer value) {
+        return executeReplicaAppend(null, mapName, value);
     }
 
     @Override
-    public Object executeReplicaAppend(String replicationName, String mapName, ByteBuffer value,
-            AsyncHandler<AsyncResult<Object>> handler) {
+    public Future<Object> executeReplicaAppend(String replicationName, String mapName, ByteBuffer value) {
         session.setReplicationName(replicationName);
         StorageMap<Object, Object> map = session.getStorageMap(mapName);
         Object result = map.append(map.getValueType().read(value));
@@ -90,15 +87,14 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
         if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
             parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
         }
-        return result;
+        return Future.succeededFuture(result);
     }
 
     @Override
-    public LeafPageMovePlan prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan,
-            AsyncHandler<AsyncResult<LeafPageMovePlan>> handler) {
+    public Future<LeafPageMovePlan> prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
         DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
                 .getStorageMap(mapName);
-        return map.prepareMoveLeafPage(leafPageMovePlan);
+        return Future.succeededFuture(map.prepareMoveLeafPage(leafPageMovePlan));
     }
 
     @Override
