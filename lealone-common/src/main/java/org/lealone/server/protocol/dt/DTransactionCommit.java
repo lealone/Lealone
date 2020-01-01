@@ -25,26 +25,31 @@ import org.lealone.server.protocol.NoAckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class DistributedTransactionRollback implements NoAckPacket {
+public class DTransactionCommit implements NoAckPacket {
 
-    public DistributedTransactionRollback() {
+    public final String allLocalTransactionNames;
+
+    public DTransactionCommit(String allLocalTransactionNames) {
+        this.allLocalTransactionNames = allLocalTransactionNames;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_COMMIT;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
+        out.writeString(allLocalTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionRollback> {
+    private static class Decoder implements PacketDecoder<DTransactionCommit> {
         @Override
-        public DistributedTransactionRollback decode(NetInputStream in, int version) throws IOException {
-            return new DistributedTransactionRollback();
+        public DTransactionCommit decode(NetInputStream in, int version) throws IOException {
+            String allLocalTransactionNames = in.readString();
+            return new DTransactionCommit(allLocalTransactionNames);
         }
     }
 }

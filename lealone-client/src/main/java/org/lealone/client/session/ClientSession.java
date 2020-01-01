@@ -38,10 +38,10 @@ import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketDecoders;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
-import org.lealone.server.protocol.dt.DistributedTransactionCommit;
-import org.lealone.server.protocol.dt.DistributedTransactionRollback;
-import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
+import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
+import org.lealone.server.protocol.dt.DTransactionCommit;
+import org.lealone.server.protocol.dt.DTransactionRollback;
+import org.lealone.server.protocol.dt.DTransactionRollbackSavepoint;
 import org.lealone.server.protocol.lob.LobRead;
 import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.session.SessionCancelStatement;
@@ -348,7 +348,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     public synchronized void commitTransaction(String allLocalTransactionNames) {
         checkClosed();
         try {
-            send(new DistributedTransactionCommit(allLocalTransactionNames));
+            send(new DTransactionCommit(allLocalTransactionNames));
         } catch (Exception e) {
             handleException(e);
         }
@@ -357,7 +357,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void rollbackTransaction() {
         try {
-            send(new DistributedTransactionRollback());
+            send(new DTransactionRollback());
         } catch (Exception e) {
             handleException(e);
         }
@@ -366,7 +366,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void addSavepoint(String name) {
         try {
-            send(new DistributedTransactionAddSavepoint(name));
+            send(new DTransactionAddSavepoint(name));
         } catch (Exception e) {
             handleException(e);
         }
@@ -375,7 +375,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     @Override
     public synchronized void rollbackToSavepoint(String name) {
         try {
-            send(new DistributedTransactionRollbackSavepoint(name));
+            send(new DTransactionRollbackSavepoint(name));
         } catch (Exception e) {
             handleException(e);
         }

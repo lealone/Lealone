@@ -19,38 +19,49 @@ package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
 
+import org.lealone.db.result.Result;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.NoAckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.statement.StatementQueryAck;
 
-public class DistributedTransactionRollbackSavepoint implements NoAckPacket {
+public class DTransactionQueryAck extends StatementQueryAck {
 
-    public final String name;
+    public final String localTransactionNames;
 
-    public DistributedTransactionRollbackSavepoint(String name) {
-        this.name = name;
+    public DTransactionQueryAck(NetInputStream in, int rowCount, int columnCount, int fetchSize,
+            String localTransactionNames) {
+        super(in, rowCount, columnCount, fetchSize);
+        this.localTransactionNames = localTransactionNames;
+    }
+
+    public DTransactionQueryAck(Result result, int rowCount, int fetchSize, String localTransactionNames) {
+        super(result, rowCount, fetchSize);
+        this.localTransactionNames = localTransactionNames;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT;
+        return PacketType.DISTRIBUTED_TRANSACTION_QUERY_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(name);
+        super.encode(out, version);
+        out.writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionRollbackSavepoint> {
+    private static class Decoder implements PacketDecoder<DTransactionQueryAck> {
         @Override
-        public DistributedTransactionRollbackSavepoint decode(NetInputStream in, int version)
-                throws IOException {
-            String name = in.readString();
-            return new DistributedTransactionRollbackSavepoint(name);
+        public DTransactionQueryAck decode(NetInputStream in, int version) throws IOException {
+            int rowCount = in.readInt();
+            int columnCount = in.readInt();
+            int fetchSize = in.readInt();
+            String localTransactionNames = in.readString();
+            return new DTransactionQueryAck(in, rowCount, columnCount, fetchSize, localTransactionNames);
         }
     }
 }

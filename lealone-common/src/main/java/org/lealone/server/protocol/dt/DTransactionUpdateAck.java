@@ -18,38 +18,39 @@
 package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.net.NetInputStream;
+import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.storage.PageKey;
 
-public class DistributedTransactionUpdate extends StatementUpdate {
+public class DTransactionUpdateAck implements AckPacket {
 
-    public DistributedTransactionUpdate(List<PageKey> pageKeys, String sql) {
-        super(pageKeys, sql);
+    public final int updateCount;
+    public final String localTransactionNames;
+
+    public DTransactionUpdateAck(int updateCount, String localTransactionNames) {
+        this.updateCount = updateCount;
+        this.localTransactionNames = localTransactionNames;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE;
+        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK;
     }
 
     @Override
-    public PacketType getAckType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK;
+    public void encode(NetOutputStream out, int version) throws IOException {
+        out.writeInt(updateCount).writeString(localTransactionNames);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionUpdate> {
+    private static class Decoder implements PacketDecoder<DTransactionUpdateAck> {
         @Override
-        public DistributedTransactionUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
-            String sql = in.readString();
-            return new DistributedTransactionUpdate(pageKeys, sql);
+        public DTransactionUpdateAck decode(NetInputStream in, int version) throws IOException {
+            return new DTransactionUpdateAck(in.readInt(), in.readString());
         }
     }
 }

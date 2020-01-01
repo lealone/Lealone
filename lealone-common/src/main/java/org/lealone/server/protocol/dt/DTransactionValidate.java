@@ -18,37 +18,47 @@
 package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.AckPacket;
+import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.statement.StatementUpdate;
+import org.lealone.storage.PageKey;
 
-public class DistributedTransactionValidateAck implements AckPacket {
+public class DTransactionValidate implements Packet {
 
-    public final boolean isValid;
+    public final String localTransactionName;
 
-    public DistributedTransactionValidateAck(boolean isValid) {
-        this.isValid = isValid;
+    public DTransactionValidate(String localTransactionName) {
+        this.localTransactionName = localTransactionName;
     }
 
     @Override
     public PacketType getType() {
+        return PacketType.DISTRIBUTED_TRANSACTION_VALIDATE;
+    }
+
+    @Override
+    public PacketType getAckType() {
         return PacketType.DISTRIBUTED_TRANSACTION_VALIDATE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeBoolean(isValid);
+        out.writeString(localTransactionName);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionValidateAck> {
+    private static class Decoder implements PacketDecoder<DTransactionUpdate> {
         @Override
-        public DistributedTransactionValidateAck decode(NetInputStream in, int version) throws IOException {
-            return new DistributedTransactionValidateAck(in.readBoolean());
+        public DTransactionUpdate decode(NetInputStream in, int version) throws IOException {
+            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
+            String sql = in.readString();
+            return new DTransactionUpdate(pageKeys, sql);
         }
     }
 }

@@ -25,31 +25,31 @@ import org.lealone.server.protocol.NoAckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class DistributedTransactionCommit implements NoAckPacket {
+public class DTransactionAddSavepoint implements NoAckPacket {
 
-    public final String allLocalTransactionNames;
+    public final String name;
 
-    public DistributedTransactionCommit(String allLocalTransactionNames) {
-        this.allLocalTransactionNames = allLocalTransactionNames;
+    public DTransactionAddSavepoint(String name) {
+        this.name = name;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_COMMIT;
+        return PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(allLocalTransactionNames);
+        out.writeString(name);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionCommit> {
+    private static class Decoder implements PacketDecoder<DTransactionAddSavepoint> {
         @Override
-        public DistributedTransactionCommit decode(NetInputStream in, int version) throws IOException {
-            String allLocalTransactionNames = in.readString();
-            return new DistributedTransactionCommit(allLocalTransactionNames);
+        public DTransactionAddSavepoint decode(NetInputStream in, int version) throws IOException {
+            String name = in.readString();
+            return new DTransactionAddSavepoint(name);
         }
     }
 }

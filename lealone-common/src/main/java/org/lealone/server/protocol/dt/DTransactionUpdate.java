@@ -18,39 +18,38 @@
 package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.lealone.net.NetInputStream;
-import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.statement.StatementUpdate;
+import org.lealone.storage.PageKey;
 
-public class DistributedTransactionPreparedUpdateAck implements AckPacket {
+public class DTransactionUpdate extends StatementUpdate {
 
-    public final int updateCount;
-    public final String localTransactionNames;
-
-    public DistributedTransactionPreparedUpdateAck(int updateCount, String localTransactionNames) {
-        this.updateCount = updateCount;
-        this.localTransactionNames = localTransactionNames;
+    public DTransactionUpdate(List<PageKey> pageKeys, String sql) {
+        super(pageKeys, sql);
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE_ACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE;
     }
 
     @Override
-    public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(updateCount).writeString(localTransactionNames);
+    public PacketType getAckType() {
+        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK;
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionPreparedUpdateAck> {
+    private static class Decoder implements PacketDecoder<DTransactionUpdate> {
         @Override
-        public DistributedTransactionPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new DistributedTransactionPreparedUpdateAck(in.readInt(), in.readString());
+        public DTransactionUpdate decode(NetInputStream in, int version) throws IOException {
+            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
+            String sql = in.readString();
+            return new DTransactionUpdate(pageKeys, sql);
         }
     }
 }

@@ -25,32 +25,30 @@ import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class DistributedTransactionUpdateAck implements AckPacket {
+public class DTransactionValidateAck implements AckPacket {
 
-    public final int updateCount;
-    public final String localTransactionNames;
+    public final boolean isValid;
 
-    public DistributedTransactionUpdateAck(int updateCount, String localTransactionNames) {
-        this.updateCount = updateCount;
-        this.localTransactionNames = localTransactionNames;
+    public DTransactionValidateAck(boolean isValid) {
+        this.isValid = isValid;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_UPDATE_ACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_VALIDATE_ACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(updateCount).writeString(localTransactionNames);
+        out.writeBoolean(isValid);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionUpdateAck> {
+    private static class Decoder implements PacketDecoder<DTransactionValidateAck> {
         @Override
-        public DistributedTransactionUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new DistributedTransactionUpdateAck(in.readInt(), in.readString());
+        public DTransactionValidateAck decode(NetInputStream in, int version) throws IOException {
+            return new DTransactionValidateAck(in.readBoolean());
         }
     }
 }

@@ -24,10 +24,10 @@ import org.lealone.net.TransferInputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
 import org.lealone.server.protocol.batch.BatchStatementUpdateAck;
-import org.lealone.server.protocol.dt.DistributedTransactionPreparedQuery;
-import org.lealone.server.protocol.dt.DistributedTransactionPreparedUpdate;
-import org.lealone.server.protocol.dt.DistributedTransactionQueryAck;
-import org.lealone.server.protocol.dt.DistributedTransactionUpdateAck;
+import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
+import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
+import org.lealone.server.protocol.dt.DTransactionQueryAck;
+import org.lealone.server.protocol.dt.DTransactionUpdateAck;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaData;
 import org.lealone.server.protocol.ps.PreparedStatementGetMetaDataAck;
@@ -134,9 +134,9 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             }
             Packet packet;
             if (isDistributed()) {
-                packet = new DistributedTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable,
-                        commandId, size, values);
-                return session.<Result, DistributedTransactionQueryAck> send(packet, ack -> {
+                packet = new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId, size,
+                        values);
+                return session.<Result, DTransactionQueryAck> send(packet, ack -> {
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                     return getQueryResult(ack, fetch, resultId);
                 });
@@ -164,8 +164,8 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         }
         Packet packet;
         if (isDistributed()) {
-            packet = new DistributedTransactionPreparedUpdate(pageKeys, commandId, size, values);
-            return session.<Integer, DistributedTransactionUpdateAck> send(packet, ack -> {
+            packet = new DTransactionPreparedUpdate(pageKeys, commandId, size, values);
+            return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
                 session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                 return ack.updateCount;
             });

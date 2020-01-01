@@ -20,42 +20,48 @@ package org.lealone.server.protocol.dt;
 import java.io.IOException;
 import java.util.List;
 
+import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.statement.StatementQuery;
+import org.lealone.server.protocol.ps.PreparedStatementQuery;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.storage.PageKey;
 
-public class DistributedTransactionQuery extends StatementQuery {
+public class DTransactionPreparedQuery extends PreparedStatementQuery {
 
-    public DistributedTransactionQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize,
-            boolean scrollable, String sql) {
-        super(pageKeys, resultId, maxRows, fetchSize, scrollable, sql);
+    public DTransactionPreparedQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize,
+            boolean scrollable, int commandId, int size, Value[] parameters) {
+        super(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId, size, parameters);
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_QUERY;
+        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_QUERY_ACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY_ACK;
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionQuery> {
+    private static class Decoder implements PacketDecoder<DTransactionPreparedQuery> {
         @Override
-        public DistributedTransactionQuery decode(NetInputStream in, int version) throws IOException {
+        public DTransactionPreparedQuery decode(NetInputStream in, int version) throws IOException {
             List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
             int resultId = in.readInt();
             int maxRows = in.readInt();
             int fetchSize = in.readInt();
             boolean scrollable = in.readBoolean();
-            String sql = in.readString();
-            return new DistributedTransactionQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, sql);
+            int commandId = in.readInt();
+            int size = in.readInt();
+            Value[] parameters = new Value[size];
+            for (int i = 0; i < size; i++)
+                parameters[i] = in.readValue();
+            return new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetchSize, scrollable,
+                    commandId, size, parameters);
         }
     }
 }

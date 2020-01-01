@@ -30,8 +30,8 @@ import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.server.protocol.AckPacketHandler;
-import org.lealone.server.protocol.dt.DistributedTransactionValidate;
-import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
+import org.lealone.server.protocol.dt.DTransactionValidate;
+import org.lealone.server.protocol.dt.DTransactionValidateAck;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
 import org.lealone.storage.replication.ConsistencyLevel;
@@ -68,7 +68,7 @@ class DTRValidator {
     private static void validateTransactionAsync(AOTransaction transaction, String[] allLocalTransactionNames) {
         AtomicBoolean isFullSuccessful = new AtomicBoolean(true);
         AtomicInteger size = new AtomicInteger(allLocalTransactionNames.length);
-        AckPacketHandler<Void, DistributedTransactionValidateAck> handler = ack -> {
+        AckPacketHandler<Void, DTransactionValidateAck> handler = ack -> {
             isFullSuccessful.compareAndSet(true, ack.isValid);
             int index = size.decrementAndGet();
             if (index == 0 && isFullSuccessful.get()) {
@@ -81,7 +81,7 @@ class DTRValidator {
             if (!localTransactionName.startsWith(localHostAndPort)) {
                 String[] a = localTransactionName.split(":");
                 String hostAndPort = a[0] + ":" + a[1];
-                DistributedTransactionValidate packet = new DistributedTransactionValidate(localTransactionName);
+                DTransactionValidate packet = new DTransactionValidate(localTransactionName);
                 transaction.getSession().send(packet, hostAndPort, handler);
             } else {
                 size.decrementAndGet();
@@ -153,8 +153,8 @@ class DTRValidator {
     }
 
     private static boolean validateRemoteTransaction(String hostAndPort, String localTransactionName, Session session) {
-        DistributedTransactionValidate packet = new DistributedTransactionValidate(localTransactionName);
-        Future<DistributedTransactionValidateAck> ack = session.send(packet, hostAndPort);
+        DTransactionValidate packet = new DTransactionValidate(localTransactionName);
+        Future<DTransactionValidateAck> ack = session.send(packet, hostAndPort);
         return ack.get().isValid;
     }
 

@@ -21,47 +21,37 @@ import java.io.IOException;
 
 import org.lealone.db.result.Result;
 import org.lealone.net.NetInputStream;
-import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.statement.StatementQueryAck;
 
-public class DistributedTransactionQueryAck extends StatementQueryAck {
+public class DTransactionPreparedQueryAck extends DTransactionQueryAck {
 
-    public final String localTransactionNames;
-
-    public DistributedTransactionQueryAck(NetInputStream in, int rowCount, int columnCount, int fetchSize,
+    public DTransactionPreparedQueryAck(NetInputStream in, int rowCount, int columnCount, int fetchSize,
             String localTransactionNames) {
-        super(in, rowCount, columnCount, fetchSize);
-        this.localTransactionNames = localTransactionNames;
+        super(in, rowCount, columnCount, fetchSize, localTransactionNames);
     }
 
-    public DistributedTransactionQueryAck(Result result, int rowCount, int fetchSize, String localTransactionNames) {
-        super(result, rowCount, fetchSize);
-        this.localTransactionNames = localTransactionNames;
+    public DTransactionPreparedQueryAck(Result result, int rowCount, int fetchSize,
+            String localTransactionNames) {
+        super(result, rowCount, fetchSize, localTransactionNames);
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_QUERY_ACK;
-    }
-
-    @Override
-    public void encode(NetOutputStream out, int version) throws IOException {
-        super.encode(out, version);
-        out.writeString(localTransactionNames);
+        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY_ACK;
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionQueryAck> {
+    private static class Decoder implements PacketDecoder<DTransactionPreparedQueryAck> {
         @Override
-        public DistributedTransactionQueryAck decode(NetInputStream in, int version) throws IOException {
+        public DTransactionPreparedQueryAck decode(NetInputStream in, int version) throws IOException {
             int rowCount = in.readInt();
             int columnCount = in.readInt();
             int fetchSize = in.readInt();
             String localTransactionNames = in.readString();
-            return new DistributedTransactionQueryAck(in, rowCount, columnCount, fetchSize, localTransactionNames);
+            return new DTransactionPreparedQueryAck(in, rowCount, columnCount, fetchSize,
+                    localTransactionNames);
         }
     }
 }

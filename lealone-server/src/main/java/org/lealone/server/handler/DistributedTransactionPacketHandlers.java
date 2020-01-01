@@ -23,20 +23,20 @@ import org.lealone.db.session.Session;
 import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.dt.DistributedTransactionAddSavepoint;
-import org.lealone.server.protocol.dt.DistributedTransactionCommit;
-import org.lealone.server.protocol.dt.DistributedTransactionPreparedQuery;
-import org.lealone.server.protocol.dt.DistributedTransactionPreparedQueryAck;
-import org.lealone.server.protocol.dt.DistributedTransactionPreparedUpdate;
-import org.lealone.server.protocol.dt.DistributedTransactionPreparedUpdateAck;
-import org.lealone.server.protocol.dt.DistributedTransactionQuery;
-import org.lealone.server.protocol.dt.DistributedTransactionQueryAck;
-import org.lealone.server.protocol.dt.DistributedTransactionRollback;
-import org.lealone.server.protocol.dt.DistributedTransactionRollbackSavepoint;
-import org.lealone.server.protocol.dt.DistributedTransactionUpdate;
-import org.lealone.server.protocol.dt.DistributedTransactionUpdateAck;
-import org.lealone.server.protocol.dt.DistributedTransactionValidate;
-import org.lealone.server.protocol.dt.DistributedTransactionValidateAck;
+import org.lealone.server.protocol.dt.DTransactionAddSavepoint;
+import org.lealone.server.protocol.dt.DTransactionCommit;
+import org.lealone.server.protocol.dt.DTransactionPreparedQuery;
+import org.lealone.server.protocol.dt.DTransactionPreparedQueryAck;
+import org.lealone.server.protocol.dt.DTransactionPreparedUpdate;
+import org.lealone.server.protocol.dt.DTransactionPreparedUpdateAck;
+import org.lealone.server.protocol.dt.DTransactionQuery;
+import org.lealone.server.protocol.dt.DTransactionQueryAck;
+import org.lealone.server.protocol.dt.DTransactionRollback;
+import org.lealone.server.protocol.dt.DTransactionRollbackSavepoint;
+import org.lealone.server.protocol.dt.DTransactionUpdate;
+import org.lealone.server.protocol.dt.DTransactionUpdateAck;
+import org.lealone.server.protocol.dt.DTransactionValidate;
+import org.lealone.server.protocol.dt.DTransactionValidateAck;
 
 class DistributedTransactionPacketHandlers extends PacketHandlers {
 
@@ -52,9 +52,9 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
         register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE, new Validate());
     }
 
-    private static class Query extends QueryPacketHandler<DistributedTransactionQuery> {
+    private static class Query extends QueryPacketHandler<DTransactionQuery> {
         @Override
-        public Packet handle(PacketDeliveryTask task, DistributedTransactionQuery packet) {
+        public Packet handle(PacketDeliveryTask task, DTransactionQuery packet) {
             Session session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
@@ -63,14 +63,14 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
-            return new DistributedTransactionQueryAck(result, rowCount, fetch,
+            return new DTransactionQueryAck(result, rowCount, fetch,
                     task.session.getTransaction().getLocalTransactionNames());
         }
     }
 
-    private static class PreparedQuery extends PreparedQueryPacketHandler<DistributedTransactionPreparedQuery> {
+    private static class PreparedQuery extends PreparedQueryPacketHandler<DTransactionPreparedQuery> {
         @Override
-        public Packet handle(PacketDeliveryTask task, DistributedTransactionPreparedQuery packet) {
+        public Packet handle(PacketDeliveryTask task, DTransactionPreparedQuery packet) {
             final Session session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
@@ -79,14 +79,14 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, Result result, int rowCount, int fetch) {
-            return new DistributedTransactionPreparedQueryAck(result, rowCount, fetch,
+            return new DTransactionPreparedQueryAck(result, rowCount, fetch,
                     task.session.getTransaction().getLocalTransactionNames());
         }
     }
 
-    private static class Update extends UpdatePacketHandler<DistributedTransactionUpdate> {
+    private static class Update extends UpdatePacketHandler<DTransactionUpdate> {
         @Override
-        public Packet handle(PacketDeliveryTask task, DistributedTransactionUpdate packet) {
+        public Packet handle(PacketDeliveryTask task, DTransactionUpdate packet) {
             final Session session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
@@ -95,14 +95,13 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            return new DistributedTransactionUpdateAck(updateCount,
-                    task.session.getTransaction().getLocalTransactionNames());
+            return new DTransactionUpdateAck(updateCount, task.session.getTransaction().getLocalTransactionNames());
         }
     }
 
-    private static class PreparedUpdate extends PreparedUpdatePacketHandler<DistributedTransactionPreparedUpdate> {
+    private static class PreparedUpdate extends PreparedUpdatePacketHandler<DTransactionPreparedUpdate> {
         @Override
-        public Packet handle(PacketDeliveryTask task, DistributedTransactionPreparedUpdate packet) {
+        public Packet handle(PacketDeliveryTask task, DTransactionPreparedUpdate packet) {
             final Session session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
@@ -111,48 +110,48 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            return new DistributedTransactionPreparedUpdateAck(updateCount,
+            return new DTransactionPreparedUpdateAck(updateCount,
                     task.session.getTransaction().getLocalTransactionNames());
         }
     }
 
-    private static class Commit implements PacketHandler<DistributedTransactionCommit> {
+    private static class Commit implements PacketHandler<DTransactionCommit> {
         @Override
-        public Packet handle(ServerSession session, DistributedTransactionCommit packet) {
+        public Packet handle(ServerSession session, DTransactionCommit packet) {
             session.commit(packet.allLocalTransactionNames);
             return null;
         }
     }
 
-    private static class Rollback implements PacketHandler<DistributedTransactionRollback> {
+    private static class Rollback implements PacketHandler<DTransactionRollback> {
         @Override
-        public Packet handle(ServerSession session, DistributedTransactionRollback packet) {
+        public Packet handle(ServerSession session, DTransactionRollback packet) {
             session.rollback();
             return null;
         }
     }
 
-    private static class AddSavepoint implements PacketHandler<DistributedTransactionAddSavepoint> {
+    private static class AddSavepoint implements PacketHandler<DTransactionAddSavepoint> {
         @Override
-        public Packet handle(ServerSession session, DistributedTransactionAddSavepoint packet) {
+        public Packet handle(ServerSession session, DTransactionAddSavepoint packet) {
             session.addSavepoint(packet.name);
             return null;
         }
     }
 
-    private static class RollbackSavepoint implements PacketHandler<DistributedTransactionRollbackSavepoint> {
+    private static class RollbackSavepoint implements PacketHandler<DTransactionRollbackSavepoint> {
         @Override
-        public Packet handle(ServerSession session, DistributedTransactionRollbackSavepoint packet) {
+        public Packet handle(ServerSession session, DTransactionRollbackSavepoint packet) {
             session.rollbackToSavepoint(packet.name);
             return null;
         }
     }
 
-    private static class Validate implements PacketHandler<DistributedTransactionValidate> {
+    private static class Validate implements PacketHandler<DTransactionValidate> {
         @Override
-        public Packet handle(ServerSession session, DistributedTransactionValidate packet) {
+        public Packet handle(ServerSession session, DTransactionValidate packet) {
             boolean isValid = session.validateTransaction(packet.localTransactionName);
-            return new DistributedTransactionValidateAck(isValid);
+            return new DTransactionValidateAck(isValid);
         }
     }
 }

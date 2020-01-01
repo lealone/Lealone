@@ -22,46 +22,46 @@ import java.util.List;
 
 import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
+import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.ps.PreparedStatementQuery;
+import org.lealone.server.protocol.ps.PreparedStatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.storage.PageKey;
 
-public class DistributedTransactionPreparedQuery extends PreparedStatementQuery {
+public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
 
-    public DistributedTransactionPreparedQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize,
-            boolean scrollable, int commandId, int size, Value[] parameters) {
-        super(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId, size, parameters);
+    public DTransactionPreparedUpdate(List<PageKey> pageKeys, int commandId, int size, Value[] parameters) {
+        super(pageKeys, commandId, size, parameters);
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY;
+        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE;
     }
 
     @Override
     public PacketType getAckType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY_ACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE_ACK;
+    }
+
+    @Override
+    public void encode(NetOutputStream out, int version) throws IOException {
+        super.encode(out, version);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionPreparedQuery> {
+    private static class Decoder implements PacketDecoder<DTransactionPreparedUpdate> {
         @Override
-        public DistributedTransactionPreparedQuery decode(NetInputStream in, int version) throws IOException {
+        public DTransactionPreparedUpdate decode(NetInputStream in, int version) throws IOException {
             List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
-            int resultId = in.readInt();
-            int maxRows = in.readInt();
-            int fetchSize = in.readInt();
-            boolean scrollable = in.readBoolean();
             int commandId = in.readInt();
             int size = in.readInt();
             Value[] parameters = new Value[size];
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
-            return new DistributedTransactionPreparedQuery(pageKeys, resultId, maxRows, fetchSize, scrollable,
-                    commandId, size, parameters);
+            return new DTransactionPreparedUpdate(pageKeys, commandId, size, parameters);
         }
     }
 }

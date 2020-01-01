@@ -25,17 +25,17 @@ import org.lealone.server.protocol.NoAckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class DistributedTransactionAddSavepoint implements NoAckPacket {
+public class DTransactionRollbackSavepoint implements NoAckPacket {
 
     public final String name;
 
-    public DistributedTransactionAddSavepoint(String name) {
+    public DTransactionRollbackSavepoint(String name) {
         this.name = name;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_ADD_SAVEPOINT;
+        return PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK_SAVEPOINT;
     }
 
     @Override
@@ -45,11 +45,12 @@ public class DistributedTransactionAddSavepoint implements NoAckPacket {
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionAddSavepoint> {
+    private static class Decoder implements PacketDecoder<DTransactionRollbackSavepoint> {
         @Override
-        public DistributedTransactionAddSavepoint decode(NetInputStream in, int version) throws IOException {
+        public DTransactionRollbackSavepoint decode(NetInputStream in, int version)
+                throws IOException {
             String name = in.readString();
-            return new DistributedTransactionAddSavepoint(name);
+            return new DTransactionRollbackSavepoint(name);
         }
     }
 }

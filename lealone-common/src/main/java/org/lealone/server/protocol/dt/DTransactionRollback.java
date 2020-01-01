@@ -18,50 +18,33 @@
 package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
-import java.util.List;
 
-import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
+import org.lealone.server.protocol.NoAckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.ps.PreparedStatementUpdate;
-import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.storage.PageKey;
 
-public class DistributedTransactionPreparedUpdate extends PreparedStatementUpdate {
+public class DTransactionRollback implements NoAckPacket {
 
-    public DistributedTransactionPreparedUpdate(List<PageKey> pageKeys, int commandId, int size, Value[] parameters) {
-        super(pageKeys, commandId, size, parameters);
+    public DTransactionRollback() {
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE;
-    }
-
-    @Override
-    public PacketType getAckType() {
-        return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE_ACK;
+        return PacketType.DISTRIBUTED_TRANSACTION_ROLLBACK;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        super.encode(out, version);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DistributedTransactionPreparedUpdate> {
+    private static class Decoder implements PacketDecoder<DTransactionRollback> {
         @Override
-        public DistributedTransactionPreparedUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
-            int commandId = in.readInt();
-            int size = in.readInt();
-            Value[] parameters = new Value[size];
-            for (int i = 0; i < size; i++)
-                parameters[i] = in.readValue();
-            return new DistributedTransactionPreparedUpdate(pageKeys, commandId, size, parameters);
+        public DTransactionRollback decode(NetInputStream in, int version) throws IOException {
+            return new DTransactionRollback();
         }
     }
 }
