@@ -19,7 +19,6 @@ package org.lealone.test.replication;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
@@ -42,8 +41,8 @@ public class ReplicationTest extends SqlTestBase {
                 + " RUN MODE replication  PARAMETERS (replication_factor: 3)";
         stmt.executeUpdate(sql);
 
-        // new AsyncReplicationTest().runTest();
-        new ReplicationConflictTest().runTest();
+        new AsyncReplicationTest().runTest();
+        // new ReplicationConflictTest().runTest();
     }
 
     static class AsyncReplicationTest extends SqlTestBase {
@@ -57,26 +56,20 @@ public class ReplicationTest extends SqlTestBase {
             executeUpdate("drop table IF EXISTS AsyncReplicationTest");
             executeUpdate("create table IF NOT EXISTS AsyncReplicationTest(f1 int primary key, f2 int)");
 
-            CountDownLatch latch = new CountDownLatch(2);
             JdbcStatement stmt = (JdbcStatement) this.stmt;
-            stmt.executeUpdateAsync("insert into AsyncReplicationTest(f1, f2) values(10, 20)", ar -> {
-                latch.countDown();
-            });
+            stmt.executeUpdateAsync("insert into AsyncReplicationTest(f1, f2) values(10, 20)").get();
 
-            stmt.executeQueryAsync("select * from AsyncReplicationTest", ar -> {
-                if (ar.isSucceeded()) {
-                    try {
-                        ResultSet rs = ar.getResult();
-                        rs.next();
-                        System.out.println(rs.getString(1));
-                        rs.close();
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                    }
+            stmt.executeQueryAsync("select * from AsyncReplicationTest").onSuccess(rs -> {
+                try {
+                    rs.next();
+                    System.out.println(rs.getString(1));
+                    rs.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
                 }
-                latch.countDown();
-            });
-            latch.await();
+            }).onFailure(t -> {
+                t.printStackTrace();
+            }).get();
         }
     }
 

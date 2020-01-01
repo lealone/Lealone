@@ -28,10 +28,6 @@ import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.replication.exceptions.ReadFailureException;
-import org.lealone.storage.replication.exceptions.ReadTimeoutException;
-import org.lealone.storage.replication.exceptions.WriteFailureException;
-import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
 class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implements SQLCommand {
 
@@ -60,82 +56,82 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
     }
 
     @Override
-    public Future<Result> executeQuery(int maxRows) {
-        return query(maxRows, false);
-    }
-
-    @Override
-    public Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        return query(maxRows, scrollable);
-    }
-
-    @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
-        return query(maxRows, scrollable);
+        AsyncCallback<Result> ac = new AsyncCallback<>();
+        HashSet<ReplicaSQLCommand> seen = new HashSet<>();
+        executeQuery(maxRows, scrollable, 1, seen, ac);
+        return ac;
     }
 
-    private Future<Result> query(int maxRows, boolean scrollable) {
+    private void executeQuery(int maxRows, boolean scrollable, int tries, HashSet<ReplicaSQLCommand> seen,
+            AsyncCallback<Result> ac) {
         int n = session.n;
         int r = session.r;
         r = 1; // 使用Write all read one模式
-        HashSet<ReplicaSQLCommand> seen = new HashSet<>();
-        AsyncCallback<Result> ac = new AsyncCallback<>();
         AsyncHandler<AsyncResult<Result>> handler = ar -> {
-            ac.setAsyncResult(ar);
+            if (ar.isFailed() && tries < session.maxTries) {
+                executeQuery(maxRows, scrollable, tries + 1, seen, ac);
+            } else {
+                ac.setAsyncResult(ar);
+            }
         };
         ReadResponseHandler<Result> readResponseHandler = new ReadResponseHandler<>(n, handler);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
         for (int i = 0; i < r; i++) {
             ReplicaSQLCommand c = getRandomNode(seen);
-            c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
+            if (c != null)
+                c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
         }
-
-        int tries = 1;
-        while (true) {
-            try {
-                readResponseHandler.getResult(session.rpcTimeoutMillis);
-                return ac;
-            } catch (ReadTimeoutException | ReadFailureException e) {
-                if (tries++ < session.maxTries) {
-                    ReplicaSQLCommand c = getRandomNode(seen);
-                    if (c != null) {
-                        c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
-                        continue;
-                    }
-                }
-                readResponseHandler.initCause(e);
-                throw e;
-            }
-        }
+        //
+        // while (true) {
+        // try {
+        // readResponseHandler.getResult(session.rpcTimeoutMillis);
+        // return ac;
+        // } catch (ReadTimeoutException | ReadFailureException e) {
+        // if (tries + 1 < session.maxTries) {
+        // ReplicaSQLCommand c = getRandomNode(seen);
+        // if (c != null) {
+        // c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
+        // continue;
+        // }
+        // }
+        // readResponseHandler.initCause(e);
+        // throw e;
+        // }
+        // }
     }
 
     @Override
     public Future<Integer> executeUpdate(List<PageKey> pageKeys) {
-        return executeUpdate(1);
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        executeUpdate(1, ac);
+        return ac;
     }
 
-    private Future<Integer> executeUpdate(int tries) {
+    private void executeUpdate(int tries, AsyncCallback<Integer> ac) {
         String rn = session.createReplicationName();
-        AsyncCallback<Integer> ac = new AsyncCallback<>();
         AsyncHandler<AsyncResult<Integer>> handler = ar -> {
-            ac.setAsyncResult(ar);
+            if (ar.isFailed() && tries < session.maxTries) {
+                executeUpdate(tries + 1, ac);
+            } else {
+                ac.setAsyncResult(ar);
+            }
         };
         WriteResponseHandler<Integer> writeResponseHandler = new WriteResponseHandler<>(session, commands, handler);
 
         for (int i = 0; i < session.n; i++) {
             commands[i].executeReplicaUpdate(rn).onComplete(writeResponseHandler);
         }
-        try {
-            writeResponseHandler.getResult(session.rpcTimeoutMillis);
-            return ac;
-        } catch (WriteTimeoutException | WriteFailureException e) {
-            if (tries < session.maxTries)
-                return executeUpdate(++tries);
-            else {
-                writeResponseHandler.initCause(e);
-                throw e;
-            }
-        }
+        // try {
+        // writeResponseHandler.getResult(session.rpcTimeoutMillis);
+        // } catch (WriteTimeoutException | WriteFailureException e) {
+        // if (tries < session.maxTries)
+        // executeUpdate(++tries, ac);
+        // else {
+        // writeResponseHandler.initCause(e);
+        // throw e;
+        // }
+        // }
     }
 }

@@ -290,7 +290,6 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                 logger.trace("{} sending {} to {}@{}", ConfigDescriptor.getLocalNode(), message.packet.getType(), id,
                         to);
         }
-
         P2pConnection conn = getConnection(to);
         if (conn != null)
             conn.enqueue(message, id);
@@ -309,7 +308,7 @@ public final class MessagingService implements MessagingServiceMBean, AsyncConne
                 Map<String, String> config = P2pServer.instance.getConfig();
                 NetFactory factory = NetFactoryManager.getFactory(config);
                 try {
-                    conn = (P2pConnection) factory.getNetClient().createConnection(config, remoteNode, this);
+                    conn = (P2pConnection) factory.getNetClient().createConnection(config, remoteNode, this).get();
                     String localHostAndPort = ConfigDescriptor.getLocalNode().getHostAndPort();
                     conn.initTransfer(remoteNode, localHostAndPort);
                     // connections.put(remoteHostAndPort, conn); //调用initTransfer成功后已经加到connections

@@ -20,17 +20,14 @@ package org.lealone.server.protocol.replication;
 import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
-import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.statement.StatementUpdateAck;
 
-public class ReplicationUpdateAck implements AckPacket {
-
-    public final int updateCount;
+public class ReplicationUpdateAck extends StatementUpdateAck {
 
     public ReplicationUpdateAck(int updateCount) {
-        this.updateCount = updateCount;
+        super(updateCount);
     }
 
     @Override
@@ -38,10 +35,10 @@ public class ReplicationUpdateAck implements AckPacket {
         return PacketType.REPLICATION_UPDATE_ACK;
     }
 
-    @Override
-    public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(updateCount);
-    }
+    // @Override
+    // public void encode(NetOutputStream out, int version) throws IOException {
+    // out.writeInt(updateCount);
+    // }
 
     public static final Decoder decoder = new Decoder();
 

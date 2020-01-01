@@ -112,8 +112,14 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
     private void onFailure() {
         int f = failuresUpdater.incrementAndGet(this);
 
-        if (totalBlockFor() + f >= totalNodes())
+        if (totalBlockFor() + f >= totalNodes()) {
             signal();
+            if (topHandler != null) {
+                AsyncResult<T> ar = new AsyncResult<>();
+                ar.setCause(exceptions.get(0));
+                topHandler.handle(ar);
+            }
+        }
     }
 
     void signal() {

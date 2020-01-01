@@ -51,19 +51,7 @@ public class AsyncCallback<T> implements Future<T> {
             countDown();
     }
 
-    public T getResult() {
-        return getResult(-1);
-    }
-
-    public T getResult(long timeoutMillis) {
-        return await(timeoutMillis);
-    }
-
-    public void await() {
-        await(-1);
-    }
-
-    public T await(long timeoutMillis) {
+    private T await(long timeoutMillis) {
         if (latchObjectRef.compareAndSet(null, new LatchObject(new CountDownLatch(1)))) {
             CountDownLatch latch = latchObjectRef.get().latch;
             try {
@@ -111,12 +99,12 @@ public class AsyncCallback<T> implements Future<T> {
 
     @Override
     public T get() {
-        return getResult();
+        return await(-1);
     }
 
     @Override
     public T get(long timeoutMillis) {
-        return getResult(timeoutMillis);
+        return await(timeoutMillis);
     }
 
     @Override
@@ -170,7 +158,10 @@ public class AsyncCallback<T> implements Future<T> {
 
     private void countDown() {
         if (!latchObjectRef.compareAndSet(null, new LatchObject(null))) {
-            latchObjectRef.get().latch.countDown();
+            CountDownLatch latch = latchObjectRef.get().latch;
+            // 被调用多次时可能为null
+            if (latch != null)
+                latch.countDown();
         }
     }
 }
