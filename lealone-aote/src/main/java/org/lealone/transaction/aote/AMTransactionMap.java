@@ -758,7 +758,11 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public boolean isLocked(Object oldValue, int[] columnIndexes) {
-        return ((TransactionalValue) oldValue).isLocked(transaction.transactionId, columnIndexes);
+        TransactionalValue tv = ((TransactionalValue) oldValue);
+        if (transaction.globalReplicationName != null
+                && transaction.globalReplicationName.equals(tv.getGlobalReplicationName()))
+            return false;
+        return tv.isLocked(transaction.transactionId, columnIndexes);
     }
 
     @Override
@@ -783,8 +787,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         String ret;
         K k = (K) getKeyType().read(key);
         TransactionalValue tv = (TransactionalValue) getTransactionalValue(k);
+        transaction.setGlobalReplicationName(replicationName);
         if (tryLock(k, tv)) {
-            transaction.setGlobalReplicationName(replicationName);
             ret = replicationName;
         } else {
             ret = tv.getGlobalReplicationName();

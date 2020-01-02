@@ -343,6 +343,27 @@ public class AMTransaction implements Transaction {
         lockedBy = null;
     }
 
+    void wakeUpWaitingTransaction(AMTransaction transaction) {
+        while (true) {
+            LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();
+            LinkedList<WaitingTransaction> newWaitingTransactions = new LinkedList<>(waitingTransactions);
+            WaitingTransaction target = null;
+            for (WaitingTransaction wt : newWaitingTransactions) {
+                if (wt.getTransaction() == transaction) {
+                    target = wt;
+                    break;
+                }
+            }
+            if (target == null)
+                return;
+            newWaitingTransactions.remove(target);
+            if (waitingTransactionsRef.compareAndSet(waitingTransactions, newWaitingTransactions)) {
+                target.wakeUp();
+                return;
+            }
+        }
+    }
+
     int addWaitingTransaction(Object key, AMTransaction transaction, Listener listener) {
         transaction.setStatus(STATUS_WAITING);
         WaitingTransaction wt = new WaitingTransaction(key, transaction, listener);

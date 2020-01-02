@@ -41,8 +41,8 @@ public class ReplicationTest extends SqlTestBase {
                 + " RUN MODE replication  PARAMETERS (replication_factor: 3)";
         stmt.executeUpdate(sql);
 
-        new AsyncReplicationTest().runTest();
-        // new ReplicationConflictTest().runTest();
+        // new AsyncReplicationTest().runTest();
+        new ReplicationConflictTest().runTest();
     }
 
     static class AsyncReplicationTest extends SqlTestBase {

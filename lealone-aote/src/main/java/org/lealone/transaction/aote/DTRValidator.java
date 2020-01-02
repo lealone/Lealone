@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.Constants;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
@@ -200,7 +201,8 @@ class DTRValidator {
         return false;
     }
 
-    static String handleReplicationConflict(String mapName, ByteBuffer key, String replicationName, Session session) {
+    static Future<String> handleReplicationConflict(String mapName, ByteBuffer key, String replicationName,
+            Session session) {
         // 第一步: 获取各节点的锁占用情况
         String[] names = replicationName.split(",");
         boolean[] local = new boolean[names.length];
@@ -208,6 +210,8 @@ class DTRValidator {
         int size = names.length - 2;
         String[] replicationNames = new String[size];
         AtomicInteger replicationNameIndex = new AtomicInteger();
+
+        AsyncCallback<String> asyncCallback = new AsyncCallback<>();
 
         AckPacketHandler<Void, ReplicationCheckConflictAck> handler = ack -> {
             int index = replicationNameIndex.getAndIncrement();
@@ -230,6 +234,8 @@ class DTRValidator {
                 }
                 if (candidateReplicationName == null)
                     candidateReplicationName = map.firstKey();
+
+                asyncCallback.setAsyncResult(candidateReplicationName);
 
                 // 第三步: 处理锁冲突
                 for (int i = 2, length = names.length; i < length; i++) {
@@ -258,6 +264,6 @@ class DTRValidator {
                 session.send(packet, name, handler);
             }
         }
-        return null;
+        return asyncCallback;
     }
 }

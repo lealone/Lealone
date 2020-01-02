@@ -240,7 +240,7 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
         ValueArray array = convertToKey(row);
         Object oldTransactionalValue = map.getTransactionalValue(array);
         if (map.isLocked(oldTransactionalValue, null))
-            return map.addWaitingTransaction(row.getKey(), oldTransactionalValue, globalListener);
+            return map.addWaitingTransaction(ValueLong.get(row.getKey()), oldTransactionalValue, globalListener);
         else
             return map.tryRemove(array, oldTransactionalValue);
     }
