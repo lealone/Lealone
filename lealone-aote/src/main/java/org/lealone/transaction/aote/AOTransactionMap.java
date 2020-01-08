@@ -112,8 +112,10 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
                 getKeyType().write(buff, key);
                 keyBuff = buff.getAndCopyBuffer();
             }
-            DTRValidator.handleReplicationConflict(getName(), keyBuff, transaction.globalReplicationName,
-                    transaction.getSession()).onSuccess(candidateReplicationName -> {
+            DTRValidator
+                    .handleReplicationConflict(getName(), keyBuff, transaction.globalReplicationName,
+                            transaction.getSession(), oldTransactionalValue.getGlobalReplicationName())
+                    .onSuccess(candidateReplicationName -> {
                         if (candidateReplicationName.equals(transaction.globalReplicationName)) {
                             AMTransaction old = transaction.transactionEngine
                                     .getTransaction(oldTransactionalValue.getTid());

@@ -31,10 +31,12 @@ import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.server.protocol.AckPacketHandler;
+import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.dt.DTransactionValidate;
 import org.lealone.server.protocol.dt.DTransactionValidateAck;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
+import org.lealone.server.protocol.replication.ReplicationHandleConflict;
 import org.lealone.storage.replication.ConsistencyLevel;
 
 //效验分布式事务和复制是否成功
@@ -202,52 +204,17 @@ class DTRValidator {
     }
 
     static Future<String> handleReplicationConflict(String mapName, ByteBuffer key, String replicationName,
-            Session session) {
+            Session session, String oldReplicationName) {
         // 第一步: 获取各节点的锁占用情况
         String[] names = replicationName.split(",");
         boolean[] local = new boolean[names.length];
         NetNode localHostAndPort = NetNode.getLocalTcpNode();
-        int size = names.length - 2;
-        String[] replicationNames = new String[size];
-        AtomicInteger replicationNameIndex = new AtomicInteger();
+        int replicationNodeSize = names.length - 2;
+        String[] replicationNames = new String[replicationNodeSize];
 
+        AtomicInteger ackCount = new AtomicInteger();
         AsyncCallback<String> asyncCallback = new AsyncCallback<>();
-
-        AckPacketHandler<Void, ReplicationCheckConflictAck> handler = ack -> {
-            int index = replicationNameIndex.getAndIncrement();
-            replicationNames[index] = ack.replicationName;
-            if (index == size - 1) {
-                // 第二步: 分析锁冲突(因为是基于轻量级锁来实现复制的，锁冲突也就意味着复制发生了冲突)
-                // 1. 如果客户端C拿到的行锁数>=2，保留C，撤销其他的
-                // 2. 如果没有一个客户端拿到的行锁数>=2，那么按复制名的自然序保留排在最前面的那个，撤销之后的
-                int quorum = size / 2 + 1;
-                String candidateReplicationName = null;
-                TreeMap<String, AtomicInteger> map = new TreeMap<>();
-                for (String rn : replicationNames) {
-                    AtomicInteger count = map.get(rn);
-                    if (count == null) {
-                        count = new AtomicInteger(0);
-                        map.put(rn, count);
-                    }
-                    if (count.incrementAndGet() >= quorum)
-                        candidateReplicationName = rn;
-                }
-                if (candidateReplicationName == null)
-                    candidateReplicationName = map.firstKey();
-
-                asyncCallback.setAsyncResult(candidateReplicationName);
-
-                // 第三步: 处理锁冲突
-                for (int i = 2, length = names.length; i < length; i++) {
-                    String name = names[i];
-                    if (!local[i]) {
-                        ReplicationCheckConflict packet = new ReplicationCheckConflict(mapName, key, replicationName);
-                        session.send(packet, name);
-                    }
-                }
-            }
-            return null;
-        };
+        int index = 0;
 
         // 从2开始，前两个不是节点名
         for (int i = 2, length = names.length; i < length; i++) {
@@ -257,10 +224,51 @@ class DTRValidator {
                 names[i] = name;
             }
             if (localHostAndPort.equals(NetNode.createTCP(name))) {
-                replicationNames[replicationNameIndex.getAndIncrement()] = replicationName;
+                // 这里是当前节点，因为被上一个未提交的事务提前拿到锁了，所以就用oldReplicationName
+                replicationNames[index++] = oldReplicationName;
                 local[i] = true;
+                ackCount.incrementAndGet();
             } else {
-                ReplicationCheckConflict packet = new ReplicationCheckConflict(mapName, key, replicationName);
+                final int replicationNameIndex = index++;
+                // 这个handler不能提到for循环外，放在循环里面才会得到一个新实例，
+                // 这样通过replicationNameIndex给replicationNames赋值时才正确。
+                AckPacketHandler<Void, ReplicationCheckConflictAck> handler = ack -> {
+                    replicationNames[replicationNameIndex] = ack.replicationName;
+                    if (ackCount.incrementAndGet() == replicationNodeSize) {
+                        // 第二步: 分析锁冲突(因为是基于轻量级锁来实现复制的，锁冲突也就意味着复制发生了冲突)
+                        // 1. 如果客户端C拿到的行锁数>=2，保留C，撤销其他的
+                        // 2. 如果没有一个客户端拿到的行锁数>=2，那么按复制名的自然序保留排在最前面的那个，撤销之后的
+                        int quorum = replicationNodeSize / 2 + 1;
+                        String candidateReplicationName = null;
+                        TreeMap<String, AtomicInteger> map = new TreeMap<>();
+                        for (String rn : replicationNames) {
+                            AtomicInteger count = map.get(rn);
+                            if (count == null) {
+                                count = new AtomicInteger(0);
+                                map.put(rn, count);
+                            }
+                            if (count.incrementAndGet() >= quorum)
+                                candidateReplicationName = rn;
+                        }
+                        if (candidateReplicationName == null)
+                            candidateReplicationName = map.firstKey();
+
+                        asyncCallback.setAsyncResult(candidateReplicationName);
+
+                        // 第三步: 处理锁冲突
+                        for (int j = 2, len = names.length; j < len; j++) {
+                            String n = names[j];
+                            // 只发给跟candidateReplicationName不同的节点
+                            if (!local[j] && !replicationNames[replicationNameIndex].equals(candidateReplicationName)) {
+                                Packet p = new ReplicationHandleConflict(mapName, key.slice(), replicationName);
+                                session.send(p, n);
+                            }
+                        }
+                    }
+                    return null;
+                };
+                // 需要用key.slice()，不能直接传key，在一个循环中多次读取ByteBuffer会产生BufferUnderflowException
+                Packet packet = new ReplicationCheckConflict(mapName, key.slice(), replicationName);
                 session.send(packet, name, handler);
             }
         }

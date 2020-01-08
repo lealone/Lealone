@@ -733,7 +733,11 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
             Transaction.Listener listener) {
         AMTransaction t = transaction.transactionEngine.getTransaction(oldTransactionalValue.getTid());
-        return t.addWaitingTransaction(key, transaction, listener);
+        // 有可能在这一步事务提交了
+        if (t == null)
+            return Transaction.OPERATION_NEED_RETRY;
+        else
+            return t.addWaitingTransaction(key, transaction, listener);
     }
 
     @Override
