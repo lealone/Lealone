@@ -22,6 +22,7 @@ public abstract class DefinitionStatement extends StatementBase {
      */
     protected DefinitionStatement(ServerSession session) {
         super(session);
+        priority = MIN_PRIORITY;
     }
 
     @Override
@@ -31,7 +32,6 @@ public abstract class DefinitionStatement extends StatementBase {
 
     @Override
     public int getPriority() {
-        priority = MIN_PRIORITY;
         return priority;
     }
 

@@ -34,7 +34,6 @@ import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
-import org.lealone.net.TransferConnection;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
@@ -46,16 +45,14 @@ public class Scheduler extends Thread
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
-    static class PreparedCommand {
-        private final TransferConnection conn;
+    private static class YieldableCommand {
         private final int packetId;
         private final SessionInfo si;
         private final PreparedSQLStatement stmt;
         private final PreparedSQLStatement.Yieldable<?> yieldable;
 
-        PreparedCommand(TransferConnection conn, int packetId, SessionInfo si, PreparedSQLStatement stmt,
+        YieldableCommand(int packetId, SessionInfo si, PreparedSQLStatement stmt,
                 PreparedSQLStatement.Yieldable<?> yieldable) {
-            this.conn = conn;
             this.packetId = packetId;
             this.si = si;
             this.stmt = stmt;
@@ -65,15 +62,15 @@ public class Scheduler extends Thread
         void execute() {
             // 如果因为某些原因导致主动让出CPU，那么先放到队列末尾等待重新从中断处执行。
             if (yieldable.run()) {
-                si.preparedCommands.add(this);
+                si.yieldableCommands.add(this);
             }
         }
     }
 
-    static class SessionInfo {
-        // preparedCommands中的命令统一由scheduler调度执行
+    public static class SessionInfo {
+        // yieldableCommands中的命令统一由scheduler调度执行
         private final Scheduler scheduler;
-        private final ConcurrentLinkedQueue<PreparedCommand> preparedCommands;
+        private final ConcurrentLinkedQueue<YieldableCommand> yieldableCommands;
         private final TcpServerConnection conn;
         private final int sessionTimeout;
         final Session session;
@@ -82,7 +79,7 @@ public class Scheduler extends Thread
 
         SessionInfo(TcpServerConnection conn, Session session, int sessionId, int sessionTimeout) {
             scheduler = ScheduleService.getSchedulerForSession();
-            preparedCommands = new ConcurrentLinkedQueue<>();
+            yieldableCommands = new ConcurrentLinkedQueue<>();
             this.conn = conn;
             this.session = session;
             this.sessionId = sessionId;
@@ -95,21 +92,23 @@ public class Scheduler extends Thread
             last = System.currentTimeMillis();
         }
 
-        void addCommand(PreparedCommand command) {
+        public void submitYieldableCommand(int packetId, PreparedSQLStatement stmt,
+                PreparedSQLStatement.Yieldable<?> yieldable) {
+            YieldableCommand command = new YieldableCommand(packetId, this, stmt, yieldable);
             // 如果即将被执行的命令也被分配到同样的线程中(scheduler)运行，
             // 那么就不需要放到队列中了直接执行即可。
             // TODO 如果command的优先级很低，立即执行它是否合适？
             if (scheduler == Thread.currentThread()) {
                 // 同一个session中的上一个事务还在执行中，不能立刻执行它
-                if (command.si.session.getStatus() == SessionStatus.COMMITTING_TRANSACTION) {
-                    preparedCommands.add(command);
+                if (session.getStatus() == SessionStatus.COMMITTING_TRANSACTION) {
+                    yieldableCommands.add(command);
                 } else {
                     command.execute();
                 }
-                return;
+            } else {
+                yieldableCommands.add(command);
+                scheduler.wakeUp();
             }
-            preparedCommands.add(command);
-            scheduler.wakeUp();
         }
 
         void remove() {
@@ -145,7 +144,7 @@ public class Scheduler extends Thread
     private final long loopInterval;
     private boolean stop;
     private int nested;
-    private PreparedCommand nextBestCommand;
+    private YieldableCommand nextBestCommand;
 
     public Scheduler(int id, Map<String, String> config) {
         super(ScheduleService.class.getSimpleName() + "-" + id);
@@ -257,9 +256,9 @@ public class Scheduler extends Thread
     @Override
     public void executeNextStatement() {
         int priority = PreparedSQLStatement.MIN_PRIORITY;
-        PreparedCommand last = null;
+        YieldableCommand last = null;
         while (true) {
-            PreparedCommand c;
+            YieldableCommand c;
             if (nextBestCommand != null) {
                 c = nextBestCommand;
                 nextBestCommand = null;
@@ -293,7 +292,7 @@ public class Scheduler extends Thread
                 }
                 last = c;
             } catch (Throwable e) {
-                c.conn.sendError(c.si.session, c.packetId, e);
+                c.si.conn.sendError(c.si.session, c.packetId, e);
             }
         }
     }
@@ -307,7 +306,7 @@ public class Scheduler extends Thread
         int priority = current.getPriority();
         boolean hasHigherPriorityCommand = false;
         while (true) {
-            PreparedCommand c = getNextBestCommand(priority, false);
+            YieldableCommand c = getNextBestCommand(priority, false);
             if (c == null) {
                 break;
             }
@@ -316,7 +315,7 @@ public class Scheduler extends Thread
             try {
                 c.execute();
             } catch (Throwable e) {
-                c.conn.sendError(c.si.session, c.packetId, e);
+                c.si.conn.sendError(c.si.session, c.packetId, e);
             }
         }
 
@@ -338,46 +337,46 @@ public class Scheduler extends Thread
         return false;
     }
 
-    private PreparedCommand getNextBestCommand(int priority, boolean checkStatus) {
+    private YieldableCommand getNextBestCommand(int priority, boolean checkStatus) {
         if (sessions.isEmpty())
             return null;
 
-        ConcurrentLinkedQueue<PreparedCommand> bestQueue = null;
+        ConcurrentLinkedQueue<YieldableCommand> bestQueue = null;
 
         for (SessionInfo si : sessions) {
-            ConcurrentLinkedQueue<PreparedCommand> preparedCommands = si.preparedCommands;
-            PreparedCommand pc = preparedCommands.peek();
-            if (pc == null)
+            ConcurrentLinkedQueue<YieldableCommand> yieldableCommands = si.yieldableCommands;
+            YieldableCommand c = yieldableCommands.peek();
+            if (c == null)
                 continue;
 
             if (checkStatus) {
-                SessionStatus sessionStatus = pc.si.session.getStatus();
+                SessionStatus sessionStatus = c.si.session.getStatus();
                 if (sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
                     continue;
                 } else if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
-                    Transaction t = pc.si.session.getTransaction();
+                    Transaction t = c.si.session.getTransaction();
                     if (t.getStatus() == Transaction.STATUS_WAITING) {
                         try {
                             t.checkTimeout();
                         } catch (Throwable e) {
                             t.rollback();
-                            pc.conn.sendError(pc.si.session, pc.packetId, e);
+                            c.si.conn.sendError(c.si.session, c.packetId, e);
                         }
                         continue;
                     }
-                    bestQueue = preparedCommands;
+                    bestQueue = yieldableCommands;
                     break;
                 } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
                     continue;
                 }
                 if (bestQueue == null) {
-                    bestQueue = preparedCommands;
+                    bestQueue = yieldableCommands;
                 }
             }
 
-            if (pc.stmt.getPriority() > priority) {
-                bestQueue = preparedCommands;
-                priority = pc.stmt.getPriority();
+            if (c.stmt.getPriority() > priority) {
+                bestQueue = yieldableCommands;
+                priority = c.stmt.getPriority();
             }
         }
 
@@ -422,20 +421,17 @@ public class Scheduler extends Thread
     public void beforeOperation() {
         e = null;
         counter = new AtomicInteger(1);
-        // logger.warn(getName() + " beforeOperation: " + counter.get());
     }
 
     @Override
     public void operationUndo() {
         counter.decrementAndGet();
-        // logger.warn(getName() + " operationUndo: " + counter.get());
         wakeUp();
     }
 
     @Override
     public void operationComplete() {
         counter.decrementAndGet();
-        // logger.warn(getName() + " operationComplete: " + counter.get());
         wakeUp();
     }
 

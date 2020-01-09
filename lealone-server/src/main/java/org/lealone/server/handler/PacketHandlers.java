@@ -76,7 +76,7 @@ public class PacketHandlers {
                 }
             });
             yieldable.setPageKeys(pageKeys);
-            task.conn.addPreparedCommandToQueue(task.packetId, task.si, stmt, yieldable);
+            task.si.submitYieldableCommand(task.packetId, stmt, yieldable);
         }
 
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
@@ -124,7 +124,7 @@ public class PacketHandlers {
                         }
                     });
             yieldable.setPageKeys(packet.pageKeys);
-            task.conn.addPreparedCommandToQueue(task.packetId, task.si, stmt, yieldable);
+            task.si.submitYieldableCommand(task.packetId, stmt, yieldable);
         }
 
         protected void sendResult(PacketDeliveryTask task, QueryPacket packet, Result result) {

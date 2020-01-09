@@ -32,14 +32,12 @@ import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
-import org.lealone.server.Scheduler.PreparedCommand;
 import org.lealone.server.Scheduler.SessionInfo;
 import org.lealone.server.handler.LobPacketHandlers.LobCache;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
-import org.lealone.sql.PreparedSQLStatement;
 
 /**
  * 这里只处理客户端通过TCP连到服务器端后的协议，可以在一个TCP连接中打开多个session
@@ -193,12 +191,6 @@ public class TcpServerConnection extends TransferConnection {
         } else {
             return Session.STATUS_OK;
         }
-    }
-
-    public void addPreparedCommandToQueue(int packetId, SessionInfo si, PreparedSQLStatement stmt,
-            PreparedSQLStatement.Yieldable<?> yieldable) {
-        PreparedCommand pc = new PreparedCommand(this, packetId, si, stmt, yieldable);
-        si.addCommand(pc);
     }
 
     public void sendResponse(PacketDeliveryTask task, Packet packet) {
