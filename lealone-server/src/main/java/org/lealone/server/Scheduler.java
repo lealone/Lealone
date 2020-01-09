@@ -75,7 +75,7 @@ public class Scheduler extends Thread
         private final int sessionTimeout;
         final Session session;
         final int sessionId;
-        long last;
+        private long lastActiveTime;
 
         SessionInfo(TcpServerConnection conn, Session session, int sessionId, int sessionTimeout) {
             scheduler = ScheduleService.getSchedulerForSession();
@@ -84,30 +84,34 @@ public class Scheduler extends Thread
             this.session = session;
             this.sessionId = sessionId;
             this.sessionTimeout = sessionTimeout;
-            updateLastTime();
+            updateLastActiveTime();
             scheduler.addSessionInfo(this);
         }
 
-        void updateLastTime() {
-            last = System.currentTimeMillis();
+        void updateLastActiveTime() {
+            lastActiveTime = System.currentTimeMillis();
         }
 
         public void submitYieldableCommand(int packetId, PreparedSQLStatement stmt,
                 PreparedSQLStatement.Yieldable<?> yieldable) {
             YieldableCommand command = new YieldableCommand(packetId, this, stmt, yieldable);
-            // 如果即将被执行的命令也被分配到同样的线程中(scheduler)运行，
-            // 那么就不需要放到队列中了直接执行即可。
-            // TODO 如果command的优先级很低，立即执行它是否合适？
+            // 如果当前线程就是当前session的scheduler，可以做一些优化，满足一些条件后可以不用放到队列中直接执行即可。
             if (scheduler == Thread.currentThread()) {
                 // 同一个session中的上一个事务还在执行中，不能立刻执行它
                 if (session.getStatus() == SessionStatus.COMMITTING_TRANSACTION) {
                     yieldableCommands.add(command);
                 } else {
-                    command.execute();
+                    // 如果command的优先级最高，立即执行它
+                    YieldableCommand bestCommand = scheduler.getNextBestCommand(stmt.getPriority(), true);
+                    if (bestCommand == null) {
+                        command.execute();
+                    } else {
+                        yieldableCommands.add(command);
+                    }
                 }
             } else {
                 yieldableCommands.add(command);
-                scheduler.wakeUp();
+                scheduler.wakeUp(); // 及时唤醒
             }
         }
 
@@ -122,7 +126,7 @@ public class Scheduler extends Thread
         void checkSessionTimeout(long currentTime) {
             if (sessionTimeout <= 0)
                 return;
-            if (last + sessionTimeout < currentTime) {
+            if (lastActiveTime + sessionTimeout < currentTime) {
                 conn.closeSession(this);
                 logger.warn("Client session timeout, session id: " + sessionId + ", host: "
                         + conn.getWritableChannel().getHost() + ", port: " + conn.getWritableChannel().getPort());
@@ -255,7 +259,7 @@ public class Scheduler extends Thread
 
     @Override
     public void executeNextStatement() {
-        int priority = PreparedSQLStatement.MIN_PRIORITY;
+        int priority = PreparedSQLStatement.MIN_PRIORITY - 1; // 最小优先级减一，保证能取到最小的
         YieldableCommand last = null;
         while (true) {
             YieldableCommand c;
@@ -341,49 +345,42 @@ public class Scheduler extends Thread
         if (sessions.isEmpty())
             return null;
 
-        ConcurrentLinkedQueue<YieldableCommand> bestQueue = null;
+        ConcurrentLinkedQueue<YieldableCommand> best = null;
 
         for (SessionInfo si : sessions) {
-            ConcurrentLinkedQueue<YieldableCommand> yieldableCommands = si.yieldableCommands;
-            YieldableCommand c = yieldableCommands.peek();
+            YieldableCommand c = si.yieldableCommands.peek();
             if (c == null)
                 continue;
 
             if (checkStatus) {
-                SessionStatus sessionStatus = c.si.session.getStatus();
-                if (sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
-                    continue;
-                } else if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
-                    Transaction t = c.si.session.getTransaction();
+                SessionStatus sessionStatus = si.session.getStatus();
+                if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
+                    Transaction t = si.session.getTransaction();
                     if (t.getStatus() == Transaction.STATUS_WAITING) {
                         try {
                             t.checkTimeout();
                         } catch (Throwable e) {
                             t.rollback();
-                            c.si.conn.sendError(c.si.session, c.packetId, e);
+                            si.conn.sendError(si.session, c.packetId, e);
                         }
                         continue;
                     }
-                    bestQueue = yieldableCommands;
-                    break;
-                } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION) {
+                } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION
+                        || sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
                     continue;
-                }
-                if (bestQueue == null) {
-                    bestQueue = yieldableCommands;
                 }
             }
 
             if (c.stmt.getPriority() > priority) {
-                bestQueue = yieldableCommands;
+                best = si.yieldableCommands;
                 priority = c.stmt.getPriority();
             }
         }
 
-        if (bestQueue == null)
+        if (best != null)
+            return best.poll();
+        else
             return null;
-
-        return bestQueue.poll();
     }
 
     @Override
