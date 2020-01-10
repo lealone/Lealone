@@ -31,16 +31,18 @@ public class ClientServerToReplicationTest extends RunModeTest {
     public void run() throws Exception {
         String dbName = ClientServerToReplicationTest.class.getSimpleName();
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server";
-        sql += " PARAMETERS (node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 1)";
+        sql += " PARAMETERS (node_assignment_strategy: 'RandomNodeAssignmentStrategy')";
         executeUpdate(sql);
 
-        new Thread(() -> {
+        Thread t = new Thread(() -> {
             new CrudTest(dbName).runTest();
-        }).start();
+        });
+        t.start();
+        t.join();
 
         sql = "ALTER DATABASE " + dbName + " RUN MODE replication";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2,";
-        sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
+        sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy')";
         executeUpdate(sql);
 
         // String p = " PARAMETERS(hostIds='1,2')";

@@ -197,6 +197,7 @@ public class ClientSessionFactory implements SessionFactory {
                     // 关闭当前session,因为连到的节点不是所要的
                     clientSession.close();
                     createSession(ci2, false, topAc);
+                    break;
                 }
                 default:
                     topAc.setAsyncResult(DbException.throwInternalError());

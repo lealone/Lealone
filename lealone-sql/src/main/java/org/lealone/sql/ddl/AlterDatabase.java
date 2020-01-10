@@ -52,8 +52,7 @@ public class AlterDatabase extends DatabaseStatement {
         this.db = db;
         this.runMode = runMode;
         if (parameters != null && !parameters.isEmpty()) {
-            this.parameters = new CaseInsensitiveMap<>(db.getParameters());
-            this.parameters.putAll(parameters);
+            this.parameters = new CaseInsensitiveMap<>(parameters);
             validateParameters();
         }
     }
@@ -109,7 +108,7 @@ public class AlterDatabase extends DatabaseStatement {
         if (replicationParameters != null)
             db.setReplicationProperties(replicationParameters);
         if (nodeAssignmentParameters != null)
-            db.setReplicationProperties(nodeAssignmentParameters);
+            db.setNodeAssignmentProperties(nodeAssignmentParameters);
     }
 
     private void updateLocalMeta() {
