@@ -19,9 +19,11 @@ package org.lealone.sql.ddl;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
+import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StatementBuilder;
@@ -34,7 +36,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.Storage;
 
 /**
@@ -229,7 +230,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteNodes();
         if (isTargetNode(db)) {
             Database db2 = copyDatabase();
-            SQLRouter.replicate(db2, RunMode.CLIENT_SERVER, runMode, newHostIds);
+            replicateTo(db2, RunMode.CLIENT_SERVER, runMode, newHostIds);
         }
     }
 
@@ -240,7 +241,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteNodes();
         if (isTargetNode(db)) {
             Database db2 = copyDatabase();
-            SQLRouter.sharding(db2, RunMode.CLIENT_SERVER, runMode, oldHostIds, newHostIds);
+            sharding(db2, RunMode.CLIENT_SERVER, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -251,7 +252,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteNodes();
         if (isTargetNode(db)) {
             Database db2 = copyDatabase();
-            SQLRouter.sharding(db2, RunMode.REPLICATION, runMode, oldHostIds, newHostIds);
+            sharding(db2, RunMode.REPLICATION, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -262,7 +263,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteNodes();
         if (isTargetNode(db)) {
             Database db2 = copyDatabase();
-            SQLRouter.replicate(db2, RunMode.REPLICATION, runMode, newHostIds);
+            replicateTo(db2, RunMode.REPLICATION, runMode, newHostIds);
         }
     }
 
@@ -273,7 +274,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteNodes();
         if (isTargetNode(db)) {
             Database db2 = copyDatabase();
-            SQLRouter.sharding(db2, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
+            sharding(db2, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -387,13 +388,13 @@ public class AlterDatabase extends DatabaseStatement {
             set = new HashSet<>(Arrays.asList(removeHostIds));
             if (set.contains(localHostId)) {
                 Database db2 = copyDatabase();
-                SQLRouter.scaleIn(db2, oldRunMode, newRunMode, removeHostIds, newHostIds);
+                scaleIn(db2, oldRunMode, newRunMode, removeHostIds, newHostIds);
             }
         } else if (newRunMode == RunMode.CLIENT_SERVER || newRunMode == RunMode.REPLICATION) {
             set = new HashSet<>(Arrays.asList(newHostIds));
             if (set.contains(localHostId)) {
                 Database db2 = copyDatabase();
-                SQLRouter.scaleIn(db2, oldRunMode, newRunMode, null, newHostIds);
+                scaleIn(db2, oldRunMode, newRunMode, null, newHostIds);
             }
         }
     }
@@ -413,5 +414,39 @@ public class AlterDatabase extends DatabaseStatement {
         if (value == null)
             return 0;
         return Integer.parseInt(value);
+    }
+
+    private static void scaleIn(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
+            String[] newNodes) {
+        ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
+            for (Storage storage : db.getStorages()) {
+                storage.scaleIn(db, oldRunMode, newRunMode, oldNodes, newNodes);
+            }
+            db.notifyRunModeChanged();
+        });
+    }
+
+    private static void replicateTo(Database db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationNodes) {
+        ConcurrentUtils.submitTask("Replicate Pages", () -> {
+            // 先复制包含meta(sys)表的Storage
+            Storage metaStorage = db.getMetaStorage();
+            metaStorage.replicateTo(db, newReplicationNodes, newRunMode);
+            List<Storage> storages = db.getStorages();
+            storages.remove(metaStorage);
+            for (Storage storage : storages) {
+                storage.replicateTo(db, newReplicationNodes, newRunMode);
+            }
+            db.notifyRunModeChanged();
+        });
+    }
+
+    private static void sharding(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
+            String[] newNodes) {
+        ConcurrentUtils.submitTask("Sharding Pages", () -> {
+            for (Storage storage : db.getStorages()) {
+                storage.sharding(db, oldNodes, newNodes, newRunMode);
+            }
+            db.notifyRunModeChanged();
+        });
     }
 }

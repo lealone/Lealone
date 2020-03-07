@@ -86,6 +86,11 @@ public class DistributedBTreeMap<K, V> extends BTreeMap<K, V> implements Distrib
         }
     }
 
+    public DistributedBTreeMap(BTreeMap<?, ?> map, boolean isShardingMode) {
+        super(map);
+        this.isShardingMode = isShardingMode;
+    }
+
     private boolean containsLocalNode(String[] replicationNodes) {
         NetNode local = NetNode.getLocalTcpNode();
         for (String e : replicationNodes) {

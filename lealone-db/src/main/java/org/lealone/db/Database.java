@@ -76,7 +76,6 @@ import org.lealone.storage.LobStorage;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageBuilder;
 import org.lealone.storage.StorageEngine;
-import org.lealone.storage.StorageMap;
 import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.memory.MemoryStorageEngine;
@@ -126,6 +125,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private User systemUser;
     private SystemSession systemSession;
     private Table meta;
+    private String metaStorageEngineName;
     private Index metaIdIndex;
     private boolean starting;
     private TraceSystem traceSystem;
@@ -323,11 +323,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return runMode == RunMode.SHARDING;
     }
 
+    @Override
     public synchronized Database copy() {
         Database db = new Database(id, name, parameters);
         // 因为每个存储只能打开一次，所以要复用原有存储
         db.storagePath = storagePath;
-        db.storageBuilders.putAll(storageBuilders);
         db.storages.putAll(storages);
         db.runMode = runMode;
         db.replicationParameters = replicationParameters;
@@ -463,6 +463,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         data.create = true;
         data.isHidden = true;
         data.session = systemSession;
+        data.storageEngineName = metaStorageEngineName = persistent ? getDefaultStorageEngineName()
+                : MemoryStorageEngine.NAME;
         meta = mainSchema.createTable(data);
 
         IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
@@ -2129,12 +2131,19 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    private final ConcurrentHashMap<String, StorageBuilder> storageBuilders = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Storage> storages = new ConcurrentHashMap<>();
+
+    public Storage getMetaStorage() {
+        return storages.get(metaStorageEngineName);
+    }
 
     @Override
     public List<Storage> getStorages() {
         return new ArrayList<>(storages.values());
+    }
+
+    public Storage getStorage(String storageName) {
+        return storages.get(storageName);
     }
 
     public synchronized Storage getStorage(StorageEngine storageEngine) {
@@ -2142,19 +2151,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (storage != null)
             return storage;
 
-        if (storageEngine instanceof MemoryStorageEngine) {
-            storage = storageEngine.getStorageBuilder().openStorage();
-        } else {
-            storage = getStorageBuilder(storageEngine).openStorage();
-        }
+        storage = getStorageBuilder(storageEngine).openStorage();
         storages.put(storageEngine.getName(), storage);
         if (persistent && lobStorage == null)
             setLobStorage(storageEngine.getLobStorage(this, storage));
         return storage;
-    }
-
-    public Storage getStorage(String storageEngineName) {
-        return storages.get(storageEngineName);
     }
 
     private String getStoragePath() {
@@ -2164,27 +2165,24 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (baseDir != null && !baseDir.endsWith(File.separator))
             baseDir = baseDir + File.separator;
 
+        String path;
         if (baseDir == null)
-            storagePath = "." + File.separator;
+            path = "." + File.separator;
         else
-            storagePath = baseDir;
+            path = baseDir;
 
-        storagePath = storagePath + "db" + Constants.NAME_SEPARATOR + id;
+        path = path + "db" + Constants.NAME_SEPARATOR + id;
         try {
-            storagePath = new File(storagePath).getCanonicalPath();
+            path = new File(path).getCanonicalPath();
         } catch (IOException e) {
             throw DbException.convert(e);
         }
+        storagePath = path;
         return storagePath;
     }
 
-    public synchronized StorageBuilder getStorageBuilder(StorageEngine storageEngine) {
-        StorageBuilder storageBuilder = storageBuilders.get(storageEngine.getName());
-        if (storageBuilder != null)
-            return storageBuilder;
-
-        storageBuilder = storageEngine.getStorageBuilder();
-        storageBuilders.put(storageEngine.getName(), storageBuilder);
+    private StorageBuilder getStorageBuilder(StorageEngine storageEngine) {
+        StorageBuilder storageBuilder = storageEngine.getStorageBuilder();
         if (!persistent) {
             storageBuilder.inMemory();
         } else {
@@ -2195,7 +2193,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             if (isReadOnly()) {
                 storageBuilder.readOnly();
             }
-
             if (key != null) {
                 char[] password = new char[key.length / 2];
                 for (int i = 0; i < password.length; i++) {
@@ -2212,14 +2209,14 @@ public class Database implements DataHandler, DbObject, IDatabase {
                     compressPageSize = pageSize;
                 storageBuilder.pageSplitSize(compressPageSize);
             }
-            storageBuilder.backgroundExceptionHandler(new UncaughtExceptionHandler() {
-                @Override
-                public void uncaughtException(Thread t, Throwable e) {
-                    setBackgroundException(DbException.convert(e));
-                }
-            });
-            storageBuilder.db(this);
         }
+        storageBuilder.backgroundExceptionHandler(new UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread t, Throwable e) {
+                setBackgroundException(DbException.convert(e));
+            }
+        });
+        storageBuilder.db(this);
         return storageBuilder;
     }
 
@@ -2500,14 +2497,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         for (Storage storage : getStorages()) {
             storage.drop();
         }
-    }
-
-    public StorageMap<?, ?> getStorageMap(String mapName) {
-        for (Storage s : getStorages()) {
-            if (s.hasMap(mapName))
-                return s.getMap(mapName);
-        }
-        throw DbException.throwInternalError(mapName + " not found");
     }
 
     public void setLastConnectionInfo(ConnectionInfo ci) {

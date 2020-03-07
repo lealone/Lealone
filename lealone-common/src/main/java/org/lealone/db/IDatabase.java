@@ -68,4 +68,6 @@ public interface IDatabase {
     boolean isStarting();
 
     String getCreateSQL();
+
+    IDatabase copy();
 }

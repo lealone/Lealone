@@ -54,8 +54,8 @@ import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLParser;
-import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LobStorage;
+import org.lealone.storage.Storage;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.replication.ReplicaSQLCommand;
@@ -1332,8 +1332,8 @@ public class ServerSession extends SessionBase {
         return database.isShardingMode();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
+    @SuppressWarnings("unchecked")
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         // 数据库可能还没有初始化，这时事务引擎中就找不到对应的Map
         if (!database.isInitialized())
@@ -1342,20 +1342,15 @@ public class ServerSession extends SessionBase {
         return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
     }
 
-    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
+    public void replicateRootPages(String dbName, ByteBuffer data) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
         if (!database.isInitialized()) {
             database.init();
         }
-        int size = rootPages.getInt();
-        for (int i = 0; i < size; i++) {
-            String mapName = ValueString.type.read(rootPages);
-            DistributedStorageMap<?, ?> map = (DistributedStorageMap<?, ?>) database.getStorageMap(mapName);
-            map.setRootPage(rootPages);
-            if (i == 0) {
-                database = database.copy();
-            }
-        }
+
+        String storageName = ValueString.type.read(data);
+        Storage storage = database.getStorage(storageName);
+        storage.replicateFrom(data);
     }
 
     private SessionStatus sessionStatus = SessionStatus.NO_TRANSACTION;

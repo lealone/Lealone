@@ -17,6 +17,7 @@
  */
 package org.lealone.storage.aose.btree;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -94,6 +95,19 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             root = BTreeLeafPage.createEmpty(this);
         }
         disableParallelIfNeeded();
+    }
+
+    protected BTreeMap(BTreeMap<?, ?> map) {
+        super(map.name, map.keyType, map.valueType, map.storage);
+        size.set(map.size.get());
+        readOnly = map.readOnly;
+        config = map.config;
+        btreeStorage = map.btreeStorage;
+        pohFactory = map.pohFactory;
+        nodePageOperationHandler = map.nodePageOperationHandler;
+        pageStorageMode = map.pageStorageMode;
+        root = map.root;
+        parallelDisabled = map.parallelDisabled;
     }
 
     private void disableParallelIfNeeded() {
@@ -492,6 +506,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return root.gotoLeafPage(key);
     }
 
+    public synchronized void setRootPage(ByteBuffer buff) {
+        root = BTreePage.readReplicatedPage(this, buff);
+        if (root.isNode() && !getName().endsWith("_0")) { // 只异步读非SYS表
+            root.readRemotePages();
+        }
+    }
     //////////////////// 以下是异步API的实现 ////////////////////////////////
 
     @Override

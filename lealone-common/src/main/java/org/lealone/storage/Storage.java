@@ -17,10 +17,12 @@
  */
 package org.lealone.storage;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
@@ -68,16 +70,19 @@ public interface Storage {
 
     void unregisterEventListener(StorageEventListener listener);
 
-    default void replicate(Object dbObject, String[] newReplicationNodes, RunMode runMode) {
-        throw DbException.getUnsupportedException("replicate");
+    default void replicateFrom(ByteBuffer data) {
+        throw DbException.getUnsupportedException("replicateFrom");
     }
 
-    default void sharding(Object dbObject, String[] oldNodes, String[] newNodes, RunMode runMode) {
+    default void replicateTo(IDatabase db, String[] newReplicationNodes, RunMode runMode) {
+        throw DbException.getUnsupportedException("replicateTo");
+    }
+
+    default void sharding(IDatabase db, String[] oldNodes, String[] newNodes, RunMode runMode) {
         throw DbException.getUnsupportedException("sharding");
     }
 
-    default void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
-            String[] newNodes) {
+    default void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
         throw DbException.getUnsupportedException("scaleIn");
     }
 }

@@ -170,47 +170,64 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
-    public void replicate(Object dbObject, String[] newReplicationNodes, RunMode runMode) {
-        replicateRootPages(dbObject, null, newReplicationNodes, runMode);
+    public void replicateFrom(ByteBuffer data) {
+        boolean containsSysMap = data.get() == 1;
+        int size = data.getInt();
+        for (int i = 0; i < size; i++) {
+            String mapName = ValueString.type.read(data);
+            StorageMap<?, ?> map = getMap(mapName);
+            ((BTreeMap<?, ?>) map).setRootPage(data);
+            if (containsSysMap && i == 0) {
+                db.copy();
+            }
+        }
     }
 
     @Override
-    public void sharding(Object dbObject, String[] oldNodes, String[] newNodes, RunMode runMode) {
-        replicateRootPages(dbObject, oldNodes, newNodes, runMode);
+    public void replicateTo(IDatabase db, String[] newReplicationNodes, RunMode runMode) {
+        replicateRootPages(db, null, newReplicationNodes, runMode);
     }
 
-    private void replicateRootPages(Object dbObject, String[] oldNodes, String[] targetNodes, RunMode runMode) {
+    @Override
+    public void sharding(IDatabase db, String[] oldNodes, String[] newNodes, RunMode runMode) {
+        replicateRootPages(db, oldNodes, newNodes, runMode);
+    }
+
+    private void replicateRootPages(IDatabase db, String[] oldNodes, String[] targetNodes, RunMode runMode) {
         List<NetNode> replicationNodes = getReplicationNodes(targetNodes);
         // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
-        IDatabase db = (IDatabase) dbObject;
         Session session = db.createInternalSession(true);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         int id = db.getId();
         String sysMapName = "t_" + id + "_0";
         try (DataBuffer p = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+            ValueString.type.write(p, AOStorageEngine.NAME);
             HashMap<String, StorageMap<?, ?>> maps = new HashMap<>(this.maps);
+            boolean containsSysMap = maps.containsKey(sysMapName);
+            p.put(containsSysMap ? (byte) 1 : (byte) 0);
             Collection<StorageMap<?, ?>> values = maps.values();
             p.putInt(values.size());
-            // SYS表放在前面，并且总是使用CLIENT_SERVER模式
-            StorageMap<?, ?> sysMap = maps.remove(sysMapName);
-            replicateRootPage(db, sysMap, p, oldNodes, RunMode.CLIENT_SERVER);
+            if (containsSysMap) {
+                // SYS表放在前面，并且总是使用CLIENT_SERVER模式
+                StorageMap<?, ?> sysMap = maps.remove(sysMapName);
+                replicateRootPage(db, sysMap, p, oldNodes, RunMode.CLIENT_SERVER);
+            }
             for (StorageMap<?, ?> map : values) {
                 replicateRootPage(db, map, p, oldNodes, runMode);
             }
             ByteBuffer pageBuffer = p.getAndFlipBuffer();
             c.replicateRootPages(db.getShortName(), pageBuffer);
-            db.notifyRunModeChanged();
         }
     }
 
     private void replicateRootPage(IDatabase db, StorageMap<?, ?> map, DataBuffer p, String[] oldNodes,
             RunMode runMode) {
         map = map.getRawMap();
-        if (map instanceof DistributedBTreeMap) {
+        if (map instanceof BTreeMap) {
             String mapName = map.getName();
             ValueString.type.write(p, mapName);
 
-            DistributedBTreeMap<?, ?> btreeMap = (DistributedBTreeMap<?, ?>) map;
+            DistributedBTreeMap<?, ?> btreeMap = new DistributedBTreeMap<>((BTreeMap<?, ?>) map, false);
             btreeMap.setOldNodes(oldNodes);
             btreeMap.setDatabase(db);
             btreeMap.setRunMode(runMode);
@@ -219,12 +236,12 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
-    public void scaleIn(Object dbObject, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
-        IDatabase db = (IDatabase) dbObject;
+    public void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
         for (StorageMap<?, ?> map : maps.values()) {
             map = map.getRawMap();
             if (map instanceof BTreeMap) {
-                DistributedBTreeMap<?, ?> btreeMap = (DistributedBTreeMap<?, ?>) map;
+                DistributedBTreeMap<?, ?> btreeMap = new DistributedBTreeMap<>((BTreeMap<?, ?>) map,
+                        oldRunMode == RunMode.SHARDING);
                 btreeMap.setOldNodes(oldNodes);
                 btreeMap.setDatabase(db);
                 btreeMap.setRunMode(newRunMode);
@@ -235,6 +252,5 @@ public class AOStorage extends StorageBase {
                 }
             }
         }
-        db.notifyRunModeChanged();
     }
 }

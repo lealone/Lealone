@@ -28,15 +28,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.IDatabase;
-import org.lealone.db.RunMode;
+import org.lealone.db.Database;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManager;
@@ -46,7 +45,6 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.dml.Select;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.Storage;
 import org.lealone.storage.replication.ReplicationSession;
 
 public class SQLRouter {
@@ -58,7 +56,7 @@ public class SQLRouter {
         statement.getSession().getTransaction(statement);
     }
 
-    public static int executeDatabaseStatement(IDatabase db, Session currentSession, StatementBase statement) {
+    public static int executeDatabaseStatement(Database db, Session currentSession, StatementBase statement) {
         NetNodeManager m = NetNodeManagerHolder.get();
         Set<NetNode> liveMembers = m.getLiveNodes();
         NetNode localNode = NetNode.getLocalP2pNode();
@@ -100,8 +98,8 @@ public class SQLRouter {
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         NetNodeManager m = NetNodeManagerHolder.get();
         Set<NetNode> liveMembers;
-        Session currentSession = defineStatement.getSession();
-        IDatabase db = currentSession.getDatabase();
+        ServerSession currentSession = defineStatement.getSession();
+        Database db = currentSession.getDatabase();
         String[] hostIds = db.getHostIds();
         if (hostIds.length == 0) {
             throw DbException
@@ -337,31 +335,5 @@ public class SQLRouter {
         default:
             return statement.query(maxRows);
         }
-    }
-
-    public static void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
-            String[] newNodes) {
-        ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
-            for (Storage storage : db.getStorages()) {
-                storage.scaleIn(db, oldRunMode, newRunMode, oldNodes, newNodes);
-            }
-        });
-    }
-
-    public static void replicate(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationNodes) {
-        ConcurrentUtils.submitTask("Replicate Pages", () -> {
-            for (Storage storage : db.getStorages()) {
-                storage.replicate(db, newReplicationNodes, newRunMode);
-            }
-        });
-    }
-
-    public static void sharding(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
-            String[] newNodes) {
-        ConcurrentUtils.submitTask("Sharding Pages", () -> {
-            for (Storage storage : db.getStorages()) {
-                storage.sharding(db, oldNodes, newNodes, newRunMode);
-            }
-        });
     }
 }
