@@ -461,8 +461,7 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
-        DistributedBTreeMap<?, ?> map = (DistributedBTreeMap<?, ?>) this.map;
-        Set<NetNode> candidateNodes = DistributedBTreeMap.getCandidateNodes(map.db, newNodes);
+        Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.db, newNodes);
         for (int i = 0, len = keys.length; i <= len; i++) {
             if (!children[i].isRemotePage()) {
                 BTreePage p = getChildPage(i);

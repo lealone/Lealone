@@ -39,7 +39,6 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeMapBuilder;
-import org.lealone.storage.aose.btree.DistributedBTreeMap;
 import org.lealone.storage.aose.rtree.RTreeMap;
 import org.lealone.storage.aose.rtree.RTreeMapBuilder;
 import org.lealone.storage.fs.FilePath;
@@ -90,20 +89,11 @@ public class AOStorage extends StorageBase {
 
     public <K, V> StorageMap<K, V> openMap(String name, String mapType, StorageDataType keyType,
             StorageDataType valueType, Map<String, String> parameters) {
-        if (isDistributed(parameters)) {
-            return openDistributedBTreeMap(name, keyType, valueType, parameters);
-        } else if (mapType == null || mapType.equalsIgnoreCase("BTreeMap")) {
+        if (mapType == null || mapType.equalsIgnoreCase("BTreeMap")) {
             return openBTreeMap(name, keyType, valueType, parameters);
         } else {
             throw DataUtils.newIllegalArgumentException("Unknow map type: {0}", mapType);
         }
-    }
-
-    private boolean isDistributed(Map<String, String> parameters) {
-        if (parameters != null && parameters.containsKey("isDistributed"))
-            return Boolean.parseBoolean(parameters.get("isDistributed"));
-        else
-            return false;
     }
 
     public <K, V> BTreeMap<K, V> openBTreeMap(String name) {
@@ -116,14 +106,6 @@ public class AOStorage extends StorageBase {
         builder.keyType(keyType);
         builder.valueType(valueType);
         return openMap(name, builder, parameters);
-    }
-
-    public <K, V> DistributedBTreeMap<K, V> openDistributedBTreeMap(String name, StorageDataType keyType,
-            StorageDataType valueType, Map<String, String> parameters) {
-        DistributedBTreeMap.Builder<K, V> builder = new DistributedBTreeMap.Builder<>();
-        builder.keyType(keyType);
-        builder.valueType(valueType);
-        return (DistributedBTreeMap<K, V>) openMap(name, builder, parameters);
     }
 
     public <V> RTreeMap<V> openRTreeMap(String name, StorageDataType valueType, int dimensions) {
@@ -227,7 +209,7 @@ public class AOStorage extends StorageBase {
             String mapName = map.getName();
             ValueString.type.write(p, mapName);
 
-            DistributedBTreeMap<?, ?> btreeMap = new DistributedBTreeMap<>((BTreeMap<?, ?>) map, false);
+            BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
             btreeMap.setOldNodes(oldNodes);
             btreeMap.setDatabase(db);
             btreeMap.setRunMode(runMode);
@@ -240,8 +222,7 @@ public class AOStorage extends StorageBase {
         for (StorageMap<?, ?> map : maps.values()) {
             map = map.getRawMap();
             if (map instanceof BTreeMap) {
-                DistributedBTreeMap<?, ?> btreeMap = new DistributedBTreeMap<>((BTreeMap<?, ?>) map,
-                        oldRunMode == RunMode.SHARDING);
+                BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
                 btreeMap.setOldNodes(oldNodes);
                 btreeMap.setDatabase(db);
                 btreeMap.setRunMode(newRunMode);

@@ -29,7 +29,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
-import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.Storage;
@@ -503,9 +502,7 @@ public class StandardPrimaryIndex extends IndexBase {
     @Override
     public Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last) {
         ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
-        @SuppressWarnings("unchecked")
-        DistributedStorageMap<Value, VersionedValue> map = (DistributedStorageMap<Value, VersionedValue>) getMap(
-                session);
+        StorageMap<Value, VersionedValue> map = getMap(session);
         return map.getNodeToPageKeyMap(session, minAndMaxValues[0], minAndMaxValues[1]);
     }
 

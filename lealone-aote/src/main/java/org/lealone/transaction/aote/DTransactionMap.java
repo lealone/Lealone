@@ -18,20 +18,17 @@
 package org.lealone.transaction.aote;
 
 import org.lealone.db.session.Session;
-import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
 
 public class DTransactionMap<K, V> extends AOTransactionMap<K, V> {
 
-    private final DistributedStorageMap<K, TransactionalValue> map;
     private final Session session;
     private final StorageDataType valueType;
 
     DTransactionMap(AOTransaction transaction, StorageMap<K, TransactionalValue> map) {
         super(transaction, map);
-        this.map = (DistributedStorageMap<K, TransactionalValue>) map;
         session = transaction.getSession();
         valueType = getValueType();
     }

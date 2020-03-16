@@ -22,7 +22,6 @@ import java.nio.ByteBuffer;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.ServerSession;
-import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
@@ -92,15 +91,13 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
 
     @Override
     public Future<LeafPageMovePlan> prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
-        DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                .getStorageMap(mapName);
+        StorageMap<Object, Object> map = session.getStorageMap(mapName);
         return Future.succeededFuture(map.prepareMoveLeafPage(leafPageMovePlan));
     }
 
     @Override
     public void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage) {
-        DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                .getStorageMap(mapName);
+        StorageMap<Object, Object> map = session.getStorageMap(mapName);
         map.addLeafPage(pageKey, page, addPage);
     }
 

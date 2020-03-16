@@ -120,7 +120,7 @@ public class PageReference {
         IDatabase db = map.getDatabase();
         // TODO 支持多节点容错
         String remoteHostId = replicationHostIds.get(0);
-        List<NetNode> replicationNodes = DistributedBTreeMap.getReplicationNodes(db, new String[] { remoteHostId });
+        List<NetNode> replicationNodes = BTreeMap.getReplicationNodes(db, new String[] { remoteHostId });
         Session session = db.createInternalSession(true);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (StorageCommand c = rs.createStorageCommand()) {

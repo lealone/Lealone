@@ -38,7 +38,6 @@ import org.lealone.server.protocol.storage.StorageReadPage;
 import org.lealone.server.protocol.storage.StorageReadPageAck;
 import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
 import org.lealone.server.protocol.storage.StorageReplicateRootPages;
-import org.lealone.storage.DistributedStorageMap;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
@@ -147,8 +146,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class PrepareMoveLeafPage implements PacketHandler<StoragePrepareMoveLeafPage> {
         @Override
         public Packet handle(ServerSession session, StoragePrepareMoveLeafPage packet) {
-            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                    .getStorageMap(packet.mapName);
+            StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             LeafPageMovePlan leafPageMovePlan = map.prepareMoveLeafPage(packet.leafPageMovePlan);
             return new StoragePrepareMoveLeafPageAck(leafPageMovePlan);
         }
@@ -157,8 +155,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class MoveLeafPage implements PacketHandler<StorageMoveLeafPage> {
         @Override
         public Packet handle(ServerSession session, StorageMoveLeafPage packet) {
-            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                    .getStorageMap(packet.mapName);
+            StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             ConcurrentUtils.submitTask("Add Leaf Page", () -> {
                 map.addLeafPage(packet.pageKey, packet.page, packet.addPage);
             });
@@ -179,8 +176,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class ReadPage implements PacketHandler<StorageReadPage> {
         @Override
         public Packet handle(ServerSession session, StorageReadPage packet) {
-            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                    .getStorageMap(packet.mapName);
+            StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             ByteBuffer page = map.readPage(packet.pageKey);
             return new StorageReadPageAck(page);
         }
@@ -189,8 +185,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class RemoveLeafPage implements PacketHandler<StorageRemoveLeafPage> {
         @Override
         public Packet handle(ServerSession session, StorageRemoveLeafPage packet) {
-            DistributedStorageMap<Object, Object> map = (DistributedStorageMap<Object, Object>) session
-                    .getStorageMap(packet.mapName);
+            StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             map.removeLeafPage(packet.pageKey);
             return null;
         }

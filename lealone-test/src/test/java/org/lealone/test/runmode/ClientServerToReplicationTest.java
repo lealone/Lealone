@@ -23,7 +23,7 @@ import org.lealone.test.sql.SqlTestBase;
 public class ClientServerToReplicationTest extends RunModeTest {
 
     public ClientServerToReplicationTest() {
-        setHost("127.0.0.2");
+        setHost("127.0.0.1");
     }
 
     @Test

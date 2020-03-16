@@ -33,7 +33,6 @@ import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
-import org.lealone.storage.aose.btree.DistributedBTreeMap;
 import org.lealone.storage.aose.btree.PageReference;
 import org.lealone.test.TestBase;
 
@@ -60,16 +59,16 @@ public class DistributedBTreeMapTest extends TestBase {
         // storage.getPageOperationHandlerFactory().startHandlers();
     }
 
-    private DistributedBTreeMap<Integer, String> openDistributedBTreeMap(String name) {
+    private BTreeMap<Integer, String> openDistributedBTreeMap(String name) {
         return openDistributedBTreeMap(name, null);
     }
 
-    private DistributedBTreeMap<Integer, String> openDistributedBTreeMap(String name, Map<String, String> parameters) {
-        return storage.openDistributedBTreeMap(name, null, null, parameters);
+    private BTreeMap<Integer, String> openDistributedBTreeMap(String name, Map<String, String> parameters) {
+        return storage.openBTreeMap(name, null, null, parameters);
     }
 
     void testGetNodeToKeyMap() {
-        DistributedBTreeMap<Integer, String> map = openDistributedBTreeMap("testGetNodeToKeyMap");
+        BTreeMap<Integer, String> map = openDistributedBTreeMap("testGetNodeToKeyMap");
         map.clear();
         testGetNodeToKeyMap(map); // 测试空map
 
@@ -120,7 +119,7 @@ public class DistributedBTreeMapTest extends TestBase {
         // map.close();
     }
 
-    void testGetNodeToKeyMap(DistributedBTreeMap<Integer, String> map) {
+    void testGetNodeToKeyMap(BTreeMap<Integer, String> map) {
         BTreePage root = map.getRootPage();
         Random random = new Random();
         String[] ids = { "a", "b", "c", "d", "e", "f" };
@@ -219,7 +218,7 @@ public class DistributedBTreeMapTest extends TestBase {
     }
 
     void testLeafPageRemove() {
-        DistributedBTreeMap<Integer, String> map = openDistributedBTreeMap("testLeafPageRemove");
+        BTreeMap<Integer, String> map = openDistributedBTreeMap("testLeafPageRemove");
         map.clear();
 
         for (int i = 1; i <= 40; i += 2) {

@@ -17,9 +17,15 @@
  */
 package org.lealone.storage;
 
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.Map;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.Session;
+import org.lealone.net.NetNode;
 import org.lealone.storage.type.StorageDataType;
 
 public interface StorageMap<K, V> {
@@ -278,5 +284,47 @@ public interface StorageMap<K, V> {
         AsyncResult<R> ar = new AsyncResult<>();
         ar.setResult(result);
         handler.handle(ar);
+    }
+
+    ////////////////////// 以下是分布式API ////////////////////////////////
+
+    default List<NetNode> getReplicationNodes(Object key) {
+        throw DbException.getUnsupportedException("getReplicationNodes");
+    }
+
+    default Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
+        throw DbException.getUnsupportedException("replicationPut");
+    }
+
+    default Object replicationGet(Session session, Object key) {
+        throw DbException.getUnsupportedException("replicationGet");
+    }
+
+    default Object replicationAppend(Session session, Object value, StorageDataType valueType) {
+        throw DbException.getUnsupportedException("replicationAppend");
+    }
+
+    default void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
+        throw DbException.getUnsupportedException("addLeafPage");
+    }
+
+    default void removeLeafPage(PageKey pageKey) {
+        throw DbException.getUnsupportedException("removeLeafPage");
+    }
+
+    default LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
+        throw DbException.getUnsupportedException("prepareMoveLeafPage");
+    }
+
+    default ByteBuffer readPage(PageKey pageKey) {
+        throw DbException.getUnsupportedException("readPage");
+    }
+
+    default void setRootPage(ByteBuffer buff) {
+        throw DbException.getUnsupportedException("setRootPage");
+    }
+
+    default Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to) {
+        throw DbException.getUnsupportedException("getNodeToPageKeyMap");
     }
 }
