@@ -37,7 +37,7 @@ import org.lealone.server.protocol.storage.StoragePutAck;
 import org.lealone.server.protocol.storage.StorageReadPage;
 import org.lealone.server.protocol.storage.StorageReadPageAck;
 import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
-import org.lealone.server.protocol.storage.StorageReplicateRootPages;
+import org.lealone.server.protocol.storage.StorageReplicatePages;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
@@ -50,7 +50,7 @@ class StoragePacketHandlers extends PacketHandlers {
         register(PacketType.STORAGE_GET, new Get());
         register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE, new PrepareMoveLeafPage());
         register(PacketType.STORAGE_MOVE_LEAF_PAGE, new MoveLeafPage());
-        register(PacketType.STORAGE_REPLICATE_ROOT_PAGES, new ReplicateRootPages());
+        register(PacketType.STORAGE_REPLICATE_PAGES, new ReplicatePages());
         register(PacketType.STORAGE_READ_PAGE, new ReadPage());
         register(PacketType.STORAGE_REMOVE_LEAF_PAGE, new RemoveLeafPage());
     }
@@ -163,11 +163,11 @@ class StoragePacketHandlers extends PacketHandlers {
         }
     }
 
-    private static class ReplicateRootPages implements PacketHandler<StorageReplicateRootPages> {
+    private static class ReplicatePages implements PacketHandler<StorageReplicatePages> {
         @Override
-        public Packet handle(ServerSession session, StorageReplicateRootPages packet) {
-            ConcurrentUtils.submitTask("Replicate Root Pages", () -> {
-                session.replicateRootPages(packet.dbName, packet.rootPages);
+        public Packet handle(ServerSession session, StorageReplicatePages packet) {
+            ConcurrentUtils.submitTask("Replicate Pages", () -> {
+                session.replicatePages(packet.dbName, packet.storageName, packet.pages);
             });
             return null;
         }

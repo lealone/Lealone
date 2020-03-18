@@ -215,9 +215,9 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
+    public void replicatePages(String dbName, String storageName, ByteBuffer pages) {
         for (int i = 0, n = session.n; i < n; i++) {
-            commands[i].replicateRootPages(dbName, rootPages.slice());
+            commands[i].replicatePages(dbName, storageName, pages.slice());
         }
     }
 

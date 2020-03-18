@@ -33,6 +33,8 @@ public interface IDatabase {
 
     String getShortName();
 
+    String getSysMapName();
+
     void notifyRunModeChanged();
 
     Session createInternalSession();

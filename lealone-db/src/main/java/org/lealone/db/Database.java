@@ -252,6 +252,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return getName();
     }
 
+    @Override
+    public String getSysMapName() {
+        return "t_" + id + "_0"; // SYS(META)表对应存储层的MAP名称
+    }
+
     public DbSettings getSettings() {
         return dbSettings;
     }

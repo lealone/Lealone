@@ -102,8 +102,8 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
-        session.replicateRootPages(dbName, rootPages);
+    public void replicatePages(String dbName, String storageName, ByteBuffer pages) {
+        session.replicatePages(dbName, storageName, pages);
     }
 
     @Override

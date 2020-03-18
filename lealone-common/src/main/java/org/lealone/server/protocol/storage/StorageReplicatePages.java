@@ -26,35 +26,39 @@ import org.lealone.server.protocol.NoAckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class StorageReplicateRootPages implements NoAckPacket {
+public class StorageReplicatePages implements NoAckPacket {
 
     public final String dbName;
-    public final ByteBuffer rootPages;
+    public final String storageName;
+    public final ByteBuffer pages;
 
-    public StorageReplicateRootPages(String dbName, ByteBuffer rootPages) {
+    public StorageReplicatePages(String dbName, String storageName, ByteBuffer pages) {
         this.dbName = dbName;
-        this.rootPages = rootPages;
+        this.storageName = storageName;
+        this.pages = pages;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.STORAGE_REPLICATE_ROOT_PAGES;
+        return PacketType.STORAGE_REPLICATE_PAGES;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeString(dbName);
-        out.writeByteBuffer(rootPages);
+        out.writeString(storageName);
+        out.writeByteBuffer(pages);
     }
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<StorageReplicateRootPages> {
+    private static class Decoder implements PacketDecoder<StorageReplicatePages> {
         @Override
-        public StorageReplicateRootPages decode(NetInputStream in, int version) throws IOException {
+        public StorageReplicatePages decode(NetInputStream in, int version) throws IOException {
             String dbName = in.readString();
-            ByteBuffer rootPages = in.readByteBuffer();
-            return new StorageReplicateRootPages(dbName, rootPages);
+            String storageName = in.readString();
+            ByteBuffer pages = in.readByteBuffer();
+            return new StorageReplicatePages(dbName, storageName, pages);
         }
     }
 }

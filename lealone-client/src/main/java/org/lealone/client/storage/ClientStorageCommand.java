@@ -34,7 +34,7 @@ import org.lealone.server.protocol.storage.StoragePutAck;
 import org.lealone.server.protocol.storage.StorageReadPage;
 import org.lealone.server.protocol.storage.StorageReadPageAck;
 import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
-import org.lealone.server.protocol.storage.StorageReplicateRootPages;
+import org.lealone.server.protocol.storage.StorageReplicatePages;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaStorageCommand;
@@ -124,9 +124,9 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public void replicateRootPages(String dbName, ByteBuffer rootPages) {
+    public void replicatePages(String dbName, String storageName, ByteBuffer pages) {
         try {
-            session.send(new StorageReplicateRootPages(dbName, rootPages));
+            session.send(new StorageReplicatePages(dbName, storageName, pages));
         } catch (Exception e) {
             session.handleException(e);
         }

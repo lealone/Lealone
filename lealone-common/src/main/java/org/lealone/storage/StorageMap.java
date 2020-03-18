@@ -320,10 +320,6 @@ public interface StorageMap<K, V> {
         throw DbException.getUnsupportedException("readPage");
     }
 
-    default void setRootPage(ByteBuffer buff) {
-        throw DbException.getUnsupportedException("setRootPage");
-    }
-
     default Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to) {
         throw DbException.getUnsupportedException("getNodeToPageKeyMap");
     }

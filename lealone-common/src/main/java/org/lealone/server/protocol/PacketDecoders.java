@@ -80,7 +80,7 @@ import org.lealone.server.protocol.storage.StoragePutAck;
 import org.lealone.server.protocol.storage.StorageReadPage;
 import org.lealone.server.protocol.storage.StorageReadPageAck;
 import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
-import org.lealone.server.protocol.storage.StorageReplicateRootPages;
+import org.lealone.server.protocol.storage.StorageReplicatePages;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
 public class PacketDecoders {
@@ -171,7 +171,7 @@ public class PacketDecoders {
         register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE, StoragePrepareMoveLeafPage.decoder);
         register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK, StoragePrepareMoveLeafPageAck.decoder);
         register(PacketType.STORAGE_MOVE_LEAF_PAGE, StorageMoveLeafPage.decoder);
-        register(PacketType.STORAGE_REPLICATE_ROOT_PAGES, StorageReplicateRootPages.decoder);
+        register(PacketType.STORAGE_REPLICATE_PAGES, StorageReplicatePages.decoder);
         register(PacketType.STORAGE_READ_PAGE, StorageReadPage.decoder);
         register(PacketType.STORAGE_READ_PAGE_ACK, StorageReadPageAck.decoder);
         register(PacketType.STORAGE_REMOVE_LEAF_PAGE, StorageRemoveLeafPage.decoder);

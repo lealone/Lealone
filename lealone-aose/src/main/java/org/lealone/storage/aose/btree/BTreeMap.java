@@ -958,7 +958,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return getReplicationNodes(db, p.getReplicationHostIds());
     }
 
-    static List<NetNode> getReplicationNodes(IDatabase db, String[] replicationHostIds) {
+    public static List<NetNode> getReplicationNodes(IDatabase db, String[] replicationHostIds) {
         return getReplicationNodes(db, Arrays.asList(replicationHostIds));
     }
 
@@ -1119,9 +1119,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return hostIds;
     }
 
-    @Override
-    public synchronized void setRootPage(ByteBuffer buff) {
-        root = BTreePage.readReplicatedPage(this, buff);
+    public synchronized void readRootPageFrom(ByteBuffer data) {
+        root = BTreePage.readReplicatedPage(this, data);
         if (root.isNode() && !getName().endsWith("_0")) { // 只异步读非SYS表
             root.readRemotePages();
         }

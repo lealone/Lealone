@@ -18,8 +18,6 @@
 package org.lealone.storage.aose;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -56,12 +54,10 @@ public class AOStorage extends StorageBase {
     public static final String SUFFIX_AO_FILE = ".db";
     public static final int SUFFIX_AO_FILE_LENGTH = SUFFIX_AO_FILE.length();
 
-    private final IDatabase db;
     private final PageOperationHandlerFactory pohFactory;
 
     AOStorage(Map<String, Object> config, PageOperationHandlerFactory pohFactory) {
         super(config);
-        this.db = (IDatabase) config.get("db");
         this.pohFactory = pohFactory;
         String storagePath = getStoragePath();
         DataUtils.checkArgument(storagePath != null, "The storage path may not be null");
@@ -138,29 +134,22 @@ public class AOStorage extends StorageBase {
         return config.containsKey("readOnly");
     }
 
-    private List<NetNode> getReplicationNodes(String[] replicationHostIds) {
-        return getReplicationNodes(Arrays.asList(replicationHostIds));
-    }
-
-    private List<NetNode> getReplicationNodes(List<String> replicationHostIds) {
-        int size = replicationHostIds.size();
-        List<NetNode> replicationNodes = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            replicationNodes.add(db.getNode(replicationHostIds.get(i)));
-        }
-        return replicationNodes;
-    }
-
     @Override
     public void replicateFrom(ByteBuffer data) {
         boolean containsSysMap = data.get() == 1;
         int size = data.getInt();
         for (int i = 0; i < size; i++) {
             String mapName = ValueString.type.read(data);
-            StorageMap<?, ?> map = getMap(mapName);
-            ((BTreeMap<?, ?>) map).setRootPage(data);
+            BTreeMap<?, ?> map = (BTreeMap<?, ?>) getMap(mapName);
+            map.readRootPageFrom(data);
+            // 执行db.copy会把SYS表的数据完整复制过来，然后执行SYS表中的所有DDL语句，
+            // 这些DDL语句包括建表语句，执行完建表语句就能得到所要的空MAP了，
+            // 最后为每个MAP复制root page即可
             if (containsSysMap && i == 0) {
-                db.copy();
+                IDatabase db = (IDatabase) config.get("db");
+                db = db.copy();
+                config.put("db", db);
+                map.setDatabase(db);
             }
         }
     }
@@ -176,61 +165,53 @@ public class AOStorage extends StorageBase {
     }
 
     private void replicateRootPages(IDatabase db, String[] oldNodes, String[] targetNodes, RunMode runMode) {
-        List<NetNode> replicationNodes = getReplicationNodes(targetNodes);
+        List<NetNode> replicationNodes = BTreeMap.getReplicationNodes(db, targetNodes);
         // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
         Session session = db.createInternalSession(true);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
-        int id = db.getId();
-        String sysMapName = "t_" + id + "_0";
-        try (DataBuffer p = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
-            ValueString.type.write(p, AOStorageEngine.NAME);
+        String sysMapName = db.getSysMapName();
+        try (DataBuffer buff = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             HashMap<String, StorageMap<?, ?>> maps = new HashMap<>(this.maps);
             boolean containsSysMap = maps.containsKey(sysMapName);
-            p.put(containsSysMap ? (byte) 1 : (byte) 0);
+            buff.put(containsSysMap ? (byte) 1 : (byte) 0);
             Collection<StorageMap<?, ?>> values = maps.values();
-            p.putInt(values.size());
+            buff.putInt(values.size());
             if (containsSysMap) {
                 // SYS表放在前面，并且总是使用CLIENT_SERVER模式
                 StorageMap<?, ?> sysMap = maps.remove(sysMapName);
-                replicateRootPage(db, sysMap, p, oldNodes, RunMode.CLIENT_SERVER);
+                replicateRootPage(db, sysMap, buff, oldNodes, RunMode.CLIENT_SERVER);
             }
             for (StorageMap<?, ?> map : values) {
-                replicateRootPage(db, map, p, oldNodes, runMode);
+                replicateRootPage(db, map, buff, oldNodes, runMode);
             }
-            ByteBuffer pageBuffer = p.getAndFlipBuffer();
-            c.replicateRootPages(db.getShortName(), pageBuffer);
+            ByteBuffer pageBuffer = buff.getAndFlipBuffer();
+            c.replicatePages(db.getShortName(), AOStorageEngine.NAME, pageBuffer);
         }
     }
 
     private void replicateRootPage(IDatabase db, StorageMap<?, ?> map, DataBuffer p, String[] oldNodes,
             RunMode runMode) {
-        map = map.getRawMap();
-        if (map instanceof BTreeMap) {
-            String mapName = map.getName();
-            ValueString.type.write(p, mapName);
+        String mapName = map.getName();
+        ValueString.type.write(p, mapName);
 
-            BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
-            btreeMap.setOldNodes(oldNodes);
-            btreeMap.setDatabase(db);
-            btreeMap.setRunMode(runMode);
-            btreeMap.replicateRootPage(p);
-        }
+        BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
+        btreeMap.setOldNodes(oldNodes);
+        btreeMap.setDatabase(db);
+        btreeMap.setRunMode(runMode);
+        btreeMap.replicateRootPage(p);
     }
 
     @Override
     public void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
         for (StorageMap<?, ?> map : maps.values()) {
-            map = map.getRawMap();
-            if (map instanceof BTreeMap) {
-                BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
-                btreeMap.setOldNodes(oldNodes);
-                btreeMap.setDatabase(db);
-                btreeMap.setRunMode(newRunMode);
-                if (oldNodes == null) {
-                    btreeMap.replicateAllRemotePages();
-                } else {
-                    btreeMap.moveAllLocalLeafPages(oldNodes, newNodes);
-                }
+            BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
+            btreeMap.setOldNodes(oldNodes);
+            btreeMap.setDatabase(db);
+            btreeMap.setRunMode(newRunMode);
+            if (oldNodes == null) {
+                btreeMap.replicateAllRemotePages();
+            } else {
+                btreeMap.moveAllLocalLeafPages(oldNodes, newNodes);
             }
         }
     }

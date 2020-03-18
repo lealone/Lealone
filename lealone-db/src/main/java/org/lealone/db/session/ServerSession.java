@@ -1342,13 +1342,11 @@ public class ServerSession extends SessionBase {
         return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
     }
 
-    public void replicateRootPages(String dbName, ByteBuffer data) {
+    public void replicatePages(String dbName, String storageName, ByteBuffer data) {
         Database database = LealoneDatabase.getInstance().getDatabase(dbName);
         if (!database.isInitialized()) {
             database.init();
         }
-
-        String storageName = ValueString.type.read(data);
         Storage storage = database.getStorage(storageName);
         storage.replicateFrom(data);
     }

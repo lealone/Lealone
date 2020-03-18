@@ -34,7 +34,7 @@ public interface StorageCommand extends Command {
 
     void moveLeafPage(String mapName, PageKey pageKey, ByteBuffer page, boolean addPage);
 
-    void replicateRootPages(String dbName, ByteBuffer rootPages);
+    void replicatePages(String dbName, String storageName, ByteBuffer pages);
 
     void removeLeafPage(String mapName, PageKey pageKey);
 
