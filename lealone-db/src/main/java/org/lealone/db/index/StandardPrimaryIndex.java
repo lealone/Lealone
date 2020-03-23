@@ -545,7 +545,7 @@ public class StandardPrimaryIndex extends IndexBase {
                     row.setRawValue(rawValue);
 
                     if (table.getVersion() != version) {
-                        ArrayList<TableAlterHistoryRecord> records = table.getDatabase()
+                        ArrayList<TableAlterHistoryRecord> records = table.getDatabase().getVersionManager()
                                 .getTableAlterHistoryRecord(table.getId(), version, table.getVersion());
                         Value[] newValues = data;
                         for (TableAlterHistoryRecord record : records) {

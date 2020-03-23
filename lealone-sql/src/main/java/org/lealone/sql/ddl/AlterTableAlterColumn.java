@@ -296,7 +296,8 @@ public class AlterTableAlterColumn extends SchemaStatement {
         if (type == SQLStatement.ALTER_TABLE_DROP_COLUMN) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
-            db.addTableAlterHistoryRecord(table.getId(), table.getVersion(), type, Integer.toString(position));
+            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+                    Integer.toString(position));
         } else if (type == SQLStatement.ALTER_TABLE_ADD_COLUMN) {
             int position;
             if (addBefore != null) {
@@ -312,12 +313,12 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 buff.append(',').append(column.getCreateSQL());
                 newColumns.add(position++, column);
             }
-            db.addTableAlterHistoryRecord(table.getId(), table.getVersion(), type, buff.toString());
+            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type, buff.toString());
         } else if (type == SQLStatement.ALTER_TABLE_ALTER_COLUMN_CHANGE_TYPE) {
             int position = oldColumn.getColumnId();
             newColumns.remove(position);
             newColumns.add(position, newColumn);
-            db.addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
+            db.getVersionManager().addTableAlterHistoryRecord(table.getId(), table.getVersion(), type,
                     position + "," + newColumn.getCreateSQL());
         }
 

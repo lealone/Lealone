@@ -109,7 +109,8 @@ public class StandardTable extends Table {
         }
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
-        tableAlterHistoryRecords = getDatabase().getTableAlterHistoryRecord(id, 0, getVersion() - 1);
+        tableAlterHistoryRecords = getDatabase().getVersionManager().getTableAlterHistoryRecord(id, 0,
+                getVersion() - 1);
     }
 
     public String getMapName() {
@@ -841,6 +842,7 @@ public class StandardTable extends Table {
     @Override
     public void incrementVersion() {
         super.incrementVersion();
-        tableAlterHistoryRecords = getDatabase().getTableAlterHistoryRecord(id, 0, getVersion() - 1);
+        tableAlterHistoryRecords = getDatabase().getVersionManager().getTableAlterHistoryRecord(id, 0,
+                getVersion() - 1);
     }
 }

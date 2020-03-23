@@ -110,7 +110,7 @@ public class DropTable extends SchemaStatement {
             Database db = session.getDatabase();
             db.lockMeta(session);
             db.removeSchemaObject(session, table);
-            db.deleteTableAlterHistoryRecord(id);
+            db.getVersionManager().deleteTableAlterHistoryRecord(id);
         }
         if (next != null) {
             next.executeDrop();
