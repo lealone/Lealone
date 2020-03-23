@@ -107,9 +107,9 @@ public class AlterDatabase extends DatabaseStatement {
         if (parameters != null)
             db.alterParameters(parameters);
         if (replicationParameters != null)
-            db.setReplicationProperties(replicationParameters);
+            db.setReplicationParameters(replicationParameters);
         if (nodeAssignmentParameters != null)
-            db.setNodeAssignmentProperties(nodeAssignmentParameters);
+            db.setNodeAssignmentParameters(nodeAssignmentParameters);
     }
 
     private void updateLocalMeta() {
@@ -315,7 +315,7 @@ public class AlterDatabase extends DatabaseStatement {
                 }
 
                 Database newDB = new Database(db.getId(), db.getShortName(), parameters);
-                newDB.setReplicationProperties(replicationParameters);
+                newDB.setReplicationParameters(replicationParameters);
                 newDB.setRunMode(runMode);
                 lealoneDB.addDatabaseObject(session, newDB);
                 newDB.notifyRunModeChanged();

@@ -6,10 +6,7 @@
  */
 package org.lealone.db;
 
-import java.sql.Connection;
-
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.fs.FileStorage;
@@ -38,6 +35,13 @@ public interface DataHandler {
      * @return the file
      */
     FileStorage openFile(String name, String mode, boolean mustExist);
+
+    /**
+     * Get the temp file deleter mechanism.
+     *
+     * @return the temp file deleter
+     */
+    TempFileDeleter getTempFileDeleter();
 
     /**
      * Check if the simulated power failure occurred.
@@ -70,13 +74,6 @@ public interface DataHandler {
     String getLobCompressionAlgorithm(int type);
 
     /**
-     * Get the temp file deleter mechanism.
-     *
-     * @return the temp file deleter
-     */
-    TempFileDeleter getTempFileDeleter();
-
-    /**
      * Get the synchronization object for lob operations.
      *
      * @return the synchronization object
@@ -84,25 +81,11 @@ public interface DataHandler {
     Object getLobSyncObject();
 
     /**
-     * Get the lob file list cache if it is used.
-     *
-     * @return the cache or null
-     */
-    SmallLRUCache<String, String[]> getLobFileListCache();
-
-    /**
      * Get the lob storage mechanism to use.
      *
      * @return the lob storage mechanism
      */
     LobStorage getLobStorage();
-
-    /**
-     * Get a database connection to be used for LOB access.
-     *
-     * @return the connection or null
-     */
-    Connection getLobConnection();
 
     /**
      * Read from a lob.

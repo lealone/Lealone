@@ -33,7 +33,6 @@ import org.lealone.common.util.BitField;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.ShutdownHookUtils;
-import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.TempFileDeleter;
@@ -156,7 +155,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private DatabaseCloser closeOnExit;
     private Mode mode = Mode.getDefaultMode();
     private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
-    private SmallLRUCache<String, String[]> lobFileListCache;
     private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
     private int cacheSize;
     private int compactMode;
@@ -286,12 +284,21 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     @Override
+    public Map<String, String> getParameters() {
+        return parameters;
+    }
+
+    public void alterParameters(Map<String, String> newParameters) {
+        parameters.putAll(newParameters);
+    }
+
+    @Override
     public Map<String, String> getReplicationParameters() {
         return replicationParameters;
     }
 
-    public void setReplicationProperties(Map<String, String> replicationProperties) {
-        this.replicationParameters = replicationProperties;
+    public void setReplicationParameters(Map<String, String> replicationParameters) {
+        this.replicationParameters = replicationParameters;
     }
 
     @Override
@@ -299,8 +306,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return nodeAssignmentParameters;
     }
 
-    public void setNodeAssignmentProperties(Map<String, String> nodeAssignmentProperties) {
-        this.nodeAssignmentParameters = nodeAssignmentProperties;
+    public void setNodeAssignmentParameters(Map<String, String> nodeAssignmentParameters) {
+        this.nodeAssignmentParameters = nodeAssignmentParameters;
     }
 
     public void setRunMode(RunMode runMode) {
@@ -312,15 +319,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     @Override
     public RunMode getRunMode() {
         return runMode;
-    }
-
-    @Override
-    public Map<String, String> getParameters() {
-        return parameters;
-    }
-
-    public void alterParameters(Map<String, String> newParameters) {
-        parameters.putAll(newParameters);
     }
 
     @Override
@@ -1971,14 +1969,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     @Override
-    public SmallLRUCache<String, String[]> getLobFileListCache() {
-        if (lobFileListCache == null) {
-            lobFileListCache = SmallLRUCache.newInstance(128);
-        }
-        return lobFileListCache;
-    }
-
-    @Override
     public String toString() {
         return name + ":" + super.toString();
     }
@@ -2077,11 +2067,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (lobStorage != null) {
             this.lobStorage = lobStorage;
         }
-    }
-
-    @Override
-    public Connection getLobConnection() {
-        return getInternalConnection();
     }
 
     public Connection getInternalConnection() {

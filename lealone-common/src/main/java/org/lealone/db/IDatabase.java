@@ -57,13 +57,13 @@ public interface IDatabase {
 
     boolean isShardingMode();
 
+    Map<String, String> getParameters();
+
     Map<String, String> getReplicationParameters();
 
     Map<String, String> getNodeAssignmentParameters();
 
     List<Storage> getStorages();
-
-    Map<String, String> getParameters();
 
     RunMode getRunMode();
 

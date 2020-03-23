@@ -11,13 +11,11 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.sql.Connection;
 
 import org.lealone.common.compress.CompressTool;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
@@ -234,17 +232,7 @@ abstract class ScriptBase extends ManipulationStatement implements DataHandler {
     }
 
     @Override
-    public SmallLRUCache<String, String[]> getLobFileListCache() {
-        return null;
-    }
-
-    @Override
     public LobStorage getLobStorage() {
-        return null;
-    }
-
-    @Override
-    public Connection getLobConnection() {
         return null;
     }
 
@@ -252,5 +240,4 @@ abstract class ScriptBase extends ManipulationStatement implements DataHandler {
     public int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
         throw DbException.throwInternalError();
     }
-
 }

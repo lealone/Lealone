@@ -8,7 +8,6 @@ package org.lealone.client.session;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.sql.Connection;
 
 import org.lealone.client.command.ClientPreparedSQLCommand;
 import org.lealone.client.command.ClientSQLCommand;
@@ -19,7 +18,6 @@ import org.lealone.common.exceptions.LealoneException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.util.MathUtils;
-import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
@@ -309,11 +307,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
-    public SmallLRUCache<String, String[]> getLobFileListCache() {
-        return null;
-    }
-
-    @Override
     public TempFileDeleter getTempFileDeleter() {
         return TempFileDeleter.getInstance();
     }
@@ -324,11 +317,6 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
             lobStorage = new ClientLobStorage(this);
         }
         return lobStorage;
-    }
-
-    @Override
-    public Connection getLobConnection() {
-        return null;
     }
 
     @Override

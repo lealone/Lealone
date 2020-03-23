@@ -65,8 +65,8 @@ public class CreateDatabase extends DatabaseStatement {
             validateParameters();
             int id = getObjectId(lealoneDB);
             newDB = new Database(id, dbName, parameters);
-            newDB.setReplicationProperties(replicationParameters);
-            newDB.setNodeAssignmentProperties(nodeAssignmentParameters);
+            newDB.setReplicationParameters(replicationParameters);
+            newDB.setNodeAssignmentParameters(nodeAssignmentParameters);
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
                 String[] hostIds = NetNodeManagerHolder.get().assignNodes(newDB);
@@ -79,7 +79,7 @@ public class CreateDatabase extends DatabaseStatement {
                 // 如果可用节点只有1个，那就退化到CLIENT_SERVER模式
                 newDB.setRunMode(RunMode.CLIENT_SERVER);
                 // 忽略复制参数
-                newDB.setReplicationProperties(null);
+                newDB.setReplicationParameters(null);
             }
             lealoneDB.addDatabaseObject(session, newDB);
             // 将缓存过期掉

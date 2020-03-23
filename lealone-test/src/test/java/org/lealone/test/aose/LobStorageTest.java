@@ -19,12 +19,10 @@ package org.lealone.test.aose;
 
 import java.io.InputStream;
 import java.io.StringReader;
-import java.sql.Connection;
 
 import org.junit.Test;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
-import org.lealone.common.util.SmallLRUCache;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
@@ -116,17 +114,7 @@ public class LobStorageTest extends TestBase {
         }
 
         @Override
-        public SmallLRUCache<String, String[]> getLobFileListCache() {
-            return null;
-        }
-
-        @Override
         public LobStorage getLobStorage() {
-            return null;
-        }
-
-        @Override
-        public Connection getLobConnection() {
             return null;
         }
 

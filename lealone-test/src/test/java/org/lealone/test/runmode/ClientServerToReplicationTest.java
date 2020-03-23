@@ -44,9 +44,6 @@ public class ClientServerToReplicationTest extends RunModeTest {
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2,";
         sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy')";
         executeUpdate(sql);
-
-        // String p = " PARAMETERS(hostIds='1,2')";
-        // executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding" + p);
     }
 
     private static class CrudTest extends SqlTestBase {
