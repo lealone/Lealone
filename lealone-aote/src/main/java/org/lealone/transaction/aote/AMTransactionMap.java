@@ -20,6 +20,8 @@ package org.lealone.transaction.aote;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -28,7 +30,11 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.Session;
+import org.lealone.net.NetNode;
 import org.lealone.storage.IterationParameters;
+import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.PageKey;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.StorageMapCursor;
@@ -448,6 +454,53 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public StorageMap<Object, Object> getRawMap() {
         return map.getRawMap();
+    }
+
+    ////////////////////// 以下是分布式API的默认实现 ////////////////////////////////
+
+    @Override
+    public List<NetNode> getReplicationNodes(Object key) {
+        return map.getReplicationNodes(key);
+    }
+
+    @Override
+    public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
+        return map.replicationPut(session, key, value, valueType);
+    }
+
+    @Override
+    public Object replicationGet(Session session, Object key) {
+        return map.replicationGet(session, key);
+    }
+
+    @Override
+    public Object replicationAppend(Session session, Object value, StorageDataType valueType) {
+        return map.replicationAppend(session, value, valueType);
+    }
+
+    @Override
+    public void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
+        map.addLeafPage(pageKey, page, addPage);
+    }
+
+    @Override
+    public void removeLeafPage(PageKey pageKey) {
+        map.removeLeafPage(pageKey);
+    }
+
+    @Override
+    public LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
+        return map.prepareMoveLeafPage(leafPageMovePlan);
+    }
+
+    @Override
+    public ByteBuffer readPage(PageKey pageKey) {
+        return map.readPage(pageKey);
+    }
+
+    @Override
+    public Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to) {
+        return map.getNodeToPageKeyMap(session, from, to);
     }
 
     ///////////////////////// 以下是TransactionMap接口API的实现 /////////////////////////

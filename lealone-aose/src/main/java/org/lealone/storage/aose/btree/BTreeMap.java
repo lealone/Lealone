@@ -17,9 +17,7 @@
  */
 package org.lealone.storage.aose.btree;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -581,8 +579,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     protected void fireLeafPageSplit(Object splitKey) {
-        PageKey pk = new PageKey(splitKey, false); // 移动右边的Page
-        moveLeafPageLazy(pk);
+        if (isShardingMode()) {
+            PageKey pk = new PageKey(splitKey, false); // 移动右边的Page
+            moveLeafPageLazy(pk);
+        }
     }
 
     private String getLocalHostId() {
@@ -791,7 +791,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     protected void fireLeafPageRemove(PageKey pageKey, BTreePage leafPage) {
-        removeLeafPage(pageKey, leafPage);
+        if (isShardingMode()) {
+            removeLeafPage(pageKey, leafPage);
+        }
     }
 
     private void removeLeafPage(PageKey pageKey, BTreePage leafPage) {
@@ -807,23 +809,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 }
             });
             pohFactory.addPageOperation(operation);
-        }
-    }
-
-    // 1.root为空时怎么处理；2.不为空时怎么处理
-    public void transferFrom(ReadableByteChannel src, long position, long count) throws IOException {
-        ByteBuffer buff = ByteBuffer.allocateDirect((int) count);
-        src.read(buff);
-        buff.position((int) position);
-
-        while (buff.remaining() > 0) {
-            Object key = keyType.read(buff);
-            boolean first = buff.get() == 1;
-            PageKey pk = new PageKey(key, first);
-            addLeafPage(pk, buff, true, true);
-            // int pageLength = buff.getInt();
-            // pos += pageLength;
-            // buff.position(pos);
         }
     }
 

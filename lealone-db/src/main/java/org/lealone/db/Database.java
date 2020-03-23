@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -2344,12 +2345,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return targetNodes;
     }
 
-    private java.sql.PreparedStatement psGetVersion;
-    private java.sql.PreparedStatement psUpdateVersion;
+    private PreparedStatement psGetVersion;
+    private PreparedStatement psUpdateVersion;
 
-    private java.sql.PreparedStatement psAddTableAlterHistoryRecord;
-    private java.sql.PreparedStatement psGetTableAlterHistoryRecord;
-    private java.sql.PreparedStatement psDeleteTableAlterHistoryRecord;
+    private PreparedStatement psAddTableAlterHistoryRecord;
+    private PreparedStatement psGetTableAlterHistoryRecord;
+    private PreparedStatement psDeleteTableAlterHistoryRecord;
 
     // 执行DROP DATABASE时调用这个方法，避免在删掉table_alter_history后还读它
     public void cleanPreparedStatements() {
