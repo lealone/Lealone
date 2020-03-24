@@ -21,7 +21,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
+import java.util.Set;
 
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.exceptions.DbException;
@@ -121,6 +121,7 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private void rewriteSql(boolean toReplicationMode) {
+        selectNode();
         if (session.isRoot()) {
             oldHostIds = db.getHostIds();
             if (parameters != null && parameters.containsKey("hostIds")) {
@@ -138,7 +139,7 @@ public class AlterDatabase extends DatabaseStatement {
 
             rewriteSql();
         } else {
-            if (super.isTargetNode(db)) {
+            if (isTargetNode(db)) {
                 oldHostIds = db.getHostIds();
                 HashSet<String> oldSet = new HashSet<>(Arrays.asList(oldHostIds));
                 if (parameters != null && parameters.containsKey("hostIds")) {
@@ -206,19 +207,44 @@ public class AlterDatabase extends DatabaseStatement {
         }
     }
 
-    @Override
-    protected boolean isTargetNode(Database db) {
-        // boolean isTargetNode = super.isTargetNode(db);
-        // if (session.isRoot() && isTargetNode) {
-        // return true;
-        // }
-        TreeSet<String> hostIds = new TreeSet<>(Arrays.asList(db.getHostIds()));
-        NetNode localNode = NetNode.getLocalTcpNode();
-        if (hostIds.iterator().next().equalsIgnoreCase(localNode.getHostAndPort())) {
-            return true;
-        } else {
-            return false;
+    private void selectNode() {
+        // 由接入节点选择哪个节点作为发起数据复制操作的节点
+        if (session.isRoot()) {
+            String selectedNode = null;
+            if (isTargetNode(db)) {
+                selectedNode = db.getHostId(NetNode.getLocalP2pNode());
+            } else {
+                Set<NetNode> liveMembers = NetNodeManagerHolder.get().getLiveNodes();
+                for (String hostId : db.getHostIds()) {
+                    if (liveMembers.contains(db.getNode(hostId))) {
+                        selectedNode = hostId;
+                        break;
+                    }
+                }
+            }
+            if (selectedNode != null) {
+                db.getParameters().put("_selectedNode_", selectedNode);
+            }
         }
+    }
+
+    // 判断当前节点是否是发起数据复制操作的节点
+    private boolean isSelectedNode(Database db) {
+        // 如果当前节点是接入节点并且是数据库所在的目标节点之一，
+        // 那么当前节点就会被选为发起数据复制操作的节点
+        if (session.isRoot() && isTargetNode(db)) {
+            return true;
+        }
+
+        // 看看当前节点是不是被选中的节点
+        String selectedNode = parameters.get("_selectedNode_");
+        if (selectedNode != null) {
+            NetNode node = db.getNode(selectedNode);
+            if (node.equals(NetNode.getLocalTcpNode())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ----------------------scale out----------------------
@@ -228,7 +254,7 @@ public class AlterDatabase extends DatabaseStatement {
         rewriteSql(true);
         updateLocalMeta();
         updateRemoteNodes();
-        if (isTargetNode(db)) {
+        if (isSelectedNode(db)) {
             Database db2 = copyDatabase();
             replicateTo(db2, RunMode.CLIENT_SERVER, runMode, newHostIds);
         }
@@ -239,7 +265,7 @@ public class AlterDatabase extends DatabaseStatement {
         rewriteSql(false);
         updateLocalMeta();
         updateRemoteNodes();
-        if (isTargetNode(db)) {
+        if (isSelectedNode(db)) {
             Database db2 = copyDatabase();
             sharding(db2, RunMode.CLIENT_SERVER, runMode, oldHostIds, newHostIds);
         }
@@ -250,7 +276,7 @@ public class AlterDatabase extends DatabaseStatement {
         rewriteSql(false);
         updateLocalMeta();
         updateRemoteNodes();
-        if (isTargetNode(db)) {
+        if (isSelectedNode(db)) {
             Database db2 = copyDatabase();
             sharding(db2, RunMode.REPLICATION, runMode, oldHostIds, newHostIds);
         }
@@ -261,7 +287,7 @@ public class AlterDatabase extends DatabaseStatement {
         rewriteSql(true);
         updateLocalMeta();
         updateRemoteNodes();
-        if (isTargetNode(db)) {
+        if (isSelectedNode(db)) {
             Database db2 = copyDatabase();
             replicateTo(db2, RunMode.REPLICATION, runMode, newHostIds);
         }
@@ -272,7 +298,7 @@ public class AlterDatabase extends DatabaseStatement {
         rewriteSql(false);
         updateLocalMeta();
         updateRemoteNodes();
-        if (isTargetNode(db)) {
+        if (isSelectedNode(db)) {
             Database db2 = copyDatabase();
             sharding(db2, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
         }

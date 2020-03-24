@@ -44,5 +44,4 @@ public class LocalNetNodeManager implements NetNodeManager {
         set.add(NetNode.getLocalP2pNode());
         return set;
     }
-
 }

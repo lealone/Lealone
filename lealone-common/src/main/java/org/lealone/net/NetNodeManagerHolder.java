@@ -21,10 +21,6 @@ public class NetNodeManagerHolder {
 
     private static NetNodeManager netNodeManager = LocalNetNodeManager.getInstance();
 
-    public static NetNodeManager getNetNodeManager() {
-        return netNodeManager;
-    }
-
     public static NetNodeManager get() {
         return netNodeManager;
     }
@@ -34,5 +30,4 @@ public class NetNodeManagerHolder {
             throw new NullPointerException("NetNodeManager is null");
         netNodeManager = m;
     }
-
 }

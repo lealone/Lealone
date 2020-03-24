@@ -64,6 +64,7 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManager;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLEngine;
 import org.lealone.sql.SQLEngineManager;
@@ -2395,23 +2396,23 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
-        return NetNodeManagerHolder.get().createReplicationSession(session, replicationNodes);
+        return getNetNodeManager().createReplicationSession(session, replicationNodes);
     }
 
     @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
             Boolean remote) {
-        return NetNodeManagerHolder.get().createReplicationSession(session, replicationNodes, remote);
+        return getNetNodeManager().createReplicationSession(session, replicationNodes, remote);
     }
 
     @Override
     public NetNode getNode(String hostId) {
-        return NetNodeManagerHolder.get().getNode(hostId);
+        return getNetNodeManager().getNode(hostId);
     }
 
     @Override
     public String getHostId(NetNode node) {
-        return NetNodeManagerHolder.get().getHostId(node);
+        return getNetNodeManager().getHostId(node);
     }
 
     @Override
@@ -2421,10 +2422,14 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public List<NetNode> getReplicationNodes(Set<NetNode> oldReplicationNodes, Set<NetNode> candidateNodes) {
-        return NetNodeManagerHolder.get().getReplicationNodes(this, oldReplicationNodes, candidateNodes);
+        return getNetNodeManager().getReplicationNodes(this, oldReplicationNodes, candidateNodes);
     }
 
     public DbObjectVersionManager getVersionManager() {
         return dbObjectVersionManager;
+    }
+
+    private static NetNodeManager getNetNodeManager() {
+        return NetNodeManagerHolder.get();
     }
 }
