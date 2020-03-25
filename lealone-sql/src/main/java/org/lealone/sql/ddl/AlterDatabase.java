@@ -163,14 +163,6 @@ public class AlterDatabase extends DatabaseStatement {
         this.sql = sql.toString();
     }
 
-    private Database copyDatabase() {
-        for (Storage storage : db.getStorages()) {
-            storage.save();
-        }
-        Database db2 = db.copy();
-        return db2;
-    }
-
     private void clientServer2ClientServer() {
         alterDatabase();
         updateLocalMeta();
@@ -255,8 +247,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateLocalMeta();
         updateRemoteNodes();
         if (isSelectedNode(db)) {
-            Database db2 = copyDatabase();
-            replicateTo(db2, RunMode.CLIENT_SERVER, runMode, newHostIds);
+            replicateTo(db, runMode, newHostIds);
         }
     }
 
@@ -266,8 +257,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateLocalMeta();
         updateRemoteNodes();
         if (isSelectedNode(db)) {
-            Database db2 = copyDatabase();
-            sharding(db2, RunMode.CLIENT_SERVER, runMode, oldHostIds, newHostIds);
+            sharding(db, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -277,8 +267,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateLocalMeta();
         updateRemoteNodes();
         if (isSelectedNode(db)) {
-            Database db2 = copyDatabase();
-            sharding(db2, RunMode.REPLICATION, runMode, oldHostIds, newHostIds);
+            sharding(db, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -288,8 +277,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateLocalMeta();
         updateRemoteNodes();
         if (isSelectedNode(db)) {
-            Database db2 = copyDatabase();
-            replicateTo(db2, RunMode.REPLICATION, runMode, newHostIds);
+            replicateTo(db, runMode, newHostIds);
         }
     }
 
@@ -299,8 +287,7 @@ public class AlterDatabase extends DatabaseStatement {
         updateLocalMeta();
         updateRemoteNodes();
         if (isSelectedNode(db)) {
-            Database db2 = copyDatabase();
-            sharding(db2, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
+            sharding(db, runMode, oldHostIds, newHostIds);
         }
     }
 
@@ -413,14 +400,12 @@ public class AlterDatabase extends DatabaseStatement {
         if (newRunMode == RunMode.SHARDING) {
             set = new HashSet<>(Arrays.asList(removeHostIds));
             if (set.contains(localHostId)) {
-                Database db2 = copyDatabase();
-                scaleIn(db2, oldRunMode, newRunMode, removeHostIds, newHostIds);
+                scaleIn(db, oldRunMode, newRunMode, removeHostIds, newHostIds);
             }
         } else if (newRunMode == RunMode.CLIENT_SERVER || newRunMode == RunMode.REPLICATION) {
             set = new HashSet<>(Arrays.asList(newHostIds));
             if (set.contains(localHostId)) {
-                Database db2 = copyDatabase();
-                scaleIn(db2, oldRunMode, newRunMode, null, newHostIds);
+                scaleIn(db, oldRunMode, newRunMode, null, newHostIds);
             }
         }
     }
@@ -452,7 +437,7 @@ public class AlterDatabase extends DatabaseStatement {
         });
     }
 
-    private static void replicateTo(Database db, RunMode oldRunMode, RunMode newRunMode, String[] newReplicationNodes) {
+    private static void replicateTo(Database db, RunMode newRunMode, String[] newReplicationNodes) {
         ConcurrentUtils.submitTask("Replicate Pages", () -> {
             // 先复制包含meta(sys)表的Storage
             Storage metaStorage = db.getMetaStorage();
@@ -466,8 +451,7 @@ public class AlterDatabase extends DatabaseStatement {
         });
     }
 
-    private static void sharding(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
-            String[] newNodes) {
+    private static void sharding(Database db, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
         ConcurrentUtils.submitTask("Sharding Pages", () -> {
             for (Storage storage : db.getStorages()) {
                 storage.sharding(db, oldNodes, newNodes, newRunMode);
