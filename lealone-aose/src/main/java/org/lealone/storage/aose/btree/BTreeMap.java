@@ -1062,7 +1062,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 parent = p;
                 p = p.getChildPage(index);
             } else {
-                index++;
+                // 第一和第二个child使用同一个pageKey，
+                // 如果此时first为true，就不需要增加index了
+                if (!pageKey.first)
+                    index++;
                 return replicateOrMovePage(pageKey, parent.getChildPage(index), parent, index);
             }
         }
@@ -1072,8 +1075,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private ByteBuffer replicatePage(BTreePage p) {
         try (DataBuffer buff = DataBuffer.create()) {
             p.replicatePage(buff, getLocalNode());
-            ByteBuffer pageBuffer = buff.getAndFlipBuffer();
-            return pageBuffer.slice();
+            ByteBuffer pageBuffer = buff.getAndCopyBuffer();
+            return pageBuffer;
         }
     }
 

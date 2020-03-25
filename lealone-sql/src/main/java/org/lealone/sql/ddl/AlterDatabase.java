@@ -224,19 +224,23 @@ public class AlterDatabase extends DatabaseStatement {
     private boolean isSelectedNode(Database db) {
         // 如果当前节点是接入节点并且是数据库所在的目标节点之一，
         // 那么当前节点就会被选为发起数据复制操作的节点
-        if (session.isRoot() && isTargetNode(db)) {
-            return true;
-        }
-
-        // 看看当前节点是不是被选中的节点
-        String selectedNode = parameters.get("_selectedNode_");
-        if (selectedNode != null) {
-            NetNode node = db.getNode(selectedNode);
-            if (node.equals(NetNode.getLocalTcpNode())) {
+        if (session.isRoot()) {
+            if (isTargetNode(db)) {
                 return true;
+            } else {
+                return false;
             }
+        } else {
+            // 看看当前节点是不是被选中的节点
+            String selectedNode = parameters.get("_selectedNode_");
+            if (selectedNode != null) {
+                NetNode node = db.getNode(selectedNode);
+                if (node.equals(NetNode.getLocalP2pNode())) {
+                    return true;
+                }
+            }
+            return false;
         }
-        return false;
     }
 
     // ----------------------scale out----------------------
