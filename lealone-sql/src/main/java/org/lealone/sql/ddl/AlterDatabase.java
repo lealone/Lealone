@@ -457,7 +457,11 @@ public class AlterDatabase extends DatabaseStatement {
 
     private static void sharding(Database db, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
         ConcurrentUtils.submitTask("Sharding Pages", () -> {
-            for (Storage storage : db.getStorages()) {
+            Storage metaStorage = db.getMetaStorage();
+            metaStorage.sharding(db, oldNodes, newNodes, newRunMode);
+            List<Storage> storages = db.getStorages();
+            storages.remove(metaStorage);
+            for (Storage storage : storages) {
                 storage.sharding(db, oldNodes, newNodes, newRunMode);
             }
             db.notifyRunModeChanged();

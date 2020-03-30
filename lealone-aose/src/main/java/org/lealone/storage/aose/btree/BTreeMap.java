@@ -562,7 +562,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     protected boolean isShardingMode;
     protected IDatabase db;
-    private RunMode runMode;
     private String[] oldNodes;
 
     private boolean containsLocalNode(String[] replicationNodes) {
@@ -1036,14 +1035,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     public void setRunMode(RunMode runMode) {
-        this.runMode = runMode;
+        isShardingMode = runMode == RunMode.SHARDING;
     }
 
     boolean isShardingMode() {
-        if (runMode != null) {
-            return runMode == RunMode.SHARDING;
-        }
-        return db.isShardingMode();
+        return isShardingMode;
     }
 
     @Override
