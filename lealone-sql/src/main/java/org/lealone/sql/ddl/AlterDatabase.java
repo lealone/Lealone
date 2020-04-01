@@ -207,10 +207,15 @@ public class AlterDatabase extends DatabaseStatement {
 
     // ----------------------同级操作----------------------
 
-    private void clientServer2ClientServer() {
+    // 只在所有节点上执行原始的ALTER DATABASE语句，不需要加减节点
+    private void updateAllNodes() {
         alterDatabase();
         updateLocalMeta();
         updateRemoteNodes();
+    }
+
+    private void clientServer2ClientServer() {
+        updateAllNodes();
     }
 
     private void replication2Replication() {
@@ -223,8 +228,7 @@ public class AlterDatabase extends DatabaseStatement {
         } else if (value < 0) {
             scaleInReplication2Replication(replicationNodes);
         } else {
-            alterDatabase();
-            updateLocalMeta();
+            updateAllNodes();
         }
     }
 
@@ -232,66 +236,58 @@ public class AlterDatabase extends DatabaseStatement {
         int nodesOld = getNodes(db.getParameters());
         int nodesNew = getNodes(parameters);
         int value = nodesNew - nodesOld;
-        // int nodes = Math.abs(value);
         if (value > 0) {
             scaleOutSharding2Sharding();
         } else if (value < 0) {
             scaleInSharding2Sharding(nodesNew);
         } else {
-            alterDatabase();
-            updateLocalMeta();
+            updateAllNodes();
         }
     }
 
     // ----------------------scale out----------------------
 
     private void scaleOutClientServer2Replication() {
-        alterDatabase();
-        assignNodes();
-        updateLocalMeta();
-        updateRemoteNodes();
-        if (isOperationNode(db)) {
-            replicateTo(db, runMode, newHostIds);
-        }
+        scaleOut(false);
     }
 
     private void scaleOutClientServer2Sharding() {
-        alterDatabase();
-        assignNodes();
-        updateLocalMeta();
-        updateRemoteNodes();
-        if (isOperationNode(db)) {
-            sharding(db, runMode, oldHostIds, newHostIds);
-        }
+        scaleOut(true);
     }
 
     private void scaleOutReplication2Sharding() {
-        alterDatabase();
-        assignNodes();
-        updateLocalMeta();
-        updateRemoteNodes();
-        if (isOperationNode(db)) {
-            sharding(db, runMode, oldHostIds, newHostIds);
-        }
+        scaleOut(true);
     }
 
     private void scaleOutReplication2Replication() {
-        alterDatabase();
-        assignNodes();
-        updateLocalMeta();
-        updateRemoteNodes();
-        if (isOperationNode(db)) {
-            replicateTo(db, runMode, newHostIds);
-        }
+        scaleOut(false);
     }
 
     private void scaleOutSharding2Sharding() {
+        scaleOut(true);
+    }
+
+    private void scaleOut(boolean isSharding) {
         alterDatabase();
         assignNodes();
         updateLocalMeta();
         updateRemoteNodes();
         if (isOperationNode(db)) {
-            sharding(db, runMode, oldHostIds, newHostIds);
+            String taskName = isSharding ? "Sharding Pages" : "Replicate Pages";
+            ConcurrentUtils.submitTask(taskName, () -> {
+                // 先复制包含meta(sys)表的Storage
+                Storage metaStorage = db.getMetaStorage();
+                List<Storage> storages = db.getStorages();
+                storages.remove(metaStorage);
+                storages.add(0, metaStorage);
+                for (Storage storage : storages) {
+                    if (isSharding)
+                        storage.sharding(db, oldHostIds, newHostIds, runMode);
+                    else
+                        storage.replicateTo(db, newHostIds, runMode);
+                }
+                db.notifyRunModeChanged();
+            });
         }
     }
 
@@ -436,33 +432,6 @@ public class AlterDatabase extends DatabaseStatement {
         ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
             for (Storage storage : db.getStorages()) {
                 storage.scaleIn(db, oldRunMode, newRunMode, oldNodes, newNodes);
-            }
-            db.notifyRunModeChanged();
-        });
-    }
-
-    private static void replicateTo(Database db, RunMode newRunMode, String[] newReplicationNodes) {
-        ConcurrentUtils.submitTask("Replicate Pages", () -> {
-            // 先复制包含meta(sys)表的Storage
-            Storage metaStorage = db.getMetaStorage();
-            metaStorage.replicateTo(db, newReplicationNodes, newRunMode);
-            List<Storage> storages = db.getStorages();
-            storages.remove(metaStorage);
-            for (Storage storage : storages) {
-                storage.replicateTo(db, newReplicationNodes, newRunMode);
-            }
-            db.notifyRunModeChanged();
-        });
-    }
-
-    private static void sharding(Database db, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
-        ConcurrentUtils.submitTask("Sharding Pages", () -> {
-            Storage metaStorage = db.getMetaStorage();
-            metaStorage.sharding(db, oldNodes, newNodes, newRunMode);
-            List<Storage> storages = db.getStorages();
-            storages.remove(metaStorage);
-            for (Storage storage : storages) {
-                storage.sharding(db, oldNodes, newNodes, newRunMode);
             }
             db.notifyRunModeChanged();
         });
