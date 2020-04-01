@@ -25,7 +25,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
-import org.lealone.net.NetNode;
 import org.lealone.storage.type.StorageDataType;
 
 public interface StorageMap<K, V> {
@@ -287,10 +286,6 @@ public interface StorageMap<K, V> {
     }
 
     ////////////////////// 以下是分布式API ////////////////////////////////
-
-    default List<NetNode> getReplicationNodes(Object key) {
-        throw DbException.getUnsupportedException("getReplicationNodes");
-    }
 
     default Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
         throw DbException.getUnsupportedException("replicationPut");

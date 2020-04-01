@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigException;
@@ -44,7 +43,6 @@ import org.lealone.storage.replication.ReplicationSession;
 public class P2pNetNodeManager implements NetNodeManager {
 
     private static final P2pNetNodeManager instance = new P2pNetNodeManager();
-    private static final Random random = new Random();
 
     private static final Map<IDatabase, AbstractReplicationStrategy> replicationStrategies = new HashMap<>();
     private static final AbstractReplicationStrategy defaultReplicationStrategy = ConfigDescriptor
@@ -67,20 +65,34 @@ public class P2pNetNodeManager implements NetNodeManager {
     }
 
     @Override
-    public long getRpcTimeout() {
-        return ConfigDescriptor.getRpcTimeout();
-    }
-
-    @Override
     public String[] assignNodes(IDatabase db) {
-        removeNodeAssignmentStrategy(db); // 避免使用旧的
-        List<NetNode> list = getNodeAssignmentStrategy(db).assignNodes(new HashSet<>(0),
-                Gossiper.instance.getLiveMembers(), false);
+        HashSet<NetNode> oldNodes;
+        List<NetNode> newNodes;
 
-        int size = list.size();
+        String[] oldHostIds = db.getHostIds();
+        if (oldHostIds == null) {
+            oldNodes = new HashSet<>(0);
+        } else {
+            int size = oldHostIds.length;
+            oldNodes = new HashSet<>(size);
+            for (int i = 0; i < size; i++) {
+                oldNodes.add(P2pServer.instance.getTopologyMetaData().getNode(oldHostIds[i]));
+            }
+        }
+
+        // 复制模式只使用ReplicationStrategy来分配所需的节点，其他模式用NodeAssignmentStrategy
+        if (db.getRunMode() == RunMode.REPLICATION) {
+            removeReplicationStrategy(db); // 避免使用旧的
+            newNodes = getLiveReplicationNodes(db, oldNodes, Gossiper.instance.getLiveMembers(), true);
+        } else {
+            removeNodeAssignmentStrategy(db); // 避免使用旧的
+            newNodes = getNodeAssignmentStrategy(db).assignNodes(oldNodes, Gossiper.instance.getLiveMembers(), false);
+        }
+
+        int size = newNodes.size();
         String[] hostIds = new String[size];
         int i = 0;
-        for (NetNode e : list) {
+        for (NetNode e : newNodes) {
             String hostId = getHostId(e);
             if (hostId != null)
                 hostIds[i] = hostId;
@@ -89,57 +101,9 @@ public class P2pNetNodeManager implements NetNodeManager {
         return hostIds;
     }
 
-    public String[] getHostIdsOld(IDatabase db) {
-        RunMode runMode = db.getRunMode();
-        Set<NetNode> liveMembers = Gossiper.instance.getLiveMembers();
-        ArrayList<NetNode> list = new ArrayList<>(liveMembers);
-        int size = liveMembers.size();
-        if (runMode == RunMode.CLIENT_SERVER) {
-            int i = random.nextInt(size);
-            NetNode addr = list.get(i);
-            return new String[] { getHostId(addr) };
-        } else if (runMode == RunMode.REPLICATION) {
-            AbstractReplicationStrategy replicationStrategy = getReplicationStrategy(db);
-            int replicationFactor = replicationStrategy.getReplicationFactor();
-            return getHostIds(list, size, replicationFactor);
-        } else if (runMode == RunMode.SHARDING) {
-            AbstractReplicationStrategy replicationStrategy = getReplicationStrategy(db);
-            int replicationFactor = replicationStrategy.getReplicationFactor();
-            Map<String, String> parameters = db.getParameters();
-            int nodes = replicationFactor + 2;
-            if (parameters != null && parameters.containsKey("nodes")) {
-                nodes = Integer.parseInt(parameters.get("nodes"));
-            }
-            return getHostIds(list, size, nodes);
-        }
-        return new String[0];
-    }
-
-    private String[] getHostIds(ArrayList<NetNode> list, int totalNodes, int needNodes) {
-        Set<Integer> indexSet = new HashSet<>(needNodes);
-        if (needNodes >= totalNodes) {
-            needNodes = totalNodes;
-            for (int i = 0; i < totalNodes; i++) {
-                indexSet.add(i);
-            }
-        } else {
-            while (true) {
-                int i = random.nextInt(totalNodes);
-                indexSet.add(i);
-                if (indexSet.size() == needNodes)
-                    break;
-            }
-        }
-
-        String[] hostIds = new String[needNodes];
-        int j = 0;
-        for (int i : indexSet) {
-            String hostId = getHostId(list.get(i));
-            if (hostId != null)
-                hostIds[j++] = hostId;
-        }
-
-        return hostIds;
+    @Override
+    public long getRpcTimeout() {
+        return ConfigDescriptor.getRpcTimeout();
     }
 
     @Override
@@ -162,23 +126,6 @@ public class P2pNetNodeManager implements NetNodeManager {
         return createReplicationSession(session, sessions);
     }
 
-    public ReplicationSession createReplicationSession(Session s, List<String> replicationHostIds, Boolean remote) {
-        Session session = s;
-        NetNode localNode = NetNode.getLocalTcpNode();
-        TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
-        Gossiper gossiper = Gossiper.instance;
-        int size = replicationHostIds.size();
-        Session[] sessions = new Session[size];
-        int i = 0;
-        for (String hostId : replicationHostIds) {
-            NetNode p2pNode = md.getNode(hostId);
-            NetNode tcpNode = gossiper.getTcpNode(p2pNode);
-            sessions[i++] = session.getNestedSession(tcpNode.getHostAndPort(),
-                    remote != null ? remote.booleanValue() : !localNode.equals(tcpNode));
-        }
-        return createReplicationSession(session, sessions);
-    }
-
     @Override
     public ReplicationSession createReplicationSession(Session s, Session[] sessions) {
         ReplicationSession rs = new ReplicationSession(sessions);
@@ -196,50 +143,6 @@ public class P2pNetNodeManager implements NetNodeManager {
     @Override
     public String getHostId(NetNode node) {
         return P2pServer.instance.getTopologyMetaData().getHostId(node);
-    }
-
-    @Override
-    public String[] getReplicationNodes(IDatabase db) {
-        removeReplicationStrategy(db); // 避免使用旧的
-        String[] oldHostIds = db.getHostIds();
-        int size = oldHostIds.length;
-        List<NetNode> oldReplicationNodes = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            oldReplicationNodes.add(P2pServer.instance.getTopologyMetaData().getNode(oldHostIds[i]));
-        }
-        List<NetNode> newReplicationNodes = getLiveReplicationNodes(db, new HashSet<>(oldReplicationNodes),
-                Gossiper.instance.getLiveMembers(), true);
-
-        size = newReplicationNodes.size();
-        String[] hostIds = new String[size];
-        int j = 0;
-        for (NetNode e : newReplicationNodes) {
-            String hostId = getHostId(e);
-            if (hostId != null)
-                hostIds[j++] = hostId;
-        }
-        return hostIds;
-    }
-
-    @Override
-    public String[] getShardingNodes(IDatabase db) {
-        HashSet<NetNode> oldNodes = new HashSet<>();
-        for (String hostId : db.getHostIds()) {
-            oldNodes.add(P2pServer.instance.getTopologyMetaData().getNode(hostId));
-        }
-        Set<NetNode> liveMembers = Gossiper.instance.getLiveMembers();
-        liveMembers.removeAll(oldNodes);
-        ArrayList<NetNode> list = new ArrayList<>(liveMembers);
-        int size = liveMembers.size();
-        AbstractReplicationStrategy replicationStrategy = getReplicationStrategy(db);
-        int replicationFactor = replicationStrategy.getReplicationFactor();
-        Map<String, String> parameters = db.getParameters();
-        int nodes = replicationFactor + 2;
-        if (parameters != null && parameters.containsKey("nodes")) {
-            nodes = Integer.parseInt(parameters.get("nodes"));
-        }
-        nodes -= db.getHostIds().length;
-        return getHostIds(list, size, nodes);
     }
 
     @Override

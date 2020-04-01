@@ -34,8 +34,9 @@ public class ClientServerToShardingTest extends RunModeTest {
 
         new CrudTest(dbName).runTest();
 
-        executeUpdate("ALTER DATABASE " + dbName + " RUN MODE sharding " //
-                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2, nodes :3)");
+        sql = "ALTER DATABASE " + dbName + " RUN MODE sharding " //
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2, assignment_factor :3)";
+        executeUpdate(sql);
 
         // new QueryTest(dbName).runTest();
     }

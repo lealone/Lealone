@@ -120,22 +120,20 @@ public class AlterDatabase extends DatabaseStatement {
         executeDatabaseStatement(db);
     }
 
-    private void rewriteSql(boolean toReplicationMode) {
-        selectNode();
+    private void assignNodes() {
+        assignOperationNode();
         if (session.isRoot()) {
             oldHostIds = db.getHostIds();
             if (parameters != null && parameters.containsKey("hostIds")) {
                 newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
             } else {
-                if (toReplicationMode)
-                    newHostIds = NetNodeManagerHolder.get().getReplicationNodes(db);
-                else
-                    newHostIds = NetNodeManagerHolder.get().getShardingNodes(db);
+                newHostIds = NetNodeManagerHolder.get().assignNodes(db);
             }
 
-            String hostIds = StringUtils.arrayCombine(oldHostIds, ',') + ","
-                    + StringUtils.arrayCombine(newHostIds, ',');
-            db.getParameters().put("hostIds", hostIds);
+            String[] hostIds = new String[oldHostIds.length + newHostIds.length];
+            System.arraycopy(oldHostIds, 0, hostIds, 0, oldHostIds.length);
+            System.arraycopy(newHostIds, 0, hostIds, oldHostIds.length, newHostIds.length);
+            db.setHostIds(hostIds);
 
             rewriteSql();
         } else {
@@ -154,6 +152,50 @@ public class AlterDatabase extends DatabaseStatement {
         }
     }
 
+    private void assignOperationNode() {
+        // 由接入节点选择哪个节点作为发起数据复制操作的节点
+        if (session.isRoot()) {
+            String operationNode = null;
+            if (isTargetNode(db)) {
+                operationNode = db.getHostId(NetNode.getLocalP2pNode());
+            } else {
+                Set<NetNode> liveMembers = NetNodeManagerHolder.get().getLiveNodes();
+                for (String hostId : db.getHostIds()) {
+                    if (liveMembers.contains(db.getNode(hostId))) {
+                        operationNode = hostId;
+                        break;
+                    }
+                }
+            }
+            if (operationNode != null) {
+                db.getParameters().put("_operationNode_", operationNode);
+            }
+        }
+    }
+
+    // 判断当前节点是否是发起数据复制操作的节点
+    private boolean isOperationNode(Database db) {
+        // 如果当前节点是接入节点并且是数据库所在的目标节点之一，
+        // 那么当前节点就会被选为发起数据复制操作的节点
+        if (session.isRoot()) {
+            if (isTargetNode(db)) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            // 看看当前节点是不是被选中的节点
+            String operationNode = parameters.get("_operationNode_");
+            if (operationNode != null) {
+                NetNode node = db.getNode(operationNode);
+                if (node.equals(NetNode.getLocalP2pNode())) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
     private void rewriteSql() {
         StatementBuilder sql = new StatementBuilder("ALTER DATABASE ");
         sql.append(db.getShortName());
@@ -162,6 +204,8 @@ public class AlterDatabase extends DatabaseStatement {
         Database.appendMap(sql, db.getParameters());
         this.sql = sql.toString();
     }
+
+    // ----------------------同级操作----------------------
 
     private void clientServer2ClientServer() {
         alterDatabase();
@@ -199,98 +243,54 @@ public class AlterDatabase extends DatabaseStatement {
         }
     }
 
-    private void selectNode() {
-        // 由接入节点选择哪个节点作为发起数据复制操作的节点
-        if (session.isRoot()) {
-            String selectedNode = null;
-            if (isTargetNode(db)) {
-                selectedNode = db.getHostId(NetNode.getLocalP2pNode());
-            } else {
-                Set<NetNode> liveMembers = NetNodeManagerHolder.get().getLiveNodes();
-                for (String hostId : db.getHostIds()) {
-                    if (liveMembers.contains(db.getNode(hostId))) {
-                        selectedNode = hostId;
-                        break;
-                    }
-                }
-            }
-            if (selectedNode != null) {
-                db.getParameters().put("_selectedNode_", selectedNode);
-            }
-        }
-    }
-
-    // 判断当前节点是否是发起数据复制操作的节点
-    private boolean isSelectedNode(Database db) {
-        // 如果当前节点是接入节点并且是数据库所在的目标节点之一，
-        // 那么当前节点就会被选为发起数据复制操作的节点
-        if (session.isRoot()) {
-            if (isTargetNode(db)) {
-                return true;
-            } else {
-                return false;
-            }
-        } else {
-            // 看看当前节点是不是被选中的节点
-            String selectedNode = parameters.get("_selectedNode_");
-            if (selectedNode != null) {
-                NetNode node = db.getNode(selectedNode);
-                if (node.equals(NetNode.getLocalP2pNode())) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-
     // ----------------------scale out----------------------
 
     private void scaleOutClientServer2Replication() {
         alterDatabase();
-        rewriteSql(true);
+        assignNodes();
         updateLocalMeta();
         updateRemoteNodes();
-        if (isSelectedNode(db)) {
+        if (isOperationNode(db)) {
             replicateTo(db, runMode, newHostIds);
         }
     }
 
     private void scaleOutClientServer2Sharding() {
         alterDatabase();
-        rewriteSql(false);
+        assignNodes();
         updateLocalMeta();
         updateRemoteNodes();
-        if (isSelectedNode(db)) {
+        if (isOperationNode(db)) {
             sharding(db, runMode, oldHostIds, newHostIds);
         }
     }
 
     private void scaleOutReplication2Sharding() {
         alterDatabase();
-        rewriteSql(false);
+        assignNodes();
         updateLocalMeta();
         updateRemoteNodes();
-        if (isSelectedNode(db)) {
+        if (isOperationNode(db)) {
             sharding(db, runMode, oldHostIds, newHostIds);
         }
     }
 
     private void scaleOutReplication2Replication() {
         alterDatabase();
-        rewriteSql(true);
+        assignNodes();
         updateLocalMeta();
         updateRemoteNodes();
-        if (isSelectedNode(db)) {
+        if (isOperationNode(db)) {
             replicateTo(db, runMode, newHostIds);
         }
     }
 
     private void scaleOutSharding2Sharding() {
         alterDatabase();
-        rewriteSql(false);
+        assignNodes();
         updateLocalMeta();
         updateRemoteNodes();
-        if (isSelectedNode(db)) {
+        if (isOperationNode(db)) {
             sharding(db, runMode, oldHostIds, newHostIds);
         }
     }

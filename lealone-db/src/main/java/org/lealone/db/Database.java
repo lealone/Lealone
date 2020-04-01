@@ -2331,6 +2331,16 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return hostIds;
     }
 
+    @Override
+    public void setHostIds(String[] hostIds) {
+        this.hostIds = null;
+        if (hostIds != null && hostIds.length > 0)
+            parameters.put("hostIds", StringUtils.arrayCombine(hostIds, ','));
+        else
+            parameters.put("hostIds", "");
+        getHostIds();
+    }
+
     public boolean isTargetNode(NetNode node) {
         if (hostIds == null) {
             getHostIds();

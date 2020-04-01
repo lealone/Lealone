@@ -34,14 +34,14 @@ public class LocalNetNodeManager implements NetNodeManager {
     }
 
     @Override
-    public String[] assignNodes(IDatabase db) {
-        return new String[] { NetNode.getLocalTcpHostAndPort() };
-    }
-
-    @Override
     public Set<NetNode> getLiveNodes() {
         HashSet<NetNode> set = new HashSet<>(1);
         set.add(NetNode.getLocalP2pNode());
         return set;
+    }
+
+    @Override
+    public String[] assignNodes(IDatabase db) {
+        return new String[] { NetNode.getLocalTcpHostAndPort() };
     }
 }

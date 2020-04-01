@@ -29,18 +29,10 @@ public interface NetNodeManager {
 
     Set<NetNode> getLiveNodes();
 
-    default long getRpcTimeout() {
-        return 0;
-    }
-
     String[] assignNodes(IDatabase db);
 
-    default String[] getReplicationNodes(IDatabase db) {
-        return new String[0];
-    }
-
-    default String[] getShardingNodes(IDatabase db) {
-        return new String[0];
+    default long getRpcTimeout() {
+        return 0;
     }
 
     default ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {

@@ -789,6 +789,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    private static List<String> toHostIds(IDatabase db, List<NetNode> nodes) {
+        List<String> hostIds = new ArrayList<>(nodes.size());
+        for (NetNode e : nodes) {
+            String id = db.getHostId(e);
+            hostIds.add(id);
+        }
+        return hostIds;
+    }
+
     protected void fireLeafPageRemove(PageKey pageKey, BTreePage leafPage) {
         if (isShardingMode()) {
             removeLeafPage(pageKey, leafPage);
@@ -919,8 +928,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    @Override
-    public List<NetNode> getReplicationNodes(Object key) {
+    private List<NetNode> getReplicationNodes(Object key) {
         return getReplicationNodes(root, key);
     }
 
@@ -1068,14 +1076,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return null;
     }
 
-    private ByteBuffer replicatePage(BTreePage p) {
-        try (DataBuffer buff = DataBuffer.create()) {
-            p.replicatePage(buff, getLocalNode());
-            ByteBuffer pageBuffer = buff.getAndCopyBuffer();
-            return pageBuffer;
-        }
-    }
-
     private ByteBuffer replicateOrMovePage(PageKey pageKey, BTreePage p, BTreePage parent, int index) {
         // 从client_server模式到replication模式
         if (!isShardingMode()) {
@@ -1094,13 +1094,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return replicatePage(p);
     }
 
-    private static List<String> toHostIds(IDatabase db, List<NetNode> nodes) {
-        List<String> hostIds = new ArrayList<>(nodes.size());
-        for (NetNode e : nodes) {
-            String id = db.getHostId(e);
-            hostIds.add(id);
+    private ByteBuffer replicatePage(BTreePage p) {
+        try (DataBuffer buff = DataBuffer.create()) {
+            p.replicatePage(buff, getLocalNode());
+            ByteBuffer pageBuffer = buff.getAndCopyBuffer();
+            return pageBuffer;
         }
-        return hostIds;
     }
 
     public synchronized void readRootPageFrom(ByteBuffer data) {

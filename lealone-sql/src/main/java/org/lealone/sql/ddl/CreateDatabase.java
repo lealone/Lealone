@@ -19,7 +19,6 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
-import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
@@ -70,10 +69,7 @@ public class CreateDatabase extends DatabaseStatement {
             newDB.setRunMode(runMode);
             if (!parameters.containsKey("hostIds")) {
                 String[] hostIds = NetNodeManagerHolder.get().assignNodes(newDB);
-                if (hostIds != null && hostIds.length > 0)
-                    newDB.getParameters().put("hostIds", StringUtils.arrayCombine(hostIds, ','));
-                else
-                    newDB.getParameters().put("hostIds", "");
+                newDB.setHostIds(hostIds);
             }
             if (newDB.getHostIds().length <= 1) {
                 // 如果可用节点只有1个，那就退化到CLIENT_SERVER模式

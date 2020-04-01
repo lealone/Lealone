@@ -31,7 +31,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
-import org.lealone.net.NetNode;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
@@ -457,11 +456,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     ////////////////////// 以下是分布式API的默认实现 ////////////////////////////////
-
-    @Override
-    public List<NetNode> getReplicationNodes(Object key) {
-        return map.getReplicationNodes(key);
-    }
 
     @Override
     public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {

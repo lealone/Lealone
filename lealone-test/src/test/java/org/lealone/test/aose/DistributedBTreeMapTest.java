@@ -197,7 +197,7 @@ public class DistributedBTreeMapTest extends TestBase {
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
-        parameters.put("initReplicationNodes", "127.0.0.1:1111&127.0.0.1:222");
+        parameters.put("initReplicationNodes", "127.0.0.1:1111&127.0.0.1:2222");
         BTreeMap<Integer, String> map = openDistributedBTreeMap(mapName, parameters);
         assertTrue(map.getRootPage().isRemote());
         assertEquals(2, map.getRootPage().getReplicationHostIds().size());

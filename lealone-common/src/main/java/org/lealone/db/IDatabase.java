@@ -43,6 +43,8 @@ public interface IDatabase {
 
     String[] getHostIds();
 
+    void setHostIds(String[] hostIds);
+
     ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes);
 
     ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes, Boolean remote);
