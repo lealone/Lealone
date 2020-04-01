@@ -219,9 +219,9 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private void replication2Replication() {
-        int replicationFactorOld = getReplicationFactor(db.getReplicationParameters());
-        int replicationFactorNew = getReplicationFactor(replicationParameters);
-        int value = replicationFactorNew - replicationFactorOld;
+        int oldReplicationFactor = getReplicationFactor(db.getReplicationParameters());
+        int newReplicationFactor = getReplicationFactor(replicationParameters);
+        int value = newReplicationFactor - oldReplicationFactor;
         int replicationNodes = Math.abs(value);
         if (value > 0) {
             scaleOutReplication2Replication();
@@ -233,13 +233,13 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private void sharding2Sharding() {
-        int nodesOld = getNodes(db.getParameters());
-        int nodesNew = getNodes(parameters);
-        int value = nodesNew - nodesOld;
+        int oldAssignmentFactor = getAssignmentFactor(db.getNodeAssignmentParameters());
+        int newAssignmentFactor = getAssignmentFactor(nodeAssignmentParameters);
+        int value = newAssignmentFactor - oldAssignmentFactor;
         if (value > 0) {
             scaleOutSharding2Sharding();
         } else if (value < 0) {
-            scaleInSharding2Sharding(nodesNew);
+            scaleInSharding2Sharding(newAssignmentFactor);
         } else {
             updateAllNodes();
         }
@@ -294,10 +294,14 @@ public class AlterDatabase extends DatabaseStatement {
     // ----------------------scale in----------------------
 
     private void scaleInReplication2ClientServer() {
-        scaleInReplication2Replication(db.getHostIds().length - 1);
+        scaleInReplication(db.getHostIds().length - 1); // 只留一个节点
     }
 
     private void scaleInReplication2Replication(int removeReplicationNodes) {
+        scaleInReplication(removeReplicationNodes);
+    }
+
+    private void scaleInReplication(int removeReplicationNodes) {
         alterDatabase();
         String[] removeHostIds = null;
         if (session.isRoot()) {
@@ -307,55 +311,62 @@ public class AlterDatabase extends DatabaseStatement {
             System.arraycopy(oldHostIds, 0, removeHostIds, 0, removeReplicationNodes);
             System.arraycopy(oldHostIds, removeReplicationNodes, newHostIds, 0, newHostIds.length);
 
-            db.getParameters().put("hostIds", StringUtils.arrayCombine(newHostIds, ','));
-            db.getParameters().put("removeHostIds", StringUtils.arrayCombine(removeHostIds, ','));
+            db.setHostIds(newHostIds);
+            db.getParameters().put("_removeHostIds_", StringUtils.arrayCombine(removeHostIds, ','));
 
             rewriteSql();
         }
         updateLocalMeta();
         updateRemoteNodes();
         Map<String, String> parameters = db.getParameters();
-        if (parameters != null && parameters.containsKey("removeHostIds")) {
-            removeHostIds = StringUtils.arraySplit(parameters.get("removeHostIds"), ',', true);
+        if (parameters != null && parameters.containsKey("_removeHostIds_")) {
+            removeHostIds = StringUtils.arraySplit(parameters.get("_removeHostIds_"), ',', true);
             HashSet<String> set = new HashSet<>(Arrays.asList(removeHostIds));
             NetNode localNode = NetNode.getLocalTcpNode();
             if (set.contains(localNode.getHostAndPort())) {
-                LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-                lealoneDB.removeDatabaseObject(session, db);
-                db.setDeleteFilesOnDisconnect(true);
-                if (db.getSessionCount() == 0) {
-                    db.drop();
-                }
-
-                Database newDB = new Database(db.getId(), db.getShortName(), parameters);
-                newDB.setReplicationParameters(replicationParameters);
-                newDB.setRunMode(runMode);
-                lealoneDB.addDatabaseObject(session, newDB);
+                Database newDB = rebuildDatabase();
                 newDB.notifyRunModeChanged();
             }
         }
     }
 
+    private Database rebuildDatabase() {
+        LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
+        lealoneDB.removeDatabaseObject(session, db);
+        db.setDeleteFilesOnDisconnect(true);
+        if (db.getSessionCount() == 0) {
+            db.drop();
+        }
+
+        Database newDB = new Database(db.getId(), db.getShortName(), parameters);
+        newDB.setReplicationParameters(replicationParameters);
+        newDB.setNodeAssignmentParameters(nodeAssignmentParameters);
+        newDB.setRunMode(runMode);
+        lealoneDB.addDatabaseObject(session, newDB);
+        return newDB;
+    }
+
     private void scaleInSharding2ClientServer() {
-        scaleInSharding(1, RunMode.CLIENT_SERVER);
+        scaleInSharding(1);
     }
 
     private void scaleInSharding2Replication() {
-        int replicationFactor = getReplicationFactor(db.getReplicationParameters());
+        int oldReplicationFactor = getReplicationFactor(db.getReplicationParameters());
         if (replicationParameters != null) {
-            int rf = getReplicationFactor(replicationParameters);
-            if (rf < replicationFactor)
-                replicationFactor = rf;
+            int newReplicationFactor = getReplicationFactor(replicationParameters);
+            if (newReplicationFactor < oldReplicationFactor)
+                oldReplicationFactor = newReplicationFactor;
         }
 
-        scaleInSharding(replicationFactor, RunMode.REPLICATION);
+        scaleInSharding(oldReplicationFactor);
     }
 
-    private void scaleInSharding2Sharding(int nodes) {
-        scaleInSharding(nodes, RunMode.SHARDING);
+    private void scaleInSharding2Sharding(int assignmentFactor) {
+        scaleInSharding(assignmentFactor);
     }
 
-    private void scaleInSharding(int scaleInNodes, RunMode newRunMode) {
+    private void scaleInSharding(int scaleInNodes) {
+        RunMode newRunMode = runMode;
         RunMode oldRunMode = RunMode.SHARDING;
         String[] removeHostIds = null;
         alterDatabase();
@@ -366,8 +377,8 @@ public class AlterDatabase extends DatabaseStatement {
             System.arraycopy(oldHostIds, 0, removeHostIds, 0, removeHostIds.length);
             System.arraycopy(oldHostIds, removeHostIds.length, newHostIds, 0, scaleInNodes);
 
-            db.getParameters().put("hostIds", StringUtils.arrayCombine(newHostIds, ','));
-            db.getParameters().put("removeHostIds", StringUtils.arrayCombine(removeHostIds, ','));
+            db.setHostIds(newHostIds);
+            db.getParameters().put("_removeHostIds_", StringUtils.arrayCombine(removeHostIds, ','));
             db.getParameters().put("nodes", newHostIds.length + "");
             rewriteSql();
         }
@@ -378,22 +389,12 @@ public class AlterDatabase extends DatabaseStatement {
         newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
         HashSet<String> set;
         String localHostId = NetNode.getLocalTcpNode().getHostAndPort();
-        if (parameters != null && parameters.containsKey("removeHostIds")) {
-            removeHostIds = StringUtils.arraySplit(parameters.get("removeHostIds"), ',', true);
+        if (parameters != null && parameters.containsKey("_removeHostIds_")) {
+            removeHostIds = StringUtils.arraySplit(parameters.get("_removeHostIds_"), ',', true);
             set = new HashSet<>(Arrays.asList(removeHostIds));
             if (set.contains(localHostId)) {
                 // TODO 等到数据迁移完成后再删
-                // LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-                // lealoneDB.removeDatabaseObject(session, db);
-                // db.setDeleteFilesOnDisconnect(true);
-                // if (db.getSessionCount() == 0) {
-                // db.drop();
-                // }
-                //
-                // Database newDB = new Database(db.getId(), db.getShortName(), parameters);
-                // newDB.setReplicationProperties(replicationProperties);
-                // newDB.setRunMode(runMode);
-                // lealoneDB.addDatabaseObject(session, newDB);
+                // rebuildDatabase();
             }
         }
 
@@ -410,23 +411,6 @@ public class AlterDatabase extends DatabaseStatement {
         }
     }
 
-    private static int getReplicationFactor(Map<String, String> replicationProperties) {
-        return getIntPropertyValue("replication_factor", replicationProperties);
-    }
-
-    private static int getNodes(Map<String, String> parameters) {
-        return getIntPropertyValue("nodes", parameters);
-    }
-
-    private static int getIntPropertyValue(String key, Map<String, String> properties) {
-        if (properties == null)
-            return 0;
-        String value = properties.get(key);
-        if (value == null)
-            return 0;
-        return Integer.parseInt(value);
-    }
-
     private static void scaleIn(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
             String[] newNodes) {
         ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
@@ -435,5 +419,22 @@ public class AlterDatabase extends DatabaseStatement {
             }
             db.notifyRunModeChanged();
         });
+    }
+
+    private static int getReplicationFactor(Map<String, String> parameters) {
+        return getIntValue("replication_factor", parameters);
+    }
+
+    private static int getAssignmentFactor(Map<String, String> parameters) {
+        return getIntValue("assignment_factor", parameters);
+    }
+
+    private static int getIntValue(String key, Map<String, String> parameters) {
+        if (parameters == null)
+            return 0;
+        String value = parameters.get(key);
+        if (value == null)
+            return 0;
+        return Integer.parseInt(value);
     }
 }

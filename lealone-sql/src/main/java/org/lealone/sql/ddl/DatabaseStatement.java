@@ -168,5 +168,6 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         parameters.remove("replication_strategy");
         parameters.remove("node_assignment_strategy");
         parameters.remove("_operationNode_");
+        parameters.remove("_removeHostIds_");
     }
 }
