@@ -28,27 +28,36 @@ public class ShardingToShardingTest extends RunModeTest {
     @Test
     @Override
     public void run() throws Exception {
+        alterParameters();
         scaleOut();
         scaleIn();
+    }
+
+    private void alterParameters() {
+        String dbName = ShardingToShardingTest.class.getSimpleName() + "_alterParameters";
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, assignment_factor: 2)");
+
+        executeUpdate("ALTER DATABASE " + dbName + " RUN MODE sharding PARAMETERS (QUERY_CACHE_SIZE=20)");
     }
 
     private void scaleOut() {
         String dbName = ShardingToShardingTest.class.getSimpleName() + "_scaleOut";
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //
-                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, nodes: 2)");
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, assignment_factor: 2)");
 
         crudTest(dbName);
 
-        executeUpdate("ALTER DATABASE " + dbName + " RUN MODE sharding PARAMETERS (nodes=3)");
+        executeUpdate("ALTER DATABASE " + dbName + " RUN MODE sharding PARAMETERS (assignment_factor=3)");
     }
 
     private void scaleIn() {
         String dbName = ShardingToShardingTest.class.getSimpleName() + "_scaleIn";
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //
-                + "ARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, nodes: 3)");
+                + "ARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, assignment_factor: 3)");
 
         crudTest(dbName);
 
-        executeUpdate("ALTER DATABASE " + dbName + " RUN MODE sharding PARAMETERS (nodes=2)");
+        executeUpdate("ALTER DATABASE " + dbName + " RUN MODE sharding PARAMETERS (assignment_factor=2)");
     }
 }

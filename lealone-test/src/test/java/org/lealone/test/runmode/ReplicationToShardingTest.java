@@ -36,7 +36,7 @@ public class ReplicationToShardingTest extends RunModeTest {
         new CrudTest(dbName).runTest();
 
         executeUpdate("ALTER DATABASE " + dbName + " RUN MODE sharding " //
-                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, nodes: 2)");
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, assignment_factor: 2)");
     }
 
     private static class CrudTest extends SqlTestBase {

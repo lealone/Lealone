@@ -52,8 +52,10 @@ public class AlterDatabase extends DatabaseStatement {
         super(session, db.getName());
         this.db = db;
         this.runMode = runMode;
+        // 先使用原有的参数，然后再用新的覆盖
+        this.parameters = new CaseInsensitiveMap<>(db.getParameters());
         if (parameters != null && !parameters.isEmpty()) {
-            this.parameters = new CaseInsensitiveMap<>(parameters);
+            this.parameters.putAll(parameters);
             validateParameters();
         }
     }
@@ -222,11 +224,11 @@ public class AlterDatabase extends DatabaseStatement {
         int oldReplicationFactor = getReplicationFactor(db.getReplicationParameters());
         int newReplicationFactor = getReplicationFactor(replicationParameters);
         int value = newReplicationFactor - oldReplicationFactor;
-        int replicationNodes = Math.abs(value);
         if (value > 0) {
             scaleOutReplication2Replication();
         } else if (value < 0) {
-            scaleInReplication2Replication(replicationNodes);
+            int removeReplicationNodes = Math.abs(value);
+            scaleInReplication2Replication(removeReplicationNodes);
         } else {
             updateAllNodes();
         }

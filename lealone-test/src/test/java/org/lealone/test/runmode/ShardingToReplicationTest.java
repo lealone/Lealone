@@ -30,7 +30,7 @@ public class ShardingToReplicationTest extends RunModeTest {
     public void run() throws Exception {
         String dbName = ShardingToShardingTest.class.getSimpleName();
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //
-                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, nodes: 2)");
+                + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1, assignment_factor: 2)");
 
         crudTest(dbName);
 

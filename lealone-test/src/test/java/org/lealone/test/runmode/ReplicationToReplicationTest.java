@@ -28,8 +28,17 @@ public class ReplicationToReplicationTest extends RunModeTest {
     @Test
     @Override
     public void run() throws Exception {
+        alterParameters();
         scaleOut();
         scaleIn();
+    }
+
+    private void alterParameters() {
+        String dbName = ReplicationToReplicationTest.class.getSimpleName() + "_alterParameters";
+        executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName
+                + "  RUN MODE replication PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2)");
+
+        executeUpdate("ALTER DATABASE " + dbName + " PARAMETERS (QUERY_CACHE_SIZE=20)");
     }
 
     private void scaleOut() {
