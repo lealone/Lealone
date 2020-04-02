@@ -317,17 +317,20 @@ public class AlterDatabase extends DatabaseStatement {
             db.getParameters().put("_removeHostIds_", StringUtils.arrayCombine(removeHostIds, ','));
 
             rewriteSql();
+        } else {
+            if (parameters != null && parameters.containsKey("_removeHostIds_")) {
+                removeHostIds = StringUtils.arraySplit(parameters.get("_removeHostIds_"), ',', true);
+            }
         }
         updateLocalMeta();
         updateRemoteNodes();
-        Map<String, String> parameters = db.getParameters();
-        if (parameters != null && parameters.containsKey("_removeHostIds_")) {
-            removeHostIds = StringUtils.arraySplit(parameters.get("_removeHostIds_"), ',', true);
+
+        if (removeHostIds != null) {
             HashSet<String> set = new HashSet<>(Arrays.asList(removeHostIds));
             NetNode localNode = NetNode.getLocalTcpNode();
             if (set.contains(localNode.getHostAndPort())) {
-                Database newDB = rebuildDatabase();
-                newDB.notifyRunModeChanged();
+                rebuildDatabase();
+                db.notifyRunModeChanged();
             }
         }
     }
@@ -383,16 +386,19 @@ public class AlterDatabase extends DatabaseStatement {
             db.getParameters().put("_removeHostIds_", StringUtils.arrayCombine(removeHostIds, ','));
             db.getParameters().put("nodes", newHostIds.length + "");
             rewriteSql();
+        } else {
+            if (parameters != null && parameters.containsKey("_removeHostIds_")) {
+                removeHostIds = StringUtils.arraySplit(parameters.get("_removeHostIds_"), ',', true);
+            }
         }
         updateLocalMeta();
         updateRemoteNodes();
-        Map<String, String> parameters = db.getParameters();
 
         newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
-        HashSet<String> set;
         String localHostId = NetNode.getLocalTcpNode().getHostAndPort();
-        if (parameters != null && parameters.containsKey("_removeHostIds_")) {
-            removeHostIds = StringUtils.arraySplit(parameters.get("_removeHostIds_"), ',', true);
+        HashSet<String> set;
+
+        if (removeHostIds != null) {
             set = new HashSet<>(Arrays.asList(removeHostIds));
             if (set.contains(localHostId)) {
                 // TODO 等到数据迁移完成后再删
