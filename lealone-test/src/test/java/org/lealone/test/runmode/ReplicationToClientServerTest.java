@@ -26,7 +26,6 @@ public class ReplicationToClientServerTest extends RunModeTest {
     }
 
     @Test
-    @Override
     public void run() throws Exception {
         String dbName = ReplicationToClientServerTest.class.getSimpleName();
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE replication "

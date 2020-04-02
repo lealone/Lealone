@@ -26,7 +26,6 @@ public class ReplicationToReplicationTest extends RunModeTest {
     }
 
     @Test
-    @Override
     public void run() throws Exception {
         alterParameters();
         scaleOut();

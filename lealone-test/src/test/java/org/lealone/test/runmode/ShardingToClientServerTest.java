@@ -26,7 +26,6 @@ public class ShardingToClientServerTest extends RunModeTest {
     }
 
     @Test
-    @Override
     public void run() throws Exception {
         String dbName = ShardingToClientServerTest.class.getSimpleName();
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //

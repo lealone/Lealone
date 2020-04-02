@@ -17,70 +17,13 @@
  */
 package org.lealone.test.runmode;
 
-import org.junit.Test;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.sql.SqlTestBase;
 
-public class RunModeTest extends SqlTestBase {
+public abstract class RunModeTest extends SqlTestBase {
 
     public RunModeTest() {
         super(LealoneDatabase.NAME); // 连到LealoneDatabase才能执行CREATE DATABASE
-    }
-
-    @Test
-    public void run() throws Exception {
-        String dbName = "RunModeTestDB1";
-        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server");
-        new CrudTest(dbName).runTest();
-
-        dbName = "RunModeTestDB2";
-        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE replication");
-        new CrudTest(dbName).runTest();
-
-        dbName = "RunModeTestDB3";
-        stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding");
-        new CrudTest(dbName).runTest();
-
-        // String p = " PARAMETERS(hostIds='1,2')";
-        // stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding" + p);
-    }
-
-    private static class CrudTest extends SqlTestBase {
-
-        public CrudTest(String dbName) {
-            super(dbName);
-            // setHost("127.0.0.1"); //可以测试localhost和127.0.0.1是否复用了同一个TCP连接
-        }
-
-        @Override
-        protected void test() throws Exception {
-            insert();
-            select();
-        }
-
-        void insert() throws Exception {
-            stmt.executeUpdate("drop table IF EXISTS RunModeTest");
-            stmt.executeUpdate("create table IF NOT EXISTS RunModeTest(f1 int SELECTIVITY 10, f2 int, f3 int)");
-
-            // stmt.executeUpdate("create index IF NOT EXISTS RunModeTest_i1 on RunModeTest(f1)");
-
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(1,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(5,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(3,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(8,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(3,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(8,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(3,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(8,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(3,2,3)");
-            stmt.executeUpdate("insert into RunModeTest(f1, f2, f3) values(8,2,3)");
-        }
-
-        void select() throws Exception {
-            sql = "select distinct * from RunModeTest where f1 > 3";
-            sql = "select distinct f1 from RunModeTest";
-            printResultSet();
-        }
     }
 
     protected void crudTest(String dbName) {
@@ -101,5 +44,63 @@ public class RunModeTest extends SqlTestBase {
             }
         }
         new CrudTest2(dbName).runTest();
+    }
+
+    protected static class CrudTest extends SqlTestBase {
+
+        public CrudTest(String dbName) {
+            super(dbName);
+            // setHost("127.0.0.1"); //可以测试localhost和127.0.0.1是否复用了同一个TCP连接
+        }
+
+        @Override
+        protected void test() throws Exception {
+            insert();
+            select();
+            batch();
+        }
+
+        void insert() {
+            executeUpdate("drop table IF EXISTS test");
+            executeUpdate("create table IF NOT EXISTS test(f1 int SELECTIVITY 10, f2 int, f3 int)");
+            for (int j = 0; j < 50; j++) {
+                // long t1 = System.currentTimeMillis();
+                executeUpdate("insert into test(f1, f2, f3) values(1,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(5,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(3,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(8,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(3,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(8,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(3,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(8,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(3,2,3)");
+                executeUpdate("insert into test(f1, f2, f3) values(8,2,3)");
+                // long t2 = System.currentTimeMillis();
+                // System.out.println(t2 - t1);
+            }
+
+            // StringBuilder sql = new StringBuilder();
+            // int rows = 200;
+            // for (int j = 0; j < rows; j++) {
+            // sql.append("insert into test values(0,1,2);");
+            // }
+            // sql.setLength(sql.length() - 1);
+            // executeUpdate(sql.toString()); //TODO 异步化后导致不能批理更新了
+        }
+
+        void select() {
+            sql = "select distinct * from test where f1 > 3";
+            sql = "select distinct f1 from test";
+            printResultSet();
+        }
+
+        void batch() {
+            int count = 0;
+            for (int i = 0; i < count; i++) {
+                String tableName = "run_mode_test_" + i;
+                executeUpdate("create table IF NOT EXISTS " + tableName + "(f0 int, f1 int, f2 int, f3 int, f4 int,"
+                        + " f5 int, f6 int, f7 int, f8 int, f9 int)");
+            }
+        }
     }
 }

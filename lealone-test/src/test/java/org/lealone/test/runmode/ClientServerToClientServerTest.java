@@ -25,7 +25,6 @@ public class ClientServerToClientServerTest extends RunModeTest {
     }
 
     @Test
-    @Override
     public void run() throws Exception {
         String dbName = ClientServerToClientServerTest.class.getSimpleName();
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE client_server");

@@ -26,7 +26,6 @@ public class NodeAssignmentStrategyTest extends RunModeTest {
     }
 
     @Test
-    @Override
     public void run() throws Exception {
         String dbName = NodeAssignmentStrategyTest.class.getSimpleName() + "_Random";
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
