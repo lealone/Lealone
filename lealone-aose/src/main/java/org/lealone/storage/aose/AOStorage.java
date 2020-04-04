@@ -18,8 +18,10 @@
 package org.lealone.storage.aose;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -195,24 +197,43 @@ public class AOStorage extends StorageBase {
         ValueString.type.write(p, mapName);
 
         BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
-        btreeMap.setOldNodes(oldNodes);
-        btreeMap.setDatabase(db);
-        btreeMap.setRunMode(runMode);
+        setBTreeMap(btreeMap, db, runMode, oldNodes);
         btreeMap.replicateRootPage(p);
     }
 
     @Override
     public void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
-        for (StorageMap<?, ?> map : maps.values()) {
-            BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
-            btreeMap.setOldNodes(oldNodes);
-            btreeMap.setDatabase(db);
-            btreeMap.setRunMode(newRunMode);
-            if (oldNodes == null) {
-                btreeMap.replicateAllRemotePages();
+        // 当oldRunMode是CLIENT_SERVER或REPLICATION时不需要做什么，调用者会在上层进行处理，
+        // 存储层只需要处理SHARDING的场景
+        if (oldRunMode == RunMode.SHARDING) {
+            String localHostId = NetNode.getLocalTcpNode().getHostAndPort();
+            // 从SHARDING缩容到SHARDING时，直接把当前节点上的所有LeafPage移到别的节点
+            if (newRunMode == RunMode.SHARDING) {
+                HashSet<String> oldSet = new HashSet<>(Arrays.asList(oldNodes));
+                if (oldSet.contains(localHostId)) {
+                    for (StorageMap<?, ?> map : maps.values()) {
+                        BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
+                        setBTreeMap(btreeMap, db, newRunMode, oldNodes);
+                        btreeMap.moveAllLocalLeafPages(oldNodes, newNodes);
+                    }
+                }
             } else {
-                btreeMap.moveAllLocalLeafPages(oldNodes, newNodes);
+                // 从SHARDING缩容到CLIENT_SERVER或REPLICATION时，直接把RemotePage上的数据读到本节点即可
+                HashSet<String> newSet = new HashSet<>(Arrays.asList(newNodes));
+                if (newSet.contains(localHostId)) {
+                    for (StorageMap<?, ?> map : maps.values()) {
+                        BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
+                        setBTreeMap(btreeMap, db, newRunMode, oldNodes);
+                        btreeMap.replicateAllRemotePages();
+                    }
+                }
             }
         }
+    }
+
+    private void setBTreeMap(BTreeMap<?, ?> btreeMap, IDatabase db, RunMode runMode, String[] oldNodes) {
+        btreeMap.setDatabase(db);
+        btreeMap.setRunMode(runMode);
+        btreeMap.setOldNodes(oldNodes);
     }
 }

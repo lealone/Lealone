@@ -370,63 +370,44 @@ public class AlterDatabase extends DatabaseStatement {
         scaleInSharding(assignmentFactor);
     }
 
-    private void scaleInSharding(int scaleInNodes) {
-        RunMode newRunMode = runMode;
-        RunMode oldRunMode = RunMode.SHARDING;
-        String[] removeHostIds = null;
+    private void scaleInSharding(int newAssignmentFactor) {
         alterDatabase();
         if (session.isRoot()) {
             oldHostIds = db.getHostIds();
-            removeHostIds = new String[oldHostIds.length - scaleInNodes];
-            String[] newHostIds = new String[scaleInNodes];
+            String[] removeHostIds = new String[oldHostIds.length - newAssignmentFactor];
+            newHostIds = new String[newAssignmentFactor];
             System.arraycopy(oldHostIds, 0, removeHostIds, 0, removeHostIds.length);
-            System.arraycopy(oldHostIds, removeHostIds.length, newHostIds, 0, scaleInNodes);
+            System.arraycopy(oldHostIds, removeHostIds.length, newHostIds, 0, newAssignmentFactor);
+            oldHostIds = removeHostIds;
 
             db.setHostIds(newHostIds);
             db.getParameters().put("_removeHostIds_", StringUtils.arrayCombine(removeHostIds, ','));
-            db.getParameters().put("nodes", newHostIds.length + "");
+            db.getParameters().put("hostIds", newHostIds.length + "");
             rewriteSql();
         } else {
-            if (parameters != null && parameters.containsKey("_removeHostIds_")) {
-                removeHostIds = StringUtils.arraySplit(parameters.get("_removeHostIds_"), ',', true);
-            }
+            if (parameters == null || !parameters.containsKey("_removeHostIds_") || !parameters.containsKey("hostIds"))
+                DbException.throwInternalError();
+            oldHostIds = StringUtils.arraySplit(parameters.get("_removeHostIds_"), ',', true);
+            newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
         }
+
         updateLocalMeta();
         updateRemoteNodes();
 
-        newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
-        String localHostId = NetNode.getLocalTcpNode().getHostAndPort();
-        HashSet<String> set;
-
-        if (removeHostIds != null) {
-            set = new HashSet<>(Arrays.asList(removeHostIds));
-            if (set.contains(localHostId)) {
-                // TODO 等到数据迁移完成后再删
-                // rebuildDatabase();
-            }
+        if (isTargetNode(db)) {
+            ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
+                for (Storage storage : db.getStorages()) {
+                    storage.scaleIn(db, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
+                }
+                HashSet<String> set = new HashSet<>(Arrays.asList(oldHostIds));
+                String localHostId = NetNode.getLocalTcpNode().getHostAndPort();
+                if (set.contains(localHostId)) {
+                    // 等到数据迁移完成后再删
+                    rebuildDatabase();
+                }
+                db.notifyRunModeChanged();
+            });
         }
-
-        if (newRunMode == RunMode.SHARDING) {
-            set = new HashSet<>(Arrays.asList(removeHostIds));
-            if (set.contains(localHostId)) {
-                scaleIn(db, oldRunMode, newRunMode, removeHostIds, newHostIds);
-            }
-        } else if (newRunMode == RunMode.CLIENT_SERVER || newRunMode == RunMode.REPLICATION) {
-            set = new HashSet<>(Arrays.asList(newHostIds));
-            if (set.contains(localHostId)) {
-                scaleIn(db, oldRunMode, newRunMode, null, newHostIds);
-            }
-        }
-    }
-
-    private static void scaleIn(Database db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes,
-            String[] newNodes) {
-        ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
-            for (Storage storage : db.getStorages()) {
-                storage.scaleIn(db, oldRunMode, newRunMode, oldNodes, newNodes);
-            }
-            db.notifyRunModeChanged();
-        });
     }
 
     private static int getReplicationFactor(Map<String, String> parameters) {
