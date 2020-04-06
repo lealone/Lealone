@@ -40,11 +40,12 @@ public interface NetNodeManager {
     }
 
     default ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
-            Boolean remote) {
+            List<String> initReplicationNodes) {
         return null;
     }
 
-    default ReplicationSession createReplicationSession(Session s, Session[] sessions) {
+    default ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
+            Boolean remote) {
         return null;
     }
 

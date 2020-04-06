@@ -108,12 +108,23 @@ public class P2pNetNodeManager implements NetNodeManager {
 
     @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
-        return createReplicationSession(session, replicationNodes, null);
+        return createReplicationSession(session, replicationNodes, null, null);
+    }
+
+    @Override
+    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
+            List<String> initReplicationNodes) {
+        return createReplicationSession(session, replicationNodes, null, initReplicationNodes);
     }
 
     @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
             Boolean remote) {
+        return createReplicationSession(session, replicationNodes, remote, null);
+    }
+
+    private ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
+            Boolean remote, List<String> initReplicationNodes) {
         NetNode localNode = ConfigDescriptor.getLocalNode();
         TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
         int size = replicationNodes.size();
@@ -123,15 +134,10 @@ public class P2pNetNodeManager implements NetNodeManager {
             String id = md.getHostId(e);
             sessions[i++] = session.getNestedSession(id, remote != null ? remote.booleanValue() : !localNode.equals(e));
         }
-        return createReplicationSession(session, sessions);
-    }
-
-    @Override
-    public ReplicationSession createReplicationSession(Session s, Session[] sessions) {
-        ReplicationSession rs = new ReplicationSession(sessions);
+        ReplicationSession rs = new ReplicationSession(sessions, initReplicationNodes);
         rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-        rs.setAutoCommit(s.isAutoCommit());
-        rs.setParentTransaction(s.getTransaction());
+        rs.setAutoCommit(session.isAutoCommit());
+        rs.setParentTransaction(session.getTransaction());
         return rs;
     }
 

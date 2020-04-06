@@ -816,7 +816,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             lockStartTime = now;
         }
 
-        private void stop() {
+        protected void stop() {
             stopInternal();
             session.closeTemporaryResults();
             session.setCurrentCommand(null);
@@ -854,6 +854,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             super(statement, asyncHandler);
             isUpdate = true;
         }
+
+        protected void setResult(Integer result) {
+            affectedRows = result;
+            super.setResult(result, affectedRows);
+        }
     }
 
     public static abstract class YieldableListenableUpdateBase extends YieldableUpdateBase
@@ -882,7 +887,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 if (pendingOperationException != null)
                     throw pendingOperationException;
                 if (pendingOperationCounter.get() <= 0) {
-                    setResult(Integer.valueOf(affectedRows), affectedRows);
+                    setResult(affectedRows);
                     callStop = true;
                     return false;
                 }
@@ -941,7 +946,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             else
                 affectedRows = statement.executeUpdate(pageKeys).get();
             if (affectedRows >= 0) {
-                setResult(Integer.valueOf(affectedRows), affectedRows);
+                setResult(affectedRows);
                 return false;
             }
             // 当前命令未执行完，但是主动让出执行线程了

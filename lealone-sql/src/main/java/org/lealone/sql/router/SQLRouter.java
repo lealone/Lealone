@@ -59,10 +59,10 @@ public class SQLRouter {
         statement.getSession().getTransaction(statement);
     }
 
-    private static int executeDefineStatement(StatementBase defineStatement,
+    private static void executeDefineStatement(StatementBase defineStatement,
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         NetNodeManager m = NetNodeManagerHolder.get();
-        Set<NetNode> liveMembers;
+        Set<NetNode> candidateNodes;
         ServerSession currentSession = defineStatement.getSession();
         Database db = currentSession.getDatabase();
         String[] hostIds = db.getHostIds();
@@ -70,15 +70,15 @@ public class SQLRouter {
             throw DbException
                     .throwInternalError("DB: " + db.getShortName() + ", Run Mode: " + db.getRunMode() + ", no hostIds");
         } else {
-            liveMembers = new HashSet<>(hostIds.length);
+            candidateNodes = new HashSet<>(hostIds.length);
             for (String hostId : hostIds) {
-                liveMembers.add(m.getNode(hostId));
+                candidateNodes.add(m.getNode(hostId));
             }
         }
         List<String> initReplicationNodes = null;
         // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
         if (defineStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
-            List<NetNode> nodes = m.getReplicationNodes(db, new HashSet<>(0), liveMembers);
+            List<NetNode> nodes = m.getReplicationNodes(db, new HashSet<>(0), candidateNodes);
             if (!nodes.isEmpty()) {
                 initReplicationNodes = new ArrayList<>(nodes.size());
                 for (NetNode e : nodes) {
@@ -88,36 +88,29 @@ public class SQLRouter {
             }
         }
 
-        Session[] sessions = new Session[liveMembers.size()];
-        int i = 0;
-        for (NetNode e : liveMembers) {
-            String hostId = m.getHostId(e);
-            sessions[i++] = currentSession.getNestedSession(hostId, !NetNode.getLocalP2pNode().equals(e));
-        }
-
-        ReplicationSession rs = new ReplicationSession(sessions, initReplicationNodes);
-        rs.setAutoCommit(currentSession.isAutoCommit());
-        rs.setRpcTimeout(m.getRpcTimeout());
+        ReplicationSession rs = m.createReplicationSession(currentSession, candidateNodes, initReplicationNodes);
         SQLCommand c = rs.createSQLCommand(defineStatement.getSQL(), -1);
         c.executeUpdate().onComplete(asyncHandler);
-        return 0;
     }
 
     public static int executeUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        int updateCount = 0;
         // CREATE/ALTER/DROP DATABASE语句在执行update时才知道涉及哪些节点
         if (statement.isDatabaseStatement()) {
-            return statement.update();
+            updateCount = statement.update();
+        } else if (statement.isDDL() && !statement.isLocal()) {
+            executeDefineStatement(statement, asyncHandler);
+            return 0;
+        } else if (statement.isLocal()) {
+            updateCount = statement.update();
+        } else if (statement.getSession().isShardingMode()) {
+            updateCount = maybeExecuteDistributedUpdate(statement);
+        } else {
+            updateCount = statement.update();
         }
-        if (statement.isDDL() && !statement.isLocal()) {
-            return executeDefineStatement(statement, asyncHandler);
-        }
-        if (statement.isLocal()) {
-            return statement.update();
-        }
-        if (statement.getSession().isShardingMode()) {
-            return maybeExecuteDistributedUpdate(statement);
-        }
-        return statement.update();
+        if (asyncHandler != null)
+            asyncHandler.handle(new AsyncResult<Integer>(updateCount));
+        return updateCount;
     }
 
     private static int maybeExecuteDistributedUpdate(StatementBase statement) {
