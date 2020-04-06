@@ -19,6 +19,7 @@ package org.lealone.sql.ddl;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Set;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.exceptions.DbException;
@@ -30,9 +31,14 @@ import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManager;
 import org.lealone.net.NetNodeManagerHolder;
-import org.lealone.sql.router.SQLRouter;
+import org.lealone.sql.SQLCommand;
+import org.lealone.storage.replication.ReplicationSession;
 
+//CREATE/ALTER/DROP DATABASE语句在所有节点上都会执行一次，
+//差别是数据库所在节点会执行更多操作，其他节点只在LealoneDatabase中有一条相应记录，
+//这样客户端在接入集群的任何节点时都能找到所连数据库所在的节点有哪些。
 public abstract class DatabaseStatement extends DefinitionStatement {
 
     protected final String dbName;
@@ -71,9 +77,21 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         return db.isTargetNode(localNode);
     }
 
-    protected void executeDatabaseStatement(Database db) {
-        if (session.isRoot()) {
-            SQLRouter.executeDatabaseStatement(db, session, this);
+    protected void updateRemoteNodes(String sql) {
+        // 只有接入节点才适合把当前的SQL转到其他节点上执行
+        if (!session.isRoot())
+            return;
+        NetNodeManager m = NetNodeManagerHolder.get();
+        Set<NetNode> liveMembers = m.getLiveNodes();
+        NetNode localNode = NetNode.getLocalP2pNode();
+        liveMembers.remove(localNode);
+        if (liveMembers.isEmpty())
+            return;
+        ReplicationSession rs = m.createReplicationSession(session, liveMembers, true);
+        try (SQLCommand c = rs.createSQLCommand(sql, -1)) {
+            c.executeUpdate().get();
+        } catch (Exception e) {
+            throw DbException.convert(e);
         }
     }
 

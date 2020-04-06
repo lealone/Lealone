@@ -84,7 +84,8 @@ public class CreateDatabase extends DatabaseStatement {
 
         // LealoneDatabase在启动过程中执行CREATE DATABASE时，不对数据库初始化
         if (!lealoneDB.isStarting()) {
-            executeDatabaseStatement(newDB);
+            // 不能直接使用sql字段，因为parameters有可能不一样，比如额外加了hostIds
+            updateRemoteNodes(newDB.getCreateSQL());
             // 只有数据库真实所在的目标节点才需要初始化数据库，其他节点只需要在LealoneDatabase中有一条相应记录即可
             if (isTargetNode(newDB)) {
                 newDB.init();

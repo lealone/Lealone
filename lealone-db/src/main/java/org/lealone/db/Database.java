@@ -311,7 +311,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public void setRunMode(RunMode runMode) {
-        if (runMode != null && this.runMode != runMode) {
+        if (runMode != null) {
             this.runMode = runMode;
         }
     }

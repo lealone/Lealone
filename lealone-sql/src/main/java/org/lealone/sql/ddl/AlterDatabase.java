@@ -119,7 +119,7 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private void updateRemoteNodes() {
-        executeDatabaseStatement(db);
+        updateRemoteNodes(sql);
     }
 
     private void assignNodes() {

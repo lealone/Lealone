@@ -47,6 +47,9 @@ import org.lealone.sql.dml.Select;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicationSession;
 
+//CREATE/ALTER/DROP DATABASE语句需要在所有节点上执行
+//其他与具体数据库相关的DDL语句会在数据库的目标节点上执行
+//DML语句如果是sharding模式，需要进一步判断
 public class SQLRouter {
 
     private static final ExecutorService executorService = new DebuggableThreadPoolExecutor("SQLRouter", 1,
@@ -54,44 +57,6 @@ public class SQLRouter {
 
     private static void beginTransaction(StatementBase statement) {
         statement.getSession().getTransaction(statement);
-    }
-
-    public static int executeDatabaseStatement(Database db, Session currentSession, StatementBase statement) {
-        NetNodeManager m = NetNodeManagerHolder.get();
-        Set<NetNode> liveMembers = m.getLiveNodes();
-        NetNode localNode = NetNode.getLocalP2pNode();
-        liveMembers.remove(localNode);
-        if (liveMembers.isEmpty())
-            return 0;
-        Session[] sessions = new Session[liveMembers.size()];
-        int i = 0;
-        for (NetNode e : liveMembers) {
-            String hostId = m.getHostId(e);
-            sessions[i++] = currentSession.getNestedSession(hostId, true);
-        }
-
-        String sql = null;
-        switch (statement.getType()) {
-        case SQLStatement.CREATE_DATABASE:
-            sql = db.getCreateSQL();
-            break;
-        case SQLStatement.DROP_DATABASE:
-        case SQLStatement.ALTER_DATABASE:
-            sql = statement.getSQL();
-            break;
-        }
-
-        ReplicationSession rs = m.createReplicationSession(currentSession, sessions);
-        SQLCommand c = null;
-        try {
-            c = rs.createSQLCommand(sql, -1);
-            return c.executeUpdate().get();
-        } catch (Exception e) {
-            throw DbException.convert(e);
-        } finally {
-            if (c != null)
-                c.close();
-        }
     }
 
     private static int executeDefineStatement(StatementBase defineStatement,

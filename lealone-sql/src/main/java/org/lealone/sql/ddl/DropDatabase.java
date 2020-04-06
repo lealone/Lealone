@@ -69,7 +69,7 @@ public class DropDatabase extends DatabaseStatement {
                 }
             }
         }
-        executeDatabaseStatement(db);
+        updateRemoteNodes(sql);
         return 0;
     }
 
