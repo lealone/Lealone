@@ -844,9 +844,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
         BTreePage p = root;
         Object k = pageKey.key;
-        if (p.isLeaf()) {
+        if (p.isLeaf() || p.isRemote()) {
             Object[] keys = { k };
-            BTreePage left = BTreeLeafPage.createEmpty(this);
+            BTreePage left = p.isLeaf() ? BTreeLeafPage.createEmpty(this) : new BTreeRemotePage(this);
             left.setReplicationHostIds(p.getReplicationHostIds());
 
             BTreePage right = readLeafPage(page, readStreamPage);
