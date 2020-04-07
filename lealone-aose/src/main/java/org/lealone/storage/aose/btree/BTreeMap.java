@@ -694,11 +694,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private void replicateOrMovePage(PageKey pageKey, BTreePage p, BTreePage parent, int index, String[] oldNodes,
             boolean replicate) {
         Set<NetNode> candidateNodes = getCandidateNodes();
-        replicateOrMovePage(pageKey, p, parent, index, oldNodes, replicate, candidateNodes);
+        replicateOrMovePage(pageKey, p, parent, index, oldNodes, replicate, candidateNodes, null);
     }
 
     void replicateOrMovePage(PageKey pageKey, BTreePage p, BTreePage parent, int index, String[] oldNodes,
-            boolean replicate, Set<NetNode> candidateNodes) {
+            boolean replicate, Set<NetNode> candidateNodes, RunMode newRunMode) {
         if (oldNodes == null || oldNodes.length == 0) {
             DbException.throwInternalError("oldNodes is null");
         }
@@ -717,7 +717,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Session session = db.createInternalSession();
         LeafPageMovePlan leafPageMovePlan = null;
 
-        if (oldNodes.length == 1) {
+        // 如果新的RunMode是CLIENT_SERVER或REPLICATION，那么目标节点都是确定的，所以不需要进行prepareMoveLeafPage
+        // 如果当前page所在的节点只有一个，也不需要进行prepareMoveLeafPage
+        if (oldNodes.length == 1 || (newRunMode == RunMode.CLIENT_SERVER || newRunMode == RunMode.REPLICATION)) {
             leafPageMovePlan = new LeafPageMovePlan(oldNodes[0], newReplicationNodes, pageKey);
             p.setLeafPageMovePlan(leafPageMovePlan);
         } else {
@@ -1109,12 +1111,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    @Deprecated
     public void replicateAllRemotePages() {
         root.readRemotePagesRecursive();
     }
 
-    public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
-        root.moveAllLocalLeafPages(oldNodes, newNodes);
+    public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
+        if (root.isNode() || (root.isLeaf() && !root.isEmpty()))
+            root.moveAllLocalLeafPages(oldNodes, newNodes, newRunMode);
     }
 
     // 查找闭区间[from, to]对应的所有leaf page，并建立这些leaf page所在节点与page key的映射关系

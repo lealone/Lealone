@@ -25,6 +25,7 @@ import java.util.concurrent.Callable;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.aose.btree.PageOperations.CallableOperation;
@@ -437,6 +438,7 @@ public class BTreeNodePage extends BTreeLocalPage {
         }
     }
 
+    @Deprecated
     @Override
     void readRemotePagesRecursive() {
         for (int i = 0, len = children.length; i < len; i++) {
@@ -460,13 +462,13 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
+    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
         Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.db, newNodes);
         for (int i = 0, len = keys.length; i <= len; i++) {
             if (!children[i].isRemotePage()) {
                 BTreePage p = getChildPage(i);
                 if (p.isNode()) {
-                    p.moveAllLocalLeafPages(oldNodes, newNodes);
+                    p.moveAllLocalLeafPages(oldNodes, newNodes, newRunMode);
                 } else {
                     List<String> replicationHostIds = p.getReplicationHostIds();
                     Object key = i == len ? keys[i - 1] : keys[i];
@@ -477,7 +479,7 @@ public class BTreeNodePage extends BTreeLocalPage {
                         replicationHostIds.toArray(oldNodes);
                     }
                     PageKey pk = new PageKey(key, i == 0);
-                    map.replicateOrMovePage(pk, p, this, i, oldNodes, false, candidateNodes);
+                    map.replicateOrMovePage(pk, p, this, i, oldNodes, false, candidateNodes, newRunMode);
                 }
             }
         }

@@ -382,7 +382,7 @@ public class AlterDatabase extends DatabaseStatement {
 
             db.setHostIds(newHostIds);
             db.getParameters().put("_removeHostIds_", StringUtils.arrayCombine(removeHostIds, ','));
-            db.getParameters().put("hostIds", newHostIds.length + "");
+            db.getParameters().put("hostIds", StringUtils.arrayCombine(newHostIds, ','));
             rewriteSql();
         } else {
             if (parameters == null || !parameters.containsKey("_removeHostIds_") || !parameters.containsKey("hostIds"))
@@ -395,18 +395,18 @@ public class AlterDatabase extends DatabaseStatement {
         updateRemoteNodes();
 
         if (isTargetNode(db)) {
-            ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
-                for (Storage storage : db.getStorages()) {
-                    storage.scaleIn(db, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
-                }
-                HashSet<String> set = new HashSet<>(Arrays.asList(oldHostIds));
-                String localHostId = NetNode.getLocalTcpNode().getHostAndPort();
-                if (set.contains(localHostId)) {
+            HashSet<String> set = new HashSet<>(Arrays.asList(oldHostIds));
+            String localHostId = NetNode.getLocalTcpNode().getHostAndPort();
+            if (set.contains(localHostId)) {
+                ConcurrentUtils.submitTask("ScaleIn Nodes", () -> {
+                    for (Storage storage : db.getStorages()) {
+                        storage.scaleIn(db, RunMode.SHARDING, runMode, oldHostIds, newHostIds);
+                    }
                     // 等到数据迁移完成后再删
                     rebuildDatabase();
-                }
-                db.notifyRunModeChanged();
-            });
+                    db.notifyRunModeChanged();
+                });
+            }
         }
     }
 

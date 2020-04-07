@@ -23,6 +23,7 @@ import java.util.Set;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.type.StorageDataType;
@@ -647,9 +648,9 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     @Override
-    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
+    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
         Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.db, newNodes);
-        map.replicateOrMovePage(null, null, this, 0, oldNodes, false, candidateNodes);
+        map.replicateOrMovePage(null, this, null, 0, oldNodes, false, candidateNodes, newRunMode);
     }
 
     @Override

@@ -26,6 +26,7 @@ import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
+import org.lealone.db.RunMode;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetNode;
 import org.lealone.storage.LeafPageMovePlan;
@@ -596,11 +597,12 @@ public class BTreePage {
         throw ie();
     }
 
+    @Deprecated
     void readRemotePagesRecursive() {
         throw ie();
     }
 
-    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
+    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
         throw ie();
     }
 

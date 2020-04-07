@@ -19,7 +19,6 @@ package org.lealone.storage.aose.btree;
 
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Set;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.net.NetNode;
@@ -133,12 +132,6 @@ public class BTreeRemotePage extends BTreePage {
     @Override
     public void removePage() {
         map.btreeStorage.removePage(pos, 0);
-    }
-
-    @Override
-    void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes) {
-        Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.db, newNodes);
-        map.replicateOrMovePage(null, null, this, 0, oldNodes, false, candidateNodes);
     }
 
     @Override
