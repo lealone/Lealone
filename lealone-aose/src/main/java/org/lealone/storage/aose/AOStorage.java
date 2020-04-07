@@ -157,17 +157,8 @@ public class AOStorage extends StorageBase {
     }
 
     @Override
-    public void replicateTo(IDatabase db, String[] newReplicationNodes, RunMode runMode) {
-        replicateRootPages(db, null, newReplicationNodes, runMode);
-    }
-
-    @Override
-    public void sharding(IDatabase db, String[] oldNodes, String[] newNodes, RunMode runMode) {
-        replicateRootPages(db, oldNodes, newNodes, runMode);
-    }
-
-    private void replicateRootPages(IDatabase db, String[] oldNodes, String[] targetNodes, RunMode runMode) {
-        List<NetNode> replicationNodes = BTreeMap.getReplicationNodes(db, targetNodes);
+    public void scaleOut(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
+        List<NetNode> replicationNodes = BTreeMap.getReplicationNodes(db, newNodes);
         // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
         Session session = db.createInternalSession(true);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
@@ -184,7 +175,7 @@ public class AOStorage extends StorageBase {
                 replicateRootPage(db, sysMap, buff, oldNodes, RunMode.CLIENT_SERVER);
             }
             for (StorageMap<?, ?> map : values) {
-                replicateRootPage(db, map, buff, oldNodes, runMode);
+                replicateRootPage(db, map, buff, oldNodes, newRunMode);
             }
             ByteBuffer pageBuffer = buff.getAndFlipBuffer();
             c.replicatePages(db.getShortName(), AOStorageEngine.NAME, pageBuffer);

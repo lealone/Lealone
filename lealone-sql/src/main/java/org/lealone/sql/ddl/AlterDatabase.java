@@ -270,6 +270,7 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private void scaleOut(boolean isSharding) {
+        RunMode oldRunMode = db.getRunMode();
         alterDatabase();
         assignNodes();
         updateLocalMeta();
@@ -283,10 +284,7 @@ public class AlterDatabase extends DatabaseStatement {
                 storages.remove(metaStorage);
                 storages.add(0, metaStorage);
                 for (Storage storage : storages) {
-                    if (isSharding)
-                        storage.sharding(db, oldHostIds, newHostIds, runMode);
-                    else
-                        storage.replicateTo(db, newHostIds, runMode);
+                    storage.scaleOut(db, oldRunMode, runMode, oldHostIds, newHostIds);
                 }
                 db.notifyRunModeChanged();
             });

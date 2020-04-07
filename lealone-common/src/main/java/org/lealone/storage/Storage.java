@@ -74,12 +74,8 @@ public interface Storage {
         throw DbException.getUnsupportedException("replicateFrom");
     }
 
-    default void replicateTo(IDatabase db, String[] newReplicationNodes, RunMode runMode) {
-        throw DbException.getUnsupportedException("replicateTo");
-    }
-
-    default void sharding(IDatabase db, String[] oldNodes, String[] newNodes, RunMode runMode) {
-        throw DbException.getUnsupportedException("sharding");
+    default void scaleOut(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
+        throw DbException.getUnsupportedException("scaleOut");
     }
 
     default void scaleIn(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
