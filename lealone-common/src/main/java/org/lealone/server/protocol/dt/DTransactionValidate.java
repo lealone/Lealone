@@ -18,15 +18,12 @@
 package org.lealone.server.protocol.dt;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.storage.PageKey;
 
 public class DTransactionValidate implements Packet {
 
@@ -53,12 +50,11 @@ public class DTransactionValidate implements Packet {
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<DTransactionUpdate> {
+    private static class Decoder implements PacketDecoder<DTransactionValidate> {
         @Override
-        public DTransactionUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
-            String sql = in.readString();
-            return new DTransactionUpdate(pageKeys, sql);
+        public DTransactionValidate decode(NetInputStream in, int version) throws IOException {
+            String localTransactionName = in.readString();
+            return new DTransactionValidate(localTransactionName);
         }
     }
 }

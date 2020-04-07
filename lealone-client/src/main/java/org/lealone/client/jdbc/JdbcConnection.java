@@ -388,7 +388,7 @@ public class JdbcConnection extends TraceObject implements Connection {
             debugCodeCall("commit");
             checkClosed();
             commit = prepareSQLCommand("COMMIT", commit);
-            commit.executeUpdate();
+            commit.executeUpdate().get();
         } catch (Exception e) {
             throw logAndConvert(e);
         } finally {

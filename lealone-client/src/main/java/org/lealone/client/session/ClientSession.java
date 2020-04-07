@@ -156,7 +156,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private void setAutoCommitSend(boolean autoCommit) {
         try {
             traceOperation("SESSION_SET_AUTOCOMMIT", autoCommit ? 1 : 0);
-            send(new SessionSetAutoCommit(autoCommit)).get();
+            send(new SessionSetAutoCommit(autoCommit));
         } catch (Exception e) {
             handleException(e);
         }
