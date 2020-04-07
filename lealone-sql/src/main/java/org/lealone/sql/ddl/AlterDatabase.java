@@ -70,14 +70,10 @@ public class AlterDatabase extends DatabaseStatement {
         checkRight();
         synchronized (LealoneDatabase.getInstance().getLock(DbObjectType.DATABASE)) {
             RunMode oldRunMode = db.getRunMode();
-            if (runMode == null) {
-                if (oldRunMode == RunMode.CLIENT_SERVER)
-                    clientServer2ClientServer();
-                else if (oldRunMode == RunMode.REPLICATION)
-                    replication2Replication();
-                else if (oldRunMode == RunMode.SHARDING)
-                    sharding2Sharding();
-            } else if (oldRunMode == RunMode.CLIENT_SERVER) {
+            if (runMode == null)
+                runMode = oldRunMode;
+
+            if (oldRunMode == RunMode.CLIENT_SERVER) {
                 if (runMode == RunMode.CLIENT_SERVER)
                     clientServer2ClientServer();
                 else if (runMode == RunMode.REPLICATION)
@@ -101,6 +97,7 @@ public class AlterDatabase extends DatabaseStatement {
             }
         }
         return 0;
+
     }
 
     private void alterDatabase() {
@@ -250,33 +247,33 @@ public class AlterDatabase extends DatabaseStatement {
     // ----------------------scale out----------------------
 
     private void scaleOutClientServer2Replication() {
-        scaleOut(false);
+        scaleOut();
     }
 
     private void scaleOutClientServer2Sharding() {
-        scaleOut(true);
+        scaleOut();
     }
 
     private void scaleOutReplication2Sharding() {
-        scaleOut(true);
+        scaleOut();
     }
 
     private void scaleOutReplication2Replication() {
-        scaleOut(false);
+        scaleOut();
     }
 
     private void scaleOutSharding2Sharding() {
-        scaleOut(true);
+        scaleOut();
     }
 
-    private void scaleOut(boolean isSharding) {
+    private void scaleOut() {
         RunMode oldRunMode = db.getRunMode();
         alterDatabase();
         assignNodes();
         updateLocalMeta();
         updateRemoteNodes();
         if (isOperationNode(db)) {
-            String taskName = isSharding ? "Sharding Pages" : "Replicate Pages";
+            String taskName = runMode == RunMode.SHARDING ? "Sharding Pages" : "Replicate Pages";
             ConcurrentUtils.submitTask(taskName, () -> {
                 // 先复制包含meta(sys)表的Storage
                 Storage metaStorage = db.getMetaStorage();
