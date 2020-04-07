@@ -28,7 +28,6 @@ import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
@@ -769,34 +768,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     throw DbException.convert(e);
                 }
             } catch (DbException e) {
-                e = e.addSQL(statement.getSQL());
-                SQLException s = e.getSQLException();
-                database.exceptionThrown(s, statement.getSQL());
-                if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-                    callStop = false;
-                    database.shutdownImmediately();
-                    throw e;
-                }
-                database.checkPowerOff();
-                if (isUpdate) {
-                    if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
-                        session.rollback();
-                    } else {
-                        session.rollbackTo(savepointId);
-                    }
-                }
-                callStop = false;
-                if (asyncHandler != null) {
-                    asyncResult = new AsyncResult<>();
-                    asyncResult.setCause(e);
-                    asyncHandler.handle(asyncResult);
-                    asyncResult = null; // 不需要再回调了
-                    stop();
-                    return false;
-                } else {
-                    stop();
-                    throw e;
-                }
+                handleException(e);
+                return false;
             }
         }
 
@@ -814,6 +787,37 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 }
             }
             lockStartTime = now;
+        }
+
+        protected void handleException(DbException e) {
+            Database database = session.getDatabase();
+            e = e.addSQL(statement.getSQL());
+            SQLException s = e.getSQLException();
+            database.exceptionThrown(s, statement.getSQL());
+            if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
+                callStop = false;
+                database.shutdownImmediately();
+                throw e;
+            }
+            database.checkPowerOff();
+            if (isUpdate) {
+                if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
+                    session.rollback();
+                } else {
+                    session.rollbackTo(savepointId);
+                }
+            }
+            callStop = false;
+            if (asyncHandler != null) {
+                asyncResult = new AsyncResult<>();
+                asyncResult.setCause(e);
+                asyncHandler.handle(asyncResult);
+                asyncResult = null; // 不需要再回调了
+                stop();
+            } else {
+                stop();
+                throw e;
+            }
         }
 
         protected void stop() {
@@ -934,23 +938,33 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     private static class DefaultYieldableUpdate extends YieldableUpdateBase {
 
+        private Boolean completed;
+
         public DefaultYieldableUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
+            callStop = false;
         }
 
         @Override
         protected boolean executeInternal() {
-            session.setLastScopeIdentity(ValueNull.INSTANCE);
-            if (pageKeys == null)
-                affectedRows = SQLRouter.executeUpdate(statement, asyncHandler);
-            else
-                affectedRows = statement.executeUpdate(pageKeys).get();
-            if (affectedRows >= 0) {
-                setResult(affectedRows);
-                return false;
+            // session.setLastScopeIdentity(ValueNull.INSTANCE);
+            if (completed == null) {
+                completed = false;
+                SQLRouter.executeUpdate(statement, ar -> {
+                    try {
+                        if (ar.isSucceeded()) {
+                            setResult(ar.getResult());
+                            stop();
+                        } else {
+                            DbException e = DbException.convert(ar.getCause());
+                            handleException(e);
+                        }
+                    } finally {
+                        completed = true;
+                    }
+                });
             }
-            // 当前命令未执行完，但是主动让出执行线程了
-            return true;
+            return !completed;
         }
     }
 
