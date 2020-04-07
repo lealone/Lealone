@@ -83,6 +83,7 @@ public class JdbcPreparedStatementTest extends TestBase {
         latch2.await();
 
         testBatch(conn);
+        testAsync();
         conn.close();
     }
 
@@ -99,5 +100,51 @@ public class JdbcPreparedStatementTest extends TestBase {
         assertEquals(2, updateCounts.length);
         assertEquals(1, updateCounts[0]);
         assertEquals(1, updateCounts[1]);
+    }
+
+    void testAsync() throws Exception {
+        Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
+        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
+        stmt.executeUpdate("DROP TABLE IF EXISTS test");
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+        stmt.close();
+
+        String sql = "INSERT INTO test(f1, f2) VALUES(?, ?)";
+        JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
+        ps.setInt(1, 1);
+        ps.setLong(2, 2);
+        ps.executeUpdate();
+
+        CountDownLatch latch = new CountDownLatch(1);
+        ps.setInt(1, 2);
+        ps.setLong(2, 2);
+        ps.executeUpdateAsync(res -> {
+            System.out.println("updateCount: " + res.getResult());
+            latch.countDown();
+        });
+        latch.await();
+        ps.close();
+
+        ps = (JdbcPreparedStatement) conn.prepareStatement("SELECT * FROM test where f2 = ?");
+        ps.setLong(1, 2);
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+        }
+
+        JdbcPreparedStatement ps2 = ps;
+        ps2.setLong(1, 2);
+        ps2.executeQueryAsync(res -> {
+            ResultSet rs2 = res.getResult();
+            try {
+                while (rs2.next()) {
+                    System.out.println("f1=" + rs2.getInt(1) + " f2=" + rs2.getLong(2));
+                }
+                ps2.close();
+                conn.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 }

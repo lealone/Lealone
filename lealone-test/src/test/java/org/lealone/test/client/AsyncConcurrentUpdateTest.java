@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.async;
+package org.lealone.test.client;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -58,7 +58,7 @@ public class AsyncConcurrentUpdateTest {
             deleteThreads[i].join();
             queryThreads[i].join();
         }
-        AsyncJdbcStatementTest.close(stmt, conn);
+        JdbcStatementTest.close(stmt, conn);
     }
 
     static class UpdateThread extends Thread {
@@ -83,7 +83,7 @@ public class AsyncConcurrentUpdateTest {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                AsyncJdbcStatementTest.close(stmt, conn);
+                JdbcStatementTest.close(stmt, conn);
             }
         }
     }
@@ -110,7 +110,7 @@ public class AsyncConcurrentUpdateTest {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                AsyncJdbcStatementTest.close(stmt, conn);
+                JdbcStatementTest.close(stmt, conn);
             }
         }
     }
@@ -135,7 +135,7 @@ public class AsyncConcurrentUpdateTest {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                AsyncJdbcStatementTest.close(stmt, conn);
+                JdbcStatementTest.close(stmt, conn);
             }
         }
     }

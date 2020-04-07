@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.replication;
+package org.lealone.test.sql.replication;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

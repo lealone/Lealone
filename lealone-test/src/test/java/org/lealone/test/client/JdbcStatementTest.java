@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.junit.Test;
+import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
 
@@ -45,6 +46,8 @@ public class JdbcStatementTest extends TestBase {
 
         testBatch(stmt);
 
+        testAsync();
+
         stmt.close();
         conn.close();
     }
@@ -56,5 +59,72 @@ public class JdbcStatementTest extends TestBase {
         assertEquals(2, updateCounts.length);
         assertEquals(1, updateCounts[0]);
         assertEquals(1, updateCounts[1]);
+    }
+
+    void testAsync() throws Exception {
+        Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
+        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
+        // stmt.executeUpdate("DROP TABLE IF EXISTS test");
+
+        stmt.executeUpdateAsync("DROP TABLE IF EXISTS test").onSuccess(updateCount -> {
+            System.out.println("updateCount: " + updateCount);
+        }).onFailure(e -> {
+            e.printStackTrace();
+        }).get();
+
+        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
+        String sql = "INSERT INTO test(f1, f2) VALUES(1, 2)";
+        stmt.executeUpdate(sql);
+
+        stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(3, 3)").onSuccess(updateCount -> {
+            System.out.println("updateCount: " + updateCount);
+        }).onFailure(e -> {
+            e.printStackTrace();
+        }).get();
+
+        stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(2, 2)", res -> {
+            if (res.isSucceeded()) {
+                System.out.println("updateCount: " + res.getResult());
+            } else {
+                close(stmt, conn);
+                res.getCause().printStackTrace();
+                return;
+            }
+
+            try {
+                stmt.executeQueryAsync("SELECT * FROM test where f2 = 2", res2 -> {
+                    if (res2.isSucceeded()) {
+                        ResultSet rs = res2.getResult();
+                        try {
+                            while (rs.next()) {
+                                System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
+                            }
+                            close(stmt, conn);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    } else {
+                        close(stmt, conn);
+                        res2.getCause().printStackTrace();
+                        return;
+                    }
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    static void close(JdbcStatement stmt, Connection conn) {
+        try {
+            stmt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        try {
+            conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

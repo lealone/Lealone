@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.sql.misc;
+package org.lealone.test.client;
 
 import java.sql.CallableStatement;
 import java.sql.Types;
@@ -23,7 +23,7 @@ import java.sql.Types;
 import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
-public class CallableStatementTest extends SqlTestBase {
+public class JdbcCallableStatementTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         init();
