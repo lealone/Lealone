@@ -18,6 +18,7 @@
 package org.lealone.server;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledFuture;
@@ -60,9 +61,11 @@ public class Scheduler extends Thread
         }
 
         void execute() {
-            // 如果因为某些原因导致主动让出CPU，那么先放到队列末尾等待重新从中断处执行。
+            // 如果因为某些原因导致主动让出CPU
             if (yieldable.run()) {
-                si.yieldableCommands.add(this);
+                // 必须放在队列前面，同一session中执行的语句是按顺序一条一条执行的，
+                // 只有前一条语句执行完了才能执行下一条
+                si.yieldableCommands.addFirst(this);
             }
         }
     }
@@ -70,7 +73,8 @@ public class Scheduler extends Thread
     public static class SessionInfo {
         // yieldableCommands中的命令统一由scheduler调度执行
         private final Scheduler scheduler;
-        private final ConcurrentLinkedQueue<YieldableCommand> yieldableCommands;
+        // 只有用ConcurrentLinkedDeque才支持addFirst
+        private final ConcurrentLinkedDeque<YieldableCommand> yieldableCommands;
         private final TcpServerConnection conn;
         private final int sessionTimeout;
         final Session session;
@@ -79,7 +83,7 @@ public class Scheduler extends Thread
 
         SessionInfo(TcpServerConnection conn, Session session, int sessionId, int sessionTimeout) {
             scheduler = ScheduleService.getSchedulerForSession();
-            yieldableCommands = new ConcurrentLinkedQueue<>();
+            yieldableCommands = new ConcurrentLinkedDeque<>();
             this.conn = conn;
             this.session = session;
             this.sessionId = sessionId;
@@ -345,7 +349,7 @@ public class Scheduler extends Thread
         if (sessions.isEmpty())
             return null;
 
-        ConcurrentLinkedQueue<YieldableCommand> best = null;
+        ConcurrentLinkedDeque<YieldableCommand> best = null;
 
         for (SessionInfo si : sessions) {
             YieldableCommand c = si.yieldableCommands.peek();
