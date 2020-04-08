@@ -36,9 +36,90 @@ public class ShardingTest extends SqlTestBase {
         sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
         stmt.executeUpdate(sql);
 
-        new TwoTablesTest(dbName).runTest();
-        // new ShardingFindTest(dbName).runTest();
+        new DeleteTest(dbName).runTest();
+        new UpdateTest(dbName).runTest();
+        new SelectTest(dbName).runTest();
+
+        // new TwoTablesTest(dbName).runTest();
         // new ShardingCrudTest(dbName).runTest();
+    }
+
+    abstract class CrudTest extends SqlTestBase {
+
+        final String name = "Sharding" + getClass().getSimpleName();
+
+        public CrudTest(String dbName) {
+            super(dbName);
+        }
+
+        void createAndInsertTable() {
+            executeUpdate("drop table IF EXISTS " + name);
+            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
+            for (int i = 1; i <= 50; i++) {
+                executeUpdate("insert into " + name + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
+            }
+        }
+    }
+
+    class DeleteTest extends CrudTest {
+
+        public DeleteTest(String dbName) {
+            super(dbName);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            createAndInsertTable();
+            testDelete();
+        }
+
+        void testDelete() {
+            executeUpdate("delete from " + name + " where f1=10");
+            executeUpdate("delete from " + name + " where f1>100");
+        }
+    }
+
+    class UpdateTest extends CrudTest {
+
+        public UpdateTest(String dbName) {
+            super(dbName);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            createAndInsertTable();
+            testUpdate();
+        }
+
+        void testUpdate() {
+            executeUpdate("update " + name + " set f2=90 where f1=9");
+            executeUpdate("update " + name + " set f2=80 where f1<80");
+        }
+    }
+
+    class SelectTest extends CrudTest {
+
+        public SelectTest(String dbName) {
+            super(dbName);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            createAndInsertTable();
+            testSelect();
+        }
+
+        void testSelect() {
+            sql = "select * from " + name + " where f1 < 10";
+            printResultSet();
+            sql = "select count(*) from " + name + " where f1 < 10";
+            printResultSet();
+
+            sql = "select count(*) from " + name;
+            printResultSet();
+            sql = "select * from " + name + " where f1 = 3";
+            printResultSet();
+        }
     }
 
     class TwoTablesTest extends SqlTestBase {
@@ -59,41 +140,6 @@ public class ShardingTest extends SqlTestBase {
             executeUpdate("insert into TwoTablesTest1(f1, f2) values(10, 20)");
             executeUpdate("insert into TwoTablesTest2(f1, f2) values(10, 20)");
             conn.commit();
-        }
-    }
-
-    class ShardingFindTest extends SqlTestBase {
-
-        private final String name = "ShardingTest_Find";
-
-        public ShardingFindTest(String dbName) {
-            super(dbName);
-        }
-
-        @Override
-        protected void test() throws Exception {
-            createAndInsertTable();
-            testSelect();
-        }
-
-        void createAndInsertTable() {
-            executeUpdate("drop table IF EXISTS " + name);
-            executeUpdate("create table IF NOT EXISTS " + name + "(f1 int primary key, f2 int, f3 int)");
-            for (int i = 1; i <= 500; i++) {
-                executeUpdate("insert into " + name + "(f1, f2, f3) values(" + i + "," + i + "," + i + ")");
-            }
-        }
-
-        void testSelect() {
-            sql = "select * from " + name + " where f1 > 490";
-            printResultSet();
-            sql = "select count(*) from " + name + " where f1 > 490";
-            printResultSet();
-
-            sql = "select count(*) from " + name;
-            printResultSet();
-            sql = "select * from " + name + " where f1 = 3";
-            printResultSet();
         }
     }
 

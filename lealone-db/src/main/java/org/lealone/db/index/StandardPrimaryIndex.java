@@ -480,7 +480,7 @@ public class StandardPrimaryIndex extends IndexBase {
         } else if (mainIndexColumn < 0) {
             max = ValueLong.get(last.getKey());
         } else {
-            Value value = first.getValue(mainIndexColumn);
+            Value value = first == null ? null : first.getValue(mainIndexColumn);
             ValueLong v;
             if (value != null) {
                 if (value instanceof ValueLong)

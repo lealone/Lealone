@@ -165,8 +165,11 @@ public class Update extends ManipulationStatement {
     }
 
     @Override
-    public YieldableUpdate createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableUpdate(this, asyncHandler);
+    public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        if (!isLocal() && getSession().isShardingMode())
+            return super.createYieldableUpdate(asyncHandler);
+        else
+            return new YieldableUpdate(this, asyncHandler);
     }
 
     private static class YieldableUpdate extends YieldableListenableUpdateBase {

@@ -220,18 +220,23 @@ public class SQLRouter {
         return updateCount;
     }
 
-    public static Result executeQuery(StatementBase statement, int maxRows) {
+    public static Result executeQuery(StatementBase statement, int maxRows, boolean scrollable,
+            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+        Result result;
         if (statement.isLocal()) {
-            return statement.query(maxRows);
-        }
-        if (statement.getSession().isShardingMode()) {
+            result = statement.query(maxRows);
+        } else if (statement.getSession().isShardingMode()) {
             beginTransaction(statement);
-            return maybeExecuteDistributedQuery(statement, maxRows);
+            result = maybeExecuteDistributedQuery(statement, maxRows, scrollable);
+        } else {
+            result = statement.query(maxRows);
         }
-        return statement.query(maxRows);
+        if (asyncHandler != null)
+            asyncHandler.handle(new AsyncResult<Result>(result));
+        return result;
     }
 
-    private static Result maybeExecuteDistributedQuery(StatementBase statement, int maxRows) {
+    private static Result maybeExecuteDistributedQuery(StatementBase statement, int maxRows, boolean scrollable) {
         int type = statement.getType();
         switch (type) {
         case SQLStatement.SELECT: {
@@ -244,7 +249,6 @@ public class SQLRouter {
             }
 
             String sql = statement.getPlanSQL(true);
-            boolean scrollable = false;
             Session[] sessions = new Session[size];
             SQLCommand[] commands = new SQLCommand[size];
             ArrayList<Callable<Result>> callables = new ArrayList<>(size);
@@ -257,7 +261,7 @@ public class SQLRouter {
                 commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
                 SQLCommand c = commands[i];
                 callables.add(() -> {
-                    return c.executeQuery(maxRows, false, pageKeys).get();
+                    return c.executeQuery(maxRows, scrollable, pageKeys).get();
                 });
                 i++;
             }

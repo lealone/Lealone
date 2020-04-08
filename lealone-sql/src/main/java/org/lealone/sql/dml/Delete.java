@@ -116,8 +116,11 @@ public class Delete extends ManipulationStatement {
     }
 
     @Override
-    public YieldableDelete createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableDelete(this, asyncHandler);
+    public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        if (!isLocal() && getSession().isShardingMode())
+            return super.createYieldableUpdate(asyncHandler);
+        else
+            return new YieldableDelete(this, asyncHandler);
     }
 
     private static class YieldableDelete extends YieldableListenableUpdateBase {

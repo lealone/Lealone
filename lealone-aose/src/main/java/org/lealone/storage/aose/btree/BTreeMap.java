@@ -39,6 +39,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
 import org.lealone.net.NetNode;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
@@ -1132,8 +1133,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         Map<String, List<PageKey>> map = new HashMap<>();
         Random random = new Random();
         if (root.isLeaf()) {
-            Object key = root.getKeyCount() == 0 ? null : root.getKey(0);
+            Object key = root.getKeyCount() == 0 ? ValueNull.INSTANCE : root.getKey(0);
             getPageKey(map, random, pageKeys, root, 0, key);
+        } else if (root.isRemote()) {
+            getPageKey(map, random, pageKeys, root, 0, ValueNull.INSTANCE);
         } else {
             dfs(map, random, from, to, pageKeys);
         }

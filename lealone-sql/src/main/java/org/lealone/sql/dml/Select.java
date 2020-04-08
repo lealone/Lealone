@@ -1331,7 +1331,10 @@ public class Select extends Query {
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
-        return new YieldableSelect(this, maxRows, scrollable, asyncHandler);
+        if (!isLocal() && getSession().isShardingMode())
+            return super.createYieldableQuery(maxRows, scrollable, asyncHandler);
+        else
+            return new YieldableSelect(this, maxRows, scrollable, asyncHandler);
     }
 
     private class YieldableSelect extends YieldableQueryBase {

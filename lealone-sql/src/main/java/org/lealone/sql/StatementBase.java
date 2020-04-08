@@ -633,7 +633,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         protected final boolean async;
         protected AsyncResult<T> asyncResult;
         protected T result;
-        protected List<PageKey> pageKeys;
         protected long startTimeNanos;
         protected boolean isUpdate;
         protected boolean callStop = true;
@@ -679,7 +678,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
         @Override
         public void setPageKeys(List<PageKey> pageKeys) {
-            this.pageKeys = pageKeys;
+            TableFilter tf = statement.getTableFilter();
+            if (tf != null)
+                tf.setPageKeys(pageKeys);
         }
 
         @Override
@@ -970,22 +971,34 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     private static class DefaultYieldableQuery extends YieldableQueryBase {
 
+        private Boolean completed;
+
         public DefaultYieldableQuery(StatementBase statement, int maxRows, boolean scrollable,
                 AsyncHandler<AsyncResult<Result>> asyncHandler) {
             super(statement, maxRows, scrollable, asyncHandler);
+            callStop = false;
         }
 
         @Override
         protected boolean executeInternal() {
-            if (pageKeys == null)
-                result = SQLRouter.executeQuery(statement, maxRows);
-            else
-                result = statement.executeQuery(maxRows, scrollable, pageKeys).get();
-            if (result != null) {
-                setResult(result, result.getRowCount());
-                return false;
+            if (completed == null) {
+                completed = false;
+                SQLRouter.executeQuery(statement, maxRows, scrollable, ar -> {
+                    try {
+                        if (ar.isSucceeded()) {
+                            Result result = ar.getResult();
+                            setResult(result, result.getRowCount());
+                            stop();
+                        } else {
+                            DbException e = DbException.convert(ar.getCause());
+                            handleException(e);
+                        }
+                    } finally {
+                        completed = true;
+                    }
+                });
             }
-            return true;
+            return !completed;
         }
     }
 }
