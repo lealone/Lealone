@@ -50,6 +50,9 @@ public class ShowStatementTest extends SqlTestBase {
         sql = "show databases";
         printResultSet();
 
+        sql = "SHOW TABLES";
+        printResultSet();
+
         sql = "select * from information_schema.databases";
         printResultSet();
 
@@ -59,5 +62,4 @@ public class ShowStatementTest extends SqlTestBase {
         else
             assertEquals(1, getIntValue(1, true));
     }
-
 }
