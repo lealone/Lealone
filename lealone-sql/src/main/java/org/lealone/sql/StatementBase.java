@@ -757,14 +757,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 } catch (DbException e) {
                     filterConcurrentUpdate(e);
                     return true;
-                } catch (OutOfMemoryError e) {
-                    callStop = false;
-                    // there is a serious problem:
-                    // the transaction may be applied partially
-                    // in this case we need to panic:
-                    // close the database
-                    database.shutdownImmediately();
-                    throw DbException.convert(e);
                 } catch (Throwable e) {
                     throw DbException.convert(e);
                 }
@@ -791,12 +783,16 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         }
 
         protected void handleException(DbException e) {
-            Database database = session.getDatabase();
+            callStop = false;
             e = e.addSQL(statement.getSQL());
             SQLException s = e.getSQLException();
+            Database database = session.getDatabase();
             database.exceptionThrown(s, statement.getSQL());
             if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-                callStop = false;
+                // there is a serious problem:
+                // the transaction may be applied partially
+                // in this case we need to panic:
+                // close the database
                 database.shutdownImmediately();
                 throw e;
             }
@@ -808,7 +804,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     session.rollbackTo(savepointId);
                 }
             }
-            callStop = false;
             if (asyncHandler != null) {
                 asyncResult = new AsyncResult<>();
                 asyncResult.setCause(e);
