@@ -437,29 +437,32 @@ public interface SQLStatement extends SQLCommand {
      */
     int ROLLBACK_TRANSACTION = 131;
 
+    // admin commands
+
     /**
      * The type of a SHUTDOWN statement.
      */
-    int SHUTDOWN = 132;
+    int SHUTDOWN = 140;
 
     /**
      * The type of a SHUTDOWN IMMEDIATELY statement.
      */
-    int SHUTDOWN_IMMEDIATELY = 133;
+    int SHUTDOWN_IMMEDIATELY = 141;
 
     /**
      * The type of a SHUTDOWN COMPACT statement.
      */
-    int SHUTDOWN_COMPACT = 134;
+    int SHUTDOWN_COMPACT = 142;
 
     /**
      * The type of a SHUTDOWN DEFRAG statement.
      */
-    int SHUTDOWN_DEFRAG = 135;
+    int SHUTDOWN_DEFRAG = 143;
 
-    // admin commands
-
-    int ADMIN = 200;
+    /**
+     * The type of a SHUTDOWN SERVER  statement.
+     */
+    int SHUTDOWN_SERVER = 144;
 
     String INTERNAL_SAVEPOINT = "_INTERNAL_SAVEPOINT_";
 }

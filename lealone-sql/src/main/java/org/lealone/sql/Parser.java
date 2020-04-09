@@ -62,6 +62,7 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.db.value.ValueTime;
 import org.lealone.db.value.ValueTimestamp;
+import org.lealone.sql.admin.ShutdownDatabase;
 import org.lealone.sql.admin.ShutdownServer;
 import org.lealone.sql.ddl.AlterDatabase;
 import org.lealone.sql.ddl.AlterIndexRename;
@@ -574,7 +575,7 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private TransactionStatement parseShutdown() {
+    private ShutdownDatabase parseShutdown() {
         int type = SQLStatement.SHUTDOWN;
         if (readIf("IMMEDIATELY")) {
             type = SQLStatement.SHUTDOWN_IMMEDIATELY;
@@ -585,7 +586,7 @@ public class Parser implements SQLParser {
         } else {
             readIf("SCRIPT");
         }
-        return new TransactionStatement(session, type);
+        return new ShutdownDatabase(session, type);
     }
 
     private TransactionStatement parseRollback() {

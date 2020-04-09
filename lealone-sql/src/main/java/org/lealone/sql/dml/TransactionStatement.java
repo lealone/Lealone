@@ -7,7 +7,6 @@
 package org.lealone.sql.dml;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.SQLStatement;
 
@@ -87,35 +86,6 @@ public class TransactionStatement extends ManipulationStatement {
             break;
         case SQLStatement.ROLLBACK_TRANSACTION: // 2PC语句已经废弃
             break;
-        case SQLStatement.SHUTDOWN_IMMEDIATELY:
-            session.getUser().checkAdmin();
-            session.getDatabase().shutdownImmediately();
-            break;
-        case SQLStatement.SHUTDOWN:
-        case SQLStatement.SHUTDOWN_COMPACT:
-        case SQLStatement.SHUTDOWN_DEFRAG: {
-            session.getUser().checkAdmin();
-            session.commit();
-            if (type == SQLStatement.SHUTDOWN_COMPACT || type == SQLStatement.SHUTDOWN_DEFRAG) {
-                session.getDatabase().setCompactMode(type);
-            }
-            // close the database, but don't update the persistent setting
-            session.getDatabase().setCloseDelay(0);
-            Database db = session.getDatabase();
-            // throttle, to allow testing concurrent
-            // execution of shutdown and query
-            session.throttle();
-            for (ServerSession s : db.getSessions(false)) {
-                synchronized (s) {
-                    s.rollback();
-                }
-                if (s != session) {
-                    s.close();
-                }
-            }
-            session.close();
-            break;
-        }
         default:
             DbException.throwInternalError("type=" + type);
         }

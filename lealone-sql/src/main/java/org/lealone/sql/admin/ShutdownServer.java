@@ -20,7 +20,12 @@ package org.lealone.sql.admin;
 import org.lealone.db.session.ServerSession;
 import org.lealone.server.ProtocolServerEngine;
 import org.lealone.server.ProtocolServerEngineManager;
+import org.lealone.sql.SQLStatement;
 
+/**
+ * This class represents the statement
+ * ADMIN SHUTDOWN SERVER
+ */
 public class ShutdownServer extends AdminStatement {
 
     private final int port;
@@ -31,11 +36,15 @@ public class ShutdownServer extends AdminStatement {
     }
 
     @Override
+    public int getType() {
+        return SQLStatement.SHUTDOWN_SERVER;
+    }
+
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         for (ProtocolServerEngine e : ProtocolServerEngineManager.getInstance().getEngines())
             e.stopProtocolServer(port);
         return 0;
     }
-
 }

@@ -19,7 +19,6 @@ package org.lealone.sql.admin;
 
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 
 public abstract class AdminStatement extends StatementBase {
@@ -29,13 +28,12 @@ public abstract class AdminStatement extends StatementBase {
     }
 
     @Override
-    public int getType() {
-        return SQLStatement.ADMIN;
-    }
-
-    @Override
     public Result getMetaData() {
         return null;
     }
 
+    @Override
+    public boolean needRecompile() {
+        return false;
+    }
 }

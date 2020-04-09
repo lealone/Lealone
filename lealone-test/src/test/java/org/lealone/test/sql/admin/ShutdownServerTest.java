@@ -29,5 +29,4 @@ public class ShutdownServerTest extends SqlTestBase {
     public void run() throws Exception {
         stmt.executeUpdate("admin shutdown server " + getPort());
     }
-
 }
