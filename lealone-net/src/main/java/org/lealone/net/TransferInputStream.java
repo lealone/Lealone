@@ -55,7 +55,7 @@ import org.lealone.storage.PageKey;
  */
 public class TransferInputStream implements NetInputStream {
 
-    private final DataInputStream in;
+    private DataInputStream in;
     private Session session;
 
     public TransferInputStream(NetBuffer inBuffer) {
@@ -75,13 +75,15 @@ public class TransferInputStream implements NetInputStream {
     }
 
     public void closeInputStream() {
-        if (in != null)
+        if (in != null) {
             try {
                 in.close();
             } catch (IOException e) {
                 // 最终只是回收NetBuffer，不应该发生异常
                 throw DbException.throwInternalError();
             }
+            in = null;
+        }
     }
 
     /**

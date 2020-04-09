@@ -47,9 +47,9 @@ public class PacketDeliveryTask implements AsyncTask {
         this.in = in;
         this.packetId = packetId;
         this.packetType = packetType;
-        this.si = si;
         this.session = (ServerSession) si.session;
         this.sessionId = si.sessionId;
+        this.si = si;
     }
 
     @Override
@@ -57,10 +57,12 @@ public class PacketDeliveryTask implements AsyncTask {
         try {
             handlePacket();
         } catch (Throwable e) {
-            logger.error("Failed to handle request, packetId: " + packetId + ", packetType: " + packetType, e);
-            conn.sendError(si.session, packetId, e);
+            String message = "Failed to handle packet, packetId: {}, packetType: {}, sessionId: {}";
+            logger.error(message, e, packetId, packetType, sessionId);
+            conn.sendError(session, packetId, e);
         } finally {
-            // in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
+            // 确保无论出现什么情况都能关闭，调用closeInputStream两次也是无害的
+            in.closeInputStream();
         }
     }
 
@@ -68,6 +70,7 @@ public class PacketDeliveryTask implements AsyncTask {
         int version = session.getProtocolVersion();
         PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
         Packet packet = decoder.decode(in, version);
+        in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
         @SuppressWarnings("unchecked")
         PacketHandler<Packet> handler = PacketHandlers.getHandler(packetType);
         if (handler != null) {
@@ -77,7 +80,6 @@ public class PacketDeliveryTask implements AsyncTask {
             }
         } else {
             logger.warn("Unknow packet type: {}", packetType);
-            // conn.close();
         }
     }
 }
