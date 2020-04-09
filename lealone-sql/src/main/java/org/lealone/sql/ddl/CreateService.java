@@ -63,7 +63,7 @@ public class CreateService extends SchemaStatement {
 
     @Override
     public int getType() {
-        return SQLStatement.CREATE_TABLE;
+        return SQLStatement.CREATE_SERVICE;
     }
 
     public void setServiceName(String serviceName) {

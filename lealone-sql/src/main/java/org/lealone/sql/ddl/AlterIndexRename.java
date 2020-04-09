@@ -56,5 +56,4 @@ public class AlterIndexRename extends SchemaStatement {
         }
         return 0;
     }
-
 }

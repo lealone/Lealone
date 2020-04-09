@@ -119,5 +119,4 @@ public class AlterSequence extends SchemaStatement {
         }
         return expr.optimize(session).getValue(session).getLong();
     }
-
 }

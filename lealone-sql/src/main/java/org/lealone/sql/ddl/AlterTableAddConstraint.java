@@ -420,5 +420,4 @@ public class AlterTableAddConstraint extends SchemaStatement {
     public void setPrimaryKeyHash(boolean b) {
         this.primaryKeyHash = b;
     }
-
 }

@@ -121,5 +121,4 @@ public class TransactionStatement extends ManipulationStatement {
         }
         return 0;
     }
-
 }
