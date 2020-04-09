@@ -77,10 +77,5 @@ public class MergedIndex extends IndexBase {
         public boolean next() {
             return result.next();
         }
-
-        @Override
-        public boolean previous() {
-            return false;
-        }
     }
 }

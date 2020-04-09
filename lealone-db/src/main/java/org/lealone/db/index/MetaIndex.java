@@ -8,7 +8,6 @@ package org.lealone.db.index;
 
 import java.util.ArrayList;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -108,11 +107,5 @@ public class MetaIndex extends IndexBase {
             current = index >= rows.size() ? null : rows.get(index++);
             return current != null;
         }
-
-        @Override
-        public boolean previous() {
-            throw DbException.throwInternalError();
-        }
-
     }
 }

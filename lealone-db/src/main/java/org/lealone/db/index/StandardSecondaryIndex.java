@@ -466,11 +466,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
             row = null;
             return current != null;
         }
-
-        @Override
-        public boolean previous() {
-            throw DbException.getUnsupportedException("previous");
-        }
     }
 
     private class StandardSecondaryIndexDistinctCursor implements Cursor {
@@ -538,11 +533,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
                 return true;
             }
             return false;
-        }
-
-        @Override
-        public boolean previous() {
-            throw DbException.getUnsupportedException("previous");
         }
     }
 }

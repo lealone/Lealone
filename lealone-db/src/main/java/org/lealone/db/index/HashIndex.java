@@ -175,10 +175,5 @@ public class HashIndex extends IndexBase {
             end = true;
             return true;
         }
-
-        @Override
-        public boolean previous() {
-            throw DbException.throwInternalError();
-        }
     }
 }

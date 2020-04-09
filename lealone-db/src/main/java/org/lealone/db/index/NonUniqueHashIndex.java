@@ -136,12 +136,5 @@ public class NonUniqueHashIndex extends HashIndex {
         public boolean next() {
             return positions != null && ++index < positions.size();
         }
-
-        @Override
-        public boolean previous() {
-            return positions != null && --index >= 0;
-        }
-
     }
-
 }

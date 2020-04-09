@@ -11,7 +11,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
@@ -304,11 +303,6 @@ public class IndexCursor implements Cursor {
         }
         start.setValue(id, v);
         cursor = index.find(tableFilter.getSession(), start, start);
-    }
-
-    @Override
-    public boolean previous() {
-        throw DbException.throwInternalError();
     }
 
     public SearchRow getStartSearchRow() {

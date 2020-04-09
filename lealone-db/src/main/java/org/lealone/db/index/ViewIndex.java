@@ -412,10 +412,5 @@ public class ViewIndex extends IndexBase {
                 return true;
             }
         }
-
-        @Override
-        public boolean previous() {
-            throw DbException.throwInternalError();
-        }
     }
 }

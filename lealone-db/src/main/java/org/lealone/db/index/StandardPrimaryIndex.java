@@ -579,10 +579,5 @@ public class StandardPrimaryIndex extends IndexBase {
             row = null;
             return current != null;
         }
-
-        @Override
-        public boolean previous() {
-            throw DbException.getUnsupportedException("previous");
-        }
     }
 }

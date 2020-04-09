@@ -6,7 +6,6 @@
  */
 package org.lealone.db.index;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -113,11 +112,6 @@ public class RangeIndex extends IndexBase {
             }
             currentRow = new Row(new Value[] { ValueLong.get(current) }, 1);
             return current <= max;
-        }
-
-        @Override
-        public boolean previous() {
-            throw DbException.throwInternalError();
         }
     }
 }

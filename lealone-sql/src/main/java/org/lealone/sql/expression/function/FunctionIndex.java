@@ -117,11 +117,6 @@ public class FunctionIndex extends IndexBase {
             }
             return values != null;
         }
-
-        @Override
-        public boolean previous() {
-            throw DbException.throwInternalError();
-        }
     }
 
     /**
@@ -179,11 +174,6 @@ public class FunctionIndex extends IndexBase {
                 throw DbException.convert(e);
             }
             return values != null;
-        }
-
-        @Override
-        public boolean previous() {
-            throw DbException.throwInternalError();
         }
     }
 }

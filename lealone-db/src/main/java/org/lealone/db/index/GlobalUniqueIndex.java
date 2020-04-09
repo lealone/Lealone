@@ -250,10 +250,5 @@ public class GlobalUniqueIndex extends IndexBase {
         public boolean next() {
             return result.next();
         }
-
-        @Override
-        public boolean previous() {
-            return false;
-        }
     }
 }
