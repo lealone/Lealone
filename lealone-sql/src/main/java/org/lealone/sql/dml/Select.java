@@ -1429,6 +1429,8 @@ public class Select extends Query {
                                 useCache = true;
                                 return lastResult;
                             }
+                        } else {
+                            useCache = false;
                         }
                     }
                 }

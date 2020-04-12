@@ -30,6 +30,7 @@ public class SelectTest extends SqlTestBase {
         testSelect();
         testAggregate();
         testForUpdate();
+        testResultCache();
     }
 
     void testInsert() throws Exception {
@@ -148,5 +149,27 @@ public class SelectTest extends SqlTestBase {
     void testForUpdate() throws Exception {
         sql = "SELECT pk FROM SelectTest WHERE f3 = 12 FOR UPDATE";
         printResultSet();
+    }
+
+    void testResultCache() throws Exception {
+        sql = "SELECT count(*) FROM SelectTest";
+        assertEquals(12, getIntValue(1, true));
+
+        executeUpdate("INSERT INTO SelectTest(pk, f1) VALUES('100', 'a100')");
+
+        sql = "SELECT count(*) FROM SelectTest";
+        assertEquals(13, getIntValue(1, true));
+
+        sql = "SELECT * FROM SelectTest";
+        int count = printResultSet();
+        assertEquals(13, count);
+        count = printResultSet();
+        assertEquals(13, count);
+
+        executeUpdate("INSERT INTO SelectTest(pk, f1) VALUES('200', 'a200')");
+
+        sql = "SELECT * FROM SelectTest";
+        count = printResultSet();
+        assertEquals(14, count);
     }
 }
