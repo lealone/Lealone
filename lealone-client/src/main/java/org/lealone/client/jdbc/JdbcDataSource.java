@@ -176,7 +176,7 @@ public class JdbcDataSource extends TraceObject implements DataSource, Serializa
         }
         Properties info = new Properties();
         info.setProperty("user", user);
-        info.put("password", password);
+        info.put("password", convertToString(password));
         Connection conn = JdbcDriver.load().connect(url, info);
         if (conn == null) {
             throw new SQLException("No suitable driver found for " + url, "08001", 8001);

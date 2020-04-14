@@ -9,6 +9,7 @@ package org.lealone.db;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.StringTokenizer;
 
@@ -144,9 +145,9 @@ public class ConnectionInfo implements Cloneable {
     private void readProperties(Properties prop) {
         if (prop == null)
             return;
-        for (Object k : prop.keySet()) {
-            String key = k.toString();
-            String value = prop.getProperty(key);
+        for (Entry<Object, Object> e : prop.entrySet()) {
+            String key = e.getKey().toString();
+            String value = e.getValue().toString();
             addProperty(key, value, false); // 第一次读时，不必检查属性名是否重复
         }
     }
