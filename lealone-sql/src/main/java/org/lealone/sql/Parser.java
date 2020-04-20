@@ -4248,12 +4248,6 @@ public class Parser implements SQLParser {
                 command.addServiceMethod(serviceMethod);
             } while (readIfMore());
         }
-        if (readIf("ENGINE")) {
-            readIf("=");
-            command.setStorageEngineName(readUniqueIdentifier());
-        } else if (database.getSettings().defaultStorageEngine != null) {
-            command.setStorageEngineName(database.getSettings().defaultStorageEngine);
-        }
         if (readIf("PACKAGE")) {
             String packageName = readString();
             command.setPackageName(packageName);
@@ -4267,9 +4261,6 @@ public class Parser implements SQLParser {
             read("CODE");
             command.setGenCode(true);
             command.setCodePath(readString());
-        }
-        if (readIf("HIDDEN")) {
-            command.setHidden(true);
         }
         return command;
     }

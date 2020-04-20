@@ -21,6 +21,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
+import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.StandardTable;
@@ -46,6 +47,7 @@ public class Schema extends DbObjectBase {
     private final HashMap<String, Constraint> constraints;
     private final HashMap<String, Constant> constants;
     private final HashMap<String, FunctionAlias> functions;
+    private final HashMap<String, Service> services;
 
     /**
      * The set of returned unique names that are not yet stored. It is used to
@@ -72,6 +74,7 @@ public class Schema extends DbObjectBase {
         constraints = database.newStringMap();
         constants = database.newStringMap();
         functions = database.newStringMap();
+        services = database.newStringMap();
         this.owner = owner;
         this.system = system;
     }
@@ -183,6 +186,9 @@ public class Schema extends DbObjectBase {
             break;
         case FUNCTION_ALIAS:
             result = functions;
+            break;
+        case SERVICE:
+            result = services;
             break;
         default:
             throw DbException.throwInternalError("type=" + type);
@@ -589,4 +595,8 @@ public class Schema extends DbObjectBase {
         throw DbException.convert(new NullPointerException("table engine is null"));
     }
     // }
+
+    public Service findService(String serviceName) {
+        return services.get(serviceName);
+    }
 }

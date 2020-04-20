@@ -1,8 +1,19 @@
 /*
- * Copyright 2004-2013 H2 Group. Multiple-Licensed under the H2 License,
- * Version 1.0, and under the Eclipse Public License, Version 1.0
- * (http://h2database.com/html/license.html).
- * Initial Developer: H2 Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.sql.ddl;
 
@@ -20,18 +31,14 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
-import org.lealone.db.schema.Sequence;
-import org.lealone.db.schema.Service;
+import org.lealone.db.service.Service;
 import org.lealone.db.service.ServiceExecutor;
 import org.lealone.db.service.ServiceExecutorManager;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
-import org.lealone.db.table.IndexColumn;
-import org.lealone.db.table.Table;
 import org.lealone.db.value.DataType;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * This class represents the statement
@@ -41,24 +48,17 @@ import org.lealone.sql.optimizer.TableFilter;
  */
 public class CreateService extends SchemaStatement {
 
-    protected final CreateTableData data = new CreateTableData();
-    protected IndexColumn[] pkColumns;
-    protected boolean ifNotExists;
-
-    private final ArrayList<DefinitionStatement> constraintCommands = new ArrayList<>();
-    private boolean onCommitDrop;
-    private boolean onCommitTruncate;
+    private final ArrayList<CreateTable> serviceMethods = new ArrayList<>();
+    private String serviceName;
+    private boolean ifNotExists;
     private String comment;
     private String packageName;
     private String implementBy;
-    private final ArrayList<CreateTable> serviceMethods = new ArrayList<>();
     private boolean genCode;
     private String codePath;
 
     public CreateService(ServerSession session, Schema schema) {
         super(session, schema);
-        data.persistIndexes = true;
-        data.persistData = true;
     }
 
     @Override
@@ -67,193 +67,19 @@ public class CreateService extends SchemaStatement {
     }
 
     public void setServiceName(String serviceName) {
-        data.tableName = serviceName;
+        this.serviceName = serviceName;
     }
 
     public void addServiceMethod(CreateTable serviceMethod) {
         serviceMethods.add(serviceMethod);
     }
 
-    /**
-     * Add a column to this table.
-     *
-     * @param column the column to add
-     */
-    public void addColumn(Column column) {
-        data.columns.add(column);
-    }
-
-    /**
-     * Add a constraint statement to this statement.
-     * The primary key definition is one possible constraint statement.
-     *
-     * @param command the statement to add
-     */
-    public void addConstraintCommand(DefinitionStatement command) {
-        if (command instanceof CreateIndex) {
-            constraintCommands.add(command);
-        } else {
-            AlterTableAddConstraint con = (AlterTableAddConstraint) command;
-            boolean alreadySet;
-            if (con.getType() == SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY) {
-                alreadySet = setPrimaryKeyColumns(con.getIndexColumns());
-            } else {
-                alreadySet = false;
-            }
-            if (!alreadySet) {
-                constraintCommands.add(command);
-            }
-        }
-    }
-
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
     }
 
-    @Override
-    public int update() {
-        // ServiceCodeGenerator.genCode(this);
-        if (genCode)
-            genCode();
-        // TODO
-        // update0();
-
-        return 0;
-    }
-
-    public int update0() {
-        Database db = session.getDatabase();
-        if (!db.isPersistent()) {
-            data.persistIndexes = false;
-        }
-        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
-            if (getSchema().findTableOrView(session, data.tableName) != null) {
-                if (ifNotExists) {
-                    return 0;
-                }
-                throw DbException.get(ErrorCode.TABLE_OR_VIEW_ALREADY_EXISTS_1, data.tableName);
-            }
-            if (pkColumns != null) {
-                for (Column c : data.columns) {
-                    for (IndexColumn idxCol : pkColumns) {
-                        if (c.getName().equals(idxCol.columnName)) {
-                            c.setNullable(false);
-                        }
-                    }
-                }
-            }
-            data.id = getObjectId();
-            data.create = create;
-            data.session = session;
-            boolean isSessionTemporary = data.temporary && !data.globalTemporary;
-            // if (!isSessionTemporary) {
-            // db.lockMeta(session);
-            // }
-            Service service = new Service(getSchema(), data.id, data.tableName);
-            service.setImplementBy(implementBy);
-            service.setPackageName(packageName);
-            Table table = getSchema().createTable(data);
-            ArrayList<Sequence> sequences = new ArrayList<>();
-            for (Column c : data.columns) {
-                if (c.isAutoIncrement()) {
-                    int objId = getObjectId();
-                    c.convertAutoIncrementToSequence(session, getSchema(), objId, data.temporary);
-                }
-                Sequence seq = c.getSequence();
-                if (seq != null) {
-                    sequences.add(seq);
-                }
-            }
-            table.setComment(comment);
-            if (isSessionTemporary) {
-                if (onCommitDrop) {
-                    table.setOnCommitDrop(true);
-                }
-                if (onCommitTruncate) {
-                    table.setOnCommitTruncate(true);
-                }
-                session.addLocalTempTable(table);
-            } else {
-                // db.lockMeta(session);
-                db.addSchemaObject(session, table);
-            }
-            try {
-                TableFilter tf = new TableFilter(session, table, null, false, null);
-                for (Column c : data.columns) {
-                    c.prepareExpression(session, tf);
-                }
-                for (Sequence sequence : sequences) {
-                    table.addSequence(sequence);
-                }
-                for (DefinitionStatement command : constraintCommands) {
-                    command.update();
-                }
-            } catch (DbException e) {
-                db.checkPowerOff();
-                db.removeSchemaObject(session, table);
-                throw e;
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * Sets the primary key columns, but also check if a primary key
-     * with different columns is already defined.
-     *
-     * @param columns the primary key columns
-     * @return true if the same primary key columns where already set
-     */
-    private boolean setPrimaryKeyColumns(IndexColumn[] columns) {
-        if (pkColumns != null) {
-            int len = columns.length;
-            if (len != pkColumns.length) {
-                throw DbException.get(ErrorCode.SECOND_PRIMARY_KEY);
-            }
-            for (int i = 0; i < len; i++) {
-                if (!columns[i].columnName.equals(pkColumns[i].columnName)) {
-                    throw DbException.get(ErrorCode.SECOND_PRIMARY_KEY);
-                }
-            }
-            return true;
-        }
-        this.pkColumns = columns;
-        return false;
-    }
-
-    public void setGlobalTemporary(boolean globalTemporary) {
-        data.globalTemporary = globalTemporary;
-    }
-
-    public void setHidden(boolean isHidden) {
-        data.isHidden = isHidden;
-    }
-
-    /**
-     * This temporary table is dropped on commit.
-     */
-    public void setOnCommitDrop() {
-        this.onCommitDrop = true;
-    }
-
-    /**
-     * This temporary table is truncated on commit.
-     */
-    public void setOnCommitTruncate() {
-        this.onCommitTruncate = true;
-    }
-
     public void setComment(String comment) {
         this.comment = comment;
-    }
-
-    public void setStorageEngineName(String storageEngineName) {
-        data.storageEngineName = storageEngineName;
-    }
-
-    @Override
-    public boolean isReplicationStatement() {
-        return true;
     }
 
     public void setPackageName(String packageName) {
@@ -270,6 +96,33 @@ public class CreateService extends SchemaStatement {
 
     public void setCodePath(String codePath) {
         this.codePath = codePath;
+    }
+
+    @Override
+    public boolean isReplicationStatement() {
+        return true;
+    }
+
+    @Override
+    public int update() {
+        synchronized (getSchema().getLock(DbObjectType.SERVICE)) {
+            if (getSchema().findService(serviceName) != null) {
+                if (ifNotExists) {
+                    return 0;
+                }
+                throw DbException.get(ErrorCode.SERVICE_ALREADY_EXISTS_1, serviceName);
+            }
+            int id = getObjectId();
+            Service service = new Service(getSchema(), id, serviceName, sql);
+            service.setImplementBy(implementBy);
+            service.setPackageName(packageName);
+            service.setComment(comment);
+            Database db = session.getDatabase();
+            db.addSchemaObject(session, service);
+            if (genCode)
+                genCode();
+        }
+        return 0;
     }
 
     public static String toClassName(String n) {
@@ -299,7 +152,7 @@ public class CreateService extends SchemaStatement {
         importSet.add("io.vertx.core.json.JsonArray");
         importSet.add("org.lealone.client.ClientServiceProxy");
 
-        String serviceName = toClassName(data.tableName);
+        String serviceName = toClassName(this.serviceName);
 
         buff.append("public interface ").append(serviceName).append(" {\r\n");
         buff.append("\r\n");
@@ -343,10 +196,10 @@ public class CreateService extends SchemaStatement {
             proxyMethodsBuff.append(argsBuff);
             if (returnType.equalsIgnoreCase("void")) {
                 proxyMethodsBuff.append("            ClientServiceProxy.executeNoReturnValue(url, \"")
-                        .append(this.data.tableName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
+                        .append(this.serviceName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
             } else {
                 proxyMethodsBuff.append("            String result = ClientServiceProxy.executeWithReturnValue(url, \"")
-                        .append(this.data.tableName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
+                        .append(this.serviceName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
                 proxyMethodsBuff.append("            if (result != null) {\r\n");
                 if (returnColumn.getTable() != null) {
                     importSet.add("io.vertx.core.json.JsonObject");
@@ -384,7 +237,7 @@ public class CreateService extends SchemaStatement {
         ibuff.append("\r\n");
 
         ibuff.append("/**\r\n");
-        ibuff.append(" * Service interface for '").append(data.tableName.toLowerCase()).append("'.\r\n");
+        ibuff.append(" * Service interface for '").append(this.serviceName.toLowerCase()).append("'.\r\n");
         ibuff.append(" *\r\n");
         ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         ibuff.append(" */\r\n");
@@ -413,7 +266,7 @@ public class CreateService extends SchemaStatement {
                 }
             }
         }
-        String serviceName = toClassName(data.tableName);
+        String serviceName = toClassName(this.serviceName);
         String className = serviceName + "Executor";
 
         buff.append("public class ").append(className).append(" implements ServiceExecutor {\r\n");
@@ -508,7 +361,7 @@ public class CreateService extends SchemaStatement {
         ibuff.append("\r\n");
 
         ibuff.append("/**\r\n");
-        ibuff.append(" * Service executor for '").append(data.tableName.toLowerCase()).append("'.\r\n");
+        ibuff.append(" * Service executor for '").append(this.serviceName.toLowerCase()).append("'.\r\n");
         ibuff.append(" *\r\n");
         ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         ibuff.append(" */\r\n");
@@ -519,7 +372,7 @@ public class CreateService extends SchemaStatement {
 
     private void registerServiceExecutor(String executorName) {
         String fullName = getExecutorPackageName() + "." + executorName;
-        ServiceExecutorManager.registerServiceExecutor(data.tableName, fullName);
+        ServiceExecutorManager.registerServiceExecutor(serviceName, fullName);
     }
 
     private String getExecutorPackageName() {
@@ -546,11 +399,6 @@ public class CreateService extends SchemaStatement {
             throw DbException.convertIOException(e, "Failed to genJavaCode, path = " + path);
         }
     }
-
-    // private static class ServiceCodeGenerator {
-    // static void genCode(CreateService s) {
-    // }
-    // }
 
     private static String getTypeName(Column c, TreeSet<String> importSet) {
         String cType;

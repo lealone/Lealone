@@ -316,6 +316,8 @@ public class ErrorCode {
 
     public static final int DATABASE_ALREADY_EXISTS_1 = 42103;
 
+    public static final int SERVICE_ALREADY_EXISTS_1 = 42104;
+
     /**
      * The error with code <code>42111</code> is thrown when
      * trying to create an index if an index with the same name already exists.
