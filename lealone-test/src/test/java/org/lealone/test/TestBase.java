@@ -38,7 +38,7 @@ import org.lealone.transaction.aote.log.LogSyncService;
 
 public class TestBase extends Assert {
 
-    public static interface SqlExecuter {
+    public static interface SqlExecutor {
         void execute(String sql);
     }
 

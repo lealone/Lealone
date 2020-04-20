@@ -22,8 +22,8 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.Service;
-import org.lealone.db.service.ServiceExecuter;
-import org.lealone.db.service.ServiceExecuterManager;
+import org.lealone.db.service.ServiceExecutor;
+import org.lealone.db.service.ServiceExecutorManager;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
@@ -287,7 +287,7 @@ public class CreateService extends SchemaStatement {
 
     private void genCode() {
         genServiceInterfaceCode();
-        genServiceExecuterCode();
+        genServiceExecutorCode();
     }
 
     private void genServiceInterfaceCode() {
@@ -395,12 +395,12 @@ public class CreateService extends SchemaStatement {
         writeFile(codePath, packageName, serviceName, ibuff, buff);
     }
 
-    private void genServiceExecuterCode() {
+    private void genServiceExecutorCode() {
         StringBuilder buff = new StringBuilder();
         StringBuilder ibuff = new StringBuilder();
 
         TreeSet<String> importSet = new TreeSet<>();
-        importSet.add(ServiceExecuter.class.getName());
+        importSet.add(ServiceExecutor.class.getName());
         String serviceImplementClassName = implementBy;
         if (implementBy != null) {
             if (implementBy.startsWith(packageName)) {
@@ -414,9 +414,9 @@ public class CreateService extends SchemaStatement {
             }
         }
         String serviceName = toClassName(data.tableName);
-        String className = serviceName + "Executer";
+        String className = serviceName + "Executor";
 
-        buff.append("public class ").append(className).append(" implements ServiceExecuter {\r\n");
+        buff.append("public class ").append(className).append(" implements ServiceExecutor {\r\n");
         buff.append("\r\n");
         buff.append("    private final ").append(serviceImplementClassName).append(" s = new ")
                 .append(serviceImplementClassName).append("();\r\n");
@@ -500,7 +500,7 @@ public class CreateService extends SchemaStatement {
         buff.append("    }\r\n");
         buff.append("}\r\n");
 
-        ibuff.append("package ").append(getExecuterPackageName()).append(";\r\n");
+        ibuff.append("package ").append(getExecutorPackageName()).append(";\r\n");
         ibuff.append("\r\n");
         for (String i : importSet) {
             ibuff.append("import ").append(i).append(";\r\n");
@@ -508,22 +508,22 @@ public class CreateService extends SchemaStatement {
         ibuff.append("\r\n");
 
         ibuff.append("/**\r\n");
-        ibuff.append(" * Service executer for '").append(data.tableName.toLowerCase()).append("'.\r\n");
+        ibuff.append(" * Service executor for '").append(data.tableName.toLowerCase()).append("'.\r\n");
         ibuff.append(" *\r\n");
         ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         ibuff.append(" */\r\n");
 
-        writeFile(codePath, getExecuterPackageName(), className, ibuff, buff);
-        registerServiceExecuter(className);
+        writeFile(codePath, getExecutorPackageName(), className, ibuff, buff);
+        registerServiceExecutor(className);
     }
 
-    private void registerServiceExecuter(String executerName) {
-        String fullName = getExecuterPackageName() + "." + executerName;
-        ServiceExecuterManager.registerServiceExecuter(data.tableName, fullName);
+    private void registerServiceExecutor(String executorName) {
+        String fullName = getExecutorPackageName() + "." + executorName;
+        ServiceExecutorManager.registerServiceExecutor(data.tableName, fullName);
     }
 
-    private String getExecuterPackageName() {
-        return packageName + ".executer";
+    private String getExecutorPackageName() {
+        return packageName + ".executor";
     }
 
     public static void writeFile(String codePath, String packageName, String className, StringBuilder... buffArray) {

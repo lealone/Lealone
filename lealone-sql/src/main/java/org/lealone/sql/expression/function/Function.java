@@ -44,7 +44,7 @@ import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
-import org.lealone.db.service.ServiceExecuterManager;
+import org.lealone.db.service.ServiceExecutorManager;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
@@ -949,13 +949,13 @@ public class Function extends Expression implements FunctionCall {
         }
         case EXECUTE_SERVICE_NO_RETURN_VALUE: {
             Value v1 = getNullOrValue(session, args, values, 1);
-            ServiceExecuterManager.executeServiceNoReturnValue(v0.getString(), v1.getString());
+            ServiceExecutorManager.executeServiceNoReturnValue(v0.getString(), v1.getString());
             result = ValueNull.INSTANCE;
             break;
         }
         case EXECUTE_SERVICE_WITH_RETURN_VALUE: {
             Value v1 = getNullOrValue(session, args, values, 1);
-            String r = ServiceExecuterManager.executeServiceWithReturnValue(v0.getString(), v1.getString());
+            String r = ServiceExecutorManager.executeServiceWithReturnValue(v0.getString(), v1.getString());
             if (r == null)
                 result = ValueNull.INSTANCE;
             else

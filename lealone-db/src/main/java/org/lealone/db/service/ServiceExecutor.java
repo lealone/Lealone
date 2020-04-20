@@ -17,7 +17,7 @@
  */
 package org.lealone.db.service;
 
-public interface ServiceExecuter {
+public interface ServiceExecutor {
 
     final String NO_RETURN_VALUE = "__NO_RETURN_VALUE__";
 

@@ -31,7 +31,7 @@ import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.test.TestBase;
 
-public class SqlTestBase extends TestBase {
+public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.SqlExecutor {
 
     protected Connection conn;
     protected Statement stmt;
@@ -276,5 +276,14 @@ public class SqlTestBase extends TestBase {
             e.printStackTrace();
         }
         return count;
+    }
+
+    @Override
+    public void execute(String sql) {
+        try {
+            stmt.execute(sql);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
     }
 }

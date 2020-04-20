@@ -19,27 +19,27 @@ package org.lealone.db.service;
 
 import java.util.HashMap;
 
-public class ServiceExecuterManager {
+public class ServiceExecutorManager {
 
-    private ServiceExecuterManager() {
+    private ServiceExecutorManager() {
     }
 
-    private static final HashMap<String, ServiceExecuter> serviceExecuters = new HashMap<>();
-    private static final HashMap<String, String> serviceExecuterClassNames = new HashMap<>();
+    private static final HashMap<String, ServiceExecutor> serviceExecutors = new HashMap<>();
+    private static final HashMap<String, String> serviceExecutorClassNames = new HashMap<>();
 
-    public synchronized static void registerServiceExecuter(String name, ServiceExecuter serviceExecuter) {
+    public synchronized static void registerServiceExecutor(String name, ServiceExecutor serviceExecutor) {
         name = name.toUpperCase();
-        serviceExecuters.put(name, serviceExecuter);
+        serviceExecutors.put(name, serviceExecutor);
     }
 
-    public synchronized static void registerServiceExecuter(String name, String serviceExecuterClassName) {
+    public synchronized static void registerServiceExecutor(String name, String serviceExecutorClassName) {
         name = name.toUpperCase();
-        serviceExecuterClassNames.put(name, serviceExecuterClassName);
+        serviceExecutorClassNames.put(name, serviceExecutorClassName);
     }
 
-    public synchronized void deregisterServiceExecuter(String name) {
+    public synchronized void deregisterServiceExecutor(String name) {
         name = name.toUpperCase();
-        serviceExecuters.remove(name);
+        serviceExecutors.remove(name);
     }
 
     public static void executeServiceNoReturnValue(String serviceName, String json) {
@@ -56,18 +56,18 @@ public class ServiceExecuterManager {
         String methodName = serviceName.substring(dotPos + 1);
         serviceName = serviceName.substring(0, dotPos);
 
-        ServiceExecuter serviceExecuter = serviceExecuters.get(serviceName);
-        if (serviceExecuter == null) {
-            String serviceExecuterClassName = serviceExecuterClassNames.get(serviceName);
-            if (serviceExecuterClassName != null) {
-                synchronized (serviceExecuterClassNames) {
-                    serviceExecuter = serviceExecuters.get(serviceName);
-                    if (serviceExecuter == null) {
+        ServiceExecutor serviceExecutor = serviceExecutors.get(serviceName);
+        if (serviceExecutor == null) {
+            String serviceExecutorClassName = serviceExecutorClassNames.get(serviceName);
+            if (serviceExecutorClassName != null) {
+                synchronized (serviceExecutorClassNames) {
+                    serviceExecutor = serviceExecutors.get(serviceName);
+                    if (serviceExecutor == null) {
                         try {
-                            serviceExecuter = (ServiceExecuter) Class.forName(serviceExecuterClassName).newInstance();
-                            serviceExecuters.put(serviceName, serviceExecuter);
+                            serviceExecutor = (ServiceExecutor) Class.forName(serviceExecutorClassName).newInstance();
+                            serviceExecutors.put(serviceName, serviceExecutor);
                         } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-                            throw new RuntimeException("newInstance exception: " + serviceExecuterClassName);
+                            throw new RuntimeException("newInstance exception: " + serviceExecutorClassName);
                         }
                     }
                 }
@@ -75,6 +75,6 @@ public class ServiceExecuterManager {
                 throw new RuntimeException("service " + serviceName + " not found");
             }
         }
-        return serviceExecuter.executeService(methodName, json);
+        return serviceExecutor.executeService(methodName, json);
     }
 }
