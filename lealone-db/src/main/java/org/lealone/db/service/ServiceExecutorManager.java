@@ -24,22 +24,35 @@ public class ServiceExecutorManager {
     private ServiceExecutorManager() {
     }
 
-    private static final HashMap<String, ServiceExecutor> serviceExecutors = new HashMap<>();
-    private static final HashMap<String, String> serviceExecutorClassNames = new HashMap<>();
+    private static class ServiceExecutorInfo {
+        private final String className;
+        private ServiceExecutor executor;
 
-    public synchronized static void registerServiceExecutor(String name, ServiceExecutor serviceExecutor) {
-        name = name.toUpperCase();
-        serviceExecutors.put(name, serviceExecutor);
+        ServiceExecutorInfo(String className) {
+            this.className = className;
+        }
+
+        // 延迟创建executor的实例，因为执行create service语句时，依赖的服务实现类还不存在
+        ServiceExecutor getExecutor() {
+            if (executor == null) {
+                synchronized (this) {
+                    try {
+                        if (executor == null)
+                            executor = (ServiceExecutor) Class.forName(className).newInstance();
+                    } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
+                        throw new RuntimeException("newInstance exception: " + className);
+                    }
+                }
+            }
+            return executor;
+        }
     }
+
+    private static final HashMap<String, ServiceExecutorInfo> serviceExecutors = new HashMap<>();
 
     public synchronized static void registerServiceExecutor(String name, String serviceExecutorClassName) {
         name = name.toUpperCase();
-        serviceExecutorClassNames.put(name, serviceExecutorClassName);
-    }
-
-    public synchronized void deregisterServiceExecutor(String name) {
-        name = name.toUpperCase();
-        serviceExecutors.remove(name);
+        serviceExecutors.put(name, new ServiceExecutorInfo(serviceExecutorClassName));
     }
 
     public static void executeServiceNoReturnValue(String serviceName, String json) {
@@ -56,25 +69,11 @@ public class ServiceExecutorManager {
         String methodName = serviceName.substring(dotPos + 1);
         serviceName = serviceName.substring(0, dotPos);
 
-        ServiceExecutor serviceExecutor = serviceExecutors.get(serviceName);
-        if (serviceExecutor == null) {
-            String serviceExecutorClassName = serviceExecutorClassNames.get(serviceName);
-            if (serviceExecutorClassName != null) {
-                synchronized (serviceExecutorClassNames) {
-                    serviceExecutor = serviceExecutors.get(serviceName);
-                    if (serviceExecutor == null) {
-                        try {
-                            serviceExecutor = (ServiceExecutor) Class.forName(serviceExecutorClassName).newInstance();
-                            serviceExecutors.put(serviceName, serviceExecutor);
-                        } catch (InstantiationException | IllegalAccessException | ClassNotFoundException e) {
-                            throw new RuntimeException("newInstance exception: " + serviceExecutorClassName);
-                        }
-                    }
-                }
-            } else {
-                throw new RuntimeException("service " + serviceName + " not found");
-            }
+        ServiceExecutorInfo serviceExecutorInfo = serviceExecutors.get(serviceName);
+        if (serviceExecutorInfo != null) {
+            return serviceExecutorInfo.getExecutor().executeService(methodName, json);
+        } else {
+            throw new RuntimeException("service " + serviceName + " not found");
         }
-        return serviceExecutor.executeService(methodName, json);
     }
 }
