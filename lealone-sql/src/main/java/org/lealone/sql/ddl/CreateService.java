@@ -33,7 +33,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.service.Service;
 import org.lealone.db.service.ServiceExecutor;
-import org.lealone.db.service.ServiceExecutorManager;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
@@ -113,7 +112,7 @@ public class CreateService extends SchemaStatement {
                 throw DbException.get(ErrorCode.SERVICE_ALREADY_EXISTS_1, serviceName);
             }
             int id = getObjectId();
-            Service service = new Service(getSchema(), id, serviceName, sql);
+            Service service = new Service(getSchema(), id, serviceName, sql, getExecutorFullName());
             service.setImplementBy(implementBy);
             service.setPackageName(packageName);
             service.setComment(comment);
@@ -266,8 +265,7 @@ public class CreateService extends SchemaStatement {
                 }
             }
         }
-        String serviceName = toClassName(this.serviceName);
-        String className = serviceName + "Executor";
+        String className = getExecutorSimpleName();
 
         buff.append("public class ").append(className).append(" implements ServiceExecutor {\r\n");
         buff.append("\r\n");
@@ -367,16 +365,18 @@ public class CreateService extends SchemaStatement {
         ibuff.append(" */\r\n");
 
         writeFile(codePath, getExecutorPackageName(), className, ibuff, buff);
-        registerServiceExecutor(className);
-    }
-
-    private void registerServiceExecutor(String executorName) {
-        String fullName = getExecutorPackageName() + "." + executorName;
-        ServiceExecutorManager.registerServiceExecutor(serviceName, fullName);
     }
 
     private String getExecutorPackageName() {
         return packageName + ".executor";
+    }
+
+    private String getExecutorFullName() {
+        return getExecutorPackageName() + "." + getExecutorSimpleName();
+    }
+
+    private String getExecutorSimpleName() {
+        return toClassName(serviceName) + "Executor";
     }
 
     public static void writeFile(String codePath, String packageName, String className, StringBuilder... buffArray) {
