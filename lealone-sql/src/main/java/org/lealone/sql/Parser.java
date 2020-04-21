@@ -101,6 +101,7 @@ import org.lealone.sql.ddl.DropIndex;
 import org.lealone.sql.ddl.DropRole;
 import org.lealone.sql.ddl.DropSchema;
 import org.lealone.sql.ddl.DropSequence;
+import org.lealone.sql.ddl.DropService;
 import org.lealone.sql.ddl.DropTable;
 import org.lealone.sql.ddl.DropTrigger;
 import org.lealone.sql.ddl.DropUser;
@@ -1205,6 +1206,14 @@ public class Parser implements SQLParser {
             String sequenceName = readIdentifierWithSchema();
             DropSequence command = new DropSequence(session, getSchema());
             command.setSequenceName(sequenceName);
+            ifExists = readIfExists(ifExists);
+            command.setIfExists(ifExists);
+            return command;
+        } else if (readIf("SERVICE")) {
+            boolean ifExists = readIfExists(false);
+            String constantName = readIdentifierWithSchema();
+            DropService command = new DropService(session, getSchema());
+            command.setServiceName(constantName);
             ifExists = readIfExists(ifExists);
             command.setIfExists(ifExists);
             return command;

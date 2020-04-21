@@ -130,5 +130,4 @@ public class DropTable extends SchemaStatement {
             next.setDropAction(dropAction);
         }
     }
-
 }

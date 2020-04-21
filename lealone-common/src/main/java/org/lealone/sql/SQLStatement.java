@@ -284,6 +284,11 @@ public interface SQLStatement extends SQLCommand {
     int DROP_VIEW = 61;
 
     /**
+     * The type of a DROP SERVICE statement.
+     */
+    int DROP_SERVICE = 62;
+
+    /**
      * The type of a GRANT statement.
      */
     int GRANT = 70;

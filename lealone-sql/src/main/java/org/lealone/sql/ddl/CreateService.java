@@ -118,7 +118,8 @@ public class CreateService extends SchemaStatement {
             service.setComment(comment);
             Database db = session.getDatabase();
             db.addSchemaObject(session, service);
-            if (genCode)
+            // 数据库在启动阶段执行CREATE SERVICE语句时不用再生成代码
+            if (genCode && !session.getDatabase().isStarting())
                 genCode();
         }
         return 0;

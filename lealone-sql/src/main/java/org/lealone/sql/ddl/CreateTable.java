@@ -206,7 +206,8 @@ public class CreateTable extends SchemaStatement {
                 throw e;
             }
 
-            if (genCode)
+            // 数据库在启动阶段执行建表语句时不用再生成代码
+            if (genCode && !session.getDatabase().isStarting())
                 genCode(session, table, table, 1);
         }
         return 0;

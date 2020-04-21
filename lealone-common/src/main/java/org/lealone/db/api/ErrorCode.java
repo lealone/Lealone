@@ -1930,6 +1930,8 @@ public class ErrorCode {
 
     public static final int CANNOT_DROP_LEALONE_DATABASE = 90144;
 
+    public static final int SERVICE_NOT_FOUND_1 = 90145;
+
     // next are 90056, 90110, 90122, 90143
 
     private ErrorCode() {
