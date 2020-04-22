@@ -66,7 +66,7 @@
 
 * 超简洁的类型安全的ORM/DSL框架
 
-* [更多细节...](https://github.com/lealone/Lealone-Plugins/tree/master/lealone-plugins-test/src/test/java/org/lealone/plugins/test/orm)
+* [更多细节...](https://github.com/lealone/Lealone/tree/master/lealone-test/src/test/java/org/lealone/test/orm)
 
 ### Lealone名字的由来
 
