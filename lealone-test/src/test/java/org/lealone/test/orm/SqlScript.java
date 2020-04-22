@@ -46,7 +46,11 @@ public class SqlScript {
 
     private static final String MODEL_PACKAGE_NAME = OrmTest.class.getPackage().getName() + ".generated";
     private static final String SERVICE_PACKAGE_NAME = ServiceProviderTest.class.getPackage().getName() + ".generated";
-    private static final String GENERATED_CODE_PATH = "./src/test/java";
+    private static String GENERATED_CODE_PATH = "./src/test/java";
+
+    public static void setCodePath(String path) {
+        GENERATED_CODE_PATH = path;
+    }
 
     public static void createUserTable(SqlExecutor executor) {
         System.out.println("create table: user");
