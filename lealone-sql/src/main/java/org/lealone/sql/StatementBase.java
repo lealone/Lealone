@@ -819,7 +819,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         protected void stop() {
             stopInternal();
             session.closeTemporaryResults();
-            session.setCurrentCommand(null);
+            session.closeCurrentCommand();
             if (asyncResult != null) {
                 // 在复制模式下不能自动提交
                 if (session.isAutoCommit() && session.getReplicationName() == null) {

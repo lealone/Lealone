@@ -473,11 +473,12 @@ public class ServerSession extends SessionBase {
                 if (newModificationMetaID != modificationMetaID) {
                     queryCache.clear();
                     modificationMetaID = newModificationMetaID;
-                }
-                ps = queryCache.get(sql);
-                if (ps != null && ps.canReuse()) {
-                    ps.reuse();
-                    return ps;
+                } else {
+                    ps = queryCache.get(sql);
+                    if (ps != null && ps.canReuse()) {
+                        ps.reuse();
+                        return ps;
+                    }
                 }
             }
         }
@@ -491,7 +492,6 @@ public class ServerSession extends SessionBase {
         ps.setLocal(isLocal());
         if (fetchSize != -1)
             ps.setFetchSize(fetchSize);
-
         return ps;
     }
 
@@ -831,19 +831,27 @@ public class ServerSession extends SessionBase {
      * @param command the command
      */
     public void setCurrentCommand(PreparedSQLStatement statement) {
-        this.currentCommand = statement;
-        if (queryTimeout > 0 && statement != null) {
-            long now = System.currentTimeMillis();
-            currentCommandStart = now;
-            cancelAt = now + queryTimeout;
-        }
-        // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
-        // 注意，在执行完当前语句后会再调用一次，把currentCommand设为null，所以这里要加一下判断
+        currentCommand = statement;
         if (statement != null) {
+            // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
             if (statement.isDatabaseStatement())
                 containsDatabaseStatement = true;
             else if (statement.isDDL())
                 containsDDL = true;
+
+            if (queryTimeout > 0) {
+                long now = System.currentTimeMillis();
+                currentCommandStart = now;
+                cancelAt = now + queryTimeout;
+            }
+        }
+    }
+
+    public void closeCurrentCommand() {
+        // 关闭后一些DML语句才可以重用
+        if (currentCommand != null) {
+            currentCommand.close();
+            currentCommand = null;
         }
     }
 

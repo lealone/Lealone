@@ -41,11 +41,6 @@ public class ShutdownDatabase extends AdminStatement {
     }
 
     @Override
-    public boolean isCacheable() {
-        return true;
-    }
-
-    @Override
     public int update() {
         switch (type) {
         case SQLStatement.SHUTDOWN_IMMEDIATELY:
