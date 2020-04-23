@@ -1,8 +1,8 @@
 package org.lealone.test.service.generated.executor;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import org.lealone.db.service.ServiceExecutor;
+import org.lealone.orm.json.JsonArray;
+import org.lealone.orm.json.JsonObject;
 import org.lealone.test.orm.generated.User;
 import org.lealone.test.service.impl.UserServiceImpl;
 

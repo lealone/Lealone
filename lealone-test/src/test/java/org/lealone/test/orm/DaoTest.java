@@ -19,10 +19,9 @@ package org.lealone.test.orm;
 
 import java.util.concurrent.CountDownLatch;
 
+import org.lealone.orm.json.JsonObject;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.User;
-
-import io.vertx.core.json.JsonObject;
 
 public class DaoTest extends UnitTestBase {
 

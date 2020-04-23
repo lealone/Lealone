@@ -21,10 +21,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import org.lealone.orm.json.JsonObject;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.User;
-
-import io.vertx.core.json.JsonObject;
 
 public class OrmCrudTest extends UnitTestBase {
 

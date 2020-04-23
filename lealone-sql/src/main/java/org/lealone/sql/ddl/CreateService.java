@@ -149,7 +149,7 @@ public class CreateService extends SchemaStatement {
         StringBuilder proxyMethodsBuff = new StringBuilder();
 
         TreeSet<String> importSet = new TreeSet<>();
-        importSet.add("io.vertx.core.json.JsonArray");
+        importSet.add("org.lealone.orm.json.JsonArray");
         importSet.add("org.lealone.client.ClientServiceProxy");
 
         String serviceName = toClassName(this.serviceName);
@@ -185,7 +185,7 @@ public class CreateService extends SchemaStatement {
                 buff.append(cType).append(" ").append(cName);
                 proxyMethodsBuff.append(cType).append(" ").append(cName);
                 if (c.getTable() != null) {
-                    importSet.add("io.vertx.core.json.JsonObject");
+                    importSet.add("org.lealone.orm.json.JsonObject");
                     argsBuff.append("            ja.add(JsonObject.mapFrom(").append(cName).append("));\r\n");
                 } else {
                     argsBuff.append("            ja.add(").append(cName).append(");\r\n");
@@ -202,7 +202,7 @@ public class CreateService extends SchemaStatement {
                         .append(this.serviceName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
                 proxyMethodsBuff.append("            if (result != null) {\r\n");
                 if (returnColumn.getTable() != null) {
-                    importSet.add("io.vertx.core.json.JsonObject");
+                    importSet.add("org.lealone.orm.json.JsonObject");
                     proxyMethodsBuff.append("                JsonObject jo = new JsonObject(result);\r\n");
                     proxyMethodsBuff.append("                return jo.mapTo(").append(returnType)
                             .append(".class);\r\n");
@@ -306,7 +306,7 @@ public class CreateService extends SchemaStatement {
             // 有参数，参数放在一个json数组中
             int size = data.columns.size() - 1;
             if (size > 0) {
-                importSet.add("io.vertx.core.json.JsonArray");
+                importSet.add("org.lealone.orm.json.JsonArray");
                 buff.append("            ja = new JsonArray(json);\r\n");
                 for (int i = 0; i < size; i++) {
                     if (i != 0) {
@@ -331,7 +331,7 @@ public class CreateService extends SchemaStatement {
                 buff.append("            if (").append(resultVarName).append(" == null)\r\n");
                 buff.append("                return null;\r\n");
                 if (returnColumn.getTable() != null) {
-                    importSet.add("io.vertx.core.json.JsonObject");
+                    importSet.add("org.lealone.orm.json.JsonObject");
                     buff.append("            return JsonObject.mapFrom(").append(resultVarName)
                             .append(").encode();\r\n");
                 } else if (!returnType.equalsIgnoreCase("string")) {

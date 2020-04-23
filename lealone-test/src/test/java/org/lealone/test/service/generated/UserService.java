@@ -1,8 +1,8 @@
 package org.lealone.test.service.generated;
 
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
 import org.lealone.client.ClientServiceProxy;
+import org.lealone.orm.json.JsonArray;
+import org.lealone.orm.json.JsonObject;
 import org.lealone.test.orm.generated.User;
 
 /**
