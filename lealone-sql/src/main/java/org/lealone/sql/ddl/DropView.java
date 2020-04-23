@@ -76,12 +76,11 @@ public class DropView extends SchemaStatement {
                         }
                     }
                 }
-
-                view.lock(session, true, true);
+                if (!view.tryExclusiveLock(session))
+                    return -1;
                 session.getDatabase().removeSchemaObject(session, view);
             }
         }
         return 0;
     }
-
 }

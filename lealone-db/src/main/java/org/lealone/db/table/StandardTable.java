@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceModuleType;
@@ -63,6 +65,10 @@ public class StandardTable extends Table {
     private final Map<String, String> parameters;
     private final boolean globalTemporary;
 
+    private final Lock readLock;
+    private final Lock writeLock;
+    private volatile ServerSession lockExclusiveSession;
+
     private long lastModificationId;
     private int changesSinceAnalyze;
     private int nextAnalyze;
@@ -111,6 +117,10 @@ public class StandardTable extends Table {
         indexes.add(primaryIndex);
         tableAlterHistoryRecords = getDatabase().getVersionManager().getTableAlterHistoryRecord(id, 0,
                 getVersion() - 1);
+
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        readLock = lock.readLock();
+        writeLock = lock.writeLock();
     }
 
     public String getMapName() {
@@ -225,39 +235,54 @@ public class StandardTable extends Table {
 
     @Override
     public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
-        if ((exclusive || forceLockEvenInMvcc) && !sharedSessions.containsKey(session)) {
-            sharedSessions.put(session, session);
-            session.addLock(this);
-        }
-        return true;
+        if (exclusive || forceLockEvenInMvcc)
+            return tryExclusiveLock(session);
+        return trySharedLock(session);
     }
 
     @Override
-    public void unlock(ServerSession s) {
-        if (sharedSessions.containsKey(s)) {
-            sharedSessions.remove(s);
+    public boolean trySharedLock(ServerSession session) {
+        if (readLock.tryLock()) {
+            if (!sharedSessions.containsKey(session)) {
+                sharedSessions.put(session, session);
+                session.addLock(this);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean tryExclusiveLock(ServerSession session) {
+        if (writeLock.tryLock()) {
+            if (lockExclusiveSession != session) {
+                lockExclusiveSession = session;
+                session.addLock(this);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void unlock(ServerSession session) {
+        if (sharedSessions.containsKey(session)) {
+            sharedSessions.remove(session);
+            readLock.unlock();
+        } else if (lockExclusiveSession == session) {
+            lockExclusiveSession = null;
+            writeLock.unlock();
         }
     }
 
-    public static String getDeadlockDetails(ArrayList<ServerSession> sessions) {
-        // We add the thread details here to make it easier for customers to
-        // match up these error messages with their own logs.
-        StringBuilder buff = new StringBuilder();
-        for (ServerSession s : sessions) {
-            Table lock = s.getWaitForLock();
-            Thread thread = s.getWaitForLockThread();
-            buff.append("\nSession ").append(s.toString()).append(" on thread ").append(thread.getName())
-                    .append(" is waiting to lock ").append(lock.toString()).append(" while locking ");
-            int i = 0;
-            for (Table t : s.getLocks()) {
-                if (i++ > 0) {
-                    buff.append(", ");
-                }
-                buff.append(t.toString());
-            }
-            buff.append('.');
-        }
-        return buff.toString();
+    @Override
+    public boolean isLockedExclusively() {
+        return lockExclusiveSession != null;
+    }
+
+    @Override
+    public boolean isLockedExclusivelyBy(ServerSession session) {
+        return lockExclusiveSession == session;
     }
 
     @Override
@@ -298,14 +323,25 @@ public class StandardTable extends Table {
         }
     }
 
-    @Override
-    public boolean isLockedExclusively() {
-        return false; // lockExclusiveSession != null;
-    }
-
-    @Override
-    public boolean isLockedExclusivelyBy(ServerSession session) {
-        return false; // lockExclusiveSession == session;
+    public static String getDeadlockDetails(ArrayList<ServerSession> sessions) {
+        // We add the thread details here to make it easier for customers to
+        // match up these error messages with their own logs.
+        StringBuilder buff = new StringBuilder();
+        for (ServerSession s : sessions) {
+            Table lock = s.getWaitForLock();
+            Thread thread = s.getWaitForLockThread();
+            buff.append("\nSession ").append(s.toString()).append(" on thread ").append(thread.getName())
+                    .append(" is waiting to lock ").append(lock.toString()).append(" while locking ");
+            int i = 0;
+            for (Table t : s.getLocks()) {
+                if (i++ > 0) {
+                    buff.append(", ");
+                }
+                buff.append(t.toString());
+            }
+            buff.append('.');
+        }
+        return buff.toString();
     }
 
     @Override

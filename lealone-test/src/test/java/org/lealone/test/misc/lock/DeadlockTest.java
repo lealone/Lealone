@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.misc;
+package org.lealone.test.misc.lock;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -24,10 +24,6 @@ import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
 public class DeadlockTest extends SqlTestBase {
-    public static void main(String[] args) throws Exception {
-        new DeadlockTest().run();
-    }
-
     @Test
     public void run() throws Exception {
         stmt.executeUpdate("set DEFAULT_LOCK_TIMEOUT 2000");
@@ -38,47 +34,37 @@ public class DeadlockTest extends SqlTestBase {
 
         stmt.executeUpdate("insert into DeadlockTest1(id, name, b) values(1, 'a1', true)");
         stmt.executeUpdate("insert into DeadlockTest2(id, name, b) values(1, 'a1', true)");
-        Thread t1 = new Thread() {
-            @Override
-            public void run() {
-                Connection conn;
-                try {
-                    conn = DeadlockTest.this.getConnection();
-                    conn.setAutoCommit(false);
-                    Statement stmt = conn.createStatement();
-                    stmt.executeUpdate("update DeadlockTest1 set name = 'a2' where id = 1");
-                    stmt.executeUpdate("update DeadlockTest2 set name = 'a2' where id = 1");
-                    conn.commit();
-                    stmt.close();
-                    conn.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
 
+        Thread t1 = new Thread(() -> {
+            try {
+                Connection conn = DeadlockTest.this.getConnection();
+                conn.setAutoCommit(false);
+                Statement stmt = conn.createStatement();
+                stmt.executeUpdate("update DeadlockTest1 set name = 'a2' where id = 1");
+                stmt.executeUpdate("update DeadlockTest2 set name = 'a2' where id = 1");
+                conn.commit();
+                stmt.close();
+                conn.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+        Thread t2 = new Thread(() -> {
+            try {
+                Connection conn = DeadlockTest.this.getConnection();
+                conn.setAutoCommit(false);
+                Statement stmt = conn.createStatement();
+                stmt.executeUpdate("update DeadlockTest2 set name = 'a2' where id = 1");
+                stmt.executeUpdate("update DeadlockTest1 set name = 'a2' where id = 1");
+                conn.commit();
+                stmt.close();
+                conn.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
         t1.start();
-
-        Thread t2 = new Thread() {
-            @Override
-            public void run() {
-                Connection conn;
-                try {
-                    conn = DeadlockTest.this.getConnection();
-                    conn.setAutoCommit(false);
-                    Statement stmt = conn.createStatement();
-                    stmt.executeUpdate("update DeadlockTest2 set name = 'a2' where id = 1");
-                    stmt.executeUpdate("update DeadlockTest1 set name = 'a2' where id = 1");
-                    conn.commit();
-                    stmt.close();
-                    conn.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        };
         t2.start();
-
         t1.join();
         t2.join();
     }

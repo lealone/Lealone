@@ -86,8 +86,9 @@ public class CreateIndex extends SchemaStatement {
                 }
                 throw DbException.get(ErrorCode.INDEX_ALREADY_EXISTS_1, indexName);
             }
+            if (!table.tryExclusiveLock(session))
+                return -1;
             session.getUser().checkRight(table, Right.ALL);
-            table.lock(session, true, true);
             int id = getObjectId();
             if (indexName == null) {
                 if (primaryKey) {

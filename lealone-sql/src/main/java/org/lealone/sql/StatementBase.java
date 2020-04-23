@@ -947,20 +947,22 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             if (completed == null) {
                 completed = false;
                 SQLRouter.executeUpdate(statement, ar -> {
-                    try {
-                        if (ar.isSucceeded()) {
+                    if (ar.isSucceeded()) {
+                        if (ar.getResult() < 0) {
+                            completed = null; // 需要重新执行
+                        } else {
+                            completed = true;
                             setResult(ar.getResult());
                             stop();
-                        } else {
-                            DbException e = DbException.convert(ar.getCause());
-                            handleException(e);
                         }
-                    } finally {
+                    } else {
                         completed = true;
+                        DbException e = DbException.convert(ar.getCause());
+                        handleException(e);
                     }
                 });
             }
-            return !completed;
+            return completed == null || !completed;
         }
     }
 

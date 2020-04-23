@@ -292,10 +292,11 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         @Override
         protected boolean startInternal() {
             session.getUser().checkRight(table, Right.INSERT);
+            if (statement.query != null && !table.trySharedLock(session))
+                return true;
             table.fire(session, Trigger.INSERT, true);
             statement.setCurrentRowNumber(0);
             if (statement.query != null) {
-                table.lock(session, true, false);
                 rows = statement.query.query(0);
             }
             return false;
@@ -335,7 +336,8 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                     boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
                     if (!done) {
                         // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
-                        table.lock(session, true, false);
+                        if (!table.trySharedLock(session))
+                            return true;
                         if (async)
                             table.tryAddRow(session, newRow, this);
                         else

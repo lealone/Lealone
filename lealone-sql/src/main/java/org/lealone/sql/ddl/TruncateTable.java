@@ -46,8 +46,10 @@ public class TruncateTable extends SchemaStatement {
                 throw DbException.get(ErrorCode.CANNOT_TRUNCATE_1, table.getSQL());
             }
             session.getUser().checkRight(table, Right.DELETE);
-            table.lock(session, true, true);
-            table.truncate(session);
+            if (table.tryExclusiveLock(session))
+                table.truncate(session);
+            else
+                return -1;
         }
         return 0;
     }

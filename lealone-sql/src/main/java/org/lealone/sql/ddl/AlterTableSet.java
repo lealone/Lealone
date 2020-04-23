@@ -44,8 +44,9 @@ public class AlterTableSet extends SchemaStatement {
 
     @Override
     public int update() {
+        if (!table.tryExclusiveLock(session))
+            return -1;
         session.getUser().checkRight(table, Right.ALL);
-        table.lock(session, true, true);
         switch (type) {
         case SQLStatement.ALTER_TABLE_SET_REFERENTIAL_INTEGRITY:
             table.setCheckForeignKeyConstraints(session, value, value ? checkExisting : false);
@@ -55,5 +56,4 @@ public class AlterTableSet extends SchemaStatement {
         }
         return 0;
     }
-
 }

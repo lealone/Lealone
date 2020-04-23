@@ -142,6 +142,15 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     /**
+     * Close the table object and flush changes.
+     *
+     * @param session the session
+     */
+    public void close(ServerSession session) {
+        // nothing to do
+    }
+
+    /**
      * Lock the table for the given session.
      * This method waits until the lock is granted.
      *
@@ -155,13 +164,14 @@ public abstract class Table extends SchemaObjectBase {
         return false;
     }
 
-    /**
-     * Close the table object and flush changes.
-     *
-     * @param session the session
-     */
-    public void close(ServerSession session) {
+    public boolean trySharedLock(ServerSession session) {
         // nothing to do
+        return false;
+    }
+
+    public boolean tryExclusiveLock(ServerSession session) {
+        // nothing to do
+        return false;
     }
 
     /**
@@ -190,6 +200,26 @@ public abstract class Table extends SchemaObjectBase {
      */
     public boolean isLockedExclusivelyBy(ServerSession session) {
         return false;
+    }
+
+    /**
+     * Check if a deadlock occurred. This method is called recursively. There is
+     * a circle if the session to be tested has already being visited. If this
+     * session is part of the circle (if it is the clash session), the method
+     * must return an empty object array. Once a deadlock has been detected, the
+     * methods must add the session to the list. If this session is not part of
+     * the circle, or if no deadlock is detected, this method returns null.
+     *
+     * @param session the session to be tested for
+     * @param clash set with sessions already visited, and null when starting
+     *            verification
+     * @param visited set with sessions already visited, and null when starting
+     *            verification
+     * @return an object array with the sessions involved in the deadlock, or null
+     */
+    public ArrayList<ServerSession> checkDeadlock(ServerSession session, ServerSession clash,
+            Set<ServerSession> visited) {
+        return null;
     }
 
     /**
@@ -993,26 +1023,6 @@ public abstract class Table extends SchemaObjectBase {
         if (!stillNeeded) {
             database.removeSchemaObject(session, index);
         }
-    }
-
-    /**
-     * Check if a deadlock occurred. This method is called recursively. There is
-     * a circle if the session to be tested has already being visited. If this
-     * session is part of the circle (if it is the clash session), the method
-     * must return an empty object array. Once a deadlock has been detected, the
-     * methods must add the session to the list. If this session is not part of
-     * the circle, or if no deadlock is detected, this method returns null.
-     *
-     * @param session the session to be tested for
-     * @param clash set with sessions already visited, and null when starting
-     *            verification
-     * @param visited set with sessions already visited, and null when starting
-     *            verification
-     * @return an object array with the sessions involved in the deadlock, or null
-     */
-    public ArrayList<ServerSession> checkDeadlock(ServerSession session, ServerSession clash,
-            Set<ServerSession> visited) {
-        return null;
     }
 
     public boolean isPersistIndexes() {

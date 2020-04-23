@@ -100,9 +100,10 @@ public class AlterTableAddConstraint extends SchemaStatement {
             }
             throw DbException.get(ErrorCode.CONSTRAINT_ALREADY_EXISTS_1, constraintName);
         }
+        if (!table.tryExclusiveLock(session))
+            return -1;
         session.getUser().checkRight(table, Right.ALL);
         db.lockMeta(session);
-        table.lock(session, true, true);
         Constraint constraint;
         switch (type) {
         case SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY: {

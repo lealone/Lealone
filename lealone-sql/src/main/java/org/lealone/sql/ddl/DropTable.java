@@ -70,7 +70,7 @@ public class DropTable extends SchemaStatement {
         this.tableName = tableName;
     }
 
-    private void prepareDrop() {
+    private boolean prepareDrop() {
         table = getSchema().findTableOrView(session, tableName);
         if (table == null) {
             if (!ifExists) {
@@ -92,11 +92,13 @@ public class DropTable extends SchemaStatement {
                     throw DbException.get(ErrorCode.CANNOT_DROP_2, tableName, buff.toString());
                 }
             }
-            table.lock(session, true, true);
+            if (!table.tryExclusiveLock(session))
+                return false;
         }
         if (next != null) {
-            next.prepareDrop();
+            return next.prepareDrop();
         }
+        return true;
     }
 
     private void executeDrop() {
@@ -119,7 +121,8 @@ public class DropTable extends SchemaStatement {
 
     @Override
     public int update() {
-        prepareDrop();
+        if (!prepareDrop())
+            return -1;
         executeDrop();
         return 0;
     }
