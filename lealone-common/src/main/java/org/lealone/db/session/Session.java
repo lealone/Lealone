@@ -42,6 +42,8 @@ public interface Session extends Closeable, Transaction.Participant {
     public static final int STATUS_ERROR = 1002;
     public static final int STATUS_RUN_MODE_CHANGED = 1003;
 
+    int getId();
+
     SQLCommand createSQLCommand(String sql, int fetchSize);
 
     ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize);
@@ -186,8 +188,6 @@ public interface Session extends Closeable, Transaction.Participant {
     default byte[] getLobMacSalt() {
         return null;
     }
-
-    int getSessionId();
 
     boolean isRunModeChanged();
 

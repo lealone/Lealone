@@ -131,6 +131,11 @@ public class ServerSession extends SessionBase {
         this.currentSchemaName = Constants.SCHEMA_MAIN;
     }
 
+    @Override
+    public int getId() {
+        return id;
+    }
+
     public void setDatabase(Database database) {
         this.database = database;
     }
@@ -656,15 +661,6 @@ public class ServerSession extends SessionBase {
             checkCommitRollback();
             transaction.rollbackToSavepoint(name);
         }
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    @Override
-    public int getSessionId() {
-        return id;
     }
 
     @Override

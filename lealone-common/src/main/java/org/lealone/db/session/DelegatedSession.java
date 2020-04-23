@@ -48,6 +48,11 @@ public class DelegatedSession implements Session {
         setSession(session);
     }
 
+    @Override
+    public int getId() {
+        return session.getId();
+    }
+
     public void setSession(Session session) {
         this.session = session;
     }
@@ -300,11 +305,6 @@ public class DelegatedSession implements Session {
     @Override
     public byte[] getLobMacSalt() {
         return session.getLobMacSalt();
-    }
-
-    @Override
-    public int getSessionId() {
-        return session.getSessionId();
     }
 
     @Override

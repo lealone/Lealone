@@ -76,7 +76,7 @@ public class ReplicationSession extends DelegatedSession {
         }
         serversStr = buff.toString();
 
-        String replicationNamePrefix = getLocalHostAndPort() + "_" + getSessionId() + "_";
+        String replicationNamePrefix = getLocalHostAndPort() + "_" + getId() + "_";
         if (replicationNodes != null) {
             replicationNamePrefix = replicationNodes + "@" + replicationNamePrefix;
         }

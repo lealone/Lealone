@@ -73,19 +73,19 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     private final ConnectionInfo ci;
     private final String server;
     private final Session parent;
-    private final int sessionId;
+    private final int id;
     private final String cipher;
     private final byte[] fileEncryptionKey;
     private final Trace trace;
     private final Object lobSyncObject = new Object();
     private LobStorage lobStorage;
 
-    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent, int sessionId) {
+    ClientSession(TcpClientConnection tcpConnection, ConnectionInfo ci, String server, Session parent, int id) {
         this.tcpConnection = tcpConnection;
         this.ci = ci;
         this.server = server;
         this.parent = parent;
-        this.sessionId = sessionId;
+        this.id = id;
 
         cipher = ci.getProperty("CIPHER");
         fileEncryptionKey = cipher == null ? null : MathUtils.secureRandomBytes(32);
@@ -96,12 +96,12 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
 
     @Override
     public String toString() {
-        return "ClientSession[" + sessionId + ", " + server + "]";
+        return "ClientSession[" + id + ", " + server + "]";
     }
 
     @Override
-    public int getSessionId() {
-        return sessionId;
+    public int getId() {
+        return id;
     }
 
     @Override
@@ -216,7 +216,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
                     // 只有当前Session有效时服务器端才持有对应的session
                     if (isValid()) {
                         send(new SessionClose());
-                        tcpConnection.removeSession(sessionId);
+                        tcpConnection.removeSession(id);
                     }
                 } catch (RuntimeException e) {
                     trace.error(e, "close");

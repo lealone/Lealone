@@ -74,12 +74,12 @@ public class TransferOutputStream implements NetOutputStream {
     }
 
     public TransferOutputStream writeRequestHeader(int packetId, int packetType) throws IOException {
-        writeByte(REQUEST).writeInt(packetId).writeInt(packetType).writeInt(session.getSessionId());
+        writeByte(REQUEST).writeInt(packetId).writeInt(packetType).writeInt(session.getId());
         return this;
     }
 
     public TransferOutputStream writeRequestHeader(int packetId, PacketType packetType) throws IOException {
-        writeByte(REQUEST).writeInt(packetId).writeInt(packetType.value).writeInt(session.getSessionId());
+        writeByte(REQUEST).writeInt(packetId).writeInt(packetType.value).writeInt(session.getId());
         return this;
     }
 
