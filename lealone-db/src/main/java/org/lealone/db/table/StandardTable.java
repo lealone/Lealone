@@ -8,10 +8,8 @@ package org.lealone.db.table;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -298,65 +296,6 @@ public class StandardTable extends Table {
     @Override
     public boolean isLockedExclusivelyBy(ServerSession session) {
         return lockExclusiveSession == session;
-    }
-
-    @Override
-    public ArrayList<ServerSession> checkDeadlock(ServerSession session, ServerSession clash,
-            Set<ServerSession> visited) {
-        // only one deadlock check at any given time
-        synchronized (StandardTable.class) {
-            if (clash == null) {
-                // verification is started
-                clash = session;
-                visited = new HashSet<>();
-            } else if (clash == session) {
-                // we found a circle where this session is involved
-                return new ArrayList<>(0);
-            } else if (visited.contains(session)) {
-                // we have already checked this session.
-                // there is a circle, but the sessions in the circle need to
-                // find it out themselves
-                return null;
-            }
-            visited.add(session);
-            ArrayList<ServerSession> error = null;
-            for (ServerSession s : sharedSessions.keySet()) {
-                if (s == session) {
-                    // it doesn't matter if we have locked the object already
-                    continue;
-                }
-                Table t = s.getWaitForLock();
-                if (t != null) {
-                    error = t.checkDeadlock(s, clash, visited);
-                    if (error != null) {
-                        error.add(session);
-                        break;
-                    }
-                }
-            }
-            return error;
-        }
-    }
-
-    public static String getDeadlockDetails(ArrayList<ServerSession> sessions) {
-        // We add the thread details here to make it easier for customers to
-        // match up these error messages with their own logs.
-        StringBuilder buff = new StringBuilder();
-        for (ServerSession s : sessions) {
-            Table lock = s.getWaitForLock();
-            Thread thread = s.getWaitForLockThread();
-            buff.append("\nSession ").append(s.toString()).append(" on thread ").append(thread.getName())
-                    .append(" is waiting to lock ").append(lock.toString()).append(" while locking ");
-            int i = 0;
-            for (Table t : s.getLocks()) {
-                if (i++ > 0) {
-                    buff.append(", ");
-                }
-                buff.append(t.toString());
-            }
-            buff.append('.');
-        }
-        return buff.toString();
     }
 
     @Override

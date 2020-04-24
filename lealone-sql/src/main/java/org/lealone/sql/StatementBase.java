@@ -26,7 +26,6 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
@@ -639,7 +638,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
         private State state = State.start;
         private int savepointId = 0;
-        private long lockStartTime;
 
         public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
             this.statement = statement;
@@ -770,16 +768,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             if (e.getErrorCode() != ErrorCode.CONCURRENT_UPDATE_1) {
                 throw e;
             }
-            long now = System.nanoTime() / 1000000;
-            if (lockStartTime != 0 && now - lockStartTime > session.getLockTimeout()) {
-                ArrayList<ServerSession> sessions = session.checkDeadlock();
-                if (sessions != null) {
-                    throw DbException.get(ErrorCode.DEADLOCK_1, StandardTable.getDeadlockDetails(sessions));
-                } else {
-                    throw DbException.get(ErrorCode.LOCK_TIMEOUT_1, e.getCause(), "");
-                }
-            }
-            lockStartTime = now;
         }
 
         protected void handleException(DbException e) {

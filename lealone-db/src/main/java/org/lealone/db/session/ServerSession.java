@@ -716,12 +716,6 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public ArrayList<ServerSession> checkDeadlock() {
-        if (locks.isEmpty())
-            return null;
-        return locks.get(0).checkDeadlock(this, null, null);
-    }
-
     private void releaseSessionCache() {
         if (!sessionCache.isEmpty()) {
             for (Session s : sessionCache.values()) {

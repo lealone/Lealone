@@ -434,7 +434,7 @@ public class AMTransaction implements Transaction {
     private static String getMsg(long tid, Session session, AMTransaction transaction,
             WaitingTransaction waitingTransaction) {
         return "transaction #" + tid + " in session " + session + " wait for transaction #" + transaction.transactionId
-                + " in session " + transaction.session + ", row key: " + waitingTransaction.getKey();
+                + " in session " + transaction.session + ", key: " + waitingTransaction.getKey();
     }
 
     @Override
