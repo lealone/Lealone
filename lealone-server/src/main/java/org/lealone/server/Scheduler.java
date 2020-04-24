@@ -364,6 +364,7 @@ public class Scheduler extends Thread
                         try {
                             t.checkTimeout();
                         } catch (Throwable e) {
+                            si.yieldableCommands.poll(); // 移除当前命令
                             t.rollback();
                             si.conn.sendError(si.session, c.packetId, e);
                         }

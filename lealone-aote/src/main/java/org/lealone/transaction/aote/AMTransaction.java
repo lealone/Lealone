@@ -343,6 +343,16 @@ public class AMTransaction implements Transaction {
         lockedBy = null;
     }
 
+    @Override
+    public void wakeUpWaitingTransaction(Transaction transaction) {
+        wakeUpWaitingTransaction((AMTransaction) transaction);
+    }
+
+    @Override
+    public int addWaitingTransaction(Object key, Transaction transaction, Listener listener) {
+        return addWaitingTransaction(key, (AMTransaction) transaction, listener);
+    }
+
     void wakeUpWaitingTransaction(AMTransaction transaction) {
         while (true) {
             LinkedList<WaitingTransaction> waitingTransactions = waitingTransactionsRef.get();

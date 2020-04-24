@@ -65,8 +65,8 @@ public class StandardTable extends Table {
     private final Map<String, String> parameters;
     private final boolean globalTemporary;
 
-    private final Lock readLock;
-    private final Lock writeLock;
+    private final Lock sharedLock;
+    private final Lock exclusiveLock;
     private volatile ServerSession lockExclusiveSession;
 
     private long lastModificationId;
@@ -119,8 +119,8 @@ public class StandardTable extends Table {
                 getVersion() - 1);
 
         ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        readLock = lock.readLock();
-        writeLock = lock.writeLock();
+        sharedLock = lock.readLock();
+        exclusiveLock = lock.writeLock();
     }
 
     public String getMapName() {
@@ -240,38 +240,53 @@ public class StandardTable extends Table {
         return trySharedLock(session);
     }
 
+    private void addWaitingTransaction(ServerSession lockOwner, ServerSession session) {
+        if (lockOwner != null) {
+            Transaction transaction = lockOwner.getTransaction();
+            if (transaction != null) {
+                transaction.addWaitingTransaction(this, session.getTransaction(), Transaction.getTransactionListener());
+            }
+        }
+    }
+
     @Override
     public boolean trySharedLock(ServerSession session) {
-        if (readLock.tryLock()) {
+        if (sharedLock.tryLock()) {
             if (!sharedSessions.containsKey(session)) {
                 sharedSessions.put(session, session);
                 session.addLock(this);
             }
             return true;
+        } else {
+            addWaitingTransaction(lockExclusiveSession, session);
+            return false;
         }
-        return false;
     }
 
     @Override
     public boolean tryExclusiveLock(ServerSession session) {
-        if (writeLock.tryLock()) {
+        if (exclusiveLock.tryLock()) {
             if (lockExclusiveSession != session) {
                 lockExclusiveSession = session;
                 session.addLock(this);
             }
             return true;
+        } else {
+            for (ServerSession sharedSession : sharedSessions.values()) {
+                addWaitingTransaction(sharedSession, session);
+            }
+            return false;
         }
-        return false;
     }
 
     @Override
     public void unlock(ServerSession session) {
         if (sharedSessions.containsKey(session)) {
             sharedSessions.remove(session);
-            readLock.unlock();
+            sharedLock.unlock();
         } else if (lockExclusiveSession == session) {
             lockExclusiveSession = null;
-            writeLock.unlock();
+            exclusiveLock.unlock();
         }
     }
 

@@ -140,6 +140,10 @@ public interface Transaction {
 
     void replicationPrepareCommit(long validKey);
 
+    void wakeUpWaitingTransaction(Transaction transaction);
+
+    int addWaitingTransaction(Object key, Transaction transaction, Listener listener);
+
     interface Participant {
         void addSavepoint(String name);
 
