@@ -162,13 +162,13 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                 boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
                 if (!done) {
                     // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
-                    table.lock(session, true, false);
+                    table.lock(session, false);
                     table.addRow(session, newRow);
                     table.fireAfterRow(session, null, newRow, false);
                 }
             }
         } else {
-            table.lock(session, true, false);
+            table.lock(session, false);
             // 这种方式主要是避免循环两次，因为query内部己循环一次了
             if (insertFromSelect) {
                 query.query(0, this); // 每遍历一行会回调下面的addRow方法

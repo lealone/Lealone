@@ -167,7 +167,7 @@ public class Merge extends ManipulationStatement {
             Result rows = query.query(0);
             count = 0;
             table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
-            table.lock(session, true, false);
+            table.lock(session, false);
             while (rows.next()) {
                 count++;
                 Value[] r = rows.currentRow();
@@ -217,7 +217,7 @@ public class Merge extends ManipulationStatement {
                 table.validateConvertUpdateSequence(session, row);
                 boolean done = table.fireBeforeRow(session, null, row);
                 if (!done) {
-                    table.lock(session, true, false);
+                    table.lock(session, false);
                     table.addRow(session, row);
                     table.fireAfterRow(session, null, row, false);
                 }

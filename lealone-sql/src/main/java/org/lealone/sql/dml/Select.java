@@ -1290,7 +1290,7 @@ public class Select extends Query {
                 throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && JOIN");
             }
         }
-        topTableFilter.lock(session, exclusive, exclusive);
+        topTableFilter.lock(session, exclusive);
         ResultTarget to = result != null ? result : target;
         if (limitRows != 0) {
             if (isQuickAggregateQuery) {

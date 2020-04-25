@@ -147,12 +147,11 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
      *
      * @param s the session
      * @param exclusive true if an exclusive lock is required
-     * @param force lock even in the MVCC mode
      */
-    public void lock(ServerSession s, boolean exclusive, boolean force) {
-        table.lock(s, exclusive, force);
+    public void lock(ServerSession s, boolean exclusive) {
+        table.lock(s, exclusive);
         if (join != null) {
-            join.lock(s, exclusive, force);
+            join.lock(s, exclusive);
         }
     }
 

@@ -156,10 +156,9 @@ public abstract class Table extends SchemaObjectBase {
      *
      * @param session the session
      * @param exclusive true for write locks, false for read locks
-     * @param forceLockEvenInMvcc lock even in the MVCC mode
      * @throws DbException if a lock timeout occurred
      */
-    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
+    public boolean lock(ServerSession session, boolean exclusive) {
         // nothing to do
         return false;
     }

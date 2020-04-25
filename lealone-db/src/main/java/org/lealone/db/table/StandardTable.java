@@ -232,10 +232,11 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean lock(ServerSession session, boolean exclusive, boolean forceLockEvenInMvcc) {
-        if (exclusive || forceLockEvenInMvcc)
+    public boolean lock(ServerSession session, boolean exclusive) {
+        if (exclusive)
             return tryExclusiveLock(session);
-        return trySharedLock(session);
+        else
+            return trySharedLock(session);
     }
 
     private void addWaitingTransaction(ServerSession lockOwner, ServerSession session) {
@@ -250,7 +251,8 @@ public class StandardTable extends Table {
     @Override
     public boolean trySharedLock(ServerSession session) {
         if (sharedLock.tryLock()) {
-            if (!sharedSessions.containsKey(session)) {
+            // 如果先获得排它锁，就不用加到共享池了
+            if (lockExclusiveSession != session && !sharedSessions.containsKey(session)) {
                 sharedSessions.put(session, session);
                 session.addLock(this);
             }
