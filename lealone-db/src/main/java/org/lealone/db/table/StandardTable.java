@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -56,7 +57,6 @@ import org.lealone.transaction.Transaction;
  */
 public class StandardTable extends Table {
 
-    private final ConcurrentHashMap<ServerSession, ServerSession> sharedSessions = new ConcurrentHashMap<>();
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = Utils.newSmallArrayList();
     private final StorageEngine storageEngine;
@@ -65,17 +65,16 @@ public class StandardTable extends Table {
 
     private final Lock sharedLock;
     private final Lock exclusiveLock;
-    private volatile ServerSession lockExclusiveSession;
+    private final ConcurrentHashMap<ServerSession, AtomicInteger> sharedSessions = new ConcurrentHashMap<>();
+    private volatile ServerSession exclusiveSession;
 
     private long lastModificationId;
     private int changesSinceAnalyze;
     private int nextAnalyze;
     private boolean containsLargeObject;
-    private Column rowIdColumn;
     private boolean containsGlobalUniqueIndex;
+    private Column rowIdColumn;
     private long rowCount;
-
-    ArrayList<TableAlterHistoryRecord> tableAlterHistoryRecords;
 
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
@@ -113,8 +112,6 @@ public class StandardTable extends Table {
         }
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
-        tableAlterHistoryRecords = getDatabase().getVersionManager().getTableAlterHistoryRecord(id, 0,
-                getVersion() - 1);
 
         ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         sharedLock = lock.readLock();
@@ -251,14 +248,19 @@ public class StandardTable extends Table {
     @Override
     public boolean trySharedLock(ServerSession session) {
         if (sharedLock.tryLock()) {
-            // 如果先获得排它锁，就不用加到共享池了
-            if (lockExclusiveSession != session && !sharedSessions.containsKey(session)) {
-                sharedSessions.put(session, session);
-                session.addLock(this);
+            AtomicInteger counter = sharedSessions.get(session);
+            if (counter == null) {
+                counter = new AtomicInteger();
+                sharedSessions.put(session, counter);
+                // 如果先获得排它锁，就不用加到session的锁列表中了
+                if (exclusiveSession != session) {
+                    session.addLock(this);
+                }
             }
+            counter.incrementAndGet();
             return true;
         } else {
-            addWaitingTransaction(lockExclusiveSession, session);
+            addWaitingTransaction(exclusiveSession, session);
             return false;
         }
     }
@@ -266,14 +268,20 @@ public class StandardTable extends Table {
     @Override
     public boolean tryExclusiveLock(ServerSession session) {
         if (exclusiveLock.tryLock()) {
-            if (lockExclusiveSession != session) {
-                lockExclusiveSession = session;
+            // 不用处理session是否在sharedSessions中的情况，因为如果先要到共享锁，排它锁是要不到的
+            if (exclusiveSession != session) {
+                exclusiveSession = session;
                 session.addLock(this);
+            } else {
+                exclusiveLock.unlock(); // 要了两次排他锁，直接释放
             }
             return true;
         } else {
-            for (ServerSession sharedSession : sharedSessions.values()) {
-                addWaitingTransaction(sharedSession, session);
+            // 先要到共享锁，再要排他锁时会失败，但是不能自己等自己
+            if (!sharedSessions.containsKey(session)) {
+                for (ServerSession sharedSession : sharedSessions.keySet()) {
+                    addWaitingTransaction(sharedSession, session);
+                }
             }
             return false;
         }
@@ -281,23 +289,26 @@ public class StandardTable extends Table {
 
     @Override
     public void unlock(ServerSession session) {
-        if (sharedSessions.containsKey(session)) {
-            sharedSessions.remove(session);
-            sharedLock.unlock();
-        } else if (lockExclusiveSession == session) {
-            lockExclusiveSession = null;
+        AtomicInteger counter = sharedSessions.remove(session);
+        if (counter != null) {
+            for (int i = 0; i < counter.get(); i++) {
+                sharedLock.unlock();
+            }
+        }
+        if (exclusiveSession == session) {
+            exclusiveSession = null;
             exclusiveLock.unlock();
         }
     }
 
     @Override
     public boolean isLockedExclusively() {
-        return lockExclusiveSession != null;
+        return exclusiveSession != null;
     }
 
     @Override
     public boolean isLockedExclusivelyBy(ServerSession session) {
-        return lockExclusiveSession == session;
+        return exclusiveSession == session;
     }
 
     @Override
@@ -829,12 +840,5 @@ public class StandardTable extends Table {
     @Override
     public Column[] getOldColumns() {
         return oldColumns;
-    }
-
-    @Override
-    public void incrementVersion() {
-        super.incrementVersion();
-        tableAlterHistoryRecords = getDatabase().getVersionManager().getTableAlterHistoryRecord(id, 0,
-                getVersion() - 1);
     }
 }

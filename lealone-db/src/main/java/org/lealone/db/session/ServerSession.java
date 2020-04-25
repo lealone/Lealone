@@ -682,8 +682,7 @@ public class ServerSession extends SessionBase {
     }
 
     /**
-     * Add a lock for the given table. The object is unlocked on commit or
-     * rollback.
+     * Add a lock for the given table. The object is unlocked on commit or rollback.
      *
      * @param table the table that is locked
      */
@@ -703,6 +702,7 @@ public class ServerSession extends SessionBase {
      */
     public void unlock(Table t) {
         locks.remove(t);
+        t.unlock(this);
     }
 
     private void unlockAll() {
