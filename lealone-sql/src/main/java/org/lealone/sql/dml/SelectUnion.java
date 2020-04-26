@@ -15,6 +15,8 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
@@ -152,7 +154,14 @@ public class SelectUnion extends Query implements ISelectUnion {
     }
 
     @Override
-    public LocalResult query(int maxRows, ResultTarget target) {
+    public Result query(int maxRows, ResultTarget target) {
+        YieldableSelectUnion yieldable = new YieldableSelectUnion(this, maxRows, false, null, target);
+        yieldable.run();
+        return yieldable.getResult();
+    }
+
+    @Deprecated
+    public LocalResult queryOld(int maxRows, ResultTarget target) {
         fireBeforeSelectTriggers();
         // union doesn't always know the parameter list of the left and right queries
         if (maxRows != 0) {
@@ -424,5 +433,296 @@ public class SelectUnion extends Query implements ISelectUnion {
     @Override
     public int getPriority() {
         return Math.min(left.getPriority(), left.getPriority());
+    }
+
+    @Override
+    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
+            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
+        if (!isLocal() && getSession().isShardingMode())
+            return super.createYieldableQuery(maxRows, scrollable, asyncHandler);
+        else
+            return new YieldableSelectUnion(this, maxRows, scrollable, asyncHandler, target);
+    }
+
+    private class YieldableSelectUnion extends YieldableQueryBase {
+
+        private final ResultTarget target;
+        Expression limitExpr;
+        boolean insertFromSelect;
+        YieldableBase<Result> leftYieldableQuery;
+        YieldableBase<Result> rightYieldableQuery;
+        int columnCount;
+        LocalResult result;
+        Result leftRows;
+        Result rightRows;
+        LocalResult temp;
+        int rowNumber;
+
+        public YieldableSelectUnion(SelectUnion statement, int maxRows, boolean scrollable,
+                AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
+            super(statement, maxRows, scrollable, asyncHandler);
+            this.target = target;
+        }
+
+        @Override
+        protected boolean startInternal() {
+            fireBeforeSelectTriggers();
+            // union doesn't always know the parameter list of the left and right queries
+            if (maxRows != 0) {
+                // maxRows is set (maxRows 0 means no limit)
+                int l;
+                if (limitExpr == null) {
+                    l = -1;
+                } else {
+                    Value v = limitExpr.getValue(session);
+                    l = v == ValueNull.INSTANCE ? -1 : v.getInt();
+                }
+                if (l < 0) {
+                    // for limitExpr, 0 means no rows, and -1 means no limit
+                    l = maxRows;
+                } else {
+                    l = Math.min(l, maxRows);
+                }
+                limitExpr = ValueExpression.get(ValueInt.get(l));
+            }
+
+            if (session.getDatabase().getSettings().optimizeInsertFromSelect) {
+                if (unionType == UNION_ALL && target != null) {
+                    if (sort == null && !distinct && maxRows == 0 && offsetExpr == null && limitExpr == null) {
+                        insertFromSelect = true;
+                        leftYieldableQuery = left.createYieldableQuery(0, false, null, target);
+                        rightYieldableQuery = right.createYieldableQuery(0, false, null, target);
+                        return false;
+                    }
+                }
+            }
+            columnCount = left.getColumnCount();
+            result = new LocalResult(session, expressionArray, columnCount);
+            if (sort != null) {
+                result.setSortOrder(sort);
+            }
+            if (distinct) {
+                left.setDistinct(true);
+                right.setDistinct(true);
+                result.setDistinct();
+            }
+            if (randomAccessResult) {
+                result.setRandomAccess();
+            }
+            switch (unionType) {
+            case UNION:
+            case EXCEPT:
+                left.setDistinct(true);
+                right.setDistinct(true);
+                result.setDistinct();
+                break;
+            case UNION_ALL:
+                break;
+            case INTERSECT:
+                left.setDistinct(true);
+                right.setDistinct(true);
+                temp = new LocalResult(session, expressionArray, columnCount);
+                temp.setDistinct();
+                temp.setRandomAccess();
+                break;
+            default:
+                DbException.throwInternalError("type=" + unionType);
+            }
+            leftYieldableQuery = left.createYieldableQuery(0, false, null, null);
+            rightYieldableQuery = right.createYieldableQuery(0, false, null, null);
+            return false;
+        }
+
+        @Override
+        protected void stopInternal() {
+        }
+
+        @Override
+        protected boolean executeInternal() {
+            if (insertFromSelect) {
+                if (leftYieldableQuery != null) {
+                    if (leftYieldableQuery.run()) {
+                        return true;
+                    } else {
+                        leftYieldableQuery = null;
+                        return false;
+                    }
+                }
+                if (leftYieldableQuery == null && rightYieldableQuery != null) {
+                    if (rightYieldableQuery.run()) {
+                        return true;
+                    } else {
+                        rightYieldableQuery = null;
+                        return false;
+                    }
+                }
+                return false;
+            }
+
+            switch (unionType) {
+            case UNION_ALL:
+            case UNION: {
+                if (leftYieldableQuery != null) {
+                    if (runLeftQuery()) {
+                        return true;
+                    }
+                }
+                if (leftRows != null) {
+                    if (addLeftRows()) {
+                        return true;
+                    }
+                }
+
+                if (rightYieldableQuery != null) {
+                    if (runRightQuery()) {
+                        return true;
+                    }
+                }
+                if (rightRows != null) {
+                    if (addRightRows()) {
+                        return true;
+                    }
+                }
+                break;
+            }
+            case EXCEPT: {
+                if (leftYieldableQuery != null) {
+                    if (runLeftQuery()) {
+                        return true;
+                    }
+                }
+                if (leftRows != null) {
+                    if (addLeftRows()) {
+                        return true;
+                    }
+                }
+
+                if (rightYieldableQuery != null) {
+                    if (runRightQuery()) {
+                        return true;
+                    }
+                }
+                if (rightRows != null) {
+                    while (rightRows.next()) {
+                        boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
+                        result.removeDistinct(convert(rightRows.currentRow(), columnCount));
+                        rowNumber++;
+                        if (async && yieldIfNeeded)
+                            return true;
+                    }
+                    rightRows = null;
+                }
+                break;
+            }
+            case INTERSECT: {
+                if (leftYieldableQuery != null) {
+                    if (runLeftQuery()) {
+                        return true;
+                    }
+                }
+                if (leftRows != null) {
+                    while (leftRows.next()) {
+                        boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
+                        temp.addRow(convert(leftRows.currentRow(), columnCount));
+                        rowNumber++;
+                        if (async && yieldIfNeeded)
+                            return true;
+                    }
+                    leftRows = null;
+                }
+
+                if (rightYieldableQuery != null) {
+                    if (runRightQuery()) {
+                        return true;
+                    }
+                }
+                if (rightRows != null) {
+                    while (rightRows.next()) {
+                        boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
+                        Value[] values = convert(rightRows.currentRow(), columnCount);
+                        if (temp.containsDistinct(values)) {
+                            result.addRow(values);
+                        }
+                        rowNumber++;
+                        if (async && yieldIfNeeded)
+                            return true;
+                    }
+                    rightRows = null;
+                }
+                break;
+            }
+            default:
+                DbException.throwInternalError("type=" + unionType);
+            }
+            if (offsetExpr != null) {
+                result.setOffset(offsetExpr.getValue(session).getInt());
+            }
+            if (limitExpr != null) {
+                Value v = limitExpr.getValue(session);
+                if (v != ValueNull.INSTANCE) {
+                    result.setLimit(v.getInt());
+                }
+            }
+            result.done();
+            if (target != null) {
+                while (result.next()) {
+                    target.addRow(result.currentRow());
+                }
+                result.close();
+                return false;
+            }
+            setResult(result, result.getRowCount());
+            return false;
+        }
+
+        private boolean runLeftQuery() {
+            if (leftRows == null) {
+                if (leftYieldableQuery.run()) {
+                    return true;
+                } else {
+                    rowNumber = 0;
+                    leftRows = leftYieldableQuery.getResult();
+                    leftYieldableQuery = null;
+                }
+            }
+            return false;
+        }
+
+        private boolean runRightQuery() {
+            if (rightRows == null) {
+                if (rightYieldableQuery.run()) {
+                    return true;
+                } else {
+                    rowNumber = 0;
+                    rightRows = rightYieldableQuery.getResult();
+                    rightYieldableQuery = null;
+                }
+            }
+            return false;
+        }
+
+        private boolean addLeftRows() {
+            while (leftRows.next()) {
+                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
+                result.addRow(convert(leftRows.currentRow(), columnCount));
+                rowNumber++;
+                if (async && yieldIfNeeded)
+                    return true;
+            }
+            leftRows = null;
+            return false;
+        }
+
+        private boolean addRightRows() {
+            while (rightRows.next()) {
+                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
+                result.addRow(convert(rightRows.currentRow(), columnCount));
+                rowNumber++;
+                if (async && yieldIfNeeded)
+                    return true;
+            }
+            rightRows = null;
+            return false;
+        }
     }
 }

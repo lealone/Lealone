@@ -59,6 +59,7 @@ public class SelectUnionTest extends SqlTestBase {
         // 这两条是等价的，没有重复
         sql = "select * from SelectUnionTest1 UNION select * from SelectUnionTest2 order by id";
         sql = "select * from SelectUnionTest1 UNION DISTINCT select * from SelectUnionTest2 order by id";
+        printResultSet();
 
         // 有重复
         sql = "select * from SelectUnionTest1 UNION ALL select * from SelectUnionTest2 order by id";
