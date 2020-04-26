@@ -13,6 +13,8 @@ import java.util.List;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.SortOrder;
@@ -249,6 +251,17 @@ public abstract class Query extends ManipulationStatement implements org.lealone
      * @return the result set (if the target is not set).
      */
     public abstract Result query(int maxRows, ResultTarget target);
+
+    @Override
+    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
+            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+        return createYieldableQuery(maxRows, scrollable, asyncHandler, null);
+    }
+
+    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
+            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
+        return createYieldableQuery(maxRows, scrollable, asyncHandler);
+    }
 
     public void setOffset(Expression offset) {
         this.offsetExpr = offset;

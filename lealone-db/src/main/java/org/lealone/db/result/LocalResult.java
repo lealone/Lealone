@@ -281,7 +281,7 @@ public class LocalResult implements Result, ResultTarget {
      * @param values the row to add
      */
     @Override
-    public void addRow(Value[] values) {
+    public boolean addRow(Value[] values) {
         if (distinct) {
             if (distinctRows != null) {
                 ValueArray array = ValueArray.get(values);
@@ -295,7 +295,7 @@ public class LocalResult implements Result, ResultTarget {
             } else {
                 rowCount = external.addRow(values);
             }
-            return;
+            return false;
         }
         rows.add(values);
         rowCount++;
@@ -305,6 +305,7 @@ public class LocalResult implements Result, ResultTarget {
             }
             addRowsToDisk();
         }
+        return false;
     }
 
     private void addRowsToDisk() {

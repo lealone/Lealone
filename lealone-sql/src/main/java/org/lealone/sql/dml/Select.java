@@ -1312,6 +1312,7 @@ public class Select extends Query {
         }
         queryOperator.columnCount = columnCount;
         queryOperator.maxRows = limitRows;
+        queryOperator.target = target;
         queryOperator.result = to;
         queryOperator.localResult = result;
         queryOperator.async = async;
@@ -1330,27 +1331,29 @@ public class Select extends Query {
 
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
         if (!isLocal() && getSession().isShardingMode())
             return super.createYieldableQuery(maxRows, scrollable, asyncHandler);
         else
-            return new YieldableSelect(this, maxRows, scrollable, asyncHandler);
+            return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
     }
 
     private class YieldableSelect extends YieldableQueryBase {
 
         private final Select statement;
+        private final ResultTarget target;
 
         public YieldableSelect(Select statement, int maxRows, boolean scrollable,
-                AsyncHandler<AsyncResult<Result>> asyncHandler) {
+                AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
             super(statement, maxRows, scrollable, asyncHandler);
             this.statement = statement;
+            this.target = target;
         }
 
         @Override
         protected boolean startInternal() {
             fireBeforeSelectTriggers();
-            resultCache.getResult(maxRows, null, true);
+            resultCache.getResult(maxRows, target, true);
             return false;
         }
 
@@ -1369,6 +1372,8 @@ public class Select extends Query {
             if (query()) {
                 return true;
             }
+            if (statement.queryOperator.target != null)
+                return false;
             if (statement.queryOperator.localResult != null) {
                 setResult(statement.queryOperator.localResult, statement.queryOperator.localResult.getRowCount());
                 resultCache.lastResult = statement.queryOperator.localResult;

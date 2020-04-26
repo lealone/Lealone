@@ -34,7 +34,7 @@ import org.lealone.sql.expression.Parameter;
  * @author H2 Group
  * @author zhh
  */
-public class Insert extends ManipulationStatement implements ResultTarget {
+public class Insert extends ManipulationStatement {
 
     private Table table;
     private Column[] columns;
@@ -128,89 +128,6 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         return yieldable.getResult();
     }
 
-    @Deprecated
-    public int updateOld() {
-        session.getUser().checkRight(table, Right.INSERT);
-        setCurrentRowNumber(0);
-        table.fire(session, Trigger.INSERT, true);
-        rowNumber = 0;
-        int listSize = list.size();
-        if (listSize > 0) {
-            int columnLen = columns.length;
-            for (int x = 0; x < listSize; x++) {
-                Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
-
-                Expression[] expr = list.get(x);
-                setCurrentRowNumber(x + 1);
-                for (int i = 0; i < columnLen; i++) {
-                    Column c = columns[i];
-                    int index = c.getColumnId(); // 从0开始
-                    Expression e = expr[i];
-                    if (e != null) {
-                        // e can be null (DEFAULT)
-                        e = e.optimize(session);
-                        try {
-                            Value v = c.convert(e.getValue(session));
-                            newRow.setValue(index, v);
-                        } catch (DbException ex) {
-                            throw setRow(ex, x, getSQL(expr));
-                        }
-                    }
-                }
-                rowNumber++;
-                table.validateConvertUpdateSequence(session, newRow);
-                boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
-                if (!done) {
-                    // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
-                    table.lock(session, false);
-                    table.addRow(session, newRow);
-                    table.fireAfterRow(session, null, newRow, false);
-                }
-            }
-        } else {
-            table.lock(session, false);
-            // 这种方式主要是避免循环两次，因为query内部己循环一次了
-            if (insertFromSelect) {
-                query.query(0, this); // 每遍历一行会回调下面的addRow方法
-            } else {
-                Result rows = query.query(0);
-                while (rows.next()) {
-                    addRow(rows.currentRow());
-                }
-                rows.close();
-            }
-        }
-        table.fire(session, Trigger.INSERT, false);
-        return rowNumber;
-    }
-
-    @Override
-    public void addRow(Value[] values) {
-        Row newRow = table.getTemplateRow();
-        setCurrentRowNumber(++rowNumber);
-        for (int j = 0, len = columns.length; j < len; j++) {
-            Column c = columns[j];
-            int index = c.getColumnId();
-            try {
-                Value v = c.convert(values[j]);
-                newRow.setValue(index, v);
-            } catch (DbException ex) {
-                throw setRow(ex, rowNumber, getSQL(values));
-            }
-        }
-        table.validateConvertUpdateSequence(session, newRow);
-        boolean done = table.fireBeforeRow(session, null, newRow);
-        if (!done) {
-            table.addRow(session, newRow);
-            table.fireAfterRow(session, null, newRow, false);
-        }
-    }
-
-    @Override
-    public int getRowCount() {
-        return rowNumber;
-    }
-
     @Override
     public String getPlanSQL() {
         StatementBuilder buff = new StatementBuilder("INSERT INTO ");
@@ -273,7 +190,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
         return new YieldableInsert(this, asyncHandler);
     }
 
-    private static class YieldableInsert extends YieldableListenableUpdateBase {
+    private static class YieldableInsert extends YieldableListenableUpdateBase implements ResultTarget {
 
         final Insert statement;
         final Table table;
@@ -281,6 +198,7 @@ public class Insert extends ManipulationStatement implements ResultTarget {
 
         int index;
         Result rows;
+        YieldableBase<Result> yieldableQuery;
 
         public YieldableInsert(Insert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
@@ -297,7 +215,8 @@ public class Insert extends ManipulationStatement implements ResultTarget {
             table.fire(session, Trigger.INSERT, true);
             statement.setCurrentRowNumber(0);
             if (statement.query != null) {
-                rows = statement.query.query(0);
+                yieldableQuery = statement.query.createYieldableQuery(0, false, null,
+                        statement.insertFromSelect ? this : null);
             }
             return false;
         }
@@ -309,11 +228,10 @@ public class Insert extends ManipulationStatement implements ResultTarget {
 
         @Override
         protected boolean executeAndListen() {
-            if (rows == null) {
+            if (yieldableQuery == null) {
                 int columnLen = statement.columns.length;
                 for (; pendingOperationException == null && index < listSize; index++) {
                     Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
-
                     Expression[] expr = statement.list.get(index);
                     boolean yieldIfNeeded = statement.setCurrentRowNumber(index + 1);
                     for (int i = 0; i < columnLen; i++) {
@@ -332,54 +250,77 @@ public class Insert extends ManipulationStatement implements ResultTarget {
                         }
                     }
                     affectedRows++;
-                    table.validateConvertUpdateSequence(session, newRow);
-                    boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
-                    if (!done) {
-                        // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
-                        if (!table.trySharedLock(session))
-                            return true;
-                        if (async)
-                            table.tryAddRow(session, newRow, this);
-                        else
-                            table.addRow(session, newRow);
-                        table.fireAfterRow(session, null, newRow, false);
-                    }
-                    if (async && yieldIfNeeded) {
+                    if (addRowInternal(newRow, yieldIfNeeded, true)) {
                         return true;
                     }
                 }
             } else {
-                while (pendingOperationException == null && rows.next()) {
-                    Value[] values = rows.currentRow();
-                    Row newRow = table.getTemplateRow();
-                    boolean yieldIfNeeded = statement.setCurrentRowNumber(++affectedRows);
-                    for (int j = 0, len = statement.columns.length; j < len; j++) {
-                        Column c = statement.columns[j];
-                        int index = c.getColumnId();
-                        try {
-                            Value v = c.convert(values[j]);
-                            newRow.setValue(index, v);
-                        } catch (DbException ex) {
-                            throw statement.setRow(ex, affectedRows, getSQL(values));
+                if (statement.insertFromSelect) {
+                    if (yieldableQuery.run())
+                        return true;
+                } else {
+                    if (rows == null) {
+                        if (yieldableQuery.run())
+                            return true;
+                        else
+                            rows = yieldableQuery.getResult();
+                    }
+                    while (pendingOperationException == null && rows.next()) {
+                        Value[] values = rows.currentRow();
+                        if (addRow(values)) {
+                            return true;
                         }
                     }
-                    table.validateConvertUpdateSequence(session, newRow);
-                    boolean done = table.fireBeforeRow(session, null, newRow);
-                    if (!done) {
-                        if (async)
-                            table.tryAddRow(session, newRow, this);
-                        else
-                            table.addRow(session, newRow);
-                        table.fireAfterRow(session, null, newRow, false);
-                    }
-                    if (async && yieldIfNeeded) {
-                        return true;
-                    }
+                    rows.close();
                 }
-                rows.close();
             }
             loopEnd = true;
             return false;
+        }
+
+        private boolean addRowInternal(Row newRow, boolean yieldIfNeeded, boolean trySharedLock) {
+            table.validateConvertUpdateSequence(session, newRow);
+            boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
+            if (!done) {
+                // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
+                if (trySharedLock && !table.trySharedLock(session))
+                    return true;
+                if (async)
+                    table.tryAddRow(session, newRow, this);
+                else
+                    table.addRow(session, newRow);
+                table.fireAfterRow(session, null, newRow, false);
+            }
+            if (async && yieldIfNeeded) {
+                return true;
+            }
+            return false;
+        }
+
+        // 以下实现ResultTarget接口，可以在执行查询时，边查边增加新记录
+        @Override
+        public boolean addRow(Value[] values) {
+            Row newRow = table.getTemplateRow();
+            boolean yieldIfNeeded = statement.setCurrentRowNumber(++affectedRows);
+            for (int j = 0, len = statement.columns.length; j < len; j++) {
+                Column c = statement.columns[j];
+                int index = c.getColumnId();
+                try {
+                    Value v = c.convert(values[j]);
+                    newRow.setValue(index, v);
+                } catch (DbException ex) {
+                    throw statement.setRow(ex, affectedRows, getSQL(values));
+                }
+            }
+            if (addRowInternal(newRow, yieldIfNeeded, false)) {
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public int getRowCount() {
+            return affectedRows;
         }
     }
 }

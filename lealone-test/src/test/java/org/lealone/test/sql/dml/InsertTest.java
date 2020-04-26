@@ -29,6 +29,7 @@ public class InsertTest extends SqlTestBase {
         createTable("InsertTest");
         createTable("InsertTest2");
         testInsert();
+        testInsertFromSelect();
         testDuplicateKey();
         testUnique();
         testPrimaryKeyUniqueIndex();
@@ -127,6 +128,17 @@ public class InsertTest extends SqlTestBase {
         sql = "DELETE FROM InsertTest";
         assertEquals(12, executeUpdate(sql));
 
+        // test NULL_TO_DEFAULT
+        sql = "DROP TABLE IF EXISTS InsertTest3";
+        executeUpdate(sql);
+        sql = "CREATE TABLE IF NOT EXISTS InsertTest3 (f1 int, f2 int NULL_TO_DEFAULT)";
+        executeUpdate(sql);
+        executeUpdate("insert into InsertTest3(f1) values(10)");
+        sql = "DELETE FROM InsertTest3";
+        assertEquals(1, executeUpdate(sql));
+    }
+
+    void testInsertFromSelect() {
         sql = "INSERT INTO InsertTest2(pk, f1, f2, f3) VALUES"
                 + " ('01', 'a1', 'b', 12), ('02', 'a1', 'b', 12), ('03', 'a1', 'b', 12)"
                 + ",('25', 'a1', 'b', 12), ('26', 'a1', 'b', 12), ('27', 'a1', 'b', 12)"
@@ -148,18 +160,6 @@ public class InsertTest extends SqlTestBase {
         assertEquals(12, executeUpdate(sql));
 
         sql = "INSERT INTO InsertTest(pk, f1, f2, f3) " + " SELECT pk, f1, f2, f3 FROM InsertTest2 WHERE pk='01'";
-        assertEquals(1, executeUpdate(sql));
-
-        sql = "DELETE FROM InsertTest";
-        assertEquals(1, executeUpdate(sql));
-
-        // test NULL_TO_DEFAULT
-        sql = "DROP TABLE IF EXISTS InsertTest";
-        executeUpdate(sql);
-        sql = "CREATE TABLE IF NOT EXISTS InsertTest (f1 int, f2 int NULL_TO_DEFAULT)";
-        executeUpdate(sql);
-        executeUpdate("insert into InsertTest(f1) values(10)");
-        sql = "DELETE FROM InsertTest";
         assertEquals(1, executeUpdate(sql));
     }
 }
