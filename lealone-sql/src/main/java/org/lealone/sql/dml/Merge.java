@@ -12,6 +12,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
@@ -136,117 +138,10 @@ public class Merge extends ManipulationStatement {
 
     @Override
     public int update() {
-        int count;
-        session.getUser().checkRight(table, Right.INSERT);
-        session.getUser().checkRight(table, Right.UPDATE);
-        setCurrentRowNumber(0);
-        if (list.size() > 0) {
-            count = 0;
-            for (int x = 0, size = list.size(); x < size; x++) {
-                setCurrentRowNumber(x + 1);
-                Expression[] expr = list.get(x);
-                Row newRow = table.getTemplateRow();
-                for (int i = 0, len = columns.length; i < len; i++) {
-                    Column c = columns[i];
-                    int index = c.getColumnId();
-                    Expression e = expr[i];
-                    if (e != null) {
-                        // e can be null (DEFAULT)
-                        try {
-                            Value v = c.convert(e.getValue(session));
-                            newRow.setValue(index, v);
-                        } catch (DbException ex) {
-                            throw setRow(ex, count, getSQL(expr));
-                        }
-                    }
-                }
-                merge(newRow);
-                count++;
-            }
-        } else {
-            Result rows = query.query(0);
-            count = 0;
-            table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
-            table.lock(session, false);
-            while (rows.next()) {
-                count++;
-                Value[] r = rows.currentRow();
-                Row newRow = table.getTemplateRow();
-                setCurrentRowNumber(count);
-                for (int j = 0; j < columns.length; j++) {
-                    Column c = columns[j];
-                    int index = c.getColumnId();
-                    try {
-                        Value v = c.convert(r[j]);
-                        newRow.setValue(index, v);
-                    } catch (DbException ex) {
-                        throw setRow(ex, count, getSQL(r));
-                    }
-                }
-                merge(newRow);
-            }
-            rows.close();
-            table.fire(session, Trigger.UPDATE | Trigger.INSERT, false);
-        }
-        return count;
-    }
-
-    private void merge(Row row) {
-        ArrayList<Parameter> k = update.getParameters();
-        for (int i = 0; i < columns.length; i++) {
-            Column col = columns[i];
-            Value v = row.getValue(col.getColumnId());
-            if (v == null)
-                v = ValueNull.INSTANCE;
-            Parameter p = k.get(i);
-            p.setValue(v);
-        }
-        for (int i = 0; i < keys.length; i++) {
-            Column col = keys[i];
-            Value v = row.getValue(col.getColumnId());
-            if (v == null) {
-                throw DbException.get(ErrorCode.COLUMN_CONTAINS_NULL_VALUES_1, col.getSQL());
-            }
-            Parameter p = k.get(columns.length + i);
-            p.setValue(v);
-        }
-        // 先更新，如果没有记录被更新，说明是一条新的记录，接着再插入
-        int count = update.update();
-        if (count == 0) {
-            try {
-                table.validateConvertUpdateSequence(session, row);
-                boolean done = table.fireBeforeRow(session, null, row);
-                if (!done) {
-                    table.lock(session, false);
-                    table.addRow(session, row);
-                    table.fireAfterRow(session, null, row, false);
-                }
-            } catch (DbException e) {
-                if (e.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
-                    // possibly a concurrent merge or insert
-                    Index index = (Index) e.getSource();
-                    if (index != null) {
-                        // verify the index columns match the key
-                        Column[] indexColumns = index.getColumns();
-                        boolean indexMatchesKeys = false;
-                        if (indexColumns.length <= keys.length) {
-                            for (int i = 0; i < indexColumns.length; i++) {
-                                if (indexColumns[i] != keys[i]) {
-                                    indexMatchesKeys = false;
-                                    break;
-                                }
-                            }
-                        }
-                        if (indexMatchesKeys) {
-                            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName());
-                        }
-                    }
-                }
-                throw e;
-            }
-        } else if (count != 1) {
-            throw DbException.get(ErrorCode.DUPLICATE_KEY_1, table.getSQL());
-        }
+        // 以同步的方式运行
+        YieldableMerge yieldable = new YieldableMerge(this, null);
+        yieldable.run();
+        return yieldable.getResult();
     }
 
     @Override
@@ -305,5 +200,182 @@ public class Merge extends ManipulationStatement {
 
         priority = NORM_PRIORITY - 1;
         return priority;
+    }
+
+    @Override
+    public YieldableMerge createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        return new YieldableMerge(this, asyncHandler);
+    }
+
+    private static class YieldableMerge extends YieldableListenableUpdateBase {
+
+        final Merge statement;
+        final Table table;
+        final int listSize;
+
+        int index;
+        Result rows;
+        YieldableBase<Result> yieldableQuery;
+
+        public YieldableMerge(Merge statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+            super(statement, asyncHandler);
+            this.statement = statement;
+            table = statement.table;
+            listSize = statement.list.size();
+        }
+
+        @Override
+        protected boolean startInternal() {
+            session.getUser().checkRight(table, Right.INSERT);
+            session.getUser().checkRight(table, Right.UPDATE);
+            statement.setCurrentRowNumber(0);
+            if (statement.query != null) {
+                if (!table.trySharedLock(session))
+                    return true;
+                yieldableQuery = statement.query.createYieldableQuery(0, false, null, null);
+                table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
+            }
+            return false;
+        }
+
+        @Override
+        protected void stopInternal() {
+            // do nothing
+        }
+
+        @Override
+        protected boolean executeAndListen() {
+            if (yieldableQuery == null) {
+                int columnLen = statement.columns.length;
+                for (; pendingOperationException == null && index < listSize; index++) {
+                    Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
+                    Expression[] expr = statement.list.get(index);
+                    boolean yieldIfNeeded = statement.setCurrentRowNumber(index + 1);
+                    for (int i = 0; i < columnLen; i++) {
+                        Column c = statement.columns[i];
+                        int index = c.getColumnId(); // 从0开始
+                        Expression e = expr[i];
+                        if (e != null) {
+                            // e can be null (DEFAULT)
+                            e = e.optimize(session);
+                            try {
+                                Value v = c.convert(e.getValue(session));
+                                newRow.setValue(index, v);
+                            } catch (DbException ex) {
+                                throw statement.setRow(ex, index, getSQL(expr));
+                            }
+                        }
+                    }
+                    affectedRows++;
+                    if (merge(newRow, yieldIfNeeded)) {
+                        return true;
+                    }
+                }
+            } else {
+                if (rows == null) {
+                    if (yieldableQuery.run())
+                        return true;
+                    else
+                        rows = yieldableQuery.getResult();
+                }
+                while (pendingOperationException == null && rows.next()) {
+                    affectedRows++;
+                    Value[] r = rows.currentRow();
+                    Row newRow = table.getTemplateRow();
+                    boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows);
+                    for (int j = 0; j < statement.columns.length; j++) {
+                        Column c = statement.columns[j];
+                        int index = c.getColumnId();
+                        try {
+                            Value v = c.convert(r[j]);
+                            newRow.setValue(index, v);
+                        } catch (DbException ex) {
+                            throw statement.setRow(ex, affectedRows, getSQL(r));
+                        }
+                    }
+                    if (merge(newRow, yieldIfNeeded)) {
+                        return true;
+                    }
+                }
+                rows.close();
+                table.fire(session, Trigger.UPDATE | Trigger.INSERT, false);
+            }
+            loopEnd = true;
+            return false;
+        }
+
+        private boolean merge(Row row, boolean yieldIfNeeded) {
+            ArrayList<Parameter> k = statement.update.getParameters();
+            for (int i = 0; i < statement.columns.length; i++) {
+                Column col = statement.columns[i];
+                Value v = row.getValue(col.getColumnId());
+                if (v == null)
+                    v = ValueNull.INSTANCE;
+                Parameter p = k.get(i);
+                p.setValue(v);
+            }
+            for (int i = 0; i < statement.keys.length; i++) {
+                Column col = statement.keys[i];
+                Value v = row.getValue(col.getColumnId());
+                if (v == null) {
+                    throw DbException.get(ErrorCode.COLUMN_CONTAINS_NULL_VALUES_1, col.getSQL());
+                }
+                Parameter p = k.get(statement.columns.length + i);
+                p.setValue(v);
+            }
+            // 先更新，如果没有记录被更新，说明是一条新的记录，接着再插入
+            int count = statement.update.update();
+            if (count == 0) {
+                try {
+                    if (addRowInternal(row, yieldIfNeeded)) {
+                        return true;
+                    }
+                } catch (DbException e) {
+                    if (e.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
+                        // possibly a concurrent merge or insert
+                        Index index = (Index) e.getSource();
+                        if (index != null) {
+                            // verify the index columns match the key
+                            Column[] indexColumns = index.getColumns();
+                            boolean indexMatchesKeys = false;
+                            if (indexColumns.length <= statement.keys.length) {
+                                for (int i = 0; i < indexColumns.length; i++) {
+                                    if (indexColumns[i] != statement.keys[i]) {
+                                        indexMatchesKeys = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (indexMatchesKeys) {
+                                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName());
+                            }
+                        }
+                    }
+                    throw e;
+                }
+            } else if (count != 1) {
+                throw DbException.get(ErrorCode.DUPLICATE_KEY_1, table.getSQL());
+            }
+            return false;
+        }
+
+        private boolean addRowInternal(Row newRow, boolean yieldIfNeeded) {
+            table.validateConvertUpdateSequence(session, newRow);
+            boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
+            if (!done) {
+                // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
+                if (!table.trySharedLock(session))
+                    return true;
+                if (async)
+                    table.tryAddRow(session, newRow, this);
+                else
+                    table.addRow(session, newRow);
+                table.fireAfterRow(session, null, newRow, false);
+            }
+            if (async && yieldIfNeeded) {
+                return true;
+            }
+            return false;
+        }
     }
 }
