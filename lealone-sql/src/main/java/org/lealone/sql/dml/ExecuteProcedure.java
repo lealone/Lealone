@@ -48,10 +48,26 @@ public class ExecuteProcedure extends ManipulationStatement {
         expressions.add(index, expr);
     }
 
+    @Override
+    public boolean isQuery() {
+        return stmt().isQuery();
+    }
+
+    @Override
+    public Result getMetaData() {
+        return stmt().getMetaData();
+    }
+
+    private StatementBase stmt() {
+        return (StatementBase) procedure.getPrepared();
+    }
+
     private void setParameters() {
-        StatementBase prepared = (StatementBase) procedure.getPrepared();
-        ArrayList<Parameter> params = prepared.getParameters();
-        for (int i = 0; params != null && i < params.size() && i < expressions.size(); i++) {
+        ArrayList<Parameter> params = stmt().getParameters();
+        if (params == null)
+            return;
+        int size = Math.min(params.size(), expressions.size());
+        for (int i = 0; i < size; i++) {
             Expression expr = expressions.get(i);
             Parameter p = params.get(i);
             p.setValue(expr.getValue(session));
@@ -59,29 +75,14 @@ public class ExecuteProcedure extends ManipulationStatement {
     }
 
     @Override
-    public boolean isQuery() {
-        StatementBase prepared = (StatementBase) procedure.getPrepared();
-        return prepared.isQuery();
-    }
-
-    @Override
     public int update() {
         setParameters();
-        StatementBase prepared = (StatementBase) procedure.getPrepared();
-        return prepared.update();
+        return stmt().update();
     }
 
     @Override
     public Result query(int limit) {
         setParameters();
-        StatementBase prepared = (StatementBase) procedure.getPrepared();
-        return prepared.query(limit);
+        return stmt().query(limit);
     }
-
-    @Override
-    public Result getMetaData() {
-        StatementBase prepared = (StatementBase) procedure.getPrepared();
-        return prepared.getMetaData();
-    }
-
 }
