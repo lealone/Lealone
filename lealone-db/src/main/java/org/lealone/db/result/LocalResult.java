@@ -72,64 +72,6 @@ public class LocalResult implements Result, ResultTarget {
     }
 
     /**
-     * Construct a local result set by reading all data from a regular result set.
-     *
-     * @param session the session
-     * @param rs the result set
-     * @param maxRows the maximum number of rows to read (0 for no limit)
-     * @return the local result set
-     */
-    public static LocalResult read(ServerSession session, ResultSet rs, int maxRows) {
-        IExpression[] cols = getExpressionColumns(session, rs);
-        int columnCount = cols.length;
-        LocalResult result = new LocalResult(session, cols, columnCount);
-        try {
-            for (int i = 0; (maxRows == 0 || i < maxRows) && rs.next(); i++) {
-                Value[] list = new Value[columnCount];
-                for (int j = 0; j < columnCount; j++) {
-                    int type = result.getColumnType(j);
-                    list[j] = DataType.readValue(session, rs, j + 1, type);
-                }
-                result.addRow(list);
-            }
-        } catch (SQLException e) {
-            throw DbException.convert(e);
-        }
-        result.done();
-        return result;
-    }
-
-    /**
-     * Extracts expression columns from the given result set.
-     *
-     * @param session the session
-     * @param rs the result set
-     * @return an array of expression columns
-     */
-    public static IExpression[] getExpressionColumns(ServerSession session, ResultSet rs) {
-        return new IExpression[0]; // TODO
-        // try {
-        // ResultSetMetaData meta = rs.getMetaData();
-        // int columnCount = meta.getColumnCount();
-        // Expression[] expressions = new Expression[columnCount];
-        // Database db = session == null ? null : session.getDatabase();
-        // for (int i = 0; i < columnCount; i++) {
-        // String name = meta.getColumnLabel(i + 1);
-        // int type = DataType.convertSQLTypeToValueType(meta.getColumnType(i + 1));
-        // int precision = meta.getPrecision(i + 1);
-        // int scale = meta.getScale(i + 1);
-        // int displaySize = meta.getColumnDisplaySize(i + 1);
-        // Column col = new Column(name, type, precision, scale, displaySize);
-        // Expression expr = new ExpressionColumn(db, col);
-        // expressions[i] = expr;
-        // }
-        // return expressions;
-        // } catch (SQLException e) {
-        // throw DbException.convert(e);
-        // }
-    }
-
-    /**
      * Create a shallow copy of the result set. The data and a temporary table
      * (if there is any) is not copied.
      *
@@ -521,4 +463,30 @@ public class LocalResult implements Result, ResultTarget {
         // ignore
     }
 
+    /**
+     * Construct a local result set by reading all data from a regular result set.
+     *
+     * @param session the session
+     * @param rs the result set
+     * @param maxRows the maximum number of rows to read (0 for no limit)
+     * @return the local result set
+     */
+    public static LocalResult read(ServerSession session, IExpression[] cols, ResultSet rs, int maxRows) {
+        int columnCount = cols.length;
+        LocalResult result = new LocalResult(session, cols, columnCount);
+        try {
+            for (int i = 0; (maxRows == 0 || i < maxRows) && rs.next(); i++) {
+                Value[] list = new Value[columnCount];
+                for (int j = 0; j < columnCount; j++) {
+                    int type = result.getColumnType(j);
+                    list[j] = DataType.readValue(session, rs, j + 1, type);
+                }
+                result.addRow(list);
+            }
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
+        result.done();
+        return result;
+    }
 }

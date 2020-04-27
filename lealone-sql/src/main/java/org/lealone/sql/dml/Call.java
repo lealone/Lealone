@@ -97,7 +97,7 @@ public class Call extends ManipulationStatement {
         if (isResultSet) {
             v = v.convertTo(Value.RESULT_SET);
             ResultSet rs = v.getResultSet();
-            return LocalResult.read(session, rs, maxRows);
+            return LocalResult.read(session, Expression.getExpressionColumns(session, rs), rs, maxRows);
         }
         LocalResult result = new LocalResult(session, expressions, 1);
         Value[] row = { v };

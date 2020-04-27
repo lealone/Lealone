@@ -161,7 +161,8 @@ public class FunctionTable extends Table {
             cachedResult.reset();
             return cachedResult;
         }
-        LocalResult result = LocalResult.read(session, v.getResultSet(), 0);
+        ResultSet rs = v.getResultSet();
+        LocalResult result = LocalResult.read(session, Expression.getExpressionColumns(session, rs), rs, 0);
         if (function.isDeterministic()) {
             cachedResult = result;
             cachedValue = v;
