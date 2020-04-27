@@ -89,6 +89,15 @@ public class Schema extends DbObjectBase {
     }
 
     /**
+     * Get the owner of this schema.
+     *
+     * @return the owner
+     */
+    public User getOwner() {
+        return owner;
+    }
+
+    /**
      * Check if this schema can be dropped. System schemas can not be dropped.
      *
      * @return true if it can be dropped
@@ -109,14 +118,10 @@ public class Schema extends DbObjectBase {
 
     @Override
     public void removeChildrenAndResources(ServerSession session) {
-        while (triggers != null && triggers.size() > 0) {
-            TriggerObject obj = (TriggerObject) triggers.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
-        while (constraints != null && constraints.size() > 0) {
-            Constraint obj = (Constraint) constraints.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
+        // 删除顺序不能乱，因为可能有依赖
+        removeSchemaObjects(session, triggers);
+        removeSchemaObjects(session, constraints);
+
         // There can be dependencies between tables e.g. using computed columns,
         // so we might need to loop over them multiple times.
         boolean runLoopAgain = false;
@@ -137,45 +142,23 @@ public class Schema extends DbObjectBase {
                 }
             }
         } while (runLoopAgain);
-        while (indexes != null && indexes.size() > 0) {
-            Index obj = (Index) indexes.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
-        while (sequences != null && sequences.size() > 0) {
-            Sequence obj = (Sequence) sequences.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
-        while (constants != null && constants.size() > 0) {
-            Constant obj = (Constant) constants.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
-        while (functions != null && functions.size() > 0) {
-            FunctionAlias obj = (FunctionAlias) functions.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
-        while (aggregates != null && aggregates.size() > 0) {
-            UserAggregate obj = (UserAggregate) aggregates.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
-        while (userDataTypes != null && userDataTypes.size() > 0) {
-            UserDataType obj = (UserDataType) userDataTypes.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
-        while (services != null && services.size() > 0) {
-            Service obj = (Service) services.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
-        }
+
+        removeSchemaObjects(session, indexes);
+        removeSchemaObjects(session, sequences);
+        removeSchemaObjects(session, constants);
+        removeSchemaObjects(session, functions);
+        removeSchemaObjects(session, aggregates);
+        removeSchemaObjects(session, userDataTypes);
+        removeSchemaObjects(session, services);
         owner = null;
         super.removeChildrenAndResources(session);
     }
 
-    /**
-     * Get the owner of this schema.
-     *
-     * @return the owner
-     */
-    public User getOwner() {
-        return owner;
+    private void removeSchemaObjects(ServerSession session, HashMap<String, ? extends SchemaObject> objs) {
+        while (objs != null && objs.size() > 0) {
+            SchemaObject obj = (SchemaObject) objs.values().toArray()[0];
+            database.removeSchemaObject(session, obj);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -246,6 +229,24 @@ public class Schema extends DbObjectBase {
     }
 
     /**
+     * Remove an object from this schema.
+     *
+     * @param obj the object to remove
+     */
+    public void remove(SchemaObject obj) {
+        String objName = obj.getName();
+        DbObjectType type = obj.getType();
+        synchronized (getLock(type)) {
+            HashMap<String, SchemaObject> map = getMap(type);
+            if (SysProperties.CHECK && !map.containsKey(objName)) {
+                DbException.throwInternalError("not found: " + objName);
+            }
+            map.remove(objName);
+            freeUniqueName(objName);
+        }
+    }
+
+    /**
      * Rename an object.
      *
      * @param obj the object to rename
@@ -275,8 +276,7 @@ public class Schema extends DbObjectBase {
 
     /**
      * Try to find a table or view with this name. This method returns null if
-     * no object with this name exists. Local temporary tables are also
-     * returned.
+     * no object with this name exists. Local temporary tables are also returned.
      *
      * @param session the session
      * @param name the object name
@@ -300,7 +300,7 @@ public class Schema extends DbObjectBase {
      */
     public Index findIndex(ServerSession session, String name) {
         Index index = indexes.get(name);
-        if (index == null) {
+        if (index == null && session != null) {
             index = session.findLocalTempTableIndex(name);
         }
         return index;
@@ -338,7 +338,7 @@ public class Schema extends DbObjectBase {
      */
     public Constraint findConstraint(ServerSession session, String name) {
         Constraint constraint = constraints.get(name);
-        if (constraint == null) {
+        if (constraint == null && session != null) {
             constraint = session.findLocalTempTableConstraint(name);
         }
         return constraint;
@@ -552,16 +552,16 @@ public class Schema extends DbObjectBase {
      */
     public ArrayList<SchemaObject> getAll() {
         ArrayList<SchemaObject> all = new ArrayList<>();
-        all.addAll(getMap(DbObjectType.TABLE_OR_VIEW).values());
-        all.addAll(getMap(DbObjectType.SEQUENCE).values());
-        all.addAll(getMap(DbObjectType.INDEX).values());
-        all.addAll(getMap(DbObjectType.TRIGGER).values());
-        all.addAll(getMap(DbObjectType.CONSTRAINT).values());
-        all.addAll(getMap(DbObjectType.CONSTANT).values());
-        all.addAll(getMap(DbObjectType.FUNCTION_ALIAS).values());
-        all.addAll(getMap(DbObjectType.AGGREGATE).values());
-        all.addAll(getMap(DbObjectType.USER_DATATYPE).values());
-        all.addAll(getMap(DbObjectType.SERVICE).values());
+        all.addAll(tablesAndViews.values());
+        all.addAll(indexes.values());
+        all.addAll(sequences.values());
+        all.addAll(triggers.values());
+        all.addAll(constraints.values());
+        all.addAll(constants.values());
+        all.addAll(functions.values());
+        all.addAll(aggregates.values());
+        all.addAll(userDataTypes.values());
+        all.addAll(services.values());
         return all;
     }
 
@@ -582,27 +582,7 @@ public class Schema extends DbObjectBase {
      * @return a (possible empty) list of all objects
      */
     public ArrayList<Table> getAllTablesAndViews() {
-        synchronized (database) {
-            return new ArrayList<>(tablesAndViews.values());
-        }
-    }
-
-    /**
-     * Remove an object from this schema.
-     *
-     * @param obj the object to remove
-     */
-    public void remove(SchemaObject obj) {
-        String objName = obj.getName();
-        DbObjectType type = obj.getType();
-        synchronized (getLock(type)) {
-            HashMap<String, SchemaObject> map = getMap(type);
-            if (SysProperties.CHECK && !map.containsKey(objName)) {
-                DbException.throwInternalError("not found: " + objName);
-            }
-            map.remove(objName);
-            freeUniqueName(objName);
-        }
+        return new ArrayList<>(tablesAndViews.values());
     }
 
     /**
