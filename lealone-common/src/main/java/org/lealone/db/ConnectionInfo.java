@@ -36,7 +36,9 @@ public class ConnectionInfo implements Cloneable {
 
     static {
         KNOWN_SETTINGS.addAll(DbSettings.getDefaultSettings().getSettings().keySet());
-        KNOWN_SETTINGS.addAll(SetTypes.getTypes());
+        for (SetType type : SetType.values()) {
+            KNOWN_SETTINGS.add(type.getName());
+        }
 
         String[] connectionSettings = { "IGNORE_UNKNOWN_SETTINGS", "INIT", "USER", "PASSWORD", "PASSWORD_HASH",
                 "IS_LOCAL", Constants.NET_FACTORY_NAME_KEY, "NETWORK_TIMEOUT", "TRACE_ENABLED" };
@@ -560,36 +562,6 @@ public class ConnectionInfo implements Cloneable {
         }
         String s = getProperty(key);
         return s == null ? defaultValue : s;
-    }
-
-    /**
-     * Get the value of the given property.
-     *
-     * @param setting the setting id
-     * @param defaultValue the default value
-     * @return the value as a String
-     */
-    public String getProperty(int setting, String defaultValue) {
-        String key = SetTypes.getTypeName(setting);
-        String s = getProperty(key);
-        return s == null ? defaultValue : s;
-    }
-
-    /**
-     * Get the value of the given property.
-     *
-     * @param setting the setting id
-     * @param defaultValue the default value
-     * @return the value as an integer
-     */
-    int getIntProperty(int setting, int defaultValue) {
-        String key = SetTypes.getTypeName(setting);
-        String s = getProperty(key, null);
-        try {
-            return s == null ? defaultValue : Integer.decode(s);
-        } catch (NumberFormatException e) {
-            return defaultValue;
-        }
     }
 
     /**

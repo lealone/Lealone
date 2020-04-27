@@ -13,7 +13,7 @@ import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.Mode;
-import org.lealone.db.SetTypes;
+import org.lealone.db.SetType;
 import org.lealone.db.Setting;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
@@ -28,15 +28,18 @@ import org.lealone.sql.expression.ValueExpression;
 /**
  * This class represents the statement
  * SET
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Set extends ManipulationStatement {
 
-    private final int type;
+    private final SetType type;
     private Expression expression;
     private String stringValue;
     private String[] stringValueList;
 
-    public Set(ServerSession session, int type) {
+    public Set(ServerSession session, SetType type) {
         super(session);
         this.type = type;
     }
@@ -59,31 +62,98 @@ public class Set extends ManipulationStatement {
         this.stringValue = v;
     }
 
+    public void setExpression(Expression expression) {
+        this.expression = expression;
+    }
+
+    public void setInt(int value) {
+        this.expression = ValueExpression.get(ValueInt.get(value));
+    }
+
+    private int getIntValue() {
+        expression = expression.optimize(session);
+        return expression.getValue(session).getInt();
+    }
+
+    private int getAndValidateIntValue() {
+        return getAndValidateIntValue(0);
+    }
+
+    private int getAndValidateIntValue(int lessThan) {
+        int value = getIntValue();
+        if (value < lessThan) {
+            throw DbException.getInvalidValueException(type.getName(), value);
+        }
+        return value;
+    }
+
+    private boolean getAndValidateBooleanValue() {
+        int value = getIntValue();
+        if (value < 0 || value > 1) {
+            throw DbException.getInvalidValueException(type.getName(), value);
+        }
+        return value == 1;
+    }
+
+    private void checkAdmin() {
+        // session级的类型不用检查管理权限
+        switch (type) {
+        case LOCK_TIMEOUT:
+        case QUERY_TIMEOUT:
+        case SCHEMA:
+        case SCHEMA_SEARCH_PATH:
+        case VARIABLE:
+        case THROTTLE:
+            break;
+        default:
+            session.getUser().checkAdmin();
+        }
+    }
+
     @Override
     public int update() {
+        checkAdmin();
         Database database = session.getDatabase();
-        String name = SetTypes.getTypeName(type);
+        String name = type.getName();
         switch (type) {
-        case SetTypes.ALLOW_LITERALS: {
-            session.getUser().checkAdmin();
+        // 以下是session级的类型
+        case LOCK_TIMEOUT:
+            session.setLockTimeout(getAndValidateIntValue());
+            break;
+        case QUERY_TIMEOUT:
+            session.setQueryTimeout(getAndValidateIntValue());
+            break;
+        case SCHEMA:
+            Schema schema = database.getSchema(stringValue);
+            session.setCurrentSchema(schema);
+            break;
+        case SCHEMA_SEARCH_PATH:
+            session.setSchemaSearchPath(stringValueList);
+            break;
+        case VARIABLE:
+            Expression expr = expression.optimize(session);
+            session.setVariable(stringValue, expr.getValue(session));
+            break;
+        case THROTTLE:
+            session.setThrottle(getAndValidateIntValue());
+            break;
+        // 以下是database级的类型
+        case ALLOW_LITERALS: {
             int value = getIntValue();
             if (value < 0 || value > 2) {
-                throw DbException.getInvalidValueException("ALLOW_LITERALS", getIntValue());
+                throw DbException.getInvalidValueException(type.getName(), value);
             }
             database.setAllowLiterals(value);
-            addOrUpdateSetting(name, null, value);
+            addOrUpdateSetting(name, value);
             break;
         }
-        case SetTypes.CACHE_SIZE:
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("CACHE_SIZE", getIntValue());
-            }
-            session.getUser().checkAdmin();
-            database.setCacheSize(getIntValue());
-            addOrUpdateSetting(name, null, getIntValue());
+        case CACHE_SIZE: {
+            int value = getAndValidateIntValue();
+            database.setCacheSize(value);
+            addOrUpdateSetting(name, value);
             break;
-        case SetTypes.COLLATION: {
-            session.getUser().checkAdmin();
+        }
+        case COLLATION: {
             Table table = database.getFirstUserTable();
             if (table != null) {
                 throw DbException.get(ErrorCode.COLLATION_CHANGE_WITH_DATA_TABLE_1, table.getSQL());
@@ -107,12 +177,11 @@ public class Set extends ManipulationStatement {
                 }
                 compareMode = CompareMode.getInstance(stringValue, strength, binaryUnsigned);
             }
-            addOrUpdateSetting(name, buff.toString(), 0);
+            addOrUpdateSetting(name, buff.toString());
             database.setCompareMode(compareMode);
             break;
         }
-        case SetTypes.BINARY_COLLATION: {
-            session.getUser().checkAdmin();
+        case BINARY_COLLATION: {
             Table table = database.getFirstUserTable();
             if (table != null) {
                 throw DbException.get(ErrorCode.COLLATION_CHANGE_WITH_DATA_TABLE_1, table.getSQL());
@@ -124,61 +193,57 @@ public class Set extends ManipulationStatement {
             } else if (stringValue.equals(CompareMode.UNSIGNED)) {
                 newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(), true);
             } else {
-                throw DbException.getInvalidValueException("BINARY_COLLATION", stringValue);
+                throw DbException.getInvalidValueException(type.getName(), stringValue);
             }
-            addOrUpdateSetting(name, stringValue, 0);
+            addOrUpdateSetting(name, stringValue);
             database.setCompareMode(newMode);
             break;
         }
-        case SetTypes.COMPRESS_LOB: {
-            session.getUser().checkAdmin();
+        case COMPRESS_LOB: {
             int algo = CompressTool.getCompressAlgorithm(stringValue);
             database.setLobCompressionAlgorithm(algo == Compressor.NO ? null : stringValue);
-            addOrUpdateSetting(name, stringValue, 0);
+            addOrUpdateSetting(name, stringValue);
             break;
         }
-        case SetTypes.CREATE_BUILD: {
-            session.getUser().checkAdmin();
+        case CREATE_BUILD: {
             if (database.isStarting()) {
                 // just ignore the command if not starting
                 // this avoids problems when running recovery scripts
                 int value = getIntValue();
-                addOrUpdateSetting(name, null, value);
+                addOrUpdateSetting(name, value);
             }
             break;
         }
-        case SetTypes.DATABASE_EVENT_LISTENER: {
-            session.getUser().checkAdmin();
+        case DATABASE_EVENT_LISTENER: {
             database.setEventListenerClass(stringValue);
             break;
         }
-        case SetTypes.DB_CLOSE_DELAY: {
-            int x = getIntValue();
-            if (x == -1) {
+        case DB_CLOSE_DELAY: {
+            int value = getIntValue();
+            if (value == -1) {
                 // -1 is a special value for in-memory databases,
                 // which means "keep the DB alive and use the same DB for all connections"
-            } else if (x < 0) {
-                throw DbException.getInvalidValueException("DB_CLOSE_DELAY", x);
+            } else if (value < 0) {
+                throw DbException.getInvalidValueException(type.getName(), value);
             }
-            session.getUser().checkAdmin();
-            database.setCloseDelay(getIntValue());
-            addOrUpdateSetting(name, null, getIntValue());
+            database.setCloseDelay(value);
+            addOrUpdateSetting(name, value);
             break;
         }
-        case SetTypes.DEFAULT_LOCK_TIMEOUT:
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("DEFAULT_LOCK_TIMEOUT", getIntValue());
+        case DEFAULT_LOCK_TIMEOUT: {
+            addOrUpdateSetting(name, getAndValidateIntValue());
+            break;
+        }
+        case DEFAULT_TABLE_TYPE: {
+            int value = getIntValue();
+            if (value < 0 || value > 1) {
+                throw DbException.getInvalidValueException(type.getName(), value);
             }
-            session.getUser().checkAdmin();
-            addOrUpdateSetting(name, null, getIntValue());
+            database.setDefaultTableType(value);
+            addOrUpdateSetting(name, value);
             break;
-        case SetTypes.DEFAULT_TABLE_TYPE:
-            session.getUser().checkAdmin();
-            database.setDefaultTableType(getIntValue());
-            addOrUpdateSetting(name, null, getIntValue());
-            break;
-        case SetTypes.EXCLUSIVE: {
-            session.getUser().checkAdmin();
+        }
+        case EXCLUSIVE: {
             int value = getIntValue();
             switch (value) {
             case 0:
@@ -191,162 +256,77 @@ public class Set extends ManipulationStatement {
                 database.setExclusiveSession(session, true);
                 break;
             default:
-                throw DbException.getInvalidValueException("EXCLUSIVE", value);
+                throw DbException.getInvalidValueException(type.getName(), value);
             }
             break;
         }
-        case SetTypes.IGNORECASE:
-            session.getUser().checkAdmin();
-            database.setIgnoreCase(getIntValue() == 1);
-            addOrUpdateSetting(name, null, getIntValue());
-            break;
-        case SetTypes.LOCK_MODE:
-            session.getUser().checkAdmin();
-            database.setLockMode(getIntValue());
-            addOrUpdateSetting(name, null, getIntValue());
-            break;
-        case SetTypes.LOCK_TIMEOUT:
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("LOCK_TIMEOUT", getIntValue());
-            }
-            session.setLockTimeout(getIntValue());
-            break;
-        case SetTypes.LOG: { // 这个参数已不再使用 //TODO 删除
-            // int value = getIntValue();
-            // if (database.isPersistent() && value != database.getLogMode()) {
-            // session.getUser().checkAdmin();
-            // database.setLogMode(value);
-            // }
-            break;
-        }
-        case SetTypes.MAX_LENGTH_INPLACE_LOB: {
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("MAX_LENGTH_INPLACE_LOB", getIntValue());
-            }
-            session.getUser().checkAdmin();
-            database.setMaxLengthInplaceLob(getIntValue());
-            addOrUpdateSetting(name, null, getIntValue());
-            break;
-        }
-        case SetTypes.MAX_LOG_SIZE:
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("MAX_LOG_SIZE", getIntValue());
-            }
-            session.getUser().checkAdmin();
-            database.setMaxLogSize((long) getIntValue() * 1024 * 1024);
-            addOrUpdateSetting(name, null, getIntValue());
-            break;
-        case SetTypes.MAX_MEMORY_ROWS: {
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("MAX_MEMORY_ROWS", getIntValue());
-            }
-            session.getUser().checkAdmin();
-            database.setMaxMemoryRows(getIntValue());
-            addOrUpdateSetting(name, null, getIntValue());
-            break;
-        }
-        case SetTypes.MAX_MEMORY_UNDO: {
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("MAX_MEMORY_UNDO", getIntValue());
-            }
-            session.getUser().checkAdmin();
-            database.setMaxMemoryUndo(getIntValue());
-            addOrUpdateSetting(name, null, getIntValue());
-            break;
-        }
-        case SetTypes.MAX_OPERATION_MEMORY: {
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("MAX_OPERATION_MEMORY", getIntValue());
-            }
-            session.getUser().checkAdmin();
+        case IGNORECASE: {
             int value = getIntValue();
-            database.setMaxOperationMemory(value);
+            database.setIgnoreCase(value == 1);
+            addOrUpdateSetting(name, value);
             break;
         }
-        case SetTypes.MODE:
+        case LOCK_MODE: {
+            int value = getIntValue();
+            database.setLockMode(value);
+            addOrUpdateSetting(name, value);
+            break;
+        }
+        case MAX_LENGTH_INPLACE_LOB: {
+            int value = getAndValidateIntValue();
+            database.setMaxLengthInplaceLob(value);
+            addOrUpdateSetting(name, value);
+            break;
+        }
+        case MAX_LOG_SIZE: {
+            int value = getAndValidateIntValue();
+            database.setMaxLogSize((long) value * 1024 * 1024);
+            addOrUpdateSetting(name, value);
+            break;
+        }
+        case MAX_MEMORY_ROWS: {
+            int value = getAndValidateIntValue();
+            database.setMaxMemoryRows(value);
+            addOrUpdateSetting(name, value);
+            break;
+        }
+        case MAX_MEMORY_UNDO: {
+            int value = getAndValidateIntValue();
+            database.setMaxMemoryUndo(value);
+            addOrUpdateSetting(name, value);
+            break;
+        }
+        case MAX_OPERATION_MEMORY: {
+            database.setMaxOperationMemory(getAndValidateIntValue());
+            break;
+        }
+        case MODE: {
             Mode mode = Mode.getInstance(stringValue);
             if (mode == null) {
                 throw DbException.get(ErrorCode.UNKNOWN_MODE_1, stringValue);
             }
             if (database.getMode() != mode) {
-                session.getUser().checkAdmin();
                 database.setMode(mode);
             }
             break;
-        case SetTypes.MULTI_THREADED: { // 这个参数已不再使用 //TODO 删除
+        }
+        case OPTIMIZE_REUSE_RESULTS: {
+            database.setOptimizeReuseResults(getAndValidateBooleanValue());
             break;
         }
-        case SetTypes.MVCC: { // 这个参数已不再使用 //TODO 删除
-            // if (database.isMultiVersion() != (getIntValue() == 1)) {
-            // throw DbException.get(ErrorCode.CANNOT_CHANGE_SETTING_WHEN_OPEN_1, "MVCC");
-            // }
+        case REFERENTIAL_INTEGRITY: {
+            database.setReferentialIntegrity(getAndValidateBooleanValue());
             break;
         }
-        case SetTypes.OPTIMIZE_REUSE_RESULTS: {
-            session.getUser().checkAdmin();
-            database.setOptimizeReuseResults(getIntValue() != 0);
+        case QUERY_STATISTICS: {
+            database.setQueryStatistics(getAndValidateBooleanValue());
             break;
         }
-        case SetTypes.QUERY_TIMEOUT: {
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("QUERY_TIMEOUT", getIntValue());
-            }
-            int value = getIntValue();
-            session.setQueryTimeout(value);
+        case QUERY_STATISTICS_MAX_ENTRIES: {
+            database.setQueryStatisticsMaxEntries(getAndValidateIntValue(1));
             break;
         }
-        case SetTypes.REDO_LOG_BINARY: { // 这个参数已不再使用 //TODO 删除
-            // int value = getIntValue();
-            // session.setRedoLogBinary(value == 1);
-            break;
-        }
-        case SetTypes.REFERENTIAL_INTEGRITY: {
-            session.getUser().checkAdmin();
-            int value = getIntValue();
-            if (value < 0 || value > 1) {
-                throw DbException.getInvalidValueException("REFERENTIAL_INTEGRITY", getIntValue());
-            }
-            database.setReferentialIntegrity(value == 1);
-            break;
-        }
-        case SetTypes.QUERY_STATISTICS: {
-            session.getUser().checkAdmin();
-            int value = getIntValue();
-            if (value < 0 || value > 1) {
-                throw DbException.getInvalidValueException("QUERY_STATISTICS", getIntValue());
-            }
-            database.setQueryStatistics(value == 1);
-            break;
-        }
-        case SetTypes.QUERY_STATISTICS_MAX_ENTRIES: {
-            session.getUser().checkAdmin();
-            int value = getIntValue();
-            if (value < 1) {
-                throw DbException.getInvalidValueException("QUERY_STATISTICS_MAX_ENTRIES", getIntValue());
-            }
-            database.setQueryStatisticsMaxEntries(value);
-            break;
-        }
-        case SetTypes.SCHEMA: {
-            Schema schema = database.getSchema(stringValue);
-            session.setCurrentSchema(schema);
-            break;
-        }
-        case SetTypes.SCHEMA_SEARCH_PATH: {
-            session.setSchemaSearchPath(stringValueList);
-            break;
-        }
-        case SetTypes.TRACE_LEVEL_FILE:
-            session.getUser().checkAdmin();
-            if (getCurrentObjectId() == 0) {
-                // don't set the property when opening the database
-                // this is for compatibility with older versions, because
-                // this setting was persistent
-                database.getTraceSystem().setLevelFile(getIntValue());
-            }
-            break;
-        case SetTypes.TRACE_LEVEL_SYSTEM_OUT:
-            session.getUser().checkAdmin();
+        case TRACE_LEVEL_SYSTEM_OUT: {
             if (getCurrentObjectId() == 0) {
                 // don't set the property when opening the database
                 // this is for compatibility with older versions, because
@@ -354,47 +334,31 @@ public class Set extends ManipulationStatement {
                 database.getTraceSystem().setLevelSystemOut(getIntValue());
             }
             break;
-        case SetTypes.TRACE_MAX_FILE_SIZE: {
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("TRACE_MAX_FILE_SIZE", getIntValue());
+        }
+        case TRACE_LEVEL_FILE: {
+            if (getCurrentObjectId() == 0) {
+                // don't set the property when opening the database
+                // this is for compatibility with older versions, because
+                // this setting was persistent
+                database.getTraceSystem().setLevelFile(getIntValue());
             }
-            session.getUser().checkAdmin();
-            int size = getIntValue() * 1024 * 1024;
+            break;
+        }
+        case TRACE_MAX_FILE_SIZE: {
+            int value = getAndValidateIntValue();
+            int size = value * 1024 * 1024;
             database.getTraceSystem().setMaxFileSize(size);
-            addOrUpdateSetting(name, null, getIntValue());
+            addOrUpdateSetting(name, value);
             break;
         }
-        case SetTypes.THROTTLE: {
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("THROTTLE", getIntValue());
-            }
-            session.setThrottle(getIntValue());
-            break;
-        }
-        case SetTypes.UNDO_LOG: { // 这个参数已不再使用 //TODO 删除
-            // int value = getIntValue();
-            // if (value < 0 || value > 1) {
-            // throw DbException.getInvalidValueException("UNDO_LOG", getIntValue());
-            // }
-            // session.setUndoLogEnabled(value == 1);
-            break;
-        }
-        case SetTypes.VARIABLE: {
-            Expression expr = expression.optimize(session);
-            session.setVariable(stringValue, expr.getValue(session));
-            break;
-        }
-        case SetTypes.WRITE_DELAY: {
-            if (getIntValue() < 0) {
-                throw DbException.getInvalidValueException("WRITE_DELAY", getIntValue());
-            }
-            session.getUser().checkAdmin();
-            database.setWriteDelay(getIntValue());
-            addOrUpdateSetting(name, null, getIntValue());
+        case WRITE_DELAY: {
+            int value = getAndValidateIntValue();
+            database.setWriteDelay(value);
+            addOrUpdateSetting(name, value);
             break;
         }
         default:
-            DbException.throwInternalError("type=" + type);
+            DbException.throwInternalError("unknown set type: " + type);
         }
         // the meta data information has changed
         database.getNextModificationDataId();
@@ -404,24 +368,15 @@ public class Set extends ManipulationStatement {
         return 0;
     }
 
-    private int getIntValue() {
-        expression = expression.optimize(session);
-        return expression.getValue(session).getInt();
+    private void addOrUpdateSetting(String name, String s) {
+        addOrUpdateSetting(name, s, 0);
     }
 
-    public void setInt(int value) {
-        this.expression = ValueExpression.get(ValueInt.get(value));
-    }
-
-    public void setExpression(Expression expression) {
-        this.expression = expression;
+    private void addOrUpdateSetting(String name, int v) {
+        addOrUpdateSetting(name, null, v);
     }
 
     private void addOrUpdateSetting(String name, String s, int v) {
-        addOrUpdateSetting(session, name, s, v);
-    }
-
-    private void addOrUpdateSetting(ServerSession session, String name, String s, int v) {
         Database database = session.getDatabase();
         if (database.isReadOnly()) {
             return;

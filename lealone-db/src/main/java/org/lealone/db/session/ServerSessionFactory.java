@@ -10,7 +10,7 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.SetTypes;
+import org.lealone.db.SetType;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.Future;
@@ -145,7 +145,7 @@ public class ServerSessionFactory implements SessionFactory {
 
         session.setAllowLiterals(true);
         for (String setting : ci.getKeys()) {
-            if (SetTypes.contains(setting)) {
+            if (SetType.contains(setting)) {
                 String value = ci.getProperty(setting);
                 try {
                     String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " " + value;

@@ -27,7 +27,7 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Procedure;
 import org.lealone.db.ProcessingMode;
 import org.lealone.db.RunMode;
-import org.lealone.db.SetTypes;
+import org.lealone.db.SetType;
 import org.lealone.db.SysProperties;
 import org.lealone.db.UserAggregate;
 import org.lealone.db.UserDataType;
@@ -4832,9 +4832,16 @@ public class Parser implements SQLParser {
         }
     }
 
+    private StatementBase parseUse() {
+        readIfEqualOrTo();
+        Set command = new Set(session, SetType.SCHEMA);
+        command.setString(readAliasIdentifier());
+        return command;
+    }
+
     private StatementBase parseSet() {
-        if (readIf("@")) {
-            Set command = new Set(session, SetTypes.VARIABLE);
+        if (readIf("@")) { // session变量
+            Set command = new Set(session, SetType.VARIABLE);
             command.setString(readAliasIdentifier());
             readIfEqualOrTo();
             command.setExpression(readExpression());
@@ -4844,23 +4851,6 @@ public class Parser implements SQLParser {
             boolean value = readBooleanSetting();
             int setting = value ? SQLStatement.SET_AUTOCOMMIT_TRUE : SQLStatement.SET_AUTOCOMMIT_FALSE;
             return new TransactionStatement(session, setting);
-        } else if (readIf("MVCC")) {
-            readIfEqualOrTo();
-            boolean value = readBooleanSetting();
-            Set command = new Set(session, SetTypes.MVCC);
-            command.setInt(value ? 1 : 0);
-            return command;
-        } else if (readIf("EXCLUSIVE")) {
-            readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.EXCLUSIVE);
-            command.setExpression(readExpression());
-            return command;
-        } else if (readIf("IGNORECASE")) {
-            readIfEqualOrTo();
-            boolean value = readBooleanSetting();
-            Set command = new Set(session, SetTypes.IGNORECASE);
-            command.setInt(value ? 1 : 0);
-            return command;
         } else if (readIf("PASSWORD")) {
             readIfEqualOrTo();
             AlterUser command = new AlterUser(session);
@@ -4877,43 +4867,27 @@ public class Parser implements SQLParser {
             read("HASH");
             command.setHash(readExpression());
             return command;
-        } else if (readIf("MODE")) {
+            // 以下是特殊的SetType
+        } else if (readIf(SetType.SCHEMA.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.MODE);
+            Set command = new Set(session, SetType.SCHEMA);
             command.setString(readAliasIdentifier());
             return command;
-        } else if (readIf("COMPRESS_LOB")) {
+        } else if (readIf(SetType.SCHEMA_SEARCH_PATH.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.COMPRESS_LOB);
-            if (currentTokenType == VALUE) {
-                command.setString(readString());
-            } else {
-                command.setString(readUniqueIdentifier());
+            Set command = new Set(session, SetType.SCHEMA_SEARCH_PATH);
+            ArrayList<String> list = Utils.newSmallArrayList();
+            list.add(readAliasIdentifier());
+            while (readIf(",")) {
+                list.add(readAliasIdentifier());
             }
+            String[] schemaNames = new String[list.size()];
+            list.toArray(schemaNames);
+            command.setStringArray(schemaNames);
             return command;
-        } else if (readIf("DATABASE")) {
+        } else if (readIf(SetType.ALLOW_LITERALS.getName())) {
             readIfEqualOrTo();
-            read("COLLATION");
-            return parseSetCollation();
-        } else if (readIf("COLLATION")) {
-            readIfEqualOrTo();
-            return parseSetCollation();
-        } else if (readIf("BINARY_COLLATION")) {
-            readIfEqualOrTo();
-            return parseSetBinaryCollation();
-        } else if (readIf("CLUSTER")) {
-            readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.CLUSTER);
-            command.setString(readString());
-            return command;
-        } else if (readIf("DATABASE_EVENT_LISTENER")) {
-            readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.DATABASE_EVENT_LISTENER);
-            command.setString(readString());
-            return command;
-        } else if (readIf("ALLOW_LITERALS")) {
-            readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.ALLOW_LITERALS);
+            Set command = new Set(session, SetType.ALLOW_LITERALS);
             if (readIf("NONE")) {
                 command.setInt(Constants.ALLOW_LITERALS_NONE);
             } else if (readIf("ALL")) {
@@ -4924,9 +4898,29 @@ public class Parser implements SQLParser {
                 command.setInt(readPositiveInt());
             }
             return command;
-        } else if (readIf("DEFAULT_TABLE_TYPE")) {
+        } else if (readIf(SetType.COLLATION.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.DEFAULT_TABLE_TYPE);
+            return parseSetCollation();
+        } else if (readIf(SetType.BINARY_COLLATION.getName())) {
+            readIfEqualOrTo();
+            return parseSetBinaryCollation();
+        } else if (readIf(SetType.COMPRESS_LOB.getName())) {
+            readIfEqualOrTo();
+            Set command = new Set(session, SetType.COMPRESS_LOB);
+            if (currentTokenType == VALUE) {
+                command.setString(readString());
+            } else {
+                command.setString(readUniqueIdentifier());
+            }
+            return command;
+        } else if (readIf(SetType.DATABASE_EVENT_LISTENER.getName())) {
+            readIfEqualOrTo();
+            Set command = new Set(session, SetType.DATABASE_EVENT_LISTENER);
+            command.setString(readString());
+            return command;
+        } else if (readIf(SetType.DEFAULT_TABLE_TYPE.getName())) {
+            readIfEqualOrTo();
+            Set command = new Set(session, SetType.DEFAULT_TABLE_TYPE);
             if (readIf("MEMORY")) {
                 command.setInt(Table.TYPE_MEMORY);
             } else if (readIf("CACHED")) {
@@ -4935,82 +4929,17 @@ public class Parser implements SQLParser {
                 command.setInt(readPositiveInt());
             }
             return command;
-        } else if (readIf("CREATE")) {
+        } else if (readIf(SetType.MODE.getName())) {
             readIfEqualOrTo();
-            // Derby compatibility (CREATE=TRUE in the database URL)
-            read();
-            return new NoOperation(session);
-        } else if (readIf("HSQLDB.DEFAULT_TABLE_TYPE")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("CACHE_TYPE")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("DB_CLOSE_ON_EXIT")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("ASSERT")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("ACCESS_MODE_DATA")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("OPEN_NEW")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("PAGE_SIZE")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("RECOVER")) {
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("NAMES")) {
-            // Quercus PHP MySQL driver compatibility
-            readIfEqualOrTo();
-            read();
-            return new NoOperation(session);
-        } else if (readIf("SCHEMA")) {
-            readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.SCHEMA);
+            Set command = new Set(session, SetType.MODE);
             command.setString(readAliasIdentifier());
             return command;
-        } else if (readIf("DATESTYLE")) {
-            // PostgreSQL compatibility
-            readIfEqualOrTo();
-            if (!readIf("ISO")) {
-                String s = readString();
-                if (!equalsToken(s, "ISO")) {
-                    throw getSyntaxError();
-                }
-            }
-            return new NoOperation(session);
-        } else if (readIf("SEARCH_PATH") || readIf(SetTypes.getTypeName(SetTypes.SCHEMA_SEARCH_PATH))) {
-            readIfEqualOrTo();
-            Set command = new Set(session, SetTypes.SCHEMA_SEARCH_PATH);
-            ArrayList<String> list = Utils.newSmallArrayList();
-            list.add(readAliasIdentifier());
-            while (readIf(",")) {
-                list.add(readAliasIdentifier());
-            }
-            String[] schemaNames = new String[list.size()];
-            list.toArray(schemaNames);
-            command.setStringArray(schemaNames);
-            return command;
         } else {
-            if (isToken("LOGSIZE")) {
-                // HSQLDB compatibility
-                currentToken = SetTypes.getTypeName(SetTypes.MAX_LOG_SIZE);
-            }
-            int type = SetTypes.getType(currentToken);
-            if (type < 0) {
+            // 处理其他SetType
+            SetType type;
+            try {
+                type = SetType.valueOf(currentToken);
+            } catch (Throwable t) {
                 throw getSyntaxError();
             }
             read();
@@ -5021,15 +4950,8 @@ public class Parser implements SQLParser {
         }
     }
 
-    private StatementBase parseUse() {
-        readIfEqualOrTo();
-        Set command = new Set(session, SetTypes.SCHEMA);
-        command.setString(readAliasIdentifier());
-        return command;
-    }
-
     private Set parseSetCollation() {
-        Set command = new Set(session, SetTypes.COLLATION);
+        Set command = new Set(session, SetType.COLLATION);
         String name = readAliasIdentifier();
         command.setString(name);
         if (equalsToken(name, CompareMode.OFF)) {
@@ -5056,13 +4978,13 @@ public class Parser implements SQLParser {
     }
 
     private Set parseSetBinaryCollation() {
-        Set command = new Set(session, SetTypes.BINARY_COLLATION);
+        Set command = new Set(session, SetType.BINARY_COLLATION);
         String name = readAliasIdentifier();
         command.setString(name);
         if (equalsToken(name, CompareMode.UNSIGNED) || equalsToken(name, CompareMode.SIGNED)) {
             return command;
         }
-        throw DbException.getInvalidValueException("BINARY_COLLATION", name);
+        throw DbException.getInvalidValueException(SetType.BINARY_COLLATION.getName(), name);
     }
 
     private RunScript parseRunScript() {

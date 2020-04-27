@@ -422,7 +422,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
             if (!readOnly) {
                 // set CREATE_BUILD in a new database
-                String name = SetTypes.getTypeName(SetTypes.CREATE_BUILD);
+                String name = SetType.CREATE_BUILD.getName();
                 if (!settings.containsKey(name)) {
                     Setting setting = new Setting(this, allocateObjectId(), name);
                     setting.setIntValue(Constants.BUILD_ID);
@@ -2001,6 +2001,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     public Table getFirstUserTable() {
         for (Table table : getAllTablesAndViews(false)) {
+            if (DbObjectVersionManager.isDbObjectVersionTable(table.getName()))
+                continue;
             if (table.getCreateSQL() != null) {
                 if (table.isHidden()) {
                     // LOB tables

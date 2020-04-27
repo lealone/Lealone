@@ -30,7 +30,7 @@ import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.RunMode;
-import org.lealone.db.SetTypes;
+import org.lealone.db.SetType;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.sql.PreparedSQLStatement;
@@ -217,7 +217,7 @@ public abstract class SessionBase implements Session {
         if (traceSystem != null || ci.isTraceDisabled())
             return;
         traceSystem = new TraceSystem();
-        String traceLevelFile = ci.getProperty(SetTypes.TRACE_LEVEL_FILE, null);
+        String traceLevelFile = ci.getProperty(SetType.TRACE_LEVEL_FILE.getName(), null);
         if (traceLevelFile != null) {
             int level = Integer.parseInt(traceLevelFile);
             String prefix = getFilePrefix(SysProperties.CLIENT_TRACE_DIRECTORY, ci.getDatabaseName());
@@ -231,7 +231,7 @@ public abstract class SessionBase implements Session {
                 throw DbException.convertIOException(e, prefix);
             }
         }
-        String traceLevelSystemOut = ci.getProperty(SetTypes.TRACE_LEVEL_SYSTEM_OUT, null);
+        String traceLevelSystemOut = ci.getProperty(SetType.TRACE_LEVEL_SYSTEM_OUT.getName(), null);
         if (traceLevelSystemOut != null) {
             int level = Integer.parseInt(traceLevelSystemOut);
             traceSystem.setLevelSystemOut(level);

@@ -140,4 +140,8 @@ public class DbObjectVersionManager {
         }
         return version;
     }
+
+    public static boolean isDbObjectVersionTable(String tableName) {
+        return "db_object_version".equalsIgnoreCase(tableName) || "table_alter_history".equalsIgnoreCase(tableName);
+    }
 }
