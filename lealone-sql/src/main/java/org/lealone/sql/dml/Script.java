@@ -36,8 +36,6 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.SetType;
 import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
-import org.lealone.db.UserAggregate;
-import org.lealone.db.UserDataType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
@@ -53,6 +51,8 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.TriggerObject;
+import org.lealone.db.schema.UserAggregate;
+import org.lealone.db.schema.UserDataType;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
@@ -199,11 +199,19 @@ public class Script extends ScriptBase {
                 }
                 add(schema.getCreateSQL(), false);
             }
-            for (UserDataType datatype : db.getAllUserDataTypes()) {
-                if (drop) {
-                    add(datatype.getDropSQL(), false);
+            for (SchemaObject obj : db.getAllSchemaObjects(DbObjectType.AGGREGATE)) {
+                if (excludeSchema(obj.getSchema())) {
+                    continue;
                 }
-                add(datatype.getCreateSQL(), false);
+                UserAggregate agg = (UserAggregate) obj;
+                add(agg.getCreateSQL(), false);
+            }
+            for (SchemaObject obj : db.getAllSchemaObjects(DbObjectType.USER_DATATYPE)) {
+                if (excludeSchema(obj.getSchema())) {
+                    continue;
+                }
+                UserDataType dt = (UserDataType) obj;
+                add(dt.getCreateSQL(), false);
             }
             for (SchemaObject obj : db.getAllSchemaObjects(DbObjectType.CONSTANT)) {
                 if (excludeSchema(obj.getSchema())) {
@@ -252,12 +260,6 @@ public class Script extends ScriptBase {
                     add(obj.getDropSQL(), false);
                 }
                 add(obj.getCreateSQL(), false);
-            }
-            for (UserAggregate agg : db.getAllAggregates()) {
-                if (drop) {
-                    add(agg.getDropSQL(), false);
-                }
-                add(agg.getCreateSQL(), false);
             }
             for (SchemaObject obj : db.getAllSchemaObjects(DbObjectType.SEQUENCE)) {
                 if (excludeSchema(obj.getSchema())) {

@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.util;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -28,6 +28,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.Constants;
+import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.SimpleResultSet;
 import org.lealone.db.result.SimpleRowSource;

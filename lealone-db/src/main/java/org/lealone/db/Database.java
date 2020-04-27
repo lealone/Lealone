@@ -97,8 +97,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private final HashMap<String, User> users = new HashMap<>();
     private final HashMap<String, Role> roles = new HashMap<>();
     private final HashMap<String, Right> rights = new HashMap<>();
-    private final HashMap<String, UserDataType> userDataTypes = new HashMap<>();
-    private final HashMap<String, UserAggregate> aggregates = new HashMap<>();
     private final HashMap<String, Setting> settings = new HashMap<>();
     private final HashMap<String, Comment> comments = new HashMap<>();
     private final HashMap<String, Schema> schemas = new HashMap<>();
@@ -764,14 +762,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         case SCHEMA:
             result = schemas;
             break;
-        case USER_DATATYPE:
-            result = userDataTypes;
-            break;
         case COMMENT:
             result = comments;
-            break;
-        case AGGREGATE:
-            result = aggregates;
             break;
         case DATABASE:
             result = LealoneDatabase.getInstance().getDatabasesMap();
@@ -800,14 +792,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         case SCHEMA:
             lock = schemas;
             break;
-        case USER_DATATYPE:
-            lock = userDataTypes;
-            break;
         case COMMENT:
             lock = comments;
-            break;
-        case AGGREGATE:
-            lock = aggregates;
             break;
         case DATABASE:
             lock = LealoneDatabase.getInstance().getDatabasesMap();
@@ -926,16 +912,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     /**
-     * Get the user defined aggregate function if it exists, or null if not.
-     *
-     * @param name the name of the user defined aggregate function
-     * @return the aggregate function or null
-     */
-    public UserAggregate findAggregate(String name) {
-        return aggregates.get(name);
-    }
-
-    /**
      * Get the comment for the given database object if one exists, or null if
      * not.
      *
@@ -996,16 +972,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         synchronized (getAuthLock()) {
             return users.get(name);
         }
-    }
-
-    /**
-     * Get the user defined data type if it exists, or null if not.
-     *
-     * @param name the name of the user defined data type
-     * @return the user defined data type or null
-     */
-    public UserDataType findUserDataType(String name) {
-        return userDataTypes.get(name);
     }
 
     /**
@@ -1264,10 +1230,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    public ArrayList<UserAggregate> getAllAggregates() {
-        return new ArrayList<>(aggregates.values());
-    }
-
     public ArrayList<Comment> getAllComments() {
         return new ArrayList<>(comments.values());
     }
@@ -1346,10 +1308,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     public ArrayList<Setting> getAllSettings() {
         return new ArrayList<>(settings.values());
-    }
-
-    public ArrayList<UserDataType> getAllUserDataTypes() {
-        return new ArrayList<>(userDataTypes.values());
     }
 
     public ArrayList<User> getAllUsers() {

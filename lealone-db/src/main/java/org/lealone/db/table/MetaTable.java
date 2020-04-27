@@ -24,15 +24,12 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
 import org.lealone.db.Constants;
-import org.lealone.db.Csv;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.QueryStatisticsData;
 import org.lealone.db.Setting;
-import org.lealone.db.UserAggregate;
-import org.lealone.db.UserDataType;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -51,7 +48,10 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.TriggerObject;
+import org.lealone.db.schema.UserAggregate;
+import org.lealone.db.schema.UserDataType;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.util.Csv;
 import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -848,13 +848,14 @@ public class MetaTable extends Table {
                     );
                 }
             }
-            for (UserAggregate agg : database.getAllAggregates()) {
+            for (SchemaObject schemaObject : database.getAllSchemaObjects(DbObjectType.AGGREGATE)) {
+                UserAggregate agg = (UserAggregate) schemaObject;
                 int returnsResult = DatabaseMetaData.procedureReturnsResult;
                 add(rows,
                         // ALIAS_CATALOG
                         catalog,
                         // ALIAS_SCHEMA
-                        Constants.SCHEMA_MAIN,
+                        schemaObject.getSchema().getName(),
                         // ALIAS_NAME
                         identifier(agg.getName()),
                         // JAVA_CLASS
@@ -1182,13 +1183,14 @@ public class MetaTable extends Table {
             break;
         }
         case DOMAINS: {
-            for (UserDataType dt : database.getAllUserDataTypes()) {
+            for (SchemaObject schemaObject : database.getAllSchemaObjects(DbObjectType.AGGREGATE)) {
+                UserDataType dt = (UserDataType) schemaObject;
                 Column col = dt.getColumn();
                 add(rows,
                         // DOMAIN_CATALOG
                         catalog,
                         // DOMAIN_SCHEMA
-                        Constants.SCHEMA_MAIN,
+                        schemaObject.getSchema().getName(),
                         // DOMAIN_NAME
                         identifier(dt.getName()),
                         // COLUMN_DEFAULT

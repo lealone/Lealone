@@ -15,11 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.db;
+package org.lealone.test.db.schema;
 
 import org.junit.Test;
-import org.lealone.db.UserDataType;
+import org.lealone.db.schema.UserDataType;
 import org.lealone.db.table.Column;
+import org.lealone.test.db.DbObjectTestBase;
 
 public class UserDataTypeTest extends DbObjectTestBase {
 
@@ -27,20 +28,20 @@ public class UserDataTypeTest extends DbObjectTestBase {
     public void run() {
         int id = db.allocateObjectId();
         String udtName = "EMAIL";
-        UserDataType udt = new UserDataType(db, id, udtName);
+        UserDataType udt = new UserDataType(schema, id, udtName);
         assertEquals(id, udt.getId());
 
         Column column = new Column("c", 0);
         udt.setColumn(column);
 
-        db.addDatabaseObject(session, udt);
-        assertNotNull(db.findUserDataType(udtName));
+        db.addSchemaObject(session, udt);
+        assertNotNull(schema.findUserDataType(udtName));
 
         udt.removeChildrenAndResources(session);
-        assertNotNull(db.findUserDataType(udtName)); // 并不会删除UserDataType
+        assertNotNull(schema.findUserDataType(udtName)); // 并不会删除UserDataType
 
-        db.removeDatabaseObject(session, udt);
-        assertNull(db.findUserDataType(udtName));
+        db.removeSchemaObject(session, udt);
+        assertNull(schema.findUserDataType(udtName));
 
         // 测试SQL
         // CREATE DOMAIN/TYPE/DATATYPE都是一样的
@@ -49,24 +50,24 @@ public class UserDataTypeTest extends DbObjectTestBase {
         // VALUE是CREATE DOMAIN语句的默认临时列名
         String sql = "CREATE DOMAIN IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
         executeUpdate(sql);
-        assertNotNull(db.findUserDataType(udtName));
+        assertNotNull(schema.findUserDataType(udtName));
         sql = "DROP DOMAIN " + udtName;
         executeUpdate(sql);
-        assertNull(db.findUserDataType(udtName));
+        assertNull(schema.findUserDataType(udtName));
 
         sql = "CREATE TYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
         executeUpdate(sql);
-        assertNotNull(db.findUserDataType(udtName));
+        assertNotNull(schema.findUserDataType(udtName));
         sql = "DROP TYPE " + udtName;
         executeUpdate(sql);
-        assertNull(db.findUserDataType(udtName));
+        assertNull(schema.findUserDataType(udtName));
 
         sql = "CREATE DATATYPE IF NOT EXISTS " + udtName + " AS VARCHAR(255) CHECK (POSITION('@', VALUE) > 1)";
         executeUpdate(sql);
-        assertNotNull(db.findUserDataType(udtName));
+        assertNotNull(schema.findUserDataType(udtName));
         sql = "DROP DATATYPE " + udtName;
         executeUpdate(sql);
-        assertNull(db.findUserDataType(udtName));
+        assertNull(schema.findUserDataType(udtName));
 
         // 从第二个名称开始的都是隐藏类型的，如下面的int
         // new String[]{"INTEGER", "INT", "MEDIUMINT", "INT4", "SIGNED"}
@@ -79,10 +80,10 @@ public class UserDataTypeTest extends DbObjectTestBase {
         udtName = "int";
         if (db.getSettings().databaseToUpper)
             udtName = udtName.toUpperCase();
-        assertNotNull(db.findUserDataType(udtName));
+        assertNotNull(schema.findUserDataType(udtName));
         sql = "DROP DATATYPE int";
         executeUpdate(sql);
-        assertNull(db.findUserDataType(udtName));
+        assertNull(schema.findUserDataType(udtName));
 
         try {
             udtName = "integer";

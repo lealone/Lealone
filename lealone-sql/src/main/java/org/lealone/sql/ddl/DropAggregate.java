@@ -9,8 +9,9 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.UserAggregate;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.schema.Schema;
+import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.SQLStatement;
 
@@ -21,13 +22,13 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class DropAggregate extends DefinitionStatement {
+public class DropAggregate extends SchemaStatement {
 
     private String name;
     private boolean ifExists;
 
-    public DropAggregate(ServerSession session) {
-        super(session);
+    public DropAggregate(ServerSession session, Schema schema) {
+        super(session, schema);
     }
 
     @Override
@@ -39,14 +40,14 @@ public class DropAggregate extends DefinitionStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        synchronized (db.getLock(DbObjectType.AGGREGATE)) {
-            UserAggregate aggregate = db.findAggregate(name);
+        synchronized (getSchema().getLock(DbObjectType.AGGREGATE)) {
+            UserAggregate aggregate = getSchema().findAggregate(name);
             if (aggregate == null) {
                 if (!ifExists) {
                     throw DbException.get(ErrorCode.AGGREGATE_NOT_FOUND_1, name);
                 }
             } else {
-                db.removeDatabaseObject(session, aggregate);
+                db.removeSchemaObject(session, aggregate);
             }
         }
         return 0;

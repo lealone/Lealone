@@ -90,8 +90,7 @@ public class SetComment extends DefinitionStatement {
             object = db.getUser(objectName);
             break;
         case USER_DATATYPE:
-            schemaName = null;
-            object = db.findUserDataType(objectName);
+            object = db.getSchema(schemaName).findUserDataType(objectName);
             errorCode = ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1;
             break;
         default:

@@ -3,20 +3,21 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.schema;
 
+import org.lealone.db.DbObjectType;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 
 /**
  * Represents a domain (user-defined data type).
  */
-public class UserDataType extends DbObjectBase {
+public class UserDataType extends SchemaObjectBase {
 
     private Column column;
 
-    public UserDataType(Database database, int id, String name) {
-        super(database, id, name);
+    public UserDataType(Schema schema, int id, String name) {
+        super(schema, id, name);
     }
 
     @Override

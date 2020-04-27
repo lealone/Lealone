@@ -3,13 +3,14 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db;
+package org.lealone.db.schema;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.api.Aggregate;
 import org.lealone.db.api.AggregateFunction;
 import org.lealone.db.session.ServerSession;
@@ -18,13 +19,13 @@ import org.lealone.db.value.DataType;
 /**
  * Represents a user-defined aggregate function.
  */
-public class UserAggregate extends DbObjectBase {
+public class UserAggregate extends SchemaObjectBase {
 
     private String className;
     private Class<?> javaClass;
 
-    public UserAggregate(Database db, int id, String name, String className, boolean force) {
-        super(db, id, name);
+    public UserAggregate(Schema schema, int id, String name, String className, boolean force) {
+        super(schema, id, name);
         this.className = className;
         if (!force) {
             getInstance();

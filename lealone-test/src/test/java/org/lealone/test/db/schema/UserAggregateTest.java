@@ -15,15 +15,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.db;
+package org.lealone.test.db.schema;
 
 import java.sql.Connection;
 import java.sql.Types;
 import java.util.ArrayList;
 
 import org.junit.Test;
-import org.lealone.db.UserAggregate;
 import org.lealone.db.api.AggregateFunction;
+import org.lealone.db.schema.UserAggregate;
+import org.lealone.test.db.DbObjectTestBase;
 
 public class UserAggregateTest extends DbObjectTestBase {
     @Test
@@ -31,32 +32,32 @@ public class UserAggregateTest extends DbObjectTestBase {
         int id = db.allocateObjectId();
         String className = MedianString.class.getName();
         String name = "MEDIAN";
-        UserAggregate ua = new UserAggregate(db, id, name, className, true);
+        UserAggregate ua = new UserAggregate(schema, id, name, className, true);
         assertEquals(id, ua.getId());
 
-        db.addDatabaseObject(session, ua);
-        assertNotNull(db.findAggregate(name));
+        db.addSchemaObject(session, ua);
+        assertNotNull(schema.findAggregate(name));
 
         // ua.removeChildrenAndResources(session); //会触发invalidate
 
         String sql = "SELECT " + name + "(X) FROM SYSTEM_RANGE(1, 5)";
         assertEquals(3, getInt(sql, 1));
 
-        db.removeDatabaseObject(session, ua);
-        assertNull(db.findAggregate(name));
+        db.removeSchemaObject(session, ua);
+        assertNull(schema.findAggregate(name));
 
         // 测试SQL
         // -----------------------------------------------
         sql = "CREATE FORCE AGGREGATE IF NOT EXISTS " + name + " FOR \"" + className + "\"";
         executeUpdate(sql);
-        assertNotNull(db.findAggregate(name));
+        assertNotNull(schema.findAggregate(name));
 
         sql = "SELECT " + name + "(X) FROM SYSTEM_RANGE(1, 5)";
         assertEquals(3, getInt(sql, 1));
 
         sql = "DROP AGGREGATE " + name;
         executeUpdate(sql);
-        assertNull(db.findAggregate(name));
+        assertNull(schema.findAggregate(name));
     }
 
     public static class MedianString implements AggregateFunction {

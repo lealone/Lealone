@@ -37,8 +37,12 @@ import org.lealone.storage.memory.MemoryStorageEngine;
  */
 public class Schema extends DbObjectBase {
 
-    private User owner;
-    private final boolean system;
+    /**
+     * The set of returned unique names that are not yet stored. It is used to
+     * avoid returning the same unique name twice when multiple threads
+     * concurrently create objects.
+     */
+    private final HashSet<String> temporaryUniqueNames = new HashSet<>();
 
     private final HashMap<String, Table> tablesAndViews;
     private final HashMap<String, Index> indexes;
@@ -47,14 +51,12 @@ public class Schema extends DbObjectBase {
     private final HashMap<String, Constraint> constraints;
     private final HashMap<String, Constant> constants;
     private final HashMap<String, FunctionAlias> functions;
+    private final HashMap<String, UserAggregate> aggregates;
+    private final HashMap<String, UserDataType> userDataTypes;
     private final HashMap<String, Service> services;
 
-    /**
-     * The set of returned unique names that are not yet stored. It is used to
-     * avoid returning the same unique name twice when multiple threads
-     * concurrently create objects.
-     */
-    private final HashSet<String> temporaryUniqueNames = new HashSet<>();
+    private final boolean system;
+    private User owner;
 
     /**
      * Create a new schema object.
@@ -74,6 +76,8 @@ public class Schema extends DbObjectBase {
         constraints = database.newStringMap();
         constants = database.newStringMap();
         functions = database.newStringMap();
+        aggregates = database.newStringMap();
+        userDataTypes = database.newStringMap();
         services = database.newStringMap();
         this.owner = owner;
         this.system = system;
@@ -149,6 +153,18 @@ public class Schema extends DbObjectBase {
             FunctionAlias obj = (FunctionAlias) functions.values().toArray()[0];
             database.removeSchemaObject(session, obj);
         }
+        while (aggregates != null && aggregates.size() > 0) {
+            UserAggregate obj = (UserAggregate) aggregates.values().toArray()[0];
+            database.removeSchemaObject(session, obj);
+        }
+        while (userDataTypes != null && userDataTypes.size() > 0) {
+            UserDataType obj = (UserDataType) userDataTypes.values().toArray()[0];
+            database.removeSchemaObject(session, obj);
+        }
+        while (services != null && services.size() > 0) {
+            Service obj = (Service) services.values().toArray()[0];
+            database.removeSchemaObject(session, obj);
+        }
         owner = null;
         super.removeChildrenAndResources(session);
     }
@@ -186,6 +202,12 @@ public class Schema extends DbObjectBase {
             break;
         case FUNCTION_ALIAS:
             result = functions;
+            break;
+        case AGGREGATE:
+            result = aggregates;
+            break;
+        case USER_DATATYPE:
+            result = userDataTypes;
             break;
         case SERVICE:
             result = services;
@@ -342,6 +364,30 @@ public class Schema extends DbObjectBase {
      */
     public FunctionAlias findFunction(String functionAlias) {
         return functions.get(functionAlias);
+    }
+
+    /**
+     * Get the user defined aggregate function if it exists, or null if not.
+     *
+     * @param name the name of the user defined aggregate function
+     * @return the aggregate function or null
+     */
+    public UserAggregate findAggregate(String name) {
+        return aggregates.get(name);
+    }
+
+    /**
+     * Get the user defined data type if it exists, or null if not.
+     *
+     * @param name the name of the user defined data type
+     * @return the user defined data type or null
+     */
+    public UserDataType findUserDataType(String name) {
+        return userDataTypes.get(name);
+    }
+
+    public Service findService(String serviceName) {
+        return services.get(serviceName);
     }
 
     /**
@@ -513,6 +559,9 @@ public class Schema extends DbObjectBase {
         all.addAll(getMap(DbObjectType.CONSTRAINT).values());
         all.addAll(getMap(DbObjectType.CONSTANT).values());
         all.addAll(getMap(DbObjectType.FUNCTION_ALIAS).values());
+        all.addAll(getMap(DbObjectType.AGGREGATE).values());
+        all.addAll(getMap(DbObjectType.USER_DATATYPE).values());
+        all.addAll(getMap(DbObjectType.SERVICE).values());
         return all;
     }
 
@@ -563,7 +612,6 @@ public class Schema extends DbObjectBase {
      * @return the created {@link Table} object
      */
     public Table createTable(CreateTableData data) {
-        // synchronized (database) {
         if (!data.temporary || data.globalTemporary) {
             database.lockMeta(data.session);
         }
@@ -593,10 +641,5 @@ public class Schema extends DbObjectBase {
             return new StandardTable(data, engine);
         }
         throw DbException.convert(new NullPointerException("table engine is null"));
-    }
-    // }
-
-    public Service findService(String serviceName) {
-        return services.get(serviceName);
     }
 }

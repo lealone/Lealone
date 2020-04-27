@@ -9,8 +9,9 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.UserDataType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.schema.Schema;
+import org.lealone.db.schema.UserDataType;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
@@ -24,14 +25,14 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class CreateUserDataType extends DefinitionStatement {
+public class CreateUserDataType extends SchemaStatement {
 
     private String typeName;
     private Column column;
     private boolean ifNotExists;
 
-    public CreateUserDataType(ServerSession session) {
-        super(session);
+    public CreateUserDataType(ServerSession session, Schema schema) {
+        super(session, schema);
     }
 
     @Override
@@ -55,8 +56,8 @@ public class CreateUserDataType extends DefinitionStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        synchronized (db.getLock(DbObjectType.USER_DATATYPE)) {
-            if (db.findUserDataType(typeName) != null) {
+        synchronized (getSchema().getLock(DbObjectType.USER_DATATYPE)) {
+            if (getSchema().findUserDataType(typeName) != null) {
                 if (ifNotExists) {
                     return 0;
                 }
@@ -74,9 +75,9 @@ public class CreateUserDataType extends DefinitionStatement {
                 }
             }
             int id = getObjectId();
-            UserDataType type = new UserDataType(db, id, typeName);
+            UserDataType type = new UserDataType(getSchema(), id, typeName);
             type.setColumn(column);
-            db.addDatabaseObject(session, type);
+            db.addSchemaObject(session, type);
         }
         return 0;
     }

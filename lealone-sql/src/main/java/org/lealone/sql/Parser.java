@@ -29,8 +29,6 @@ import org.lealone.db.ProcessingMode;
 import org.lealone.db.RunMode;
 import org.lealone.db.SetType;
 import org.lealone.db.SysProperties;
-import org.lealone.db.UserAggregate;
-import org.lealone.db.UserDataType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
 import org.lealone.db.auth.Right;
@@ -41,6 +39,8 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
+import org.lealone.db.schema.UserAggregate;
+import org.lealone.db.schema.UserDataType;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
@@ -1298,8 +1298,9 @@ public class Parser implements SQLParser {
 
     private DropUserDataType parseDropUserDataType() {
         boolean ifExists = readIfExists(false);
-        DropUserDataType command = new DropUserDataType(session);
-        command.setTypeName(readUniqueIdentifier());
+        String name = readIdentifierWithSchema();
+        DropUserDataType command = new DropUserDataType(session, getSchema());
+        command.setTypeName(name);
         ifExists = readIfExists(ifExists);
         command.setIfExists(ifExists);
         return command;
@@ -1307,8 +1308,9 @@ public class Parser implements SQLParser {
 
     private DropAggregate parseDropAggregate() {
         boolean ifExists = readIfExists(false);
-        DropAggregate command = new DropAggregate(session);
-        command.setName(readUniqueIdentifier());
+        String name = readIdentifierWithSchema();
+        DropAggregate command = new DropAggregate(session, getSchema());
+        command.setName(name);
         ifExists = readIfExists(ifExists);
         command.setIfExists(ifExists);
         return command;
@@ -2247,6 +2249,10 @@ public class Parser implements SQLParser {
 
     private Expression readFunction(Schema schema, String name) {
         if (schema != null) {
+            UserAggregate aggregate = schema.findAggregate(name);
+            if (aggregate != null) {
+                return readJavaAggregate(aggregate);
+            }
             return readJavaFunction(schema, name);
         }
         int agg = getAggregateType(name);
@@ -2255,7 +2261,7 @@ public class Parser implements SQLParser {
         }
         Function function = Function.getFunction(database, name);
         if (function == null) {
-            UserAggregate aggregate = database.findAggregate(name);
+            UserAggregate aggregate = getSchema(session.getCurrentSchemaName()).findAggregate(name);
             if (aggregate != null) {
                 return readJavaAggregate(aggregate);
             }
@@ -3827,7 +3833,7 @@ public class Parser implements SQLParser {
         if (!identifiersToUpper) {
             original = StringUtils.toUpperEnglish(original);
         }
-        UserDataType userDataType = database.findUserDataType(original);
+        UserDataType userDataType = getSchema().findUserDataType(original);
         if (userDataType != null) {
             templateColumn = userDataType.getColumn();
             dataType = DataType.getDataType(templateColumn.getType());
@@ -4422,14 +4428,13 @@ public class Parser implements SQLParser {
 
     private CreateAggregate parseCreateAggregate(boolean force) {
         boolean ifNotExists = readIfNotExists();
-        CreateAggregate command = new CreateAggregate(session);
-        command.setForce(force);
         String name = readIdentifierWithSchema();
+        CreateAggregate command = new CreateAggregate(session, getSchema());
+        command.setForce(force);
         if (isKeyword(name) || Function.getFunction(database, name) != null || getAggregateType(name) >= 0) {
             throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, name);
         }
         command.setName(name);
-        command.setSchema(getSchema());
         command.setIfNotExists(ifNotExists);
         read("FOR");
         command.setJavaClassName(readUniqueIdentifier());
@@ -4438,8 +4443,9 @@ public class Parser implements SQLParser {
 
     private CreateUserDataType parseCreateUserDataType() {
         boolean ifNotExists = readIfNotExists();
-        CreateUserDataType command = new CreateUserDataType(session);
-        command.setTypeName(readUniqueIdentifier());
+        String name = readIdentifierWithSchema();
+        CreateUserDataType command = new CreateUserDataType(session, getSchema());
+        command.setTypeName(name);
         read("AS");
         Column col = parseColumnForTable("VALUE", true);
         if (readIf("CHECK")) {

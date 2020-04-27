@@ -9,9 +9,9 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.UserAggregate;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
+import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.SQLStatement;
 
@@ -22,43 +22,20 @@ import org.lealone.sql.SQLStatement;
  * @author H2 Group
  * @author zhh
  */
-public class CreateAggregate extends DefinitionStatement {
+public class CreateAggregate extends SchemaStatement {
 
-    private Schema schema;
     private String name;
     private String javaClassName;
     private boolean ifNotExists;
     private boolean force;
 
-    public CreateAggregate(ServerSession session) {
-        super(session);
+    public CreateAggregate(ServerSession session, Schema schema) {
+        super(session, schema);
     }
 
     @Override
     public int getType() {
         return SQLStatement.CREATE_AGGREGATE;
-    }
-
-    @Override
-    public int update() {
-        session.getUser().checkAdmin();
-        Database db = session.getDatabase();
-        synchronized (db.getLock(DbObjectType.AGGREGATE)) {
-            if (db.findAggregate(name) != null || schema.findFunction(name) != null) {
-                if (!ifNotExists) {
-                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, name);
-                }
-            } else {
-                int id = getObjectId();
-                UserAggregate aggregate = new UserAggregate(db, id, name, javaClassName, force);
-                db.addDatabaseObject(session, aggregate);
-            }
-        }
-        return 0;
-    }
-
-    public void setSchema(Schema schema) {
-        this.schema = schema;
     }
 
     public void setName(String name) {
@@ -77,4 +54,21 @@ public class CreateAggregate extends DefinitionStatement {
         this.force = force;
     }
 
+    @Override
+    public int update() {
+        session.getUser().checkAdmin();
+        Database db = session.getDatabase();
+        synchronized (getSchema().getLock(DbObjectType.AGGREGATE)) {
+            if (getSchema().findAggregate(name) != null || getSchema().findFunction(name) != null) {
+                if (!ifNotExists) {
+                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, name);
+                }
+            } else {
+                int id = getObjectId();
+                UserAggregate aggregate = new UserAggregate(getSchema(), id, name, javaClassName, force);
+                db.addSchemaObject(session, aggregate);
+            }
+        }
+        return 0;
+    }
 }
