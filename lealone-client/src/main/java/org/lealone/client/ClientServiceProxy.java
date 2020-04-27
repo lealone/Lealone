@@ -24,8 +24,9 @@ import java.sql.SQLException;
 
 public class ClientServiceProxy {
 
-    private static final String sqlNoReturnValue = "{call EXECUTE_SERVICE_NO_RETURN_VALUE(?,?)}";
-    private static final String sqlWithReturnValue = "{? = call EXECUTE_SERVICE_WITH_RETURN_VALUE(?,?)}";
+    // 不需要加{}，避免做字符串翻译操作
+    private static final String sqlNoReturnValue = "call EXECUTE_SERVICE_NO_RETURN_VALUE(?,?)";
+    private static final String sqlWithReturnValue = "? = call EXECUTE_SERVICE_WITH_RETURN_VALUE(?,?)";
 
     public static String executeWithReturnValue(String url, String serviceName, String json) {
         try (Connection conn = DriverManager.getConnection(url);
