@@ -39,6 +39,9 @@ import org.lealone.sql.optimizer.TableFilter;
 
 /**
  * Represents a union SELECT statement.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class SelectUnion extends Query implements ISelectUnion {
 

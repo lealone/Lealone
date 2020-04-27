@@ -32,6 +32,9 @@ import org.lealone.sql.expression.Parameter;
 /**
  * This class represents the statement
  * MERGE
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class Merge extends ManipulationStatement {
 

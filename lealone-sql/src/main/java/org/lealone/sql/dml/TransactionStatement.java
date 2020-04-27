@@ -12,6 +12,9 @@ import org.lealone.sql.SQLStatement;
 
 /**
  * Represents a transactional statement.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class TransactionStatement extends ManipulationStatement {
 
