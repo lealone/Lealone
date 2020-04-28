@@ -5,15 +5,10 @@
  */
 package org.lealone.db.schema;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.Aggregate;
-import org.lealone.db.api.AggregateFunction;
-import org.lealone.db.value.DataType;
 
 /**
  * Represents a user-defined aggregate function.
@@ -47,16 +42,8 @@ public class UserAggregate extends SchemaObjectBase {
         if (javaClass == null) {
             javaClass = Utils.loadUserClass(className);
         }
-        Object obj;
         try {
-            obj = javaClass.newInstance();
-            Aggregate agg;
-            if (obj instanceof Aggregate) {
-                agg = (Aggregate) obj;
-            } else {
-                agg = new AggregateWrapper((AggregateFunction) obj);
-            }
-            return agg;
+            return (Aggregate) javaClass.newInstance();
         } catch (Exception e) {
             throw DbException.convert(e);
         }
@@ -75,41 +62,5 @@ public class UserAggregate extends SchemaObjectBase {
     @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("AGGREGATE");
-    }
-
-    /**
-     * Wrap {@link AggregateFunction} in order to behave as
-     * {@link org.lealone.db.api.Aggregate}
-     **/
-    private static class AggregateWrapper implements Aggregate {
-        private final AggregateFunction aggregateFunction;
-
-        AggregateWrapper(AggregateFunction aggregateFunction) {
-            this.aggregateFunction = aggregateFunction;
-        }
-
-        @Override
-        public void init(Connection conn) throws SQLException {
-            aggregateFunction.init(conn);
-        }
-
-        @Override
-        public int getInternalType(int[] inputTypes) throws SQLException {
-            int[] sqlTypes = new int[inputTypes.length];
-            for (int i = 0; i < inputTypes.length; i++) {
-                sqlTypes[i] = DataType.convertTypeToSQLType(inputTypes[i]);
-            }
-            return DataType.convertSQLTypeToValueType(aggregateFunction.getType(sqlTypes));
-        }
-
-        @Override
-        public void add(Object value) throws SQLException {
-            aggregateFunction.add(value);
-        }
-
-        @Override
-        public Object getResult() throws SQLException {
-            return aggregateFunction.getResult();
-        }
     }
 }

@@ -18,12 +18,12 @@
 package org.lealone.test.db.schema;
 
 import java.sql.Connection;
-import java.sql.Types;
 import java.util.ArrayList;
 
 import org.junit.Test;
-import org.lealone.db.api.AggregateFunction;
+import org.lealone.db.api.Aggregate;
 import org.lealone.db.schema.UserAggregate;
+import org.lealone.db.value.Value;
 import org.lealone.test.db.DbObjectTestBase;
 
 public class UserAggregateTest extends DbObjectTestBase {
@@ -60,7 +60,7 @@ public class UserAggregateTest extends DbObjectTestBase {
         assertNull(schema.findAggregate(name));
     }
 
-    public static class MedianString implements AggregateFunction {
+    public static class MedianString implements Aggregate {
 
         private final ArrayList<String> list = new ArrayList<>();
 
@@ -75,8 +75,8 @@ public class UserAggregateTest extends DbObjectTestBase {
         }
 
         @Override
-        public int getType(int[] inputType) {
-            return Types.VARCHAR;
+        public int getInternalType(int[] inputType) {
+            return Value.STRING;
         }
 
         @Override
