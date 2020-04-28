@@ -219,10 +219,6 @@ public class Schema extends DbObjectBase {
      *
      * @param obj the object to add
      */
-    public void add(SchemaObject obj) {
-        add(null, obj);
-    }
-
     // 执行DDL语句时session不为null，需要在meta表中增加一条对应的记录
     public void add(ServerSession session, SchemaObject obj) {
         if (SysProperties.CHECK && obj.getSchema() != this) {
@@ -248,28 +244,26 @@ public class Schema extends DbObjectBase {
      *
      * @param obj the object to remove
      */
-    public void remove(SchemaObject obj) {
-        remove(null, obj);
-    }
-
     public void remove(ServerSession session, SchemaObject obj) {
         String objName = obj.getName();
         DbObjectType type = obj.getType();
         synchronized (getLock(type)) {
-            HashMap<String, SchemaObject> map = getMap(type);
-            if (SysProperties.CHECK && !map.containsKey(objName)) {
-                DbException.throwInternalError("not found: " + objName);
-            }
-            if (session != null) {
-                if (removeLocalTempSchemaObject(session, obj)) {
-                    return;
+            if (session != null && removeLocalTempSchemaObject(session, obj)) {
+                freeUniqueName(objName);
+                obj.invalidate();
+            } else {
+                HashMap<String, SchemaObject> map = getMap(type);
+                if (SysProperties.CHECK && !map.containsKey(objName)) {
+                    DbException.throwInternalError("not found: " + objName);
                 }
-                obj.removeChildrenAndResources(session);
-                database.removeMeta(session, obj);
+                if (session != null) {
+                    obj.removeChildrenAndResources(session);
+                    database.removeMeta(session, obj);
+                }
+                map.remove(objName);
+                freeUniqueName(objName);
+                obj.invalidate();
             }
-            map.remove(objName);
-            freeUniqueName(objName);
-            obj.invalidate();
         }
     }
 

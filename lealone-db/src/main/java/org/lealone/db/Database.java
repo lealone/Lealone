@@ -684,7 +684,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             if (!metaTablesInitialized) {
                 for (int type = 0, count = MetaTable.getMetaTableTypeCount(); type < count; type++) {
                     MetaTable m = new MetaTable(infoSchema, -1 - type, type);
-                    infoSchema.add(m);
+                    infoSchema.add(null, m);
                 }
                 metaTablesInitialized = true;
             }

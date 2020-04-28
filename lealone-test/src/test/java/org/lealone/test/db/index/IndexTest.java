@@ -36,11 +36,27 @@ public class IndexTest extends DbObjectTestBase {
         executeUpdate("DROP TABLE IF EXISTS CreateIndexTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS CreateIndexTest (f1 int NOT NULL, f2 int, f3 int)");
 
-        Table table = schema.findTableOrView(session, "CreateIndexTest");
+        executeUpdate("CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TestTempTable1 (f1 int NOT NULL, f2 int, f3 int)");
+        executeUpdate("CREATE INDEX IF NOT EXISTS TestTempTableIndex1 ON TestTempTable1(f1)");
+
+        Table table = schema.findTableOrView(session, "TestTempTable1");
+        assertNotNull(table);
+        Index index = schema.findIndex(session, "TestTempTableIndex1");
+        assertNotNull(index);
+
+        executeUpdate("DROP INDEX IF EXISTS TestTempTableIndex1");
+        executeUpdate("DROP TABLE IF  EXISTS TestTempTable1");
+
+        table = schema.findTableOrView(session, "TestTempTable1");
+        assertNull(table);
+        index = schema.findIndex(session, "TestTempTableIndex1");
+        assertNull(index);
+
+        table = schema.findTableOrView(session, "CreateIndexTest");
         assertNotNull(table);
 
         executeUpdate("CREATE PRIMARY KEY HASH ON CreateIndexTest(f1)");
-        Index index = table.findPrimaryKey();
+        index = table.findPrimaryKey();
         assertNotNull(index);
         String indexName = index.getName();
         assertTrue(indexName.startsWith(Constants.PREFIX_PRIMARY_KEY));

@@ -41,7 +41,7 @@ public class DbObjectTestBase extends UnitTestBase {
     protected String sql;
 
     public DbObjectTestBase() {
-        // setInMemory(true);
+        setInMemory(true);
         setEmbedded(true);
         addConnectionParameter("DATABASE_TO_UPPER", "false"); // 不转成大写
         ConnectionInfo ci = new ConnectionInfo(getURL(DB_NAME));
