@@ -554,7 +554,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         TableFilter tf = getTableFilter();
         if (tf != null)
             tf.setPageKeys(pageKeys);
-        return Future.succeededFuture(query(maxRows));
+
+        // 以同步的方式运行
+        YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
+        yieldable.setPageKeys(pageKeys);
+        yieldable.run();
+        return Future.succeededFuture(yieldable.getResult());
     }
 
     @Override

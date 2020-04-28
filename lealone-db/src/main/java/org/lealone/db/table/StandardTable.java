@@ -761,9 +761,7 @@ public class StandardTable extends Table {
             }
         }
         primaryIndex.remove(session);
-        database.removeMeta(session, getId());
         close(session);
-        invalidate();
     }
 
     @Override

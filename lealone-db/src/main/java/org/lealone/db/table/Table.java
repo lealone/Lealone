@@ -508,7 +508,6 @@ public abstract class Table extends SchemaObjectBase {
                 database.removeDatabaseObject(session, right);
             }
         }
-        database.removeMeta(session, getId());
         // must delete sequences later (in case there is a power failure
         // before removing the table object)
         while (sequences != null && sequences.size() > 0) {

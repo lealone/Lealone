@@ -52,6 +52,8 @@ public class SchemaTest extends DbObjectTestBase {
         assertNull(db.findSchema(schemaName));
         assertNull(findMeta(id));
 
+        session.commit();
+
         // 测试SQL
         // -----------------------------------------------
         executeUpdate("CREATE SCHEMA IF NOT EXISTS " + schemaName + " AUTHORIZATION " + userName);
@@ -105,7 +107,13 @@ public class SchemaTest extends DbObjectTestBase {
     }
 
     void drop() {
+        schema = db.findSchema(schemaName);
+        // 增加一个CONSTANT，可以看看是否同时删了
+        String constantName = "ConstantTest";
+        executeUpdate("CREATE CONSTANT IF NOT EXISTS " + schemaName + ".ConstantTest VALUE 10");
+        assertNotNull(schema.findConstant(constantName));
         executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
+        assertNull(schema.findConstant(constantName));
         schema = db.findSchema(schemaName);
         assertNull(schema);
         assertNull(findMeta(id));

@@ -748,7 +748,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public void removeMeta(ServerSession session, SchemaObject obj) {
         if (!starting) {
             Table t = getDependentTable(obj, null);
-            if (t != null) {
+            if (t != null && t != obj) {
                 throw DbException.get(ErrorCode.CANNOT_DROP_2, obj.getSQL(), t.getSQL());
             }
         }
@@ -879,10 +879,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param obj the object to add
      */
     public void addDatabaseObject(ServerSession session, DbObject obj) {
-        int id = obj.getId();
-        if (id > 0 && !starting) {
-            checkWritingAllowed();
-        }
         DbObjectType type = obj.getType();
         synchronized (getLock(type)) {
             Map<String, DbObject> map = getMap(type);
