@@ -30,8 +30,8 @@ public class CreateUser extends DefinitionStatement implements AuthStatement {
     private Expression password;
     private Expression salt;
     private Expression hash;
-    private boolean ifNotExists;
     private String comment;
+    private boolean ifNotExists;
 
     public CreateUser(ServerSession session) {
         super(session);
@@ -42,12 +42,12 @@ public class CreateUser extends DefinitionStatement implements AuthStatement {
         return SQLStatement.CREATE_USER;
     }
 
-    public void setIfNotExists(boolean ifNotExists) {
-        this.ifNotExists = ifNotExists;
-    }
-
     public void setUserName(String userName) {
         this.userName = userName;
+    }
+
+    public void setAdmin(boolean b) {
+        admin = b;
     }
 
     public void setPassword(Expression password) {
@@ -62,12 +62,12 @@ public class CreateUser extends DefinitionStatement implements AuthStatement {
         hash = e;
     }
 
-    public void setAdmin(boolean b) {
-        admin = b;
-    }
-
     public void setComment(String comment) {
         this.comment = comment;
+    }
+
+    public void setIfNotExists(boolean ifNotExists) {
+        this.ifNotExists = ifNotExists;
     }
 
     @Override
@@ -130,5 +130,4 @@ public class CreateUser extends DefinitionStatement implements AuthStatement {
         byte[] userPasswordHash = ConnectionInfo.createUserPasswordHash(user.getName(), passwordChars);
         user.setUserPasswordHash(userPasswordHash);
     }
-
 }

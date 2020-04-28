@@ -34,6 +34,9 @@ import org.lealone.storage.memory.MemoryStorageEngine;
 /**
  * A schema as created by the SQL statement
  * CREATE SCHEMA
+ *
+ * @author H2 Group
+ * @author zhh
  */
 public class Schema extends DbObjectBase {
 
@@ -134,7 +137,7 @@ public class Schema extends DbObjectBase {
                     // in one go underneath us.
                     if (obj.getName() != null) {
                         if (database.getDependentTable(obj, obj) == null) {
-                            database.removeSchemaObject(session, obj);
+                            obj.getSchema().remove(session, obj);
                         } else {
                             runLoopAgain = true;
                         }
@@ -157,7 +160,7 @@ public class Schema extends DbObjectBase {
     private void removeSchemaObjects(ServerSession session, HashMap<String, ? extends SchemaObject> objs) {
         while (objs != null && objs.size() > 0) {
             SchemaObject obj = (SchemaObject) objs.values().toArray()[0];
-            database.removeSchemaObject(session, obj);
+            remove(session, obj);
         }
     }
 
@@ -207,12 +210,15 @@ public class Schema extends DbObjectBase {
 
     /**
      * Add an object to this schema.
-     * This method must not be called within CreateSchemaObject;
-     * use Database.addSchemaObject() instead
      *
      * @param obj the object to add
      */
     public void add(SchemaObject obj) {
+        add(null, obj);
+    }
+
+    // 执行DDL语句时session不为null，需要在meta表中增加一条对应的记录
+    public void add(ServerSession session, SchemaObject obj) {
         if (SysProperties.CHECK && obj.getSchema() != this) {
             DbException.throwInternalError("wrong schema");
         }
@@ -223,6 +229,9 @@ public class Schema extends DbObjectBase {
             if (SysProperties.CHECK && map.get(name) != null) {
                 DbException.throwInternalError("object already exists: " + name);
             }
+            // 先执行addMeta再执行put，因为addMeta可能会失败
+            if (session != null)
+                database.addMeta(session, obj);
             map.put(name, obj);
             freeUniqueName(name);
         }
@@ -234,6 +243,10 @@ public class Schema extends DbObjectBase {
      * @param obj the object to remove
      */
     public void remove(SchemaObject obj) {
+        remove(null, obj);
+    }
+
+    public void remove(ServerSession session, SchemaObject obj) {
         String objName = obj.getName();
         DbObjectType type = obj.getType();
         synchronized (getLock(type)) {
@@ -241,18 +254,53 @@ public class Schema extends DbObjectBase {
             if (SysProperties.CHECK && !map.containsKey(objName)) {
                 DbException.throwInternalError("not found: " + objName);
             }
+            if (session != null) {
+                if (removeLocalTempSchemaObject(session, obj)) {
+                    return;
+                }
+                obj.removeChildrenAndResources(session);
+                database.removeMeta(session, obj);
+            }
             map.remove(objName);
             freeUniqueName(objName);
+            obj.invalidate();
         }
     }
 
+    private boolean removeLocalTempSchemaObject(ServerSession session, SchemaObject obj) {
+        DbObjectType type = obj.getType();
+        if (type == DbObjectType.TABLE_OR_VIEW) {
+            Table table = (Table) obj;
+            if (table.isTemporary() && !table.isGlobalTemporary()) {
+                session.removeLocalTempTable(table);
+                return true;
+            }
+        } else if (type == DbObjectType.INDEX) {
+            Index index = (Index) obj;
+            Table table = index.getTable();
+            if (table.isTemporary() && !table.isGlobalTemporary()) {
+                session.removeLocalTempTableIndex(index);
+                return true;
+            }
+        } else if (type == DbObjectType.CONSTRAINT) {
+            Constraint constraint = (Constraint) obj;
+            Table table = constraint.getTable();
+            if (table.isTemporary() && !table.isGlobalTemporary()) {
+                session.removeLocalTempTableConstraint(constraint);
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
-     * Rename an object.
+     * Rename a schema object.
      *
+     * @param session the session
      * @param obj the object to rename
      * @param newName the new name
      */
-    public void rename(SchemaObject obj, String newName) {
+    public void rename(ServerSession session, SchemaObject obj, String newName) {
         DbObjectType type = obj.getType();
         synchronized (getLock(type)) {
             HashMap<String, SchemaObject> map = getMap(type);
@@ -265,6 +313,8 @@ public class Schema extends DbObjectBase {
                     DbException.throwInternalError("object already exists: " + newName);
                 }
             }
+            if (session != null)
+                database.updateMetaAndFirstLevelChildren(session, obj);
             obj.checkRename();
             map.remove(oldName);
             freeUniqueName(oldName);

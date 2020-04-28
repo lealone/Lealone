@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
@@ -56,11 +55,34 @@ public class CreateSequence extends SchemaStatement {
         this.cycle = cycle;
     }
 
+    public void setMinValue(Expression minValue) {
+        this.minValue = minValue;
+    }
+
+    public void setMaxValue(Expression maxValue) {
+        this.maxValue = maxValue;
+    }
+
+    public void setStartWith(Expression start) {
+        this.start = start;
+    }
+
+    public void setIncrement(Expression increment) {
+        this.increment = increment;
+    }
+
+    public void setCacheSize(Expression cacheSize) {
+        this.cacheSize = cacheSize;
+    }
+
+    public void setBelongsToTable(boolean belongsToTable) {
+        this.belongsToTable = belongsToTable;
+    }
+
     @Override
     public int update() {
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.SEQUENCE)) {
-            if (getSchema().findSequence(sequenceName) != null) {
+        synchronized (schema.getLock(DbObjectType.SEQUENCE)) {
+            if (schema.findSequence(sequenceName) != null) {
                 if (ifNotExists) {
                     return 0;
                 }
@@ -72,42 +94,21 @@ public class CreateSequence extends SchemaStatement {
             Long cache = getLong(cacheSize);
             Long min = getLong(minValue);
             Long max = getLong(maxValue);
-            Sequence sequence = new Sequence(getSchema(), id, sequenceName, startValue, inc, cache, min, max, cycle,
+            Sequence sequence = new Sequence(schema, id, sequenceName, startValue, inc, cache, min, max, cycle,
                     belongsToTable);
-            db.addSchemaObject(session, sequence);
+            schema.add(session, sequence);
         }
         return 0;
     }
 
     private Long getLong(Expression expr) {
+        return getLong(session, expr);
+    }
+
+    static Long getLong(ServerSession session, Expression expr) {
         if (expr == null) {
             return null;
         }
         return expr.optimize(session).getValue(session).getLong();
     }
-
-    public void setStartWith(Expression start) {
-        this.start = start;
-    }
-
-    public void setIncrement(Expression increment) {
-        this.increment = increment;
-    }
-
-    public void setMinValue(Expression minValue) {
-        this.minValue = minValue;
-    }
-
-    public void setMaxValue(Expression maxValue) {
-        this.maxValue = maxValue;
-    }
-
-    public void setBelongsToTable(boolean belongsToTable) {
-        this.belongsToTable = belongsToTable;
-    }
-
-    public void setCacheSize(Expression cacheSize) {
-        this.cacheSize = cacheSize;
-    }
-
 }

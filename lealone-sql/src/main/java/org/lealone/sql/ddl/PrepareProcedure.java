@@ -32,6 +32,19 @@ public class PrepareProcedure extends DefinitionStatement {
         return SQLStatement.PREPARE;
     }
 
+    public void setProcedureName(String name) {
+        this.procedureName = name;
+    }
+
+    public void setPrepared(StatementBase prep) {
+        this.prepared = prep;
+    }
+
+    @Override
+    public ArrayList<Parameter> getParameters() {
+        return new ArrayList<>(0);
+    }
+
     @Override
     public void checkParameters() {
         // no not check parameters
@@ -46,18 +59,4 @@ public class PrepareProcedure extends DefinitionStatement {
         session.addProcedure(proc);
         return 0;
     }
-
-    public void setProcedureName(String name) {
-        this.procedureName = name;
-    }
-
-    public void setPrepared(StatementBase prep) {
-        this.prepared = prep;
-    }
-
-    @Override
-    public ArrayList<Parameter> getParameters() {
-        return new ArrayList<>(0);
-    }
-
 }

@@ -75,5 +75,4 @@ public class AlterTableRenameColumn extends SchemaStatement {
         }
         return 0;
     }
-
 }

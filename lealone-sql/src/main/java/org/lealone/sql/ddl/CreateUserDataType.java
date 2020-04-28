@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
@@ -55,9 +54,8 @@ public class CreateUserDataType extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.USER_DATATYPE)) {
-            if (getSchema().findUserDataType(typeName) != null) {
+        synchronized (schema.getLock(DbObjectType.USER_DATATYPE)) {
+            if (schema.findUserDataType(typeName) != null) {
                 if (ifNotExists) {
                     return 0;
                 }
@@ -75,11 +73,10 @@ public class CreateUserDataType extends SchemaStatement {
                 }
             }
             int id = getObjectId();
-            UserDataType type = new UserDataType(getSchema(), id, typeName);
+            UserDataType type = new UserDataType(schema, id, typeName);
             type.setColumn(column);
-            db.addSchemaObject(session, type);
+            schema.add(session, type);
         }
         return 0;
     }
-
 }

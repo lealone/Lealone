@@ -71,5 +71,4 @@ public class CreateSchema extends DefinitionStatement {
         }
         return 0;
     }
-
 }

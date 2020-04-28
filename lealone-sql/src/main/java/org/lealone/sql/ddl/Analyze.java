@@ -39,6 +39,15 @@ public class Analyze extends DefinitionStatement {
     }
 
     @Override
+    public int getType() {
+        return SQLStatement.ANALYZE;
+    }
+
+    public void setTop(int top) {
+        this.sampleRows = top;
+    }
+
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
@@ -136,14 +145,4 @@ public class Analyze extends DefinitionStatement {
             }
         }
     }
-
-    public void setTop(int top) {
-        this.sampleRows = top;
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.ANALYZE;
-    }
-
 }

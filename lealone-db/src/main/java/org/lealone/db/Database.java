@@ -40,7 +40,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
-import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
@@ -706,17 +705,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     /**
-     * Verify the meta table is locked.
-     *
-     * @param session the session
-     */
-    public void verifyMetaLocked(ServerSession session) {
-        if (!lockMeta(session) && lockMode != 0) {
-            throw DbException.throwInternalError();
-        }
-    }
-
-    /**
      * Lock the metadata table for updates.
      *
      * @param session the session
@@ -741,6 +729,86 @@ public class Database implements DataHandler, DbObject, IDatabase {
         Cursor cursor = getMetaCursor(session, id);
         cursor.next();
         return cursor.getSearchRow();
+    }
+
+    public void addMeta(ServerSession session, DbObject obj) {
+        int id = obj.getId();
+        if (id > 0 && !starting && !obj.isTemporary()) {
+            checkWritingAllowed();
+            Row r = meta.getTemplateRow();
+            MetaRecord rec = new MetaRecord(obj);
+            rec.setRecord(r);
+            meta.addRow(session, r);
+            synchronized (objectIds) {
+                objectIds.set(id);
+            }
+        }
+    }
+
+    public void removeMeta(ServerSession session, SchemaObject obj) {
+        if (!starting) {
+            Table t = getDependentTable(obj, null);
+            if (t != null) {
+                throw DbException.get(ErrorCode.CANNOT_DROP_2, obj.getSQL(), t.getSQL());
+            }
+        }
+        removeMeta(session, obj.getId());
+        Comment comment = findComment(obj);
+        if (comment != null) {
+            removeDatabaseObject(session, comment);
+        }
+    }
+
+    /**
+     * Remove the given object from the meta data.
+     *
+     * @param session the session
+     * @param id the id of the object to remove
+     */
+    public void removeMeta(ServerSession session, int id) {
+        if (id > 0 && !starting) {
+            checkWritingAllowed();
+            SearchRow r = meta.getTemplateSimpleRow(false);
+            r.setValue(0, ValueInt.get(id));
+            Cursor cursor = metaIdIndex.find(session, r, r);
+            if (cursor.next()) {
+                Row found = cursor.get();
+                meta.removeRow(session, found);
+                synchronized (objectIds) {
+                    objectIds.clear(id);
+                }
+            }
+        }
+    }
+
+    public void updateMetaAndFirstLevelChildren(ServerSession session, DbObject obj) {
+        checkWritingAllowed();
+        List<DbObject> list = obj.getChildren();
+        Comment comment = findComment(obj);
+        if (comment != null) {
+            DbException.throwInternalError();
+        }
+        updateMeta(session, obj);
+        // remember that this scans only one level deep!
+        if (list != null) {
+            for (DbObject o : list) {
+                if (o.getCreateSQL() != null) {
+                    updateMeta(session, o);
+                }
+            }
+        }
+    }
+
+    /**
+     * Update an object in the system table.
+     *
+     * @param session the session
+     * @param obj the database object
+     */
+    public void updateMeta(ServerSession session, DbObject obj) {
+        int id = obj.getId();
+        removeMeta(session, id);
+        addMeta(session, obj);
     }
 
     @SuppressWarnings("unchecked")
@@ -805,89 +873,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     /**
-     * Add a schema object to the database.
-     *
-     * @param session the session
-     * @param obj the object to add
-     */
-    public void addSchemaObject(ServerSession session, SchemaObject obj) {
-        int id = obj.getId();
-        if (id > 0 && !starting) {
-            checkWritingAllowed();
-        }
-        // lockMeta(session);
-        obj.getSchema().add(obj);
-        addMeta(session, obj);
-    }
-
-    private void addMeta(ServerSession session, DbObject obj) {
-        int id = obj.getId();
-        if (id > 0 && !starting && !obj.isTemporary()) {
-            Row r = meta.getTemplateRow();
-            MetaRecord rec = new MetaRecord(obj);
-            rec.setRecord(r);
-            synchronized (objectIds) {
-                objectIds.set(id);
-            }
-            // if (SysProperties.CHECK) {
-            // verifyMetaLocked(session);
-            // }
-            meta.addRow(session, r);
-        }
-    }
-
-    private void updateMetaAndFirstLevelChildren(ServerSession session, DbObject obj) {
-        List<DbObject> list = obj.getChildren();
-        Comment comment = findComment(obj);
-        if (comment != null) {
-            DbException.throwInternalError();
-        }
-        updateMeta(session, obj);
-        // remember that this scans only one level deep!
-        if (list != null) {
-            for (DbObject o : list) {
-                if (o.getCreateSQL() != null) {
-                    updateMeta(session, o);
-                }
-            }
-        }
-    }
-
-    /**
-     * Remove the given object from the meta data.
-     *
-     * @param session the session
-     * @param id the id of the object to remove
-     */
-    public void removeMeta(ServerSession session, int id) {
-        if (id > 0 && !starting) {
-            SearchRow r = meta.getTemplateSimpleRow(false);
-            r.setValue(0, ValueInt.get(id));
-            Cursor cursor = metaIdIndex.find(session, r, r);
-            if (cursor.next()) {
-                Row found = cursor.get();
-                meta.removeRow(session, found);
-                synchronized (objectIds) {
-                    objectIds.clear(id);
-                }
-            }
-        }
-    }
-
-    /**
-     * Update an object in the system table.
-     *
-     * @param session the session
-     * @param obj the database object
-     */
-    public void updateMeta(ServerSession session, DbObject obj) {
-        // lockMeta(session);
-        int id = obj.getId();
-        removeMeta(session, id);
-        addMeta(session, obj);
-    }
-
-    /**
      * Add an object to the database.
      *
      * @param session the session
@@ -909,6 +894,64 @@ public class Database implements DataHandler, DbObject, IDatabase {
             addMeta(session, obj);
             map.put(name, obj);
         }
+    }
+
+    /**
+     * Remove the object from the database.
+     *
+     * @param session the session
+     * @param obj the object to remove
+     */
+    public void removeDatabaseObject(ServerSession session, DbObject obj) {
+        checkWritingAllowed();
+        String objName = obj.getName();
+        DbObjectType type = obj.getType();
+        synchronized (getLock(type)) {
+            Map<String, DbObject> map = getMap(type);
+            if (SysProperties.CHECK && !map.containsKey(objName)) {
+                DbException.throwInternalError("not found: " + objName);
+            }
+            Comment comment = findComment(obj);
+            // lockMeta(session);
+            if (comment != null) {
+                removeDatabaseObject(session, comment);
+            }
+            int id = obj.getId();
+            obj.removeChildrenAndResources(session);
+            map.remove(objName);
+            removeMeta(session, id);
+        }
+    }
+
+    /**
+     * Rename a database object.
+     *
+     * @param session the session
+     * @param obj the object
+     * @param newName the new name
+     */
+    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName) {
+        checkWritingAllowed();
+        DbObjectType type = obj.getType();
+        synchronized (getLock(type)) {
+            Map<String, DbObject> map = getMap(type);
+            String oldName = obj.getName();
+            if (SysProperties.CHECK) {
+                if (!map.containsKey(oldName)) {
+                    DbException.throwInternalError("not found: " + oldName);
+                }
+                if (oldName.equals(newName) || map.containsKey(newName)) {
+                    DbException.throwInternalError("object already exists: " + newName);
+                }
+            }
+            obj.checkRename();
+            int id = obj.getId();
+            removeMeta(session, id);
+            map.remove(oldName);
+            obj.rename(newName);
+            map.put(newName, obj);
+        }
+        updateMetaAndFirstLevelChildren(session, obj);
     }
 
     /**
@@ -1353,51 +1396,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     /**
-     * Rename a schema object.
-     *
-     * @param session the session
-     * @param obj the object
-     * @param newName the new name
-     */
-    public void renameSchemaObject(ServerSession session, SchemaObject obj, String newName) {
-        checkWritingAllowed();
-        obj.getSchema().rename(obj, newName);
-        updateMetaAndFirstLevelChildren(session, obj);
-    }
-
-    /**
-     * Rename a database object.
-     *
-     * @param session the session
-     * @param obj the object
-     * @param newName the new name
-     */
-    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName) {
-        checkWritingAllowed();
-        DbObjectType type = obj.getType();
-        synchronized (getLock(type)) {
-            Map<String, DbObject> map = getMap(type);
-            String oldName = obj.getName();
-            if (SysProperties.CHECK) {
-                if (!map.containsKey(oldName)) {
-                    DbException.throwInternalError("not found: " + oldName);
-                }
-                if (oldName.equals(newName) || map.containsKey(newName)) {
-                    DbException.throwInternalError("object already exists: " + newName);
-                }
-            }
-            obj.checkRename();
-            int id = obj.getId();
-            // lockMeta(session);
-            removeMeta(session, id);
-            map.remove(oldName);
-            obj.rename(newName);
-            map.put(newName, obj);
-        }
-        updateMetaAndFirstLevelChildren(session, obj);
-    }
-
-    /**
      * Create a temporary file in the database folder.
      *
      * @return the file name
@@ -1441,33 +1439,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     /**
-     * Remove the object from the database.
-     *
-     * @param session the session
-     * @param obj the object to remove
-     */
-    public void removeDatabaseObject(ServerSession session, DbObject obj) {
-        checkWritingAllowed();
-        String objName = obj.getName();
-        DbObjectType type = obj.getType();
-        synchronized (getLock(type)) {
-            Map<String, DbObject> map = getMap(type);
-            if (SysProperties.CHECK && !map.containsKey(objName)) {
-                DbException.throwInternalError("not found: " + objName);
-            }
-            Comment comment = findComment(obj);
-            // lockMeta(session);
-            if (comment != null) {
-                removeDatabaseObject(session, comment);
-            }
-            int id = obj.getId();
-            obj.removeChildrenAndResources(session);
-            map.remove(objName);
-            removeMeta(session, id);
-        }
-    }
-
-    /**
      * Get the first table that depends on this object.
      *
      * @param obj the object to find
@@ -1497,53 +1468,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             }
         }
         return null;
-    }
-
-    /**
-     * Remove an object from the system table.
-     *
-     * @param session the session
-     * @param obj the object to be removed
-     */
-    public synchronized void removeSchemaObject(ServerSession session, SchemaObject obj) {
-        DbObjectType type = obj.getType();
-        if (type == DbObjectType.TABLE_OR_VIEW) {
-            Table table = (Table) obj;
-            if (table.isTemporary() && !table.isGlobalTemporary()) {
-                session.removeLocalTempTable(table);
-                return;
-            }
-        } else if (type == DbObjectType.INDEX) {
-            Index index = (Index) obj;
-            Table table = index.getTable();
-            if (table.isTemporary() && !table.isGlobalTemporary()) {
-                session.removeLocalTempTableIndex(index);
-                return;
-            }
-        } else if (type == DbObjectType.CONSTRAINT) {
-            Constraint constraint = (Constraint) obj;
-            Table table = constraint.getTable();
-            if (table.isTemporary() && !table.isGlobalTemporary()) {
-                session.removeLocalTempTableConstraint(constraint);
-                return;
-            }
-        }
-        checkWritingAllowed();
-        lockMeta(session);
-        Comment comment = findComment(obj);
-        if (comment != null) {
-            removeDatabaseObject(session, comment);
-        }
-        obj.getSchema().remove(obj);
-        if (!starting) {
-            Table t = getDependentTable(obj, null);
-            if (t != null) {
-                obj.getSchema().add(obj);
-                throw DbException.get(ErrorCode.CANNOT_DROP_2, obj.getSQL(), t.getSQL());
-            }
-            obj.removeChildrenAndResources(session);
-        }
-        removeMeta(session, obj.getId());
     }
 
     public void addPersistentMetaInfo(MetaTable mt, ArrayList<Row> rows) {

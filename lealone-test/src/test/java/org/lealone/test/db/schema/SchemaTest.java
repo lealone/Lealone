@@ -124,5 +124,4 @@ public class SchemaTest extends DbObjectTestBase {
         }
         executeUpdate("DROP USER IF EXISTS " + userName);
     }
-
 }

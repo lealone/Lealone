@@ -114,9 +114,6 @@ public class AlterSequence extends SchemaStatement {
     }
 
     private Long getLong(Expression expr) {
-        if (expr == null) {
-            return null;
-        }
-        return expr.optimize(session).getValue(session).getLong();
+        return CreateSequence.getLong(session, expr);
     }
 }

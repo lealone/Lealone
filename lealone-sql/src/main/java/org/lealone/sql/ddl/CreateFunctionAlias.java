@@ -7,7 +7,6 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.FunctionAlias;
@@ -41,32 +40,6 @@ public class CreateFunctionAlias extends SchemaStatement {
         return SQLStatement.CREATE_ALIAS;
     }
 
-    @Override
-    public int update() {
-        session.getUser().checkAdmin();
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.FUNCTION_ALIAS)) {
-            if (getSchema().findFunction(aliasName) != null) {
-                if (!ifNotExists) {
-                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, aliasName);
-                }
-            } else {
-                int id = getObjectId();
-                FunctionAlias functionAlias;
-                if (javaClassMethod != null) {
-                    functionAlias = FunctionAlias.newInstance(getSchema(), id, aliasName, javaClassMethod, force,
-                            bufferResultSetToLocalTemp);
-                } else {
-                    functionAlias = FunctionAlias.newInstanceFromSource(getSchema(), id, aliasName, source, force,
-                            bufferResultSetToLocalTemp);
-                }
-                functionAlias.setDeterministic(deterministic);
-                db.addSchemaObject(session, functionAlias);
-            }
-        }
-        return 0;
-    }
-
     public void setAliasName(String name) {
         this.aliasName = name;
     }
@@ -80,6 +53,10 @@ public class CreateFunctionAlias extends SchemaStatement {
         this.javaClassMethod = StringUtils.replaceAll(method, " ", "");
     }
 
+    public void setDeterministic(boolean deterministic) {
+        this.deterministic = deterministic;
+    }
+
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
     }
@@ -88,8 +65,8 @@ public class CreateFunctionAlias extends SchemaStatement {
         this.force = force;
     }
 
-    public void setDeterministic(boolean deterministic) {
-        this.deterministic = deterministic;
+    public void setSource(String source) {
+        this.source = source;
     }
 
     /**
@@ -101,8 +78,28 @@ public class CreateFunctionAlias extends SchemaStatement {
         this.bufferResultSetToLocalTemp = b;
     }
 
-    public void setSource(String source) {
-        this.source = source;
+    @Override
+    public int update() {
+        session.getUser().checkAdmin();
+        synchronized (schema.getLock(DbObjectType.FUNCTION_ALIAS)) {
+            if (schema.findFunction(aliasName) != null) {
+                if (!ifNotExists) {
+                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, aliasName);
+                }
+            } else {
+                int id = getObjectId();
+                FunctionAlias functionAlias;
+                if (javaClassMethod != null) {
+                    functionAlias = FunctionAlias.newInstance(schema, id, aliasName, javaClassMethod, force,
+                            bufferResultSetToLocalTemp);
+                } else {
+                    functionAlias = FunctionAlias.newInstanceFromSource(schema, id, aliasName, source, force,
+                            bufferResultSetToLocalTemp);
+                }
+                functionAlias.setDeterministic(deterministic);
+                schema.add(session, functionAlias);
+            }
+        }
+        return 0;
     }
-
 }

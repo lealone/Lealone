@@ -68,8 +68,6 @@ public abstract class DbObjectBase implements DbObject {
 
     @Override
     public void removeChildrenAndResources(ServerSession session) {
-        database.removeMeta(session, getId());
-        invalidate();
     }
 
     @Override
@@ -118,7 +116,8 @@ public abstract class DbObjectBase implements DbObject {
     /**
      * Set the main attributes to null to make sure the object is no longer used.
      */
-    protected void invalidate() {
+    @Override
+    public void invalidate() {
         setModified();
         database = null;
         id = -1;

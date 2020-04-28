@@ -491,17 +491,17 @@ public abstract class Table extends SchemaObjectBase {
         while (views != null && views.size() > 0) {
             TableView view = views.get(0);
             views.remove(0);
-            database.removeSchemaObject(session, view);
+            schema.remove(session, view);
         }
         while (triggers != null && triggers.size() > 0) {
             TriggerObject trigger = triggers.get(0);
             triggers.remove(0);
-            database.removeSchemaObject(session, trigger);
+            schema.remove(session, trigger);
         }
         while (constraints != null && constraints.size() > 0) {
             Constraint constraint = constraints.get(0);
             constraints.remove(0);
-            database.removeSchemaObject(session, constraint);
+            schema.remove(session, constraint);
         }
         for (Right right : database.getAllRights()) {
             if (right.getGrantedObject() == this) {
@@ -518,7 +518,7 @@ public abstract class Table extends SchemaObjectBase {
                 // only remove if no other table depends on this sequence
                 // this is possible when calling ALTER TABLE ALTER COLUMN
                 if (database.getDependentTable(sequence, this) == null) {
-                    database.removeSchemaObject(session, sequence);
+                    schema.remove(session, sequence);
                 }
             }
         }
@@ -569,12 +569,12 @@ public abstract class Table extends SchemaObjectBase {
             }
         }
         for (Constraint c : constraintsToDrop) {
-            session.getDatabase().removeSchemaObject(session, c);
+            c.getSchema().remove(session, c);
         }
         for (Index i : indexesToDrop) {
             // the index may already have been dropped when dropping the constraint
             if (getIndexes().contains(i)) {
-                session.getDatabase().removeSchemaObject(session, i);
+                i.getSchema().remove(session, i);
             }
         }
     }
@@ -1000,7 +1000,7 @@ public abstract class Table extends SchemaObjectBase {
             }
         }
         if (!stillNeeded) {
-            database.removeSchemaObject(session, index);
+            schema.remove(session, index);
         }
     }
 

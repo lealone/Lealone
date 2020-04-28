@@ -62,5 +62,4 @@ public class DropSchema extends DefinitionStatement {
         }
         return 0;
     }
-
 }

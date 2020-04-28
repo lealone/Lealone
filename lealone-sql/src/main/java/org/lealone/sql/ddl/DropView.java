@@ -43,6 +43,10 @@ public class DropView extends SchemaStatement {
         return SQLStatement.DROP_VIEW;
     }
 
+    public void setViewName(String viewName) {
+        this.viewName = viewName;
+    }
+
     public void setIfExists(boolean b) {
         ifExists = b;
     }
@@ -51,14 +55,10 @@ public class DropView extends SchemaStatement {
         this.dropAction = dropAction;
     }
 
-    public void setViewName(String viewName) {
-        this.viewName = viewName;
-    }
-
     @Override
     public int update() {
-        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
-            Table view = getSchema().findTableOrView(session, viewName);
+        synchronized (schema.getLock(DbObjectType.TABLE_OR_VIEW)) {
+            Table view = schema.findTableOrView(session, viewName);
             if (view == null) {
                 if (!ifExists) {
                     throw DbException.get(ErrorCode.VIEW_NOT_FOUND_1, viewName);
@@ -78,7 +78,7 @@ public class DropView extends SchemaStatement {
                 }
                 if (!view.tryExclusiveLock(session))
                     return -1;
-                session.getDatabase().removeSchemaObject(session, view);
+                schema.remove(session, view);
             }
         }
         return 0;

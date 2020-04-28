@@ -224,12 +224,11 @@ public class FunctionAlias extends SchemaObjectBase {
     }
 
     @Override
-    public synchronized void removeChildrenAndResources(ServerSession session) {
-        database.removeMeta(session, getId());
+    public void invalidate() {
         className = null;
         methodName = null;
         javaMethods = null;
-        invalidate();
+        super.invalidate();
     }
 
     @Override

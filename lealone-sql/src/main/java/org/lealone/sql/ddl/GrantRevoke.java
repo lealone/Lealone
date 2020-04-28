@@ -219,5 +219,4 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
         Database db = session.getDatabase();
         db.removeDatabaseObject(session, right);
     }
-
 }

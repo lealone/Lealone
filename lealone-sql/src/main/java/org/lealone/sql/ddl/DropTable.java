@@ -29,11 +29,11 @@ import org.lealone.sql.SQLStatement;
  */
 public class DropTable extends SchemaStatement {
 
-    private boolean ifExists;
     private String tableName;
+    private boolean ifExists;
+    private int dropAction;
     private Table table;
     private DropTable next;
-    private int dropAction;
 
     public DropTable(ServerSession session, Schema schema) {
         super(session, schema);
@@ -44,6 +44,24 @@ public class DropTable extends SchemaStatement {
     @Override
     public int getType() {
         return SQLStatement.DROP_TABLE;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
+
+    public void setIfExists(boolean b) {
+        ifExists = b;
+        if (next != null) {
+            next.setIfExists(b);
+        }
+    }
+
+    public void setDropAction(int dropAction) {
+        this.dropAction = dropAction;
+        if (next != null) {
+            next.setDropAction(dropAction);
+        }
     }
 
     /**
@@ -59,19 +77,8 @@ public class DropTable extends SchemaStatement {
         }
     }
 
-    public void setIfExists(boolean b) {
-        ifExists = b;
-        if (next != null) {
-            next.setIfExists(b);
-        }
-    }
-
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
-    }
-
     private boolean prepareDrop() {
-        table = getSchema().findTableOrView(session, tableName);
+        table = schema.findTableOrView(session, tableName);
         if (table == null) {
             if (!ifExists) {
                 throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, tableName);
@@ -104,14 +111,12 @@ public class DropTable extends SchemaStatement {
     private void executeDrop() {
         // need to get the table again, because it may be dropped already
         // meanwhile (dependent object, or same object)
-        table = getSchema().findTableOrView(session, tableName);
-
+        table = schema.findTableOrView(session, tableName);
         if (table != null) {
             int id = table.getId();
             table.setModified();
             Database db = session.getDatabase();
-            db.lockMeta(session);
-            db.removeSchemaObject(session, table);
+            schema.remove(session, table);
             db.getVersionManager().deleteTableAlterHistoryRecord(id);
         }
         if (next != null) {
@@ -125,12 +130,5 @@ public class DropTable extends SchemaStatement {
             return -1;
         executeDrop();
         return 0;
-    }
-
-    public void setDropAction(int dropAction) {
-        this.dropAction = dropAction;
-        if (next != null) {
-            next.setDropAction(dropAction);
-        }
     }
 }

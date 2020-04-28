@@ -34,7 +34,6 @@ public class TriggerObjectTest extends DbObjectTestBase {
         public void init(Connection conn, String schemaName, String triggerName, String tableName, boolean before,
                 int type) throws SQLException {
             System.out.println("schemaName=" + schemaName + " tableName=" + tableName);
-
         }
 
         @Override
@@ -51,7 +50,6 @@ public class TriggerObjectTest extends DbObjectTestBase {
         public void remove() throws SQLException {
             System.out.println("org.lealone.test.db.schema.TriggerObjectTest.MyInsertTrigger.remove()");
         }
-
     }
 
     @Test

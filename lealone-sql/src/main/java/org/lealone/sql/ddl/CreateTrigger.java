@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
@@ -28,7 +27,6 @@ public class CreateTrigger extends SchemaStatement {
 
     private String triggerName;
     private boolean ifNotExists;
-
     private boolean insteadOf;
     private boolean before;
     private int typeMask;
@@ -50,20 +48,20 @@ public class CreateTrigger extends SchemaStatement {
         return SQLStatement.CREATE_TRIGGER;
     }
 
+    public void setTriggerName(String name) {
+        this.triggerName = name;
+    }
+
+    public void setIfNotExists(boolean ifNotExists) {
+        this.ifNotExists = ifNotExists;
+    }
+
     public void setInsteadOf(boolean insteadOf) {
         this.insteadOf = insteadOf;
     }
 
     public void setBefore(boolean before) {
         this.before = before;
-    }
-
-    public void setTriggerClassName(String triggerClassName) {
-        this.triggerClassName = triggerClassName;
-    }
-
-    public void setTriggerSource(String triggerSource) {
-        this.triggerSource = triggerSource;
     }
 
     public void setTypeMask(int typeMask) {
@@ -86,19 +84,26 @@ public class CreateTrigger extends SchemaStatement {
         this.tableName = tableName;
     }
 
-    public void setTriggerName(String name) {
-        this.triggerName = name;
+    public void setTriggerClassName(String triggerClassName) {
+        this.triggerClassName = triggerClassName;
     }
 
-    public void setIfNotExists(boolean ifNotExists) {
-        this.ifNotExists = ifNotExists;
+    public void setTriggerSource(String triggerSource) {
+        this.triggerSource = triggerSource;
+    }
+
+    public void setForce(boolean force) {
+        this.force = force;
+    }
+
+    public void setOnRollback(boolean onRollback) {
+        this.onRollback = onRollback;
     }
 
     @Override
     public int update() {
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.TRIGGER)) {
-            if (getSchema().findTrigger(triggerName) != null) {
+        synchronized (schema.getLock(DbObjectType.TRIGGER)) {
+            if (schema.findTrigger(triggerName) != null) {
                 if (ifNotExists) {
                     return 0;
                 }
@@ -108,8 +113,8 @@ public class CreateTrigger extends SchemaStatement {
                 throw DbException.get(ErrorCode.TRIGGER_SELECT_AND_ROW_BASED_NOT_SUPPORTED, triggerName);
             }
             int id = getObjectId();
-            Table table = getSchema().getTableOrView(session, tableName);
-            TriggerObject trigger = new TriggerObject(getSchema(), id, triggerName, table);
+            Table table = schema.getTableOrView(session, tableName);
+            TriggerObject trigger = new TriggerObject(schema, id, triggerName, table);
             trigger.setInsteadOf(insteadOf);
             trigger.setBefore(before);
             trigger.setNoWait(noWait);
@@ -122,18 +127,9 @@ public class CreateTrigger extends SchemaStatement {
             } else {
                 trigger.setTriggerSource(triggerSource, force);
             }
-            db.addSchemaObject(session, trigger);
+            schema.add(session, trigger);
             table.addTrigger(trigger);
         }
         return 0;
     }
-
-    public void setForce(boolean force) {
-        this.force = force;
-    }
-
-    public void setOnRollback(boolean onRollback) {
-        this.onRollback = onRollback;
-    }
-
 }

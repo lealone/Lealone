@@ -122,8 +122,8 @@ public class CreateTable extends SchemaStatement {
         if (!db.isPersistent()) {
             data.persistIndexes = false;
         }
-        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
-            if (getSchema().findTableOrView(session, data.tableName) != null) {
+        synchronized (schema.getLock(DbObjectType.TABLE_OR_VIEW)) {
+            if (schema.findTableOrView(session, data.tableName) != null) {
                 if (ifNotExists) {
                     return 0;
                 }
@@ -153,12 +153,12 @@ public class CreateTable extends SchemaStatement {
             // if (!isSessionTemporary) {
             // db.lockMeta(session);
             // }
-            Table table = getSchema().createTable(data);
+            Table table = schema.createTable(data);
             ArrayList<Sequence> sequences = new ArrayList<>();
             for (Column c : data.columns) {
                 if (c.isAutoIncrement()) {
                     int objId = getObjectId();
-                    c.convertAutoIncrementToSequence(session, getSchema(), objId, data.temporary);
+                    c.convertAutoIncrementToSequence(session, schema, objId, data.temporary);
                 }
                 Sequence seq = c.getSequence();
                 if (seq != null) {
@@ -178,8 +178,7 @@ public class CreateTable extends SchemaStatement {
                 }
                 session.addLocalTempTable(table);
             } else {
-                // db.lockMeta(session);
-                db.addSchemaObject(session, table);
+                schema.add(session, table);
             }
             try {
                 TableFilter tf = new TableFilter(session, table, null, false, null);
@@ -202,7 +201,7 @@ public class CreateTable extends SchemaStatement {
                 }
             } catch (DbException e) {
                 db.checkPowerOff();
-                db.removeSchemaObject(session, table);
+                schema.remove(session, table);
                 throw e;
             }
 

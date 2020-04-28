@@ -28,10 +28,10 @@ public class AlterUser extends DefinitionStatement implements AuthStatement {
     private int type;
     private User user;
     private String newName;
+    private boolean admin;
     private Expression password;
     private Expression salt;
     private Expression hash;
-    private boolean admin;
 
     public AlterUser(ServerSession session) {
         super(session);
@@ -46,16 +46,20 @@ public class AlterUser extends DefinitionStatement implements AuthStatement {
         this.type = type;
     }
 
-    public void setNewName(String newName) {
-        this.newName = newName;
-    }
-
     public void setUser(User user) {
         this.user = user;
     }
 
+    public void setNewName(String newName) {
+        this.newName = newName;
+    }
+
     public void setAdmin(boolean admin) {
         this.admin = admin;
+    }
+
+    public void setPassword(Expression password) {
+        this.password = password;
     }
 
     public void setSalt(Expression e) {
@@ -64,10 +68,6 @@ public class AlterUser extends DefinitionStatement implements AuthStatement {
 
     public void setHash(Expression e) {
         hash = e;
-    }
-
-    public void setPassword(Expression password) {
-        this.password = password;
     }
 
     @Override
@@ -107,5 +107,4 @@ public class AlterUser extends DefinitionStatement implements AuthStatement {
         }
         return 0;
     }
-
 }

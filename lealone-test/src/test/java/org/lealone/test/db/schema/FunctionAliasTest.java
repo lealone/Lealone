@@ -54,5 +54,4 @@ public class FunctionAliasTest extends DbObjectTestBase {
         assertNull(schema.findFunction("my_sqrt"));
         assertNull(schema.findFunction("my_reverse"));
     }
-
 }

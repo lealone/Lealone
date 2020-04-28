@@ -22,8 +22,8 @@ import org.lealone.sql.SQLStatement;
  */
 public class DropUser extends DefinitionStatement implements AuthStatement {
 
-    private boolean ifExists;
     private String userName;
+    private boolean ifExists;
 
     public DropUser(ServerSession session) {
         super(session);
@@ -34,12 +34,12 @@ public class DropUser extends DefinitionStatement implements AuthStatement {
         return SQLStatement.DROP_USER;
     }
 
-    public void setIfExists(boolean b) {
-        ifExists = b;
-    }
-
     public void setUserName(String userName) {
         this.userName = userName;
+    }
+
+    public void setIfExists(boolean b) {
+        ifExists = b;
     }
 
     @Override
@@ -72,5 +72,4 @@ public class DropUser extends DefinitionStatement implements AuthStatement {
         }
         return 0;
     }
-
 }

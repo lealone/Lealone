@@ -396,7 +396,7 @@ public class StandardTable extends Table {
             if (isSessionTemporary) {
                 session.addLocalTempTableIndex(index);
             } else {
-                database.addSchemaObject(session, index);
+                schema.add(session, index);
             }
         }
         indexes.add(index);
@@ -747,7 +747,7 @@ public class StandardTable extends Table {
         while (indexes.size() > 1) {
             Index index = indexes.get(1);
             if (index.getName() != null) {
-                database.removeSchemaObject(session, index);
+                schema.remove(session, index);
             }
             // needed for session temporary indexes
             indexes.remove(index);

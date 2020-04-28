@@ -360,7 +360,6 @@ public class TriggerObject extends SchemaObjectBase {
     @Override
     public void removeChildrenAndResources(ServerSession session) {
         table.removeTrigger(this);
-        database.removeMeta(session, getId());
         if (triggerCallback != null) {
             try {
                 triggerCallback.remove();
@@ -368,11 +367,6 @@ public class TriggerObject extends SchemaObjectBase {
                 throw DbException.convert(e);
             }
         }
-        table = null;
-        triggerClassName = null;
-        triggerSource = null;
-        triggerCallback = null;
-        invalidate();
     }
 
     /**
@@ -424,4 +418,12 @@ public class TriggerObject extends SchemaObjectBase {
         return (typeMask & Trigger.SELECT) != 0;
     }
 
+    @Override
+    public void invalidate() {
+        table = null;
+        triggerClassName = null;
+        triggerSource = null;
+        triggerCallback = null;
+        super.invalidate();
+    }
 }

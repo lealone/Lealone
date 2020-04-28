@@ -35,12 +35,12 @@ public class DropRole extends DefinitionStatement implements AuthStatement {
         return SQLStatement.DROP_ROLE;
     }
 
-    public void setIfExists(boolean ifExists) {
-        this.ifExists = ifExists;
-    }
-
     public void setRoleName(String roleName) {
         this.roleName = roleName;
+    }
+
+    public void setIfExists(boolean ifExists) {
+        this.ifExists = ifExists;
     }
 
     @Override

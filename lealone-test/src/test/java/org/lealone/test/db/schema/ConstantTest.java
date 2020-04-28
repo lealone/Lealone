@@ -21,7 +21,6 @@ import org.junit.Test;
 import org.lealone.test.db.DbObjectTestBase;
 
 public class ConstantTest extends DbObjectTestBase {
-
     @Test
     public void run() {
         create();
@@ -40,5 +39,4 @@ public class ConstantTest extends DbObjectTestBase {
         executeUpdate("DROP CONSTANT IF EXISTS ConstantTest");
         assertNull(schema.findConstant("ConstantTest"));
     }
-
 }

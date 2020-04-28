@@ -43,6 +43,11 @@ public class CreateIndex extends SchemaStatement {
         return SQLStatement.CREATE_INDEX;
     }
 
+    @Override
+    public boolean isReplicationStatement() {
+        return true;
+    }
+
     public void setTableName(String tableName) {
         this.tableName = tableName;
     }
@@ -77,7 +82,6 @@ public class CreateIndex extends SchemaStatement {
 
     @Override
     public int update() {
-        Schema schema = getSchema();
         synchronized (schema.getLock(DbObjectType.INDEX)) {
             Table table = schema.getTableOrView(session, tableName);
             if (schema.findIndex(session, indexName) != null) {
@@ -112,10 +116,5 @@ public class CreateIndex extends SchemaStatement {
             table.addIndex(session, indexName, id, indexColumns, indexType, create, comment);
         }
         return 0;
-    }
-
-    @Override
-    public boolean isReplicationStatement() {
-        return true;
     }
 }

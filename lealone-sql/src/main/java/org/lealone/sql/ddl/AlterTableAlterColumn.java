@@ -45,10 +45,10 @@ import org.lealone.sql.expression.ExpressionVisitor;
  */
 public class AlterTableAlterColumn extends SchemaStatement {
 
+    private int type;
     private Table table;
     private Column oldColumn;
     private Column newColumn;
-    private int type;
     private Expression defaultExpression;
     private Expression newSelectivity;
     private String addBefore;
@@ -65,6 +65,10 @@ public class AlterTableAlterColumn extends SchemaStatement {
         return type;
     }
 
+    public void setType(int type) {
+        this.type = type;
+    }
+
     public void setTable(Table table) {
         this.table = table;
     }
@@ -73,28 +77,24 @@ public class AlterTableAlterColumn extends SchemaStatement {
         this.oldColumn = oldColumn;
     }
 
-    public void setAddBefore(String before) {
-        this.addBefore = before;
-    }
-
-    public void setAddAfter(String after) {
-        this.addAfter = after;
-    }
-
-    public void setType(int type) {
-        this.type = type;
-    }
-
-    public void setSelectivity(Expression selectivity) {
-        newSelectivity = selectivity;
+    public void setNewColumn(Column newColumn) {
+        this.newColumn = newColumn;
     }
 
     public void setDefaultExpression(Expression defaultExpression) {
         this.defaultExpression = defaultExpression;
     }
 
-    public void setNewColumn(Column newColumn) {
-        this.newColumn = newColumn;
+    public void setSelectivity(Expression selectivity) {
+        newSelectivity = selectivity;
+    }
+
+    public void setAddBefore(String before) {
+        this.addBefore = before;
+    }
+
+    public void setAddAfter(String after) {
+        this.addAfter = after;
     }
 
     public void setIfNotExists(boolean ifNotExists) {
@@ -234,8 +234,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             table.removeSequence(sequence);
             if (sequence.getBelongsToTable()) {
                 sequence.setBelongsToTable(false);
-                Database db = session.getDatabase();
-                db.removeSchemaObject(session, sequence);
+                schema.remove(session, sequence);
             }
         }
     }
@@ -343,5 +342,4 @@ public class AlterTableAlterColumn extends SchemaStatement {
             }
         }
     }
-
 }

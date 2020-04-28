@@ -53,8 +53,8 @@ public class CreateConstant extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        synchronized (getSchema().getLock(DbObjectType.CONSTANT)) {
-            if (getSchema().findConstant(constantName) != null) {
+        synchronized (schema.getLock(DbObjectType.CONSTANT)) {
+            if (schema.findConstant(constantName) != null) {
                 if (ifNotExists) {
                     return 0;
                 }
@@ -63,10 +63,9 @@ public class CreateConstant extends SchemaStatement {
             int id = getObjectId();
             expression = expression.optimize(session);
             Value value = expression.getValue(session);
-            Constant constant = new Constant(getSchema(), id, constantName, value);
-            session.getDatabase().addSchemaObject(session, constant);
+            Constant constant = new Constant(schema, id, constantName, value);
+            schema.add(session, constant);
         }
         return 0;
     }
-
 }

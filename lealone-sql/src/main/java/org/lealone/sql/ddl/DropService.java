@@ -18,7 +18,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
@@ -44,26 +43,25 @@ public class DropService extends SchemaStatement {
         return SQLStatement.DROP_SERVICE;
     }
 
-    public void setIfExists(boolean b) {
-        ifExists = b;
-    }
-
     public void setServiceName(String serviceName) {
         this.serviceName = serviceName;
+    }
+
+    public void setIfExists(boolean b) {
+        ifExists = b;
     }
 
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.SERVICE)) {
-            Service service = getSchema().findService(serviceName);
+        synchronized (schema.getLock(DbObjectType.SERVICE)) {
+            Service service = schema.findService(serviceName);
             if (service == null) {
                 if (!ifExists) {
                     throw DbException.get(ErrorCode.SERVICE_NOT_FOUND_1, serviceName);
                 }
             } else {
-                db.removeSchemaObject(session, service);
+                schema.remove(session, service);
             }
         }
         return 0;

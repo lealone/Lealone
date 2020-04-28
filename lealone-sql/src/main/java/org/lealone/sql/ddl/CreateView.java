@@ -31,9 +31,9 @@ import org.lealone.sql.expression.Parameter;
  */
 public class CreateView extends SchemaStatement {
 
-    private Query select;
     private String viewName;
     private boolean ifNotExists;
+    private Query select;
     private String selectSQL;
     private String[] columnNames;
     private String comment;
@@ -53,12 +53,12 @@ public class CreateView extends SchemaStatement {
         viewName = name;
     }
 
-    public void setSelect(Query select) {
-        this.select = select;
-    }
-
     public void setIfNotExists(boolean ifNotExists) {
         this.ifNotExists = ifNotExists;
+    }
+
+    public void setSelect(Query select) {
+        this.select = select;
     }
 
     public void setSelectSQL(String selectSQL) {
@@ -83,7 +83,7 @@ public class CreateView extends SchemaStatement {
 
     @Override
     public int update() {
-        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
+        synchronized (schema.getLock(DbObjectType.TABLE_OR_VIEW)) {
             Database db = session.getDatabase();
             TableView view = null;
             Table old = getSchema().findTableOrView(session, viewName);
@@ -123,12 +123,11 @@ public class CreateView extends SchemaStatement {
                 view.setComment(comment);
             }
             if (old == null) {
-                db.addSchemaObject(session, view);
+                getSchema().add(session, view);
             } else {
                 db.updateMeta(session, view);
             }
         }
         return 0;
     }
-
 }

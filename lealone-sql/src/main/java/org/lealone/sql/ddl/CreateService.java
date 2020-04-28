@@ -27,7 +27,6 @@ import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
@@ -65,6 +64,11 @@ public class CreateService extends SchemaStatement {
         return SQLStatement.CREATE_SERVICE;
     }
 
+    @Override
+    public boolean isReplicationStatement() {
+        return true;
+    }
+
     public void setServiceName(String serviceName) {
         this.serviceName = serviceName;
     }
@@ -98,26 +102,20 @@ public class CreateService extends SchemaStatement {
     }
 
     @Override
-    public boolean isReplicationStatement() {
-        return true;
-    }
-
-    @Override
     public int update() {
-        synchronized (getSchema().getLock(DbObjectType.SERVICE)) {
-            if (getSchema().findService(serviceName) != null) {
+        synchronized (schema.getLock(DbObjectType.SERVICE)) {
+            if (schema.findService(serviceName) != null) {
                 if (ifNotExists) {
                     return 0;
                 }
                 throw DbException.get(ErrorCode.SERVICE_ALREADY_EXISTS_1, serviceName);
             }
             int id = getObjectId();
-            Service service = new Service(getSchema(), id, serviceName, sql, getExecutorFullName());
+            Service service = new Service(schema, id, serviceName, sql, getExecutorFullName());
             service.setImplementBy(implementBy);
             service.setPackageName(packageName);
             service.setComment(comment);
-            Database db = session.getDatabase();
-            db.addSchemaObject(session, service);
+            schema.add(session, service);
             // 数据库在启动阶段执行CREATE SERVICE语句时不用再生成代码
             if (genCode && !session.getDatabase().isStarting())
                 genCode();

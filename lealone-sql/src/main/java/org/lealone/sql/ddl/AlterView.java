@@ -49,5 +49,4 @@ public class AlterView extends SchemaStatement {
         }
         return 0;
     }
-
 }

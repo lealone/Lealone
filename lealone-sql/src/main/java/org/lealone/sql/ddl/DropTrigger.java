@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
@@ -38,19 +37,18 @@ public class DropTrigger extends SchemaStatement {
         return SQLStatement.DROP_TRIGGER;
     }
 
-    public void setIfExists(boolean b) {
-        ifExists = b;
-    }
-
     public void setTriggerName(String triggerName) {
         this.triggerName = triggerName;
     }
 
+    public void setIfExists(boolean b) {
+        ifExists = b;
+    }
+
     @Override
     public int update() {
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.TRIGGER)) {
-            TriggerObject trigger = getSchema().findTrigger(triggerName);
+        synchronized (schema.getLock(DbObjectType.TRIGGER)) {
+            TriggerObject trigger = schema.findTrigger(triggerName);
             if (trigger == null) {
                 if (!ifExists) {
                     throw DbException.get(ErrorCode.TRIGGER_NOT_FOUND_1, triggerName);
@@ -58,10 +56,9 @@ public class DropTrigger extends SchemaStatement {
             } else {
                 Table table = trigger.getTable();
                 session.getUser().checkRight(table, Right.ALL);
-                db.removeSchemaObject(session, trigger);
+                schema.remove(session, trigger);
             }
         }
         return 0;
     }
-
 }

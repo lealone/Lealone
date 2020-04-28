@@ -50,9 +50,8 @@ public class AlterTableDropConstraint extends SchemaStatement {
         } else {
             session.getUser().checkRight(constraint.getTable(), Right.ALL);
             session.getUser().checkRight(constraint.getRefTable(), Right.ALL);
-            session.getDatabase().removeSchemaObject(session, constraint);
+            schema.remove(session, constraint);
         }
         return 0;
     }
-
 }

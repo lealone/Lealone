@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
@@ -57,16 +56,15 @@ public class CreateAggregate extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.AGGREGATE)) {
-            if (getSchema().findAggregate(name) != null || getSchema().findFunction(name) != null) {
+        synchronized (schema.getLock(DbObjectType.AGGREGATE)) {
+            if (schema.findAggregate(name) != null || schema.findFunction(name) != null) {
                 if (!ifNotExists) {
                     throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, name);
                 }
             } else {
                 int id = getObjectId();
-                UserAggregate aggregate = new UserAggregate(getSchema(), id, name, javaClassName, force);
-                db.addSchemaObject(session, aggregate);
+                UserAggregate aggregate = new UserAggregate(schema, id, name, javaClassName, force);
+                schema.add(session, aggregate);
             }
         }
         return 0;

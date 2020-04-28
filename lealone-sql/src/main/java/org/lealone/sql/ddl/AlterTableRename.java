@@ -68,8 +68,7 @@ public class AlterTableRename extends SchemaStatement {
         if (oldTable.isTemporary()) {
             throw DbException.getUnsupportedException("temp table");
         }
-        db.renameSchemaObject(session, oldTable, newTableName);
+        schema.rename(session, oldTable, newTableName);
         return 0;
     }
-
 }

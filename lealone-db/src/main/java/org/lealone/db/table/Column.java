@@ -377,7 +377,7 @@ public class Column {
         if (temporary) {
             seq.setTemporary(true);
         } else {
-            session.getDatabase().addSchemaObject(session, seq);
+            schema.add(session, seq);
         }
         setAutoIncrement(false, 0, 0);
         setDefaultExpression(session, session.getDatabase().getSQLEngine().createSequenceValue(seq));

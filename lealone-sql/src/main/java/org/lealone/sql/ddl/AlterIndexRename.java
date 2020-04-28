@@ -46,13 +46,12 @@ public class AlterIndexRename extends SchemaStatement {
 
     @Override
     public int update() {
-        Schema schema = getSchema();
         synchronized (schema.getLock(DbObjectType.INDEX)) {
             if (schema.findIndex(session, newIndexName) != null || newIndexName.equals(oldIndex.getName())) {
                 throw DbException.get(ErrorCode.INDEX_ALREADY_EXISTS_1, newIndexName);
             }
             session.getUser().checkRight(oldIndex.getTable(), Right.ALL);
-            session.getDatabase().renameSchemaObject(session, oldIndex, newIndexName);
+            schema.rename(session, oldIndex, newIndexName);
         }
         return 0;
     }

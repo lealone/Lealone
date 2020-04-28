@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.FunctionAlias;
@@ -36,23 +35,6 @@ public class DropFunctionAlias extends SchemaStatement {
         return SQLStatement.DROP_ALIAS;
     }
 
-    @Override
-    public int update() {
-        session.getUser().checkAdmin();
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.FUNCTION_ALIAS)) {
-            FunctionAlias functionAlias = getSchema().findFunction(aliasName);
-            if (functionAlias == null) {
-                if (!ifExists) {
-                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, aliasName);
-                }
-            } else {
-                db.removeSchemaObject(session, functionAlias);
-            }
-        }
-        return 0;
-    }
-
     public void setAliasName(String name) {
         this.aliasName = name;
     }
@@ -61,4 +43,19 @@ public class DropFunctionAlias extends SchemaStatement {
         this.ifExists = ifExists;
     }
 
+    @Override
+    public int update() {
+        session.getUser().checkAdmin();
+        synchronized (schema.getLock(DbObjectType.FUNCTION_ALIAS)) {
+            FunctionAlias functionAlias = schema.findFunction(aliasName);
+            if (functionAlias == null) {
+                if (!ifExists) {
+                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, aliasName);
+                }
+            } else {
+                schema.remove(session, functionAlias);
+            }
+        }
+        return 0;
+    }
 }

@@ -117,4 +117,7 @@ public interface DbObject {
      */
     String getComment();
 
+    default void invalidate() {
+    }
+
 }

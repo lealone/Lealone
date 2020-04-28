@@ -53,5 +53,4 @@ public class TruncateTable extends SchemaStatement {
         }
         return 0;
     }
-
 }

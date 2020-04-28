@@ -34,12 +34,12 @@ public class CreateRole extends DefinitionStatement implements AuthStatement {
         return SQLStatement.CREATE_ROLE;
     }
 
-    public void setIfNotExists(boolean ifNotExists) {
-        this.ifNotExists = ifNotExists;
-    }
-
     public void setRoleName(String name) {
         this.roleName = name;
+    }
+
+    public void setIfNotExists(boolean ifNotExists) {
+        this.ifNotExists = ifNotExists;
     }
 
     @Override
@@ -62,5 +62,4 @@ public class CreateRole extends DefinitionStatement implements AuthStatement {
         }
         return 0;
     }
-
 }

@@ -28,9 +28,9 @@ public class SetComment extends DefinitionStatement {
 
     private String schemaName;
     private String objectName;
-    private boolean column;
-    private String columnName;
     private DbObjectType objectType;
+    private String columnName;
+    private boolean column;
     private Expression expr;
 
     public SetComment(ServerSession session) {
@@ -40,6 +40,30 @@ public class SetComment extends DefinitionStatement {
     @Override
     public int getType() {
         return SQLStatement.COMMENT;
+    }
+
+    public void setSchemaName(String schemaName) {
+        this.schemaName = schemaName;
+    }
+
+    public void setObjectName(String objectName) {
+        this.objectName = objectName;
+    }
+
+    public void setObjectType(DbObjectType objectType) {
+        this.objectType = objectType;
+    }
+
+    public void setColumnName(String columnName) {
+        this.columnName = columnName;
+    }
+
+    public void setColumn(boolean column) {
+        this.column = column;
+    }
+
+    public void setCommentExpression(Expression expr) {
+        this.expr = expr;
     }
 
     @Override
@@ -130,29 +154,4 @@ public class SetComment extends DefinitionStatement {
         }
         return 0;
     }
-
-    public void setCommentExpression(Expression expr) {
-        this.expr = expr;
-    }
-
-    public void setObjectName(String objectName) {
-        this.objectName = objectName;
-    }
-
-    public void setObjectType(DbObjectType objectType) {
-        this.objectType = objectType;
-    }
-
-    public void setColumnName(String columnName) {
-        this.columnName = columnName;
-    }
-
-    public void setSchemaName(String schemaName) {
-        this.schemaName = schemaName;
-    }
-
-    public void setColumn(boolean column) {
-        this.column = column;
-    }
-
 }

@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
@@ -36,6 +35,10 @@ public class DropUserDataType extends SchemaStatement {
         return SQLStatement.DROP_DOMAIN;
     }
 
+    public void setTypeName(String name) {
+        this.typeName = name;
+    }
+
     public void setIfExists(boolean ifExists) {
         this.ifExists = ifExists;
     }
@@ -43,22 +46,16 @@ public class DropUserDataType extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.USER_DATATYPE)) {
-            UserDataType type = getSchema().findUserDataType(typeName);
+        synchronized (schema.getLock(DbObjectType.USER_DATATYPE)) {
+            UserDataType type = schema.findUserDataType(typeName);
             if (type == null) {
                 if (!ifExists) {
                     throw DbException.get(ErrorCode.USER_DATA_TYPE_NOT_FOUND_1, typeName);
                 }
             } else {
-                db.removeSchemaObject(session, type);
+                schema.remove(session, type);
             }
         }
         return 0;
     }
-
-    public void setTypeName(String name) {
-        this.typeName = name;
-    }
-
 }

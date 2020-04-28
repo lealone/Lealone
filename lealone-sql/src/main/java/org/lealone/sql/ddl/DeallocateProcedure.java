@@ -22,9 +22,8 @@ public class DeallocateProcedure extends DefinitionStatement {
     }
 
     @Override
-    public int update() {
-        session.removeProcedure(procedureName);
-        return 0;
+    public int getType() {
+        return SQLStatement.DEALLOCATE;
     }
 
     public void setProcedureName(String name) {
@@ -32,8 +31,8 @@ public class DeallocateProcedure extends DefinitionStatement {
     }
 
     @Override
-    public int getType() {
-        return SQLStatement.DEALLOCATE;
+    public int update() {
+        session.removeProcedure(procedureName);
+        return 0;
     }
-
 }

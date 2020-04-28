@@ -9,7 +9,6 @@ package org.lealone.sql.ddl;
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
@@ -51,7 +50,6 @@ public class DropIndex extends SchemaStatement {
 
     @Override
     public int update() {
-        Schema schema = getSchema();
         synchronized (schema.getLock(DbObjectType.INDEX)) {
             Index index = schema.findIndex(session, indexName);
             if (index == null) {
@@ -75,15 +73,13 @@ public class DropIndex extends SchemaStatement {
                     }
                 }
                 table.setModified();
-                Database db = session.getDatabase();
                 if (pkConstraint != null) {
-                    db.removeSchemaObject(session, pkConstraint);
+                    schema.remove(session, pkConstraint);
                 } else {
-                    db.removeSchemaObject(session, index);
+                    schema.remove(session, index);
                 }
             }
         }
         return 0;
     }
-
 }

@@ -65,6 +65,73 @@ public class AlterTableAddConstraint extends SchemaStatement {
         return type;
     }
 
+    public void setType(int type) {
+        this.type = type;
+    }
+
+    public void setConstraintName(String constraintName) {
+        this.constraintName = constraintName;
+    }
+
+    public void setTableName(String tableName) {
+        this.tableName = tableName;
+    }
+
+    public void setCheckExpression(Expression expression) {
+        this.checkExpression = expression;
+    }
+
+    public void setIndexColumns(IndexColumn[] indexColumns) {
+        this.indexColumns = indexColumns;
+    }
+
+    public IndexColumn[] getIndexColumns() {
+        return indexColumns;
+    }
+
+    /**
+     * Set the referenced table.
+     *
+     * @param refSchema the schema
+     * @param ref the table name
+     */
+    public void setRefTableName(Schema refSchema, String ref) {
+        this.refSchema = refSchema;
+        this.refTableName = ref;
+    }
+
+    public void setRefIndexColumns(IndexColumn[] indexColumns) {
+        this.refIndexColumns = indexColumns;
+    }
+
+    public void setIndex(Index index) {
+        this.index = index;
+    }
+
+    public void setRefIndex(Index refIndex) {
+        this.refIndex = refIndex;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    public void setCheckExisting(boolean b) {
+        this.checkExisting = b;
+    }
+
+    public void setPrimaryKeyHash(boolean b) {
+        this.primaryKeyHash = b;
+    }
+
+    public void setDeleteAction(int action) {
+        this.deleteAction = action;
+    }
+
+    public void setUpdateAction(int action) {
+        this.updateAction = action;
+    }
+
     private String generateConstraintName(Table table) {
         if (constraintName == null) {
             constraintName = getSchema().getUniqueConstraintName(session, table);
@@ -78,7 +145,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
             return tryUpdate();
         } catch (DbException e) {
             for (Index index : createdIndexes) {
-                session.getDatabase().removeSchemaObject(session, index);
+                getSchema().remove(session, index);
             }
             throw e;
         } finally {
@@ -251,7 +318,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
         if (table.isTemporary() && !table.isGlobalTemporary()) {
             session.addLocalTempTableConstraint(constraint);
         } else {
-            db.addSchemaObject(session, constraint);
+            constraint.getSchema().add(session, constraint);
         }
         table.addConstraint(constraint);
         return 0;
@@ -277,14 +344,6 @@ public class AlterTableAddConstraint extends SchemaStatement {
         } finally {
             getSchema().freeUniqueName(indexName);
         }
-    }
-
-    public void setDeleteAction(int action) {
-        this.deleteAction = action;
-    }
-
-    public void setUpdateAction(int action) {
-        this.updateAction = action;
     }
 
     private static Index getUniqueIndex(Table t, IndexColumn[] cols) {
@@ -361,64 +420,5 @@ public class AlterTableAddConstraint extends SchemaStatement {
             }
         }
         return true;
-    }
-
-    public void setConstraintName(String constraintName) {
-        this.constraintName = constraintName;
-    }
-
-    public void setType(int type) {
-        this.type = type;
-    }
-
-    public void setCheckExpression(Expression expression) {
-        this.checkExpression = expression;
-    }
-
-    public void setTableName(String tableName) {
-        this.tableName = tableName;
-    }
-
-    public void setIndexColumns(IndexColumn[] indexColumns) {
-        this.indexColumns = indexColumns;
-    }
-
-    public IndexColumn[] getIndexColumns() {
-        return indexColumns;
-    }
-
-    /**
-     * Set the referenced table.
-     *
-     * @param refSchema the schema
-     * @param ref the table name
-     */
-    public void setRefTableName(Schema refSchema, String ref) {
-        this.refSchema = refSchema;
-        this.refTableName = ref;
-    }
-
-    public void setRefIndexColumns(IndexColumn[] indexColumns) {
-        this.refIndexColumns = indexColumns;
-    }
-
-    public void setIndex(Index index) {
-        this.index = index;
-    }
-
-    public void setRefIndex(Index refIndex) {
-        this.refIndex = refIndex;
-    }
-
-    public void setComment(String comment) {
-        this.comment = comment;
-    }
-
-    public void setCheckExisting(boolean b) {
-        this.checkExisting = b;
-    }
-
-    public void setPrimaryKeyHash(boolean b) {
-        this.primaryKeyHash = b;
     }
 }

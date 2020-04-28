@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Constant;
@@ -36,29 +35,27 @@ public class DropConstant extends SchemaStatement {
         return SQLStatement.DROP_CONSTANT;
     }
 
-    public void setIfExists(boolean b) {
-        ifExists = b;
-    }
-
     public void setConstantName(String constantName) {
         this.constantName = constantName;
+    }
+
+    public void setIfExists(boolean b) {
+        ifExists = b;
     }
 
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        Database db = session.getDatabase();
-        synchronized (getSchema().getLock(DbObjectType.CONSTANT)) {
-            Constant constant = getSchema().findConstant(constantName);
+        synchronized (schema.getLock(DbObjectType.CONSTANT)) {
+            Constant constant = schema.findConstant(constantName);
             if (constant == null) {
                 if (!ifExists) {
                     throw DbException.get(ErrorCode.CONSTANT_NOT_FOUND_1, constantName);
                 }
             } else {
-                db.removeSchemaObject(session, constant);
+                schema.remove(session, constant);
             }
         }
         return 0;
     }
-
 }

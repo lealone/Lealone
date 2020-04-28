@@ -14,7 +14,7 @@ import org.lealone.db.session.ServerSession;
  */
 public abstract class SchemaStatement extends DefinitionStatement {
 
-    private final Schema schema;
+    protected final Schema schema;
 
     /**
      * Create a new statement.
@@ -35,5 +35,4 @@ public abstract class SchemaStatement extends DefinitionStatement {
     protected Schema getSchema() {
         return schema;
     }
-
 }
