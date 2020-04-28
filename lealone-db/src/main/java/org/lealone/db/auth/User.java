@@ -258,9 +258,14 @@ public class User extends RightOwner {
                 database.removeDatabaseObject(session, right);
             }
         }
+        super.removeChildrenAndResources(session);
+    }
+
+    @Override
+    public void invalidate() {
         salt = null;
         Arrays.fill(passwordHash, (byte) 0);
         passwordHash = null;
-        super.removeChildrenAndResources(session);
+        super.invalidate();
     }
 }

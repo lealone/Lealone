@@ -159,10 +159,15 @@ public class Right extends DbObjectBase {
         } else {
             grantee.revokeRight(grantedObject);
         }
+        super.removeChildrenAndResources(session);
+    }
+
+    @Override
+    public void invalidate() {
         grantedRole = null;
         grantedObject = null;
         grantee = null;
-        super.removeChildrenAndResources(session);
+        super.invalidate();
     }
 
     @Override

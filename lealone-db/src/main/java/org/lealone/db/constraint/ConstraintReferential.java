@@ -270,7 +270,10 @@ public class ConstraintReferential extends Constraint {
         if (refIndexOwner) {
             refTable.removeIndexOrTransferOwnership(session, refIndex);
         }
-        database.removeMeta(session, getId());
+    }
+
+    @Override
+    public void invalidate() {
         refTable = null;
         index = null;
         refIndex = null;
@@ -279,7 +282,7 @@ public class ConstraintReferential extends Constraint {
         deleteSQL = null;
         updateSQL = null;
         table = null;
-        invalidate();
+        super.invalidate();
     }
 
     @Override

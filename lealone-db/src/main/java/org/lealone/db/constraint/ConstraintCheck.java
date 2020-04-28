@@ -74,11 +74,6 @@ public class ConstraintCheck extends Constraint {
     @Override
     public void removeChildrenAndResources(ServerSession session) {
         table.removeConstraint(this);
-        database.removeMeta(session, getId());
-        exprEvaluator = null;
-        expr = null;
-        table = null;
-        invalidate();
     }
 
     @Override
