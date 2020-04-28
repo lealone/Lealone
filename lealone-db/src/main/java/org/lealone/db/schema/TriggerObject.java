@@ -27,6 +27,9 @@ import org.lealone.db.value.Value;
 /**
  * A trigger is created using the statement
  * CREATE TRIGGER
+ *
+ * @author H2 Group
+ * @author zhh
  */
 public class TriggerObject extends SchemaObjectBase {
 

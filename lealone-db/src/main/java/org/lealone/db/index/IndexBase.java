@@ -131,7 +131,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     public void removeChildrenAndResources(ServerSession session) {
         table.removeIndex(this);
         remove(session);
-        database.removeMeta(session, getId());
     }
 
     @Override

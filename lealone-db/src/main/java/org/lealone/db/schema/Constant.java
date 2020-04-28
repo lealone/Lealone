@@ -11,6 +11,9 @@ import org.lealone.db.value.Value;
 /**
  * A user-defined constant as created by the SQL statement
  * CREATE CONSTANT
+ *
+ * @author H2 Group
+ * @author zhh
  */
 public class Constant extends SchemaObjectBase {
 
@@ -26,13 +29,12 @@ public class Constant extends SchemaObjectBase {
         return DbObjectType.CONSTANT;
     }
 
-    @Override
-    public String getCreateSQL() {
-        return "CREATE CONSTANT " + getSQL() + " VALUE " + value.getSQL();
-    }
-
     public Value getValue() {
         return value;
     }
 
+    @Override
+    public String getCreateSQL() {
+        return "CREATE CONSTANT " + getSQL() + " VALUE " + value.getSQL();
+    }
 }

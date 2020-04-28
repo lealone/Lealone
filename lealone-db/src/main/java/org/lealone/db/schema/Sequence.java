@@ -15,6 +15,9 @@ import org.lealone.db.session.ServerSession;
 /**
  * A sequence is created using the statement
  * CREATE SEQUENCE
+ *
+ * @author H2 Group
+ * @author zhh
  */
 public class Sequence extends SchemaObjectBase {
 

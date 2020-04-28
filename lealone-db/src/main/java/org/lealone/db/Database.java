@@ -783,7 +783,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     public void updateMetaAndFirstLevelChildren(ServerSession session, DbObject obj) {
         checkWritingAllowed();
-        List<DbObject> list = obj.getChildren();
+        List<? extends DbObject> list = obj.getChildren();
         Comment comment = findComment(obj);
         if (comment != null) {
             DbException.throwInternalError();
@@ -890,7 +890,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             if (SysProperties.CHECK && map.get(name) != null) {
                 DbException.throwInternalError("object already exists");
             }
-            // lockMeta(session);
             addMeta(session, obj);
             map.put(name, obj);
         }
@@ -912,14 +911,13 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 DbException.throwInternalError("not found: " + objName);
             }
             Comment comment = findComment(obj);
-            // lockMeta(session);
             if (comment != null) {
                 removeDatabaseObject(session, comment);
             }
             int id = obj.getId();
             obj.removeChildrenAndResources(session);
-            map.remove(objName);
             removeMeta(session, id);
+            map.remove(objName);
         }
     }
 
@@ -949,6 +947,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             removeMeta(session, id);
             map.remove(oldName);
             obj.rename(newName);
+            addMeta(session, obj);
             map.put(newName, obj);
         }
         updateMetaAndFirstLevelChildren(session, obj);
@@ -2127,8 +2126,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     @Override
-    public List<DbObject> getChildren() {
-        return null;
+    public List<? extends DbObject> getChildren() {
+        return getAllSchemaObjects();
     }
 
     @Override

@@ -68,7 +68,7 @@ public interface DbObject {
      *
      * @return the list of children
      */
-    List<DbObject> getChildren();
+    List<? extends DbObject> getChildren();
 
     /**
      * Delete all dependent children objects and resources of this object.

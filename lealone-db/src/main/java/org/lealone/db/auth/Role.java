@@ -70,5 +70,4 @@ public class Role extends RightOwner {
         }
         super.removeChildrenAndResources(session);
     }
-
 }

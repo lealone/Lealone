@@ -13,15 +13,17 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.Aggregate;
 import org.lealone.db.api.AggregateFunction;
-import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.DataType;
 
 /**
  * Represents a user-defined aggregate function.
+ *
+ * @author H2 Group
+ * @author zhh
  */
 public class UserAggregate extends SchemaObjectBase {
 
-    private String className;
+    private final String className;
     private Class<?> javaClass;
 
     public UserAggregate(Schema schema, int id, String name, String className, boolean force) {
@@ -35,6 +37,10 @@ public class UserAggregate extends SchemaObjectBase {
     @Override
     public DbObjectType getType() {
         return DbObjectType.AGGREGATE;
+    }
+
+    public String getJavaClassName() {
+        return className;
     }
 
     public Aggregate getInstance() {
@@ -67,19 +73,8 @@ public class UserAggregate extends SchemaObjectBase {
     }
 
     @Override
-    public synchronized void removeChildrenAndResources(ServerSession session) {
-        super.removeChildrenAndResources(session);
-        className = null;
-        javaClass = null;
-    }
-
-    @Override
     public void checkRename() {
         throw DbException.getUnsupportedException("AGGREGATE");
-    }
-
-    public String getJavaClassName() {
-        return className;
     }
 
     /**
@@ -117,5 +112,4 @@ public class UserAggregate extends SchemaObjectBase {
             return aggregateFunction.getResult();
         }
     }
-
 }

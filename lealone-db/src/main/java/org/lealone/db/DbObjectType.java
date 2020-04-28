@@ -142,5 +142,4 @@ public enum DbObjectType {
         for (DbObjectType t : list)
             System.out.println(t);
     }
-
 }

@@ -38,6 +38,7 @@ import org.lealone.sql.IExpression;
  *
  * @author Thomas Mueller
  * @author Gary Tong
+ * @author zhh
  */
 public class FunctionAlias extends SchemaObjectBase {
 

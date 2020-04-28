@@ -6,11 +6,13 @@
 package org.lealone.db.schema;
 
 import org.lealone.db.DbObjectType;
-import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 
 /**
  * Represents a domain (user-defined data type).
+ *
+ * @author H2 Group
+ * @author zhh
  */
 public class UserDataType extends SchemaObjectBase {
 
@@ -25,6 +27,14 @@ public class UserDataType extends SchemaObjectBase {
         return DbObjectType.USER_DATATYPE;
     }
 
+    public Column getColumn() {
+        return column;
+    }
+
+    public void setColumn(Column column) {
+        this.column = column;
+    }
+
     @Override
     public String getCreateSQL() {
         return "CREATE DOMAIN " + getSQL() + " AS " + column.getCreateSQL();
@@ -34,18 +44,4 @@ public class UserDataType extends SchemaObjectBase {
     public String getDropSQL() {
         return "DROP DOMAIN IF EXISTS " + getSQL();
     }
-
-    @Override
-    public void removeChildrenAndResources(ServerSession session) {
-        database.removeMeta(session, getId());
-    }
-
-    public Column getColumn() {
-        return column;
-    }
-
-    public void setColumn(Column column) {
-        this.column = column;
-    }
-
 }

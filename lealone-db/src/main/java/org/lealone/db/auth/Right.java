@@ -177,5 +177,4 @@ public class Right extends DbObjectBase {
     public int getRightMask() {
         return grantedRight;
     }
-
 }

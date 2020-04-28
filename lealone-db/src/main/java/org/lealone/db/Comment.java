@@ -81,5 +81,4 @@ public class Comment extends DbObjectBase {
             return type.name();
         }
     }
-
 }

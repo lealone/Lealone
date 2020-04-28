@@ -8,6 +8,7 @@ package org.lealone.db.schema;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StatementBuilder;
@@ -117,6 +118,11 @@ public class Schema extends DbObjectBase {
         StatementBuilder sql = new StatementBuilder();
         sql.append("CREATE SCHEMA IF NOT EXISTS ").append(getSQL()).append(" AUTHORIZATION ").append(owner.getSQL());
         return sql.toString();
+    }
+
+    @Override
+    public List<? extends DbObject> getChildren() {
+        return getAll();
     }
 
     @Override

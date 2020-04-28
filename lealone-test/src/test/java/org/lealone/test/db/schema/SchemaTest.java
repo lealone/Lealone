@@ -23,6 +23,7 @@ import org.lealone.db.schema.Schema;
 import org.lealone.test.db.DbObjectTestBase;
 
 public class SchemaTest extends DbObjectTestBase {
+
     String userName = "sa1";
     String schemaName = "SchemaTest";
     Schema schema;

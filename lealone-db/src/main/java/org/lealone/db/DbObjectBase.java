@@ -62,7 +62,7 @@ public abstract class DbObjectBase implements DbObject {
     }
 
     @Override
-    public List<DbObject> getChildren() {
+    public List<? extends DbObject> getChildren() {
         return null;
     }
 

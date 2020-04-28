@@ -178,5 +178,4 @@ public abstract class RightOwner extends DbObjectBase {
         }
         return grantedRoles.get(role);
     }
-
 }

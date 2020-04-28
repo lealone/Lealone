@@ -356,10 +356,13 @@ public class TableView extends Table {
     public void removeChildrenAndResources(ServerSession session) {
         removeViewFromTables();
         super.removeChildrenAndResources(session);
-        database.removeMeta(session, getId());
+    }
+
+    @Override
+    public void invalidate() {
         querySQL = null;
         index = null;
-        invalidate();
+        super.invalidate();
     }
 
     @Override

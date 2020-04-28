@@ -263,5 +263,4 @@ public class User extends RightOwner {
         passwordHash = null;
         super.removeChildrenAndResources(session);
     }
-
 }

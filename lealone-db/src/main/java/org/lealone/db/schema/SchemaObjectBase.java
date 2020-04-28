@@ -40,5 +40,4 @@ public abstract class SchemaObjectBase extends DbObjectBase implements SchemaObj
     public String getSQL() {
         return schema.getSQL() + "." + super.getSQL();
     }
-
 }
