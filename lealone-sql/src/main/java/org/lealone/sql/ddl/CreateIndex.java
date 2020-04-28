@@ -11,10 +11,10 @@ import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
+import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 

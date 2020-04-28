@@ -24,14 +24,14 @@ import org.lealone.sql.SQLStatement;
 
 public class TableAlterHistoryRecord {
 
-    int id;
-    int version;
-    int alterType;
-    String columns;
+    // private final int id;
+    // private final int version;
+    private final int alterType;
+    private final String columns;
 
     public TableAlterHistoryRecord(int id, int version, int alterType, String columns) {
-        this.id = id;
-        this.version = version;
+        // this.id = id;
+        // this.version = version;
         this.alterType = alterType;
         this.columns = columns;
     }

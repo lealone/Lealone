@@ -10,11 +10,11 @@ import java.util.HashSet;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.index.Index;
+import org.lealone.db.index.IndexColumn;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 
 /**

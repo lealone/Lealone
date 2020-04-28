@@ -19,10 +19,10 @@ package org.lealone.sql.router;
 
 import java.util.List;
 
+import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.Result;
-import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.sql.dml.Select;
 

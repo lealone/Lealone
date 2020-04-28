@@ -38,6 +38,7 @@ import org.lealone.db.constraint.ConstraintCheck;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.constraint.ConstraintUnique;
 import org.lealone.db.index.Index;
+import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.MetaIndex;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;

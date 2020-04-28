@@ -22,6 +22,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
+import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;

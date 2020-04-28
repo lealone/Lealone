@@ -22,5 +22,6 @@ public enum TableType {
     META_TABLE,
     RANGE_TABLE,
     FUNCTION_TABLE,
+    DUMMY_TABLE,
     VIEW
 }

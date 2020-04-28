@@ -14,7 +14,6 @@ import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.value.ValueLong;
 import org.lealone.storage.IterationParameters;

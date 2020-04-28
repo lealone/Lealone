@@ -36,7 +36,7 @@ public class DummyTable extends Table {
 
     @Override
     public TableType getTableType() {
-        return null;
+        return TableType.DUMMY_TABLE;
     }
 
     @Override

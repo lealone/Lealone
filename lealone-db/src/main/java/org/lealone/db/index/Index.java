@@ -17,7 +17,6 @@ import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.Table;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;

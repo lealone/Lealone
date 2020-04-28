@@ -4,9 +4,11 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.table;
+package org.lealone.db.index;
 
 import org.lealone.db.result.SortOrder;
+import org.lealone.db.table.Column;
+import org.lealone.db.table.Table;
 
 /**
  * This represents a column item of an index. This is required because some

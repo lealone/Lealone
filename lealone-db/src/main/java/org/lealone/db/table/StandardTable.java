@@ -35,6 +35,7 @@ import org.lealone.db.index.Cursor;
 import org.lealone.db.index.GlobalUniqueIndex;
 import org.lealone.db.index.HashIndex;
 import org.lealone.db.index.Index;
+import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.index.NonUniqueHashIndex;
 import org.lealone.db.index.StandardDelegateIndex;

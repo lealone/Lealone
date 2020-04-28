@@ -13,7 +13,6 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.IndexColumn;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
