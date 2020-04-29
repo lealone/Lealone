@@ -21,6 +21,7 @@ import java.util.Properties;
 
 import org.junit.Test;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.test.UnitTestBase;
 
 public class ConnectionInfoTest extends UnitTestBase {
@@ -79,10 +80,13 @@ public class ConnectionInfoTest extends UnitTestBase {
         }
 
         try {
+            String key = ConnectionSetting.IS_LOCAL.name();
             Properties prop = new Properties();
-            prop.setProperty("IS_LOCAL", "true");
-            new ConnectionInfo(getURL() + ";IS_LOCAL=true", prop); // url中设置的参数跟用Properties设置的参数虽然重复了，但值是一样的，所以合法
-            new ConnectionInfo(getURL() + ";IS_LOCAL=false", prop); // 值不一样了，所以是非法的
+            prop.setProperty(key, "true");
+            // url中设置的参数跟用Properties设置的参数虽然重复了，但值是一样的，所以合法
+            new ConnectionInfo(getURL() + ";" + key + "=true", prop);
+            // 值不一样了，所以是非法的
+            new ConnectionInfo(getURL() + ";" + key + "=false", prop);
             fail();
         } catch (Exception e) {
         }

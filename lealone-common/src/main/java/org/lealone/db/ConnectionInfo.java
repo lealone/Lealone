@@ -36,14 +36,14 @@ public class ConnectionInfo implements Cloneable {
 
     static {
         KNOWN_SETTINGS.addAll(DbSettings.getDefaultSettings().getSettings().keySet());
+
+        // TODO 跟DbSettings有重复
         for (SetType type : SetType.values()) {
             KNOWN_SETTINGS.add(type.getName());
         }
 
-        String[] connectionSettings = { "IGNORE_UNKNOWN_SETTINGS", "INIT", "USER", "PASSWORD", "PASSWORD_HASH",
-                "IS_LOCAL", Constants.NET_FACTORY_NAME_KEY, "NETWORK_TIMEOUT", "TRACE_ENABLED" };
-
-        for (String key : connectionSettings) {
+        for (ConnectionSetting setting : ConnectionSetting.values()) {
+            String key = setting.name();
             if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
                 DbException.throwInternalError(key);
             }
@@ -123,7 +123,7 @@ public class ConnectionInfo implements Cloneable {
         readAndRemoveSettingsFromURL();
         parseURL();
 
-        setUserName(removeProperty("USER", ""));
+        setUserName(removeProperty(ConnectionSetting.USER, ""));
         convertPasswords();
 
         if (isEmbedded() && isPersistent()) {
@@ -132,9 +132,9 @@ public class ConnectionInfo implements Cloneable {
                 setBaseDir(baseDir);
             }
         }
-        netFactoryName = removeProperty(Constants.NET_FACTORY_NAME_KEY, Constants.DEFAULT_NET_FACTORY_NAME);
-        networkTimeout = getProperty("NETWORK_TIMEOUT", DEFAULT_NETWORK_TIMEOUT);
-        removeProperty("NETWORK_TIMEOUT", "");
+        netFactoryName = removeProperty(ConnectionSetting.NET_FACTORY_NAME, Constants.DEFAULT_NET_FACTORY_NAME);
+        networkTimeout = getProperty(ConnectionSetting.NETWORK_TIMEOUT, DEFAULT_NETWORK_TIMEOUT);
+        removeProperty(ConnectionSetting.NETWORK_TIMEOUT, "");
         initTraceProperty();
     }
 
@@ -322,7 +322,7 @@ public class ConnectionInfo implements Cloneable {
     }
 
     private char[] removePassword() {
-        Object p = prop.remove("PASSWORD");
+        Object p = prop.remove(ConnectionSetting.PASSWORD.name());
         if (p == null) {
             return new char[0];
         } else if (p instanceof char[]) {
@@ -338,7 +338,7 @@ public class ConnectionInfo implements Cloneable {
      */
     private void convertPasswords() {
         char[] password = removePassword();
-        boolean passwordHash = removeProperty("PASSWORD_HASH", false);
+        boolean passwordHash = removeProperty(ConnectionSetting.PASSWORD_HASH, false);
         if (getProperty("CIPHER", null) != null) {
             // split password into (filePassword+' '+userPassword)
             int space = -1;
@@ -378,52 +378,6 @@ public class ConnectionInfo implements Cloneable {
             return new byte[0];
         }
         return SHA256.getKeyPasswordHash(userName, passwordChars);
-    }
-
-    /**
-     * Get a boolean property if it is set and return the value.
-     *
-     * @param key the property name
-     * @param defaultValue the default value
-     * @return the value
-     */
-    public boolean getProperty(String key, boolean defaultValue) {
-        String x = getProperty(key, null);
-        if (x == null) {
-            return defaultValue;
-        }
-        // support 0 / 1 (like the parser)
-        if (x.length() == 1 && Character.isDigit(x.charAt(0))) {
-            return Integer.parseInt(x) != 0;
-        }
-        return Boolean.parseBoolean(x);
-    }
-
-    /**
-     * Remove a boolean property if it is set and return the value.
-     *
-     * @param key the property name
-     * @param defaultValue the default value
-     * @return the value
-     */
-    public boolean removeProperty(String key, boolean defaultValue) {
-        String x = removeProperty(key, null);
-        return x == null ? defaultValue : Boolean.parseBoolean(x);
-    }
-
-    /**
-     * Remove a String property if it is set and return the value.
-     *
-     * @param key the property name
-     * @param defaultValue the default value
-     * @return the value
-     */
-    public String removeProperty(String key, String defaultValue) {
-        if (SysProperties.CHECK && !isKnownSetting(key)) {
-            DbException.throwInternalError(key);
-        }
-        Object x = prop.remove(key);
-        return x == null ? defaultValue : x.toString();
     }
 
     public String getDatabaseName() {
@@ -521,50 +475,6 @@ public class ConnectionInfo implements Cloneable {
     }
 
     /**
-     * Get the value of the given property.
-     *
-     * @param key the property key
-     * @return the value as a String
-     */
-    public String getProperty(String key) {
-        Object value = prop.get(key);
-        if (value == null || !(value instanceof String)) {
-            return null;
-        }
-        return value.toString();
-    }
-
-    /**
-     * Get the value of the given property.
-     *
-     * @param key the property key
-     * @param defaultValue the default value
-     * @return the value as a String
-     */
-    public int getProperty(String key, int defaultValue) {
-        if (SysProperties.CHECK && !isKnownSetting(key)) {
-            DbException.throwInternalError(key);
-        }
-        String s = getProperty(key);
-        return s == null ? defaultValue : Integer.parseInt(s);
-    }
-
-    /**
-     * Get the value of the given property.
-     *
-     * @param key the property key
-     * @param defaultValue the default value
-     * @return the value as a String
-     */
-    public String getProperty(String key, String defaultValue) {
-        if (SysProperties.CHECK && !isKnownSetting(key)) {
-            DbException.throwInternalError(key);
-        }
-        String s = getProperty(key);
-        return s == null ? defaultValue : s;
-    }
-
-    /**
      * Check if this is a remote connection with SSL enabled.
      *
      * @return true if it is
@@ -605,6 +515,10 @@ public class ConnectionInfo implements Cloneable {
         this.fileEncryptionKey = key;
     }
 
+    public void setProperty(ConnectionSetting key, String value) {
+        setProperty(key.name(), value);
+    }
+
     /**
      * Overwrite a property.
      *
@@ -616,6 +530,124 @@ public class ConnectionInfo implements Cloneable {
         if (value != null) {
             prop.setProperty(key, value);
         }
+    }
+
+    public String getProperty(ConnectionSetting key) {
+        Object value = prop.get(key.name());
+        if (value == null || !(value instanceof String)) {
+            return null;
+        }
+        return value.toString();
+    }
+
+    /**
+     * Get the value of the given property.
+     *
+     * @param key the property key
+     * @return the value as a String
+     */
+    public String getProperty(String key) {
+        Object value = prop.get(key);
+        if (value == null || !(value instanceof String)) {
+            return null;
+        }
+        return value.toString();
+    }
+
+    public int getProperty(ConnectionSetting key, int defaultValue) {
+        return getProperty(key.name(), defaultValue);
+    }
+
+    /**
+     * Get the value of the given property.
+     *
+     * @param key the property key
+     * @param defaultValue the default value
+     * @return the value as a String
+     */
+    public int getProperty(String key, int defaultValue) {
+        if (SysProperties.CHECK && !isKnownSetting(key)) {
+            DbException.throwInternalError(key);
+        }
+        String s = getProperty(key);
+        return s == null ? defaultValue : Integer.parseInt(s);
+    }
+
+    public String getProperty(ConnectionSetting key, String defaultValue) {
+        return getProperty(key.name(), defaultValue);
+    }
+
+    /**
+     * Get the value of the given property.
+     *
+     * @param key the property key
+     * @param defaultValue the default value
+     * @return the value as a String
+     */
+    public String getProperty(String key, String defaultValue) {
+        if (SysProperties.CHECK && !isKnownSetting(key)) {
+            DbException.throwInternalError(key);
+        }
+        String s = getProperty(key);
+        return s == null ? defaultValue : s;
+    }
+
+    public boolean getProperty(ConnectionSetting key, boolean defaultValue) {
+        return getProperty(key.name(), defaultValue);
+    }
+
+    /**
+     * Get a boolean property if it is set and return the value.
+     *
+     * @param key the property name
+     * @param defaultValue the default value
+     * @return the value
+     */
+    public boolean getProperty(String key, boolean defaultValue) {
+        String x = getProperty(key, null);
+        if (x == null) {
+            return defaultValue;
+        }
+        // support 0 / 1 (like the parser)
+        if (x.length() == 1 && Character.isDigit(x.charAt(0))) {
+            return Integer.parseInt(x) != 0;
+        }
+        return Boolean.parseBoolean(x);
+    }
+
+    /**
+     * Remove a boolean property if it is set and return the value.
+     *
+     * @param key the property name
+     * @param defaultValue the default value
+     * @return the value
+     */
+    public boolean removeProperty(String key, boolean defaultValue) {
+        String x = removeProperty(key, null);
+        return x == null ? defaultValue : Boolean.parseBoolean(x);
+    }
+
+    public boolean removeProperty(ConnectionSetting key, boolean defaultValue) {
+        return removeProperty(key.name(), defaultValue);
+    }
+
+    public String removeProperty(ConnectionSetting key, String defaultValue) {
+        return removeProperty(key.name(), defaultValue);
+    }
+
+    /**
+     * Remove a String property if it is set and return the value.
+     *
+     * @param key the property name
+     * @param defaultValue the default value
+     * @return the value
+     */
+    public String removeProperty(String key, String defaultValue) {
+        if (SysProperties.CHECK && !isKnownSetting(key)) {
+            DbException.throwInternalError(key);
+        }
+        Object x = prop.remove(key);
+        return x == null ? defaultValue : x.toString();
     }
 
     /**
@@ -726,6 +758,6 @@ public class ConnectionInfo implements Cloneable {
     }
 
     public void initTraceProperty() {
-        traceEnabled = getProperty("TRACE_ENABLED", false);
+        traceEnabled = getProperty(ConnectionSetting.TRACE_ENABLED, false);
     }
 }

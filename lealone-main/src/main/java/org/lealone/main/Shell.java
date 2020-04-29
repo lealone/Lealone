@@ -24,6 +24,7 @@ import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.ScriptReader;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 
 /**
@@ -509,7 +510,7 @@ public class Shell {
         if (password != null) {
             info.put("password", password);
         }
-        info.put("NETWORK_TIMEOUT", "-1");
+        info.put(ConnectionSetting.NETWORK_TIMEOUT.name(), "-1");
         ConnectionInfo ci = new ConnectionInfo(url, info);
         if (ci.isEmbedded()) {
             Lealone.embed(args);

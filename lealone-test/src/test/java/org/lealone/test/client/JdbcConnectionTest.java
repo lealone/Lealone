@@ -41,7 +41,7 @@ public class JdbcConnectionTest extends TestBase {
     }
 
     public void run2() throws Exception {
-        // addConnectionParameter("TRACE_ENABLED", true);
+        // addConnectionParameter(ConnectionSetting.TRACE_ENABLED.name(), true);
         // addConnectionParameter("TRACE_LEVEL_SYSTEM_OUT", TraceSystem.DEBUG);
 
         Connection conn0 = getConnection(LealoneDatabase.NAME);

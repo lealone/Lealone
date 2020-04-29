@@ -24,6 +24,7 @@ import java.util.Properties;
 import org.lealone.common.security.SHA256;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 import org.lealone.test.sql.SqlTestBase;
 
@@ -111,7 +112,7 @@ public class TransactionalDDLTest extends SqlTestBase {
         Properties prop = new Properties();
         prop.setProperty("user", "SA222");
         prop.setProperty("password", StringUtils.convertBytesToHex(userPasswordHash));
-        prop.setProperty("PASSWORD_HASH", "true");
+        prop.setProperty(ConnectionSetting.PASSWORD_HASH.name(), "true");
         Connection conn = DriverManager.getConnection("jdbc:h2:tcp://localhost:9092/mydb", prop);
         conn.close();
     }

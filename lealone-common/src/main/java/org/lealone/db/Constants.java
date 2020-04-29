@@ -34,7 +34,7 @@ public class Constants {
 
     public static final String DEFAULT_NET_FACTORY_NAME = "nio";
 
-    public static final String NET_FACTORY_NAME_KEY = "NET_FACTORY_NAME";
+    public static final String NET_FACTORY_NAME_KEY = ConnectionSetting.NET_FACTORY_NAME.name();
 
     public static final char NAME_SEPARATOR = '_';
 

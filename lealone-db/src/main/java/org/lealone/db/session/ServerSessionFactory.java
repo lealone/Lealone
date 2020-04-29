@@ -8,6 +8,7 @@ package org.lealone.db.session;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.SetType;
@@ -133,16 +134,13 @@ public class ServerSessionFactory implements SessionFactory {
     }
 
     private void initSession(ServerSession session, ConnectionInfo ci) {
-        if (ci.getProperty("IS_LOCAL") != null) {
-            boolean isLocal = Boolean.parseBoolean(ci.getProperty("IS_LOCAL"));
+        if (ci.getProperty(ConnectionSetting.IS_LOCAL) != null) {
+            boolean isLocal = ci.getProperty(ConnectionSetting.IS_LOCAL, true);
             session.setLocal(isLocal);
             if (isLocal)
                 session.setRoot(false);
         }
-
-        boolean ignoreUnknownSetting = ci.getProperty("IGNORE_UNKNOWN_SETTINGS", false);
-        String init = ci.getProperty("INIT", null);
-
+        boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
         session.setAllowLiterals(true);
         for (String setting : ci.getKeys()) {
             if (SetType.contains(setting)) {
@@ -158,6 +156,7 @@ public class ServerSessionFactory implements SessionFactory {
                 }
             }
         }
+        String init = ci.getProperty(ConnectionSetting.INIT, null);
         if (init != null) {
             try {
                 session.prepareStatement(init, Integer.MAX_VALUE).executeUpdate();

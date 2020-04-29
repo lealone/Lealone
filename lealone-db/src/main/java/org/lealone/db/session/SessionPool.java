@@ -25,6 +25,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.async.Future;
 import org.lealone.sql.PreparedSQLStatement;
@@ -66,7 +67,7 @@ public class SessionPool {
             }
 
             ConnectionInfo ci = new ConnectionInfo(url, oldCi.getProperties());
-            ci.setProperty("IS_LOCAL", "true");
+            ci.setProperty(ConnectionSetting.IS_LOCAL, "true");
             ci.setUserName(oldCi.getUserName());
             ci.setUserPasswordHash(oldCi.getUserPasswordHash());
             ci.setFilePasswordHash(oldCi.getFilePasswordHash());
@@ -90,7 +91,7 @@ public class SessionPool {
         }
 
         ConnectionInfo ci = new ConnectionInfo(url, oldCi.getProperties());
-        ci.setProperty("IS_LOCAL", "true");
+        ci.setProperty(ConnectionSetting.IS_LOCAL, "true");
         ci.setUserName(oldCi.getUserName());
         ci.setUserPasswordHash(oldCi.getUserPasswordHash());
         ci.setFilePasswordHash(oldCi.getFilePasswordHash());

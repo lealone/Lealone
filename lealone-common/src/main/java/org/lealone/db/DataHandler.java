@@ -16,6 +16,7 @@ import org.lealone.storage.fs.FileStorage;
  * The most important implementing class is a database.
  * 
  * @author H2 Group
+ * @author zhh
  */
 public interface DataHandler {
 

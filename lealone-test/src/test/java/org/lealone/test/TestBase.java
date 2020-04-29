@@ -29,6 +29,7 @@ import org.junit.Assert;
 import org.lealone.common.logging.ConsoleLogDelegateFactory;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.trace.TraceSystem;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
@@ -215,13 +216,13 @@ public class TestBase extends Assert {
             return url;
         // addConnectionParameter("DATABASE_TO_UPPER", "false");
         // addConnectionParameter("ALIAS_COLUMN_NAME", "true");
-        // addConnectionParameter("IGNORE_UNKNOWN_SETTINGS", "true");
+        // addConnectionParameter(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, "true");
 
         if (!connectionParameters.containsKey("user")) {
             addConnectionParameter("user", DEFAULT_USER);
             addConnectionParameter("password", DEFAULT_PASSWORD);
         }
-        addConnectionParameter("NETWORK_TIMEOUT", String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
+        addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
 
         StringBuilder url = new StringBuilder(100);
 
