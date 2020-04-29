@@ -419,7 +419,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
             if (!readOnly) {
                 // set CREATE_BUILD in a new database
-                String name = SetType.CREATE_BUILD.getName();
+                String name = DbSetting.CREATE_BUILD.getName();
                 if (!settings.containsKey(name)) {
                     Setting setting = new Setting(this, allocateObjectId(), name);
                     setting.setIntValue(Constants.BUILD_ID);

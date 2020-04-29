@@ -21,6 +21,7 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.TempFileDeleter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.DataHandler;
+import org.lealone.db.DbSetting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
@@ -87,7 +88,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         this.parent = parent;
         this.id = id;
 
-        cipher = ci.getProperty("CIPHER");
+        cipher = ci.getProperty(DbSetting.CIPHER.getName());
         fileEncryptionKey = cipher == null ? null : MathUtils.secureRandomBytes(32);
 
         initTraceSystem(ci);

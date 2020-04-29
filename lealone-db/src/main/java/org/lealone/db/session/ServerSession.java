@@ -23,10 +23,10 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
 import org.lealone.db.Database;
+import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Procedure;
 import org.lealone.db.ServerStorageCommand;
-import org.lealone.db.SetType;
 import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
@@ -126,7 +126,7 @@ public class ServerSession extends SessionBase {
         this.queryCacheSize = database.getSettings().queryCacheSize;
         this.user = user;
         this.id = id;
-        Setting setting = database.findSetting(SetType.DEFAULT_LOCK_TIMEOUT.getName());
+        Setting setting = database.findSetting(DbSetting.DEFAULT_LOCK_TIMEOUT.getName());
         this.lockTimeout = setting == null ? Constants.INITIAL_LOCK_TIMEOUT : setting.getIntValue();
         this.currentSchemaName = Constants.SCHEMA_MAIN;
     }

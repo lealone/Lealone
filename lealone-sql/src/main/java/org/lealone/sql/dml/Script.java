@@ -33,7 +33,7 @@ import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.SetType;
+import org.lealone.db.DbSetting;
 import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
@@ -176,7 +176,7 @@ public class Script extends ScriptBase {
             }
             if (settings) {
                 for (Setting setting : db.getAllSettings()) {
-                    if (setting.getName().equals(SetType.CREATE_BUILD.getName())) {
+                    if (setting.getName().equals(DbSetting.CREATE_BUILD.getName())) {
                         // don't add CREATE_BUILD to the script
                         // (it is only set when creating the database)
                         continue;

@@ -18,13 +18,14 @@
 package org.lealone.test.sql.dml;
 
 import org.junit.Test;
-import org.lealone.db.SetType;
+import org.lealone.db.DbSetting;
+import org.lealone.db.session.SessionSetting;
 import org.lealone.test.sql.SqlTestBase;
 
 public class SetTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
-        System.out.println("SetTypes size: " + SetType.values().length);
+        System.out.println("DbSetting size: " + DbSetting.values().length);
 
         testSessionSet();
         testDatabaseSet();
@@ -43,7 +44,7 @@ public class SetTest extends SqlTestBase {
             executeUpdate("SET LOCK_TIMEOUT = -1");
             fail(sql);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains(SetType.LOCK_TIMEOUT.getName()));
+            assertTrue(e.getMessage().contains(SessionSetting.LOCK_TIMEOUT.getName()));
         }
         executeUpdate("SET LOCK_TIMEOUT = 3000");
         executeUpdate("SET QUERY_TIMEOUT 4000");
@@ -72,7 +73,7 @@ public class SetTest extends SqlTestBase {
             executeUpdate("SET ALLOW_LITERALS 10");
             fail(sql);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains(SetType.ALLOW_LITERALS.getName()));
+            assertTrue(e.getMessage().contains(DbSetting.ALLOW_LITERALS.getName()));
         }
 
         executeUpdate("SET CACHE_SIZE 1000");
@@ -86,7 +87,7 @@ public class SetTest extends SqlTestBase {
             executeUpdate("SET BINARY_COLLATION invalidName");
             fail(sql);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains(SetType.BINARY_COLLATION.getName()));
+            assertTrue(e.getMessage().contains(DbSetting.BINARY_COLLATION.getName()));
         }
 
         executeUpdate("SET COMPRESS_LOB NO");
@@ -96,7 +97,7 @@ public class SetTest extends SqlTestBase {
             executeUpdate("SET COMPRESS_LOB UNSUPPORTED");
             fail(sql);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains(SetType.COMPRESS_LOB.getName()));
+            assertTrue(e.getMessage().contains(DbSetting.COMPRESS_LOB.getName()));
         }
 
         executeUpdate("SET CREATE_BUILD 12");
@@ -104,7 +105,7 @@ public class SetTest extends SqlTestBase {
             executeUpdate("SET DATABASE_EVENT_LISTENER 'classNameNotFound'");
             fail(sql);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains(SetType.DATABASE_EVENT_LISTENER.getName()));
+            assertTrue(e.getMessage().contains(DbSetting.DATABASE_EVENT_LISTENER.getName()));
         }
 
         executeUpdate("SET DB_CLOSE_DELAY 1000");
@@ -118,7 +119,7 @@ public class SetTest extends SqlTestBase {
             executeUpdate("SET DEFAULT_TABLE_TYPE 5");
             fail(sql);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains(SetType.DEFAULT_TABLE_TYPE.getName()));
+            assertTrue(e.getMessage().contains(DbSetting.DEFAULT_TABLE_TYPE.getName()));
         }
 
         executeUpdate("SET EXCLUSIVE 0");
@@ -136,7 +137,7 @@ public class SetTest extends SqlTestBase {
             executeUpdate("SET MODE UNKNOWN_MODE");
             fail(sql);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains(SetType.MODE.getName()));
+            assertTrue(e.getMessage().contains(DbSetting.MODE.getName()));
         }
 
         executeUpdate("SET OPTIMIZE_REUSE_RESULTS 0");

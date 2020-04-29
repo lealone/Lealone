@@ -20,6 +20,7 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionFactory;
+import org.lealone.db.session.SessionSetting;
 import org.lealone.storage.fs.FilePathEncrypt;
 import org.lealone.storage.fs.FileUtils;
 
@@ -35,20 +36,22 @@ public class ConnectionInfo implements Cloneable {
     private static final int DEFAULT_NETWORK_TIMEOUT = 5000; // 默认5秒无响应就超时
 
     static {
-        KNOWN_SETTINGS.addAll(DbSettings.getDefaultSettings().getSettings().keySet());
-
-        // TODO 跟DbSettings有重复
-        for (SetType type : SetType.values()) {
-            KNOWN_SETTINGS.add(type.getName());
+        for (DbSetting setting : DbSetting.values()) {
+            add(setting.name());
         }
-
+        for (SessionSetting setting : SessionSetting.values()) {
+            add(setting.getName()); // 不用name()，有个特殊的@
+        }
         for (ConnectionSetting setting : ConnectionSetting.values()) {
-            String key = setting.name();
-            if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
-                DbException.throwInternalError(key);
-            }
-            KNOWN_SETTINGS.add(key);
+            add(setting.name());
         }
+    }
+
+    private static void add(String key) {
+        if (SysProperties.CHECK && KNOWN_SETTINGS.contains(key)) {
+            DbException.throwInternalError(key);
+        }
+        KNOWN_SETTINGS.add(key);
     }
 
     private static boolean isKnownSetting(String s) {
@@ -339,7 +342,7 @@ public class ConnectionInfo implements Cloneable {
     private void convertPasswords() {
         char[] password = removePassword();
         boolean passwordHash = removeProperty(ConnectionSetting.PASSWORD_HASH, false);
-        if (getProperty("CIPHER", null) != null) {
+        if (getProperty(DbSetting.CIPHER.getName(), null) != null) {
             // split password into (filePassword+' '+userPassword)
             int space = -1;
             for (int i = 0, len = password.length; i < len; i++) {

@@ -12,18 +12,13 @@ import org.lealone.common.compress.CompressTool;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbSetting;
 import org.lealone.db.Mode;
-import org.lealone.db.SetType;
 import org.lealone.db.Setting;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.CompareMode;
-import org.lealone.db.value.ValueInt;
-import org.lealone.sql.SQLStatement;
-import org.lealone.sql.expression.Expression;
-import org.lealone.sql.expression.ValueExpression;
 
 /**
  * This class represents the statement
@@ -32,116 +27,32 @@ import org.lealone.sql.expression.ValueExpression;
  * @author H2 Group
  * @author zhh
  */
-public class Set extends ManipulationStatement {
+// 只处理database级的类型
+public class SetDatabase extends SetStatement {
 
-    private final SetType type;
-    private Expression expression;
-    private String stringValue;
-    private String[] stringValueList;
+    private final DbSetting setting;
 
-    public Set(ServerSession session, SetType type) {
+    public SetDatabase(ServerSession session, DbSetting type) {
         super(session);
-        this.type = type;
+        this.setting = type;
     }
 
     @Override
-    public int getType() {
-        return SQLStatement.SET;
-    }
-
-    @Override
-    public boolean needRecompile() {
-        return false;
-    }
-
-    public void setStringArray(String[] list) {
-        this.stringValueList = list;
-    }
-
-    public void setString(String v) {
-        this.stringValue = v;
-    }
-
-    public void setExpression(Expression expression) {
-        this.expression = expression;
-    }
-
-    public void setInt(int value) {
-        this.expression = ValueExpression.get(ValueInt.get(value));
-    }
-
-    private int getIntValue() {
-        expression = expression.optimize(session);
-        return expression.getValue(session).getInt();
-    }
-
-    private int getAndValidateIntValue() {
-        return getAndValidateIntValue(0);
-    }
-
-    private int getAndValidateIntValue(int lessThan) {
-        int value = getIntValue();
-        if (value < lessThan) {
-            throw DbException.getInvalidValueException(type.getName(), value);
-        }
-        return value;
-    }
-
-    private boolean getAndValidateBooleanValue() {
-        int value = getIntValue();
-        if (value < 0 || value > 1) {
-            throw DbException.getInvalidValueException(type.getName(), value);
-        }
-        return value == 1;
-    }
-
-    private void checkAdmin() {
-        // session级的类型不用检查管理权限
-        switch (type) {
-        case LOCK_TIMEOUT:
-        case QUERY_TIMEOUT:
-        case SCHEMA:
-        case SCHEMA_SEARCH_PATH:
-        case VARIABLE:
-        case THROTTLE:
-            break;
-        default:
-            session.getUser().checkAdmin();
-        }
+    protected String getSettingName() {
+        return setting.name();
     }
 
     @Override
     public int update() {
-        checkAdmin();
+        session.getUser().checkAdmin();
         Database database = session.getDatabase();
-        String name = type.getName();
-        switch (type) {
-        // 以下是session级的类型
-        case LOCK_TIMEOUT:
-            session.setLockTimeout(getAndValidateIntValue());
-            break;
-        case QUERY_TIMEOUT:
-            session.setQueryTimeout(getAndValidateIntValue());
-            break;
-        case SCHEMA:
-            Schema schema = database.getSchema(stringValue);
-            session.setCurrentSchema(schema);
-            break;
-        case SCHEMA_SEARCH_PATH:
-            session.setSchemaSearchPath(stringValueList);
-            break;
-        case VARIABLE:
-            Expression expr = expression.optimize(session);
-            session.setVariable(stringValue, expr.getValue(session));
-            break;
-        case THROTTLE:
-            session.setThrottle(getAndValidateIntValue());
-            break;
+        String name = setting.name();
+        switch (setting) {
         // 以下是database级的类型
         case ALLOW_LITERALS: {
             int value = getIntValue();
             if (value < 0 || value > 2) {
-                throw DbException.getInvalidValueException(type.getName(), value);
+                throw DbException.getInvalidValueException(name, value);
             }
             database.setAllowLiterals(value);
             addOrUpdateSetting(name, value);
@@ -193,7 +104,7 @@ public class Set extends ManipulationStatement {
             } else if (stringValue.equals(CompareMode.UNSIGNED)) {
                 newMode = CompareMode.getInstance(currentMode.getName(), currentMode.getStrength(), true);
             } else {
-                throw DbException.getInvalidValueException(type.getName(), stringValue);
+                throw DbException.getInvalidValueException(name, stringValue);
             }
             addOrUpdateSetting(name, stringValue);
             database.setCompareMode(newMode);
@@ -224,7 +135,7 @@ public class Set extends ManipulationStatement {
                 // -1 is a special value for in-memory databases,
                 // which means "keep the DB alive and use the same DB for all connections"
             } else if (value < 0) {
-                throw DbException.getInvalidValueException(type.getName(), value);
+                throw DbException.getInvalidValueException(name, value);
             }
             database.setCloseDelay(value);
             addOrUpdateSetting(name, value);
@@ -237,7 +148,7 @@ public class Set extends ManipulationStatement {
         case DEFAULT_TABLE_TYPE: {
             int value = getIntValue();
             if (value < 0 || value > 1) {
-                throw DbException.getInvalidValueException(type.getName(), value);
+                throw DbException.getInvalidValueException(name, value);
             }
             database.setDefaultTableType(value);
             addOrUpdateSetting(name, value);
@@ -256,7 +167,7 @@ public class Set extends ManipulationStatement {
                 database.setExclusiveSession(session, true);
                 break;
             default:
-                throw DbException.getInvalidValueException(type.getName(), value);
+                throw DbException.getInvalidValueException(name, value);
             }
             break;
         }
@@ -358,13 +269,13 @@ public class Set extends ManipulationStatement {
             break;
         }
         default:
-            DbException.throwInternalError("unknown set type: " + type);
+            if (DbSetting.contains(name)) {
+                database.getParameters().put(name, getStringValue());
+            } else {
+                DbException.throwInternalError("unknown setting type: " + setting);
+            }
         }
-        // the meta data information has changed
-        database.getNextModificationDataId();
-        // query caches might be affected as well, for example
-        // when changing the compatibility mode
-        database.getNextModificationMetaId();
+        databaseChanged(database);
         return 0;
     }
 

@@ -10,8 +10,8 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Database;
+import org.lealone.db.DbSetting;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.db.SetType;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.Future;
@@ -113,7 +113,8 @@ public class ServerSessionFactory implements SessionFactory {
         }
 
         User user = null;
-        if (database.validateFilePasswordHash(ci.getProperty("CIPHER", null), ci.getFilePasswordHash())) {
+        if (database.validateFilePasswordHash(ci.getProperty(DbSetting.CIPHER.getName(), null),
+                ci.getFilePasswordHash())) {
             user = database.findUser(ci.getUserName());
             if (user != null) {
                 if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
@@ -143,10 +144,10 @@ public class ServerSessionFactory implements SessionFactory {
         boolean ignoreUnknownSetting = ci.getProperty(ConnectionSetting.IGNORE_UNKNOWN_SETTINGS, false);
         session.setAllowLiterals(true);
         for (String setting : ci.getKeys()) {
-            if (SetType.contains(setting)) {
+            if (SessionSetting.contains(setting) || DbSetting.contains(setting)) {
                 String value = ci.getProperty(setting);
                 try {
-                    String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " " + value;
+                    String sql = "SET " + session.getDatabase().quoteIdentifier(setting) + " '" + value + "'";
                     session.prepareStatementLocal(sql).executeUpdate();
                 } catch (DbException e) {
                     if (!ignoreUnknownSetting) {

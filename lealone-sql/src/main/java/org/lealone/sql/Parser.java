@@ -22,12 +22,12 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
+import org.lealone.db.DbSetting;
 import org.lealone.db.DbSettings;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.Procedure;
 import org.lealone.db.ProcessingMode;
 import org.lealone.db.RunMode;
-import org.lealone.db.SetType;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
@@ -43,6 +43,7 @@ import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.schema.UserDataType;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionSetting;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.table.DummyTable;
@@ -124,7 +125,9 @@ import org.lealone.sql.dml.RunScript;
 import org.lealone.sql.dml.Script;
 import org.lealone.sql.dml.Select;
 import org.lealone.sql.dml.SelectUnion;
-import org.lealone.sql.dml.Set;
+import org.lealone.sql.dml.SetDatabase;
+import org.lealone.sql.dml.SetSession;
+import org.lealone.sql.dml.SetStatement;
 import org.lealone.sql.dml.TransactionStatement;
 import org.lealone.sql.dml.Update;
 import org.lealone.sql.expression.Alias;
@@ -4845,14 +4848,14 @@ public class Parser implements SQLParser {
 
     private StatementBase parseUse() {
         readIfEqualOrTo();
-        Set command = new Set(session, SetType.SCHEMA);
+        SetSession command = new SetSession(session, SessionSetting.SCHEMA);
         command.setString(readAliasIdentifier());
         return command;
     }
 
     private StatementBase parseSet() {
         if (readIf("@")) { // session变量
-            Set command = new Set(session, SetType.VARIABLE);
+            SetSession command = new SetSession(session, SessionSetting.VARIABLE);
             command.setString(readAliasIdentifier());
             readIfEqualOrTo();
             command.setExpression(readExpression());
@@ -4879,14 +4882,14 @@ public class Parser implements SQLParser {
             command.setHash(readExpression());
             return command;
             // 以下是特殊的SetType
-        } else if (readIf(SetType.SCHEMA.getName())) {
+        } else if (readIf(SessionSetting.SCHEMA.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetType.SCHEMA);
+            SetSession command = new SetSession(session, SessionSetting.SCHEMA);
             command.setString(readAliasIdentifier());
             return command;
-        } else if (readIf(SetType.SCHEMA_SEARCH_PATH.getName())) {
+        } else if (readIf(SessionSetting.SCHEMA_SEARCH_PATH.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetType.SCHEMA_SEARCH_PATH);
+            SetSession command = new SetSession(session, SessionSetting.SCHEMA_SEARCH_PATH);
             ArrayList<String> list = Utils.newSmallArrayList();
             list.add(readAliasIdentifier());
             while (readIf(",")) {
@@ -4896,9 +4899,9 @@ public class Parser implements SQLParser {
             list.toArray(schemaNames);
             command.setStringArray(schemaNames);
             return command;
-        } else if (readIf(SetType.ALLOW_LITERALS.getName())) {
+        } else if (readIf(DbSetting.ALLOW_LITERALS.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetType.ALLOW_LITERALS);
+            SetDatabase command = new SetDatabase(session, DbSetting.ALLOW_LITERALS);
             if (readIf("NONE")) {
                 command.setInt(Constants.ALLOW_LITERALS_NONE);
             } else if (readIf("ALL")) {
@@ -4909,29 +4912,29 @@ public class Parser implements SQLParser {
                 command.setInt(readPositiveInt());
             }
             return command;
-        } else if (readIf(SetType.COLLATION.getName())) {
+        } else if (readIf(DbSetting.COLLATION.getName())) {
             readIfEqualOrTo();
             return parseSetCollation();
-        } else if (readIf(SetType.BINARY_COLLATION.getName())) {
+        } else if (readIf(DbSetting.BINARY_COLLATION.getName())) {
             readIfEqualOrTo();
             return parseSetBinaryCollation();
-        } else if (readIf(SetType.COMPRESS_LOB.getName())) {
+        } else if (readIf(DbSetting.COMPRESS_LOB.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetType.COMPRESS_LOB);
+            SetDatabase command = new SetDatabase(session, DbSetting.COMPRESS_LOB);
             if (currentTokenType == VALUE) {
                 command.setString(readString());
             } else {
                 command.setString(readUniqueIdentifier());
             }
             return command;
-        } else if (readIf(SetType.DATABASE_EVENT_LISTENER.getName())) {
+        } else if (readIf(DbSetting.DATABASE_EVENT_LISTENER.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetType.DATABASE_EVENT_LISTENER);
+            SetDatabase command = new SetDatabase(session, DbSetting.DATABASE_EVENT_LISTENER);
             command.setString(readString());
             return command;
-        } else if (readIf(SetType.DEFAULT_TABLE_TYPE.getName())) {
+        } else if (readIf(DbSetting.DEFAULT_TABLE_TYPE.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetType.DEFAULT_TABLE_TYPE);
+            SetDatabase command = new SetDatabase(session, DbSetting.DEFAULT_TABLE_TYPE);
             if (readIf("MEMORY")) {
                 command.setInt(Table.TYPE_MEMORY);
             } else if (readIf("CACHED")) {
@@ -4940,29 +4943,32 @@ public class Parser implements SQLParser {
                 command.setInt(readPositiveInt());
             }
             return command;
-        } else if (readIf(SetType.MODE.getName())) {
+        } else if (readIf(DbSetting.MODE.getName())) {
             readIfEqualOrTo();
-            Set command = new Set(session, SetType.MODE);
+            SetDatabase command = new SetDatabase(session, DbSetting.MODE);
             command.setString(readAliasIdentifier());
             return command;
         } else {
-            // 处理其他SetType
-            SetType type;
+            // 先看看是否是session级的参数，然后再看是否是database级的
+            SetStatement command;
             try {
-                type = SetType.valueOf(currentToken);
-            } catch (Throwable t) {
-                throw getSyntaxError();
+                command = new SetSession(session, SessionSetting.valueOf(currentToken));
+            } catch (Throwable t1) {
+                try {
+                    command = new SetDatabase(session, DbSetting.valueOf(currentToken));
+                } catch (Throwable t2) {
+                    throw getSyntaxError();
+                }
             }
             read();
             readIfEqualOrTo();
-            Set command = new Set(session, type);
             command.setExpression(readExpression());
             return command;
         }
     }
 
-    private Set parseSetCollation() {
-        Set command = new Set(session, SetType.COLLATION);
+    private SetDatabase parseSetCollation() {
+        SetDatabase command = new SetDatabase(session, DbSetting.COLLATION);
         String name = readAliasIdentifier();
         command.setString(name);
         if (equalsToken(name, CompareMode.OFF)) {
@@ -4988,14 +4994,14 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private Set parseSetBinaryCollation() {
-        Set command = new Set(session, SetType.BINARY_COLLATION);
+    private SetDatabase parseSetBinaryCollation() {
+        SetDatabase command = new SetDatabase(session, DbSetting.BINARY_COLLATION);
         String name = readAliasIdentifier();
         command.setString(name);
         if (equalsToken(name, CompareMode.UNSIGNED) || equalsToken(name, CompareMode.SIGNED)) {
             return command;
         }
-        throw DbException.getInvalidValueException(SetType.BINARY_COLLATION.getName(), name);
+        throw DbException.getInvalidValueException(DbSetting.BINARY_COLLATION.getName(), name);
     }
 
     private RunScript parseRunScript() {
