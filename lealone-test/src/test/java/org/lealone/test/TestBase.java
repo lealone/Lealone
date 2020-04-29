@@ -20,6 +20,8 @@ package org.lealone.test;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -282,5 +284,29 @@ public class TestBase extends Assert {
             throw new RuntimeException("invalid path: " + path + ", must be start with: " + TEST_BASE_DIR);
         }
         FileUtils.deleteRecursive(path, false);
+    }
+
+    public static int printResultSet(ResultSet rs) {
+        return printResultSet(rs, true);
+    }
+
+    public static int printResultSet(ResultSet rs, boolean closeResultSet) {
+        int count = 0;
+        try {
+            int n = rs.getMetaData().getColumnCount();
+            while (rs.next()) {
+                for (int i = 1; i <= n; i++) {
+                    System.out.print(rs.getString(i) + " ");
+                }
+                count++;
+                System.out.println();
+            }
+            if (closeResultSet)
+                rs.close();
+            System.out.println();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return count;
     }
 }

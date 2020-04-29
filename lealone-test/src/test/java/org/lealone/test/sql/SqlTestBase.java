@@ -260,18 +260,8 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
         int count = 0;
         try {
             rs = stmt.executeQuery(sql);
-
-            int n = rs.getMetaData().getColumnCount();
-            while (rs.next()) {
-                for (int i = 1; i <= n; i++) {
-                    System.out.print(rs.getString(i) + " ");
-                }
-                count++;
-                System.out.println();
-            }
-            rs.close();
+            count = printResultSet(rs);
             rs = null;
-            System.out.println();
         } catch (SQLException e) {
             e.printStackTrace();
         }

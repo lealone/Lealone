@@ -17,6 +17,9 @@
  */
 package org.lealone.test.db;
 
+import java.sql.Connection;
+import java.sql.ResultSet;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
@@ -81,6 +84,19 @@ public class DbObjectTestBase extends UnitTestBase {
             return result.currentRow()[index - 1].getString();
         else
             return null;
+    }
+
+    public int printResultSet(String sql) {
+        int count = 0;
+        try {
+            Connection conn = getConnection();
+            ResultSet rs = conn.createStatement().executeQuery(sql);
+            count = printResultSet(rs);
+            conn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return count;
     }
 
     public Database findDatabase(String dbName) {

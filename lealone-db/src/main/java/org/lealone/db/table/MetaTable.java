@@ -591,9 +591,9 @@ public class MetaTable extends Table {
             break;
         }
         case TABLE_TYPES: {
-            add(rows, TableType.STANDARD_TABLE.toString());
-            add(rows, TableType.META_TABLE.toString());
-            add(rows, TableType.VIEW.toString());
+            for (TableType type : TableType.values()) {
+                add(rows, type.name());
+            }
             break;
         }
         case CATALOGS: {
