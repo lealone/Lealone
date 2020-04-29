@@ -6,6 +6,7 @@
  */
 package org.lealone.db.index;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -29,19 +30,38 @@ public class RangeIndex extends IndexBase {
 
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        long min = rangeTable.getMin(session), start = min;
-        long max = rangeTable.getMax(session), end = max;
-        try {
-            start = Math.max(min, first == null ? min : first.getValue(0).getLong());
-        } catch (Exception e) {
-            // error when converting the value - ignore
+        long min = rangeTable.getMin(session);
+        long max = rangeTable.getMax(session);
+        long step = rangeTable.getStep(session);
+        if (first != null) {
+            try {
+                long v = first.getValue(0).getLong();
+                if (step > 0) {
+                    if (v > min) {
+                        min += (v - min + step - 1) / step * step;
+                    }
+                } else if (v > max) {
+                    max = v;
+                }
+            } catch (DbException e) {
+                // error when converting the value - ignore
+            }
         }
-        try {
-            end = Math.min(max, last == null ? max : last.getValue(0).getLong());
-        } catch (Exception e) {
-            // error when converting the value - ignore
+        if (last != null) {
+            try {
+                long v = last.getValue(0).getLong();
+                if (step > 0) {
+                    if (v < max) {
+                        max = v;
+                    }
+                } else if (v < min) {
+                    min -= (min - v - step - 1) / step * step;
+                }
+            } catch (DbException e) {
+                // error when converting the value - ignore
+            }
         }
-        return new RangeCursor(start, end);
+        return new RangeCursor(min, max, step);
     }
 
     @Override
@@ -83,11 +103,16 @@ public class RangeIndex extends IndexBase {
         private boolean beforeFirst;
         private long current;
         private Row currentRow;
-        private final long min, max;
+        private final long start, end, step;
 
-        RangeCursor(long min, long max) {
-            this.min = min;
-            this.max = max;
+        RangeCursor(long start, long end) {
+            this(start, end, 1);
+        }
+
+        RangeCursor(long start, long end, long step) {
+            this.start = start;
+            this.end = end;
+            this.step = step;
             beforeFirst = true;
         }
 
@@ -105,12 +130,12 @@ public class RangeIndex extends IndexBase {
         public boolean next() {
             if (beforeFirst) {
                 beforeFirst = false;
-                current = min;
+                current = start;
             } else {
-                current++;
+                current += step;
             }
             currentRow = new Row(new Value[] { ValueLong.get(current) }, 1);
-            return current <= max;
+            return step > 0 ? current <= end : current >= end;
         }
     }
 }

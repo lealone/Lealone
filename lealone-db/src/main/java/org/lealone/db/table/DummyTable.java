@@ -23,6 +23,7 @@ import org.lealone.db.index.Index;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 
+//只用于创建服务时的void类型解析
 public class DummyTable extends Table {
 
     public DummyTable(Schema schema, String name) {

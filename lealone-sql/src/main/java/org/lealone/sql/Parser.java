@@ -3833,7 +3833,10 @@ public class Parser implements SQLParser {
         if (!identifiersToUpper) {
             original = StringUtils.toUpperEnglish(original);
         }
-        UserDataType userDataType = getSchema().findUserDataType(original);
+        Schema schema = getSchema();
+        UserDataType userDataType = null;
+        if (schema != null)
+            userDataType = schema.findUserDataType(original);
         if (userDataType != null) {
             templateColumn = userDataType.getColumn();
             dataType = DataType.getDataType(templateColumn.getType());
@@ -3845,19 +3848,21 @@ public class Parser implements SQLParser {
         } else {
             dataType = DataType.getTypeByName(original);
             if (dataType == null) {
-                Table table;
+                Table table = null;
                 if (original.equalsIgnoreCase("void")) {
-                    table = new DummyTable(getSchema(), "void");
-                } else {
+                    table = new DummyTable(schema, "void");
+                } else if (schema != null) {
                     // 列的类型是POJO(对应Table)
-                    table = getSchema().getTableOrView(session, original);
-                    if (table == null)
-                        throw DbException.get(ErrorCode.UNKNOWN_DATA_TYPE_1, currentToken);
+                    table = schema.getTableOrView(session, original);
                 }
-                Column c = new Column(columnName, Value.JAVA_OBJECT);
-                c.setTable(table, -1);
-                read();
-                return c;
+                if (table != null) {
+                    Column c = new Column(columnName, Value.JAVA_OBJECT);
+                    c.setTable(table, -1);
+                    read();
+                    return c;
+                } else {
+                    throw getSyntaxError();
+                }
             }
         }
         if (database.getIgnoreCase() && dataType.type == Value.STRING
