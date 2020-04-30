@@ -108,9 +108,10 @@ public interface TransactionalValue {
         long tid = DataUtils.readVarLong(buff);
         if (tid == 0) {
             Object value = TransactionalValue.readValue(buff, valueType);
-            return TransactionalValue.createCommitted(value);
+            // 需要返回引用，否则无法在修改和删除时使用CAS
+            return createRef(TransactionalValue.createCommitted(value));
         } else {
-            return Uncommitted.read(tid, valueType, buff, oldValueType);
+            return createRef(Uncommitted.read(tid, valueType, buff, oldValueType));
         }
     }
 
