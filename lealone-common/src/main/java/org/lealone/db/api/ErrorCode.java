@@ -1932,6 +1932,8 @@ public class ErrorCode {
 
     public static final int SERVICE_NOT_FOUND_1 = 90145;
 
+    public static final int DATABASE_IS_CLOSING = 90146;
+
     // next are 90056, 90110, 90122, 90143
 
     private ErrorCode() {

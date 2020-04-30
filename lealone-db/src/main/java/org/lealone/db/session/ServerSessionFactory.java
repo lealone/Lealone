@@ -50,29 +50,10 @@ public class ServerSessionFactory implements SessionFactory {
             LealoneDatabase.getInstance().createEmbeddedDatabase(dbName, ci);
         }
         try {
-            ServerSession session;
-            for (int i = 0;; i++) {
-                session = createServerSession(dbName, ci);
-                if (session != null) {
-                    break;
-                }
-                // we found a database that is currently closing
-                // wait a bit to avoid a busy loop (the method is synchronized)
-                if (i > 60 * 1000) {
-                    // retry at most 1 minute
-                    throw DbException.get(ErrorCode.DATABASE_ALREADY_OPEN_1,
-                            "Waited for database closing longer than 1 minute");
-                }
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    // ignore
-                }
-            }
+            ServerSession session = createServerSession(dbName, ci);
             if (session.isInvalid()) { // 无效session，不需要进行后续的操作
                 return session;
             }
-
             initSession(session, ci);
             validateUserAndPassword(true);
             return session;
@@ -105,11 +86,13 @@ public class ServerSessionFactory implements SessionFactory {
             }
         }
 
+        // 如果数据库正在关闭过程中，不等待重试了，直接抛异常
+        // 如果数据库已经关闭了，那么在接下来的init中会重新打开
+        if (database.isClosing()) {
+            throw DbException.get(ErrorCode.DATABASE_IS_CLOSING);
+        }
         if (!database.isInitialized()) {
             database.init();
-        }
-        if (database.isClosing()) {
-            return null;
         }
 
         User user = null;
