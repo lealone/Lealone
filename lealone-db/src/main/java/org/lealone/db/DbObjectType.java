@@ -55,11 +55,6 @@ public enum DbObjectType {
     AGGREGATE(5, 14),
 
     /**
-     * This object is a setting.
-     */
-    SETTING(6, 1),
-
-    /**
      * This object is a comment.
      */
     COMMENT(7, 15),

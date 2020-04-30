@@ -14,6 +14,7 @@ import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.StringUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.table.Table;
 
 /**
  * This class contains various database-level settings. To override the
@@ -76,7 +77,7 @@ public class DbSettings extends SettingsBase {
      * any other mode, this feature is enabled for compatibility, even if this
      * database setting is not enabled explicitly.
      */
-    public final boolean aliasColumnName = get("ALIAS_COLUMN_NAME", false);
+    public final boolean aliasColumnName = get(DbSetting.ALIAS_COLUMN_NAME, false);
 
     /**
      * Database setting <code>ANALYZE_AUTO</code> (default: 2000).<br />
@@ -87,13 +88,13 @@ public class DbSettings extends SettingsBase {
      * starting the database. It is not run on local temporary tables, and
      * tables that have a trigger on SELECT.
      */
-    public final int analyzeAuto = get("ANALYZE_AUTO", 2000);
+    public final int analyzeAuto = get(DbSetting.ANALYZE_AUTO, 2000);
 
     /**
      * Database setting <code>ANALYZE_SAMPLE</code> (default: 10000).<br />
      * The default sample size when analyzing a table.
      */
-    public final int analyzeSample = get("ANALYZE_SAMPLE", 10000);
+    public final int analyzeSample = get(DbSetting.ANALYZE_SAMPLE, 10000);
 
     /**
      * Database setting <code>DATABASE_TO_UPPER</code> (default: true).<br />
@@ -103,34 +104,34 @@ public class DbSettings extends SettingsBase {
      * identifier names (table names, column names) are case sensitive (except
      * aggregate, built-in functions, data types, and keywords).
      */
-    public final boolean databaseToUpper = get("DATABASE_TO_UPPER", true);
+    public final boolean databaseToUpper = get(DbSetting.DATABASE_TO_UPPER, true);
 
     /**
      * Database setting <code>DB_CLOSE_ON_EXIT</code> (default: true).<br />
      * Close the database when the virtual machine exits normally, using a
      * shutdown hook.
      */
-    public final boolean dbCloseOnExit = get("DB_CLOSE_ON_EXIT", true);
+    public final boolean dbCloseOnExit = get(DbSetting.DB_CLOSE_ON_EXIT, true);
 
     /**
      * Database setting <code>DEFAULT_ESCAPE</code> (default: \).<br />
      * The default escape character for LIKE comparisons. To select no escape
      * character, use an empty string.
      */
-    public final String defaultEscape = get("DEFAULT_ESCAPE", "\\");
+    public final String defaultEscape = get(DbSetting.DEFAULT_ESCAPE, "\\");
 
     /**
      * Database setting <code>DROP_RESTRICT</code> (default: true).<br />
      * Whether the default action for DROP TABLE and DROP VIEW is RESTRICT.
      */
-    public final boolean dropRestrict = get("DROP_RESTRICT", true);
+    public final boolean dropRestrict = get(DbSetting.DROP_RESTRICT, true);
 
     /**
      * Database setting <code>EARLY_FILTER</code> (default: false).<br />
      * This setting allows table implementations to apply filter conditions
      * early on.
      */
-    public final boolean earlyFilter = get("EARLY_FILTER", false);
+    public final boolean earlyFilter = get(DbSetting.EARLY_FILTER, false);
 
     /**
      * Database setting <code>ESTIMATED_FUNCTION_TABLE_ROWS</code> (default:
@@ -138,7 +139,7 @@ public class DbSettings extends SettingsBase {
      * The estimated number of rows in a function table (for example, CSVREAD or
      * FTL_SEARCH). This value is used by the optimizer.
      */
-    public final int estimatedFunctionTableRows = get("ESTIMATED_FUNCTION_TABLE_ROWS", 1000);
+    public final int estimatedFunctionTableRows = get(DbSetting.ESTIMATED_FUNCTION_TABLE_ROWS, 1000);
 
     /**
      * Database setting <code>FUNCTIONS_IN_SCHEMA</code> (default:
@@ -147,25 +148,25 @@ public class DbSettings extends SettingsBase {
      * will always include the schema name in the CREATE ALIAS statement.
      * This is not backward compatible with H2 versions 1.2.134 and older.
      */
-    public final boolean functionsInSchema = get("FUNCTIONS_IN_SCHEMA", true);
+    public final boolean functionsInSchema = get(DbSetting.FUNCTIONS_IN_SCHEMA, true);
 
     /**
      * Database setting <code>LARGE_RESULT_BUFFER_SIZE</code> (default: 4096).<br />
      * Buffer size for large result sets. Set this value to 0 to disable the buffer.
      */
-    public final int largeResultBufferSize = get("LARGE_RESULT_BUFFER_SIZE", 4 * 1024);
+    public final int largeResultBufferSize = get(DbSetting.LARGE_RESULT_BUFFER_SIZE, 4 * 1024);
 
     /**
      * Database setting <code>LARGE_TRANSACTIONS</code> (default: true).<br />
      * Support very large transactions
      */
-    public final boolean largeTransactions = get("LARGE_TRANSACTIONS", true); // TODO 是否考虑用在UndoLog中
+    public final boolean largeTransactions = get(DbSetting.LARGE_TRANSACTIONS, true); // TODO 是否考虑用在UndoLog中
 
     /**
      * Database setting <code>MAX_COMPACT_TIME</code> (default: 200).<br />
      * The maximum time in milliseconds used to compact a database when closing.
      */
-    public final int maxCompactTime = get("MAX_COMPACT_TIME", 200); // TODO 这个参数可以用到存储引擎中
+    public final int maxCompactTime = get(DbSetting.MAX_COMPACT_TIME, 200); // TODO 这个参数可以用到存储引擎中
 
     /**
      * Database setting <code>MAX_MEMORY_ROWS_DISTINCT</code> (default:
@@ -173,20 +174,20 @@ public class DbSettings extends SettingsBase {
      * The maximum number of rows kept in-memory for SELECT DISTINCT queries. If
      * more than this number of rows are in a result set, a temporary table is used.
      */
-    public final int maxMemoryRowsDistinct = get("MAX_MEMORY_ROWS_DISTINCT", 10000);
+    public final int maxMemoryRowsDistinct = get(DbSetting.MAX_MEMORY_ROWS_DISTINCT, 10000);
 
     /**
      * Database setting <code>MAX_QUERY_TIMEOUT</code> (default: 0).<br />
      * The maximum timeout of a query in milliseconds. The default is 0, meaning
      * no limit. Please note the actual query timeout may be set to a lower value.
      */
-    public final int maxQueryTimeout = get("MAX_QUERY_TIMEOUT", 0);
+    public final int maxQueryTimeout = get(DbSetting.MAX_QUERY_TIMEOUT, 0);
 
     /**
      * Database setting <code>NESTED_JOINS</code> (default: true).<br />
      * Whether nested joins should be supported.
      */
-    public final boolean nestedJoins = get("NESTED_JOINS", true);
+    public final boolean nestedJoins = get(DbSetting.NESTED_JOINS, true);
 
     /**
      * Database setting <code>OPTIMIZE_DISTINCT</code> (default: true).<br />
@@ -200,13 +201,13 @@ public class DbSettings extends SettingsBase {
      * <li>The selectivity of the column is below 20 </li>
      * </ul>
      */
-    public final boolean optimizeDistinct = get("OPTIMIZE_DISTINCT", true);
+    public final boolean optimizeDistinct = get(DbSetting.OPTIMIZE_DISTINCT, true);
 
     /**
      * Database setting <code>OPTIMIZE_EVALUATABLE_SUBQUERIES</code> (default: true).<br />
      * Optimize subqueries that are not dependent on the outer query.
      */
-    public final boolean optimizeEvaluatableSubqueries = get("OPTIMIZE_EVALUATABLE_SUBQUERIES", true);
+    public final boolean optimizeEvaluatableSubqueries = get(DbSetting.OPTIMIZE_EVALUATABLE_SUBQUERIES, true);
 
     /**
      * Database setting <code>OPTIMIZE_INSERT_FROM_SELECT</code>
@@ -214,40 +215,40 @@ public class DbSettings extends SettingsBase {
      * Insert into table from query directly bypassing temporary disk storage.
      * This also applies to create table as select.
      */
-    public final boolean optimizeInsertFromSelect = get("OPTIMIZE_INSERT_FROM_SELECT", true);
+    public final boolean optimizeInsertFromSelect = get(DbSetting.OPTIMIZE_INSERT_FROM_SELECT, true);
 
     /**
      * Database setting <code>OPTIMIZE_IN_LIST</code> (default: true).<br />
      * Optimize IN(...) and IN(SELECT ...) comparisons. This includes
      * optimization for SELECT, DELETE, and UPDATE.
      */
-    public final boolean optimizeInList = get("OPTIMIZE_IN_LIST", true);
+    public final boolean optimizeInList = get(DbSetting.OPTIMIZE_IN_LIST, true);
 
     /**
      * Database setting <code>OPTIMIZE_IN_SELECT</code> (default: true).<br />
      * Optimize IN(SELECT ...) comparisons. This includes
      * optimization for SELECT, DELETE, and UPDATE.
      */
-    public final boolean optimizeInSelect = get("OPTIMIZE_IN_SELECT", true);
+    public final boolean optimizeInSelect = get(DbSetting.OPTIMIZE_IN_SELECT, true);
 
     /**
-     * Database setting <code>OPTIMIZE_IS_NULL</code> (default: false).<br />
+     * Database setting <code>OPTIMIZE_IS_NULL</code> (default: true).<br />
      * Use an index for condition of the form columnName IS NULL.
      */
-    public final boolean optimizeIsNull = get("OPTIMIZE_IS_NULL", true);
+    public final boolean optimizeIsNull = get(DbSetting.OPTIMIZE_IS_NULL, true);
 
     /**
      * Database setting <code>OPTIMIZE_OR</code> (default: true).<br />
      * Convert (C=? OR C=?) to (C IN(?, ?)).
      */
-    public final boolean optimizeOr = get("OPTIMIZE_OR", true);
+    public final boolean optimizeOr = get(DbSetting.OPTIMIZE_OR, true);
 
     /**
      * Database setting <code>OPTIMIZE_TWO_EQUALS</code> (default: true).<br />
      * Optimize expressions of the form A=B AND B=1. In this case, AND A=1 is
      * added so an index on A can be used.
      */
-    public final boolean optimizeTwoEquals = get("OPTIMIZE_TWO_EQUALS", true);
+    public final boolean optimizeTwoEquals = get(DbSetting.OPTIMIZE_TWO_EQUALS, true);
 
     /**
      * Database setting <code>QUERY_CACHE_SIZE</code> (default: 8).<br />
@@ -258,19 +259,19 @@ public class DbSettings extends SettingsBase {
      * FOR UPDATE statements). This works for both statements and prepared
      * statement.
      */
-    public final int queryCacheSize = get("QUERY_CACHE_SIZE", 8);
+    public final int queryCacheSize = get(DbSetting.QUERY_CACHE_SIZE, 8);
 
     /**
      * Database setting <code>RECOMPILE_ALWAYS</code> (default: false).<br />
      * Always recompile prepared statements.
      */
-    public final boolean recompileAlways = get("RECOMPILE_ALWAYS", false);
+    public final boolean recompileAlways = get(DbSetting.RECOMPILE_ALWAYS, false);
 
     /**
      * Database setting <code>ROWID</code> (default: true).<br />
      * If set, each table has a pseudo-column _ROWID_.
      */
-    public final boolean rowId = get("ROWID", true);
+    public final boolean rowId = get(DbSetting.ROWID, true);
 
     /**
      * Database setting <code>SELECT_FOR_UPDATE_MVCC</code>
@@ -278,28 +279,29 @@ public class DbSettings extends SettingsBase {
      * If set, SELECT .. FOR UPDATE queries lock only the selected rows when
      * using MVCC.
      */
-    public final boolean selectForUpdateMvcc = get("SELECT_FOR_UPDATE_MVCC", true);
+    public final boolean selectForUpdateMvcc = get(DbSetting.SELECT_FOR_UPDATE_MVCC, true);
 
     /**
      * Database setting <code>DEFAULT_STORAGE_ENGINE</code>
      * (default: AOSE).<br />
      * The default storage engine to use for new tables.
      */
-    public final String defaultStorageEngine = get("DEFAULT_STORAGE_ENGINE", Constants.DEFAULT_STORAGE_ENGINE_NAME);
+    public final String defaultStorageEngine = get(DbSetting.DEFAULT_STORAGE_ENGINE,
+            Constants.DEFAULT_STORAGE_ENGINE_NAME);
 
     /**
      * Database setting <code>DEFAULT_SQL_ENGINE</code>
      * (default: lealone).<br />
      * The default sql engine.
      */
-    public final String defaultSQLEngine = get("DEFAULT_SQL_ENGINE", Constants.DEFAULT_SQL_ENGINE_NAME);
+    public final String defaultSQLEngine = get(DbSetting.DEFAULT_SQL_ENGINE, Constants.DEFAULT_SQL_ENGINE_NAME);
 
     /**
      * Database setting <code>DEFAULT_TRANSACTION_ENGINE</code>
      * (default: AOTE).<br />
      * The default transaction engine.
      */
-    public final String defaultTransactionEngine = get("DEFAULT_TRANSACTION_ENGINE",
+    public final String defaultTransactionEngine = get(DbSetting.DEFAULT_TRANSACTION_ENGINE,
             Constants.DEFAULT_TRANSACTION_ENGINE_NAME);
 
     /**
@@ -307,24 +309,54 @@ public class DbSettings extends SettingsBase {
      * (default: false).<br />
      * Compress data when storing.
      */
-    public final boolean compressData = get("COMPRESS", false);
+    public final boolean compressData = get(DbSetting.COMPRESS, false);
 
     /**
      * Database setting <code>PERSISTENT</code>
      * (default: true).<br />
      * Persistent data.
      */
-    public final boolean persistent = get("PERSISTENT", true);
+    public final boolean persistent = get(DbSetting.PERSISTENT, true);
 
-    public final int cacheSize = get("CACHE_SIZE", Constants.DEFAULT_CACHE_SIZE);
-    public final int pageSize = get("PAGE_SIZE", Constants.DEFAULT_PAGE_SIZE);
-    public final String eventListener = get("DATABASE_EVENT_LISTENER", null);
-    public final String mode = get("MODE", null);
-    public final String cipher = get("CIPHER", null);
-    public final byte[] filePasswordHash = convertHexToBytes("FILE_PASSWORD_HASH", null);
-    public final byte[] fileEncryptionKey = convertHexToBytes("FILE_ENCRYPTION_KEY", null);
-    public final int traceLevelFile = get("TRACE_LEVEL_FILE", TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
-    public final int traceLevelSystemOut = get("TRACE_LEVEL_SYSTEM_OUT", TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
+    public final int cacheSize = get(DbSetting.CACHE_SIZE, Constants.DEFAULT_CACHE_SIZE);
+    public final int pageSize = get(DbSetting.PAGE_SIZE, Constants.DEFAULT_PAGE_SIZE);
+    public final String eventListener = get(DbSetting.DATABASE_EVENT_LISTENER, null);
+    public final String mode = get(DbSetting.MODE, null);
+    public final String cipher = get(DbSetting.CIPHER, null);
+    public final byte[] filePasswordHash = convertHexToBytes(DbSetting.FILE_PASSWORD_HASH, null);
+    public final byte[] fileEncryptionKey = convertHexToBytes(DbSetting.FILE_ENCRYPTION_KEY, null);
+    public final int traceLevelFile = get(DbSetting.TRACE_LEVEL_FILE, TraceSystem.DEFAULT_TRACE_LEVEL_FILE);
+    public final int traceLevelSystemOut = get(DbSetting.TRACE_LEVEL_SYSTEM_OUT,
+            TraceSystem.DEFAULT_TRACE_LEVEL_SYSTEM_OUT);
+
+    public final boolean readOnly = get(DbSetting.READ_ONLY, false);
+
+    public final int allowLiterals = get(DbSetting.ALLOW_LITERALS, Constants.ALLOW_LITERALS_ALL);
+    public final String collation = get(DbSetting.COLLATION, null);
+    public final String binaryCollation = get(DbSetting.BINARY_COLLATION, null);
+    public final String lobCompressionAlgorithm = get(DbSetting.LOB_COMPRESSION_ALGORITHM, null);
+    public final int dbCloseDelay = get(DbSetting.DB_CLOSE_DELAY, -1);
+    public final int defaultLockTimeout = get(DbSetting.DEFAULT_LOCK_TIMEOUT, Constants.INITIAL_LOCK_TIMEOUT);
+    public final int defaultTableType = get(DbSetting.DEFAULT_TABLE_TYPE, Table.TYPE_CACHED);
+    public final boolean ignoreCase = get(DbSetting.IGNORECASE, false);
+    public final int lockMode = get(DbSetting.LOCK_MODE, Constants.DEFAULT_LOCK_MODE);
+
+    public final int maxLengthInplaceLob = get(DbSetting.MAX_LENGTH_INPLACE_LOB,
+            SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
+                    : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB);
+
+    public final int maxMemoryRows = get(DbSetting.MAX_MEMORY_ROWS, Constants.DEFAULT_MAX_MEMORY_ROWS);
+    public final int maxMemoryUndo = get(DbSetting.MAX_MEMORY_UNDO, Constants.DEFAULT_MAX_MEMORY_UNDO);
+    public final int maxOperationMemory = get(DbSetting.MAX_OPERATION_MEMORY, Constants.DEFAULT_MAX_OPERATION_MEMORY);
+
+    public final boolean optimizeReuseResults = get(DbSetting.OPTIMIZE_REUSE_RESULTS, true);
+    public final boolean referentialIntegrity = get(DbSetting.REFERENTIAL_INTEGRITY, true);
+
+    public final boolean queryStatistics = get(DbSetting.QUERY_STATISTICS, false);
+    public final int queryStatisticsMaxEntries = get(DbSetting.QUERY_STATISTICS_MAX_ENTRIES,
+            Constants.QUERY_STATISTICS_MAX_ENTRIES);
+
+    public final int writeDelay = get(DbSetting.WRITE_DELAY, Constants.DEFAULT_WRITE_DELAY);
 
     /**
      * Get the setting for the given key.
@@ -333,7 +365,7 @@ public class DbSettings extends SettingsBase {
      * @param defaultValue the default value
      * @return the setting
      */
-    private boolean get(String key, boolean defaultValue) {
+    private boolean get(DbSetting key, boolean defaultValue) {
         String s = get(key, defaultValue ? "true" : "false");
         try {
             return Boolean.parseBoolean(s);
@@ -349,7 +381,7 @@ public class DbSettings extends SettingsBase {
      * @param defaultValue the default value
      * @return the setting
      */
-    private int get(String key, int defaultValue) {
+    private int get(DbSetting key, int defaultValue) {
         String s = get(key, Integer.toString(defaultValue));
         try {
             return Integer.decode(s);
@@ -365,9 +397,10 @@ public class DbSettings extends SettingsBase {
      * @param defaultValue the default value
      * @return the setting
      */
-    private String get(String key, String defaultValue) {
+    private String get(DbSetting key, String defaultValue) {
+        String name = key.getName();
         StringBuilder buff = new StringBuilder(Constants.PROJECT_NAME_PREFIX);
-        for (char c : key.toCharArray()) {
+        for (char c : name.toCharArray()) {
             if (c == '_') {
                 buff.append('.');
             } else {
@@ -376,15 +409,15 @@ public class DbSettings extends SettingsBase {
             }
         }
         String sysProperty = buff.toString();
-        String v = settings.get(key);
+        String v = settings.get(name);
         if (v == null) {
             v = Utils.getProperty(sysProperty, defaultValue);
-            settings.put(key, v);
+            settings.put(name, v);
         }
         return v;
     }
 
-    private byte[] convertHexToBytes(String key, String defaultValue) {
+    private byte[] convertHexToBytes(DbSetting key, String defaultValue) {
         String v = get(key, defaultValue);
         return v == null ? null : StringUtils.convertHexToBytes(v);
     }

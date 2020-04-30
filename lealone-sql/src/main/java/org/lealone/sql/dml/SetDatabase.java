@@ -11,10 +11,12 @@ import java.text.Collator;
 import org.lealone.common.compress.CompressTool;
 import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
+import org.lealone.common.util.MathUtils;
+import org.lealone.common.util.Utils;
+import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbSetting;
 import org.lealone.db.Mode;
-import org.lealone.db.Setting;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
@@ -31,10 +33,13 @@ import org.lealone.db.value.CompareMode;
 public class SetDatabase extends SetStatement {
 
     private final DbSetting setting;
+    private final Database database;
+    private boolean changed;
 
     public SetDatabase(ServerSession session, DbSetting type) {
         super(session);
         this.setting = type;
+        this.database = session.getDatabase();
     }
 
     @Override
@@ -54,14 +59,14 @@ public class SetDatabase extends SetStatement {
             if (value < 0 || value > 2) {
                 throw DbException.getInvalidValueException(name, value);
             }
-            database.setAllowLiterals(value);
-            addOrUpdateSetting(name, value);
+            setDbSetting(value);
             break;
         }
         case CACHE_SIZE: {
             int value = getAndValidateIntValue();
-            database.setCacheSize(value);
-            addOrUpdateSetting(name, value);
+            int max = MathUtils.convertLongToInt(Utils.getMemoryMax()) / 2;
+            value = Math.min(value, max);
+            setDbSetting(value);
             break;
         }
         case COLLATION: {
@@ -88,7 +93,7 @@ public class SetDatabase extends SetStatement {
                 }
                 compareMode = CompareMode.getInstance(stringValue, strength, binaryUnsigned);
             }
-            addOrUpdateSetting(name, buff.toString());
+            setDbSetting(buff.toString());
             database.setCompareMode(compareMode);
             break;
         }
@@ -106,14 +111,13 @@ public class SetDatabase extends SetStatement {
             } else {
                 throw DbException.getInvalidValueException(name, stringValue);
             }
-            addOrUpdateSetting(name, stringValue);
+            setDbSetting(stringValue);
             database.setCompareMode(newMode);
             break;
         }
-        case COMPRESS_LOB: {
+        case LOB_COMPRESSION_ALGORITHM: {
             int algo = CompressTool.getCompressAlgorithm(stringValue);
-            database.setLobCompressionAlgorithm(algo == Compressor.NO ? null : stringValue);
-            addOrUpdateSetting(name, stringValue);
+            setDbSetting(algo == Compressor.NO ? null : stringValue);
             break;
         }
         case CREATE_BUILD: {
@@ -121,11 +125,12 @@ public class SetDatabase extends SetStatement {
                 // just ignore the command if not starting
                 // this avoids problems when running recovery scripts
                 int value = getIntValue();
-                addOrUpdateSetting(name, value);
+                setDbSetting(value);
             }
             break;
         }
         case DATABASE_EVENT_LISTENER: {
+            setDbSetting(stringValue);
             database.setEventListenerClass(stringValue);
             break;
         }
@@ -137,12 +142,12 @@ public class SetDatabase extends SetStatement {
             } else if (value < 0) {
                 throw DbException.getInvalidValueException(name, value);
             }
+            setDbSetting(value);
             database.setCloseDelay(value);
-            addOrUpdateSetting(name, value);
             break;
         }
         case DEFAULT_LOCK_TIMEOUT: {
-            addOrUpdateSetting(name, getAndValidateIntValue());
+            setDbSetting(getAndValidateIntValue());
             break;
         }
         case DEFAULT_TABLE_TYPE: {
@@ -150,8 +155,7 @@ public class SetDatabase extends SetStatement {
             if (value < 0 || value > 1) {
                 throw DbException.getInvalidValueException(name, value);
             }
-            database.setDefaultTableType(value);
-            addOrUpdateSetting(name, value);
+            setDbSetting(value);
             break;
         }
         case EXCLUSIVE: {
@@ -173,42 +177,41 @@ public class SetDatabase extends SetStatement {
         }
         case IGNORECASE: {
             int value = getIntValue();
-            database.setIgnoreCase(value == 1);
-            addOrUpdateSetting(name, value);
+            setDbSetting(value == 1);
             break;
         }
         case LOCK_MODE: {
             int value = getIntValue();
-            database.setLockMode(value);
-            addOrUpdateSetting(name, value);
+            switch (value) {
+            case Constants.LOCK_MODE_OFF:
+            case Constants.LOCK_MODE_READ_COMMITTED:
+            case Constants.LOCK_MODE_TABLE:
+            case Constants.LOCK_MODE_TABLE_GC:
+                break;
+            default:
+                throw DbException.getInvalidValueException("lock mode", value);
+            }
+            setDbSetting(value);
             break;
         }
         case MAX_LENGTH_INPLACE_LOB: {
             int value = getAndValidateIntValue();
-            database.setMaxLengthInplaceLob(value);
-            addOrUpdateSetting(name, value);
-            break;
-        }
-        case MAX_LOG_SIZE: {
-            int value = getAndValidateIntValue();
-            database.setMaxLogSize((long) value * 1024 * 1024);
-            addOrUpdateSetting(name, value);
+            setDbSetting(value);
             break;
         }
         case MAX_MEMORY_ROWS: {
             int value = getAndValidateIntValue();
-            database.setMaxMemoryRows(value);
-            addOrUpdateSetting(name, value);
+            setDbSetting(value);
             break;
         }
         case MAX_MEMORY_UNDO: {
             int value = getAndValidateIntValue();
-            database.setMaxMemoryUndo(value);
-            addOrUpdateSetting(name, value);
+            setDbSetting(value);
             break;
         }
         case MAX_OPERATION_MEMORY: {
-            database.setMaxOperationMemory(getAndValidateIntValue());
+            int value = getAndValidateIntValue();
+            setDbSetting(value);
             break;
         }
         case MODE: {
@@ -219,22 +222,35 @@ public class SetDatabase extends SetStatement {
             if (database.getMode() != mode) {
                 database.setMode(mode);
             }
+            setDbSetting(stringValue);
+            break;
+        }
+        case READ_ONLY: {
+            boolean value = getAndValidateBooleanValue();
+            setDbSetting(value);
+            database.setReadOnly(value);
             break;
         }
         case OPTIMIZE_REUSE_RESULTS: {
-            database.setOptimizeReuseResults(getAndValidateBooleanValue());
+            boolean value = getAndValidateBooleanValue();
+            setDbSetting(value);
             break;
         }
         case REFERENTIAL_INTEGRITY: {
-            database.setReferentialIntegrity(getAndValidateBooleanValue());
+            boolean value = getAndValidateBooleanValue();
+            setDbSetting(value);
             break;
         }
         case QUERY_STATISTICS: {
-            database.setQueryStatistics(getAndValidateBooleanValue());
+            boolean value = getAndValidateBooleanValue();
+            setDbSetting(value);
+            database.setQueryStatistics(value);
             break;
         }
         case QUERY_STATISTICS_MAX_ENTRIES: {
-            database.setQueryStatisticsMaxEntries(getAndValidateIntValue(1));
+            int value = getAndValidateIntValue(1);
+            setDbSetting(value);
+            database.setQueryStatisticsMaxEntries(value);
             break;
         }
         case TRACE_LEVEL_SYSTEM_OUT: {
@@ -242,7 +258,9 @@ public class SetDatabase extends SetStatement {
                 // don't set the property when opening the database
                 // this is for compatibility with older versions, because
                 // this setting was persistent
-                database.getTraceSystem().setLevelSystemOut(getIntValue());
+                int value = getIntValue();
+                setDbSetting(value);
+                database.getTraceSystem().setLevelSystemOut(value);
             }
             break;
         }
@@ -251,7 +269,9 @@ public class SetDatabase extends SetStatement {
                 // don't set the property when opening the database
                 // this is for compatibility with older versions, because
                 // this setting was persistent
-                database.getTraceSystem().setLevelFile(getIntValue());
+                int value = getIntValue();
+                setDbSetting(value);
+                database.getTraceSystem().setLevelFile(value);
             }
             break;
         }
@@ -259,61 +279,35 @@ public class SetDatabase extends SetStatement {
             int value = getAndValidateIntValue();
             int size = value * 1024 * 1024;
             database.getTraceSystem().setMaxFileSize(size);
-            addOrUpdateSetting(name, value);
+            setDbSetting(value);
             break;
         }
         case WRITE_DELAY: {
             int value = getAndValidateIntValue();
-            database.setWriteDelay(value);
-            addOrUpdateSetting(name, value);
+            setDbSetting(value);
             break;
         }
         default:
             if (DbSetting.contains(name)) {
-                database.getParameters().put(name, getStringValue());
+                setDbSetting(getStringValue());
             } else {
                 DbException.throwInternalError("unknown setting type: " + setting);
             }
         }
-        databaseChanged(database);
+        if (changed)
+            databaseChanged(database);
         return 0;
     }
 
-    private void addOrUpdateSetting(String name, String s) {
-        addOrUpdateSetting(name, s, 0);
+    private void setDbSetting(int v) {
+        changed = database.setDbSetting(setting, String.valueOf(v));
     }
 
-    private void addOrUpdateSetting(String name, int v) {
-        addOrUpdateSetting(name, null, v);
+    private void setDbSetting(String v) {
+        changed = database.setDbSetting(setting, v);
     }
 
-    private void addOrUpdateSetting(String name, String s, int v) {
-        Database database = session.getDatabase();
-        if (database.isReadOnly()) {
-            return;
-        }
-        Setting setting = database.findSetting(name);
-        boolean addNew = false;
-        if (setting == null) {
-            addNew = true;
-            int id = getObjectId();
-            setting = new Setting(database, id, name);
-        }
-        if (s != null) {
-            if (!addNew && setting.getStringValue().equals(s)) {
-                return;
-            }
-            setting.setStringValue(s);
-        } else {
-            if (!addNew && setting.getIntValue() == v) {
-                return;
-            }
-            setting.setIntValue(v);
-        }
-        if (addNew) {
-            database.addDatabaseObject(session, setting);
-        } else {
-            database.updateMeta(session, setting);
-        }
+    private void setDbSetting(boolean v) {
+        changed = database.setDbSetting(setting, String.valueOf(v));
     }
 }

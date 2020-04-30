@@ -4918,9 +4918,9 @@ public class Parser implements SQLParser {
         } else if (readIf(DbSetting.BINARY_COLLATION.getName())) {
             readIfEqualOrTo();
             return parseSetBinaryCollation();
-        } else if (readIf(DbSetting.COMPRESS_LOB.getName())) {
+        } else if (readIf(DbSetting.LOB_COMPRESSION_ALGORITHM.getName())) {
             readIfEqualOrTo();
-            SetDatabase command = new SetDatabase(session, DbSetting.COMPRESS_LOB);
+            SetDatabase command = new SetDatabase(session, DbSetting.LOB_COMPRESSION_ALGORITHM);
             if (currentTokenType == VALUE) {
                 command.setString(readString());
             } else {

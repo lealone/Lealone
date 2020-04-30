@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.Set;
 
 import org.lealone.common.exceptions.DbException;
@@ -34,7 +35,6 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.DbSetting;
-import org.lealone.db.Setting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
@@ -175,13 +175,14 @@ public class Script extends ScriptBase {
                 buffer = new byte[Constants.IO_BUFFER_SIZE];
             }
             if (settings) {
-                for (Setting setting : db.getAllSettings()) {
-                    if (setting.getName().equals(DbSetting.CREATE_BUILD.getName())) {
+                for (Map.Entry<String, String> e : db.getParameters().entrySet()) {
+                    if (e.getKey().equals(DbSetting.CREATE_BUILD.getName())) {
                         // don't add CREATE_BUILD to the script
                         // (it is only set when creating the database)
                         continue;
                     }
-                    add(setting.getCreateSQL(), false);
+                    String sql = "SET " + db.quoteIdentifier(e.getKey()) + " '" + e.getValue() + "'";
+                    add(sql, false);
                 }
             }
             if (out != null) {

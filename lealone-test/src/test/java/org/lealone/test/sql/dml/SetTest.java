@@ -90,14 +90,14 @@ public class SetTest extends SqlTestBase {
             assertTrue(e.getMessage().contains(DbSetting.BINARY_COLLATION.getName()));
         }
 
-        executeUpdate("SET COMPRESS_LOB NO");
-        executeUpdate("SET COMPRESS_LOB LZF");
-        executeUpdate("SET COMPRESS_LOB DEFLATE");
+        executeUpdate("SET LOB_COMPRESSION_ALGORITHM NO");
+        executeUpdate("SET LOB_COMPRESSION_ALGORITHM LZF");
+        executeUpdate("SET LOB_COMPRESSION_ALGORITHM DEFLATE");
         try {
-            executeUpdate("SET COMPRESS_LOB UNSUPPORTED");
+            executeUpdate("SET LOB_COMPRESSION_ALGORITHM UNSUPPORTED");
             fail(sql);
         } catch (Exception e) {
-            assertTrue(e.getMessage().contains(DbSetting.COMPRESS_LOB.getName()));
+            assertTrue(e.getMessage().contains(DbSetting.LOB_COMPRESSION_ALGORITHM.getName()));
         }
 
         executeUpdate("SET CREATE_BUILD 12");
@@ -127,7 +127,6 @@ public class SetTest extends SqlTestBase {
 
         executeUpdate("SET LOCK_MODE 0");
         executeUpdate("SET MAX_LENGTH_INPLACE_LOB 100");
-        executeUpdate("SET MAX_LOG_SIZE 100");
         executeUpdate("SET MAX_MEMORY_ROWS 100");
         executeUpdate("SET MAX_MEMORY_UNDO 100");
         executeUpdate("SET MAX_OPERATION_MEMORY 100");

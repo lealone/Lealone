@@ -29,7 +29,6 @@ import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceSystem;
 import org.lealone.common.util.BitField;
 import org.lealone.common.util.CaseInsensitiveMap;
-import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
@@ -96,9 +95,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private final HashMap<String, User> users = new HashMap<>();
     private final HashMap<String, Role> roles = new HashMap<>();
     private final HashMap<String, Right> rights = new HashMap<>();
-    private final HashMap<String, Setting> settings = new HashMap<>();
-    private final HashMap<String, Comment> comments = new HashMap<>();
     private final HashMap<String, Schema> schemas = new HashMap<>();
+    private final HashMap<String, Comment> comments = new HashMap<>();
 
     // 与users、roles和rights相关的操作都用这个对象进行同步
     private final Object authLock = new Object();
@@ -107,74 +105,65 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return authLock;
     }
 
-    private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<ServerSession>());
+    private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<>());
     private ServerSession exclusiveSession;
+    private SystemSession systemSession;
+    private User systemUser;
+    private Schema mainSchema;
+    private Schema infoSchema;
+    private Role publicRole;
+
+    private int nextSessionId;
+    private int nextTempTableId;
+
     private final BitField objectIds = new BitField();
     private final Object lobSyncObject = new Object();
 
-    private Schema mainSchema;
-    private Schema infoSchema;
-    private int nextSessionId;
-    private int nextTempTableId;
-    private User systemUser;
-    private SystemSession systemSession;
+    private final AtomicLong modificationDataId = new AtomicLong();
+    private final AtomicLong modificationMetaId = new AtomicLong();
+
     private Table meta;
     private String metaStorageEngineName;
     private Index metaIdIndex;
-    private boolean starting;
+    private volatile boolean metaTablesInitialized;
+
     private TraceSystem traceSystem;
     private Trace trace;
-    private Role publicRole;
-    private final AtomicLong modificationDataId = new AtomicLong();
-    private final AtomicLong modificationMetaId = new AtomicLong();
-    private CompareMode compareMode;
+
+    private boolean starting;
     private boolean readOnly;
-    private int writeDelay = Constants.DEFAULT_WRITE_DELAY;
-    private DatabaseEventListener eventListener;
-    private int maxMemoryRows = Constants.DEFAULT_MAX_MEMORY_ROWS;
-    private int maxMemoryUndo = Constants.DEFAULT_MAX_MEMORY_UNDO;
-    private int lockMode = Constants.DEFAULT_LOCK_MODE;
-    private int maxLengthInplaceLob;
-    private int allowLiterals = Constants.ALLOW_LITERALS_ALL;
+    private volatile boolean initialized;
 
     private int powerOffCount;
     private int closeDelay = -1; // 不关闭
     private DatabaseCloser delayedCloser;
     private volatile boolean closing;
-    private boolean ignoreCase;
     private boolean deleteFilesOnDisconnect;
-    private String lobCompressionAlgorithm;
-    private boolean optimizeReuseResults = true;
-    private boolean referentialIntegrity = true;
-    private final boolean multiVersion;
     private DatabaseCloser closeOnExit;
-    private Mode mode = Mode.getDefaultMode();
-    private int maxOperationMemory = Constants.DEFAULT_MAX_OPERATION_MEMORY;
-    private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
-    private int cacheSize;
-    private int compactMode;
-    private SourceCompiler compiler;
-    private volatile boolean metaTablesInitialized;
-    private LobStorage lobStorage;
-    private int defaultTableType = Table.TYPE_CACHED;
-    private volatile boolean initialized = false;
-    private DbException backgroundException;
 
-    private boolean queryStatistics;
-    private int queryStatisticsMaxEntries = Constants.QUERY_STATISTICS_MAX_ENTRIES;
+    private final TempFileDeleter tempFileDeleter = TempFileDeleter.getInstance();
+    private Mode mode = Mode.getDefaultMode();
+    private CompareMode compareMode;
+    private int compactMode;
+
+    private SourceCompiler compiler;
+    private DatabaseEventListener eventListener;
+    private DbException backgroundException;
     private QueryStatisticsData queryStatisticsData;
 
     private final int id;
     private final String name;
     private final Map<String, String> parameters;
-    private final DbSettings dbSettings;
+    private volatile DbSettings dbSettings;
     private final boolean persistent;
 
     // 每个数据库只有一个SQL引擎和一个事务引擎
     private final SQLEngine sqlEngine;
     private final TransactionEngine transactionEngine;
 
-    private String storagePath; // 不使用原始的名称，而是用id替换数据库名
+    private final ConcurrentHashMap<String, Storage> storages = new ConcurrentHashMap<>();
+    private final String storagePath; // 不使用原始的名称，而是用id替换数据库名
+    private LobStorage lobStorage;
 
     private Map<String, String> replicationParameters;
     private Map<String, String> nodeAssignmentParameters;
@@ -183,6 +172,10 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private ConnectionInfo lastConnectionInfo;
 
     private final DbObjectVersionManager dbObjectVersionManager = new DbObjectVersionManager();
+
+    private String[] hostIds;
+    private HashSet<NetNode> nodes;
+    private String targetNodes;
 
     public Database(int id, String name, Map<String, String> parameters) {
         this.id = id;
@@ -193,16 +186,13 @@ public class Database implements DataHandler, DbObject, IDatabase {
             this.parameters = parameters;
         } else {
             dbSettings = DbSettings.getDefaultSettings();
-            this.parameters = new HashMap<>();
+            this.parameters = new CaseInsensitiveMap<>();
         }
         persistent = dbSettings.persistent;
         compareMode = CompareMode.getInstance(null, 0, false);
         if (dbSettings.mode != null) {
             mode = Mode.getInstance(dbSettings.mode);
         }
-        maxLengthInplaceLob = SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2
-                : Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB;
-        cacheSize = dbSettings.cacheSize;
 
         String engineName = dbSettings.defaultSQLEngine;
         SQLEngine sqlEngine = SQLEngineManager.getInstance().getEngine(engineName);
@@ -229,7 +219,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             }
         }
         this.transactionEngine = transactionEngine;
-        multiVersion = transactionEngine.supportsMVCC();
     }
 
     @Override
@@ -254,6 +243,32 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     public DbSettings getSettings() {
         return dbSettings;
+    }
+
+    public boolean setDbSetting(DbSetting key, String value) {
+        Map<String, String> newSettings = new CaseInsensitiveMap<>(1);
+        newSettings.put(key.getName(), value);
+        return setDbSettings(newSettings);
+    }
+
+    public boolean setDbSettings(Map<String, String> newSettings) {
+        boolean changed = false;
+        Map<String, String> oldSettings = new CaseInsensitiveMap<>(dbSettings.getSettings());
+        for (Map.Entry<String, String> e : newSettings.entrySet()) {
+            String key = e.getKey();
+            String newValue = e.getValue();
+            String oldvalue = oldSettings.get(key);
+            if (oldvalue == null || !oldvalue.equals(newValue)) {
+                changed = true;
+                oldSettings.put(key, newValue);
+            }
+        }
+        if (changed) {
+            dbSettings = DbSettings.getInstance(oldSettings);
+            parameters.putAll(newSettings);
+            LealoneDatabase.getInstance().updateMeta(systemSession, this);
+        }
+        return changed;
     }
 
     public boolean isPersistent() {
@@ -327,7 +342,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public synchronized Database copy() {
         Database db = new Database(id, name, parameters);
         // 因为每个存储只能打开一次，所以要复用原有存储
-        db.storagePath = storagePath;
         db.storages.putAll(storages);
         db.runMode = runMode;
         db.replicationParameters = replicationParameters;
@@ -419,12 +433,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
             if (!readOnly) {
                 // set CREATE_BUILD in a new database
-                String name = DbSetting.CREATE_BUILD.getName();
-                if (!settings.containsKey(name)) {
-                    Setting setting = new Setting(this, allocateObjectId(), name);
-                    setting.setIntValue(Constants.BUILD_ID);
-                    lockMeta(systemSession);
-                    addDatabaseObject(systemSession, setting);
+                if (id != LealoneDatabase.ID && parameters.containsKey(DbSetting.CREATE_BUILD.getName())) {
+                    setDbSetting(DbSetting.CREATE_BUILD, String.valueOf(Constants.BUILD_ID));
                 }
             }
             systemSession.commit();
@@ -818,9 +828,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         case USER:
             result = users;
             break;
-        case SETTING:
-            result = settings;
-            break;
         case ROLE:
             result = roles;
             break;
@@ -847,9 +854,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         switch (type) {
         case USER:
             lock = authLock;
-            break;
-        case SETTING:
-            lock = settings;
             break;
         case ROLE:
             lock = authLock;
@@ -988,16 +992,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             initMetaTables();
         }
         return schema;
-    }
-
-    /**
-     * Get the setting if it exists, or null if not.
-     *
-     * @param name the name of the setting
-     * @return the setting or null
-     */
-    public Setting findSetting(String name) {
-        return settings.get(name);
     }
 
     /**
@@ -1276,7 +1270,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (starting) {
             return Constants.ALLOW_LITERALS_ALL;
         }
-        return allowLiterals;
+        return dbSettings.allowLiterals;
     }
 
     public ArrayList<Right> getAllRights() {
@@ -1342,10 +1336,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public ArrayList<Schema> getAllSchemas() {
         initMetaTables();
         return new ArrayList<>(schemas.values());
-    }
-
-    public ArrayList<Setting> getAllSettings() {
-        return new ArrayList<>(settings.values());
     }
 
     public ArrayList<User> getAllUsers() {
@@ -1482,17 +1472,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return traceSystem;
     }
 
-    // TODO 传递到存储引擎
-    public synchronized void setCacheSize(int kb) {
-        if (starting) {
-            int max = MathUtils.convertLongToInt(Utils.getMemoryMax()) / 2;
-            kb = Math.min(kb, max);
-        }
-        cacheSize = kb;
-    }
-
     public int getCacheSize() {
-        return cacheSize;
+        return dbSettings.cacheSize;
     }
 
     public int getPageSize() {
@@ -1537,12 +1518,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return readOnly;
     }
 
-    public void setWriteDelay(int value) {
-        writeDelay = value;
-    }
-
     public int getWriteDelay() {
-        return writeDelay;
+        return dbSettings.writeDelay;
     }
 
     public void setBackgroundException(DbException e) {
@@ -1626,36 +1603,19 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public int getMaxMemoryRows() {
-        return maxMemoryRows;
-    }
-
-    public void setMaxMemoryRows(int value) {
-        this.maxMemoryRows = value;
-    }
-
-    public void setMaxMemoryUndo(int value) {
-        this.maxMemoryUndo = value;
+        return dbSettings.maxMemoryRows;
     }
 
     public int getMaxMemoryUndo() {
-        return maxMemoryUndo;
+        return dbSettings.maxMemoryUndo;
     }
 
-    public void setLockMode(int lockMode) {
-        switch (lockMode) {
-        case Constants.LOCK_MODE_OFF:
-        case Constants.LOCK_MODE_READ_COMMITTED:
-        case Constants.LOCK_MODE_TABLE:
-        case Constants.LOCK_MODE_TABLE_GC:
-            break;
-        default:
-            throw DbException.getInvalidValueException("lock mode", lockMode);
-        }
-        this.lockMode = lockMode;
+    public int getMaxOperationMemory() {
+        return dbSettings.maxOperationMemory;
     }
 
     public int getLockMode() {
-        return lockMode;
+        return dbSettings.lockMode;
     }
 
     public synchronized void setCloseDelay(int value) {
@@ -1675,17 +1635,9 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return closing;
     }
 
-    public void setMaxLengthInplaceLob(int value) {
-        this.maxLengthInplaceLob = value;
-    }
-
     @Override
     public int getMaxLengthInplaceLob() {
-        return persistent ? maxLengthInplaceLob : Integer.MAX_VALUE;
-    }
-
-    public void setIgnoreCase(boolean b) {
-        ignoreCase = b;
+        return persistent ? dbSettings.maxLengthInplaceLob : Integer.MAX_VALUE;
     }
 
     public boolean getIgnoreCase() {
@@ -1693,7 +1645,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             // tables created at startup must not be converted to ignorecase
             return false;
         }
-        return ignoreCase;
+        return dbSettings.ignoreCase;
     }
 
     public synchronized void setDeleteFilesOnDisconnect(boolean b) {
@@ -1706,26 +1658,15 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public String getLobCompressionAlgorithm(int type) {
-        return lobCompressionAlgorithm;
-    }
-
-    public void setLobCompressionAlgorithm(String stringValue) {
-        this.lobCompressionAlgorithm = stringValue;
-    }
-
-    public void setMaxLogSize(long value) {
-    }
-
-    public void setAllowLiterals(int value) {
-        this.allowLiterals = value;
+        return dbSettings.lobCompressionAlgorithm;
     }
 
     public boolean getOptimizeReuseResults() {
-        return optimizeReuseResults;
+        return dbSettings.optimizeReuseResults;
     }
 
-    public void setOptimizeReuseResults(boolean b) {
-        optimizeReuseResults = b;
+    public boolean getReferentialIntegrity() {
+        return dbSettings.referentialIntegrity;
     }
 
     @Override
@@ -1737,16 +1678,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return userSessions.size();
     }
 
-    public void setReferentialIntegrity(boolean b) {
-        referentialIntegrity = b;
-    }
-
-    public boolean getReferentialIntegrity() {
-        return referentialIntegrity;
-    }
-
     public void setQueryStatistics(boolean b) {
-        queryStatistics = b;
         synchronized (this) {
             if (!b) {
                 queryStatisticsData = null;
@@ -1755,28 +1687,27 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public boolean getQueryStatistics() {
-        return queryStatistics;
+        return dbSettings.queryStatistics;
     }
 
     public void setQueryStatisticsMaxEntries(int n) {
-        queryStatisticsMaxEntries = n;
         if (queryStatisticsData != null) {
             synchronized (this) {
                 if (queryStatisticsData != null) {
-                    queryStatisticsData.setMaxQueryEntries(queryStatisticsMaxEntries);
+                    queryStatisticsData.setMaxQueryEntries(n);
                 }
             }
         }
     }
 
     public QueryStatisticsData getQueryStatisticsData() {
-        if (!queryStatistics) {
+        if (!dbSettings.queryStatistics) {
             return null;
         }
         if (queryStatisticsData == null) {
             synchronized (this) {
                 if (queryStatisticsData == null) {
-                    queryStatisticsData = new QueryStatisticsData(queryStatisticsMaxEntries);
+                    queryStatisticsData = new QueryStatisticsData(dbSettings.queryStatisticsMaxEntries);
                 }
             }
         }
@@ -1800,7 +1731,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @return true if it is enabled
      */
     public boolean isMultiVersion() {
-        return multiVersion;
+        return transactionEngine.supportsMVCC();
     }
 
     /**
@@ -1819,14 +1750,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     public Mode getMode() {
         return mode;
-    }
-
-    public void setMaxOperationMemory(int maxOperationMemory) {
-        this.maxOperationMemory = maxOperationMemory;
-    }
-
-    public int getMaxOperationMemory() {
-        return maxOperationMemory;
     }
 
     public ServerSession getExclusiveSession() {
@@ -1954,11 +1877,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public int getDefaultTableType() {
-        return defaultTableType;
-    }
-
-    public void setDefaultTableType(int defaultTableType) {
-        this.defaultTableType = defaultTableType;
+        return dbSettings.defaultTableType;
     }
 
     /**
@@ -2000,8 +1919,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             s.backupTo(fileName);
         }
     }
-
-    private final ConcurrentHashMap<String, Storage> storages = new ConcurrentHashMap<>();
 
     public Storage getMetaStorage() {
         return storages.get(metaStorageEngineName);
@@ -2047,8 +1964,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         } catch (IOException e) {
             throw DbException.convert(e);
         }
-        storagePath = path;
-        return storagePath;
+        return path;
     }
 
     private StorageBuilder getStorageBuilder(StorageEngine storageEngine) {
@@ -2176,10 +2092,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public String getComment() {
         return null;
     }
-
-    private String[] hostIds;
-    private HashSet<NetNode> nodes;
-    private String targetNodes;
 
     @Override
     public String[] getHostIds() {

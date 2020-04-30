@@ -29,7 +29,6 @@ import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.QueryStatisticsData;
-import org.lealone.db.Setting;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.Role;
 import org.lealone.db.auth.User;
@@ -601,12 +600,8 @@ public class MetaTable extends Table {
             break;
         }
         case SETTINGS: {
-            for (Setting s : database.getAllSettings()) {
-                String value = s.getStringValue();
-                if (value == null) {
-                    value = "" + s.getIntValue();
-                }
-                add(rows, identifier(s.getName()), value);
+            for (Map.Entry<String, String> e : database.getParameters().entrySet()) {
+                add(rows, identifier(e.getKey()), e.getValue());
             }
             add(rows, "info.BUILD_ID", "" + Constants.BUILD_ID);
             add(rows, "info.VERSION_MAJOR", "" + Constants.VERSION_MAJOR);
