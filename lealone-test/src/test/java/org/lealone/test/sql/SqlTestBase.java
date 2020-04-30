@@ -93,9 +93,11 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
                             stmt.executeUpdate(createDatabase);
                         }
                     }
-                    new CDB().runTest();
-                    setUpBefore();
-                    return;
+                    // 只有创建数据库成功了才重试，不然会进入死循环
+                    if (new CDB().runTest()) {
+                        setUpBefore();
+                        return;
+                    }
                 }
             }
             e.printStackTrace();
@@ -110,12 +112,14 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
     }
 
     // 不用加@Test，子类可以手工运行，只要实现test方法即可
-    public void runTest() {
+    public boolean runTest() {
         setUpBefore();
         try {
             test();
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         } finally {
             tearDownAfter();
         }
