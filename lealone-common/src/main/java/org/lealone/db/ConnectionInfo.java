@@ -136,8 +136,7 @@ public class ConnectionInfo implements Cloneable {
             }
         }
         netFactoryName = removeProperty(ConnectionSetting.NET_FACTORY_NAME, Constants.DEFAULT_NET_FACTORY_NAME);
-        networkTimeout = getProperty(ConnectionSetting.NETWORK_TIMEOUT, DEFAULT_NETWORK_TIMEOUT);
-        removeProperty(ConnectionSetting.NETWORK_TIMEOUT, "");
+        networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT, DEFAULT_NETWORK_TIMEOUT);
         initTraceProperty();
     }
 
@@ -636,6 +635,11 @@ public class ConnectionInfo implements Cloneable {
 
     public String removeProperty(ConnectionSetting key, String defaultValue) {
         return removeProperty(key.name(), defaultValue);
+    }
+
+    public int removeProperty(ConnectionSetting key, int defaultValue) {
+        String x = removeProperty(key, null);
+        return x == null ? defaultValue : Integer.parseInt(x);
     }
 
     /**

@@ -50,7 +50,6 @@ public class SetDatabase extends SetStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        Database database = session.getDatabase();
         String name = setting.name();
         switch (setting) {
         // 以下是database级的类型
