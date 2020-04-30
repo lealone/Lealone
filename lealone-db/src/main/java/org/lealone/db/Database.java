@@ -92,6 +92,18 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     private static final String SYSTEM_USER_NAME = "DBA";
 
+    private static enum State {
+        CONSTRUCTOR_CALLED, // 刚调用完构造函数阶段，也是默认阶段
+        OPENING,
+        OPENED,
+        STARTING,
+        STARTED,
+        CLOSING,
+        CLOSED;
+    }
+
+    private volatile State state = State.CONSTRUCTOR_CALLED;
+
     private final HashMap<String, User> users = new HashMap<>();
     private final HashMap<String, Role> roles = new HashMap<>();
     private final HashMap<String, Right> rights = new HashMap<>();
@@ -130,14 +142,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private TraceSystem traceSystem;
     private Trace trace;
 
-    private boolean starting;
     private boolean readOnly;
-    private volatile boolean initialized;
 
     private int powerOffCount;
     private int closeDelay = -1; // 不关闭
     private DatabaseCloser delayedCloser;
-    private volatile boolean closing;
     private boolean deleteFilesOnDisconnect;
     private DatabaseCloser closeOnExit;
 
@@ -357,13 +366,13 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public boolean isInitialized() {
-        return initialized;
+        return state != State.CONSTRUCTOR_CALLED;
     }
 
     public synchronized void init() {
-        if (initialized)
+        if (state != State.CONSTRUCTOR_CALLED)
             return;
-        initialized = true;
+        state = State.OPENING;
 
         String listener = dbSettings.eventListener;
         if (listener != null) {
@@ -381,6 +390,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
 
         opened();
+        state = State.OPENED;
     }
 
     private boolean isLealoneDatabase() {
@@ -491,7 +501,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
 
         objectIds.set(0);
-        starting = true;
+        state = State.STARTING;
 
         Collections.sort(records);
         for (MetaRecord rec : records) {
@@ -499,7 +509,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
 
         recompileInvalidViews();
-        starting = false;
+        state = State.STARTED;
     }
 
     public synchronized void rollbackMetaTable(ServerSession session) {
@@ -512,7 +522,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
 
         objectIds.set(0);
-        starting = true;
+        state = State.STARTING;
 
         Collections.sort(records);
         for (MetaRecord rec : records) {
@@ -520,7 +530,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
 
         recompileInvalidViews();
-        starting = false;
+        state = State.STARTED;
     }
 
     private void recompileInvalidViews() {
@@ -743,7 +753,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     public void addMeta(ServerSession session, DbObject obj) {
         int id = obj.getId();
-        if (id > 0 && !starting && !obj.isTemporary()) {
+        if (id > 0 && isMetaReady() && !obj.isTemporary()) {
             checkWritingAllowed();
             Row r = meta.getTemplateRow();
             MetaRecord rec = new MetaRecord(obj);
@@ -756,7 +766,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public void removeMeta(ServerSession session, SchemaObject obj) {
-        if (!starting) {
+        if (isMetaReady()) {
             Table t = getDependentTable(obj, null);
             if (t != null && t != obj) {
                 throw DbException.get(ErrorCode.CANNOT_DROP_2, obj.getSQL(), t.getSQL());
@@ -776,7 +786,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param id the id of the object to remove
      */
     public void removeMeta(ServerSession session, int id) {
-        if (id > 0 && !starting) {
+        if (id > 0 && isMetaReady()) {
             checkWritingAllowed();
             SearchRow r = meta.getTemplateSimpleRow(false);
             r.setValue(0, ValueInt.get(id));
@@ -1128,11 +1138,10 @@ public class Database implements DataHandler, DbObject, IDatabase {
      *            hook
      */
     synchronized void close(boolean fromShutdownHook) {
-        if (closing) {
+        if (state == State.CLOSING || state == State.CLOSED) {
             return;
         }
-
-        closing = true;
+        state = State.CLOSING;
         if (userSessions.size() > 0) {
             if (!fromShutdownHook) {
                 return;
@@ -1143,7 +1152,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         trace.info("closing {0}", name);
         if (eventListener != null) {
             // allow the event listener to connect to the database
-            closing = false;
+            state = State.OPENED;
             DatabaseEventListener e = eventListener;
             // set it to null, to make sure it's called only once
             eventListener = null;
@@ -1152,7 +1161,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 // if a connection was opened, we can't close the database
                 return;
             }
-            closing = true;
+            state = State.CLOSING;
         }
         // remove all session variables
         if (persistent) {
@@ -1232,6 +1241,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         for (Storage s : getStorages()) {
             s.close();
         }
+
+        state = State.CLOSED;
     }
 
     /**
@@ -1267,7 +1278,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     public int getAllowLiterals() {
-        if (starting) {
+        if (isStarting()) {
             return Constants.ALLOW_LITERALS_ALL;
         }
         return dbSettings.allowLiterals;
@@ -1626,22 +1637,13 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return systemSession;
     }
 
-    /**
-     * Check if the database is in the process of closing.
-     *
-     * @return true if the database is closing
-     */
-    public boolean isClosing() {
-        return closing;
-    }
-
     @Override
     public int getMaxLengthInplaceLob() {
         return persistent ? dbSettings.maxLengthInplaceLob : Integer.MAX_VALUE;
     }
 
     public boolean getIgnoreCase() {
-        if (starting) {
+        if (isStarting()) {
             // tables created at startup must not be converted to ignorecase
             return false;
         }
@@ -1722,7 +1724,20 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     @Override
     public boolean isStarting() {
-        return starting;
+        return state == State.STARTING;
+    }
+
+    private boolean isMetaReady() {
+        return state != State.CONSTRUCTOR_CALLED && state != State.STARTING;
+    }
+
+    /**
+     * Check if the database is in the process of closing.
+     *
+     * @return true if the database is closing
+     */
+    public boolean isClosing() {
+        return state == State.CLOSING;
     }
 
     /**
