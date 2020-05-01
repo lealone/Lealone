@@ -80,7 +80,11 @@ public class UndoLogRecord {
             }
             // newValue.commit(tid);
         } else { // update
-            newValue.commit(tid);
+            TransactionalValue ref = newValue.commit(tid);
+            // 先删除后增加的场景，需要重新put回去
+            if (newValue.getOldValue() != null && newValue.getOldValue().getValue() == null) {
+                map.put(key, ref);
+            }
         }
     }
 

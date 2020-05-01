@@ -768,7 +768,7 @@ public interface TransactionalValue {
                     break;
                 }
             }
-            return null;
+            return ref;
         }
 
         @Override
@@ -920,7 +920,7 @@ public interface TransactionalValue {
                     next = next.getOldValue();
                 }
             }
-            return null;
+            return ref;
         }
 
         @Override
