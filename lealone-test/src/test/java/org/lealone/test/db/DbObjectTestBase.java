@@ -44,10 +44,14 @@ public class DbObjectTestBase extends UnitTestBase {
     protected String sql;
 
     public DbObjectTestBase() {
+        this(DB_NAME);
+    }
+
+    public DbObjectTestBase(String dbName) {
         // setInMemory(true);
         setEmbedded(true);
         addConnectionParameter("DATABASE_TO_UPPER", "false"); // 不转成大写
-        ConnectionInfo ci = new ConnectionInfo(getURL(DB_NAME));
+        ConnectionInfo ci = new ConnectionInfo(getURL(dbName));
         session = (ServerSession) ServerSessionFactory.getInstance().createSession(ci).get();
         db = session.getDatabase();
         schema = db.findSchema(Constants.SCHEMA_MAIN);

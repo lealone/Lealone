@@ -26,6 +26,10 @@ import org.lealone.db.result.SearchRow;
 
 public class DatabaseTest extends DbObjectTestBase {
 
+    public DatabaseTest() {
+        super(LealoneDatabase.NAME);
+    }
+
     private void asserts(String dbName) {
         int id;
         Database db;

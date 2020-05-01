@@ -18,6 +18,7 @@
 package org.lealone.net;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -63,11 +64,11 @@ public interface NetNodeManager {
     }
 
     default Collection<String> getRecognizedReplicationStrategyOptions(String strategyName) {
-        return null;
+        return Collections.<String> singleton("replication_factor");
     }
 
     default Collection<String> getRecognizedNodeAssignmentStrategyOptions(String strategyName) {
-        return null;
+        return Collections.<String> singleton("assignment_factor");
     }
 
     default String getDefaultReplicationStrategy() {
@@ -84,5 +85,9 @@ public interface NetNodeManager {
 
     default int getDefaultNodeAssignmentFactor() {
         return 1;
+    }
+
+    default boolean isLocal() {
+        return false;
     }
 }

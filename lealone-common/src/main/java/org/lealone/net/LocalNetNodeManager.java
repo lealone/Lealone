@@ -44,4 +44,9 @@ public class LocalNetNodeManager implements NetNodeManager {
     public String[] assignNodes(IDatabase db) {
         return new String[] { NetNode.getLocalTcpHostAndPort() };
     }
+
+    @Override
+    public boolean isLocal() {
+        return true;
+    }
 }

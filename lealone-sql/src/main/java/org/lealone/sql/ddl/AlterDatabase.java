@@ -70,9 +70,14 @@ public class AlterDatabase extends DatabaseStatement {
         checkRight();
         synchronized (LealoneDatabase.getInstance().getLock(DbObjectType.DATABASE)) {
             RunMode oldRunMode = db.getRunMode();
-            if (runMode == null)
+            if (runMode == null) {
                 runMode = oldRunMode;
-
+            } else if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING) {
+                // 退化到CLIENT_SERVER模式
+                if (NetNodeManagerHolder.get().isLocal()) {
+                    runMode = RunMode.CLIENT_SERVER;
+                }
+            }
             if (oldRunMode == RunMode.CLIENT_SERVER) {
                 if (runMode == RunMode.CLIENT_SERVER)
                     clientServer2ClientServer();
