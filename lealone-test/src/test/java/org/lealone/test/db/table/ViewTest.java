@@ -30,6 +30,7 @@ public class ViewTest extends DbObjectTestBase {
     }
 
     void init() {
+        executeUpdate("DROP VIEW IF EXISTS my_view");
         executeUpdate("DROP TABLE IF EXISTS ViewTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS ViewTest (id int, name varchar(500), b boolean)");
         insert();

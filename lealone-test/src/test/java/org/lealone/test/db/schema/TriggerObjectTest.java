@@ -112,5 +112,6 @@ public class TriggerObjectTest extends DbObjectTestBase {
     void drop() {
         executeUpdate("DROP TRIGGER IF EXISTS MyTrigger1");
         assertNull(schema.findTrigger("MyTrigger1"));
+        session.commit();
     }
 }

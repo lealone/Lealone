@@ -76,8 +76,9 @@ public class DropView extends SchemaStatement {
                         }
                     }
                 }
-                if (!view.tryExclusiveLock(session))
-                    return -1;
+                // TODO 如果当前正在通过视图查询数据怎么办？
+                // if (!view.tryExclusiveLock(session))
+                // return -1;
                 schema.remove(session, view);
             }
         }
