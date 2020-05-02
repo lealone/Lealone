@@ -15,6 +15,7 @@ import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 
@@ -82,39 +83,41 @@ public class CreateIndex extends SchemaStatement {
 
     @Override
     public int update() {
-        synchronized (schema.getLock(DbObjectType.INDEX)) {
-            Table table = schema.getTableOrView(session, tableName);
-            if (schema.findIndex(session, indexName) != null) {
-                if (ifNotExists) {
-                    return 0;
-                }
-                throw DbException.get(ErrorCode.INDEX_ALREADY_EXISTS_1, indexName);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.INDEX, session);
+        if (lockTable == null)
+            return -1;
+
+        Table table = schema.getTableOrView(session, tableName);
+        if (schema.findIndex(session, indexName) != null) {
+            if (ifNotExists) {
+                return 0;
             }
-            if (!table.tryExclusiveLock(session))
-                return -1;
-            session.getUser().checkRight(table, Right.ALL);
-            int id = getObjectId();
-            if (indexName == null) {
-                if (primaryKey) {
-                    indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_PRIMARY_KEY);
-                } else {
-                    indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_INDEX);
-                }
-            }
-            IndexType indexType;
-            if (primaryKey) {
-                if (table.findPrimaryKey() != null) {
-                    throw DbException.get(ErrorCode.SECOND_PRIMARY_KEY);
-                }
-                indexType = IndexType.createPrimaryKey(hash);
-            } else if (unique) {
-                indexType = IndexType.createUnique(hash);
-            } else {
-                indexType = IndexType.createNonUnique(hash);
-            }
-            IndexColumn.mapColumns(indexColumns, table);
-            table.addIndex(session, indexName, id, indexColumns, indexType, create, comment);
+            throw DbException.get(ErrorCode.INDEX_ALREADY_EXISTS_1, indexName);
         }
+        if (!table.tryExclusiveLock(session))
+            return -1;
+        session.getUser().checkRight(table, Right.ALL);
+        int id = getObjectId();
+        if (indexName == null) {
+            if (primaryKey) {
+                indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_PRIMARY_KEY);
+            } else {
+                indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_INDEX);
+            }
+        }
+        IndexType indexType;
+        if (primaryKey) {
+            if (table.findPrimaryKey() != null) {
+                throw DbException.get(ErrorCode.SECOND_PRIMARY_KEY);
+            }
+            indexType = IndexType.createPrimaryKey(hash);
+        } else if (unique) {
+            indexType = IndexType.createUnique(hash);
+        } else {
+            indexType = IndexType.createNonUnique(hash);
+        }
+        IndexColumn.mapColumns(indexColumns, table);
+        table.addIndex(session, indexName, id, indexColumns, indexType, create, comment, lockTable);
         return 0;
     }
 }

@@ -27,22 +27,22 @@ public enum DbObjectType {
     /**
      * The object is a database
      */
-    DATABASE(0, 0),
+    DATABASE(0, 0, false),
 
     /**
      * This object is a user.
      */
-    USER(1, 2),
+    USER(1, 2, false),
 
     /**
      * This object is a role.
      */
-    ROLE(2, 12),
+    ROLE(2, 12, false),
 
     /**
      * This object is a right.
      */
-    RIGHT(3, 13),
+    RIGHT(3, 13, false),
 
     /**
      * This object is a user data type (domain).
@@ -57,55 +57,55 @@ public enum DbObjectType {
     /**
      * This object is a comment.
      */
-    COMMENT(7, 15),
+    COMMENT(6, 15, false),
 
     /**
      * This object is a schema.
      */
-    SCHEMA(20, 3),
+    SCHEMA(7, 3, false),
 
     /**
      * The object is of the type table or view.
      */
-    TABLE_OR_VIEW(21, 8),
+    TABLE_OR_VIEW(8, 8),
 
     /**
      * This object is an index.
      */
-    INDEX(22, 9),
+    INDEX(9, 9),
 
     /**
      * This object is a sequence.
      */
-    SEQUENCE(23, 6),
+    SEQUENCE(10, 6),
 
     /**
      * This object is a trigger.
      */
-    TRIGGER(24, 11),
+    TRIGGER(11, 11),
 
     /**
      * This object is a constraint (check constraint, unique constraint, or
      * referential constraint).
      */
-    CONSTRAINT(25, 10),
+    CONSTRAINT(12, 10),
 
     /**
      * This object is an alias for a Java function.
      */
-    FUNCTION_ALIAS(26, 4),
+    FUNCTION_ALIAS(13, 4),
 
     /**
      * This object is a constant.
      */
-    CONSTANT(27, 7),
+    CONSTANT(14, 7),
 
     /**
      * This object is a service.
      */
-    SERVICE(28, 100),
+    SERVICE(15, 100);
 
-    __LAST__(29, 1000);
+    private static final int MAX = 16;
 
     public final int value; // 值被存入SYS表中，不能随意改动
 
@@ -113,13 +113,19 @@ public enum DbObjectType {
      * Objects are created in this order when opening a database.
      */
     public final int createOrder;
+    public final boolean isSchemaObject;
 
     private DbObjectType(int value, int createOrder) {
-        this.value = value;
-        this.createOrder = createOrder;
+        this(value, createOrder, true);
     }
 
-    public static final DbObjectType[] TYPES = new DbObjectType[__LAST__.value + 1];
+    private DbObjectType(int value, int createOrder, boolean isSchemaObject) {
+        this.value = value;
+        this.createOrder = createOrder;
+        this.isSchemaObject = isSchemaObject;
+    }
+
+    public static final DbObjectType[] TYPES = new DbObjectType[MAX];
     static {
         for (DbObjectType t : DbObjectType.values())
             TYPES[t.value] = t;

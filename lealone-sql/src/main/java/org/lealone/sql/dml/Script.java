@@ -161,7 +161,7 @@ public class Script extends ScriptBase {
         Database db = session.getDatabase();
         if (schemaNames != null) {
             for (String schemaName : schemaNames) {
-                Schema schema = db.findSchema(schemaName);
+                Schema schema = db.findSchema(session, schemaName);
                 if (schema == null) {
                     throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
                 }

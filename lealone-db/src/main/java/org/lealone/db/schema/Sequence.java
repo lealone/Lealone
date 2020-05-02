@@ -290,12 +290,12 @@ public class Sequence extends SchemaObjectBase {
     }
 
     private void flushInternal(ServerSession session, long flushValueWithMargin) {
-        final boolean metaWasLocked = database.lockMeta(session);
+        // final boolean metaWasLocked = database.lockMeta(session);
         synchronized (this) {
             if (flushValueWithMargin == lastFlushValueWithMargin) {
-                if (!metaWasLocked) {
-                    database.unlockMeta(session);
-                }
+                // if (!metaWasLocked) {
+                // database.unlockMeta(session);
+                // }
                 return;
             }
         }
@@ -312,9 +312,9 @@ public class Sequence extends SchemaObjectBase {
         synchronized (this) {
             lastFlushValueWithMargin = flushValueWithMargin;
         }
-        if (!metaWasLocked) {
-            database.unlockMeta(session);
-        }
+        // if (!metaWasLocked) {
+        // database.unlockMeta(session);
+        // }
     }
 
     /**

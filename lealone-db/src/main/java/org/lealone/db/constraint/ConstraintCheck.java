@@ -19,6 +19,7 @@ import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.IExpression;
 
@@ -72,7 +73,7 @@ public class ConstraintCheck extends Constraint {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         table.removeConstraint(this);
     }
 

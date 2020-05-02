@@ -74,9 +74,9 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
 
     public void setGranteeName(String granteeName) {
         Database db = session.getDatabase();
-        grantee = db.findUser(granteeName);
+        grantee = db.findUser(session, granteeName);
         if (grantee == null) {
-            grantee = db.findRole(granteeName);
+            grantee = db.findRole(session, granteeName);
             if (grantee == null) {
                 throw DbException.get(ErrorCode.USER_OR_ROLE_NOT_FOUND_1, granteeName);
             }
@@ -121,7 +121,7 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
         Database db = session.getDatabase();
         if (roleNames != null) {
             for (String name : roleNames) {
-                Role grantedRole = db.findRole(name);
+                Role grantedRole = db.findRole(session, name);
                 if (grantedRole == null) {
                     throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, name);
                 }

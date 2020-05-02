@@ -96,25 +96,26 @@ public class Service extends SchemaObjectBase {
             serviceName = a[0];
             methodName = a[1];
         }
-        return execute(session.getDatabase(), schemaName, serviceName, methodName, json);
+        return execute(session, session.getDatabase(), schemaName, serviceName, methodName, json);
     }
 
     public static String execute(String serviceName, String json) {
         serviceName = serviceName.toUpperCase();
         String[] a = StringUtils.arraySplit(serviceName, '.');
         if (a.length == 4) {
-            return execute(LealoneDatabase.getInstance().getDatabase(a[0]), a[1], a[2], a[3], json);
+            return execute(null, LealoneDatabase.getInstance().getDatabase(a[0]), a[1], a[2], a[3], json);
         } else {
             throw new RuntimeException("service " + serviceName + " not found");
         }
     }
 
-    private static String execute(Database db, String schemaName, String serviceName, String methodName, String json) {
-        Schema schema = db.findSchema(schemaName);
+    private static String execute(ServerSession session, Database db, String schemaName, String serviceName,
+            String methodName, String json) {
+        Schema schema = db.findSchema(session, schemaName);
         if (schema == null) {
             throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
         }
-        Service service = schema.findService(serviceName);
+        Service service = schema.findService(session, serviceName);
         if (service != null) {
             return service.getExecutor().executeService(methodName, json);
         } else {

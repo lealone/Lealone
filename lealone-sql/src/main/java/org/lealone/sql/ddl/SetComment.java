@@ -13,6 +13,7 @@ import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -70,6 +71,10 @@ public class SetComment extends DefinitionStatement {
     public int update() {
         Database db = session.getDatabase();
         session.getUser().checkAdmin();
+        LockTable lockTable = db.tryExclusiveCommentLock(session);
+        if (lockTable == null)
+            return -1;
+
         DbObject object = null;
         int errorCode = ErrorCode.GENERAL_ERROR_1;
         if (schemaName == null) {
@@ -77,44 +82,44 @@ public class SetComment extends DefinitionStatement {
         }
         switch (objectType) {
         case CONSTANT:
-            object = db.getSchema(schemaName).getConstant(objectName);
+            object = db.getSchema(session, schemaName).getConstant(session, objectName);
             break;
         case CONSTRAINT:
-            object = db.getSchema(schemaName).getConstraint(objectName);
+            object = db.getSchema(session, schemaName).getConstraint(session, objectName);
             break;
         case FUNCTION_ALIAS:
-            object = db.getSchema(schemaName).findFunction(objectName);
+            object = db.getSchema(session, schemaName).findFunction(session, objectName);
             errorCode = ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1;
             break;
         case INDEX:
-            object = db.getSchema(schemaName).getIndex(objectName);
+            object = db.getSchema(session, schemaName).getIndex(session, objectName);
             break;
         case ROLE:
             schemaName = null;
-            object = db.findRole(objectName);
+            object = db.findRole(session, objectName);
             errorCode = ErrorCode.ROLE_NOT_FOUND_1;
             break;
         case SCHEMA:
             schemaName = null;
-            object = db.findSchema(objectName);
+            object = db.findSchema(session, objectName);
             errorCode = ErrorCode.SCHEMA_NOT_FOUND_1;
             break;
         case SEQUENCE:
-            object = db.getSchema(schemaName).getSequence(objectName);
+            object = db.getSchema(session, schemaName).getSequence(session, objectName);
             break;
         case TABLE_OR_VIEW:
-            object = db.getSchema(schemaName).getTableOrView(session, objectName);
+            object = db.getSchema(session, schemaName).getTableOrView(session, objectName);
             break;
         case TRIGGER:
-            object = db.getSchema(schemaName).findTrigger(objectName);
+            object = db.getSchema(session, schemaName).findTrigger(session, objectName);
             errorCode = ErrorCode.TRIGGER_NOT_FOUND_1;
             break;
         case USER:
             schemaName = null;
-            object = db.getUser(objectName);
+            object = db.getUser(session, objectName);
             break;
         case USER_DATATYPE:
-            object = db.getSchema(schemaName).findUserDataType(objectName);
+            object = db.getSchema(session, schemaName).findUserDataType(session, objectName);
             errorCode = ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1;
             break;
         default:
@@ -133,7 +138,7 @@ public class SetComment extends DefinitionStatement {
                 || objectType == DbObjectType.INDEX || objectType == DbObjectType.CONSTRAINT) {
             db.updateMeta(session, object);
         } else {
-            Comment comment = db.findComment(object);
+            Comment comment = db.findComment(session, object);
             if (comment == null) {
                 if (text == null) {
                     // reset a non-existing comment - nothing to do

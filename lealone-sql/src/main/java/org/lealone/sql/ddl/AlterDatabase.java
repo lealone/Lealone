@@ -29,10 +29,10 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLStatement;
@@ -68,41 +68,43 @@ public class AlterDatabase extends DatabaseStatement {
     @Override
     public int update() {
         checkRight();
-        synchronized (LealoneDatabase.getInstance().getLock(DbObjectType.DATABASE)) {
-            RunMode oldRunMode = db.getRunMode();
-            if (runMode == null) {
-                runMode = oldRunMode;
-            } else if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING) {
-                // 退化到CLIENT_SERVER模式
-                if (NetNodeManagerHolder.get().isLocal()) {
-                    runMode = RunMode.CLIENT_SERVER;
-                }
-            }
-            if (oldRunMode == RunMode.CLIENT_SERVER) {
-                if (runMode == RunMode.CLIENT_SERVER)
-                    clientServer2ClientServer();
-                else if (runMode == RunMode.REPLICATION)
-                    scaleOutClientServer2Replication();
-                else if (runMode == RunMode.SHARDING)
-                    scaleOutClientServer2Sharding();
-            } else if (oldRunMode == RunMode.REPLICATION) {
-                if (runMode == RunMode.CLIENT_SERVER)
-                    scaleInReplication2ClientServer();
-                else if (runMode == RunMode.REPLICATION)
-                    replication2Replication();
-                else if (runMode == RunMode.SHARDING)
-                    scaleOutReplication2Sharding();
-            } else if (oldRunMode == RunMode.SHARDING) {
-                if (runMode == RunMode.CLIENT_SERVER)
-                    scaleInSharding2ClientServer();
-                else if (runMode == RunMode.REPLICATION)
-                    scaleInSharding2Replication();
-                else if (runMode == RunMode.SHARDING)
-                    sharding2Sharding();
+        LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
+        LockTable lockTable = lealoneDB.tryExclusiveDatabaseLock(session);
+        if (lockTable == null)
+            return -1;
+
+        RunMode oldRunMode = db.getRunMode();
+        if (runMode == null) {
+            runMode = oldRunMode;
+        } else if (runMode == RunMode.REPLICATION || runMode == RunMode.SHARDING) {
+            // 退化到CLIENT_SERVER模式
+            if (NetNodeManagerHolder.get().isLocal()) {
+                runMode = RunMode.CLIENT_SERVER;
             }
         }
+        if (oldRunMode == RunMode.CLIENT_SERVER) {
+            if (runMode == RunMode.CLIENT_SERVER)
+                clientServer2ClientServer();
+            else if (runMode == RunMode.REPLICATION)
+                scaleOutClientServer2Replication();
+            else if (runMode == RunMode.SHARDING)
+                scaleOutClientServer2Sharding();
+        } else if (oldRunMode == RunMode.REPLICATION) {
+            if (runMode == RunMode.CLIENT_SERVER)
+                scaleInReplication2ClientServer();
+            else if (runMode == RunMode.REPLICATION)
+                replication2Replication();
+            else if (runMode == RunMode.SHARDING)
+                scaleOutReplication2Sharding();
+        } else if (oldRunMode == RunMode.SHARDING) {
+            if (runMode == RunMode.CLIENT_SERVER)
+                scaleInSharding2ClientServer();
+            else if (runMode == RunMode.REPLICATION)
+                scaleInSharding2Replication();
+            else if (runMode == RunMode.SHARDING)
+                sharding2Sharding();
+        }
         return 0;
-
     }
 
     private void alterDatabase() {

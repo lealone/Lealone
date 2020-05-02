@@ -22,6 +22,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -54,6 +55,7 @@ import org.lealone.db.session.Session;
 import org.lealone.db.session.SystemSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
@@ -104,17 +106,45 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     private volatile State state = State.CONSTRUCTOR_CALLED;
 
-    private final HashMap<String, User> users = new HashMap<>();
-    private final HashMap<String, Role> roles = new HashMap<>();
-    private final HashMap<String, Right> rights = new HashMap<>();
-    private final HashMap<String, Schema> schemas = new HashMap<>();
-    private final HashMap<String, Comment> comments = new HashMap<>();
+    @SuppressWarnings("unchecked")
+    private final AtomicReference<TransactionalDbObjects<DbObject>>[] dbObjectsRefs = new AtomicReference[DbObjectType.TYPES.length];
 
     // 与users、roles和rights相关的操作都用这个对象进行同步
-    private final Object authLock = new Object();
+    private LockTable authLockTable;
+    private LockTable schemasLockTable;
+    private LockTable commentsLockTable;
+    private LockTable databasesLockTable;
 
-    public Object getAuthLock() {
-        return authLock;
+    public LockTable tryExclusiveAuthLock(ServerSession session) {
+        if (authLockTable.tryExclusiveLock(session)) {
+            return authLockTable;
+        } else {
+            return null;
+        }
+    }
+
+    public LockTable tryExclusiveSchemaLock(ServerSession session) {
+        if (schemasLockTable.tryExclusiveLock(session)) {
+            return schemasLockTable;
+        } else {
+            return null;
+        }
+    }
+
+    public LockTable tryExclusiveCommentLock(ServerSession session) {
+        if (commentsLockTable.tryExclusiveLock(session)) {
+            return commentsLockTable;
+        } else {
+            return null;
+        }
+    }
+
+    public LockTable tryExclusiveDatabaseLock(ServerSession session) {
+        if (databasesLockTable.tryExclusiveLock(session)) {
+            return databasesLockTable;
+        } else {
+            return null;
+        }
     }
 
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<>());
@@ -228,6 +258,13 @@ public class Database implements DataHandler, DbObject, IDatabase {
             }
         }
         this.transactionEngine = transactionEngine;
+
+        for (DbObjectType type : DbObjectType.TYPES) {
+            if (!type.isSchemaObject) {
+                dbObjectsRefs[type.value] = new AtomicReference<>(
+                        new TransactionalDbObjects<>(new CaseInsensitiveMap<>()));
+            }
+        }
     }
 
     @Override
@@ -430,12 +467,17 @@ public class Database implements DataHandler, DbObject, IDatabase {
             systemUser.setAdmin(true);
 
             publicRole = new Role(this, 0, Constants.PUBLIC_ROLE_NAME, true);
-            roles.put(Constants.PUBLIC_ROLE_NAME, publicRole);
+            addDatabaseObject(null, publicRole, null);
 
             mainSchema = new Schema(this, 0, Constants.SCHEMA_MAIN, systemUser, true);
             infoSchema = new Schema(this, -1, "INFORMATION_SCHEMA", systemUser, true);
-            schemas.put(mainSchema.getName(), mainSchema);
-            schemas.put(infoSchema.getName(), infoSchema);
+            addDatabaseObject(null, mainSchema, null);
+            addDatabaseObject(null, infoSchema, null);
+
+            authLockTable = new LockTable(mainSchema, "auth");
+            schemasLockTable = new LockTable(mainSchema, " schemas");
+            commentsLockTable = new LockTable(mainSchema, "comments");
+            databasesLockTable = new LockTable(mainSchema, " databases");
 
             systemSession = new SystemSession(this, systemUser, ++nextSessionId);
 
@@ -487,10 +529,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
         data.storageEngineName = metaStorageEngineName = persistent ? getDefaultStorageEngineName()
                 : MemoryStorageEngine.NAME;
         meta = mainSchema.createTable(data);
+        objectIds.set(0);
 
         IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
         IndexType indexType = IndexType.createDelegate(); // 重用原有的primary index
-        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, indexType, true, null);
+        LockTable lockTable = mainSchema.tryExclusiveLock(DbObjectType.INDEX, systemSession);
+        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, indexType, true, null, lockTable);
 
         ArrayList<MetaRecord> records = new ArrayList<>();
         Cursor cursor = metaIdIndex.find(systemSession, null, null);
@@ -500,7 +544,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             records.add(rec);
         }
 
-        objectIds.set(0);
         state = State.STARTING;
 
         Collections.sort(records);
@@ -704,7 +747,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             if (!metaTablesInitialized) {
                 for (int type = 0, count = MetaTable.getMetaTableTypeCount(); type < count; type++) {
                     MetaTable m = new MetaTable(infoSchema, -1 - type, type);
-                    infoSchema.add(null, m);
+                    infoSchema.add(null, m, null);
                 }
                 metaTablesInitialized = true;
             }
@@ -724,20 +767,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return meta == null || meta.isLockedExclusivelyBy(session);
     }
 
-    /**
-     * Lock the metadata table for updates.
-     *
-     * @param session the session
-     * @return whether it was already locked before by this session
-     */
-    public boolean lockMeta(ServerSession session) {
-        return false;
-    }
-
-    public void unlockMeta(ServerSession session) {
-        meta.unlock(session);
-    }
-
     private Cursor getMetaCursor(ServerSession session, int id) {
         SearchRow r = meta.getTemplateSimpleRow(false);
         r.setValue(0, ValueInt.get(id));
@@ -755,12 +784,64 @@ public class Database implements DataHandler, DbObject, IDatabase {
         int id = obj.getId();
         if (id > 0 && isMetaReady() && !obj.isTemporary()) {
             checkWritingAllowed();
-            Row r = meta.getTemplateRow();
-            MetaRecord rec = new MetaRecord(obj);
-            rec.setRecord(r);
+            Row r = MetaRecord.getRow(meta, obj);
             meta.addRow(session, r);
             synchronized (objectIds) {
                 objectIds.set(id);
+            }
+        }
+    }
+
+    public void tryAddMeta(ServerSession session, DbObject obj) {
+        int id = obj.getId();
+        if (id > 0 && isMetaReady() && !obj.isTemporary()) {
+            checkWritingAllowed();
+            Row r = MetaRecord.getRow(meta, obj);
+            meta.tryAddRow(session, r, null);
+        }
+    }
+
+    public void clearObjectId(int id) {
+        synchronized (objectIds) {
+            objectIds.clear(id);
+        }
+    }
+
+    public boolean isObjectIdEnabled(int id) {
+        synchronized (objectIds) {
+            return objectIds.get(id);
+        }
+    }
+
+    public void tryRemoveMeta(ServerSession session, SchemaObject obj) {
+        if (isMetaReady()) {
+            Table t = getDependentTable(obj, null);
+            if (t != null && t != obj) {
+                throw DbException.get(ErrorCode.CANNOT_DROP_2, obj.getSQL(), t.getSQL());
+            }
+        }
+        tryRemoveMeta(session, obj.getId());
+        Comment comment = findComment(session, obj);
+        if (comment != null) {
+            removeDatabaseObject(session, comment);
+        }
+    }
+
+    /**
+     * Remove the given object from the meta data.
+     *
+     * @param session the session
+     * @param id the id of the object to remove
+     */
+    public void tryRemoveMeta(ServerSession session, int id) {
+        if (id > 0 && isMetaReady()) {
+            checkWritingAllowed();
+            SearchRow r = meta.getTemplateSimpleRow(false);
+            r.setValue(0, ValueInt.get(id));
+            Cursor cursor = metaIdIndex.find(session, r, r);
+            if (cursor.next()) {
+                Row found = cursor.get();
+                meta.tryRemoveRow(session, found, null);
             }
         }
     }
@@ -773,7 +854,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             }
         }
         removeMeta(session, obj.getId());
-        Comment comment = findComment(obj);
+        Comment comment = findComment(session, obj);
         if (comment != null) {
             removeDatabaseObject(session, comment);
         }
@@ -804,7 +885,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public void updateMetaAndFirstLevelChildren(ServerSession session, DbObject obj) {
         checkWritingAllowed();
         List<? extends DbObject> list = obj.getChildren();
-        Comment comment = findComment(obj);
+        Comment comment = findComment(session, obj);
         if (comment != null) {
             DbException.throwInternalError();
         }
@@ -831,61 +912,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         addMeta(session, obj);
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, DbObject> getMap(DbObjectType type) {
-        Map<String, ? extends DbObject> result;
-        switch (type) {
-        case USER:
-            result = users;
-            break;
-        case ROLE:
-            result = roles;
-            break;
-        case RIGHT:
-            result = rights;
-            break;
-        case SCHEMA:
-            result = schemas;
-            break;
-        case COMMENT:
-            result = comments;
-            break;
-        case DATABASE:
-            result = LealoneDatabase.getInstance().getDatabasesMap();
-            break;
-        default:
-            throw DbException.throwInternalError("type=" + type);
-        }
-        return (Map<String, DbObject>) result;
-    }
-
-    public Object getLock(DbObjectType type) {
-        Object lock;
-        switch (type) {
-        case USER:
-            lock = authLock;
-            break;
-        case ROLE:
-            lock = authLock;
-            break;
-        case RIGHT:
-            lock = rights;
-            break;
-        case SCHEMA:
-            lock = schemas;
-            break;
-        case COMMENT:
-            lock = comments;
-            break;
-        case DATABASE:
-            lock = LealoneDatabase.getInstance().getDatabasesMap();
-            break;
-        default:
-            throw DbException.throwInternalError("type=" + type);
-        }
-        return lock;
-    }
-
     /**
      * Add an object to the database.
      *
@@ -893,15 +919,37 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param obj the object to add
      */
     public void addDatabaseObject(ServerSession session, DbObject obj) {
-        DbObjectType type = obj.getType();
-        synchronized (getLock(type)) {
-            Map<String, DbObject> map = getMap(type);
-            String name = obj.getName();
-            if (SysProperties.CHECK && map.get(name) != null) {
-                DbException.throwInternalError("object already exists");
-            }
-            addMeta(session, obj);
-            map.put(name, obj);
+        addDatabaseObject(session, obj, null);
+    }
+
+    public void addDatabaseObject(ServerSession session, DbObject obj, LockTable lockTable) {
+        AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
+        TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+
+        if (SysProperties.CHECK && dbObjects.containsKey(session, obj.getName())) {
+            DbException.throwInternalError("object already exists");
+        }
+
+        if (obj.getId() <= 0 || session == null || isStarting()) {
+            dbObjects.add(obj);
+            return;
+        }
+
+        tryAddMeta(session, obj);
+
+        dbObjects = dbObjects.copy(session);
+        dbObjects.add(obj);
+        dbObjectsRef.set(dbObjects);
+
+        if (lockTable != null) {
+            lockTable.addHandler(ar -> {
+                if (ar.isSucceeded()) {
+                    dbObjectsRef.set(dbObjectsRef.get().commit());
+                } else {
+                    clearObjectId(obj.getId());
+                    dbObjectsRef.set(dbObjectsRef.get().rollback());
+                }
+            });
         }
     }
 
@@ -912,23 +960,49 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param obj the object to remove
      */
     public void removeDatabaseObject(ServerSession session, DbObject obj) {
+        removeDatabaseObject(session, obj, null);
+    }
+
+    public void removeDatabaseObject(ServerSession session, DbObject obj, LockTable lockTable) {
         checkWritingAllowed();
         String objName = obj.getName();
         DbObjectType type = obj.getType();
-        synchronized (getLock(type)) {
-            Map<String, DbObject> map = getMap(type);
-            if (SysProperties.CHECK && !map.containsKey(objName)) {
-                DbException.throwInternalError("not found: " + objName);
-            }
-            Comment comment = findComment(obj);
-            if (comment != null) {
-                removeDatabaseObject(session, comment);
-            }
-            int id = obj.getId();
-            obj.removeChildrenAndResources(session);
-            removeMeta(session, id);
-            map.remove(objName);
+        AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[type.value];
+        TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+        if (SysProperties.CHECK && !dbObjects.containsKey(session, objName)) {
+            DbException.throwInternalError("not found: " + objName);
         }
+        if (session == null) {
+            dbObjects.remove(objName);
+            removeInternal(obj);
+            return;
+        }
+        Comment comment = findComment(session, obj);
+        if (comment != null) {
+            removeDatabaseObject(session, comment, lockTable);
+        }
+        int id = obj.getId();
+        obj.removeChildrenAndResources(session, lockTable);
+        tryRemoveMeta(session, id);
+
+        dbObjects = dbObjects.copy(session);
+        dbObjects.remove(objName);
+        dbObjectsRef.set(dbObjects);
+        if (lockTable != null) {
+            lockTable.addHandler(ar -> {
+                if (ar.isSucceeded()) {
+                    dbObjectsRef.set(dbObjectsRef.get().commit());
+                    removeInternal(obj);
+                } else {
+                    dbObjectsRef.set(dbObjectsRef.get().rollback());
+                }
+            });
+        }
+    }
+
+    private void removeInternal(DbObject obj) {
+        clearObjectId(obj.getId());
+        obj.invalidate();
     }
 
     /**
@@ -938,28 +1012,36 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param obj the object
      * @param newName the new name
      */
-    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName) {
+    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName, LockTable lockTable) {
         checkWritingAllowed();
         DbObjectType type = obj.getType();
-        synchronized (getLock(type)) {
-            Map<String, DbObject> map = getMap(type);
-            String oldName = obj.getName();
-            if (SysProperties.CHECK) {
-                if (!map.containsKey(oldName)) {
-                    DbException.throwInternalError("not found: " + oldName);
-                }
-                if (oldName.equals(newName) || map.containsKey(newName)) {
-                    DbException.throwInternalError("object already exists: " + newName);
-                }
+        AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[type.value];
+        TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
+        String oldName = obj.getName();
+        if (SysProperties.CHECK) {
+            if (!dbObjects.containsKey(session, oldName)) {
+                DbException.throwInternalError("not found: " + oldName);
             }
-            obj.checkRename();
-            int id = obj.getId();
-            removeMeta(session, id);
-            map.remove(oldName);
-            obj.rename(newName);
-            addMeta(session, obj);
-            map.put(newName, obj);
+            if (oldName.equals(newName) || dbObjects.containsKey(session, newName)) {
+                DbException.throwInternalError("object already exists: " + newName);
+            }
         }
+        obj.checkRename();
+        int id = obj.getId();
+        removeMeta(session, id);
+        dbObjects.remove(oldName);
+        obj.rename(newName);
+        addMeta(session, obj);
+        dbObjects = dbObjects.copy(session);
+        dbObjects.add(obj);
+        dbObjectsRef.set(dbObjects);
+        lockTable.setHandler(ar -> {
+            if (ar.isSucceeded()) {
+                dbObjectsRef.set(dbObjectsRef.get().commit());
+            } else {
+                dbObjectsRef.set(dbObjectsRef.get().rollback());
+            }
+        });
         updateMetaAndFirstLevelChildren(session, obj);
     }
 
@@ -970,12 +1052,22 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param object the database object
      * @return the comment or null
      */
-    public Comment findComment(DbObject object) {
+    public Comment findComment(ServerSession session, DbObject object) {
         if (object.getType() == DbObjectType.COMMENT) {
             return null;
         }
         String key = Comment.getKey(object);
-        return comments.get(key);
+        return find(DbObjectType.COMMENT, session, key);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <T> HashMap<String, T> getDbObjects(DbObjectType type) {
+        return (HashMap<String, T>) dbObjectsRefs[type.value].get().getDbObjects();
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <T> T find(DbObjectType type, ServerSession session, String name) {
+        return (T) dbObjectsRefs[type.value].get().find(session, name);
     }
 
     /**
@@ -984,10 +1076,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param roleName the name of the role
      * @return the role or null
      */
-    public Role findRole(String roleName) {
-        synchronized (getAuthLock()) {
-            return roles.get(roleName);
-        }
+    public Role findRole(ServerSession session, String roleName) {
+        return find(DbObjectType.ROLE, session, roleName);
     }
 
     /**
@@ -996,8 +1086,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param schemaName the name of the schema
      * @return the schema or null
      */
-    public Schema findSchema(String schemaName) {
-        Schema schema = schemas.get(schemaName);
+    public Schema findSchema(ServerSession session, String schemaName) {
+        Schema schema = find(DbObjectType.SCHEMA, session, schemaName);
         if (schema == infoSchema) {
             initMetaTables();
         }
@@ -1010,10 +1100,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param name the name of the user
      * @return the user or null
      */
-    public User findUser(String name) {
-        synchronized (getAuthLock()) {
-            return users.get(name);
-        }
+    public User findUser(ServerSession session, String name) {
+        return find(DbObjectType.USER, session, name);
     }
 
     /**
@@ -1024,8 +1112,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @return the user
      * @throws DbException if the user does not exist
      */
-    public User getUser(String name) {
-        User user = findUser(name);
+    public User getUser(ServerSession session, String name) {
+        User user = findUser(session, name);
         if (user == null) {
             throw DbException.get(ErrorCode.USER_NOT_FOUND_1, name);
         }
@@ -1073,7 +1161,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         // }
         if (lastConnectionInfo == null)
             throw DbException.throwInternalError("lastConnectionInfo is null");
-        User user = getUser(lastConnectionInfo.getUserName());
+        User user = getUser(null, lastConnectionInfo.getUserName());
         ServerSession session = createSession(user);
         session.setConnectionInfo(lastConnectionInfo);
         return session;
@@ -1167,7 +1255,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (persistent) {
             if (lobStorage != null) {
                 boolean containsLargeObject = false;
-                for (Schema schema : schemas.values()) {
+                for (Schema schema : getAllSchemas()) {
                     for (Table table : schema.getAllTablesAndViews()) {
                         if (table.containsLargeObject()) {
                             containsLargeObject = true;
@@ -1190,7 +1278,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 if (powerOffCount != -1) {
                     for (Table table : getAllTablesAndViews(false)) {
                         if (table.isGlobalTemporary()) {
-                            table.removeChildrenAndResources(systemSession);
+                            table.removeChildrenAndResources(systemSession, null);
                         } else {
                             table.close(systemSession);
                         }
@@ -1273,10 +1361,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    public ArrayList<Comment> getAllComments() {
-        return new ArrayList<>(comments.values());
-    }
-
     public int getAllowLiterals() {
         if (isStarting()) {
             return Constants.ALLOW_LITERALS_ALL;
@@ -1284,14 +1368,19 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return dbSettings.allowLiterals;
     }
 
+    public ArrayList<Comment> getAllComments() {
+        HashMap<String, Comment> map = getDbObjects(DbObjectType.COMMENT);
+        return new ArrayList<>(map.values());
+    }
+
     public ArrayList<Right> getAllRights() {
-        return new ArrayList<>(rights.values());
+        HashMap<String, Right> map = getDbObjects(DbObjectType.RIGHT);
+        return new ArrayList<>(map.values());
     }
 
     public ArrayList<Role> getAllRoles() {
-        synchronized (getAuthLock()) {
-            return new ArrayList<>(roles.values());
-        }
+        HashMap<String, Role> map = getDbObjects(DbObjectType.ROLE);
+        return new ArrayList<>(map.values());
     }
 
     /**
@@ -1302,7 +1391,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public ArrayList<SchemaObject> getAllSchemaObjects() {
         initMetaTables();
         ArrayList<SchemaObject> list = new ArrayList<>();
-        for (Schema schema : schemas.values()) {
+        for (Schema schema : getAllSchemas()) {
             list.addAll(schema.getAll());
         }
         return list;
@@ -1319,7 +1408,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             initMetaTables();
         }
         ArrayList<SchemaObject> list = new ArrayList<>();
-        for (Schema schema : schemas.values()) {
+        for (Schema schema : getAllSchemas()) {
             list.addAll(schema.getAll(type));
         }
         return list;
@@ -1338,21 +1427,27 @@ public class Database implements DataHandler, DbObject, IDatabase {
             initMetaTables();
         }
         ArrayList<Table> list = new ArrayList<>();
-        for (Schema schema : schemas.values()) {
+        for (Schema schema : getAllSchemas(includeMeta)) {
             list.addAll(schema.getAllTablesAndViews());
         }
         return list;
     }
 
     public ArrayList<Schema> getAllSchemas() {
-        initMetaTables();
-        return new ArrayList<>(schemas.values());
+        return getAllSchemas(true);
+    }
+
+    private ArrayList<Schema> getAllSchemas(boolean includeMeta) {
+        if (includeMeta) {
+            initMetaTables();
+        }
+        HashMap<String, Schema> map = getDbObjects(DbObjectType.SCHEMA);
+        return new ArrayList<>(map.values());
     }
 
     public ArrayList<User> getAllUsers() {
-        synchronized (getAuthLock()) {
-            return new ArrayList<>(users.values());
-        }
+        HashMap<String, User> map = getDbObjects(DbObjectType.USER);
+        return new ArrayList<>(map.values());
     }
 
     public CompareMode getCompareMode() {
@@ -1426,8 +1521,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @return the schema
      * @throws DbException no schema with that name exists
      */
-    public Schema getSchema(String schemaName) {
-        Schema schema = findSchema(schemaName);
+    public Schema getSchema(ServerSession session, String schemaName) {
+        Schema schema = findSchema(session, schemaName);
         if (schema == null) {
             throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
         }
@@ -2079,7 +2174,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
     }
 
     @Override
@@ -2174,12 +2269,15 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     synchronized User createAdminUser(String userName, byte[] userPasswordHash) {
+        // 新建session，避免使用system session
+        ServerSession session = createSession(systemUser);
+        LockTable lockTable = tryExclusiveAuthLock(session);
         User user = new User(this, allocateObjectId(), userName, false);
         user.setAdmin(true);
         user.setUserPasswordHash(userPasswordHash);
-        lockMeta(systemSession);
-        addDatabaseObject(systemSession, user);
-        systemSession.commit();
+        addDatabaseObject(session, user, lockTable);
+        session.commit();
+        session.close();
         return user;
     }
 

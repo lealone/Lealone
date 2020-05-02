@@ -23,5 +23,6 @@ public enum TableType {
     RANGE_TABLE,
     FUNCTION_TABLE,
     DUMMY_TABLE,
+    LOCK_TABLE,
     VIEW
 }

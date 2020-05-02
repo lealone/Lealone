@@ -20,6 +20,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.RangeTable;
 import org.lealone.db.table.Table;
@@ -252,13 +253,13 @@ public class User extends RightOwner {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         for (Right right : database.getAllRights()) {
             if (right.getGrantee() == this) {
-                database.removeDatabaseObject(session, right);
+                database.removeDatabaseObject(session, right, lockTable);
             }
         }
-        super.removeChildrenAndResources(session);
+        super.removeChildrenAndResources(session, lockTable);
     }
 
     @Override

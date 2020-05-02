@@ -22,6 +22,7 @@ import org.lealone.db.result.SearchRow;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
@@ -261,14 +262,14 @@ public class ConstraintReferential extends Constraint {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         table.removeConstraint(this);
         refTable.removeConstraint(this);
         if (indexOwner) {
-            table.removeIndexOrTransferOwnership(session, index);
+            table.removeIndexOrTransferOwnership(session, index, lockTable);
         }
         if (refIndexOwner) {
-            refTable.removeIndexOrTransferOwnership(session, refIndex);
+            refTable.removeIndexOrTransferOwnership(session, refIndex, lockTable);
         }
     }
 

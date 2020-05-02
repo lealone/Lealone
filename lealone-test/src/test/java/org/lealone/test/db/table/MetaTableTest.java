@@ -29,7 +29,7 @@ public class MetaTableTest extends DbObjectTestBase {
     @Test
     public void run() {
         String infoSchemaName = "INFORMATION_SCHEMA";
-        Schema infoSchema = db.findSchema(infoSchemaName);
+        Schema infoSchema = db.findSchema(session, infoSchemaName);
         ArrayList<Table> tables = infoSchema.getAllTablesAndViews();
         assertEquals(MetaTable.getMetaTableTypeCount(), tables.size());
 

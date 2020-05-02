@@ -11,6 +11,7 @@ import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
@@ -73,37 +74,39 @@ public class AlterUser extends DefinitionStatement implements AuthStatement {
     @Override
     public int update() {
         Database db = session.getDatabase();
-        synchronized (db.getAuthLock()) {
-            switch (type) {
-            case SQLStatement.ALTER_USER_SET_PASSWORD:
-                if (user != session.getUser()) {
-                    session.getUser().checkAdmin();
-                }
-                if (hash != null && salt != null) {
-                    CreateUser.setSaltAndHash(user, session, salt, hash);
-                } else {
-                    CreateUser.setPassword(user, session, password);
-                }
-                db.updateMeta(session, user);
-                break;
-            case SQLStatement.ALTER_USER_RENAME:
+        LockTable lockTable = db.tryExclusiveAuthLock(session);
+        if (lockTable == null)
+            return -1;
+
+        switch (type) {
+        case SQLStatement.ALTER_USER_SET_PASSWORD:
+            if (user != session.getUser()) {
                 session.getUser().checkAdmin();
-                if (db.findUser(newName) != null || newName.equals(user.getName())) {
-                    throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, newName);
-                }
-                db.renameDatabaseObject(session, user, newName);
-                break;
-            case SQLStatement.ALTER_USER_ADMIN:
-                session.getUser().checkAdmin();
-                if (!admin) {
-                    user.checkOwnsNoSchemas(session);
-                }
-                user.setAdmin(admin);
-                db.updateMeta(session, user);
-                break;
-            default:
-                DbException.throwInternalError("type=" + type);
             }
+            if (hash != null && salt != null) {
+                CreateUser.setSaltAndHash(user, session, salt, hash);
+            } else {
+                CreateUser.setPassword(user, session, password);
+            }
+            db.updateMeta(session, user);
+            break;
+        case SQLStatement.ALTER_USER_RENAME:
+            session.getUser().checkAdmin();
+            if (db.findUser(session, newName) != null || newName.equals(user.getName())) {
+                throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, newName);
+            }
+            db.renameDatabaseObject(session, user, newName, lockTable);
+            break;
+        case SQLStatement.ALTER_USER_ADMIN:
+            session.getUser().checkAdmin();
+            if (!admin) {
+                user.checkOwnsNoSchemas(session);
+            }
+            user.setAdmin(admin);
+            db.updateMeta(session, user);
+            break;
+        default:
+            DbException.throwInternalError("type=" + type);
         }
         return 0;
     }

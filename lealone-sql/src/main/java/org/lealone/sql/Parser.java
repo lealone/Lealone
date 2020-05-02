@@ -654,11 +654,11 @@ public class Parser implements SQLParser {
         if (schemaName == null) {
             return null;
         }
-        Schema schema = database.findSchema(schemaName);
+        Schema schema = database.findSchema(session, schemaName);
         if (schema == null) {
             if (equalsToken("SESSION", schemaName)) {
                 // for local temporary tables
-                schema = database.getSchema(session.getCurrentSchemaName());
+                schema = database.getSchema(session, session.getCurrentSchemaName());
             } else {
                 throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
             }
@@ -1696,7 +1696,7 @@ public class Parser implements SQLParser {
                 foundLeftBracket = false;
             }
             if (foundLeftBracket) {
-                Schema mainSchema = database.getSchema(Constants.SCHEMA_MAIN);
+                Schema mainSchema = database.getSchema(session, Constants.SCHEMA_MAIN);
                 if (equalsToken(tableName, RangeTable.NAME) || equalsToken(tableName, RangeTable.ALIAS)) {
                     Expression min = readExpression();
                     read(",");
@@ -1731,7 +1731,7 @@ public class Parser implements SQLParser {
     }
 
     private Table getDualTable(boolean noColumns) {
-        Schema main = database.findSchema(Constants.SCHEMA_MAIN);
+        Schema main = database.findSchema(session, Constants.SCHEMA_MAIN);
         Expression one = ValueExpression.get(ValueLong.get(1));
         return new RangeTable(main, one, one, noColumns);
     }
@@ -2207,7 +2207,7 @@ public class Parser implements SQLParser {
     private JavaFunction readJavaFunction(Schema schema, String functionName) {
         FunctionAlias functionAlias = null;
         if (schema != null) {
-            functionAlias = schema.findFunction(functionName);
+            functionAlias = schema.findFunction(session, functionName);
         } else {
             functionAlias = findFunctionAlias(session.getCurrentSchemaName(), functionName);
         }
@@ -2252,7 +2252,7 @@ public class Parser implements SQLParser {
 
     private Expression readFunction(Schema schema, String name) {
         if (schema != null) {
-            UserAggregate aggregate = schema.findAggregate(name);
+            UserAggregate aggregate = schema.findAggregate(session, name);
             if (aggregate != null) {
                 return readJavaAggregate(aggregate);
             }
@@ -2264,7 +2264,7 @@ public class Parser implements SQLParser {
         }
         Function function = Function.getFunction(database, name);
         if (function == null) {
-            UserAggregate aggregate = getSchema(session.getCurrentSchemaName()).findAggregate(name);
+            UserAggregate aggregate = getSchema(session.getCurrentSchemaName()).findAggregate(session, name);
             if (aggregate != null) {
                 return readJavaAggregate(aggregate);
             }
@@ -2464,7 +2464,7 @@ public class Parser implements SQLParser {
             return expr;
         }
         String name = readColumnIdentifier();
-        Schema s = database.findSchema(objectName);
+        Schema s = database.findSchema(session, objectName);
         if ((!SysProperties.OLD_STYLE_OUTER_JOIN || s != null) && readIf("(")) {
             // only if the token before the dot is a valid schema name,
             // otherwise the old style Oracle outer join doesn't work:
@@ -2486,7 +2486,7 @@ public class Parser implements SQLParser {
                     throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, databaseName);
                 }
                 schema = objectName;
-                return readFunction(database.getSchema(schema), name);
+                return readFunction(database.getSchema(session, schema), name);
             } else if (readIf(".")) {
                 String databaseName = schema;
                 if (!equalsToken(database.getShortName(), databaseName)) {
@@ -3839,7 +3839,7 @@ public class Parser implements SQLParser {
         Schema schema = getSchema();
         UserDataType userDataType = null;
         if (schema != null)
-            userDataType = schema.findUserDataType(original);
+            userDataType = schema.findUserDataType(session, original);
         if (userDataType != null) {
             templateColumn = userDataType.getColumn();
             dataType = DataType.getDataType(templateColumn.getType());
@@ -4123,7 +4123,7 @@ public class Parser implements SQLParser {
         if (tableClauseExpected) {
             if (readIf("ON")) {
                 if (readIf("SCHEMA")) {
-                    Schema schema = database.getSchema(readAliasIdentifier());
+                    Schema schema = database.getSchema(session, readAliasIdentifier());
                     command.setSchema(schema);
                 } else {
                     do {
@@ -4155,7 +4155,7 @@ public class Parser implements SQLParser {
     }
 
     private TableFilter parseValuesTable() {
-        Schema mainSchema = database.getSchema(Constants.SCHEMA_MAIN);
+        Schema mainSchema = database.getSchema(session, Constants.SCHEMA_MAIN);
         TableFunction tf = (TableFunction) Function.getFunction(database, "TABLE");
         ArrayList<Column> columns = Utils.newSmallArrayList();
         ArrayList<ArrayList<Expression>> rows = Utils.newSmallArrayList();
@@ -4713,7 +4713,7 @@ public class Parser implements SQLParser {
         String indexName = readIdentifierWithSchema();
         Schema old = getSchema();
         AlterIndexRename command = new AlterIndexRename(session, old);
-        command.setOldIndex(old.getIndex(indexName));
+        command.setOldIndex(old.getIndex(session, indexName));
         read("RENAME");
         read("TO");
         String newName = readIdentifierWithSchema(old.getName());
@@ -4754,7 +4754,7 @@ public class Parser implements SQLParser {
 
     private AlterSequence parseAlterSequence() {
         String sequenceName = readIdentifierWithSchema();
-        Sequence sequence = getSchema().getSequence(sequenceName);
+        Sequence sequence = getSchema().getSequence(session, sequenceName);
         AlterSequence command = new AlterSequence(session, sequence.getSchema());
         command.setSequence(sequence);
         while (true) {
@@ -4804,7 +4804,7 @@ public class Parser implements SQLParser {
         if (readIf("SET")) {
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_SET_PASSWORD);
-            command.setUser(database.getUser(userName));
+            command.setUser(database.getUser(session, userName));
             if (readIf("PASSWORD")) {
                 command.setPassword(readExpression());
             } else if (readIf("SALT")) {
@@ -4819,14 +4819,14 @@ public class Parser implements SQLParser {
             read("TO");
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_RENAME);
-            command.setUser(database.getUser(userName));
+            command.setUser(database.getUser(session, userName));
             String newName = readUniqueIdentifier();
             command.setNewName(newName);
             return command;
         } else if (readIf("ADMIN")) {
             AlterUser command = new AlterUser(session);
             command.setType(SQLStatement.ALTER_USER_ADMIN);
-            User user = database.getUser(userName);
+            User user = database.getUser(session, userName);
             command.setUser(user);
             if (readIf("TRUE")) {
                 command.setAdmin(true);
@@ -5090,14 +5090,14 @@ public class Parser implements SQLParser {
         if (schemaName != null) {
             return getSchema().getTableOrView(session, tableName);
         }
-        Table table = database.getSchema(session.getCurrentSchemaName()).findTableOrView(session, tableName);
+        Table table = database.getSchema(session, session.getCurrentSchemaName()).findTableOrView(session, tableName);
         if (table != null) {
             return table;
         }
         String[] schemaNames = session.getSchemaSearchPath();
         if (schemaNames != null) {
             for (String name : schemaNames) {
-                Schema s = database.getSchema(name);
+                Schema s = database.getSchema(session, name);
                 table = s.findTableOrView(session, tableName);
                 if (table != null) {
                     return table;
@@ -5114,14 +5114,14 @@ public class Parser implements SQLParser {
     }
 
     private FunctionAlias findFunctionAlias(String schema, String aliasName) {
-        FunctionAlias functionAlias = database.getSchema(schema).findFunction(aliasName);
+        FunctionAlias functionAlias = database.getSchema(session, schema).findFunction(session, aliasName);
         if (functionAlias != null) {
             return functionAlias;
         }
         String[] schemaNames = session.getSchemaSearchPath();
         if (schemaNames != null) {
             for (String n : schemaNames) {
-                functionAlias = database.getSchema(n).findFunction(aliasName);
+                functionAlias = database.getSchema(session, n).findFunction(session, aliasName);
                 if (functionAlias != null) {
                     return functionAlias;
                 }
@@ -5131,14 +5131,14 @@ public class Parser implements SQLParser {
     }
 
     private Sequence findSequence(String schema, String sequenceName) {
-        Sequence sequence = database.getSchema(schema).findSequence(sequenceName);
+        Sequence sequence = database.getSchema(session, schema).findSequence(session, sequenceName);
         if (sequence != null) {
             return sequence;
         }
         String[] schemaNames = session.getSchemaSearchPath();
         if (schemaNames != null) {
             for (String n : schemaNames) {
-                sequence = database.getSchema(n).findSequence(sequenceName);
+                sequence = database.getSchema(session, n).findSequence(session, sequenceName);
                 if (sequence != null) {
                     return sequence;
                 }
@@ -5151,7 +5151,7 @@ public class Parser implements SQLParser {
         // same algorithm as readTableOrView
         String sequenceName = readIdentifierWithSchema(null);
         if (schemaName != null) {
-            return getSchema().getSequence(sequenceName);
+            return getSchema().getSequence(session, sequenceName);
         }
         Sequence sequence = findSequence(session.getCurrentSchemaName(), sequenceName);
         if (sequence != null) {

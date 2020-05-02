@@ -12,6 +12,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -46,18 +47,20 @@ public class DropSequence extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        synchronized (schema.getLock(DbObjectType.SEQUENCE)) {
-            Sequence sequence = schema.findSequence(sequenceName);
-            if (sequence == null) {
-                if (!ifExists) {
-                    throw DbException.get(ErrorCode.SEQUENCE_NOT_FOUND_1, sequenceName);
-                }
-            } else {
-                if (sequence.getBelongsToTable()) {
-                    throw DbException.get(ErrorCode.SEQUENCE_BELONGS_TO_A_TABLE_1, sequenceName);
-                }
-                schema.remove(session, sequence);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.SEQUENCE, session);
+        if (lockTable == null)
+            return -1;
+
+        Sequence sequence = schema.findSequence(session, sequenceName);
+        if (sequence == null) {
+            if (!ifExists) {
+                throw DbException.get(ErrorCode.SEQUENCE_NOT_FOUND_1, sequenceName);
             }
+        } else {
+            if (sequence.getBelongsToTable()) {
+                throw DbException.get(ErrorCode.SEQUENCE_BELONGS_TO_A_TABLE_1, sequenceName);
+            }
+            schema.remove(session, sequence, lockTable);
         }
         return 0;
     }

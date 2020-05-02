@@ -11,6 +11,7 @@ import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Role;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -46,20 +47,22 @@ public class CreateRole extends DefinitionStatement implements AuthStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        synchronized (db.getAuthLock()) {
-            if (db.findUser(roleName) != null) {
-                throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, roleName);
-            }
-            if (db.findRole(roleName) != null) {
-                if (ifNotExists) {
-                    return 0;
-                }
-                throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, roleName);
-            }
-            int id = getObjectId();
-            Role role = new Role(db, id, roleName, false);
-            db.addDatabaseObject(session, role);
+        LockTable lockTable = db.tryExclusiveAuthLock(session);
+        if (lockTable == null)
+            return -1;
+
+        if (db.findUser(session, roleName) != null) {
+            throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, roleName);
         }
+        if (db.findRole(session, roleName) != null) {
+            if (ifNotExists) {
+                return 0;
+            }
+            throw DbException.get(ErrorCode.ROLE_ALREADY_EXISTS_1, roleName);
+        }
+        int id = getObjectId();
+        Role role = new Role(db, id, roleName, false);
+        db.addDatabaseObject(session, role, lockTable);
         return 0;
     }
 }

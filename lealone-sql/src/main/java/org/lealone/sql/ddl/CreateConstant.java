@@ -12,6 +12,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Constant;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.value.Value;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -53,19 +54,23 @@ public class CreateConstant extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        synchronized (schema.getLock(DbObjectType.CONSTANT)) {
-            if (schema.findConstant(constantName) != null) {
-                if (ifNotExists) {
-                    return 0;
-                }
-                throw DbException.get(ErrorCode.CONSTANT_ALREADY_EXISTS_1, constantName);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.CONSTANT, session);
+        if (lockTable == null)
+            return -1;
+
+        // 当成功获得排它锁后，不管以下代码是正常还是异常返回都不需要在这里手工释放锁，
+        // 排它锁会在事务提交或回滚时自动被释放。
+        if (schema.findConstant(session, constantName) != null) {
+            if (ifNotExists) {
+                return 0;
             }
-            int id = getObjectId();
-            expression = expression.optimize(session);
-            Value value = expression.getValue(session);
-            Constant constant = new Constant(schema, id, constantName, value);
-            schema.add(session, constant);
+            throw DbException.get(ErrorCode.CONSTANT_ALREADY_EXISTS_1, constantName);
         }
+        int id = getObjectId();
+        expression = expression.optimize(session);
+        Value value = expression.getValue(session);
+        Constant constant = new Constant(schema, id, constantName, value);
+        schema.add(session, constant, lockTable);
         return 0;
     }
 }

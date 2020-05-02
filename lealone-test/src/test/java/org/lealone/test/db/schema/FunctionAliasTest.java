@@ -37,8 +37,8 @@ public class FunctionAliasTest extends DbObjectTestBase {
         executeUpdate("CREATE ALIAS IF NOT EXISTS my_reverse AS "
                 + "$$ String reverse(String s) { return new StringBuilder(s).reverse().toString(); } $$");
 
-        assertNotNull(schema.findFunction("my_sqrt"));
-        assertNotNull(schema.findFunction("my_reverse"));
+        assertNotNull(schema.findFunction(session, "my_sqrt"));
+        assertNotNull(schema.findFunction(session, "my_reverse"));
 
         sql = "select my_sqrt(4.0), my_reverse('abc')";
         Result result = executeQuery(sql);
@@ -51,7 +51,7 @@ public class FunctionAliasTest extends DbObjectTestBase {
         executeUpdate("DROP ALIAS IF EXISTS my_sqrt");
         executeUpdate("DROP ALIAS IF EXISTS my_reverse");
 
-        assertNull(schema.findFunction("my_sqrt"));
-        assertNull(schema.findFunction("my_reverse"));
+        assertNull(schema.findFunction(session, "my_sqrt"));
+        assertNull(schema.findFunction(session, "my_reverse"));
     }
 }

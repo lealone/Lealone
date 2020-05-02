@@ -12,6 +12,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -81,24 +82,26 @@ public class CreateFunctionAlias extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        synchronized (schema.getLock(DbObjectType.FUNCTION_ALIAS)) {
-            if (schema.findFunction(aliasName) != null) {
-                if (!ifNotExists) {
-                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, aliasName);
-                }
-            } else {
-                int id = getObjectId();
-                FunctionAlias functionAlias;
-                if (javaClassMethod != null) {
-                    functionAlias = FunctionAlias.newInstance(schema, id, aliasName, javaClassMethod, force,
-                            bufferResultSetToLocalTemp);
-                } else {
-                    functionAlias = FunctionAlias.newInstanceFromSource(schema, id, aliasName, source, force,
-                            bufferResultSetToLocalTemp);
-                }
-                functionAlias.setDeterministic(deterministic);
-                schema.add(session, functionAlias);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.FUNCTION_ALIAS, session);
+        if (lockTable == null)
+            return -1;
+
+        if (schema.findFunction(session, aliasName) != null) {
+            if (!ifNotExists) {
+                throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, aliasName);
             }
+        } else {
+            int id = getObjectId();
+            FunctionAlias functionAlias;
+            if (javaClassMethod != null) {
+                functionAlias = FunctionAlias.newInstance(schema, id, aliasName, javaClassMethod, force,
+                        bufferResultSetToLocalTemp);
+            } else {
+                functionAlias = FunctionAlias.newInstanceFromSource(schema, id, aliasName, source, force,
+                        bufferResultSetToLocalTemp);
+            }
+            functionAlias.setDeterministic(deterministic);
+            schema.add(session, functionAlias, lockTable);
         }
         return 0;
     }

@@ -12,6 +12,7 @@ import org.lealone.db.DbObjectBase;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 
 /**
@@ -153,13 +154,13 @@ public class Right extends DbObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         if (grantedRole != null) {
             grantee.revokeRole(grantedRole);
         } else {
             grantee.revokeRight(grantedObject);
         }
-        super.removeChildrenAndResources(session);
+        super.removeChildrenAndResources(session, lockTable);
     }
 
     @Override

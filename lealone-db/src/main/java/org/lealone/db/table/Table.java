@@ -183,6 +183,10 @@ public abstract class Table extends SchemaObjectBase {
         // nothing to do
     }
 
+    public void unlock(ServerSession s, boolean succeeded) {
+        unlock(s);
+    }
+
     /**
      * Check if this table is locked exclusively.
      *
@@ -215,7 +219,7 @@ public abstract class Table extends SchemaObjectBase {
      * @return the index
      */
     public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment) {
+            boolean create, String indexComment, LockTable lockTable) {
         throw newUnsupportedException();
     }
 
@@ -488,25 +492,25 @@ public abstract class Table extends SchemaObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         while (views != null && views.size() > 0) {
             TableView view = views.get(0);
             views.remove(0);
-            schema.remove(session, view);
+            schema.remove(session, view, lockTable);
         }
         while (triggers != null && triggers.size() > 0) {
             TriggerObject trigger = triggers.get(0);
             triggers.remove(0);
-            schema.remove(session, trigger);
+            schema.remove(session, trigger, lockTable);
         }
         while (constraints != null && constraints.size() > 0) {
             Constraint constraint = constraints.get(0);
             constraints.remove(0);
-            schema.remove(session, constraint);
+            schema.remove(session, constraint, lockTable);
         }
         for (Right right : database.getAllRights()) {
             if (right.getGrantedObject() == this) {
-                database.removeDatabaseObject(session, right);
+                database.removeDatabaseObject(session, right, lockTable);
             }
         }
         // must delete sequences later (in case there is a power failure
@@ -518,7 +522,7 @@ public abstract class Table extends SchemaObjectBase {
                 // only remove if no other table depends on this sequence
                 // this is possible when calling ALTER TABLE ALTER COLUMN
                 if (database.getDependentTable(sequence, this) == null) {
-                    schema.remove(session, sequence);
+                    schema.remove(session, sequence, lockTable);
                 }
             }
         }
@@ -988,7 +992,7 @@ public abstract class Table extends SchemaObjectBase {
      * @param session the session
      * @param index the index that is no longer required
      */
-    public void removeIndexOrTransferOwnership(ServerSession session, Index index) {
+    public void removeIndexOrTransferOwnership(ServerSession session, Index index, LockTable lockTable) {
         boolean stillNeeded = false;
         if (constraints != null) {
             for (Constraint cons : constraints) {
@@ -1000,7 +1004,7 @@ public abstract class Table extends SchemaObjectBase {
             }
         }
         if (!stillNeeded) {
-            schema.remove(session, index);
+            schema.remove(session, index, lockTable);
         }
     }
 

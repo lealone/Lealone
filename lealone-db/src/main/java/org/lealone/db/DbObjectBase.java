@@ -8,6 +8,7 @@ package org.lealone.db;
 import java.util.List;
 
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 
 /**
  * The base class for all database objects.
@@ -67,7 +68,7 @@ public abstract class DbObjectBase implements DbObject {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
     }
 
     @Override

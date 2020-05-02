@@ -347,7 +347,7 @@ public class StandardTable extends Table {
 
     @Override
     public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment) {
+            boolean create, String indexComment, LockTable lockTable) {
         if (indexType.isPrimaryKey()) {
             for (IndexColumn c : cols) {
                 Column column = c.column;
@@ -356,10 +356,6 @@ public class StandardTable extends Table {
                 }
                 column.setPrimaryKey(true);
             }
-        }
-        boolean isSessionTemporary = isTemporary() && !isGlobalTemporary();
-        if (!isSessionTemporary) {
-            database.lockMeta(session);
         }
         Index index;
         int mainIndexColumn = getMainIndexColumn(indexType, cols);
@@ -394,10 +390,11 @@ public class StandardTable extends Table {
         index.setTemporary(isTemporary());
         if (index.getCreateSQL() != null) {
             index.setComment(indexComment);
+            boolean isSessionTemporary = isTemporary() && !isGlobalTemporary();
             if (isSessionTemporary) {
                 session.addLocalTempTableIndex(index);
             } else {
-                schema.add(session, index);
+                schema.add(session, index, lockTable);
             }
         }
         indexes.add(index);
@@ -735,20 +732,19 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         if (containsLargeObject) {
             // unfortunately, the data is gone on rollback
             truncate(session);
             database.getLobStorage().removeAllForTable(getId());
-            database.lockMeta(session);
         }
-        super.removeChildrenAndResources(session);
+        super.removeChildrenAndResources(session, lockTable);
         // go backwards because database.removeIndex will
         // call table.removeIndex
         while (indexes.size() > 1) {
             Index index = indexes.get(1);
             if (index.getName() != null) {
-                schema.remove(session, index);
+                schema.remove(session, index, lockTable);
             }
             // needed for session temporary indexes
             indexes.remove(index);

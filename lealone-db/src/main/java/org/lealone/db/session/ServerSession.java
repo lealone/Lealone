@@ -118,6 +118,8 @@ public class ServerSession extends SessionBase {
     private boolean containsDDL;
     private boolean containsDatabaseStatement;
 
+    private volatile Transaction transaction;
+
     public ServerSession(Database database, User user, int id) {
         this.database = database;
         this.queryTimeout = database.getSettings().maxQueryTimeout;
@@ -248,7 +250,7 @@ public class ServerSession extends SessionBase {
         modificationId++;
         localTempTables.remove(table.getName());
         synchronized (database) {
-            table.removeChildrenAndResources(this);
+            table.removeChildrenAndResources(this, null);
         }
     }
 
@@ -298,7 +300,7 @@ public class ServerSession extends SessionBase {
         if (localTempTableIndexes != null) {
             localTempTableIndexes.remove(index.getName());
             synchronized (database) {
-                index.removeChildrenAndResources(this);
+                index.removeChildrenAndResources(this, null);
             }
         }
     }
@@ -356,7 +358,7 @@ public class ServerSession extends SessionBase {
         if (localTempTableConstraints != null) {
             localTempTableConstraints.remove(constraint.getName());
             synchronized (database) {
-                constraint.removeChildrenAndResources(this);
+                constraint.removeChildrenAndResources(this, null);
             }
         }
     }
@@ -585,7 +587,7 @@ public class ServerSession extends SessionBase {
             }
             unlinkLobMap = null;
         }
-        unlockAll();
+        unlockAll(true);
         clean();
         releaseSessionCache();
         sessionStatus = SessionStatus.NO_TRANSACTION;
@@ -604,7 +606,7 @@ public class ServerSession extends SessionBase {
             endTransaction();
         }
         cleanTempTables(false);
-        unlockAll();
+        unlockAll(false);
         if (autoCommitAtTransactionEnd) {
             autoCommit = true;
             autoCommitAtTransactionEnd = false;
@@ -623,6 +625,7 @@ public class ServerSession extends SessionBase {
 
         clean();
         releaseSessionCache();
+        sessionStatus = SessionStatus.NO_TRANSACTION;
     }
 
     /**
@@ -702,12 +705,12 @@ public class ServerSession extends SessionBase {
         t.unlock(this);
     }
 
-    private void unlockAll() {
+    private void unlockAll(boolean succeeded) {
         if (!locks.isEmpty()) {
             // don't use the enhanced for loop to save memory
             for (int i = 0, size = locks.size(); i < size; i++) {
                 Table t = locks.get(i);
-                t.unlock(this);
+                t.unlock(this, succeeded);
             }
             locks.clear();
         }
@@ -732,7 +735,7 @@ public class ServerSession extends SessionBase {
                         modificationId++;
                         table.setModified();
                         localTempTables.remove(table.getName());
-                        table.removeChildrenAndResources(this);
+                        table.removeChildrenAndResources(this, null);
                     } else if (table.getOnCommitTruncate()) {
                         table.truncate(this);
                     }
@@ -1217,8 +1220,6 @@ public class ServerSession extends SessionBase {
         buff.append(url.substring(pos2));
         return buff.toString();
     }
-
-    private volatile Transaction transaction;
 
     @Override
     public Transaction getTransaction() {

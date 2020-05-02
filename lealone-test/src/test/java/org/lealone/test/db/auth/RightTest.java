@@ -55,7 +55,7 @@ public class RightTest extends DbObjectTestBase {
         executeUpdate("DROP ROLE IF EXISTS RightTest_r1");
         executeUpdate("CREATE ROLE IF NOT EXISTS RightTest_r1");
 
-        Schema schema = db.findSchema(Constants.SCHEMA_MAIN);
+        Schema schema = db.findSchema(session, Constants.SCHEMA_MAIN);
         assertNotNull(schema);
         table = schema.findTableOrView(session, "RightTest_t1");
         assertNotNull(table);

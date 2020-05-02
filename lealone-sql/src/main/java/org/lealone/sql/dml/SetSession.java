@@ -46,7 +46,7 @@ public class SetSession extends SetStatement {
             session.setQueryTimeout(getAndValidateIntValue());
             break;
         case SCHEMA:
-            Schema schema = database.getSchema(stringValue);
+            Schema schema = database.getSchema(session, stringValue);
             session.setCurrentSchema(schema);
             break;
         case SCHEMA_SEARCH_PATH:

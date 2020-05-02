@@ -12,6 +12,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -56,16 +57,18 @@ public class CreateAggregate extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        synchronized (schema.getLock(DbObjectType.AGGREGATE)) {
-            if (schema.findAggregate(name) != null || schema.findFunction(name) != null) {
-                if (!ifNotExists) {
-                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, name);
-                }
-            } else {
-                int id = getObjectId();
-                UserAggregate aggregate = new UserAggregate(schema, id, name, javaClassName, force);
-                schema.add(session, aggregate);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.AGGREGATE, session);
+        if (lockTable == null)
+            return -1;
+
+        if (schema.findAggregate(session, name) != null || schema.findFunction(session, name) != null) {
+            if (!ifNotExists) {
+                throw DbException.get(ErrorCode.FUNCTION_ALIAS_ALREADY_EXISTS_1, name);
             }
+        } else {
+            int id = getObjectId();
+            UserAggregate aggregate = new UserAggregate(schema, id, name, javaClassName, force);
+            schema.add(session, aggregate, lockTable);
         }
         return 0;
     }

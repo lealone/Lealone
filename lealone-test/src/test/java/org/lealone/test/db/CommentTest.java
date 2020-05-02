@@ -39,12 +39,13 @@ public class CommentTest extends DbObjectTestBase {
 
         executeUpdate("COMMENT ON ROLE myrole IS 'role comment'");
 
-        Table table = db.findSchema(Constants.SCHEMA_MAIN).findTableOrView(session, "CommentTest".toUpperCase());
-        Comment comment = db.findComment(table);
+        Table table = db.findSchema(session, Constants.SCHEMA_MAIN).findTableOrView(session,
+                "CommentTest".toUpperCase());
+        Comment comment = db.findComment(session, table);
         assertNull(comment); // 表的Comment并没有存到Database类的comments字段中
 
-        Role role = db.findRole("myrole");
-        comment = db.findComment(role);
+        Role role = db.findRole(session, "myrole");
+        comment = db.findComment(session, role);
         assertNotNull(comment);
         assertNull(comment.getComment()); // Comment的comment是null
         assertEquals("role comment", comment.getCommentText());

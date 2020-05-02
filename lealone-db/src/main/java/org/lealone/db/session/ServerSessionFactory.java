@@ -98,7 +98,7 @@ public class ServerSessionFactory implements SessionFactory {
         User user = null;
         if (database.validateFilePasswordHash(ci.getProperty(DbSetting.CIPHER.getName(), null),
                 ci.getFilePasswordHash())) {
-            user = database.findUser(ci.getUserName());
+            user = database.findUser(null, ci.getUserName());
             if (user != null) {
                 if (!user.validateUserPasswordHash(ci.getUserPasswordHash())) {
                     user = null;

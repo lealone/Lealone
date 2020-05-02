@@ -15,6 +15,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableType;
 import org.lealone.db.table.TableView;
@@ -83,50 +84,52 @@ public class CreateView extends SchemaStatement {
 
     @Override
     public int update() {
-        synchronized (schema.getLock(DbObjectType.TABLE_OR_VIEW)) {
-            Database db = session.getDatabase();
-            TableView view = null;
-            Table old = getSchema().findTableOrView(session, viewName);
-            if (old != null) {
-                if (ifNotExists) {
-                    return 0;
-                }
-                if (!orReplace || old.getTableType() != TableType.VIEW) {
-                    throw DbException.get(ErrorCode.VIEW_ALREADY_EXISTS_1, viewName);
-                }
-                view = (TableView) old;
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        if (lockTable == null)
+            return -1;
+
+        Database db = session.getDatabase();
+        TableView view = null;
+        Table old = getSchema().findTableOrView(session, viewName);
+        if (old != null) {
+            if (ifNotExists) {
+                return 0;
             }
-            int id = getObjectId();
-            String querySQL;
-            if (select == null) {
-                querySQL = selectSQL;
+            if (!orReplace || old.getTableType() != TableType.VIEW) {
+                throw DbException.get(ErrorCode.VIEW_ALREADY_EXISTS_1, viewName);
+            }
+            view = (TableView) old;
+        }
+        int id = getObjectId();
+        String querySQL;
+        if (select == null) {
+            querySQL = selectSQL;
+        } else {
+            ArrayList<Parameter> params = select.getParameters();
+            if (params != null && params.size() > 0) {
+                throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, "parameters in views");
+            }
+            querySQL = select.getPlanSQL();
+        }
+        ServerSession sysSession = db.getSystemSession();
+        try {
+            if (view == null) {
+                Schema schema = session.getDatabase().getSchema(session, session.getCurrentSchemaName());
+                sysSession.setCurrentSchema(schema);
+                view = new TableView(getSchema(), id, viewName, querySQL, null, columnNames, sysSession, false);
             } else {
-                ArrayList<Parameter> params = select.getParameters();
-                if (params != null && params.size() > 0) {
-                    throw DbException.get(ErrorCode.FEATURE_NOT_SUPPORTED_1, "parameters in views");
-                }
-                querySQL = select.getPlanSQL();
+                view.replace(querySQL, columnNames, sysSession, false, force);
             }
-            ServerSession sysSession = db.getSystemSession();
-            try {
-                if (view == null) {
-                    Schema schema = session.getDatabase().getSchema(session.getCurrentSchemaName());
-                    sysSession.setCurrentSchema(schema);
-                    view = new TableView(getSchema(), id, viewName, querySQL, null, columnNames, sysSession, false);
-                } else {
-                    view.replace(querySQL, columnNames, sysSession, false, force);
-                }
-            } finally {
-                sysSession.setCurrentSchema(db.getSchema(Constants.SCHEMA_MAIN));
-            }
-            if (comment != null) {
-                view.setComment(comment);
-            }
-            if (old == null) {
-                getSchema().add(session, view);
-            } else {
-                db.updateMeta(session, view);
-            }
+        } finally {
+            sysSession.setCurrentSchema(db.getSchema(session, Constants.SCHEMA_MAIN));
+        }
+        if (comment != null) {
+            view.setComment(comment);
+        }
+        if (old == null) {
+            getSchema().add(session, view, lockTable);
+        } else {
+            db.updateMeta(session, view);
         }
         return 0;
     }

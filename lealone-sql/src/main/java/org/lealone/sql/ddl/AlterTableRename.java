@@ -8,10 +8,12 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 
@@ -51,6 +53,10 @@ public class AlterTableRename extends SchemaStatement {
 
     @Override
     public int update() {
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        if (lockTable == null)
+            return -1;
+
         Database db = session.getDatabase();
         session.getUser().checkRight(oldTable, Right.ALL);
         Table t = getSchema().findTableOrView(session, newTableName);
@@ -68,7 +74,7 @@ public class AlterTableRename extends SchemaStatement {
         if (oldTable.isTemporary()) {
             throw DbException.getUnsupportedException("temp table");
         }
-        schema.rename(session, oldTable, newTableName);
+        schema.rename(session, oldTable, newTableName, lockTable);
         return 0;
     }
 }

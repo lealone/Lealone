@@ -11,6 +11,7 @@ import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -46,29 +47,31 @@ public class DropUser extends DefinitionStatement implements AuthStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        synchronized (db.getAuthLock()) {
-            User user = db.findUser(userName);
-            if (user == null) {
-                if (!ifExists) {
-                    throw DbException.get(ErrorCode.USER_NOT_FOUND_1, userName);
-                }
-            } else {
-                if (user == session.getUser()) {
-                    int adminUserCount = 0;
-                    for (User u : db.getAllUsers()) {
-                        if (u.isAdmin()) {
-                            adminUserCount++;
-                        }
-                    }
-                    // 运行到这里时当前用户必定是有Admin权限的，如果当前用户想删除它自己，
-                    // 同时系统中又没有其他Admin权限的用户了，那么不允许它删除自己
-                    if (adminUserCount == 1) {
-                        throw DbException.get(ErrorCode.CANNOT_DROP_CURRENT_USER);
-                    }
-                }
-                user.checkOwnsNoSchemas(session); // 删除用户前需要删除它拥有的所有Schema，否则不允许删
-                db.removeDatabaseObject(session, user);
+        LockTable lockTable = db.tryExclusiveAuthLock(session);
+        if (lockTable == null)
+            return -1;
+
+        User user = db.findUser(session, userName);
+        if (user == null) {
+            if (!ifExists) {
+                throw DbException.get(ErrorCode.USER_NOT_FOUND_1, userName);
             }
+        } else {
+            if (user == session.getUser()) {
+                int adminUserCount = 0;
+                for (User u : db.getAllUsers()) {
+                    if (u.isAdmin()) {
+                        adminUserCount++;
+                    }
+                }
+                // 运行到这里时当前用户必定是有Admin权限的，如果当前用户想删除它自己，
+                // 同时系统中又没有其他Admin权限的用户了，那么不允许它删除自己
+                if (adminUserCount == 1) {
+                    throw DbException.get(ErrorCode.CANNOT_DROP_CURRENT_USER);
+                }
+            }
+            user.checkOwnsNoSchemas(session); // 删除用户前需要删除它拥有的所有Schema，否则不允许删
+            db.removeDatabaseObject(session, user, lockTable);
         }
         return 0;
     }

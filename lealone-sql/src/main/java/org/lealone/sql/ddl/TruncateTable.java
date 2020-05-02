@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
@@ -41,16 +40,14 @@ public class TruncateTable extends SchemaStatement {
 
     @Override
     public int update() {
-        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
-            if (!table.canTruncate()) {
-                throw DbException.get(ErrorCode.CANNOT_TRUNCATE_1, table.getSQL());
-            }
-            session.getUser().checkRight(table, Right.DELETE);
-            if (table.tryExclusiveLock(session))
-                table.truncate(session);
-            else
-                return -1;
+        if (!table.canTruncate()) {
+            throw DbException.get(ErrorCode.CANNOT_TRUNCATE_1, table.getSQL());
         }
+        session.getUser().checkRight(table, Right.DELETE);
+        if (table.tryExclusiveLock(session))
+            table.truncate(session);
+        else
+            return -1;
         return 0;
     }
 }

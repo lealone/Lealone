@@ -23,6 +23,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -54,15 +55,17 @@ public class DropService extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        synchronized (schema.getLock(DbObjectType.SERVICE)) {
-            Service service = schema.findService(serviceName);
-            if (service == null) {
-                if (!ifExists) {
-                    throw DbException.get(ErrorCode.SERVICE_NOT_FOUND_1, serviceName);
-                }
-            } else {
-                schema.remove(session, service);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.SERVICE, session);
+        if (lockTable == null)
+            return -1;
+
+        Service service = schema.findService(session, serviceName);
+        if (service == null) {
+            if (!ifExists) {
+                throw DbException.get(ErrorCode.SERVICE_NOT_FOUND_1, serviceName);
             }
+        } else {
+            schema.remove(session, service, lockTable);
         }
         return 0;
     }

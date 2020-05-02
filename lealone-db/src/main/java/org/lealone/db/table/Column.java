@@ -369,7 +369,7 @@ public class Column {
             String s = uuid.getString();
             s = s.replace('-', '_').toUpperCase();
             sequenceName = "SYSTEM_SEQUENCE_" + s;
-            if (schema.findSequence(sequenceName) == null) {
+            if (schema.findSequence(session, sequenceName) == null) {
                 break;
             }
         }

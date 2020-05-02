@@ -11,7 +11,7 @@ import java.util.HashSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Constants;
-import org.lealone.db.Database;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
@@ -24,6 +24,7 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -159,7 +160,10 @@ public class AlterTableAddConstraint extends SchemaStatement {
      * @return the update count
      */
     private int tryUpdate() {
-        Database db = session.getDatabase();
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.CONSTRAINT, session);
+        if (lockTable == null)
+            return -1;
+
         Table table = getSchema().getTableOrView(session, tableName);
         if (getSchema().findConstraint(session, constraintName) != null) {
             if (ifNotExists) {
@@ -170,7 +174,6 @@ public class AlterTableAddConstraint extends SchemaStatement {
         if (!table.tryExclusiveLock(session))
             return -1;
         session.getUser().checkRight(table, Right.ALL);
-        db.lockMeta(session);
         Constraint constraint;
         switch (type) {
         case SQLStatement.ALTER_TABLE_ADD_CONSTRAINT_PRIMARY_KEY: {
@@ -201,7 +204,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
                 String indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_PRIMARY_KEY);
                 int id = getObjectId();
                 try {
-                    index = table.addIndex(session, indexName, id, indexColumns, indexType, true, null);
+                    index = table.addIndex(session, indexName, id, indexColumns, indexType, true, null, lockTable);
                 } finally {
                     getSchema().freeUniqueName(indexName);
                 }
@@ -224,7 +227,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
             } else {
                 index = getUniqueIndex(table, indexColumns);
                 if (index == null) {
-                    index = createIndex(table, indexColumns, true);
+                    index = createIndex(table, indexColumns, true, lockTable);
                     isOwner = true;
                 }
             }
@@ -265,7 +268,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
             } else {
                 index = getIndex(table, indexColumns, true);
                 if (index == null) {
-                    index = createIndex(table, indexColumns, false);
+                    index = createIndex(table, indexColumns, false, lockTable);
                     isOwner = true;
                 }
             }
@@ -289,7 +292,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
             if (refIndex == null) {
                 refIndex = getIndex(refTable, refIndexColumns, false);
                 if (refIndex == null) {
-                    refIndex = createIndex(refTable, refIndexColumns, true);
+                    refIndex = createIndex(refTable, refIndexColumns, true, lockTable);
                     isRefOwner = true;
                 }
             }
@@ -318,13 +321,13 @@ public class AlterTableAddConstraint extends SchemaStatement {
         if (table.isTemporary() && !table.isGlobalTemporary()) {
             session.addLocalTempTableConstraint(constraint);
         } else {
-            constraint.getSchema().add(session, constraint);
+            constraint.getSchema().add(session, constraint, lockTable);
         }
         table.addConstraint(constraint);
         return 0;
     }
 
-    private Index createIndex(Table t, IndexColumn[] cols, boolean unique) {
+    private Index createIndex(Table t, IndexColumn[] cols, boolean unique, LockTable lockTable) {
         int indexId = getObjectId();
         IndexType indexType;
         if (unique) {
@@ -338,7 +341,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
         String prefix = constraintName == null ? "CONSTRAINT" : constraintName;
         String indexName = t.getSchema().getUniqueIndexName(session, t, prefix + "_INDEX_");
         try {
-            Index index = t.addIndex(session, indexName, indexId, cols, indexType, true, null);
+            Index index = t.addIndex(session, indexName, indexId, cols, indexType, true, null, lockTable);
             createdIndexes.add(index);
             return index;
         } finally {

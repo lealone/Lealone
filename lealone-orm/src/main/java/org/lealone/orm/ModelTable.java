@@ -96,7 +96,7 @@ public class ModelTable {
             // schemaName = tableName.substring(0, dotPos);
             // tableName = tableName.substring(dotPos + 1);
             // }
-            table = db.getSchema(schemaName).getTableOrView(session, tableName);
+            table = db.getSchema(session, schemaName).getTableOrView(session, tableName);
         }
     }
 

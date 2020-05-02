@@ -8,10 +8,10 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -47,18 +47,20 @@ public class DropSchema extends DefinitionStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        synchronized (db.getLock(DbObjectType.SCHEMA)) {
-            Schema schema = db.findSchema(schemaName);
-            if (schema == null) {
-                if (!ifExists) {
-                    throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
-                }
-            } else {
-                if (!schema.canDrop()) {
-                    throw DbException.get(ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1, schemaName);
-                }
-                db.removeDatabaseObject(session, schema);
+        LockTable lockTable = db.tryExclusiveSchemaLock(session);
+        if (lockTable == null)
+            return -1;
+
+        Schema schema = db.findSchema(session, schemaName);
+        if (schema == null) {
+            if (!ifExists) {
+                throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
             }
+        } else {
+            if (!schema.canDrop()) {
+                throw DbException.get(ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1, schemaName);
+            }
+            db.removeDatabaseObject(session, schema, lockTable);
         }
         return 0;
     }

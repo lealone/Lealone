@@ -8,11 +8,11 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -53,22 +53,24 @@ public class CreateSchema extends DefinitionStatement {
     public int update() {
         session.getUser().checkSchemaAdmin();
         Database db = session.getDatabase();
-        synchronized (db.getLock(DbObjectType.SCHEMA)) {
-            User user = db.getUser(authorization);
-            // during DB startup, the Right/Role records have not yet been loaded
-            if (!db.isStarting()) {
-                user.checkSchemaAdmin();
-            }
-            if (db.findSchema(schemaName) != null) {
-                if (ifNotExists) {
-                    return 0;
-                }
-                throw DbException.get(ErrorCode.SCHEMA_ALREADY_EXISTS_1, schemaName);
-            }
-            int id = getObjectId();
-            Schema schema = new Schema(db, id, schemaName, user, false);
-            db.addDatabaseObject(session, schema);
+        LockTable lockTable = db.tryExclusiveSchemaLock(session);
+        if (lockTable == null)
+            return -1;
+
+        User user = db.getUser(session, authorization);
+        // during DB startup, the Right/Role records have not yet been loaded
+        if (!db.isStarting()) {
+            user.checkSchemaAdmin();
         }
+        if (db.findSchema(session, schemaName) != null) {
+            if (ifNotExists) {
+                return 0;
+            }
+            throw DbException.get(ErrorCode.SCHEMA_ALREADY_EXISTS_1, schemaName);
+        }
+        int id = getObjectId();
+        Schema schema = new Schema(db, id, schemaName, user, false);
+        db.addDatabaseObject(session, schema, lockTable);
         return 0;
     }
 }

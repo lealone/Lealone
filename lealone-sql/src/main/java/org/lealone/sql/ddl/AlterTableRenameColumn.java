@@ -13,6 +13,7 @@ import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -54,23 +55,25 @@ public class AlterTableRenameColumn extends SchemaStatement {
 
     @Override
     public int update() {
-        synchronized (getSchema().getLock(DbObjectType.TABLE_OR_VIEW)) {
-            Database db = session.getDatabase();
-            session.getUser().checkRight(table, Right.ALL);
-            table.checkSupportAlter();
-            // we need to update CHECK constraint
-            // since it might reference the name of the column
-            Expression newCheckExpr = (Expression) column.getCheckConstraint(session, newName);
-            table.renameColumn(column, newName);
-            column.removeCheckConstraint();
-            SingleColumnResolver resolver = new SingleColumnResolver(column);
-            column.addCheckConstraint(session, newCheckExpr, resolver);
-            table.setModified();
-            db.updateMeta(session, table);
-            for (DbObject child : table.getChildren()) {
-                if (child.getCreateSQL() != null) {
-                    db.updateMeta(session, child);
-                }
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        if (lockTable == null)
+            return -1;
+
+        Database db = session.getDatabase();
+        session.getUser().checkRight(table, Right.ALL);
+        table.checkSupportAlter();
+        // we need to update CHECK constraint
+        // since it might reference the name of the column
+        Expression newCheckExpr = (Expression) column.getCheckConstraint(session, newName);
+        table.renameColumn(column, newName);
+        column.removeCheckConstraint();
+        SingleColumnResolver resolver = new SingleColumnResolver(column);
+        column.addCheckConstraint(session, newCheckExpr, resolver);
+        table.setModified();
+        db.updateMeta(session, table);
+        for (DbObject child : table.getChildren()) {
+            if (child.getCreateSQL() != null) {
+                db.updateMeta(session, child);
             }
         }
         return 0;

@@ -49,7 +49,7 @@ public class ResultTempTable implements ResultExternal {
         this.distinct = distinct;
         this.sort = sort;
         this.columnCount = expressions.length;
-        Schema schema = session.getDatabase().getSchema(Constants.SCHEMA_MAIN);
+        Schema schema = session.getDatabase().getSchema(session, Constants.SCHEMA_MAIN);
         CreateTableData data = new CreateTableData();
         for (int i = 0; i < expressions.length; i++) {
             int type = expressions[i].getType();
@@ -110,7 +110,7 @@ public class ResultTempTable implements ResultExternal {
         String indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_INDEX);
         int indexId = session.getDatabase().allocateObjectId();
         IndexType indexType = IndexType.createNonUnique();
-        index = table.addIndex(session, indexName, indexId, indexCols, indexType, true, null);
+        index = table.addIndex(session, indexName, indexId, indexCols, indexType, true, null, null);
     }
 
     @Override
@@ -217,7 +217,7 @@ public class ResultTempTable implements ResultExternal {
             // time. (the table is truncated, so this is just one record)
             if (!database.isSysTableLocked()) {
                 ServerSession sysSession = database.getSystemSession();
-                table.removeChildrenAndResources(sysSession);
+                table.removeChildrenAndResources(sysSession, null);
                 if (index != null) {
                     // need to explicitly do this,
                     // as it's not registered in the system session

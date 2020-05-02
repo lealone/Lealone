@@ -8,6 +8,7 @@ package org.lealone.db;
 import java.util.List;
 
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 
 /**
  * A database object such as a table, an index, or a user.
@@ -75,7 +76,7 @@ public interface DbObject {
      *
      * @param session the session
      */
-    void removeChildrenAndResources(ServerSession session);
+    void removeChildrenAndResources(ServerSession session, LockTable lockTable);
 
     /**
      * Check if renaming is allowed. Does nothing when allowed.

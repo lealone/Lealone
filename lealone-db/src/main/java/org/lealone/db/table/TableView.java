@@ -353,9 +353,9 @@ public class TableView extends Table {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         removeViewFromTables();
-        super.removeChildrenAndResources(session);
+        super.removeChildrenAndResources(session, lockTable);
     }
 
     @Override
@@ -412,7 +412,7 @@ public class TableView extends Table {
      */
     public static TableView createTempView(ServerSession session, User owner, String name, IQuery query,
             IQuery topQuery) {
-        Schema mainSchema = session.getDatabase().getSchema(Constants.SCHEMA_MAIN);
+        Schema mainSchema = session.getDatabase().getSchema(session, Constants.SCHEMA_MAIN);
         String querySQL = query.getPlanSQL();
         int size = query.getParameters().size();
         ArrayList<CommandParameter> parms = new ArrayList<CommandParameter>(size);

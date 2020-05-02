@@ -1492,7 +1492,7 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         throw DbException.getUnsupportedException("META");
     }
 

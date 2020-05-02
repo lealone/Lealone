@@ -22,12 +22,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.util.CaseInsensitiveConcurrentHashMap;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.table.LockTable;
 
 /**
  * 管理所有Database
@@ -55,13 +54,14 @@ public class LealoneDatabase extends Database {
         return UNSUPPORTED_SCHEMA_MAP.containsKey(schemaName);
     }
 
-    private final ConcurrentHashMap<String, Database> databases;;
+    // private final ConcurrentHashMap<String, Database> databases;;
 
     private LealoneDatabase() {
         super(ID, NAME, null);
-        databases = new CaseInsensitiveConcurrentHashMap<>();
-        databases.put(NAME, this);
+        // databases = new CaseInsensitiveConcurrentHashMap<>();
+        // databases.put(NAME, this);
 
+        addDatabaseObject(null, this, null);
         INSTANCE = this; // init执行过程中会触发getInstance()，此时INSTANCE为null，会导致NPE
 
         init();
@@ -69,7 +69,7 @@ public class LealoneDatabase extends Database {
     }
 
     public synchronized Database createEmbeddedDatabase(String name, ConnectionInfo ci) {
-        Database db = databases.get(name);
+        Database db = findDatabase(name);
         if (db != null)
             return db;
 
@@ -84,25 +84,30 @@ public class LealoneDatabase extends Database {
         String userName = ci.getUserName();
         byte[] userPasswordHash = ci.getUserPasswordHash();
         db.createAdminUser(userName, userPasswordHash);
-        addDatabaseObject(getSystemSession(), db);
+        LockTable lockTable = tryExclusiveAuthLock(getSystemSession());
+        addDatabaseObject(getSystemSession(), db, lockTable);
         getSystemSession().commit();
         return db;
     }
 
     void closeDatabase(String dbName) {
-        databases.remove(dbName);
+        Database db = findDatabase(dbName);
+        removeDatabaseObject(null, db, null);
+
     }
 
     Map<String, Database> getDatabasesMap() {
-        return databases;
+        HashMap<String, Database> map = getDbObjects(DbObjectType.DATABASE);
+        return map;
     }
 
     public List<Database> getDatabases() {
-        return new ArrayList<>(databases.values());
+        return new ArrayList<>(getDatabasesMap().values());
     }
 
     public Database findDatabase(String dbName) {
-        return databases.get(dbName);
+        Database db = find(DbObjectType.DATABASE, null, dbName);
+        return db;
     }
 
     /**

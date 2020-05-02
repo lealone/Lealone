@@ -48,13 +48,18 @@ public class DbObjectTestBase extends UnitTestBase {
     }
 
     public DbObjectTestBase(String dbName) {
+        this.dbName = dbName;
         // setInMemory(true);
         setEmbedded(true);
         addConnectionParameter("DATABASE_TO_UPPER", "false"); // 不转成大写
-        ConnectionInfo ci = new ConnectionInfo(getURL(dbName));
-        session = (ServerSession) ServerSessionFactory.getInstance().createSession(ci).get();
+        session = createSession();
         db = session.getDatabase();
-        schema = db.findSchema(Constants.SCHEMA_MAIN);
+        schema = db.findSchema(session, Constants.SCHEMA_MAIN);
+    }
+
+    public ServerSession createSession() {
+        ConnectionInfo ci = new ConnectionInfo(getURL(dbName));
+        return (ServerSession) ServerSessionFactory.getInstance().createSession(ci).get();
     }
 
     public int executeUpdate(String sql) {
@@ -108,11 +113,11 @@ public class DbObjectTestBase extends UnitTestBase {
     }
 
     public User findUser(String userName) {
-        return db.findUser(userName);
+        return db.findUser(session, userName);
     }
 
     public Role findRole(String roleName) {
-        return db.findRole(roleName);
+        return db.findRole(session, roleName);
     }
 
     public SearchRow findMeta(int id) {

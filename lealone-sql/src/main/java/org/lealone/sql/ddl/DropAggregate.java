@@ -12,6 +12,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -46,15 +47,17 @@ public class DropAggregate extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        synchronized (schema.getLock(DbObjectType.AGGREGATE)) {
-            UserAggregate aggregate = schema.findAggregate(name);
-            if (aggregate == null) {
-                if (!ifExists) {
-                    throw DbException.get(ErrorCode.AGGREGATE_NOT_FOUND_1, name);
-                }
-            } else {
-                schema.remove(session, aggregate);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.AGGREGATE, session);
+        if (lockTable == null)
+            return -1;
+
+        UserAggregate aggregate = schema.findAggregate(session, name);
+        if (aggregate == null) {
+            if (!ifExists) {
+                throw DbException.get(ErrorCode.AGGREGATE_NOT_FOUND_1, name);
             }
+        } else {
+            schema.remove(session, aggregate, lockTable);
         }
         return 0;
     }

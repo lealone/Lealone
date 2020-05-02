@@ -25,6 +25,7 @@ import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -122,93 +123,92 @@ public class CreateTable extends SchemaStatement {
         if (!db.isPersistent()) {
             data.persistIndexes = false;
         }
-        synchronized (schema.getLock(DbObjectType.TABLE_OR_VIEW)) {
-            if (schema.findTableOrView(session, data.tableName) != null) {
-                if (ifNotExists) {
-                    return 0;
-                }
-                throw DbException.get(ErrorCode.TABLE_OR_VIEW_ALREADY_EXISTS_1, data.tableName);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        if (lockTable == null)
+            return -1;
+
+        if (schema.findTableOrView(session, data.tableName) != null) {
+            if (ifNotExists) {
+                return 0;
             }
-            if (asQuery != null) {
-                asQuery.prepare();
-                if (data.columns.isEmpty()) {
-                    generateColumnsFromQuery();
-                } else if (data.columns.size() != asQuery.getColumnCount()) {
-                    throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
-                }
+            throw DbException.get(ErrorCode.TABLE_OR_VIEW_ALREADY_EXISTS_1, data.tableName);
+        }
+        if (asQuery != null) {
+            asQuery.prepare();
+            if (data.columns.isEmpty()) {
+                generateColumnsFromQuery();
+            } else if (data.columns.size() != asQuery.getColumnCount()) {
+                throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
             }
-            if (pkColumns != null) {
-                for (Column c : data.columns) {
-                    for (IndexColumn idxCol : pkColumns) {
-                        if (c.getName().equals(idxCol.columnName)) {
-                            c.setNullable(false);
-                        }
+        }
+        if (pkColumns != null) {
+            for (Column c : data.columns) {
+                for (IndexColumn idxCol : pkColumns) {
+                    if (c.getName().equals(idxCol.columnName)) {
+                        c.setNullable(false);
                     }
                 }
             }
-            data.id = getObjectId();
-            data.create = create;
-            data.session = session;
-            boolean isSessionTemporary = data.temporary && !data.globalTemporary;
-            // if (!isSessionTemporary) {
-            // db.lockMeta(session);
-            // }
-            Table table = schema.createTable(data);
-            ArrayList<Sequence> sequences = new ArrayList<>();
-            for (Column c : data.columns) {
-                if (c.isAutoIncrement()) {
-                    int objId = getObjectId();
-                    c.convertAutoIncrementToSequence(session, schema, objId, data.temporary);
-                }
-                Sequence seq = c.getSequence();
-                if (seq != null) {
-                    sequences.add(seq);
-                }
-            }
-            table.setComment(comment);
-            table.setPackageName(packageName);
-            table.setCodePath(codePath);
-            table.setProcessingMode(processingMode);
-            if (isSessionTemporary) {
-                if (onCommitDrop) {
-                    table.setOnCommitDrop(true);
-                }
-                if (onCommitTruncate) {
-                    table.setOnCommitTruncate(true);
-                }
-                session.addLocalTempTable(table);
-            } else {
-                schema.add(session, table);
-            }
-            try {
-                TableFilter tf = new TableFilter(session, table, null, false, null);
-                for (Column c : data.columns) {
-                    c.prepareExpression(session, tf);
-                }
-                for (Sequence sequence : sequences) {
-                    table.addSequence(sequence);
-                }
-                for (DefinitionStatement command : constraintCommands) {
-                    command.update();
-                }
-                if (asQuery != null) {
-                    Insert insert = new Insert(session);
-                    insert.setQuery(asQuery);
-                    insert.setTable(table);
-                    insert.setInsertFromSelect(true);
-                    insert.prepare();
-                    insert.update();
-                }
-            } catch (DbException e) {
-                db.checkPowerOff();
-                schema.remove(session, table);
-                throw e;
-            }
-
-            // 数据库在启动阶段执行建表语句时不用再生成代码
-            if (genCode && !session.getDatabase().isStarting())
-                genCode(session, table, table, 1);
         }
+        data.id = getObjectId();
+        data.create = create;
+        data.session = session;
+        boolean isSessionTemporary = data.temporary && !data.globalTemporary;
+        Table table = schema.createTable(data);
+        ArrayList<Sequence> sequences = new ArrayList<>();
+        for (Column c : data.columns) {
+            if (c.isAutoIncrement()) {
+                int objId = getObjectId();
+                c.convertAutoIncrementToSequence(session, schema, objId, data.temporary);
+            }
+            Sequence seq = c.getSequence();
+            if (seq != null) {
+                sequences.add(seq);
+            }
+        }
+        table.setComment(comment);
+        table.setPackageName(packageName);
+        table.setCodePath(codePath);
+        table.setProcessingMode(processingMode);
+        if (isSessionTemporary) {
+            if (onCommitDrop) {
+                table.setOnCommitDrop(true);
+            }
+            if (onCommitTruncate) {
+                table.setOnCommitTruncate(true);
+            }
+            session.addLocalTempTable(table);
+        } else {
+            schema.add(session, table, lockTable);
+        }
+        try {
+            TableFilter tf = new TableFilter(session, table, null, false, null);
+            for (Column c : data.columns) {
+                c.prepareExpression(session, tf);
+            }
+            for (Sequence sequence : sequences) {
+                table.addSequence(sequence);
+            }
+            for (DefinitionStatement command : constraintCommands) {
+                command.update();
+            }
+            if (asQuery != null) {
+                Insert insert = new Insert(session);
+                insert.setQuery(asQuery);
+                insert.setTable(table);
+                insert.setInsertFromSelect(true);
+                insert.prepare();
+                insert.update();
+            }
+        } catch (DbException e) {
+            db.checkPowerOff();
+            schema.remove(session, table, lockTable);
+            throw e;
+        }
+
+        // 数据库在启动阶段执行建表语句时不用再生成代码
+        if (genCode && !session.getDatabase().isStarting())
+            genCode(session, table, table, 1);
         return 0;
     }
 

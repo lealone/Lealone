@@ -41,15 +41,15 @@ public class SchemaTest extends DbObjectTestBase {
 
         id = db.allocateObjectId();
 
-        Schema schema = new Schema(db, id, schemaName, db.getUser(userName), false);
+        Schema schema = new Schema(db, id, schemaName, db.getUser(session, userName), false);
         assertEquals(id, schema.getId());
 
         db.addDatabaseObject(session, schema);
-        assertNotNull(db.findSchema(schemaName));
+        assertNotNull(db.findSchema(session, schemaName));
         assertNotNull(findMeta(id));
 
         db.removeDatabaseObject(session, schema);
-        assertNull(db.findSchema(schemaName));
+        assertNull(db.findSchema(session, schemaName));
         assertNull(findMeta(id));
 
         session.commit();
@@ -57,7 +57,7 @@ public class SchemaTest extends DbObjectTestBase {
         // 测试SQL
         // -----------------------------------------------
         executeUpdate("CREATE SCHEMA IF NOT EXISTS " + schemaName + " AUTHORIZATION " + userName);
-        schema = db.findSchema(schemaName);
+        schema = db.findSchema(session, schemaName);
         assertNotNull(schema);
         id = schema.getId();
         assertNotNull(findMeta(id));
@@ -101,20 +101,20 @@ public class SchemaTest extends DbObjectTestBase {
 
         String schemaName = "SchemaTest_s2";
         executeUpdate("ALTER SCHEMA SchemaTest_s1 RENAME TO " + schemaName);
-        assertNull(db.findSchema("SchemaTest_s1"));
-        assertNotNull(db.findSchema(schemaName));
+        assertNull(db.findSchema(session, "SchemaTest_s1"));
+        assertNotNull(db.findSchema(session, schemaName));
         executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
     }
 
     void drop() {
-        schema = db.findSchema(schemaName);
+        schema = db.findSchema(session, schemaName);
         // 增加一个CONSTANT，可以看看是否同时删了
         String constantName = "ConstantTest";
         executeUpdate("CREATE CONSTANT IF NOT EXISTS " + schemaName + ".ConstantTest VALUE 10");
-        assertNotNull(schema.findConstant(constantName));
+        assertNotNull(schema.findConstant(session, constantName));
         executeUpdate("DROP SCHEMA IF EXISTS " + schemaName);
-        assertNull(schema.findConstant(constantName));
-        schema = db.findSchema(schemaName);
+        assertNull(schema.findConstant(session, constantName));
+        schema = db.findSchema(session, schemaName);
         assertNull(schema);
         assertNull(findMeta(id));
         try {

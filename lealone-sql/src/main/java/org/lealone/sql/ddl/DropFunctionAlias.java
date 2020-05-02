@@ -12,6 +12,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -46,15 +47,17 @@ public class DropFunctionAlias extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        synchronized (schema.getLock(DbObjectType.FUNCTION_ALIAS)) {
-            FunctionAlias functionAlias = schema.findFunction(aliasName);
-            if (functionAlias == null) {
-                if (!ifExists) {
-                    throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, aliasName);
-                }
-            } else {
-                schema.remove(session, functionAlias);
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.FUNCTION_ALIAS, session);
+        if (lockTable == null)
+            return -1;
+
+        FunctionAlias functionAlias = schema.findFunction(session, aliasName);
+        if (functionAlias == null) {
+            if (!ifExists) {
+                throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, aliasName);
             }
+        } else {
+            schema.remove(session, functionAlias, lockTable);
         }
         return 0;
     }

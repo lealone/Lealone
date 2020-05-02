@@ -67,8 +67,10 @@ public class TriggerObjectTest extends DbObjectTestBase {
         executeUpdate("CREATE FORCE TRIGGER IF NOT EXISTS MyTrigger1"
                 + " BEFORE INSERT,UPDATE,DELETE,SELECT,ROLLBACK ON CreateTriggerTest"
                 + " QUEUE 10 NOWAIT CALL \"org.lealone.test.db.schema.TriggerObjectTest$MyTrigger\"");
+        session.commit();
+        session.setAutoCommit(true);
 
-        assertNotNull(schema.findTrigger("MyTrigger1"));
+        assertNotNull(schema.findTrigger(session, "MyTrigger1"));
 
         try {
             // QUEUE不能是负数
@@ -111,7 +113,7 @@ public class TriggerObjectTest extends DbObjectTestBase {
 
     void drop() {
         executeUpdate("DROP TRIGGER IF EXISTS MyTrigger1");
-        assertNull(schema.findTrigger("MyTrigger1"));
-        session.commit();
+        assertNull(schema.findTrigger(session, "MyTrigger1"));
+        // session.commit();
     }
 }

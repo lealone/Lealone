@@ -35,8 +35,9 @@ public class UserAggregateTest extends DbObjectTestBase {
         UserAggregate ua = new UserAggregate(schema, id, name, className, true);
         assertEquals(id, ua.getId());
 
+        session.setAutoCommit(false);
         schema.add(session, ua);
-        assertNotNull(schema.findAggregate(name));
+        assertNotNull(schema.findAggregate(session, name));
 
         // ua.removeChildrenAndResources(session); //会触发invalidate
 
@@ -44,20 +45,22 @@ public class UserAggregateTest extends DbObjectTestBase {
         assertEquals(3, getInt(sql, 1));
 
         schema.remove(session, ua);
-        assertNull(schema.findAggregate(name));
+        assertNull(schema.findAggregate(session, name));
 
         // 测试SQL
         // -----------------------------------------------
         sql = "CREATE FORCE AGGREGATE IF NOT EXISTS " + name + " FOR \"" + className + "\"";
         executeUpdate(sql);
-        assertNotNull(schema.findAggregate(name));
+        assertNotNull(schema.findAggregate(session, name));
 
         sql = "SELECT " + name + "(X) FROM SYSTEM_RANGE(1, 5)";
         assertEquals(3, getInt(sql, 1));
 
         sql = "DROP AGGREGATE " + name;
         executeUpdate(sql);
-        assertNull(schema.findAggregate(name));
+        assertNull(schema.findAggregate(session, name));
+        session.commit();
+        session.setAutoCommit(true);
     }
 
     public static class MedianString implements Aggregate {

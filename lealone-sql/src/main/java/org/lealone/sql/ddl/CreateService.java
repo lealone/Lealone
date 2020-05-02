@@ -35,6 +35,7 @@ import org.lealone.db.service.ServiceExecutor;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.value.DataType;
 import org.lealone.sql.SQLStatement;
 
@@ -103,23 +104,26 @@ public class CreateService extends SchemaStatement {
 
     @Override
     public int update() {
-        synchronized (schema.getLock(DbObjectType.SERVICE)) {
-            if (schema.findService(serviceName) != null) {
-                if (ifNotExists) {
-                    return 0;
-                }
-                throw DbException.get(ErrorCode.SERVICE_ALREADY_EXISTS_1, serviceName);
+        session.getUser().checkAdmin();
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.SERVICE, session);
+        if (lockTable == null)
+            return -1;
+
+        if (schema.findService(session, serviceName) != null) {
+            if (ifNotExists) {
+                return 0;
             }
-            int id = getObjectId();
-            Service service = new Service(schema, id, serviceName, sql, getExecutorFullName());
-            service.setImplementBy(implementBy);
-            service.setPackageName(packageName);
-            service.setComment(comment);
-            schema.add(session, service);
-            // 数据库在启动阶段执行CREATE SERVICE语句时不用再生成代码
-            if (genCode && !session.getDatabase().isStarting())
-                genCode();
+            throw DbException.get(ErrorCode.SERVICE_ALREADY_EXISTS_1, serviceName);
         }
+        int id = getObjectId();
+        Service service = new Service(schema, id, serviceName, sql, getExecutorFullName());
+        service.setImplementBy(implementBy);
+        service.setPackageName(packageName);
+        service.setComment(comment);
+        schema.add(session, service, lockTable);
+        // 数据库在启动阶段执行CREATE SERVICE语句时不用再生成代码
+        if (genCode && !session.getDatabase().isStarting())
+            genCode();
         return 0;
     }
 

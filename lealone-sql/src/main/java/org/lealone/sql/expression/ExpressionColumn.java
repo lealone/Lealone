@@ -144,10 +144,10 @@ public class ExpressionColumn extends Expression {
     public Expression optimize(ServerSession session) {
         getDatabase();
         if (columnResolver == null) {
-            Schema schema = session.getDatabase()
-                    .findSchema(tableAlias == null ? session.getCurrentSchemaName() : schemaName);
+            Schema schema = session.getDatabase().findSchema(session,
+                    tableAlias == null ? session.getCurrentSchemaName() : schemaName);
             if (schema != null) {
-                Constant constant = schema.findConstant(columnName);
+                Constant constant = schema.findConstant(session, columnName);
                 if (constant != null) {
                     return ValueExpression.get(constant.getValue());
                 }

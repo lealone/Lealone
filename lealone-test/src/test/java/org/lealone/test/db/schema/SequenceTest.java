@@ -36,7 +36,7 @@ public class SequenceTest extends DbObjectTestBase {
         executeUpdate("CREATE SEQUENCE IF NOT EXISTS myseq" //
                 + " START WITH 1000 INCREMENT BY 1 MINVALUE 10 MAXVALUE 10000 CYCLE CACHE 3 BELONGS_TO_TABLE");
 
-        assertNotNull(schema.findSequence("myseq"));
+        assertNotNull(schema.findSequence(session, "myseq"));
 
         executeUpdate("CREATE TABLE IF NOT EXISTS CreateSequenceTest(id int primary key, f1 int)");
         executeUpdate("INSERT INTO CreateSequenceTest(id, f1) VALUES(1, myseq.NEXTVAL)"); // 1000
@@ -59,7 +59,7 @@ public class SequenceTest extends DbObjectTestBase {
     }
 
     void alter() {
-        Sequence sequence = schema.findSequence("myseq");
+        Sequence sequence = schema.findSequence(session, "myseq");
         assertEquals(10000, sequence.getMaxValue());
         executeUpdate("ALTER SEQUENCE myseq MAXVALUE 20000");
         assertEquals(20000, sequence.getMaxValue());
@@ -73,8 +73,8 @@ public class SequenceTest extends DbObjectTestBase {
             assertException(e, ErrorCode.SEQUENCE_BELONGS_TO_A_TABLE_1);
         }
 
-        schema.findSequence("myseq").setBelongsToTable(false);
+        schema.findSequence(session, "myseq").setBelongsToTable(false);
         executeUpdate("DROP SEQUENCE IF EXISTS myseq");
-        assertNull(schema.findSequence("myseq"));
+        assertNull(schema.findSequence(session, "myseq"));
     }
 }

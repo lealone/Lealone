@@ -8,6 +8,7 @@ package org.lealone.db.auth;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 
 /**
  * Represents a role. Roles can be granted to users, and to other roles.
@@ -50,24 +51,24 @@ public class Role extends RightOwner {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session) {
+    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
         for (User user : database.getAllUsers()) {
             Right right = user.getRightForRole(this);
             if (right != null) {
-                database.removeDatabaseObject(session, right);
+                database.removeDatabaseObject(session, right, lockTable);
             }
         }
         for (Role r2 : database.getAllRoles()) {
             Right right = r2.getRightForRole(this);
             if (right != null) {
-                database.removeDatabaseObject(session, right);
+                database.removeDatabaseObject(session, right, lockTable);
             }
         }
         for (Right right : database.getAllRights()) {
             if (right.getGrantee() == this) {
-                database.removeDatabaseObject(session, right);
+                database.removeDatabaseObject(session, right, lockTable);
             }
         }
-        super.removeChildrenAndResources(session);
+        super.removeChildrenAndResources(session, lockTable);
     }
 }

@@ -1366,15 +1366,15 @@ public class Function extends Expression implements FunctionCall {
             schemaName = v0.getString();
             sequenceName = v1.getString();
         }
-        Schema s = database.findSchema(schemaName);
+        Schema s = database.findSchema(session, schemaName);
         if (s == null) {
             schemaName = StringUtils.toUpperEnglish(schemaName);
-            s = database.getSchema(schemaName);
+            s = database.getSchema(session, schemaName);
         }
-        Sequence seq = s.findSequence(sequenceName);
+        Sequence seq = s.findSequence(session, sequenceName);
         if (seq == null) {
             sequenceName = StringUtils.toUpperEnglish(sequenceName);
-            seq = s.getSequence(sequenceName);
+            seq = s.getSequence(session, sequenceName);
         }
         return seq;
     }
