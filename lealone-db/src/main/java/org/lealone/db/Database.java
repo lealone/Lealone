@@ -747,53 +747,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     /**
-     * Checks if the system table (containing the catalog) is locked.
-     *
-     * @return true if it is currently locked
-     */
-    public boolean isSysTableLocked() {
-        return meta == null || meta.isLockedExclusively();
-    }
-
-    public boolean isSysTableLockedBy(ServerSession session) {
-        return meta == null || meta.isLockedExclusivelyBy(session);
-    }
-
-    private Cursor getMetaCursor(ServerSession session, int id) {
-        SearchRow r = meta.getTemplateSimpleRow(false);
-        r.setValue(0, ValueInt.get(id));
-        return metaIdIndex.find(session, r, r);
-    }
-
-    // 用于测试
-    public SearchRow findMeta(ServerSession session, int id) {
-        Cursor cursor = getMetaCursor(session, id);
-        cursor.next();
-        return cursor.getSearchRow();
-    }
-
-    public void addMeta(ServerSession session, DbObject obj) {
-        int id = obj.getId();
-        if (id > 0 && isMetaReady() && !obj.isTemporary()) {
-            checkWritingAllowed();
-            Row r = MetaRecord.getRow(meta, obj);
-            meta.addRow(session, r);
-            synchronized (objectIds) {
-                objectIds.set(id);
-            }
-        }
-    }
-
-    public void tryAddMeta(ServerSession session, DbObject obj) {
-        int id = obj.getId();
-        if (id > 0 && isMetaReady() && !obj.isTemporary()) {
-            checkWritingAllowed();
-            Row r = MetaRecord.getRow(meta, obj);
-            meta.tryAddRow(session, r, null);
-        }
-    }
-
-    /**
      * Allocate a new object id.
      *
      * @return the id
@@ -818,6 +771,42 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
+    /**
+     * Checks if the system table (containing the catalog) is locked.
+     *
+     * @return true if it is currently locked
+     */
+    public boolean isSysTableLocked() {
+        return meta == null || meta.isLockedExclusively();
+    }
+
+    public boolean isSysTableLockedBy(ServerSession session) {
+        return meta == null || meta.isLockedExclusivelyBy(session);
+    }
+
+    private Cursor getMetaCursor(ServerSession session, int id) {
+        SearchRow r = meta.getTemplateSimpleRow(false);
+        r.setValue(0, ValueInt.get(id));
+        return metaIdIndex.find(session, r, r);
+    }
+
+    public Row findMeta(ServerSession session, int id) {
+        Cursor cursor = getMetaCursor(session, id);
+        if (cursor.next())
+            return cursor.get();
+        else
+            return null;
+    }
+
+    public void tryAddMeta(ServerSession session, DbObject obj) {
+        int id = obj.getId();
+        if (id > 0 && isMetaReady() && !obj.isTemporary()) {
+            checkWritingAllowed();
+            Row r = MetaRecord.getRow(meta, obj);
+            meta.tryAddRow(session, r, null);
+        }
+    }
+
     public void tryRemoveMeta(ServerSession session, SchemaObject obj, LockTable lockTable) {
         if (isMetaReady()) {
             Table t = getDependentTable(obj, null);
@@ -838,37 +827,33 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param session the session
      * @param id the id of the object to remove
      */
-    public void tryRemoveMeta(ServerSession session, int id) {
+    private void tryRemoveMeta(ServerSession session, int id) {
         if (id > 0 && isMetaReady()) {
             checkWritingAllowed();
-            SearchRow r = meta.getTemplateSimpleRow(false);
-            r.setValue(0, ValueInt.get(id));
-            Cursor cursor = metaIdIndex.find(session, r, r);
-            if (cursor.next()) {
-                Row found = cursor.get();
-                meta.tryRemoveRow(session, found, null);
-            }
+            Row row = findMeta(session, id);
+            if (row != null)
+                meta.tryRemoveRow(session, row, null);
         }
     }
 
     /**
-     * Remove the given object from the meta data.
+     * Update an object in the system table.
      *
      * @param session the session
-     * @param id the id of the object to remove
+     * @param obj the database object
      */
-    public void removeMeta(ServerSession session, int id) {
+    public void updateMeta(ServerSession session, DbObject obj) {
+        int id = obj.getId();
         if (id > 0 && isMetaReady()) {
             checkWritingAllowed();
-            SearchRow r = meta.getTemplateSimpleRow(false);
-            r.setValue(0, ValueInt.get(id));
-            Cursor cursor = metaIdIndex.find(session, r, r);
-            if (cursor.next()) {
-                Row found = cursor.get();
-                meta.removeRow(session, found);
-                synchronized (objectIds) {
-                    objectIds.clear(id);
-                }
+            Row oldRow = findMeta(session, id);
+            if (oldRow != null) {
+                Row newRow = MetaRecord.getRow(meta, obj);
+                newRow.setKey(oldRow.getKey());
+                Column sqlColumn = meta.getColumn(2);
+                List<Column> updateColumns = new ArrayList<>(1);
+                updateColumns.add(sqlColumn);
+                meta.tryUpdateRow(session, oldRow, newRow, updateColumns, null);
             }
         }
     }
@@ -889,18 +874,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 }
             }
         }
-    }
-
-    /**
-     * Update an object in the system table.
-     *
-     * @param session the session
-     * @param obj the database object
-     */
-    public void updateMeta(ServerSession session, DbObject obj) {
-        int id = obj.getId();
-        removeMeta(session, id);
-        addMeta(session, obj);
     }
 
     /**
@@ -971,6 +944,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         dbObjects = dbObjects.copy(session);
         dbObjects.remove(objName);
         dbObjectsRef.set(dbObjects);
+
         if (lockTable != null) {
             lockTable.addHandler(ar -> {
                 if (ar.isSucceeded()) {
@@ -1011,13 +985,15 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
         obj.checkRename();
         int id = obj.getId();
-        removeMeta(session, id);
+        tryRemoveMeta(session, id);
         dbObjects.remove(oldName);
         obj.rename(newName);
-        addMeta(session, obj);
+        tryAddMeta(session, obj);
+
         dbObjects = dbObjects.copy(session);
         dbObjects.add(obj);
         dbObjectsRef.set(dbObjects);
+
         lockTable.setHandler(ar -> {
             if (ar.isSucceeded()) {
                 dbObjectsRef.set(dbObjectsRef.get().commit());
