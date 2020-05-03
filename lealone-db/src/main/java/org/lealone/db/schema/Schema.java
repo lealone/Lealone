@@ -339,24 +339,27 @@ public class Schema extends DbObjectBase {
                 DbException.throwInternalError("object already exists: " + newName);
             }
         }
-        if (session != null)
-            database.updateMetaAndFirstLevelChildren(session, obj);
+
         obj.checkRename();
-        dbObjects.remove(oldName);
-        freeUniqueName(oldName);
-        obj.rename(newName);
         dbObjects = dbObjects.copy(session);
+        dbObjects.remove(oldName);
+        obj.rename(newName);
         dbObjects.add(obj);
         dbObjectsRef.set(dbObjects);
-        freeUniqueName(newName);
 
-        lockTable.setHandler(ar -> {
+        lockTable.addHandler(ar -> {
             if (ar.isSucceeded()) {
                 dbObjectsRef.set(dbObjectsRef.get().commit());
             } else {
+                obj.rename(oldName);
                 dbObjectsRef.set(dbObjectsRef.get().rollback());
             }
+            freeUniqueName(oldName);
+            freeUniqueName(newName);
         });
+
+        if (session != null)
+            database.updateMetaAndFirstLevelChildren(session, obj);
     }
 
     @SuppressWarnings("unchecked")

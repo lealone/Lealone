@@ -36,7 +36,6 @@ public class LockTable extends Table {
     private final Lock exclusiveLock;
     private final ConcurrentHashMap<ServerSession, AtomicInteger> sharedSessions = new ConcurrentHashMap<>();
     private volatile ServerSession exclusiveSession;
-    private AsyncHandler<AsyncResult<Boolean>> handler;
     private ArrayList<AsyncHandler<AsyncResult<Boolean>>> handlers;
 
     public LockTable(Schema schema, String name) {
@@ -44,10 +43,6 @@ public class LockTable extends Table {
         ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         sharedLock = lock.readLock();
         exclusiveLock = lock.writeLock();
-    }
-
-    public void setHandler(AsyncHandler<AsyncResult<Boolean>> handler) {
-        this.handler = handler;
     }
 
     public void addHandler(AsyncHandler<AsyncResult<Boolean>> handler) {
@@ -172,10 +167,6 @@ public class LockTable extends Table {
 
     @Override
     public void unlock(ServerSession session, boolean succeeded) {
-        if (handler != null) {
-            handler.handle(new AsyncResult<>(succeeded));
-            handler = null;
-        }
         if (handlers != null) {
             handlers.forEach(h -> {
                 h.handle(new AsyncResult<>(succeeded));

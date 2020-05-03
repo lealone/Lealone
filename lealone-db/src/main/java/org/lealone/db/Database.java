@@ -983,24 +983,23 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 DbException.throwInternalError("object already exists: " + newName);
             }
         }
+
         obj.checkRename();
-        int id = obj.getId();
-        tryRemoveMeta(session, id);
+        dbObjects = dbObjects.copy(session);
         dbObjects.remove(oldName);
         obj.rename(newName);
-        tryAddMeta(session, obj);
-
-        dbObjects = dbObjects.copy(session);
         dbObjects.add(obj);
         dbObjectsRef.set(dbObjects);
 
-        lockTable.setHandler(ar -> {
+        lockTable.addHandler(ar -> {
             if (ar.isSucceeded()) {
                 dbObjectsRef.set(dbObjectsRef.get().commit());
             } else {
+                obj.rename(oldName);
                 dbObjectsRef.set(dbObjectsRef.get().rollback());
             }
         });
+
         updateMetaAndFirstLevelChildren(session, obj);
     }
 
