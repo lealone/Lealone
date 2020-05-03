@@ -492,9 +492,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
             systemSession = new SystemSession(this, systemUser, ++nextSessionId);
 
+            // 在一个新事务中打开sys(meta)表
+            systemSession.setAutoCommit(false);
+            systemSession.getTransaction();
             openMetaTable();
-
             systemSession.commit();
+            systemSession.setAutoCommit(true);
             trace.info("opened {0}", name);
         } catch (Throwable e) {
             if (e instanceof OutOfMemoryError) {
@@ -516,6 +519,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     private void openMetaTable() {
+        // sys(meta)表的id固定是0，其他数据库对象的id从1开始
+        int sysTableId = 0;
         CreateTableData data = new CreateTableData();
         ArrayList<Column> cols = data.columns;
         Column columnId = new Column("ID", Value.INT);
@@ -524,7 +529,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         cols.add(new Column("TYPE", Value.INT));
         cols.add(new Column("SQL", Value.STRING));
         data.tableName = "SYS";
-        data.id = 0;
+        data.id = sysTableId;
         data.persistData = persistent;
         data.persistIndexes = persistent;
         data.create = true;
@@ -533,13 +538,16 @@ public class Database implements DataHandler, DbObject, IDatabase {
         data.storageEngineName = metaStorageEngineName = persistent ? getDefaultStorageEngineName()
                 : MemoryStorageEngine.NAME;
         meta = mainSchema.createTable(data);
-        objectIds.set(0);
+        objectIds.set(sysTableId); // 此时正处于初始化阶段，只有一个线程在访问，所以不需要同步
 
+        // 创建Delegate索引， 委派给原有的primary index(也就是ScanIndex)
+        // Delegate索引不需要生成create语句保存到sys(meta)表的，这里只是把它加到schema和table的相应字段中
+        // 这里也没有直接使用sys表的ScanIndex，因为id字段是主键
         IndexColumn[] pkCols = IndexColumn.wrap(new Column[] { columnId });
-        IndexType indexType = IndexType.createDelegate(); // 重用原有的primary index
-        LockTable lockTable = mainSchema.tryExclusiveLock(DbObjectType.INDEX, systemSession);
-        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", 0, pkCols, indexType, true, null, lockTable);
+        IndexType indexType = IndexType.createDelegate();
+        metaIdIndex = meta.addIndex(systemSession, "SYS_ID", sysTableId, pkCols, indexType, true, null, null);
 
+        // 把sys(meta)表所有的create语句取出来，然后执行它们，在内存中构建出完整的数据库对象
         ArrayList<MetaRecord> records = new ArrayList<>();
         Cursor cursor = metaIdIndex.find(systemSession, null, null);
         while (cursor.next()) {
@@ -550,6 +558,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
         state = State.STARTING;
 
+        // 会按DbObjectType的创建顺序排序
         Collections.sort(records);
         for (MetaRecord rec : records) {
             rec.execute(this, systemSession, eventListener);

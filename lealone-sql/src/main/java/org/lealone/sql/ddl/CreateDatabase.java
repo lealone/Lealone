@@ -77,7 +77,7 @@ public class CreateDatabase extends DatabaseStatement {
             // 如果可用节点只有1个，那就退化到CLIENT_SERVER模式
             newDB.setRunMode(RunMode.CLIENT_SERVER);
         }
-        lealoneDB.addDatabaseObject(session, newDB);
+        lealoneDB.addDatabaseObject(session, newDB, lockTable);
         // 将缓存过期掉
         lealoneDB.getNextModificationMetaId();
 
