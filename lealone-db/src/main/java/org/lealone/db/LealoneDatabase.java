@@ -29,16 +29,17 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.table.LockTable;
 
 /**
- * 管理所有Database
+ * 最顶层的数据库，用于管理所有应用创建的数据库
  * 
  * @author zhh
  */
 public class LealoneDatabase extends Database {
 
-    // 所有元数据从名为lealone的数据库开始查找，并且ID固定为0
+    // ID固定为0
     public static final int ID = 0;
     public static final String NAME = Constants.PROJECT_NAME;
 
+    // 仅用于支持bats项目
     private static final CaseInsensitiveMap<String> UNSUPPORTED_SCHEMA_MAP = new CaseInsensitiveMap<>();
     private static LealoneDatabase INSTANCE = new LealoneDatabase();
 
@@ -54,15 +55,13 @@ public class LealoneDatabase extends Database {
         return UNSUPPORTED_SCHEMA_MAP.containsKey(schemaName);
     }
 
-    // private final ConcurrentHashMap<String, Database> databases;;
-
     private LealoneDatabase() {
         super(ID, NAME, null);
-        // databases = new CaseInsensitiveConcurrentHashMap<>();
-        // databases.put(NAME, this);
 
+        // init执行过程中会触发getInstance()，此时INSTANCE为null，会导致NPE
+        INSTANCE = this;
+        // 把自己也加进去，这样通过lealone这个名字能找到自己
         addDatabaseObject(null, this, null);
-        INSTANCE = this; // init执行过程中会触发getInstance()，此时INSTANCE为null，会导致NPE
 
         init();
         createRootUserIfNotExists();
@@ -93,7 +92,6 @@ public class LealoneDatabase extends Database {
     void closeDatabase(String dbName) {
         Database db = findDatabase(dbName);
         removeDatabaseObject(null, db, null);
-
     }
 
     Map<String, Database> getDatabasesMap() {

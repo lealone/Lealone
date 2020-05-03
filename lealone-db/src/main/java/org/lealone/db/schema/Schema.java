@@ -53,7 +53,8 @@ public class Schema extends DbObjectBase {
     private final HashSet<String> temporaryUniqueNames = new HashSet<>();
 
     @SuppressWarnings("unchecked")
-    private final AtomicReference<TransactionalDbObjects<DbObject>>[] dbObjectsRefs = new AtomicReference[DbObjectType.TYPES.length];
+    private final AtomicReference<TransactionalDbObjects<DbObject>>[] dbObjectsRefs //
+            = new AtomicReference[DbObjectType.TYPES.length];
     private final LockTable[] lockTables = new LockTable[DbObjectType.TYPES.length];
 
     private final User owner;

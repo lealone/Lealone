@@ -51,6 +51,7 @@ public class DbObjectTestBase extends UnitTestBase {
         this.dbName = dbName;
         // setInMemory(true);
         setEmbedded(true);
+        enableTrace();
         addConnectionParameter("DATABASE_TO_UPPER", "false"); // 不转成大写
         session = createSession();
         db = session.getDatabase();

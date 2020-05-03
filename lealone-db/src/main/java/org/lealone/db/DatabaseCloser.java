@@ -23,10 +23,10 @@ class DatabaseCloser extends Thread {
     private int delayInMillis;
 
     DatabaseCloser(Database db, int delayInMillis, boolean shutdownHook) {
-        this.databaseRef = new WeakReference<Database>(db);
-        this.delayInMillis = delayInMillis;
         this.shutdownHook = shutdownHook;
-        trace = db.getTrace(TraceModuleType.DATABASE);
+        this.trace = db.getTrace(TraceModuleType.DATABASE);
+        this.databaseRef = new WeakReference<>(db);
+        this.delayInMillis = delayInMillis;
     }
 
     /**
@@ -68,13 +68,11 @@ class DatabaseCloser extends Thread {
                 // it would throw an IllegalStateException
                 try {
                     trace.error(e, "could not close the database");
-                    // if this was successful, we ignore the exception
-                    // otherwise not
+                    // if this was successful, we ignore the exception otherwise not
                 } catch (RuntimeException e2) {
                     throw e;
                 }
             }
         }
     }
-
 }

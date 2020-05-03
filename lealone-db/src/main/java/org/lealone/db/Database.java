@@ -107,7 +107,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private volatile State state = State.CONSTRUCTOR_CALLED;
 
     @SuppressWarnings("unchecked")
-    private final AtomicReference<TransactionalDbObjects<DbObject>>[] dbObjectsRefs = new AtomicReference[DbObjectType.TYPES.length];
+    private final AtomicReference<TransactionalDbObjects<DbObject>>[] dbObjectsRefs //
+            = new AtomicReference[DbObjectType.TYPES.length];
 
     // 与users、roles和rights相关的操作都用这个对象进行同步
     private LockTable authLockTable;
@@ -153,6 +154,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private User systemUser;
     private Schema mainSchema;
     private Schema infoSchema;
+    private volatile boolean infoSchemaMetaTablesInitialized;
     private Role publicRole;
 
     private int nextSessionId;
@@ -167,7 +169,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     private Table meta;
     private String metaStorageEngineName;
     private Index metaIdIndex;
-    private volatile boolean metaTablesInitialized;
 
     private TraceSystem traceSystem;
     private Trace trace;
@@ -438,13 +439,13 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (persistent) {
             traceSystem = new TraceSystem(getStoragePath() + Constants.SUFFIX_TRACE_FILE);
             traceSystem.setLevelFile(dbSettings.traceLevelFile);
-            traceSystem.setLevelSystemOut(dbSettings.traceLevelSystemOut);
-            trace = traceSystem.getTrace(TraceModuleType.DATABASE);
-            trace.info("opening {0} (build {1})", name, Constants.BUILD_ID);
         } else {
+            // 内存数据库不需要写跟踪文件，但是可以输出到控制台
             traceSystem = new TraceSystem();
-            trace = traceSystem.getTrace(TraceModuleType.DATABASE);
         }
+        traceSystem.setLevelSystemOut(dbSettings.traceLevelSystemOut);
+        trace = traceSystem.getTrace(TraceModuleType.DATABASE);
+        trace.info("opening {0} (build {1}) (persistent: {2})", name, Constants.BUILD_ID, persistent);
     }
 
     private void addShutdownHook() {
@@ -457,6 +458,16 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 // (maybe an application wants to write something into a
                 // database at shutdown time)
             }
+        }
+    }
+
+    /**
+     * Called after the database has been opened and initialized. This method
+     * notifies the event listener if one has been set.
+     */
+    private void opened() {
+        if (eventListener != null) {
+            eventListener.opened();
         }
     }
 
@@ -739,17 +750,17 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return Utils.compareSecure(testHash, dbSettings.filePasswordHash);
     }
 
-    private void initMetaTables() {
-        if (metaTablesInitialized) {
+    private void initInfoSchemaMetaTables() {
+        if (infoSchemaMetaTablesInitialized) {
             return;
         }
         synchronized (infoSchema) {
-            if (!metaTablesInitialized) {
+            if (!infoSchemaMetaTablesInitialized) {
                 for (int type = 0, count = MetaTable.getMetaTableTypeCount(); type < count; type++) {
                     MetaTable m = new MetaTable(infoSchema, -1 - type, type);
                     infoSchema.add(null, m, null);
                 }
-                metaTablesInitialized = true;
+                infoSchemaMetaTablesInitialized = true;
             }
         }
     }
@@ -798,6 +809,19 @@ public class Database implements DataHandler, DbObject, IDatabase {
             checkWritingAllowed();
             Row r = MetaRecord.getRow(meta, obj);
             meta.tryAddRow(session, r, null);
+        }
+    }
+
+    /**
+     * Allocate a new object id.
+     *
+     * @return the id
+     */
+    public int allocateObjectId() {
+        synchronized (objectIds) {
+            int i = objectIds.nextClearBit(0);
+            objectIds.set(i);
+            return i;
         }
     }
 
@@ -1089,7 +1113,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public Schema findSchema(ServerSession session, String schemaName) {
         Schema schema = find(DbObjectType.SCHEMA, session, schemaName);
         if (schema == infoSchema) {
-            initMetaTables();
+            initInfoSchemaMetaTables();
         }
         return schema;
     }
@@ -1348,26 +1372,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    /**
-     * Allocate a new object id.
-     *
-     * @return the id
-     */
-    public int allocateObjectId() {
-        synchronized (objectIds) {
-            int i = objectIds.nextClearBit(0);
-            objectIds.set(i);
-            return i;
-        }
-    }
-
-    public int getAllowLiterals() {
-        if (isStarting()) {
-            return Constants.ALLOW_LITERALS_ALL;
-        }
-        return dbSettings.allowLiterals;
-    }
-
     public ArrayList<Comment> getAllComments() {
         HashMap<String, Comment> map = getDbObjects(DbObjectType.COMMENT);
         return new ArrayList<>(map.values());
@@ -1389,7 +1393,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @return all objects of all types
      */
     public ArrayList<SchemaObject> getAllSchemaObjects() {
-        initMetaTables();
+        initInfoSchemaMetaTables();
         ArrayList<SchemaObject> list = new ArrayList<>();
         for (Schema schema : getAllSchemas()) {
             list.addAll(schema.getAll());
@@ -1405,7 +1409,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     public ArrayList<SchemaObject> getAllSchemaObjects(DbObjectType type) {
         if (type == DbObjectType.TABLE_OR_VIEW) {
-            initMetaTables();
+            initInfoSchemaMetaTables();
         }
         ArrayList<SchemaObject> list = new ArrayList<>();
         for (Schema schema : getAllSchemas()) {
@@ -1424,7 +1428,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     public ArrayList<Table> getAllTablesAndViews(boolean includeMeta) {
         if (includeMeta) {
-            initMetaTables();
+            initInfoSchemaMetaTables();
         }
         ArrayList<Table> list = new ArrayList<>();
         for (Schema schema : getAllSchemas(includeMeta)) {
@@ -1439,7 +1443,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     private ArrayList<Schema> getAllSchemas(boolean includeMeta) {
         if (includeMeta) {
-            initMetaTables();
+            initInfoSchemaMetaTables();
         }
         HashMap<String, Schema> map = getDbObjects(DbObjectType.SCHEMA);
         return new ArrayList<>(map.values());
@@ -1708,6 +1712,13 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
+    public int getAllowLiterals() {
+        if (isStarting()) {
+            return Constants.ALLOW_LITERALS_ALL;
+        }
+        return dbSettings.allowLiterals;
+    }
+
     public int getMaxMemoryRows() {
         return dbSettings.maxMemoryRows;
     }
@@ -1842,16 +1853,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
      */
     public boolean isMultiVersion() {
         return transactionEngine.supportsMVCC();
-    }
-
-    /**
-     * Called after the database has been opened and initialized. This method
-     * notifies the event listener if one has been set.
-     */
-    void opened() {
-        if (eventListener != null) {
-            eventListener.opened();
-        }
     }
 
     public void setMode(Mode mode) {

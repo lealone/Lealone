@@ -141,6 +141,7 @@ public class TestBase extends Assert {
 
     public TestBase enableTrace(int level) {
         addConnectionParameter("TRACE_LEVEL_SYSTEM_OUT", level + "");
+        addConnectionParameter("TRACE_LEVEL_FILE", level + "");
         return this;
     }
 
