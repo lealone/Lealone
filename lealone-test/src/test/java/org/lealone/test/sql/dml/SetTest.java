@@ -100,7 +100,6 @@ public class SetTest extends SqlTestBase {
             assertTrue(e.getMessage().contains(DbSetting.LOB_COMPRESSION_ALGORITHM.getName()));
         }
 
-        executeUpdate("SET CREATE_BUILD 12");
         try {
             executeUpdate("SET DATABASE_EVENT_LISTENER 'classNameNotFound'");
             fail(sql);

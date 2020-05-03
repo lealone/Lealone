@@ -34,7 +34,6 @@ import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.DbSetting;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
@@ -176,11 +175,6 @@ public class Script extends ScriptBase {
             }
             if (settings) {
                 for (Map.Entry<String, String> e : db.getParameters().entrySet()) {
-                    if (e.getKey().equals(DbSetting.CREATE_BUILD.getName())) {
-                        // don't add CREATE_BUILD to the script
-                        // (it is only set when creating the database)
-                        continue;
-                    }
                     String sql = "SET " + db.quoteIdentifier(e.getKey()) + " '" + e.getValue() + "'";
                     add(sql, false);
                 }

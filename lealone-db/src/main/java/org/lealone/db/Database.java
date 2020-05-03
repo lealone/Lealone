@@ -494,14 +494,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
             openMetaTable();
 
-            if (!readOnly) {
-                // set CREATE_BUILD in a new database
-                if (!isLealoneDatabase() && parameters.containsKey(DbSetting.CREATE_BUILD.getName())) {
-                    setDbSetting(DbSetting.CREATE_BUILD, String.valueOf(Constants.BUILD_ID));
-                }
-            }
             systemSession.commit();
-
             trace.info("opened {0}", name);
         } catch (Throwable e) {
             if (e instanceof OutOfMemoryError) {

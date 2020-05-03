@@ -119,15 +119,6 @@ public class SetDatabase extends SetStatement {
             setDbSetting(algo == Compressor.NO ? null : stringValue);
             break;
         }
-        case CREATE_BUILD: {
-            if (database.isStarting()) {
-                // just ignore the command if not starting
-                // this avoids problems when running recovery scripts
-                int value = getIntValue();
-                setDbSetting(value);
-            }
-            break;
-        }
         case DATABASE_EVENT_LISTENER: {
             setDbSetting(stringValue);
             database.setEventListenerClass(stringValue);
