@@ -95,5 +95,4 @@ public class RoleTest extends DbObjectTestBase {
             assertException(e, ErrorCode.ROLE_CAN_NOT_BE_DROPPED_1);
         }
     }
-
 }

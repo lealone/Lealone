@@ -338,8 +338,9 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private Database rebuildDatabase() {
+        LockTable lockTable = LealoneDatabase.getInstance().tryExclusiveDatabaseLock(session);
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-        lealoneDB.removeDatabaseObject(session, db);
+        lealoneDB.removeDatabaseObject(session, db, lockTable);
         db.setDeleteFilesOnDisconnect(true);
         if (db.getSessionCount() == 0) {
             db.drop();
@@ -349,7 +350,7 @@ public class AlterDatabase extends DatabaseStatement {
         newDB.setReplicationParameters(replicationParameters);
         newDB.setNodeAssignmentParameters(nodeAssignmentParameters);
         newDB.setRunMode(runMode);
-        lealoneDB.addDatabaseObject(session, newDB);
+        lealoneDB.addDatabaseObject(session, newDB, lockTable);
         return newDB;
     }
 

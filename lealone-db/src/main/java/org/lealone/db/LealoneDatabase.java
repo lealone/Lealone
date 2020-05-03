@@ -83,7 +83,7 @@ public class LealoneDatabase extends Database {
         String userName = ci.getUserName();
         byte[] userPasswordHash = ci.getUserPasswordHash();
         db.createAdminUser(userName, userPasswordHash);
-        LockTable lockTable = tryExclusiveAuthLock(getSystemSession());
+        LockTable lockTable = tryExclusiveDatabaseLock(getSystemSession());
         addDatabaseObject(getSystemSession(), db, lockTable);
         getSystemSession().commit();
         return db;

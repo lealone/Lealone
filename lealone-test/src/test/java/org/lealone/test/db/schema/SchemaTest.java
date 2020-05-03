@@ -44,11 +44,11 @@ public class SchemaTest extends DbObjectTestBase {
         Schema schema = new Schema(db, id, schemaName, db.getUser(session, userName), false);
         assertEquals(id, schema.getId());
 
-        db.addDatabaseObject(session, schema);
+        db.addDatabaseObject(session, schema, null);
         assertNotNull(db.findSchema(session, schemaName));
         assertNotNull(findMeta(id));
 
-        db.removeDatabaseObject(session, schema);
+        db.removeDatabaseObject(session, schema, null);
         assertNull(db.findSchema(session, schemaName));
         assertNull(findMeta(id));
 

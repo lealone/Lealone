@@ -66,7 +66,6 @@ public class RightTest extends DbObjectTestBase {
     }
 
     void grantRight() {
-
         executeUpdate("GRANT SELECT,DELETE,INSERT ON RightTest_t1 TO RightTest_u1");
         right = user.getRightForObject(table);
         assertNotNull(right);
@@ -135,5 +134,4 @@ public class RightTest extends DbObjectTestBase {
         right = user.getRightForRole(role);
         assertNull(right);
     }
-
 }

@@ -146,11 +146,11 @@ public class SetComment extends DefinitionStatement {
                     int id = getObjectId();
                     comment = new Comment(db, id, object);
                     comment.setCommentText(text);
-                    db.addDatabaseObject(session, comment);
+                    db.addDatabaseObject(session, comment, lockTable);
                 }
             } else {
                 if (text == null) {
-                    db.removeDatabaseObject(session, comment);
+                    db.removeDatabaseObject(session, comment, lockTable);
                 } else {
                     comment.setCommentText(text);
                     db.updateMeta(session, comment);

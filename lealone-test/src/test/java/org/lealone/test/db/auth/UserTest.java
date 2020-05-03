@@ -174,5 +174,4 @@ public class UserTest extends DbObjectTestBase {
         user = findUser("sa2");
         assertNull(user);
     }
-
 }

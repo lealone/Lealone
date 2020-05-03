@@ -568,27 +568,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         state = State.STARTED;
     }
 
-    public synchronized void rollbackMetaTable(ServerSession session) {
-        ArrayList<MetaRecord> records = new ArrayList<>();
-        Cursor cursor = metaIdIndex.find(systemSession, null, null);
-        while (cursor.next()) {
-            MetaRecord rec = new MetaRecord(cursor.get());
-            objectIds.set(rec.getId());
-            records.add(rec);
-        }
-
-        objectIds.set(0);
-        state = State.STARTING;
-
-        Collections.sort(records);
-        for (MetaRecord rec : records) {
-            rec.execute(this, systemSession, eventListener);
-        }
-
-        recompileInvalidViews();
-        state = State.STARTED;
-    }
-
     private void recompileInvalidViews() {
         boolean recompileSuccessful;
         do {
@@ -839,7 +818,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    public void tryRemoveMeta(ServerSession session, SchemaObject obj) {
+    public void tryRemoveMeta(ServerSession session, SchemaObject obj, LockTable lockTable) {
         if (isMetaReady()) {
             Table t = getDependentTable(obj, null);
             if (t != null && t != obj) {
@@ -849,7 +828,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         tryRemoveMeta(session, obj.getId());
         Comment comment = findComment(session, obj);
         if (comment != null) {
-            removeDatabaseObject(session, comment);
+            removeDatabaseObject(session, comment, lockTable);
         }
     }
 
@@ -869,20 +848,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 Row found = cursor.get();
                 meta.tryRemoveRow(session, found, null);
             }
-        }
-    }
-
-    public void removeMeta(ServerSession session, SchemaObject obj) {
-        if (isMetaReady()) {
-            Table t = getDependentTable(obj, null);
-            if (t != null && t != obj) {
-                throw DbException.get(ErrorCode.CANNOT_DROP_2, obj.getSQL(), t.getSQL());
-            }
-        }
-        removeMeta(session, obj.getId());
-        Comment comment = findComment(session, obj);
-        if (comment != null) {
-            removeDatabaseObject(session, comment);
         }
     }
 
@@ -944,10 +909,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param session the session
      * @param obj the object to add
      */
-    public void addDatabaseObject(ServerSession session, DbObject obj) {
-        addDatabaseObject(session, obj, null);
-    }
-
     public void addDatabaseObject(ServerSession session, DbObject obj, LockTable lockTable) {
         AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
         TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
@@ -985,10 +946,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param session the session
      * @param obj the object to remove
      */
-    public void removeDatabaseObject(ServerSession session, DbObject obj) {
-        removeDatabaseObject(session, obj, null);
-    }
-
     public void removeDatabaseObject(ServerSession session, DbObject obj, LockTable lockTable) {
         checkWritingAllowed();
         String objName = obj.getName();

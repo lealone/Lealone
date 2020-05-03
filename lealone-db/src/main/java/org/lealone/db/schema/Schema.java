@@ -270,7 +270,7 @@ public class Schema extends DbObjectBase {
             }
 
             obj.removeChildrenAndResources(session, lockTable);
-            database.tryRemoveMeta(session, obj);
+            database.tryRemoveMeta(session, obj, lockTable);
 
             dbObjects = dbObjects.copy(session);
             dbObjects.remove(objName);
