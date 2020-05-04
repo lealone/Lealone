@@ -52,6 +52,7 @@ public class AlterSchemaRename extends DefinitionStatement {
         LockTable lockTable = db.tryExclusiveSchemaLock(session);
         if (lockTable == null)
             return -1;
+
         if (!oldSchema.canDrop()) {
             throw DbException.get(ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1, oldSchema.getName());
         }

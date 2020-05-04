@@ -198,8 +198,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
                         throw DbException.get(ErrorCode.SECOND_PRIMARY_KEY);
                     }
                 }
-            }
-            if (index == null) {
+            } else {
                 IndexType indexType = IndexType.createPrimaryKey(primaryKeyHash);
                 String indexName = table.getSchema().getUniqueIndexName(session, table, Constants.PREFIX_PRIMARY_KEY);
                 int id = getObjectId();
@@ -272,7 +271,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
                     isOwner = true;
                 }
             }
-            if (refIndexColumns == null) {
+            if (refIndexColumns == null) { // 当主表存在主键时，引用表可以不指定主表的主键字段
                 Index refIdx = refTable.getPrimaryKey();
                 refIndexColumns = refIdx.getIndexColumns();
             } else {
@@ -282,8 +281,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
                 throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
             }
             boolean isRefOwner = false;
-            if (refIndex != null && refIndex.getTable() == refTable
-                    && canUseIndex(refIndex, refTable, refIndexColumns, false)) {
+            if (refIndex != null && canUseIndex(refIndex, refTable, refIndexColumns, false)) {
                 isRefOwner = true;
                 refIndex.getIndexType().setBelongsToConstraint(true);
             } else {
@@ -292,6 +290,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
             if (refIndex == null) {
                 refIndex = getIndex(refTable, refIndexColumns, false);
                 if (refIndex == null) {
+                    // 为引用字段建立了唯一索引
                     refIndex = createIndex(refTable, refIndexColumns, true, lockTable);
                     isRefOwner = true;
                 }
@@ -379,7 +378,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
         for (IndexColumn c : cols) {
             set.add(c.column);
         }
-        for (Column c : indexCols) {
+        for (Column c : indexCols) { // 索引列要比约束列要少，索引列必须出现在所有约束列中
             // all columns of the index must be part of the list,
             // but not all columns of the list need to be part of the index
             if (!set.contains(c)) {

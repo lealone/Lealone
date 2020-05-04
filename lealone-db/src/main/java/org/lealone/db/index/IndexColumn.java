@@ -50,6 +50,11 @@ public class IndexColumn {
         return buff.toString();
     }
 
+    @Override
+    public String toString() {
+        return "IndexColumn [" + columnName + "]";
+    }
+
     /**
      * Create an array of index columns from a list of columns. The default sort
      * type is used.

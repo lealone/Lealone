@@ -5422,19 +5422,29 @@ public class Parser implements SQLParser {
             }
             return command;
         } else if (allowIndexDefinition && (isToken("INDEX") || isToken("KEY"))) {
+            // MySQL的古怪语法， 例如:
+            // CREATE TABLE IF NOT EXISTS t (f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX int)
+            // 也是合法的，其中“INDEX int”被当成了字段
+            // 而“CONSTRAINT IF NOT EXISTS my_constraint”被忽视了
+
             // MySQL need to read ahead, as it could be a column name
             int start = lastParseIndex;
             read();
             if (DataType.getTypeByName(currentToken) != null) {
                 // known data type
-                parseIndex = start;
+                parseIndex = start; // 重新从"INDEX"或"KEY"开始
                 read();
                 return null;
             }
+            // 如果不指定索引名，例如:
+            // CREATE TABLE IF NOT EXISTS t (f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX(f1))
+            // 当执行CreateIndex.update()时会自动生成一个索引名(以"INDEX_"开头)
             CreateIndex command = new CreateIndex(session, schema);
             command.setComment(comment);
             command.setTableName(tableName);
             if (!readIf("(")) {
+                // 指定索引名，例如:
+                // CREATE TABLE IF NOT EXISTS t (f1 int,CONSTRAINT IF NOT EXISTS my_constraint INDEX my_index(f1))
                 command.setIndexName(readUniqueIdentifier());
                 read("(");
             }
