@@ -4,45 +4,37 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.index;
+package org.lealone.db.index.hash;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.index.Cursor;
+import org.lealone.db.index.IndexColumn;
+import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
-import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.Column;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 
 /**
  * An unique index based on an in-memory hash map.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
-public class HashIndex extends IndexBase {
+public class UniqueHashIndex extends HashIndex {
 
-    /**
-     * The index of the indexed column.
-     */
-    protected final int indexColumn;
-
-    private final StandardTable tableData;
     private ValueHashMap<Long> rows;
 
-    public HashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+    public UniqueHashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
         super(table, id, indexName, indexType, columns);
-        this.indexColumn = columns[0].column.getColumnId();
-        this.tableData = table;
         reset();
-    }
-
-    private void reset() {
-        rows = ValueHashMap.newInstance();
     }
 
     @Override
-    public void truncate(ServerSession session) {
-        reset();
+    protected void reset() {
+        rows = ValueHashMap.newInstance();
     }
 
     @Override
@@ -50,7 +42,6 @@ public class HashIndex extends IndexBase {
         Value key = row.getValue(indexColumn);
         Object old = rows.get(key);
         if (old != null) {
-            // TODO index duplicate key for hash indexes: is this allowed?
             throw getDuplicateKeyException();
         }
         rows.put(key, row.getKey());
@@ -72,7 +63,7 @@ public class HashIndex extends IndexBase {
         if (pos == null) {
             result = null;
         } else {
-            result = tableData.getRow(session, pos.intValue());
+            result = table.getRow(session, pos.intValue());
         }
         return new SingleRowCursor(result);
     }
@@ -87,62 +78,11 @@ public class HashIndex extends IndexBase {
         return rows.size();
     }
 
-    @Override
-    public long getDiskSpaceUsed() {
-        return 0;
-    }
-
-    @Override
-    public void close(ServerSession session) {
-        // nothing to do
-    }
-
-    @Override
-    public void remove(ServerSession session) {
-        // nothing to do
-    }
-
-    @Override
-    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
-        for (Column column : columns) {
-            int index = column.getColumnId();
-            int mask = masks[index];
-            if ((mask & IndexConditionType.EQUALITY) != IndexConditionType.EQUALITY) {
-                return Long.MAX_VALUE;
-            }
-        }
-        return 2;
-    }
-
-    @Override
-    public void checkRename() {
-        // ok
-    }
-
-    @Override
-    public boolean needRebuild() {
-        return true;
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return false;
-    }
-
-    @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
-        throw DbException.getUnsupportedException("HASH");
-    }
-
-    @Override
-    public boolean canScan() {
-        return false;
-    }
-
     /**
      * A cursor with at most one row.
      */
     private static class SingleRowCursor implements Cursor {
+
         private Row row;
         private boolean end;
 

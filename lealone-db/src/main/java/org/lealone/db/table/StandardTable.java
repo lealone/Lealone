@@ -32,15 +32,15 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Cursor;
-import org.lealone.db.index.HashIndex;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
-import org.lealone.db.index.NonUniqueHashIndex;
 import org.lealone.db.index.StandardDelegateIndex;
 import org.lealone.db.index.StandardIndex;
 import org.lealone.db.index.StandardPrimaryIndex;
 import org.lealone.db.index.StandardSecondaryIndex;
+import org.lealone.db.index.hash.NonUniqueHashIndex;
+import org.lealone.db.index.hash.UniqueHashIndex;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObject;
@@ -371,7 +371,7 @@ public class StandardTable extends Table {
                 index = createDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
             } else if (indexType.isHash() && cols.length <= 1) { // TODO 是否要支持多版本
                 if (indexType.isUnique()) {
-                    index = new HashIndex(this, indexId, indexName, cols, indexType);
+                    index = new UniqueHashIndex(this, indexId, indexName, cols, indexType);
                 } else {
                     index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
                 }

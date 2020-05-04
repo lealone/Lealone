@@ -4,12 +4,15 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.index;
+package org.lealone.db.index.hash;
 
 import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
+import org.lealone.db.index.Cursor;
+import org.lealone.db.index.IndexColumn;
+import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.session.ServerSession;
@@ -21,28 +24,23 @@ import org.lealone.db.value.Value;
  * A non-unique index based on an in-memory hash map.
  *
  * @author Sergi Vladykin
+ * @author zhh
  */
 public class NonUniqueHashIndex extends HashIndex {
 
     private ValueHashMap<ArrayList<Long>> rows;
-    private final StandardTable table;
     private long rowCount;
 
     public NonUniqueHashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns,
             IndexType indexType) {
-        super(table, id, indexName, columns, indexType);
-        this.table = table;
+        super(table, id, indexName, indexType, columns);
         reset();
-    }
-
-    private void reset() {
-        rows = ValueHashMap.newInstance();
-        rowCount = 0;
     }
 
     @Override
-    public void truncate(ServerSession session) {
-        reset();
+    protected void reset() {
+        rows = ValueHashMap.newInstance();
+        rowCount = 0;
     }
 
     @Override
@@ -115,7 +113,8 @@ public class NonUniqueHashIndex extends HashIndex {
         public NonUniqueHashCursor(ServerSession session, StandardTable table, ArrayList<Long> positions) {
             this.session = session;
             this.table = table;
-            this.positions = positions;
+            // 这里必须copy一份，执行delete语句时会动态删除，这样会导致执行next()时漏掉一些记录
+            this.positions = new ArrayList<>(positions);
         }
 
         @Override
