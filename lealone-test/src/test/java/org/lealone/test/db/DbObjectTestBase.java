@@ -20,6 +20,7 @@ package org.lealone.test.db;
 import java.sql.Connection;
 import java.sql.ResultSet;
 
+import org.junit.Before;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
@@ -56,6 +57,11 @@ public class DbObjectTestBase extends UnitTestBase {
         session = createSession();
         db = session.getDatabase();
         schema = db.findSchema(session, Constants.SCHEMA_MAIN);
+    }
+
+    @Before
+    public void setUpBefore() {
+        session.setAutoCommit(true);
     }
 
     public ServerSession createSession() {

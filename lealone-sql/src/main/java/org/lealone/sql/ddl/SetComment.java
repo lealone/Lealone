@@ -12,6 +12,7 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
@@ -67,6 +68,10 @@ public class SetComment extends DefinitionStatement {
         this.expr = expr;
     }
 
+    private Schema getSchema() {
+        return session.getDatabase().getSchema(session, schemaName);
+    }
+
     @Override
     public int update() {
         Database db = session.getDatabase();
@@ -76,56 +81,50 @@ public class SetComment extends DefinitionStatement {
             return -1;
 
         DbObject object = null;
-        int errorCode = ErrorCode.GENERAL_ERROR_1;
         if (schemaName == null) {
             schemaName = session.getCurrentSchemaName();
         }
         switch (objectType) {
         case CONSTANT:
-            object = db.getSchema(session, schemaName).getConstant(session, objectName);
+            object = getSchema().getConstant(session, objectName);
             break;
         case CONSTRAINT:
-            object = db.getSchema(session, schemaName).getConstraint(session, objectName);
-            break;
-        case FUNCTION_ALIAS:
-            object = db.getSchema(session, schemaName).findFunction(session, objectName);
-            errorCode = ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1;
+            object = getSchema().getConstraint(session, objectName);
             break;
         case INDEX:
-            object = db.getSchema(session, schemaName).getIndex(session, objectName);
+            object = getSchema().getIndex(session, objectName);
+            break;
+        case SEQUENCE:
+            object = getSchema().getSequence(session, objectName);
+            break;
+        case TABLE_OR_VIEW:
+            object = getSchema().getTableOrView(session, objectName);
+            break;
+        case TRIGGER:
+            object = getSchema().getTrigger(session, objectName);
+            break;
+        case FUNCTION_ALIAS:
+            object = getSchema().getFunction(session, objectName);
+            break;
+        case USER_DATATYPE:
+            object = getSchema().getUserDataType(session, objectName);
             break;
         case ROLE:
             schemaName = null;
-            object = db.findRole(session, objectName);
-            errorCode = ErrorCode.ROLE_NOT_FOUND_1;
-            break;
-        case SCHEMA:
-            schemaName = null;
-            object = db.findSchema(session, objectName);
-            errorCode = ErrorCode.SCHEMA_NOT_FOUND_1;
-            break;
-        case SEQUENCE:
-            object = db.getSchema(session, schemaName).getSequence(session, objectName);
-            break;
-        case TABLE_OR_VIEW:
-            object = db.getSchema(session, schemaName).getTableOrView(session, objectName);
-            break;
-        case TRIGGER:
-            object = db.getSchema(session, schemaName).findTrigger(session, objectName);
-            errorCode = ErrorCode.TRIGGER_NOT_FOUND_1;
+            object = db.getRole(session, objectName);
             break;
         case USER:
             schemaName = null;
             object = db.getUser(session, objectName);
             break;
-        case USER_DATATYPE:
-            object = db.getSchema(session, schemaName).findUserDataType(session, objectName);
-            errorCode = ErrorCode.USER_DATA_TYPE_ALREADY_EXISTS_1;
+        case SCHEMA:
+            schemaName = null;
+            object = db.getSchema(session, objectName);
             break;
         default:
         }
         if (object == null) {
-            throw DbException.get(errorCode, objectName);
+            throw DbException.get(ErrorCode.GENERAL_ERROR_1, objectName);
         }
         String text = expr.optimize(session).getValue(session).getString();
         if (column) {

@@ -1078,6 +1078,14 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return user;
     }
 
+    public Role getRole(ServerSession session, String name) {
+        Role role = findRole(session, name);
+        if (role == null) {
+            throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, name);
+        }
+        return role;
+    }
+
     /**
      * Create a session for the given user.
      *

@@ -568,12 +568,7 @@ public class Schema extends DbObjectBase {
     public Table getTableOrView(ServerSession session, String name) {
         Table table = findTableOrView(session, name);
         if (table == null) {
-            if (session != null) {
-                table = session.findLocalTempTable(name);
-            }
-            if (table == null) {
-                throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, name);
-            }
+            throw DbException.get(ErrorCode.TABLE_OR_VIEW_NOT_FOUND_1, name);
         }
         return table;
     }
@@ -636,6 +631,30 @@ public class Schema extends DbObjectBase {
             throw DbException.get(ErrorCode.SEQUENCE_NOT_FOUND_1, sequenceName);
         }
         return sequence;
+    }
+
+    public TriggerObject getTrigger(ServerSession session, String name) {
+        TriggerObject triggerObject = findTrigger(session, name);
+        if (triggerObject == null) {
+            throw DbException.get(ErrorCode.TRIGGER_NOT_FOUND_1, name);
+        }
+        return triggerObject;
+    }
+
+    public FunctionAlias getFunction(ServerSession session, String name) {
+        FunctionAlias functionAlias = findFunction(session, name);
+        if (functionAlias == null) {
+            throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, name);
+        }
+        return functionAlias;
+    }
+
+    public UserDataType getUserDataType(ServerSession session, String name) {
+        UserDataType userDataType = findUserDataType(session, name);
+        if (userDataType == null) {
+            throw DbException.get(ErrorCode.USER_DATA_TYPE_NOT_FOUND_1, name);
+        }
+        return userDataType;
     }
 
     /**

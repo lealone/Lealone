@@ -50,6 +50,10 @@ public class CommentTest extends DbObjectTestBase {
         assertNull(comment.getComment()); // Comment的comment是null
         assertEquals("role comment", comment.getCommentText());
 
+        executeUpdate("COMMENT ON ROLE myrole IS NULL");
+        comment = db.findComment(session, role);
+        assertNull(comment);
+
         executeUpdate("DROP ROLE IF EXISTS myrole");
         executeUpdate("DROP TABLE IF EXISTS CommentTest");
     }
