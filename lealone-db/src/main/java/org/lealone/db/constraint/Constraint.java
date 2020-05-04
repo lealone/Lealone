@@ -177,5 +177,4 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
 
     public void getDependencies(Set<DbObject> dependencies) {
     }
-
 }

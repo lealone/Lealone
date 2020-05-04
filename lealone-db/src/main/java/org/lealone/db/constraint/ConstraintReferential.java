@@ -663,5 +663,4 @@ public class ConstraintReferential extends Constraint {
     public Index getUniqueIndex() {
         return refIndex;
     }
-
 }

@@ -157,5 +157,4 @@ public class ConstraintUnique extends Constraint {
     public void rebuild() {
         // nothing to do
     }
-
 }

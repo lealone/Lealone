@@ -142,11 +142,15 @@ public class AlterTableAddConstraint extends SchemaStatement {
 
     @Override
     public int update() {
+        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.CONSTRAINT, session);
+        if (lockTable == null)
+            return -1;
+
         try {
-            return tryUpdate();
+            return tryUpdate(lockTable);
         } catch (DbException e) {
             for (Index index : createdIndexes) {
-                getSchema().remove(session, index);
+                getSchema().remove(session, index, lockTable);
             }
             throw e;
         } finally {
@@ -159,11 +163,7 @@ public class AlterTableAddConstraint extends SchemaStatement {
      *
      * @return the update count
      */
-    private int tryUpdate() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.CONSTRAINT, session);
-        if (lockTable == null)
-            return -1;
-
+    private int tryUpdate(LockTable lockTable) {
         Table table = getSchema().getTableOrView(session, tableName);
         if (getSchema().findConstraint(session, constraintName) != null) {
             if (ifNotExists) {
