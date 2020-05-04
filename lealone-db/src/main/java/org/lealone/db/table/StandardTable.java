@@ -32,7 +32,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Cursor;
-import org.lealone.db.index.GlobalUniqueIndex;
 import org.lealone.db.index.HashIndex;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
@@ -73,7 +72,6 @@ public class StandardTable extends Table {
     private int changesSinceAnalyze;
     private int nextAnalyze;
     private boolean containsLargeObject;
-    private boolean containsGlobalUniqueIndex;
     private Column rowIdColumn;
     private long rowCount;
 
@@ -371,9 +369,6 @@ public class StandardTable extends Table {
             }
             if (mainIndexColumn != -1) {
                 index = createDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
-            } else if (isGlobalUniqueIndex(session, indexType)) {
-                index = new GlobalUniqueIndex(session, this, indexId, indexName, cols, indexType);
-                containsGlobalUniqueIndex = true;
             } else if (indexType.isHash() && cols.length <= 1) { // TODO 是否要支持多版本
                 if (indexType.isUnique()) {
                     index = new HashIndex(this, indexId, indexName, cols, indexType);
@@ -400,12 +395,6 @@ public class StandardTable extends Table {
         indexes.add(index);
         setModified();
         return index;
-    }
-
-    private boolean isGlobalUniqueIndex(ServerSession session, IndexType indexType) {
-        return indexType.isUnique() && !indexType.isPrimaryKey() && session.isShardingMode()
-                && session.getConnectionInfo() != null && !session.getConnectionInfo().isEmbedded(); // &&
-                                                                                                     // !session.isLocal();
     }
 
     private StandardDelegateIndex createDelegateIndex(int indexId, String indexName, IndexType indexType,
@@ -788,11 +777,6 @@ public class StandardTable extends Table {
         if (database != null) {
             lastModificationId = database.getNextModificationDataId();
         }
-    }
-
-    @Override
-    public boolean containsGlobalUniqueIndex() {
-        return containsGlobalUniqueIndex;
     }
 
     // 只要组合数据库id和表或索引的id就能得到一个全局唯一的map名了

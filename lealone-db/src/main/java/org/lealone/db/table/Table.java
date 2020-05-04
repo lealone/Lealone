@@ -1075,10 +1075,6 @@ public abstract class Table extends SchemaObjectBase {
         this.isHidden = hidden;
     }
 
-    public boolean containsGlobalUniqueIndex() {
-        return false;
-    }
-
     public List<StorageMap<? extends Object, ? extends Object>> getAllStorageMaps() {
         return new ArrayList<>(0);
     }
