@@ -14,7 +14,6 @@ import java.util.TreeSet;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.index.Cursor;
-import org.lealone.db.index.IndexBase;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -37,7 +36,7 @@ import org.lealone.transaction.TransactionMap;
  * @author H2 Group
  * @author zhh
  */
-public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
+public class StandardSecondaryIndex extends StandardIndex {
 
     private final StandardTable table;
     private final String mapName;
@@ -169,16 +168,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
                 map.remove();
             }
         }
-    }
-
-    @Override
-    public void close(ServerSession session) {
-        // ok
-    }
-
-    @Override
-    public boolean supportsAsync() {
-        return true;
     }
 
     private void checkUnique(SearchRow row, TransactionMap<Value, Value> map, ValueArray unique) {
@@ -315,11 +304,6 @@ public class StandardSecondaryIndex extends IndexBase implements StandardIndex {
     @Override
     public void truncate(ServerSession session) {
         getMap(session).clear();
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return true;
     }
 
     @Override

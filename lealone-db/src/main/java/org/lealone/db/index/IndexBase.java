@@ -433,11 +433,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public boolean needRebuild() {
-        return false;
-    }
-
-    @Override
     public long getDiskSpaceUsed() {
         return 0;
     }
@@ -445,6 +440,26 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public long getMemorySpaceUsed() {
         return 0;
+    }
+
+    @Override
+    public boolean needRebuild() {
+        return false;
+    }
+
+    @Override
+    public boolean isInMemory() {
+        return false;
+    }
+
+    @Override
+    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
+        throw DbException.getUnsupportedException("addRowsToBuffer");
+    }
+
+    @Override
+    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
+        throw DbException.getUnsupportedException("addBufferedRows");
     }
 
     @Override

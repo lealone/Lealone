@@ -10,7 +10,6 @@ import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.index.Cursor;
-import org.lealone.db.index.IndexBase;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -27,7 +26,7 @@ import org.lealone.transaction.Transaction;
 /**
  * An index that delegates indexing to another index.
  */
-public class StandardDelegateIndex extends IndexBase implements StandardIndex {
+public class StandardDelegateIndex extends StandardIndex {
 
     private final StandardPrimaryIndex mainIndex;
 
@@ -83,16 +82,6 @@ public class StandardDelegateIndex extends IndexBase implements StandardIndex {
     public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
         // nothing to do
         return Transaction.OPERATION_COMPLETE;
-    }
-
-    @Override
-    public boolean canGetFirstOrLast() {
-        return true;
-    }
-
-    @Override
-    public void close(ServerSession session) {
-        // nothing to do
     }
 
     @Override

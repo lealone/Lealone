@@ -89,6 +89,11 @@ public abstract class HashIndex extends IndexBase {
     }
 
     @Override
+    public boolean isInMemory() {
+        return true;
+    }
+
+    @Override
     public boolean canGetFirstOrLast() {
         return false;
     }

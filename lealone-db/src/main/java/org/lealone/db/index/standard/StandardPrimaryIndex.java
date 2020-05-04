@@ -18,7 +18,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.index.Cursor;
-import org.lealone.db.index.IndexBase;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
@@ -44,7 +43,7 @@ import org.lealone.transaction.TransactionMap;
  * @author H2 Group
  * @author zhh
  */
-public class StandardPrimaryIndex extends IndexBase {
+public class StandardPrimaryIndex extends StandardIndex {
 
     /**
      * The minimum long value.
@@ -108,16 +107,6 @@ public class StandardPrimaryIndex extends IndexBase {
 
     public int getMainIndexColumn() {
         return mainIndexColumn;
-    }
-
-    @Override
-    public void close(ServerSession session) {
-        // ok
-    }
-
-    @Override
-    public boolean supportsAsync() {
-        return true;
     }
 
     @Override
@@ -337,11 +326,6 @@ public class StandardPrimaryIndex extends IndexBase {
     }
 
     @Override
-    public boolean canGetFirstOrLast() {
-        return true;
-    }
-
-    @Override
     public Cursor findFirstOrLast(ServerSession session, boolean first) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
@@ -446,7 +430,8 @@ public class StandardPrimaryIndex extends IndexBase {
         return dataMap.getInstance(session.getTransaction());
     }
 
-    boolean isInMemory() {
+    @Override
+    public boolean isInMemory() {
         return dataMap.isInMemory();
     }
 

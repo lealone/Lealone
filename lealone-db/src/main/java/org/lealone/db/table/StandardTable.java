@@ -38,7 +38,6 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.index.hash.NonUniqueHashIndex;
 import org.lealone.db.index.hash.UniqueHashIndex;
 import org.lealone.db.index.standard.StandardDelegateIndex;
-import org.lealone.db.index.standard.StandardIndex;
 import org.lealone.db.index.standard.StandardPrimaryIndex;
 import org.lealone.db.index.standard.StandardSecondaryIndex;
 import org.lealone.db.result.Row;
@@ -378,8 +377,8 @@ public class StandardTable extends Table {
             } else {
                 index = new StandardSecondaryIndex(session, this, indexId, indexName, cols, indexType);
             }
-            if (index instanceof StandardIndex && index.needRebuild()) {
-                rebuildIndex(session, (StandardIndex) index, indexName);
+            if (index.needRebuild()) {
+                rebuildIndex(session, index, indexName);
             }
         }
         index.setTemporary(isTemporary());
@@ -403,7 +402,7 @@ public class StandardTable extends Table {
         return new StandardDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
     }
 
-    private void rebuildIndex(ServerSession session, StandardIndex index, String indexName) {
+    private void rebuildIndex(ServerSession session, Index index, String indexName) {
         try {
             if (index.isInMemory()) {
                 // in-memory
@@ -426,7 +425,7 @@ public class StandardTable extends Table {
         }
     }
 
-    private void rebuildIndexBlockMerge(ServerSession session, StandardIndex index) {
+    private void rebuildIndexBlockMerge(ServerSession session, Index index) {
         // Read entries in memory, sort them, write to a new map (in sorted
         // order); repeat (using a new map for every block of 1 MB) until all
         // record are read. Merge all maps to the target (using merge sort;
