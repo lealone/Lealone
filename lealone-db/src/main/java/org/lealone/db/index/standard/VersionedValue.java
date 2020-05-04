@@ -15,23 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db.index;
+package org.lealone.db.index.standard;
 
-import org.lealone.db.DataHandler;
-import org.lealone.db.value.CompareMode;
+import org.lealone.db.value.ValueArray;
 
-/**
- * 用于优化唯一性检查，包括唯一约束、多字段primary key以及非byte/short/int/long类型的单字段primary key
- * 通过SecondaryIndex增加索引记录时不需要在执行addIfAbsent前后做唯一性检查
- */
-public class UniqueKeyDataType extends ValueDataType {
+public class VersionedValue {
 
-    public UniqueKeyDataType(DataHandler handler, CompareMode compareMode, int[] sortTypes) {
-        super(handler, compareMode, sortTypes);
+    public final int version; // 表的元数据版本号
+    public final ValueArray value;
+
+    public VersionedValue(int version, ValueArray value) {
+        this.version = version;
+        this.value = value;
     }
 
     @Override
-    protected boolean isUniqueKey() {
-        return true;
+    public String toString() {
+        StringBuilder buff = new StringBuilder("VersionedValue[ ");
+        buff.append("version = ").append(version);
+        buff.append(", value = ").append(value).append(" ]");
+        return buff.toString();
     }
 }

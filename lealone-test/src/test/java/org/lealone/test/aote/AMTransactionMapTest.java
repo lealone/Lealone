@@ -20,9 +20,9 @@ package org.lealone.test.aote;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
-import org.lealone.db.index.ValueDataType;
-import org.lealone.db.index.VersionedValue;
-import org.lealone.db.index.VersionedValueType;
+import org.lealone.db.index.standard.ValueDataType;
+import org.lealone.db.index.standard.VersionedValue;
+import org.lealone.db.index.standard.VersionedValueType;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db.index;
+package org.lealone.db.index.standard;
 
 import java.nio.ByteBuffer;
 

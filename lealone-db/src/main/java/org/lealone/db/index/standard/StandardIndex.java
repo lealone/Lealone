@@ -3,10 +3,11 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.index;
+package org.lealone.db.index.standard;
 
 import java.util.List;
 
+import org.lealone.db.index.Index;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
 

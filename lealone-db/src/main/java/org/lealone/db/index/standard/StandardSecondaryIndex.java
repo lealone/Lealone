@@ -3,7 +3,7 @@
  * and the EPL 1.0 (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.index;
+package org.lealone.db.index.standard;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,6 +13,10 @@ import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.index.Cursor;
+import org.lealone.db.index.IndexBase;
+import org.lealone.db.index.IndexColumn;
+import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;

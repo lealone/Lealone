@@ -33,7 +33,7 @@ import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
-import org.lealone.db.index.StandardPrimaryIndex;
+import org.lealone.db.index.standard.StandardPrimaryIndex;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
