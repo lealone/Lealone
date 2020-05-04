@@ -47,7 +47,6 @@ import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
-import org.lealone.db.util.AutoCloseInputStream;
 import org.lealone.db.util.Csv;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -73,6 +72,7 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Variable;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.util.AutoCloseInputStream;
 import org.lealone.storage.fs.FileUtils;
 
 /**

@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.db.util;
+package org.lealone.sql.util;
 
 import java.io.IOException;
 import java.io.InputStream;

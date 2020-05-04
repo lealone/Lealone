@@ -19,7 +19,7 @@
  * diligence.
  * -Alan
  */
-package org.lealone.db.util;
+package org.lealone.sql.util;
 
 import org.lealone.common.exceptions.DbException;
 
