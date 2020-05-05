@@ -164,6 +164,8 @@ public class Schema extends DbObjectBase {
         while (dbObjects != null && dbObjects.size() > 0) {
             SchemaObject obj = (SchemaObject) dbObjects.values().toArray()[0];
             remove(session, obj, lockTable);
+            // 重新获取，因为调用remove方法会重新copy一份再删除
+            dbObjects = getDbObjects(type);
         }
     }
 
