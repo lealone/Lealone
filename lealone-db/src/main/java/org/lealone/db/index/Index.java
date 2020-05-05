@@ -20,7 +20,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -309,8 +308,6 @@ public interface Index extends SchemaObject {
      * @param bufferNames the names of the temporary storage
      */
     void addBufferedRows(ServerSession session, List<String> bufferNames);
-
-    StorageMap<? extends Object, ? extends Object> getStorageMap();
 
     Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
 }

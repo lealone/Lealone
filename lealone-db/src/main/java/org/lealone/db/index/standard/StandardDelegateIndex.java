@@ -145,11 +145,6 @@ public class StandardDelegateIndex extends StandardIndex {
     }
 
     @Override
-    public boolean needRebuild() {
-        return false;
-    }
-
-    @Override
     public boolean isInMemory() {
         return mainIndex.isInMemory();
     }

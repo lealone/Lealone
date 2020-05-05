@@ -47,7 +47,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.storage.StorageEngine;
-import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -796,16 +795,6 @@ public class StandardTable extends Table {
             name.append(arg.toString());
         }
         return name.toString();
-    }
-
-    @Override
-    public List<StorageMap<? extends Object, ? extends Object>> getAllStorageMaps() {
-        List<StorageMap<? extends Object, ? extends Object>> maps = new ArrayList<>(indexes.size());
-        for (Index i : indexes) {
-            if (i.getStorageMap() != null)
-                maps.add(i.getStorageMap());
-        }
-        return maps;
     }
 
     @Override

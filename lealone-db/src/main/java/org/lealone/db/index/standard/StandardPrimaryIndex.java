@@ -426,18 +426,8 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public boolean needRebuild() {
-        return false;
-    }
-
-    @Override
     public boolean isInMemory() {
         return dataMap.isInMemory();
-    }
-
-    @Override
-    public StorageMap<? extends Object, ? extends Object> getStorageMap() {
-        return dataMap;
     }
 
     private ValueLong[] getMinAndMaxValues(SearchRow first, SearchRow last) {

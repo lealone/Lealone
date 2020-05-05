@@ -37,7 +37,6 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.IExpression;
-import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -1073,10 +1072,6 @@ public abstract class Table extends SchemaObjectBase {
 
     public void setHidden(boolean hidden) {
         this.isHidden = hidden;
-    }
-
-    public List<StorageMap<? extends Object, ? extends Object>> getAllStorageMaps() {
-        return new ArrayList<>(0);
     }
 
     public String getPackageName() {

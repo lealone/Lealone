@@ -28,7 +28,6 @@ import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.Storage;
-import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 
@@ -258,11 +257,6 @@ public class StandardSecondaryIndex extends StandardIndex {
             return dataMap;
         }
         return dataMap.getInstance(session.getTransaction());
-    }
-
-    @Override
-    public StorageMap<? extends Object, ? extends Object> getStorageMap() {
-        return dataMap;
     }
 
     @Override

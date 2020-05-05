@@ -28,7 +28,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.StorageMap;
 
 /**
  * Most index implementations extend the base index.
@@ -416,11 +415,6 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     @Override
     public void addBufferedRows(ServerSession session, List<String> bufferNames) {
         throw DbException.getUnsupportedException("addBufferedRows");
-    }
-
-    @Override
-    public StorageMap<? extends Object, ? extends Object> getStorageMap() {
-        return null;
     }
 
     @Override
