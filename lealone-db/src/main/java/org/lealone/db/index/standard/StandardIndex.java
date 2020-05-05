@@ -30,6 +30,11 @@ public abstract class StandardIndex extends IndexBase {
     }
 
     @Override
+    public boolean supportsAsync() {
+        return true;
+    }
+
+    @Override
     public boolean canGetFirstOrLast() {
         return true;
     }
@@ -37,10 +42,5 @@ public abstract class StandardIndex extends IndexBase {
     @Override
     public void close(ServerSession session) {
         // nothing to do
-    }
-
-    @Override
-    public boolean supportsAsync() {
-        return true;
     }
 }

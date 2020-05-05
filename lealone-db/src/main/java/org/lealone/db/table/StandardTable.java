@@ -329,6 +329,7 @@ public class StandardTable extends Table {
         return true;
     }
 
+    @Override
     public Row getRow(ServerSession session, long key) {
         return primaryIndex.getRow(session, key);
     }
@@ -370,12 +371,12 @@ public class StandardTable extends Table {
                 index = createDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
             } else if (indexType.isHash() && cols.length <= 1) { // TODO 是否要支持多版本
                 if (indexType.isUnique()) {
-                    index = new UniqueHashIndex(this, indexId, indexName, cols, indexType);
+                    index = new UniqueHashIndex(this, indexId, indexName, indexType, cols);
                 } else {
-                    index = new NonUniqueHashIndex(this, indexId, indexName, cols, indexType);
+                    index = new NonUniqueHashIndex(this, indexId, indexName, indexType, cols);
                 }
             } else {
-                index = new StandardSecondaryIndex(session, this, indexId, indexName, cols, indexType);
+                index = new StandardSecondaryIndex(session, this, indexId, indexName, indexType, cols);
             }
             if (index.needRebuild()) {
                 rebuildIndex(session, index, indexName);
@@ -399,7 +400,7 @@ public class StandardTable extends Table {
     private StandardDelegateIndex createDelegateIndex(int indexId, String indexName, IndexType indexType,
             int mainIndexColumn) {
         primaryIndex.setMainIndexColumn(mainIndexColumn);
-        return new StandardDelegateIndex(this, indexId, indexName, primaryIndex, indexType);
+        return new StandardDelegateIndex(primaryIndex, this, indexId, indexName, indexType);
     }
 
     private void rebuildIndex(ServerSession session, Index index, String indexName) {

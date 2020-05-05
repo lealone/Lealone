@@ -25,12 +25,15 @@ import org.lealone.transaction.Transaction;
 
 /**
  * An index that delegates indexing to another index.
+ * 
+ * @author H2 Group
+ * @author zhh
  */
 public class StandardDelegateIndex extends StandardIndex {
 
     private final StandardPrimaryIndex mainIndex;
 
-    public StandardDelegateIndex(StandardTable table, int id, String name, StandardPrimaryIndex mainIndex,
+    public StandardDelegateIndex(StandardPrimaryIndex mainIndex, StandardTable table, int id, String name,
             IndexType indexType) {
         super(table, id, name, indexType,
                 IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) }));
@@ -38,16 +41,6 @@ public class StandardDelegateIndex extends StandardIndex {
         if (id < 0) {
             throw DbException.throwInternalError("" + name);
         }
-    }
-
-    @Override
-    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
-        throw DbException.throwInternalError();
-    }
-
-    @Override
-    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
-        throw DbException.throwInternalError();
     }
 
     @Override
@@ -117,11 +110,6 @@ public class StandardDelegateIndex extends StandardIndex {
     }
 
     @Override
-    public boolean needRebuild() {
-        return false;
-    }
-
-    @Override
     public void remove(ServerSession session) {
         mainIndex.setMainIndexColumn(-1);
     }
@@ -157,8 +145,23 @@ public class StandardDelegateIndex extends StandardIndex {
     }
 
     @Override
+    public boolean needRebuild() {
+        return false;
+    }
+
+    @Override
     public boolean isInMemory() {
         return mainIndex.isInMemory();
+    }
+
+    @Override
+    public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
+        throw DbException.throwInternalError();
+    }
+
+    @Override
+    public void addBufferedRows(ServerSession session, List<String> bufferNames) {
+        throw DbException.throwInternalError();
     }
 
     @Override

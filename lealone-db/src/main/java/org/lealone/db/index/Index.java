@@ -32,18 +32,54 @@ import org.lealone.transaction.Transaction;
 public interface Index extends SchemaObject {
 
     /**
+     * Get the table on which this index is based.
+     *
+     * @return the table
+     */
+    Table getTable();
+
+    /**
+     * Get the index type.
+     *
+     * @return the index type
+     */
+    IndexType getIndexType();
+
+    /**
+     * Get the indexed columns as index columns (with ordering information).
+     *
+     * @return the index columns
+     */
+    IndexColumn[] getIndexColumns();
+
+    /**
+     * Get the indexed columns.
+     *
+     * @return the columns
+     */
+    Column[] getColumns();
+
+    /**
+     * Get the indexed column ids.
+     *
+     * @return the column ids
+     */
+    int[] getColumnIds();
+
+    /**
+     * Get the index of a column in the list of index columns
+     *
+     * @param col the column
+     * @return the index (0 meaning first column)
+     */
+    int getColumnIndex(Column col);
+
+    /**
      * Get the message to show in a EXPLAIN statement.
      *
      * @return the plan
      */
     String getPlanSQL();
-
-    /**
-     * Close this index.
-     *
-     * @param session the session used to write data
-     */
-    void close(ServerSession session);
 
     default boolean supportsAsync() {
         return false;
@@ -115,34 +151,6 @@ public interface Index extends SchemaObject {
     Cursor find(ServerSession session, IterationParameters<SearchRow> parameters);
 
     /**
-     * Estimate the cost to search for rows given the search mask.
-     * There is one element per column in the search mask.
-     * For possible search masks, see IndexCondition.
-     *
-     * @param session the session
-     * @param masks per-column comparison bit masks, null means 'always false',
-     *              see constants in IndexCondition
-     * @param filter the table filter
-     * @param sortOrder the sort order
-     * @return the estimated cost
-     */
-    double getCost(ServerSession session, int[] masks, SortOrder sortOrder);
-
-    /**
-     * Remove the index.
-     *
-     * @param session the session
-     */
-    void remove(ServerSession session);
-
-    /**
-     * Remove all rows from the index.
-     *
-     * @param session the session
-     */
-    void truncate(ServerSession session);
-
-    /**
      * Check if the index can directly look up the lowest or highest value of a
      * column.
      *
@@ -180,6 +188,52 @@ public interface Index extends SchemaObject {
     Cursor findDistinct(ServerSession session, SearchRow first, SearchRow last);
 
     /**
+     * Can this index iterate over all rows?
+     *
+     * @return true if it can
+     */
+    boolean canScan();
+
+    /**
+     * Does this index support lookup by row id?
+     *
+     * @return true if it does
+     */
+    boolean isRowIdIndex();
+
+    /**
+     * Get the row with the given key.
+     *
+     * @param session the session
+     * @param key the unique key
+     * @return the row
+     */
+    Row getRow(ServerSession session, long key);
+
+    /**
+     * Compare two rows.
+     *
+     * @param rowData the first row
+     * @param compare the second row
+     * @return 0 if both rows are equal, -1 if the first row is smaller, otherwise 1
+     */
+    int compareRows(SearchRow rowData, SearchRow compare);
+
+    /**
+     * Estimate the cost to search for rows given the search mask.
+     * There is one element per column in the search mask.
+     * For possible search masks, see IndexCondition.
+     *
+     * @param session the session
+     * @param masks per-column comparison bit masks, null means 'always false',
+     *              see constants in IndexCondition
+     * @param filter the table filter
+     * @param sortOrder the sort order
+     * @return the estimated cost
+     */
+    double getCost(ServerSession session, int[] masks, SortOrder sortOrder);
+
+    /**
      * Get the row count of this table, for the given session.
      *
      * @param session the session
@@ -195,6 +249,27 @@ public interface Index extends SchemaObject {
     long getRowCountApproximation();
 
     /**
+     * Close this index.
+     *
+     * @param session the session used to write data
+     */
+    void close(ServerSession session);
+
+    /**
+     * Remove the index.
+     *
+     * @param session the session
+     */
+    void remove(ServerSession session);
+
+    /**
+     * Remove all rows from the index.
+     *
+     * @param session the session
+     */
+    void truncate(ServerSession session);
+
+    /**
      * Get the used disk space for this index.
      *
      * @return the estimated number of bytes
@@ -207,81 +282,6 @@ public interface Index extends SchemaObject {
      * @return the estimated number of bytes
      */
     long getMemorySpaceUsed();
-
-    /**
-     * Compare two rows.
-     *
-     * @param rowData the first row
-     * @param compare the second row
-     * @return 0 if both rows are equal, -1 if the first row is smaller, otherwise 1
-     */
-    int compareRows(SearchRow rowData, SearchRow compare);
-
-    /**
-     * Get the index of a column in the list of index columns
-     *
-     * @param col the column
-     * @return the index (0 meaning first column)
-     */
-    int getColumnIndex(Column col);
-
-    /**
-     * Get the indexed columns as index columns (with ordering information).
-     *
-     * @return the index columns
-     */
-    IndexColumn[] getIndexColumns();
-
-    /**
-     * Get the indexed columns.
-     *
-     * @return the columns
-     */
-    Column[] getColumns();
-
-    /**
-     * Get the indexed column ids.
-     *
-     * @return the column ids
-     */
-    int[] getColumnIds();
-
-    /**
-     * Get the index type.
-     *
-     * @return the index type
-     */
-    IndexType getIndexType();
-
-    /**
-     * Get the table on which this index is based.
-     *
-     * @return the table
-     */
-    Table getTable();
-
-    /**
-     * Get the row with the given key.
-     *
-     * @param session the session
-     * @param key the unique key
-     * @return the row
-     */
-    Row getRow(ServerSession session, long key);
-
-    /**
-     * Does this index support lookup by row id?
-     *
-     * @return true if it does
-     */
-    boolean isRowIdIndex();
-
-    /**
-     * Can this index iterate over all rows?
-     *
-     * @return true if it can
-     */
-    boolean canScan();
 
     /**
      * Check if the index needs to be rebuilt.

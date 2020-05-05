@@ -65,16 +65,6 @@ public class RangeIndex extends IndexBase {
     }
 
     @Override
-    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
-        return 1;
-    }
-
-    @Override
-    public String getCreateSQL() {
-        return null;
-    }
-
-    @Override
     public boolean canGetFirstOrLast() {
         return true;
     }
@@ -83,6 +73,16 @@ public class RangeIndex extends IndexBase {
     public Cursor findFirstOrLast(ServerSession session, boolean first) {
         long pos = first ? rangeTable.getMin(session) : rangeTable.getMax(session);
         return new RangeCursor(pos, pos);
+    }
+
+    @Override
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
+        return 1;
+    }
+
+    @Override
+    public String getCreateSQL() {
+        return null;
     }
 
     @Override

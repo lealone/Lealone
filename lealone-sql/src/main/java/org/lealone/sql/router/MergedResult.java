@@ -32,7 +32,7 @@ public class MergedResult extends DelegatedResult {
         SerializedResult serializedResult = new SerializedResult(results, oldSelect.getLimitRows());
         Table table = newSelect.getTopTableFilter().getTable();
         newSelect.getTopTableFilter().setIndex(new MergedIndex(serializedResult, table, -1,
-                IndexColumn.wrap(table.getColumns()), IndexType.createScan()));
+                IndexType.createScan(), IndexColumn.wrap(table.getColumns())));
 
         // 2. 把多个结果集合并
         Result mergedResult = newSelect.queryGroupMerge();

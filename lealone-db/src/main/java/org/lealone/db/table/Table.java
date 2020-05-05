@@ -1107,6 +1107,10 @@ public abstract class Table extends SchemaObjectBase {
         return false;
     }
 
+    public Row getRow(ServerSession session, long key) {
+        return null;
+    }
+
     public Row getRow(ServerSession session, long key, Object oldTransactionalValue) {
         return null;
     }

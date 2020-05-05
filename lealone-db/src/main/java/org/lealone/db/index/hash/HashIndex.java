@@ -26,20 +26,17 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.StandardTable;
+import org.lealone.db.table.Table;
 
 public abstract class HashIndex extends IndexBase {
-
-    protected final StandardTable table;
 
     /**
      * The index of the indexed column.
      */
     protected final int indexColumn;
 
-    protected HashIndex(StandardTable table, int id, String indexName, IndexType indexType, IndexColumn[] columns) {
+    protected HashIndex(Table table, int id, String indexName, IndexType indexType, IndexColumn[] columns) {
         super(table, id, indexName, indexType, columns);
-        this.table = table;
         this.indexColumn = columns[0].column.getColumnId();
         reset();
     }
@@ -84,16 +81,6 @@ public abstract class HashIndex extends IndexBase {
     }
 
     @Override
-    public boolean needRebuild() {
-        return true;
-    }
-
-    @Override
-    public boolean isInMemory() {
-        return true;
-    }
-
-    @Override
     public boolean canGetFirstOrLast() {
         return false;
     }
@@ -106,5 +93,15 @@ public abstract class HashIndex extends IndexBase {
     @Override
     public boolean canScan() {
         return false;
+    }
+
+    @Override
+    public boolean needRebuild() {
+        return true;
+    }
+
+    @Override
+    public boolean isInMemory() {
+        return true;
     }
 }

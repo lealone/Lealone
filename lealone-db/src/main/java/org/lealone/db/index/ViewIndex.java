@@ -79,6 +79,14 @@ public class ViewIndex extends IndexBase {
         return createSession;
     }
 
+    public void setRecursive(boolean value) {
+        this.recursive = value;
+    }
+
+    public boolean isRecursive() {
+        return recursive;
+    }
+
     @Override
     public String getPlanSQL() {
         return planSQL;
@@ -333,10 +341,6 @@ public class ViewIndex extends IndexBase {
         return q;
     }
 
-    public void setRecursive(boolean value) {
-        this.recursive = value;
-    }
-
     @Override
     public long getRowCount(ServerSession session) {
         return 0;
@@ -345,10 +349,6 @@ public class ViewIndex extends IndexBase {
     @Override
     public long getRowCountApproximation() {
         return 0;
-    }
-
-    public boolean isRecursive() {
-        return recursive;
     }
 
     /**

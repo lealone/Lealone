@@ -31,7 +31,7 @@ import org.lealone.db.table.Table;
 public class MergedIndex extends IndexBase {
     private final Result result;
 
-    public MergedIndex(Result result, Table table, int id, IndexColumn[] columns, IndexType indexType) {
+    public MergedIndex(Result result, Table table, int id, IndexType indexType, IndexColumn[] columns) {
         super(table, id, table.getName() + "_DATA", indexType, columns);
         this.result = result;
     }
@@ -57,6 +57,7 @@ public class MergedIndex extends IndexBase {
     }
 
     private static class MergedCursor implements Cursor {
+
         private final Result result;
 
         MergedCursor(Result result) {

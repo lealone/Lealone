@@ -44,7 +44,7 @@ public class StandardSecondaryIndex extends StandardIndex {
     private final TransactionMap<Value, Value> dataMap;
 
     public StandardSecondaryIndex(ServerSession session, StandardTable table, int id, String indexName,
-            IndexColumn[] indexColumns, IndexType indexType) {
+            IndexType indexType, IndexColumn[] indexColumns) {
         super(table, id, indexName, indexType, indexColumns);
         this.table = table;
         mapName = table.getMapNameForIndex(id);
@@ -88,6 +88,195 @@ public class StandardSecondaryIndex extends StandardIndex {
 
     public String getMapName() {
         return mapName;
+    }
+
+    @Override
+    public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
+        final TransactionMap<Value, Value> map = getMap(session);
+        final ValueArray array = convertToKey(row);
+
+        Transaction.Listener localListener = new Transaction.Listener() {
+            @Override
+            public void operationUndo() {
+                // 违反了唯一性，
+                // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
+                // 因为StandardPrimaryIndex和StandardSecondaryIndex的tryAdd是异步并行执行的，
+                // 有可能先跑StandardSecondaryIndex先，所以可能得到相同的索引key，
+                // 这时StandardPrimaryIndex和StandardSecondaryIndex都会检测到重复key的异常。
+                DbException e = getDuplicateKeyException(array.toString());
+                globalListener.setException(e);
+                globalListener.operationUndo();
+            }
+
+            @Override
+            public void operationComplete() {
+                globalListener.operationComplete();
+            }
+        };
+        globalListener.beforeOperation();
+        map.addIfAbsent(array, ValueNull.INSTANCE, localListener);
+        return true;
+    }
+
+    @Override
+    public int tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            Transaction.Listener globalListener) {
+        // 只有索引字段被更新时才更新索引
+        for (Column c : columns) {
+            if (updateColumns.contains(c)) {
+                return super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
+            }
+        }
+        return Transaction.OPERATION_COMPLETE;
+    }
+
+    @Override
+    public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
+        TransactionMap<Value, Value> map = getMap(session);
+        ValueArray array = convertToKey(row);
+        Object oldTransactionalValue = map.getTransactionalValue(array);
+        if (map.isLocked(oldTransactionalValue, null))
+            return map.addWaitingTransaction(ValueLong.get(row.getKey()), oldTransactionalValue, globalListener);
+        else
+            return map.tryRemove(array, oldTransactionalValue);
+    }
+
+    @Override
+    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
+        ValueArray min = convertToKey(first);
+        if (min != null) {
+            min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+        }
+        return new StandardSecondaryIndexCursor(session, getMap(session).keyIterator(min), last);
+    }
+
+    private ValueArray convertToKey(SearchRow r) {
+        if (r == null) {
+            return null;
+        }
+        Value[] array = new Value[keyColumns];
+        for (int i = 0; i < columns.length; i++) {
+            Column c = columns[i];
+            int idx = c.getColumnId();
+            Value v = r.getValue(idx);
+            if (v != null) {
+                array[i] = v.convertTo(c.getType());
+            }
+        }
+        array[keyColumns - 1] = ValueLong.get(r.getKey());
+        return ValueArray.get(array);
+    }
+
+    @Override
+    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
+        try {
+            return 10 * getCostRangeIndex(masks, dataMap.rawSize(), sortOrder);
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+        }
+    }
+
+    @Override
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
+        TransactionMap<Value, Value> map = getMap(session);
+        Value key = first ? map.firstKey() : map.lastKey();
+        while (true) {
+            if (key == null) {
+                return new StandardSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
+            }
+            if (((ValueArray) key).getList()[0] != ValueNull.INSTANCE) {
+                break;
+            }
+            key = first ? map.higherKey(key) : map.lowerKey(key);
+        }
+        ArrayList<Value> list = new ArrayList<>(1);
+        list.add(key);
+        StandardSecondaryIndexCursor cursor = new StandardSecondaryIndexCursor(session, list.iterator(), null);
+        cursor.next();
+        return cursor;
+    }
+
+    @Override
+    public boolean supportsDistinctQuery() {
+        return true;
+    }
+
+    @Override
+    public Cursor findDistinct(ServerSession session, SearchRow first, SearchRow last) {
+        ValueArray min = convertToKey(first);
+        if (min != null) {
+            min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
+        }
+        return new StandardSecondaryIndexDistinctCursor(session, min, last);
+    }
+
+    @Override
+    public long getRowCount(ServerSession session) {
+        return getMap(session).size();
+    }
+
+    @Override
+    public long getRowCountApproximation() {
+        try {
+            return dataMap.rawSize();
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+        }
+    }
+
+    @Override
+    public long getDiskSpaceUsed() {
+        return dataMap.getDiskSpaceUsed();
+    }
+
+    @Override
+    public long getMemorySpaceUsed() {
+        return dataMap.getMemorySpaceUsed();
+    }
+
+    @Override
+    public void remove(ServerSession session) {
+        TransactionMap<Value, Value> map = getMap(session);
+        if (!map.isClosed()) {
+            map.remove();
+        }
+    }
+
+    @Override
+    public void truncate(ServerSession session) {
+        getMap(session).clear();
+    }
+
+    /**
+     * Get the map to store the data.
+     *
+     * @param session the session
+     * @return the map
+     */
+    private TransactionMap<Value, Value> getMap(ServerSession session) {
+        if (session == null) {
+            return dataMap;
+        }
+        return dataMap.getInstance(session.getTransaction());
+    }
+
+    @Override
+    public StorageMap<? extends Object, ? extends Object> getStorageMap() {
+        return dataMap;
+    }
+
+    @Override
+    public boolean needRebuild() {
+        try {
+            return dataMap.rawSize() == 0;
+        } catch (IllegalStateException e) {
+            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
+        }
+    }
+
+    @Override
+    public boolean isInMemory() {
+        return dataMap.isInMemory();
     }
 
     @Override
@@ -186,90 +375,13 @@ public class StandardSecondaryIndex extends StandardIndex {
         }
     }
 
-    @Override
-    public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
-        final TransactionMap<Value, Value> map = getMap(session);
-        final ValueArray array = convertToKey(row);
-
-        Transaction.Listener localListener = new Transaction.Listener() {
-            @Override
-            public void operationUndo() {
-                // 违反了唯一性，
-                // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
-                // 因为StandardPrimaryIndex和StandardSecondaryIndex的tryAdd是异步并行执行的，
-                // 有可能先跑StandardSecondaryIndex先，所以可能得到相同的索引key，
-                // 这时StandardPrimaryIndex和StandardSecondaryIndex都会检测到重复key的异常。
-                DbException e = getDuplicateKeyException(array.toString());
-                globalListener.setException(e);
-                globalListener.operationUndo();
-            }
-
-            @Override
-            public void operationComplete() {
-                globalListener.operationComplete();
-            }
-        };
-        globalListener.beforeOperation();
-        map.addIfAbsent(array, ValueNull.INSTANCE, localListener);
-        return true;
-    }
-
-    @Override
-    public int tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
-            Transaction.Listener globalListener) {
-        // 只有索引字段被更新时才更新索引
-        for (Column c : columns) {
-            if (updateColumns.contains(c)) {
-                return super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
-            }
-        }
-        return Transaction.OPERATION_COMPLETE;
-    }
-
-    @Override
-    public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
-        TransactionMap<Value, Value> map = getMap(session);
-        ValueArray array = convertToKey(row);
-        Object oldTransactionalValue = map.getTransactionalValue(array);
-        if (map.isLocked(oldTransactionalValue, null))
-            return map.addWaitingTransaction(ValueLong.get(row.getKey()), oldTransactionalValue, globalListener);
-        else
-            return map.tryRemove(array, oldTransactionalValue);
-    }
-
-    @Override
-    public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
-        ValueArray min = convertToKey(first);
-        if (min != null) {
-            min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-        }
-        return new StandardSecondaryIndexCursor(session, getMap(session).keyIterator(min), last);
-    }
-
-    private ValueArray convertToKey(SearchRow r) {
-        if (r == null) {
-            return null;
-        }
-        Value[] array = new Value[keyColumns];
-        for (int i = 0; i < columns.length; i++) {
-            Column c = columns[i];
-            int idx = c.getColumnId();
-            Value v = r.getValue(idx);
-            if (v != null) {
-                array[i] = v.convertTo(c.getType());
-            }
-        }
-        array[keyColumns - 1] = ValueLong.get(r.getKey());
-        return ValueArray.get(array);
-    }
-
     /**
      * Convert array of values to a SearchRow.
      *
      * @param array the index key
      * @return the row
      */
-    SearchRow convertToSearchRow(ValueArray key) {
+    private SearchRow convertToSearchRow(ValueArray key) {
         Value[] array = key.getList();
         int len = array.length - 1;
         SearchRow searchRow = table.getTemplateRow();
@@ -282,118 +394,6 @@ public class StandardSecondaryIndex extends StandardIndex {
             searchRow.setValue(idx, v);
         }
         return searchRow;
-    }
-
-    @Override
-    public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
-        try {
-            return 10 * getCostRangeIndex(masks, dataMap.rawSize(), sortOrder);
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
-        }
-    }
-
-    @Override
-    public void remove(ServerSession session) {
-        TransactionMap<Value, Value> map = getMap(session);
-        if (!map.isClosed()) {
-            map.remove();
-        }
-    }
-
-    @Override
-    public void truncate(ServerSession session) {
-        getMap(session).clear();
-    }
-
-    @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
-        TransactionMap<Value, Value> map = getMap(session);
-        Value key = first ? map.firstKey() : map.lastKey();
-        while (true) {
-            if (key == null) {
-                return new StandardSecondaryIndexCursor(session, Collections.<Value> emptyList().iterator(), null);
-            }
-            if (((ValueArray) key).getList()[0] != ValueNull.INSTANCE) {
-                break;
-            }
-            key = first ? map.higherKey(key) : map.lowerKey(key);
-        }
-        ArrayList<Value> list = new ArrayList<>(1);
-        list.add(key);
-        StandardSecondaryIndexCursor cursor = new StandardSecondaryIndexCursor(session, list.iterator(), null);
-        cursor.next();
-        return cursor;
-    }
-
-    @Override
-    public boolean needRebuild() {
-        try {
-            return dataMap.rawSize() == 0;
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
-        }
-    }
-
-    @Override
-    public long getRowCount(ServerSession session) {
-        return getMap(session).size();
-    }
-
-    @Override
-    public long getRowCountApproximation() {
-        try {
-            return dataMap.rawSize();
-        } catch (IllegalStateException e) {
-            throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
-        }
-    }
-
-    @Override
-    public long getDiskSpaceUsed() {
-        return dataMap.getDiskSpaceUsed();
-    }
-
-    @Override
-    public long getMemorySpaceUsed() {
-        return dataMap.getMemorySpaceUsed();
-    }
-
-    @Override
-    public boolean supportsDistinctQuery() {
-        return true;
-    }
-
-    @Override
-    public Cursor findDistinct(ServerSession session, SearchRow first, SearchRow last) {
-        ValueArray min = convertToKey(first);
-        if (min != null) {
-            min.getList()[keyColumns - 1] = ValueLong.get(Long.MIN_VALUE);
-        }
-        return new StandardSecondaryIndexDistinctCursor(session, min, last);
-    }
-
-    /**
-     * Get the map to store the data.
-     *
-     * @param session the session
-     * @return the map
-     */
-    TransactionMap<Value, Value> getMap(ServerSession session) {
-        if (session == null) {
-            return dataMap;
-        }
-        return dataMap.getInstance(session.getTransaction());
-    }
-
-    @Override
-    public boolean isInMemory() {
-        return dataMap.isInMemory();
-    }
-
-    @Override
-    public StorageMap<? extends Object, ? extends Object> getStorageMap() {
-        return dataMap;
     }
 
     /**
@@ -456,6 +456,7 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     private class StandardSecondaryIndexDistinctCursor implements Cursor {
+
         private final TransactionMap<Value, Value> map;
         private final ServerSession session;
         private final SearchRow last;
@@ -466,10 +467,10 @@ public class StandardSecondaryIndex extends StandardIndex {
         private ValueArray oldKey;
 
         public StandardSecondaryIndexDistinctCursor(ServerSession session, ValueArray min, SearchRow last) {
+            this.map = getMap(session);
             this.session = session;
             this.last = last;
-            map = getMap(session);
-            current = min;
+            this.current = min;
         }
 
         @Override

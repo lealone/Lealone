@@ -262,6 +262,22 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
+    public Cursor findFirstOrLast(ServerSession session, boolean first) {
+        TransactionMap<Value, VersionedValue> map = getMap(session);
+        ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
+        if (v == null) {
+            return new StandardPrimaryIndexCursor(session, table, this,
+                    Collections.<Entry<Value, VersionedValue>> emptyList().iterator(), null);
+        }
+        VersionedValue value = map.get(v);
+        Entry<Value, VersionedValue> e = new DataUtils.MapEntry<Value, VersionedValue>(v, value);
+        List<Entry<Value, VersionedValue>> list = Arrays.asList(e);
+        StandardPrimaryIndexCursor c = new StandardPrimaryIndexCursor(session, table, this, list.iterator(), v);
+        c.next();
+        return c;
+    }
+
+    @Override
     public Row getRow(ServerSession session, long key) {
         return getRow(session, key, null);
     }
@@ -323,27 +339,6 @@ public class StandardPrimaryIndex extends StandardIndex {
             database.getLobStorage().removeAllForTable(table.getId());
         }
         getMap(session).clear();
-    }
-
-    @Override
-    public Cursor findFirstOrLast(ServerSession session, boolean first) {
-        TransactionMap<Value, VersionedValue> map = getMap(session);
-        ValueLong v = (ValueLong) (first ? map.firstKey() : map.lastKey());
-        if (v == null) {
-            return new StandardPrimaryIndexCursor(session, table, this,
-                    Collections.<Entry<Value, VersionedValue>> emptyList().iterator(), null);
-        }
-        VersionedValue value = map.get(v);
-        Entry<Value, VersionedValue> e = new DataUtils.MapEntry<Value, VersionedValue>(v, value);
-        List<Entry<Value, VersionedValue>> list = Arrays.asList(e);
-        StandardPrimaryIndexCursor c = new StandardPrimaryIndexCursor(session, table, this, list.iterator(), v);
-        c.next();
-        return c;
-    }
-
-    @Override
-    public boolean needRebuild() {
-        return false;
     }
 
     @Override
@@ -423,11 +418,16 @@ public class StandardPrimaryIndex extends StandardIndex {
      * @param session the session
      * @return the map
      */
-    TransactionMap<Value, VersionedValue> getMap(ServerSession session) {
+    private TransactionMap<Value, VersionedValue> getMap(ServerSession session) {
         if (session == null) {
             return dataMap;
         }
         return dataMap.getInstance(session.getTransaction());
+    }
+
+    @Override
+    public boolean needRebuild() {
+        return false;
     }
 
     @Override

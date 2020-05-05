@@ -120,5 +120,4 @@ public interface DbObject {
 
     default void invalidate() {
     }
-
 }

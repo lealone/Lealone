@@ -16,7 +16,7 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.StandardTable;
+import org.lealone.db.table.Table;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 
@@ -31,8 +31,7 @@ public class NonUniqueHashIndex extends HashIndex {
     private ValueHashMap<ArrayList<Long>> rows;
     private long rowCount;
 
-    public NonUniqueHashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns,
-            IndexType indexType) {
+    public NonUniqueHashIndex(Table table, int id, String indexName, IndexType indexType, IndexColumn[] columns) {
         super(table, id, indexName, indexType, columns);
         reset();
     }
@@ -106,11 +105,11 @@ public class NonUniqueHashIndex extends HashIndex {
 
         private final ServerSession session;
         private final ArrayList<Long> positions;
-        private final StandardTable table;
+        private final Table table;
 
         private int index = -1;
 
-        public NonUniqueHashCursor(ServerSession session, StandardTable table, ArrayList<Long> positions) {
+        public NonUniqueHashCursor(ServerSession session, Table table, ArrayList<Long> positions) {
             this.session = session;
             this.table = table;
             // 这里必须copy一份，执行delete语句时会动态删除，这样会导致执行next()时漏掉一些记录

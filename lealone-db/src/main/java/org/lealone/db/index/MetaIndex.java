@@ -30,6 +30,15 @@ public class MetaIndex extends IndexBase {
     }
 
     @Override
+    public int getColumnIndex(Column col) {
+        if (scan) {
+            // the scan index cannot use any columns
+            return -1;
+        }
+        return super.getColumnIndex(col);
+    }
+
+    @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         ArrayList<Row> rows = meta.generateRows(session, first, last);
         return new MetaCursor(rows);
@@ -41,15 +50,6 @@ public class MetaIndex extends IndexBase {
             return 10 * MetaTable.ROW_COUNT_APPROXIMATION;
         }
         return getCostRangeIndex(masks, MetaTable.ROW_COUNT_APPROXIMATION, sortOrder);
-    }
-
-    @Override
-    public int getColumnIndex(Column col) {
-        if (scan) {
-            // the scan index cannot use any columns
-            return -1;
-        }
-        return super.getColumnIndex(col);
     }
 
     @Override

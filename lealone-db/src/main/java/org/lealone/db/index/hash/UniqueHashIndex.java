@@ -13,7 +13,7 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.StandardTable;
+import org.lealone.db.table.Table;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 
@@ -27,7 +27,7 @@ public class UniqueHashIndex extends HashIndex {
 
     private ValueHashMap<Long> rows;
 
-    public UniqueHashIndex(StandardTable table, int id, String indexName, IndexColumn[] columns, IndexType indexType) {
+    public UniqueHashIndex(Table table, int id, String indexName, IndexType indexType, IndexColumn[] columns) {
         super(table, id, indexName, indexType, columns);
         reset();
     }
