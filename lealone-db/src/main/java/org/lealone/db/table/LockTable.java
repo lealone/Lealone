@@ -39,7 +39,11 @@ public class LockTable extends Table {
     private ArrayList<AsyncHandler<AsyncResult<Boolean>>> handlers;
 
     public LockTable(Schema schema, String name) {
-        super(schema, -1, name, false, false);
+        this(schema, -1, name, false, false);
+    }
+
+    public LockTable(Schema schema, int id, String name, boolean persistIndexes, boolean persistData) {
+        super(schema, id, name, persistIndexes, persistData);
         ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
         sharedLock = lock.readLock();
         exclusiveLock = lock.writeLock();

@@ -24,6 +24,8 @@ public class TableTest extends DbObjectTestBase {
 
     @Test
     public void run() {
+        executeUpdate("DROP TABLE IF EXISTS mytable");
+
         create();
         alter();
         drop();

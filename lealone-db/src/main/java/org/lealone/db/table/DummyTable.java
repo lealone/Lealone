@@ -79,5 +79,4 @@ public class DummyTable extends Table {
     public long getRowCountApproximation() {
         return 0;
     }
-
 }

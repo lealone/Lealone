@@ -10,10 +10,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceModuleType;
@@ -53,7 +49,7 @@ import org.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
-public class StandardTable extends Table {
+public class StandardTable extends LockTable {
 
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = Utils.newSmallArrayList();
@@ -61,17 +57,11 @@ public class StandardTable extends Table {
     private final Map<String, String> parameters;
     private final boolean globalTemporary;
 
-    private final Lock sharedLock;
-    private final Lock exclusiveLock;
-    private final ConcurrentHashMap<ServerSession, AtomicInteger> sharedSessions = new ConcurrentHashMap<>();
-    private volatile ServerSession exclusiveSession;
-
     private long lastModificationId;
     private int changesSinceAnalyze;
     private int nextAnalyze;
     private boolean containsLargeObject;
     private Column rowIdColumn;
-    private long rowCount;
 
     public StandardTable(CreateTableData data, StorageEngine storageEngine) {
         super(data.schema, data.id, data.tableName, data.persistIndexes, data.persistData);
@@ -109,10 +99,6 @@ public class StandardTable extends Table {
         }
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
-
-        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-        sharedLock = lock.readLock();
-        exclusiveLock = lock.writeLock();
     }
 
     public String getMapName() {
@@ -125,15 +111,6 @@ public class StandardTable extends Table {
 
     public Map<String, String> getParameters() {
         return parameters;
-    }
-
-    /**
-     * Set the row count of this table.
-     *
-     * @param count the row count
-     */
-    public void setRowCount(long count) {
-        this.rowCount = count;
     }
 
     @Override
@@ -205,16 +182,6 @@ public class StandardTable extends Table {
         return globalTemporary;
     }
 
-    public void checkRowCount(ServerSession session, Index index, int offset) {
-        if (SysProperties.CHECK && !database.isMultiVersion()) {
-            long rc = index.getRowCount(session);
-            if (rc != rowCount + offset) {
-                DbException.throwInternalError("rowCount expected " + (rowCount + offset) //
-                        + " got " + rc + " " + getName() + "." + index.getName());
-            }
-        }
-    }
-
     /**
      * Create a row from the values.
      *
@@ -223,89 +190,6 @@ public class StandardTable extends Table {
      */
     public static Row createRow(Value[] data) {
         return new Row(data, Row.MEMORY_CALCULATE);
-    }
-
-    @Override
-    public boolean lock(ServerSession session, boolean exclusive) {
-        if (exclusive)
-            return tryExclusiveLock(session);
-        else
-            return trySharedLock(session);
-    }
-
-    private void addWaitingTransaction(ServerSession lockOwner, ServerSession session) {
-        if (lockOwner != null) {
-            Transaction transaction = lockOwner.getTransaction();
-            if (transaction != null) {
-                transaction.addWaitingTransaction(this, session.getTransaction(), Transaction.getTransactionListener());
-            }
-        }
-    }
-
-    @Override
-    public boolean trySharedLock(ServerSession session) {
-        if (sharedLock.tryLock()) {
-            AtomicInteger counter = sharedSessions.get(session);
-            if (counter == null) {
-                counter = new AtomicInteger();
-                sharedSessions.put(session, counter);
-                // 如果先获得排它锁，就不用加到session的锁列表中了
-                if (exclusiveSession != session) {
-                    session.addLock(this);
-                }
-            }
-            counter.incrementAndGet();
-            return true;
-        } else {
-            addWaitingTransaction(exclusiveSession, session);
-            return false;
-        }
-    }
-
-    @Override
-    public boolean tryExclusiveLock(ServerSession session) {
-        if (exclusiveLock.tryLock()) {
-            // 不用处理session是否在sharedSessions中的情况，因为如果先要到共享锁，排它锁是要不到的
-            if (exclusiveSession != session) {
-                exclusiveSession = session;
-                session.addLock(this);
-            } else {
-                exclusiveLock.unlock(); // 要了两次排他锁，直接释放
-            }
-            return true;
-        } else {
-            // 先要到共享锁，再要排他锁时会失败，但是不能自己等自己
-            if (!sharedSessions.containsKey(session)) {
-                for (ServerSession sharedSession : sharedSessions.keySet()) {
-                    addWaitingTransaction(sharedSession, session);
-                }
-            }
-            return false;
-        }
-    }
-
-    @Override
-    public void unlock(ServerSession session) {
-        AtomicInteger counter = sharedSessions.remove(session);
-        if (counter != null) {
-            for (int i = 0; i < counter.get(); i++) {
-                sharedLock.unlock();
-            }
-        }
-        if (exclusiveSession == session) {
-            exclusiveSession = null;
-            exclusiveLock.unlock();
-        }
-    }
-
-    @Override
-    public boolean isLockedExclusively() {
-        return exclusiveSession != null;
-    }
-
-    @Override
-    public boolean isLockedExclusivelyBy(ServerSession session) {
-        return exclusiveSession == session;
     }
 
     @Override
@@ -766,16 +650,6 @@ public class StandardTable extends Table {
     @Override
     public String toString() {
         return getSQL();
-    }
-
-    /**
-     * Mark the transaction as committed, so that the modification counter of
-     * the database is incremented.
-     */
-    public void commit() {
-        if (database != null) {
-            lastModificationId = database.getNextModificationDataId();
-        }
     }
 
     // 只要组合数据库id和表或索引的id就能得到一个全局唯一的map名了
