@@ -42,4 +42,8 @@ public abstract class IndexTestBase extends DbObjectTestBase {
         ArrayList<Index> indexes = table.getIndexes();
         assertFalse(indexes.contains(index));
     }
+
+    protected Index getIndex(String indexName) {
+        return schema.getIndex(session, indexName);
+    }
 }
