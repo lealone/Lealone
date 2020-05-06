@@ -537,7 +537,7 @@ public abstract class Table extends SchemaObjectBase {
      * @throws DbException if the column is referenced by multi-column
      *             constraints or indexes
      */
-    public void dropSingleColumnConstraintsAndIndexes(ServerSession session, Column col) {
+    public void dropSingleColumnConstraintsAndIndexes(ServerSession session, Column col, LockTable lockTable) {
         ArrayList<Constraint> constraintsToDrop = Utils.newSmallArrayList();
         if (constraints != null) {
             for (int i = 0, size = constraints.size(); i < size; i++) {
@@ -572,12 +572,12 @@ public abstract class Table extends SchemaObjectBase {
             }
         }
         for (Constraint c : constraintsToDrop) {
-            c.getSchema().remove(session, c);
+            c.getSchema().remove(session, c, lockTable);
         }
         for (Index i : indexesToDrop) {
             // the index may already have been dropped when dropping the constraint
             if (getIndexes().contains(i)) {
-                i.getSchema().remove(session, i);
+                i.getSchema().remove(session, i, lockTable);
             }
         }
     }

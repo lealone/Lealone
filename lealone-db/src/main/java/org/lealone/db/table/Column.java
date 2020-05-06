@@ -354,7 +354,8 @@ public class Column {
      * @param temporary true if the sequence is temporary and does not need to
      *            be stored
      */
-    public void convertAutoIncrementToSequence(ServerSession session, Schema schema, int id, boolean temporary) {
+    public void convertAutoIncrementToSequence(ServerSession session, Schema schema, int id, boolean temporary,
+            LockTable lockTable) {
         if (!autoIncrement) {
             DbException.throwInternalError();
         }
@@ -377,7 +378,7 @@ public class Column {
         if (temporary) {
             seq.setTemporary(true);
         } else {
-            schema.add(session, seq);
+            schema.add(session, seq, lockTable);
         }
         setAutoIncrement(false, 0, 0);
         setDefaultExpression(session, session.getDatabase().getSQLEngine().createSequenceValue(seq));

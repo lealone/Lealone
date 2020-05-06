@@ -33,6 +33,7 @@ import org.lealone.db.result.SearchRow;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSessionFactory;
+import org.lealone.db.table.Table;
 import org.lealone.test.UnitTestBase;
 
 public class DbObjectTestBase extends UnitTestBase {
@@ -67,6 +68,10 @@ public class DbObjectTestBase extends UnitTestBase {
     public ServerSession createSession() {
         ConnectionInfo ci = new ConnectionInfo(getURL(dbName));
         return (ServerSession) ServerSessionFactory.getInstance().createSession(ci).get();
+    }
+
+    public int executeUpdate() {
+        return executeUpdate(sql);
     }
 
     public int executeUpdate(String sql) {
@@ -129,6 +134,10 @@ public class DbObjectTestBase extends UnitTestBase {
 
     public SearchRow findMeta(int id) {
         return db.findMeta(session, id);
+    }
+
+    public Table findTable(String tableName) {
+        return schema.findTableOrView(session, tableName);
     }
 
     public void assertException(Exception e, int expectedErrorCode) {

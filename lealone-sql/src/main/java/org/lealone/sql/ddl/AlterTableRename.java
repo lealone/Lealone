@@ -7,7 +7,6 @@
 package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
@@ -56,14 +55,12 @@ public class AlterTableRename extends SchemaStatement {
         if (lockTable == null)
             return -1;
 
-        Database db = session.getDatabase();
         session.getUser().checkRight(oldTable, Right.ALL);
-        Table t = getSchema().findTableOrView(session, newTableName);
+        Table t = schema.findTableOrView(session, newTableName);
         if (t != null && hidden && newTableName.equals(oldTable.getName())) {
             if (!t.isHidden()) {
-                t.setHidden(hidden);
                 oldTable.setHidden(true);
-                db.updateMeta(session, oldTable);
+                session.getDatabase().updateMeta(session, oldTable);
             }
             return 0;
         }

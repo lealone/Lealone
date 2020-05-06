@@ -149,7 +149,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             checkDefaultReferencesTable(defaultExpression);
             oldColumn.setSequence(null);
             oldColumn.setDefaultExpression(session, defaultExpression);
-            removeSequence(sequence);
+            removeSequence(sequence, lockTable);
             db.updateMeta(session, table);
             break;
         }
@@ -158,7 +158,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             // need to copy the table because the length is only a constraint,
             // and does not affect the storage structure.
             if (oldColumn.isWideningConversion(newColumn)) {
-                convertAutoIncrementColumn(newColumn);
+                convertAutoIncrementColumn(newColumn, lockTable);
                 oldColumn.copy(newColumn);
                 db.updateMeta(session, table);
             } else {
@@ -170,7 +170,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 } else if (!oldColumn.isNullable() && newColumn.isNullable()) {
                     checkNullable();
                 }
-                convertAutoIncrementColumn(newColumn);
+                convertAutoIncrementColumn(newColumn, lockTable);
                 addTableAlterHistoryRecords();
             }
             break;
@@ -183,7 +183,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             for (Column column : columnsToAdd) {
                 if (column.isAutoIncrement()) {
                     int objId = getObjectId();
-                    column.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary());
+                    column.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary(), lockTable);
                 }
             }
             addTableAlterHistoryRecords();
@@ -193,7 +193,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             if (table.getColumns().length == 1) {
                 throw DbException.get(ErrorCode.CANNOT_DROP_LAST_COLUMN, oldColumn.getSQL());
             }
-            table.dropSingleColumnConstraintsAndIndexes(session, oldColumn);
+            table.dropSingleColumnConstraintsAndIndexes(session, oldColumn, lockTable);
             addTableAlterHistoryRecords();
             break;
         }
@@ -221,23 +221,23 @@ public class AlterTableAlterColumn extends SchemaStatement {
         }
     }
 
-    private void convertAutoIncrementColumn(Column c) {
+    private void convertAutoIncrementColumn(Column c, LockTable lockTable) {
         if (c.isAutoIncrement()) {
             if (c.isPrimaryKey()) {
                 c.setOriginalSQL("IDENTITY");
             } else {
                 int objId = getObjectId();
-                c.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary());
+                c.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary(), lockTable);
             }
         }
     }
 
-    private void removeSequence(Sequence sequence) {
+    private void removeSequence(Sequence sequence, LockTable lockTable) {
         if (sequence != null) {
             table.removeSequence(sequence);
             if (sequence.getBelongsToTable()) {
                 sequence.setBelongsToTable(false);
-                schema.remove(session, sequence);
+                schema.remove(session, sequence, lockTable);
             }
         }
     }

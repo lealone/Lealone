@@ -189,10 +189,6 @@ public class Schema extends DbObjectBase {
      * @param obj the object to add
      */
     // 执行DDL语句时session不为null，需要在meta表中增加一条对应的记录
-    public void add(ServerSession session, SchemaObject obj) {
-        add(session, obj, null);
-    }
-
     public void add(ServerSession session, SchemaObject obj, LockTable lockTable) {
         AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
         TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
@@ -248,10 +244,6 @@ public class Schema extends DbObjectBase {
      *
      * @param obj the object to remove
      */
-    public void remove(ServerSession session, SchemaObject obj) {
-        remove(session, obj, null);
-    }
-
     public void remove(ServerSession session, SchemaObject obj, LockTable lockTable) {
         String objName = obj.getName();
         DbObjectType type = obj.getType();

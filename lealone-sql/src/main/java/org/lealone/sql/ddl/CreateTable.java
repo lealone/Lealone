@@ -159,7 +159,7 @@ public class CreateTable extends SchemaStatement {
         for (Column c : data.columns) {
             if (c.isAutoIncrement()) {
                 int objId = getObjectId();
-                c.convertAutoIncrementToSequence(session, schema, objId, data.temporary);
+                c.convertAutoIncrementToSequence(session, schema, objId, data.temporary, lockTable);
             }
             Sequence seq = c.getSequence();
             if (seq != null) {

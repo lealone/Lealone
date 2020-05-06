@@ -36,7 +36,7 @@ public class UserAggregateTest extends DbObjectTestBase {
         assertEquals(id, ua.getId());
 
         session.setAutoCommit(false);
-        schema.add(session, ua);
+        schema.add(session, ua, null);
         assertNotNull(schema.findAggregate(session, name));
 
         // ua.removeChildrenAndResources(session); //会触发invalidate
@@ -44,7 +44,7 @@ public class UserAggregateTest extends DbObjectTestBase {
         String sql = "SELECT " + name + "(X) FROM SYSTEM_RANGE(1, 5)";
         assertEquals(3, getInt(sql, 1));
 
-        schema.remove(session, ua);
+        schema.remove(session, ua, null);
         assertNull(schema.findAggregate(session, name));
 
         // 测试SQL

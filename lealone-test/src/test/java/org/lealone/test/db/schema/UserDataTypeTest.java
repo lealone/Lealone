@@ -34,13 +34,13 @@ public class UserDataTypeTest extends DbObjectTestBase {
         Column column = new Column("c", 0);
         udt.setColumn(column);
 
-        schema.add(session, udt);
+        schema.add(session, udt, null);
         assertNotNull(schema.findUserDataType(session, udtName));
 
         udt.removeChildrenAndResources(session, null);
         assertNotNull(schema.findUserDataType(session, udtName)); // 并不会删除UserDataType
 
-        schema.remove(session, udt);
+        schema.remove(session, udt, null);
         assertNull(schema.findUserDataType(session, udtName));
 
         // 测试SQL
