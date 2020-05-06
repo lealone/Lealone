@@ -122,7 +122,7 @@ import org.lealone.sql.dml.Merge;
 import org.lealone.sql.dml.NoOperation;
 import org.lealone.sql.dml.Query;
 import org.lealone.sql.dml.RunScript;
-import org.lealone.sql.dml.Script;
+import org.lealone.sql.dml.GenScript;
 import org.lealone.sql.dml.Select;
 import org.lealone.sql.dml.SelectUnion;
 import org.lealone.sql.dml.SetDatabase;
@@ -5023,8 +5023,8 @@ public class Parser implements SQLParser {
         return command;
     }
 
-    private Script parseScript() {
-        Script command = new Script(session);
+    private GenScript parseScript() {
+        GenScript command = new GenScript(session);
         boolean data = true, passwords = true, settings = true, dropTables = false, simple = false;
         if (readIf("SIMPLE")) {
             simple = true;

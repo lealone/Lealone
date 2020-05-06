@@ -69,7 +69,9 @@ import org.lealone.sql.optimizer.PlanItem;
  * This class represents the statement
  * SCRIPT
  */
-public class Script extends ScriptBase {
+// 此类用于生成SQL脚本，对应的SQL语句是SCRIPT，不是GEN SCRIPT
+// 类名叫GenScript只是为了对应RunScript
+public class GenScript extends ScriptBase {
 
     private Charset charset = Constants.UTF8;
     private Set<String> schemaNames;
@@ -89,7 +91,7 @@ public class Script extends ScriptBase {
     private int nextLobId;
     private int lobBlockSize = Constants.IO_BUFFER_SIZE;
 
-    public Script(ServerSession session) {
+    public GenScript(ServerSession session) {
         super(session);
     }
 
