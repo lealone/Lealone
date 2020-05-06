@@ -5661,12 +5661,12 @@ public class Parser implements SQLParser {
             read("PERSISTENT");
             command.setPersistData(false);
         }
+        if (readIf("HIDDEN")) {
+            command.setHidden(true);
+        }
         if (readIf("PACKAGE")) {
             String packageName = readString();
             command.setPackageName(packageName);
-        }
-        if (readIf("HIDDEN")) {
-            command.setHidden(true);
         }
         if (readIf("GENERATE")) {
             read("CODE");
@@ -5741,5 +5741,4 @@ public class Parser implements SQLParser {
         }
         return s;
     }
-
 }
