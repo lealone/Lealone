@@ -252,7 +252,7 @@ public class StandardTable extends LockTable {
             }
             if (mainIndexColumn != -1) {
                 index = createDelegateIndex(indexId, indexName, indexType, mainIndexColumn);
-            } else if (indexType.isHash() && cols.length <= 1) { // TODO 是否要支持多版本
+            } else if (indexType.isHash() && cols.length <= 1) {
                 if (indexType.isUnique()) {
                     index = new UniqueHashIndex(this, indexId, indexName, indexType, cols);
                 } else {
