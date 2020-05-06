@@ -8,7 +8,6 @@ package org.lealone.sql.ddl;
 
 import org.lealone.db.Database;
 import org.lealone.db.DbObject;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
@@ -55,11 +54,10 @@ public class AlterTableRenameColumn extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        LockTable lockTable = tryAlterTable(table);
         if (lockTable == null)
             return -1;
 
-        Database db = session.getDatabase();
         session.getUser().checkRight(table, Right.ALL);
         table.checkSupportAlter();
         // we need to update CHECK constraint
@@ -70,6 +68,7 @@ public class AlterTableRenameColumn extends SchemaStatement {
         SingleColumnResolver resolver = new SingleColumnResolver(column);
         column.addCheckConstraint(session, newCheckExpr, resolver);
         table.setModified();
+        Database db = session.getDatabase();
         db.updateMeta(session, table);
         for (DbObject child : table.getChildren()) {
             if (child.getCreateSQL() != null) {

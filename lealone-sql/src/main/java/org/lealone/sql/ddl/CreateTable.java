@@ -119,14 +119,14 @@ public class CreateTable extends SchemaStatement {
 
     @Override
     public int update() {
-        Database db = session.getDatabase();
-        if (!db.isPersistent()) {
-            data.persistIndexes = false;
-        }
         LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
         if (lockTable == null)
             return -1;
 
+        Database db = session.getDatabase();
+        if (!db.isPersistent()) {
+            data.persistIndexes = false;
+        }
         if (schema.findTableOrView(session, data.tableName) != null) {
             if (ifNotExists) {
                 return 0;

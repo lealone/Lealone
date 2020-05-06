@@ -171,8 +171,9 @@ public class AlterTableAddConstraint extends SchemaStatement {
             }
             throw DbException.get(ErrorCode.CONSTRAINT_ALREADY_EXISTS_1, constraintName);
         }
-        if (!table.tryExclusiveLock(session))
+        if (!table.trySharedLock(session))
             return -1;
+
         session.getUser().checkRight(table, Right.ALL);
         Constraint constraint;
         switch (type) {

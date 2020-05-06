@@ -8,7 +8,6 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
-import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.schema.Schema;
@@ -53,7 +52,7 @@ public class AlterTableRename extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        LockTable lockTable = tryAlterTable(oldTable);
         if (lockTable == null)
             return -1;
 

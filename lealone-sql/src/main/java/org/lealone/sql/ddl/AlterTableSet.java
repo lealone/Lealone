@@ -9,6 +9,7 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.auth.Right;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 
@@ -44,8 +45,10 @@ public class AlterTableSet extends SchemaStatement {
 
     @Override
     public int update() {
-        if (!table.tryExclusiveLock(session))
+        LockTable lockTable = tryAlterTable(table);
+        if (lockTable == null)
             return -1;
+
         session.getUser().checkRight(table, Right.ALL);
         switch (type) {
         case SQLStatement.ALTER_TABLE_SET_REFERENTIAL_INTEGRITY:

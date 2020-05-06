@@ -21,6 +21,7 @@ import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
+import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
@@ -107,11 +108,13 @@ public class AlterTableAlterColumn extends SchemaStatement {
 
     @Override
     public int update() {
+        LockTable lockTable = tryAlterTable(table);
+        if (lockTable == null)
+            return -1;
+
         Database db = session.getDatabase();
         session.getUser().checkRight(table, Right.ALL);
         table.checkSupportAlter();
-        if (!table.tryExclusiveLock(session))
-            return -1;
         if (newColumn != null) {
             checkDefaultReferencesTable((Expression) newColumn.getDefaultExpression());
         }

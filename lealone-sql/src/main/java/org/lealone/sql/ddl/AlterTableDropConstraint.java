@@ -47,7 +47,8 @@ public class AlterTableDropConstraint extends SchemaStatement {
         LockTable lockTable = schema.tryExclusiveLock(DbObjectType.CONSTRAINT, session);
         if (lockTable == null)
             return -1;
-        Constraint constraint = getSchema().findConstraint(session, constraintName);
+
+        Constraint constraint = schema.findConstraint(session, constraintName);
         if (constraint == null) {
             if (!ifExists) {
                 throw DbException.get(ErrorCode.CONSTRAINT_NOT_FOUND_1, constraintName);
