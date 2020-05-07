@@ -2206,22 +2206,24 @@ public class Database implements DataHandler, DbObject, IDatabase {
             if (user.isAdmin())
                 return;
         }
-        ServerSession session = getSystemSession();
-        // executeUpdate()会自动提交，所以不需要再调用一次commit
-        session.prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
+        // 新建session，避免使用system session
+        try (ServerSession session = createSession(systemUser)) {
+            // executeUpdate()会自动提交，所以不需要再调用一次commit
+            session.prepareStatementLocal("CREATE USER IF NOT EXISTS root PASSWORD '' ADMIN").executeUpdate();
+        }
     }
 
     synchronized User createAdminUser(String userName, byte[] userPasswordHash) {
         // 新建session，避免使用system session
-        ServerSession session = createSession(systemUser);
-        LockTable lockTable = tryExclusiveAuthLock(session);
-        User user = new User(this, allocateObjectId(), userName, false);
-        user.setAdmin(true);
-        user.setUserPasswordHash(userPasswordHash);
-        addDatabaseObject(session, user, lockTable);
-        session.commit();
-        session.close();
-        return user;
+        try (ServerSession session = createSession(systemUser)) {
+            LockTable lockTable = tryExclusiveAuthLock(session);
+            User user = new User(this, allocateObjectId(), userName, false);
+            user.setAdmin(true);
+            user.setUserPasswordHash(userPasswordHash);
+            addDatabaseObject(session, user, lockTable);
+            session.commit();
+            return user;
+        }
     }
 
     public void drop() {

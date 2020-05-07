@@ -35,7 +35,7 @@ public class AlterUserTest extends SqlTestBase {
     public void run() throws Exception {
         stmt.executeUpdate("DROP USER IF EXISTS test1");
         stmt.executeUpdate("DROP USER IF EXISTS test2");
-        stmt.executeUpdate("CREATE USER IF NOT EXISTS test1 PASSWORD 'test'");
+        stmt.executeUpdate("CREATE USER IF NOT EXISTS test1 PASSWORD 'test' ADMIN");
         try (Connection conn = getConnection("test1", "test")) {
         } catch (Exception e) {
             fail();
