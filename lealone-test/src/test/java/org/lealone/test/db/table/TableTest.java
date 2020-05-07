@@ -277,4 +277,73 @@ public class TableTest extends DbObjectTestBase {
         sql = "ALTER TABLE mytable ALTER COLUMN f2 SELECTIVITY 120"; // 大于100时还是100
         executeUpdate(sql);
     }
+
+    // MySQL compatibility
+    @Test
+    public void ALTER_TABLE_MODIFY_COLUMN() throws Exception {
+        // "MODIFY COLUMN"可以简写成"MODIFY"
+        sql = "ALTER TABLE mytable MODIFY f1 long";
+        executeUpdate();
+        sql = "ALTER TABLE mytable MODIFY COLUMN f1 int NOT NULL";
+        executeUpdate();
+    }
+
+    // PostgreSQL compatibility
+    @Test
+    public void ALTER_TABLE_ALTER_COLUMN_TYPE() throws Exception {
+        sql = "ALTER TABLE mytable ALTER f1 TYPE long";
+        executeUpdate();
+        sql = "ALTER TABLE mytable ALTER COLUMN f1 TYPE int NOT NULL";
+        executeUpdate();
+    }
+
+    void oldALTER_TABLE_ADD_COLUMN() throws Exception {
+        sql = "ALTER TABLE mytable ADD COLUMN IF NOT EXISTS f1 int";
+        executeUpdate();
+
+        // 增加多列时不能用before
+        sql = "ALTER TABLE mytable ADD (f0 int before f1, f4 int)";
+        // tryExecuteUpdate();
+
+        sql = "ALTER TABLE mytable ADD COLUMN(f5 int AUTO_INCREMENT, f6 int)";
+        executeUpdate();
+
+        sql = "ALTER TABLE mytable ADD COLUMN IF NOT EXISTS f0 int BEFORE f1";
+
+        sql = "ALTER TABLE mytable ADD COLUMN IF NOT EXISTS f3 int AFTER f2";
+        // sql = "ALTER TABLE mytable ADD COLUMN IF NOT EXISTS f1 int";
+        // ADD COLUMN时不能加约束，比如这个是错的:
+        // ALTER TABLE mytable ADD COLUMN IF NOT EXISTS f3 int PRIMARY KEY
+
+        // 但是要表示特殊的PRIMARY KEY约束可以加IDENTITY
+        sql = "ALTER TABLE mytable ADD COLUMN IF NOT EXISTS f3 int IDENTITY AFTER f2";
+        sql = "ALTER TABLE mytable ADD COLUMN IF NOT EXISTS f3 int AUTO_INCREMENT AFTER f2";
+        executeUpdate();
+
+        // 测试checkDefaultReferencesTable(Expression)
+        sql = "ALTER TABLE mytable ADD (f7 int, f8 int default f2*2)";
+        // tryExecuteUpdate();
+        sql = "ALTER TABLE mytable ADD (f7 int, f8 int default EXISTS(select f1 from mytable where f1=1))";
+        // tryExecuteUpdate();
+
+        sql = "CREATE OR REPLACE FORCE VIEW mytable_view (v_f5) " //
+                + "AS SELECT f5 FROM mytable";
+        executeUpdate();
+        sql = "ALTER TABLE mytable DROP f5";
+        // tryExecuteUpdate();
+        sql = "ALTER TABLE mytable ALTER COLUMN f3 RESTART WITH 1";
+        executeUpdate();
+        executeUpdate("INSERT INTO mytable(f1, f2, f3) VALUES(1, 2, null)");
+
+        executeUpdate("DROP SEQUENCE IF EXISTS myseq10");
+        executeUpdate("CREATE SEQUENCE IF NOT EXISTS myseq10 START WITH 1000 INCREMENT BY 1 CACHE 20");
+        sql = "ALTER TABLE mytable ADD COLUMN f10 int SEQUENCE myseq10";
+        executeUpdate();
+
+        executeUpdate("DROP INDEX IF EXISTS mytable_index0");
+        executeUpdate("CREATE INDEX mytable_index0 ON mytable(f10)");
+
+        sql = "ALTER TABLE mytable DROP COLUMN f3";
+        executeUpdate();
+    }
 }
