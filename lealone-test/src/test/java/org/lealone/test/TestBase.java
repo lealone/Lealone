@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.Assert;
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.ConsoleLogDelegateFactory;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.trace.TraceSystem;
@@ -270,6 +271,12 @@ public class TestBase extends Assert {
 
     public Connection getConnection(String user, String password) throws Exception {
         return DriverManager.getConnection(getURL(user, password));
+    }
+
+    public void assertException(Exception e, int expectedErrorCode) {
+        assertTrue(e instanceof DbException);
+        assertEquals(expectedErrorCode, ((DbException) e).getErrorCode());
+        // p(e.getMessage());
     }
 
     public static void p(Object o) {

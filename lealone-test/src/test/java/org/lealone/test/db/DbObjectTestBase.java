@@ -21,7 +21,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 
 import org.junit.Before;
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.Database;
@@ -138,11 +137,5 @@ public class DbObjectTestBase extends UnitTestBase {
 
     public Table findTable(String tableName) {
         return schema.findTableOrView(session, tableName);
-    }
-
-    public void assertException(Exception e, int expectedErrorCode) {
-        assertTrue(e instanceof DbException);
-        assertEquals(expectedErrorCode, ((DbException) e).getErrorCode());
-        // p(e.getMessage());
     }
 }

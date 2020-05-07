@@ -18,6 +18,7 @@
 package org.lealone.test.sql.index;
 
 import org.junit.Test;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.test.sql.SqlTestBase;
 
 public class UniqueIndexTest extends SqlTestBase {
@@ -37,7 +38,7 @@ public class UniqueIndexTest extends SqlTestBase {
             executeUpdate("INSERT INTO UniqueIndexTest(f1, f2, f3) VALUES(400, 20, 'b')");
             fail("insert duplicate key: 20");
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            assertException(e, ErrorCode.DUPLICATE_KEY_1);
         }
     }
 

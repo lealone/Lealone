@@ -34,8 +34,6 @@ public class AsyncIndexTest extends SqlTestBase {
         for (int i = 100; i < 200; i++) {
             String sql = "INSERT INTO AsyncIndexTest(f1, f2, f3) VALUES(" + i + "," + (i * 10) + ",'a" + i + "')";
             stmt.executeUpdate(sql);
-            sql = "INSERT INTO AsyncIndexTest(f1, f2, f3) VALUES(" + i + "," + (i * 10) + ",'a" + i + "')";
-            stmt.executeUpdate(sql);
         }
 
         stmt.executeUpdate("CREATE PRIMARY KEY HASH IF NOT EXISTS AsyncIndexTest_idx0 ON AsyncIndexTest(f1)");

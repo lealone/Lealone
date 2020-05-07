@@ -17,10 +17,10 @@
  */
 package org.lealone.test.sql.index;
 
-import java.sql.SQLException;
 import java.sql.Savepoint;
 
 import org.junit.Test;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.test.sql.SqlTestBase;
 
 public class IndexTest extends SqlTestBase {
@@ -64,23 +64,21 @@ public class IndexTest extends SqlTestBase {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(400, 20, 'd')");
             fail("insert duplicate key: 20");
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            assertException(e, ErrorCode.DUPLICATE_KEY_1);
         }
 
         try {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(200, 20, 'e')");
             fail("insert duplicate key: 20");
-        } catch (SQLException e) {
-            // e.printStackTrace();
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            assertException(e, ErrorCode.DUPLICATE_KEY_1);
         }
 
         try {
             stmt.executeUpdate("INSERT INTO IndexTest(f1, f2, f3) VALUES(100, 20, 'f')");
             fail("insert duplicate key: 20");
-        } catch (SQLException e) {
-            // e.printStackTrace();
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            assertException(e, ErrorCode.DUPLICATE_KEY_1);
         }
 
         sql = "SELECT f1, f2, f3 FROM IndexTest";
@@ -150,6 +148,7 @@ public class IndexTest extends SqlTestBase {
         assertEquals(3, getIntValue(1, true));
 
         stmt.executeUpdate("DELETE FROM IndexTest");
+        sql = "SELECT count(*) FROM IndexTest";
         assertEquals(0, getIntValue(1, true));
 
         try {
