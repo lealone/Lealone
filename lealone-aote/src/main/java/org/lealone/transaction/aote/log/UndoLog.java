@@ -77,9 +77,10 @@ public class UndoLog {
     }
 
     public void rollbackTo(AMTransactionEngine transactionEngine, long toLogId) {
-        while (--logId >= toLogId) {
+        while (logId > toLogId) {
             UndoLogRecord r = undoLogRecords.removeLast();
             r.rollback(transactionEngine);
+            --logId;
         }
     }
 
