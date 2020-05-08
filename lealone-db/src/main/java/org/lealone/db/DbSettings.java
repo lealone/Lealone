@@ -160,21 +160,13 @@ public class DbSettings extends SettingsBase {
      * Database setting <code>LARGE_TRANSACTIONS</code> (default: true).<br />
      * Support very large transactions
      */
-    public final boolean largeTransactions = get(DbSetting.LARGE_TRANSACTIONS, true); // TODO 是否考虑用在UndoLog中
+    // public final boolean largeTransactions = get(DbSetting.LARGE_TRANSACTIONS, true); // TODO 是否考虑用在UndoLog中
 
     /**
      * Database setting <code>MAX_COMPACT_TIME</code> (default: 200).<br />
      * The maximum time in milliseconds used to compact a database when closing.
      */
-    public final int maxCompactTime = get(DbSetting.MAX_COMPACT_TIME, 200); // TODO 这个参数可以用到存储引擎中
-
-    /**
-     * Database setting <code>MAX_MEMORY_ROWS_DISTINCT</code> (default:
-     * 10000).<br />
-     * The maximum number of rows kept in-memory for SELECT DISTINCT queries. If
-     * more than this number of rows are in a result set, a temporary table is used.
-     */
-    public final int maxMemoryRowsDistinct = get(DbSetting.MAX_MEMORY_ROWS_DISTINCT, 10000);
+    // public final int maxCompactTime = get(DbSetting.MAX_COMPACT_TIME, 200); // TODO 这个参数可以用到存储引擎中
 
     /**
      * Database setting <code>MAX_QUERY_TIMEOUT</code> (default: 0).<br />

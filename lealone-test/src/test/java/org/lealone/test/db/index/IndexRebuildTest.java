@@ -18,12 +18,14 @@
 package org.lealone.test.db.index;
 
 import org.junit.Test;
+import org.lealone.db.Constants;
 import org.lealone.db.index.Index;
 
 public class IndexRebuildTest extends IndexTestBase {
     @Test
     public void run() {
         executeUpdate("set MAX_MEMORY_ROWS 4");
+
         executeUpdate("DROP TABLE IF EXISTS IndexRebuildTest");
         executeUpdate("CREATE TABLE IF NOT EXISTS IndexRebuildTest (f1 int, f2 int)");
 
@@ -48,5 +50,8 @@ public class IndexRebuildTest extends IndexTestBase {
         assertEquals(5, index.getRowCount(session));
         index = getIndex("IndexRebuildTest_StandardIndex1");
         assertEquals(5, index.getRowCount(session));
+
+        // 恢复到默认值，避免影响其他测试用例
+        executeUpdate("set MAX_MEMORY_ROWS " + Constants.DEFAULT_MAX_MEMORY_ROWS);
     }
 }

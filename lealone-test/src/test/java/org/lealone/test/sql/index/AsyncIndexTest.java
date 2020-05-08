@@ -18,12 +18,14 @@
 package org.lealone.test.sql.index;
 
 import org.junit.Test;
+import org.lealone.db.Constants;
 import org.lealone.test.sql.SqlTestBase;
 
 public class AsyncIndexTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
-        stmt.executeUpdate("set MAX_MEMORY_ROWS 10");
+        stmt.executeUpdate("set MAX_MEMORY_ROWS 60");
+
         stmt.executeUpdate("DROP TABLE IF EXISTS AsyncIndexTest");
         // stmt.executeUpdate("CREATE local temporary TABLE IF NOT EXISTS AsyncIndexTest (f1 int NOT NULL, f2 int, f3
         // varchar)");
@@ -41,5 +43,8 @@ public class AsyncIndexTest extends SqlTestBase {
         stmt.executeUpdate("CREATE INDEX IF NOT EXISTS AsyncIndexTest_idx2 ON AsyncIndexTest(f3, f2)");
 
         stmt.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS AsyncIndexTest_idx3 ON AsyncIndexTest(f2, f3)");
+
+        // 恢复到默认值，避免影响其他测试用例
+        stmt.executeUpdate("set MAX_MEMORY_ROWS " + Constants.DEFAULT_MAX_MEMORY_ROWS);
     }
 }
