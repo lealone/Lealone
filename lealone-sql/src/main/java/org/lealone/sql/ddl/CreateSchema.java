@@ -10,9 +10,9 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -53,8 +53,8 @@ public class CreateSchema extends DefinitionStatement {
     public int update() {
         session.getUser().checkSchemaAdmin();
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveSchemaLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveSchemaLock(session);
+        if (lock == null)
             return -1;
 
         User user = db.getUser(session, authorization);
@@ -70,7 +70,7 @@ public class CreateSchema extends DefinitionStatement {
         }
         int id = getObjectId();
         Schema schema = new Schema(db, id, schemaName, user, false);
-        db.addDatabaseObject(session, schema, lockTable);
+        db.addDatabaseObject(session, schema, lock);
         return 0;
     }
 }

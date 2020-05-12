@@ -17,9 +17,9 @@ import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.util.SourceCompiler;
 import org.lealone.db.value.DataType;
@@ -362,7 +362,7 @@ public class TriggerObject extends SchemaObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
+    public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         table.removeTrigger(this);
         if (triggerCallback != null) {
             try {

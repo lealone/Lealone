@@ -12,9 +12,9 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.ConstraintReferential;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableType;
 import org.lealone.db.table.TableView;
@@ -58,8 +58,8 @@ public class DropView extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        if (lock == null)
             return -1;
 
         Table view = schema.findTableOrView(session, viewName);
@@ -80,7 +80,7 @@ public class DropView extends SchemaStatement {
                     }
                 }
             }
-            schema.remove(session, view, lockTable);
+            schema.remove(session, view, lock);
         }
         return 0;
     }

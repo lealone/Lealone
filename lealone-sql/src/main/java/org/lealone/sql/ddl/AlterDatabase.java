@@ -31,8 +31,8 @@ import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLStatement;
@@ -69,8 +69,8 @@ public class AlterDatabase extends DatabaseStatement {
     public int update() {
         checkRight();
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-        LockTable lockTable = lealoneDB.tryExclusiveDatabaseLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = lealoneDB.tryExclusiveDatabaseLock(session);
+        if (lock == null)
             return -1;
 
         RunMode oldRunMode = db.getRunMode();
@@ -338,9 +338,9 @@ public class AlterDatabase extends DatabaseStatement {
     }
 
     private Database rebuildDatabase() {
-        LockTable lockTable = LealoneDatabase.getInstance().tryExclusiveDatabaseLock(session);
+        DbObjectLock lock = LealoneDatabase.getInstance().tryExclusiveDatabaseLock(session);
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-        lealoneDB.removeDatabaseObject(session, db, lockTable);
+        lealoneDB.removeDatabaseObject(session, db, lock);
         db.setDeleteFilesOnDisconnect(true);
         if (db.getSessionCount() == 0) {
             db.drop();
@@ -350,7 +350,7 @@ public class AlterDatabase extends DatabaseStatement {
         newDB.setReplicationParameters(replicationParameters);
         newDB.setNodeAssignmentParameters(nodeAssignmentParameters);
         newDB.setRunMode(runMode);
-        lealoneDB.addDatabaseObject(session, newDB, lockTable);
+        lealoneDB.addDatabaseObject(session, newDB, lock);
         return newDB;
     }
 

@@ -10,8 +10,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
@@ -74,8 +74,8 @@ public class AlterUser extends DefinitionStatement implements AuthStatement {
     @Override
     public int update() {
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveAuthLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveAuthLock(session);
+        if (lock == null)
             return -1;
 
         switch (type) {
@@ -95,7 +95,7 @@ public class AlterUser extends DefinitionStatement implements AuthStatement {
             if (db.findUser(session, newName) != null || newName.equals(user.getName())) {
                 throw DbException.get(ErrorCode.USER_ALREADY_EXISTS_1, newName);
             }
-            db.renameDatabaseObject(session, user, newName, lockTable);
+            db.renameDatabaseObject(session, user, newName, lock);
             break;
         case SQLStatement.ALTER_USER_ADMIN:
             session.getUser().checkAdmin();

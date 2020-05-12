@@ -15,13 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db.table;
+package org.lealone.db.lock;
 
-public enum TableType {
-    STANDARD_TABLE,
-    META_TABLE,
-    RANGE_TABLE,
-    FUNCTION_TABLE,
-    DUMMY_TABLE,
-    VIEW
+import org.lealone.db.DbObjectType;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.ServerSession;
+
+public interface DbObjectLock {
+
+    DbObjectType getDbObjectType();
+
+    void addHandler(AsyncHandler<AsyncResult<Boolean>> handler);
+
+    boolean lock(ServerSession session, boolean exclusive);
+
+    boolean trySharedLock(ServerSession session);
+
+    boolean tryExclusiveLock(ServerSession session);
+
+    void unlock(ServerSession session);
+
+    void unlock(ServerSession session, boolean succeeded);
+
+    boolean isLockedExclusively();
+
+    boolean isLockedExclusivelyBy(ServerSession session);
+
 }

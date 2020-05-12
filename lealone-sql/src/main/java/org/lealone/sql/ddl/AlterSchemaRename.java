@@ -11,10 +11,10 @@ import java.util.ArrayList;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObject;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -49,8 +49,8 @@ public class AlterSchemaRename extends DefinitionStatement {
     @Override
     public int update() {
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveSchemaLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveSchemaLock(session);
+        if (lock == null)
             return -1;
 
         if (!oldSchema.canDrop()) {
@@ -60,7 +60,7 @@ public class AlterSchemaRename extends DefinitionStatement {
             throw DbException.get(ErrorCode.SCHEMA_ALREADY_EXISTS_1, newSchemaName);
         }
         session.getUser().checkSchemaAdmin();
-        db.renameDatabaseObject(session, oldSchema, newSchemaName, lockTable);
+        db.renameDatabaseObject(session, oldSchema, newSchemaName, lock);
         ArrayList<SchemaObject> all = db.getAllSchemaObjects();
         for (SchemaObject schemaObject : all) {
             db.updateMeta(session, schemaObject);

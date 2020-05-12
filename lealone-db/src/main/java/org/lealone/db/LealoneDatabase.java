@@ -26,7 +26,7 @@ import java.util.Map.Entry;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.db.table.LockTable;
+import org.lealone.db.lock.DbObjectLock;
 
 /**
  * 最顶层的数据库，用于管理所有应用创建的数据库
@@ -83,8 +83,8 @@ public class LealoneDatabase extends Database {
         String userName = ci.getUserName();
         byte[] userPasswordHash = ci.getUserPasswordHash();
         db.createAdminUser(userName, userPasswordHash);
-        LockTable lockTable = tryExclusiveDatabaseLock(getSystemSession());
-        addDatabaseObject(getSystemSession(), db, lockTable);
+        DbObjectLock lock = tryExclusiveDatabaseLock(getSystemSession());
+        addDatabaseObject(getSystemSession(), db, lock);
         getSystemSession().commit();
         return db;
     }

@@ -8,8 +8,8 @@ package org.lealone.sql.ddl;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.auth.Right;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 
@@ -45,8 +45,8 @@ public class AlterTableSet extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = tryAlterTable(table);
-        if (lockTable == null)
+        DbObjectLock lock = tryAlterTable(table);
+        if (lock == null)
             return -1;
 
         session.getUser().checkRight(table, Right.ALL);

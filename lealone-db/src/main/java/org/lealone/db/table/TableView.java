@@ -21,6 +21,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.ViewIndex;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
@@ -353,9 +354,9 @@ public class TableView extends Table {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
+    public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         removeViewFromTables();
-        super.removeChildrenAndResources(session, lockTable);
+        super.removeChildrenAndResources(session, lock);
     }
 
     @Override

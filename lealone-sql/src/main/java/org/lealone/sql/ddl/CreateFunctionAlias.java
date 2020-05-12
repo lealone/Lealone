@@ -9,10 +9,10 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.FunctionAlias;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -82,8 +82,8 @@ public class CreateFunctionAlias extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.FUNCTION_ALIAS, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.FUNCTION_ALIAS, session);
+        if (lock == null)
             return -1;
 
         if (schema.findFunction(session, aliasName) != null) {
@@ -101,7 +101,7 @@ public class CreateFunctionAlias extends SchemaStatement {
                         bufferResultSetToLocalTemp);
             }
             functionAlias.setDeterministic(deterministic);
-            schema.add(session, functionAlias, lockTable);
+            schema.add(session, functionAlias, lock);
         }
         return 0;
     }

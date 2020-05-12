@@ -31,6 +31,7 @@ import org.lealone.db.index.hash.UniqueHashIndex;
 import org.lealone.db.index.standard.StandardDelegateIndex;
 import org.lealone.db.index.standard.StandardPrimaryIndex;
 import org.lealone.db.index.standard.StandardSecondaryIndex;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObject;
@@ -44,7 +45,7 @@ import org.lealone.transaction.Transaction;
  * @author H2 Group
  * @author zhh
  */
-public class StandardTable extends LockTable {
+public class StandardTable extends Table {
 
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = Utils.newSmallArrayList();
@@ -223,7 +224,7 @@ public class StandardTable extends LockTable {
 
     @Override
     public Index addIndex(ServerSession session, String indexName, int indexId, IndexColumn[] cols, IndexType indexType,
-            boolean create, String indexComment, LockTable lockTable) {
+            boolean create, String indexComment, DbObjectLock lock) {
         if (indexType.isPrimaryKey()) {
             for (IndexColumn c : cols) {
                 Column column = c.column;
@@ -267,7 +268,7 @@ public class StandardTable extends LockTable {
             if (isSessionTemporary) {
                 session.addLocalTempTableIndex(index);
             } else {
-                schema.add(session, index, lockTable);
+                schema.add(session, index, lock);
             }
         }
         indexes.add(index);
@@ -488,19 +489,19 @@ public class StandardTable extends LockTable {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
+    public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         if (containsLargeObject) {
             // unfortunately, the data is gone on rollback
             truncate(session);
             database.getLobStorage().removeAllForTable(getId());
         }
-        super.removeChildrenAndResources(session, lockTable);
+        super.removeChildrenAndResources(session, lock);
         // go backwards because database.removeIndex will
         // call table.removeIndex
         while (indexes.size() > 1) {
             Index index = indexes.get(1);
             if (index.getName() != null) {
-                schema.remove(session, index, lockTable);
+                schema.remove(session, index, lock);
             }
             // needed for session temporary indexes
             indexes.remove(index);

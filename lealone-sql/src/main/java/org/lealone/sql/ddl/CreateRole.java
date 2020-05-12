@@ -10,8 +10,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Role;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -47,8 +47,8 @@ public class CreateRole extends DefinitionStatement implements AuthStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveAuthLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveAuthLock(session);
+        if (lock == null)
             return -1;
 
         if (db.findUser(session, roleName) != null) {
@@ -62,7 +62,7 @@ public class CreateRole extends DefinitionStatement implements AuthStatement {
         }
         int id = getObjectId();
         Role role = new Role(db, id, roleName, false);
-        db.addDatabaseObject(session, role, lockTable);
+        db.addDatabaseObject(session, role, lock);
         return 0;
     }
 }

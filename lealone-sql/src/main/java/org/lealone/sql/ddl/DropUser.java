@@ -10,8 +10,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -47,8 +47,8 @@ public class DropUser extends DefinitionStatement implements AuthStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveAuthLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveAuthLock(session);
+        if (lock == null)
             return -1;
 
         User user = db.findUser(session, userName);
@@ -71,7 +71,7 @@ public class DropUser extends DefinitionStatement implements AuthStatement {
                 }
             }
             user.checkOwnsNoSchemas(session); // 删除用户前需要删除它拥有的所有Schema，否则不允许删
-            db.removeDatabaseObject(session, user, lockTable);
+            db.removeDatabaseObject(session, user, lock);
         }
         return 0;
     }

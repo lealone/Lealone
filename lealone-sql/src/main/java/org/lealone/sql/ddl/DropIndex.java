@@ -14,9 +14,9 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 
@@ -51,8 +51,8 @@ public class DropIndex extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.INDEX, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.INDEX, session);
+        if (lock == null)
             return -1;
 
         Index index = schema.findIndex(session, indexName);
@@ -78,9 +78,9 @@ public class DropIndex extends SchemaStatement {
             }
             table.setModified();
             if (pkConstraint != null) {
-                schema.remove(session, pkConstraint, lockTable);
+                schema.remove(session, pkConstraint, lock);
             } else {
-                schema.remove(session, index, lockTable);
+                schema.remove(session, index, lock);
             }
         }
         return 0;

@@ -9,9 +9,9 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -47,8 +47,8 @@ public class DropSchema extends DefinitionStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveSchemaLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveSchemaLock(session);
+        if (lock == null)
             return -1;
 
         Schema schema = db.findSchema(session, schemaName);
@@ -60,7 +60,7 @@ public class DropSchema extends DefinitionStatement {
             if (!schema.canDrop()) {
                 throw DbException.get(ErrorCode.SCHEMA_CAN_NOT_BE_DROPPED_1, schemaName);
             }
-            db.removeDatabaseObject(session, schema, lockTable);
+            db.removeDatabaseObject(session, schema, lock);
         }
         return 0;
     }

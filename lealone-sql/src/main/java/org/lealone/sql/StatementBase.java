@@ -595,6 +595,16 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         return false;
     }
 
+    @Override
+    public void replicaCommit(long validKey, boolean autoCommit) {
+        session.replicationCommit(validKey, autoCommit);
+    }
+
+    @Override
+    public void replicaRollback() {
+        session.rollback();
+    }
+
     public TableFilter getTableFilter() {
         return null;
     }

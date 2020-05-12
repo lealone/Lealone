@@ -12,8 +12,8 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 
@@ -75,8 +75,8 @@ public class CreateUser extends DefinitionStatement implements AuthStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveAuthLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveAuthLock(session);
+        if (lock == null)
             return -1;
 
         if (db.findRole(session, userName) != null) {
@@ -99,7 +99,7 @@ public class CreateUser extends DefinitionStatement implements AuthStatement {
         } else {
             throw DbException.throwInternalError();
         }
-        db.addDatabaseObject(session, user, lockTable);
+        db.addDatabaseObject(session, user, lock);
         return 0;
     }
 

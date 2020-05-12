@@ -11,8 +11,8 @@ import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Role;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -48,8 +48,8 @@ public class DropRole extends DefinitionStatement implements AuthStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveAuthLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveAuthLock(session);
+        if (lock == null)
             return -1;
 
         if (roleName.equals(Constants.PUBLIC_ROLE_NAME)) {
@@ -61,7 +61,7 @@ public class DropRole extends DefinitionStatement implements AuthStatement {
                 throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, roleName);
             }
         } else {
-            db.removeDatabaseObject(session, role, lockTable);
+            db.removeDatabaseObject(session, role, lock);
         }
         return 0;
     }

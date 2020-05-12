@@ -16,13 +16,13 @@ import org.lealone.db.Constants;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.schema.SchemaObjectBase;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
@@ -456,7 +456,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
+    public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         table.removeIndex(this);
         remove(session);
     }

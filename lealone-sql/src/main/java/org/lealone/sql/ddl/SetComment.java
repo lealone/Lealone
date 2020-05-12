@@ -12,9 +12,9 @@ import org.lealone.db.Database;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -76,8 +76,8 @@ public class SetComment extends DefinitionStatement {
     public int update() {
         Database db = session.getDatabase();
         session.getUser().checkAdmin();
-        LockTable lockTable = db.tryExclusiveCommentLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveCommentLock(session);
+        if (lock == null)
             return -1;
 
         DbObject object = null;
@@ -145,11 +145,11 @@ public class SetComment extends DefinitionStatement {
                     int id = getObjectId();
                     comment = new Comment(db, id, object);
                     comment.setCommentText(text);
-                    db.addDatabaseObject(session, comment, lockTable);
+                    db.addDatabaseObject(session, comment, lock);
                 }
             } else {
                 if (text == null) {
-                    db.removeDatabaseObject(session, comment, lockTable);
+                    db.removeDatabaseObject(session, comment, lock);
                 } else {
                     comment.setCommentText(text);
                     db.updateMeta(session, comment);

@@ -39,6 +39,7 @@ import org.lealone.db.constraint.ConstraintUnique;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.MetaIndex;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -270,7 +271,7 @@ public class MetaTable extends Table {
         }
         case LOCKS: {
             setObjectName("LOCKS");
-            cols = createColumns("TABLE_SCHEMA", "TABLE_NAME", "SESSION_ID INT", "LOCK_TYPE");
+            cols = createColumns("SESSION_ID INT", "LOCK_TYPE");
             break;
         }
         case SESSION_STATE: {
@@ -1277,16 +1278,12 @@ public class MetaTable extends Table {
         case LOCKS: {
             for (ServerSession s : database.getSessions(false)) {
                 if (admin || s == session) {
-                    for (Table table : s.getLocks()) {
+                    for (DbObjectLock lock : s.getLocks()) {
                         add(rows,
-                                // TABLE_SCHEMA
-                                table.getSchema().getName(),
-                                // TABLE_NAME
-                                table.getName(),
                                 // SESSION_ID
                                 "" + s.getId(),
                                 // LOCK_TYPE
-                                table.isLockedExclusivelyBy(s) ? "WRITE" : "READ");
+                                lock.getDbObjectType() + " " + (lock.isLockedExclusivelyBy(s) ? "WRITE" : "READ"));
                     }
                 }
             }
@@ -1492,7 +1489,7 @@ public class MetaTable extends Table {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
+    public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         throw DbException.getUnsupportedException("META");
     }
 

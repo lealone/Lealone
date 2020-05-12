@@ -20,10 +20,10 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -55,8 +55,8 @@ public class DropService extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.SERVICE, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.SERVICE, session);
+        if (lock == null)
             return -1;
 
         Service service = schema.findService(session, serviceName);
@@ -65,7 +65,7 @@ public class DropService extends SchemaStatement {
                 throw DbException.get(ErrorCode.SERVICE_NOT_FOUND_1, serviceName);
             }
         } else {
-            schema.remove(session, service, lockTable);
+            schema.remove(session, service, lock);
         }
         return 0;
     }

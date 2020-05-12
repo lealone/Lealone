@@ -13,9 +13,9 @@ import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableType;
 import org.lealone.db.table.TableView;
@@ -84,8 +84,8 @@ public class CreateView extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        if (lock == null)
             return -1;
 
         Database db = session.getDatabase();
@@ -127,7 +127,7 @@ public class CreateView extends SchemaStatement {
             view.setComment(comment);
         }
         if (old == null) {
-            getSchema().add(session, view, lockTable);
+            getSchema().add(session, view, lock);
         } else {
             db.updateMeta(session, view);
         }

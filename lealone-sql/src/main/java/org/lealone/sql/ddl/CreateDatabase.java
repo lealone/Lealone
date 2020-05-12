@@ -23,8 +23,8 @@ import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLStatement;
 
@@ -53,8 +53,8 @@ public class CreateDatabase extends DatabaseStatement {
     public int update() {
         checkRight(ErrorCode.CREATE_DATABASE_RIGHTS_REQUIRED);
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-        LockTable lockTable = lealoneDB.tryExclusiveDatabaseLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = lealoneDB.tryExclusiveDatabaseLock(session);
+        if (lock == null)
             return -1;
 
         if (lealoneDB.findDatabase(dbName) != null || LealoneDatabase.NAME.equalsIgnoreCase(dbName)) {
@@ -77,7 +77,7 @@ public class CreateDatabase extends DatabaseStatement {
             // 如果可用节点只有1个，那就退化到CLIENT_SERVER模式
             newDB.setRunMode(RunMode.CLIENT_SERVER);
         }
-        lealoneDB.addDatabaseObject(session, newDB, lockTable);
+        lealoneDB.addDatabaseObject(session, newDB, lock);
         // 将缓存过期掉
         lealoneDB.getNextModificationMetaId();
 

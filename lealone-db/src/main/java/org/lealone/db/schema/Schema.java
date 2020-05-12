@@ -25,10 +25,11 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
+import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.CreateTableData;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.StandardTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableFactory;
@@ -55,7 +56,7 @@ public class Schema extends DbObjectBase {
     @SuppressWarnings("unchecked")
     private final AtomicReference<TransactionalDbObjects<DbObject>>[] dbObjectsRefs //
             = new AtomicReference[DbObjectType.TYPES.length];
-    private final LockTable[] lockTables = new LockTable[DbObjectType.TYPES.length];
+    private final DbObjectLock[] locks = new DbObjectLock[DbObjectType.TYPES.length];
 
     private final User owner;
     private final boolean system;
@@ -75,7 +76,7 @@ public class Schema extends DbObjectBase {
             if (type.isSchemaObject) {
                 dbObjectsRefs[type.value] = new AtomicReference<>(
                         new TransactionalDbObjects<>(new CaseInsensitiveMap<>()));
-                lockTables[type.value] = new LockTable(this, type.name());
+                locks[type.value] = new DbObjectLockImpl(type);
             }
         }
         this.owner = owner;
@@ -121,10 +122,10 @@ public class Schema extends DbObjectBase {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
+    public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
         // 删除顺序不能乱，因为可能有依赖
-        removeSchemaObjects(session, lockTable, DbObjectType.TRIGGER);
-        removeSchemaObjects(session, lockTable, DbObjectType.CONSTRAINT);
+        removeSchemaObjects(session, lock, DbObjectType.TRIGGER);
+        removeSchemaObjects(session, lock, DbObjectType.CONSTRAINT);
 
         // There can be dependencies between tables e.g. using computed columns,
         // so we might need to loop over them multiple times.
@@ -140,7 +141,7 @@ public class Schema extends DbObjectBase {
                     // in one go underneath us.
                     if (table.getName() != null) {
                         if (database.getDependentTable(table, table) == null) {
-                            table.getSchema().remove(session, table, lockTable);
+                            table.getSchema().remove(session, table, lock);
                         } else {
                             runLoopAgain = true;
                         }
@@ -149,21 +150,21 @@ public class Schema extends DbObjectBase {
             }
         } while (runLoopAgain);
 
-        removeSchemaObjects(session, lockTable, DbObjectType.INDEX);
-        removeSchemaObjects(session, lockTable, DbObjectType.SEQUENCE);
-        removeSchemaObjects(session, lockTable, DbObjectType.CONSTANT);
-        removeSchemaObjects(session, lockTable, DbObjectType.FUNCTION_ALIAS);
-        removeSchemaObjects(session, lockTable, DbObjectType.AGGREGATE);
-        removeSchemaObjects(session, lockTable, DbObjectType.USER_DATATYPE);
-        removeSchemaObjects(session, lockTable, DbObjectType.SERVICE);
-        super.removeChildrenAndResources(session, lockTable);
+        removeSchemaObjects(session, lock, DbObjectType.INDEX);
+        removeSchemaObjects(session, lock, DbObjectType.SEQUENCE);
+        removeSchemaObjects(session, lock, DbObjectType.CONSTANT);
+        removeSchemaObjects(session, lock, DbObjectType.FUNCTION_ALIAS);
+        removeSchemaObjects(session, lock, DbObjectType.AGGREGATE);
+        removeSchemaObjects(session, lock, DbObjectType.USER_DATATYPE);
+        removeSchemaObjects(session, lock, DbObjectType.SERVICE);
+        super.removeChildrenAndResources(session, lock);
     }
 
-    private void removeSchemaObjects(ServerSession session, LockTable lockTable, DbObjectType type) {
+    private void removeSchemaObjects(ServerSession session, DbObjectLock lock, DbObjectType type) {
         HashMap<String, DbObject> dbObjects = getDbObjects(type);
         while (dbObjects != null && dbObjects.size() > 0) {
             SchemaObject obj = (SchemaObject) dbObjects.values().toArray()[0];
-            remove(session, obj, lockTable);
+            remove(session, obj, lock);
             // 重新获取，因为调用remove方法会重新copy一份再删除
             dbObjects = getDbObjects(type);
         }
@@ -174,10 +175,10 @@ public class Schema extends DbObjectBase {
         return (HashMap<String, T>) dbObjectsRefs[type.value].get().getDbObjects();
     }
 
-    public LockTable tryExclusiveLock(DbObjectType type, ServerSession session) {
-        LockTable lockTable = lockTables[type.value];
-        if (lockTable.tryExclusiveLock(session)) {
-            return lockTable;
+    public DbObjectLock tryExclusiveLock(DbObjectType type, ServerSession session) {
+        DbObjectLock lock = locks[type.value];
+        if (lock.tryExclusiveLock(session)) {
+            return lock;
         } else {
             return null;
         }
@@ -189,7 +190,7 @@ public class Schema extends DbObjectBase {
      * @param obj the object to add
      */
     // 执行DDL语句时session不为null，需要在meta表中增加一条对应的记录
-    public void add(ServerSession session, SchemaObject obj, LockTable lockTable) {
+    public void add(ServerSession session, SchemaObject obj, DbObjectLock lock) {
         AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
         TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
         int id = obj.getId();
@@ -226,8 +227,8 @@ public class Schema extends DbObjectBase {
         dbObjects.add(obj);
         dbObjectsRef.set(dbObjects);
 
-        if (lockTable != null) {
-            lockTable.addHandler(ar -> {
+        if (lock != null) {
+            lock.addHandler(ar -> {
                 if (ar.isSucceeded()) {
                     dbObjectsRef.set(dbObjectsRef.get().commit());
                 } else {
@@ -244,7 +245,7 @@ public class Schema extends DbObjectBase {
      *
      * @param obj the object to remove
      */
-    public void remove(ServerSession session, SchemaObject obj, LockTable lockTable) {
+    public void remove(ServerSession session, SchemaObject obj, DbObjectLock lock) {
         String objName = obj.getName();
         DbObjectType type = obj.getType();
         if (session != null && removeLocalTempSchemaObject(session, obj)) {
@@ -263,14 +264,14 @@ public class Schema extends DbObjectBase {
                 return;
             }
 
-            obj.removeChildrenAndResources(session, lockTable);
-            database.tryRemoveMeta(session, obj, lockTable);
+            obj.removeChildrenAndResources(session, lock);
+            database.tryRemoveMeta(session, obj, lock);
 
             dbObjects = dbObjects.copy(session);
             dbObjects.remove(objName);
             dbObjectsRef.set(dbObjects);
-            if (lockTable != null) {
-                lockTable.addHandler(ar -> {
+            if (lock != null) {
+                lock.addHandler(ar -> {
                     if (ar.isSucceeded()) {
                         dbObjectsRef.set(dbObjectsRef.get().commit());
                         removeInternal(obj);
@@ -321,7 +322,7 @@ public class Schema extends DbObjectBase {
      * @param obj the object to rename
      * @param newName the new name
      */
-    public void rename(ServerSession session, SchemaObject obj, String newName, LockTable lockTable) {
+    public void rename(ServerSession session, SchemaObject obj, String newName, DbObjectLock lock) {
         AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
         TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
         String oldName = obj.getName();
@@ -341,7 +342,7 @@ public class Schema extends DbObjectBase {
         dbObjects.add(obj);
         dbObjectsRef.set(dbObjects);
 
-        lockTable.addHandler(ar -> {
+        lock.addHandler(ar -> {
             if (ar.isSucceeded()) {
                 dbObjectsRef.set(dbObjectsRef.get().commit());
             } else {

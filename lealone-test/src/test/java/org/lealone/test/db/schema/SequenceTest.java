@@ -33,6 +33,9 @@ public class SequenceTest extends DbObjectTestBase {
     }
 
     void create() {
+        executeUpdate("DROP TABLE IF EXISTS CreateSequenceTest");
+        executeUpdate("DROP SEQUENCE IF EXISTS myseq");
+
         executeUpdate("CREATE SEQUENCE IF NOT EXISTS myseq" //
                 + " START WITH 1000 INCREMENT BY 1 MINVALUE 10 MAXVALUE 10000 CYCLE CACHE 3 BELONGS_TO_TABLE");
 

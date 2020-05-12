@@ -9,10 +9,10 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.UserDataType;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -47,8 +47,8 @@ public class DropUserDataType extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.USER_DATATYPE, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.USER_DATATYPE, session);
+        if (lock == null)
             return -1;
 
         UserDataType type = schema.findUserDataType(session, typeName);
@@ -57,7 +57,7 @@ public class DropUserDataType extends SchemaStatement {
                 throw DbException.get(ErrorCode.USER_DATA_TYPE_NOT_FOUND_1, typeName);
             }
         } else {
-            schema.remove(session, type, lockTable);
+            schema.remove(session, type, lock);
         }
         return 0;
     }

@@ -13,9 +13,9 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 
@@ -83,8 +83,8 @@ public class CreateIndex extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.INDEX, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.INDEX, session);
+        if (lock == null)
             return -1;
 
         Table table = schema.getTableOrView(session, tableName);
@@ -117,7 +117,7 @@ public class CreateIndex extends SchemaStatement {
             indexType = IndexType.createNonUnique(hash);
         }
         IndexColumn.mapColumns(indexColumns, table);
-        table.addIndex(session, indexName, id, indexColumns, indexType, create, comment, lockTable);
+        table.addIndex(session, indexName, id, indexColumns, indexType, create, comment, lock);
         return 0;
     }
 }

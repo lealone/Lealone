@@ -11,9 +11,9 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -44,8 +44,8 @@ public class AlterTableDropConstraint extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.CONSTRAINT, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.CONSTRAINT, session);
+        if (lock == null)
             return -1;
 
         Constraint constraint = schema.findConstraint(session, constraintName);
@@ -56,7 +56,7 @@ public class AlterTableDropConstraint extends SchemaStatement {
         } else {
             session.getUser().checkRight(constraint.getTable(), Right.ALL);
             session.getUser().checkRight(constraint.getRefTable(), Right.ALL);
-            schema.remove(session, constraint, lockTable);
+            schema.remove(session, constraint, lock);
         }
         return 0;
     }

@@ -9,10 +9,10 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Constant;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.value.Value;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
@@ -54,8 +54,8 @@ public class CreateConstant extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.CONSTANT, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.CONSTANT, session);
+        if (lock == null)
             return -1;
 
         // 当成功获得排它锁后，不管以下代码是正常还是异常返回都不需要在这里手工释放锁，
@@ -70,7 +70,7 @@ public class CreateConstant extends SchemaStatement {
         expression = expression.optimize(session);
         Value value = expression.getValue(session);
         Constant constant = new Constant(schema, id, constantName, value);
-        schema.add(session, constant, lockTable);
+        schema.add(session, constant, lock);
         return 0;
     }
 }

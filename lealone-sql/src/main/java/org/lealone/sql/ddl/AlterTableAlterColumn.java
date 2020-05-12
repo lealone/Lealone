@@ -16,12 +16,12 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexType;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Result;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
@@ -108,8 +108,8 @@ public class AlterTableAlterColumn extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = tryAlterTable(table);
-        if (lockTable == null)
+        DbObjectLock lock = tryAlterTable(table);
+        if (lock == null)
             return -1;
 
         Database db = session.getDatabase();
@@ -149,7 +149,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             checkDefaultReferencesTable(defaultExpression);
             oldColumn.setSequence(null);
             oldColumn.setDefaultExpression(session, defaultExpression);
-            removeSequence(sequence, lockTable);
+            removeSequence(sequence, lock);
             db.updateMeta(session, table);
             break;
         }
@@ -158,7 +158,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             // need to copy the table because the length is only a constraint,
             // and does not affect the storage structure.
             if (oldColumn.isWideningConversion(newColumn)) {
-                convertAutoIncrementColumn(newColumn, lockTable);
+                convertAutoIncrementColumn(newColumn, lock);
                 oldColumn.copy(newColumn);
                 db.updateMeta(session, table);
             } else {
@@ -170,7 +170,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
                 } else if (!oldColumn.isNullable() && newColumn.isNullable()) {
                     checkNullable();
                 }
-                convertAutoIncrementColumn(newColumn, lockTable);
+                convertAutoIncrementColumn(newColumn, lock);
                 addTableAlterHistoryRecords();
             }
             break;
@@ -183,7 +183,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             for (Column column : columnsToAdd) {
                 if (column.isAutoIncrement()) {
                     int objId = getObjectId();
-                    column.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary(), lockTable);
+                    column.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary(), lock);
                 }
             }
             addTableAlterHistoryRecords();
@@ -193,7 +193,7 @@ public class AlterTableAlterColumn extends SchemaStatement {
             if (table.getColumns().length == 1) {
                 throw DbException.get(ErrorCode.CANNOT_DROP_LAST_COLUMN, oldColumn.getSQL());
             }
-            table.dropSingleColumnConstraintsAndIndexes(session, oldColumn, lockTable);
+            table.dropSingleColumnConstraintsAndIndexes(session, oldColumn, lock);
             addTableAlterHistoryRecords();
             break;
         }
@@ -221,23 +221,23 @@ public class AlterTableAlterColumn extends SchemaStatement {
         }
     }
 
-    private void convertAutoIncrementColumn(Column c, LockTable lockTable) {
+    private void convertAutoIncrementColumn(Column c, DbObjectLock lock) {
         if (c.isAutoIncrement()) {
             if (c.isPrimaryKey()) {
                 c.setOriginalSQL("IDENTITY");
             } else {
                 int objId = getObjectId();
-                c.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary(), lockTable);
+                c.convertAutoIncrementToSequence(session, getSchema(), objId, table.isTemporary(), lock);
             }
         }
     }
 
-    private void removeSequence(Sequence sequence, LockTable lockTable) {
+    private void removeSequence(Sequence sequence, DbObjectLock lock) {
         if (sequence != null) {
             table.removeSequence(sequence);
             if (sequence.getBelongsToTable()) {
                 sequence.setBelongsToTable(false);
-                schema.remove(session, sequence, lockTable);
+                schema.remove(session, sequence, lock);
             }
         }
     }

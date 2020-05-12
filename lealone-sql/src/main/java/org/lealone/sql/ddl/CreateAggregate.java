@@ -9,10 +9,10 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.UserAggregate;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -57,8 +57,8 @@ public class CreateAggregate extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.AGGREGATE, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.AGGREGATE, session);
+        if (lock == null)
             return -1;
 
         if (schema.findAggregate(session, name) != null || schema.findFunction(session, name) != null) {
@@ -68,7 +68,7 @@ public class CreateAggregate extends SchemaStatement {
         } else {
             int id = getObjectId();
             UserAggregate aggregate = new UserAggregate(schema, id, name, javaClassName, force);
-            schema.add(session, aggregate, lockTable);
+            schema.add(session, aggregate, lock);
         }
         return 0;
     }

@@ -9,10 +9,10 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -47,8 +47,8 @@ public class DropSequence extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.SEQUENCE, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.SEQUENCE, session);
+        if (lock == null)
             return -1;
 
         Sequence sequence = schema.findSequence(session, sequenceName);
@@ -60,7 +60,7 @@ public class DropSequence extends SchemaStatement {
             if (sequence.getBelongsToTable()) {
                 throw DbException.get(ErrorCode.SEQUENCE_BELONGS_TO_A_TABLE_1, sequenceName);
             }
-            schema.remove(session, sequence, lockTable);
+            schema.remove(session, sequence, lock);
         }
         return 0;
     }

@@ -15,9 +15,9 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.ConstraintReferential;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
@@ -110,31 +110,31 @@ public class DropTable extends SchemaStatement {
         return true;
     }
 
-    private void executeDrop(LockTable lockTable) {
+    private void executeDrop(DbObjectLock lock) {
         // need to get the table again, because it may be dropped already
         // meanwhile (dependent object, or same object)
         table = schema.findTableOrView(session, tableName);
         if (table != null) {
             int id = table.getId();
             table.setModified();
-            schema.remove(session, table, lockTable);
+            schema.remove(session, table, lock);
             Database db = session.getDatabase();
             db.getVersionManager().deleteTableAlterHistoryRecord(id);
         }
         if (next != null) {
-            next.executeDrop(lockTable);
+            next.executeDrop(lock);
         }
     }
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        if (lock == null)
             return -1;
 
         if (!prepareDrop())
             return -1;
-        executeDrop(lockTable);
+        executeDrop(lock);
         return 0;
     }
 }

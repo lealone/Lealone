@@ -34,6 +34,7 @@ import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.standard.StandardPrimaryIndex;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
@@ -80,7 +81,7 @@ public class ServerSession extends SessionBase {
     private ConnectionInfo connectionInfo;
     private final User user;
     private final int id;
-    private final ArrayList<Table> locks = new ArrayList<>();
+    private final ArrayList<DbObjectLock> locks = new ArrayList<>();
     private Random random;
     private int lockTimeout;
     private Value lastIdentity = ValueLong.get(0);
@@ -682,35 +683,25 @@ public class ServerSession extends SessionBase {
     }
 
     /**
-     * Add a lock for the given table. The object is unlocked on commit or rollback.
+     * Add a lock for the given DbObject. The object is unlocked on commit or rollback.
      *
-     * @param table the table that is locked
+     * @param lock the lock that is locked
      */
-    public void addLock(Table table) {
+    public void addLock(DbObjectLock lock) {
         if (SysProperties.CHECK) {
-            if (locks.indexOf(table) >= 0) {
+            if (locks.indexOf(lock) >= 0) {
                 DbException.throwInternalError();
             }
         }
-        locks.add(table);
-    }
-
-    /**
-     * Unlock just this table.
-     *
-     * @param t the table to unlock
-     */
-    public void unlock(Table t) {
-        locks.remove(t);
-        t.unlock(this);
+        locks.add(lock);
     }
 
     private void unlockAll(boolean succeeded) {
         if (!locks.isEmpty()) {
             // don't use the enhanced for loop to save memory
             for (int i = 0, size = locks.size(); i < size; i++) {
-                Table t = locks.get(i);
-                t.unlock(this, succeeded);
+                DbObjectLock lock = locks.get(i);
+                lock.unlock(this, succeeded);
             }
             locks.clear();
         }
@@ -1047,10 +1038,10 @@ public class ServerSession extends SessionBase {
         return transactionStart;
     }
 
-    public Table[] getLocks() {
+    public DbObjectLock[] getLocks() {
         // copy the data without synchronizing
         int size = locks.size();
-        ArrayList<Table> copy = new ArrayList<>(size);
+        ArrayList<DbObjectLock> copy = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             try {
                 copy.add(locks.get(i));
@@ -1059,7 +1050,7 @@ public class ServerSession extends SessionBase {
                 break;
             }
         }
-        Table[] list = new Table[copy.size()];
+        DbObjectLock[] list = new DbObjectLock[copy.size()];
         copy.toArray(list);
         return list;
     }

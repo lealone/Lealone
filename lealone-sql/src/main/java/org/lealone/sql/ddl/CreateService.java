@@ -29,13 +29,13 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.service.Service;
 import org.lealone.db.service.ServiceExecutor;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.value.DataType;
 import org.lealone.sql.SQLStatement;
 
@@ -105,8 +105,8 @@ public class CreateService extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.SERVICE, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.SERVICE, session);
+        if (lock == null)
             return -1;
 
         if (schema.findService(session, serviceName) != null) {
@@ -120,7 +120,7 @@ public class CreateService extends SchemaStatement {
         service.setImplementBy(implementBy);
         service.setPackageName(packageName);
         service.setComment(comment);
-        schema.add(session, service, lockTable);
+        schema.add(session, service, lock);
         // 数据库在启动阶段执行CREATE SERVICE语句时不用再生成代码
         if (genCode && !session.getDatabase().isStarting())
             genCode();

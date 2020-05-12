@@ -19,6 +19,7 @@ import org.lealone.db.DbObject;
 import org.lealone.db.Mode;
 import org.lealone.db.SQLEngineHolder;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.result.Row;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
@@ -355,7 +356,7 @@ public class Column {
      *            be stored
      */
     public void convertAutoIncrementToSequence(ServerSession session, Schema schema, int id, boolean temporary,
-            LockTable lockTable) {
+            DbObjectLock lock) {
         if (!autoIncrement) {
             DbException.throwInternalError();
         }
@@ -378,7 +379,7 @@ public class Column {
         if (temporary) {
             seq.setTemporary(true);
         } else {
-            schema.add(session, seq, lockTable);
+            schema.add(session, seq, lock);
         }
         setAutoIncrement(false, 0, 0);
         setDefaultExpression(session, session.getDatabase().getSQLEngine().createSequenceValue(seq));

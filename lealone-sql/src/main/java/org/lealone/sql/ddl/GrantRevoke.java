@@ -14,9 +14,9 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.auth.Right;
 import org.lealone.db.auth.RightOwner;
 import org.lealone.db.auth.Role;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.sql.SQLStatement;
 
@@ -120,8 +120,8 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();
-        LockTable lockTable = db.tryExclusiveAuthLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = db.tryExclusiveAuthLock(session);
+        if (lock == null)
             return -1;
 
         if (roleNames != null) {
@@ -131,18 +131,18 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
                     throw DbException.get(ErrorCode.ROLE_NOT_FOUND_1, name);
                 }
                 if (operationType == SQLStatement.GRANT) {
-                    grantRole(grantedRole, lockTable);
+                    grantRole(grantedRole, lock);
                 } else if (operationType == SQLStatement.REVOKE) {
-                    revokeRole(grantedRole, lockTable);
+                    revokeRole(grantedRole, lock);
                 } else {
                     DbException.throwInternalError("type=" + operationType);
                 }
             }
         } else {
             if (operationType == SQLStatement.GRANT) {
-                grantRight(lockTable);
+                grantRight(lock);
             } else if (operationType == SQLStatement.REVOKE) {
-                revokeRight(lockTable);
+                revokeRight(lock);
             } else {
                 DbException.throwInternalError("type=" + operationType);
             }
@@ -150,30 +150,30 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
         return 0;
     }
 
-    private void grantRight(LockTable lockTable) {
+    private void grantRight(DbObjectLock lock) {
         if (schema != null) {
-            grantRight(schema, lockTable);
+            grantRight(schema, lock);
         }
         for (Table table : tables) {
-            grantRight(table, lockTable);
+            grantRight(table, lock);
         }
     }
 
-    private void grantRight(DbObject object, LockTable lockTable) {
+    private void grantRight(DbObject object, DbObjectLock lock) {
         Database db = session.getDatabase();
         Right right = grantee.getRightForObject(object);
         if (right == null) {
             int id = getObjectId();
             right = new Right(db, id, grantee, rightMask, object);
             grantee.grantRight(object, right);
-            db.addDatabaseObject(session, right, lockTable);
+            db.addDatabaseObject(session, right, lock);
         } else {
             right.setRightMask(right.getRightMask() | rightMask);
             db.updateMeta(session, right);
         }
     }
 
-    private void grantRole(Role grantedRole, LockTable lockTable) {
+    private void grantRole(Role grantedRole, DbObjectLock lock) {
         if (grantedRole != grantee && grantee.isRoleGranted(grantedRole)) {
             return;
         }
@@ -187,20 +187,20 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
         Database db = session.getDatabase();
         int id = getObjectId();
         Right right = new Right(db, id, grantee, grantedRole);
-        db.addDatabaseObject(session, right, lockTable);
+        db.addDatabaseObject(session, right, lock);
         grantee.grantRole(grantedRole, right);
     }
 
-    private void revokeRight(LockTable lockTable) {
+    private void revokeRight(DbObjectLock lock) {
         if (schema != null) {
-            revokeRight(schema, lockTable);
+            revokeRight(schema, lock);
         }
         for (Table table : tables) {
-            revokeRight(table, lockTable);
+            revokeRight(table, lock);
         }
     }
 
-    private void revokeRight(DbObject object, LockTable lockTable) {
+    private void revokeRight(DbObject object, DbObjectLock lock) {
         Right right = grantee.getRightForObject(object);
         if (right == null) {
             return;
@@ -209,19 +209,19 @@ public class GrantRevoke extends DefinitionStatement implements AuthStatement {
         int newRight = mask & ~rightMask;
         Database db = session.getDatabase();
         if (newRight == 0) {
-            db.removeDatabaseObject(session, right, lockTable);
+            db.removeDatabaseObject(session, right, lock);
         } else {
             right.setRightMask(newRight);
             db.updateMeta(session, right);
         }
     }
 
-    private void revokeRole(Role grantedRole, LockTable lockTable) {
+    private void revokeRole(Role grantedRole, DbObjectLock lock) {
         Right right = grantee.getRightForRole(grantedRole);
         if (right == null) {
             return;
         }
         Database db = session.getDatabase();
-        db.removeDatabaseObject(session, right, lockTable);
+        db.removeDatabaseObject(session, right, lock);
     }
 }

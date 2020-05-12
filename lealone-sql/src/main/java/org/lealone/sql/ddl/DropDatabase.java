@@ -21,8 +21,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Database;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -58,8 +58,8 @@ public class DropDatabase extends DatabaseStatement {
             throw DbException.get(ErrorCode.CANNOT_DROP_LEALONE_DATABASE);
         }
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();
-        LockTable lockTable = lealoneDB.tryExclusiveDatabaseLock(session);
-        if (lockTable == null)
+        DbObjectLock lock = lealoneDB.tryExclusiveDatabaseLock(session);
+        if (lock == null)
             return -1;
 
         Database db = lealoneDB.getDatabase(dbName);
@@ -67,7 +67,7 @@ public class DropDatabase extends DatabaseStatement {
             if (!ifExists)
                 throw DbException.get(ErrorCode.DATABASE_NOT_FOUND_1, dbName);
         } else {
-            lealoneDB.removeDatabaseObject(session, db, lockTable);
+            lealoneDB.removeDatabaseObject(session, db, lock);
             if (isTargetNode(db)) {
                 // Lealone不同于H2数据库，在H2的一个数据库中可以访问另一个数据库的对象，而Lealone不允许，
                 // 所以在H2中需要一个对象一个对象地删除，这样其他数据库中的对象对他们的引用才能解除，

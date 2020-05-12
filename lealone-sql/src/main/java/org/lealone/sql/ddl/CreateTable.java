@@ -20,12 +20,12 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.IndexColumn;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
@@ -119,8 +119,8 @@ public class CreateTable extends SchemaStatement {
 
     @Override
     public int update() {
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
+        if (lock == null)
             return -1;
 
         Database db = session.getDatabase();
@@ -159,7 +159,7 @@ public class CreateTable extends SchemaStatement {
         for (Column c : data.columns) {
             if (c.isAutoIncrement()) {
                 int objId = getObjectId();
-                c.convertAutoIncrementToSequence(session, schema, objId, data.temporary, lockTable);
+                c.convertAutoIncrementToSequence(session, schema, objId, data.temporary, lock);
             }
             Sequence seq = c.getSequence();
             if (seq != null) {
@@ -179,7 +179,7 @@ public class CreateTable extends SchemaStatement {
             }
             session.addLocalTempTable(table);
         } else {
-            schema.add(session, table, lockTable);
+            schema.add(session, table, lock);
         }
         try {
             TableFilter tf = new TableFilter(session, table, null, false, null);
@@ -202,7 +202,7 @@ public class CreateTable extends SchemaStatement {
             }
         } catch (DbException e) {
             db.checkPowerOff();
-            schema.remove(session, table, lockTable);
+            schema.remove(session, table, lock);
             throw e;
         }
 

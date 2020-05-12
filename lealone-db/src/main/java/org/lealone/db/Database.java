@@ -44,6 +44,8 @@ import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
+import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.schema.Schema;
@@ -55,7 +57,6 @@ import org.lealone.db.session.Session;
 import org.lealone.db.session.SystemSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
-import org.lealone.db.table.LockTable;
 import org.lealone.db.table.MetaTable;
 import org.lealone.db.table.Table;
 import org.lealone.db.table.TableView;
@@ -111,38 +112,38 @@ public class Database implements DataHandler, DbObject, IDatabase {
             = new AtomicReference[DbObjectType.TYPES.length];
 
     // 与users、roles和rights相关的操作都用这个对象进行同步
-    private LockTable authLockTable;
-    private LockTable schemasLockTable;
-    private LockTable commentsLockTable;
-    private LockTable databasesLockTable;
+    private final DbObjectLock authLock = new DbObjectLockImpl(DbObjectType.USER);
+    private final DbObjectLock schemasLock = new DbObjectLockImpl(DbObjectType.SCHEMA);
+    private final DbObjectLock commentsLock = new DbObjectLockImpl(DbObjectType.COMMENT);
+    private final DbObjectLock databasesLock = new DbObjectLockImpl(DbObjectType.DATABASE);
 
-    public LockTable tryExclusiveAuthLock(ServerSession session) {
-        if (authLockTable.tryExclusiveLock(session)) {
-            return authLockTable;
+    public DbObjectLock tryExclusiveAuthLock(ServerSession session) {
+        if (authLock.tryExclusiveLock(session)) {
+            return authLock;
         } else {
             return null;
         }
     }
 
-    public LockTable tryExclusiveSchemaLock(ServerSession session) {
-        if (schemasLockTable.tryExclusiveLock(session)) {
-            return schemasLockTable;
+    public DbObjectLock tryExclusiveSchemaLock(ServerSession session) {
+        if (schemasLock.tryExclusiveLock(session)) {
+            return schemasLock;
         } else {
             return null;
         }
     }
 
-    public LockTable tryExclusiveCommentLock(ServerSession session) {
-        if (commentsLockTable.tryExclusiveLock(session)) {
-            return commentsLockTable;
+    public DbObjectLock tryExclusiveCommentLock(ServerSession session) {
+        if (commentsLock.tryExclusiveLock(session)) {
+            return commentsLock;
         } else {
             return null;
         }
     }
 
-    public LockTable tryExclusiveDatabaseLock(ServerSession session) {
-        if (databasesLockTable.tryExclusiveLock(session)) {
-            return databasesLockTable;
+    public DbObjectLock tryExclusiveDatabaseLock(ServerSession session) {
+        if (databasesLock.tryExclusiveLock(session)) {
+            return databasesLock;
         } else {
             return null;
         }
@@ -485,11 +486,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
             addDatabaseObject(null, mainSchema, null);
             addDatabaseObject(null, infoSchema, null);
 
-            authLockTable = new LockTable(mainSchema, "auth");
-            schemasLockTable = new LockTable(mainSchema, " schemas");
-            commentsLockTable = new LockTable(mainSchema, "comments");
-            databasesLockTable = new LockTable(mainSchema, " databases");
-
             systemSession = new SystemSession(this, systemUser, ++nextSessionId);
 
             // 在一个新事务中打开sys(meta)表
@@ -807,7 +803,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    public void tryRemoveMeta(ServerSession session, SchemaObject obj, LockTable lockTable) {
+    public void tryRemoveMeta(ServerSession session, SchemaObject obj, DbObjectLock lock) {
         if (isMetaReady()) {
             Table t = getDependentTable(obj, null);
             if (t != null && t != obj) {
@@ -817,7 +813,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         tryRemoveMeta(session, obj.getId());
         Comment comment = findComment(session, obj);
         if (comment != null) {
-            removeDatabaseObject(session, comment, lockTable);
+            removeDatabaseObject(session, comment, lock);
         }
     }
 
@@ -882,7 +878,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param session the session
      * @param obj the object to add
      */
-    public void addDatabaseObject(ServerSession session, DbObject obj, LockTable lockTable) {
+    public void addDatabaseObject(ServerSession session, DbObject obj, DbObjectLock lock) {
         AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[obj.getType().value];
         TransactionalDbObjects<DbObject> dbObjects = dbObjectsRef.get();
 
@@ -901,8 +897,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         dbObjects.add(obj);
         dbObjectsRef.set(dbObjects);
 
-        if (lockTable != null) {
-            lockTable.addHandler(ar -> {
+        if (lock != null) {
+            lock.addHandler(ar -> {
                 if (ar.isSucceeded()) {
                     dbObjectsRef.set(dbObjectsRef.get().commit());
                 } else {
@@ -919,7 +915,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param session the session
      * @param obj the object to remove
      */
-    public void removeDatabaseObject(ServerSession session, DbObject obj, LockTable lockTable) {
+    public void removeDatabaseObject(ServerSession session, DbObject obj, DbObjectLock lock) {
         checkWritingAllowed();
         String objName = obj.getName();
         DbObjectType type = obj.getType();
@@ -935,18 +931,18 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
         Comment comment = findComment(session, obj);
         if (comment != null) {
-            removeDatabaseObject(session, comment, lockTable);
+            removeDatabaseObject(session, comment, lock);
         }
         int id = obj.getId();
-        obj.removeChildrenAndResources(session, lockTable);
+        obj.removeChildrenAndResources(session, lock);
         tryRemoveMeta(session, id);
 
         dbObjects = dbObjects.copy(session);
         dbObjects.remove(objName);
         dbObjectsRef.set(dbObjects);
 
-        if (lockTable != null) {
-            lockTable.addHandler(ar -> {
+        if (lock != null) {
+            lock.addHandler(ar -> {
                 if (ar.isSucceeded()) {
                     dbObjectsRef.set(dbObjectsRef.get().commit());
                     removeInternal(obj);
@@ -969,7 +965,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param obj the object
      * @param newName the new name
      */
-    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName, LockTable lockTable) {
+    public void renameDatabaseObject(ServerSession session, DbObject obj, String newName, DbObjectLock lock) {
         checkWritingAllowed();
         DbObjectType type = obj.getType();
         AtomicReference<TransactionalDbObjects<DbObject>> dbObjectsRef = dbObjectsRefs[type.value];
@@ -991,7 +987,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         dbObjects.add(obj);
         dbObjectsRef.set(dbObjects);
 
-        lockTable.addHandler(ar -> {
+        lock.addHandler(ar -> {
             if (ar.isSucceeded()) {
                 dbObjectsRef.set(dbObjectsRef.get().commit());
             } else {
@@ -2117,7 +2113,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     @Override
-    public void removeChildrenAndResources(ServerSession session, LockTable lockTable) {
+    public void removeChildrenAndResources(ServerSession session, DbObjectLock lock) {
     }
 
     @Override
@@ -2216,11 +2212,11 @@ public class Database implements DataHandler, DbObject, IDatabase {
     synchronized User createAdminUser(String userName, byte[] userPasswordHash) {
         // 新建session，避免使用system session
         try (ServerSession session = createSession(systemUser)) {
-            LockTable lockTable = tryExclusiveAuthLock(session);
+            DbObjectLock lock = tryExclusiveAuthLock(session);
             User user = new User(this, allocateObjectId(), userName, false);
             user.setAdmin(true);
             user.setUserPasswordHash(userPasswordHash);
-            addDatabaseObject(session, user, lockTable);
+            addDatabaseObject(session, user, lock);
             session.commit();
             return user;
         }

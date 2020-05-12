@@ -9,10 +9,10 @@ package org.lealone.sql.ddl;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Constant;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.table.LockTable;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -47,8 +47,8 @@ public class DropConstant extends SchemaStatement {
     @Override
     public int update() {
         session.getUser().checkAdmin();
-        LockTable lockTable = schema.tryExclusiveLock(DbObjectType.CONSTANT, session);
-        if (lockTable == null)
+        DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.CONSTANT, session);
+        if (lock == null)
             return -1;
 
         Constant constant = schema.findConstant(session, constantName);
@@ -57,7 +57,7 @@ public class DropConstant extends SchemaStatement {
                 throw DbException.get(ErrorCode.CONSTANT_NOT_FOUND_1, constantName);
             }
         } else {
-            schema.remove(session, constant, lockTable);
+            schema.remove(session, constant, lock);
         }
         return 0;
     }
