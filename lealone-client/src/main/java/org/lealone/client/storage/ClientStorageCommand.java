@@ -53,17 +53,17 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
-        return executeReplicaPut(null, mapName, key, value, raw);
+    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent) {
+        return executeReplicaPut(null, mapName, key, value, raw, addIfAbsent);
     }
 
     @Override
     public Future<Object> executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
-            boolean raw) {
+            boolean raw, boolean addIfAbsent) {
         try {
             boolean isDistributed = session.getParentTransaction() != null
                     && !session.getParentTransaction().isAutoCommit();
-            StoragePut packet = new StoragePut(mapName, key, value, isDistributed, replicationName, raw);
+            StoragePut packet = new StoragePut(mapName, key, value, isDistributed, replicationName, raw, addIfAbsent);
             return session.<Object, StoragePutAck> send(packet, ack -> {
                 if (isDistributed)
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);

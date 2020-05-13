@@ -17,6 +17,10 @@
  */
 package org.lealone.transaction.aote;
 
+import java.nio.ByteBuffer;
+
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.Session;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
@@ -39,22 +43,30 @@ public class DTransactionMap<K, V> extends AOTransactionMap<K, V> {
         return (V) map.replicationGet(session, key);
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public V put(K key, V value) {
-        return (V) map.replicationPut(session, key, value, valueType);
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public K append(V value) {
-        return (K) map.replicationAppend(session, value, valueType);
-    }
-
     @Override
     public void addIfAbsent(K key, V value, Transaction.Listener listener) {
-        map.replicationPut(session, key, value, valueType);
-        listener.operationComplete();
+        map.put(session, key, value, valueType, true).onSuccess(r -> {
+            ByteBuffer resultByteBuffer = (ByteBuffer) r;
+            if (resultByteBuffer.get() == 1)
+                listener.operationComplete();
+            else
+                listener.operationUndo();
+        }).onFailure(t -> {
+            listener.setException(new RuntimeException(t));
+            listener.operationUndo();
+        });
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void append(V value, Transaction.Listener listener, AsyncHandler<AsyncResult<K>> topHandler) {
+        map.append(session, value, valueType).onSuccess(r -> {
+            listener.operationComplete();
+            topHandler.handle(new AsyncResult<>((K) r));
+        }).onFailure(t -> {
+            listener.setException(new RuntimeException(t));
+            listener.operationUndo();
+        });
     }
 
     @Override

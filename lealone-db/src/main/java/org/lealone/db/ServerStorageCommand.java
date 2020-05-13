@@ -20,13 +20,16 @@ package org.lealone.db;
 import java.nio.ByteBuffer;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.ServerSession;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.replication.ReplicaStorageCommand;
+import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionMap;
 
 public class ServerStorageCommand implements ReplicaStorageCommand {
 
@@ -42,27 +45,55 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
-        return executeReplicaPut(null, mapName, key, value, raw);
+    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent) {
+        return executeReplicaPut(null, mapName, key, value, raw, addIfAbsent);
     }
 
     @Override
     public Future<Object> executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
-            boolean raw) {
+            boolean raw, boolean addIfAbsent) {
         session.setReplicationName(replicationName);
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        if (raw) {
-            map = map.getRawMap();
-        }
-        Object result = map.put(map.getKeyType().read(key), map.getValueType().read(value));
+        AsyncCallback<Object> ac = new AsyncCallback<>();
+        if (addIfAbsent) {
+            Transaction.Listener localListener = new Transaction.Listener() {
+                @Override
+                public void operationUndo() {
+                    ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
+                    resultByteBuffer.put((byte) 0);
+                    ac.setAsyncResult(resultByteBuffer);
+                }
 
-        if (result == null)
-            return null;
-
-        try (DataBuffer b = DataBuffer.create()) {
-            ByteBuffer valueBuffer = b.write(map.getValueType(), result);
-            return Future.succeededFuture(valueBuffer.array());
+                @Override
+                public void operationComplete() {
+                    ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
+                    resultByteBuffer.put((byte) 1);
+                    ac.setAsyncResult(resultByteBuffer);
+                }
+            };
+            TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
+            map.addIfAbsent(map.getKeyType().read(key), map.getValueType().read(value), localListener);
+        } else {
+            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            if (raw) {
+                map = map.getRawMap();
+            }
+            StorageDataType valueType = map.getValueType();
+            map.put(map.getKeyType().read(key), valueType.read(value), ar -> {
+                if (ar.isSucceeded()) {
+                    Object result = ar.getResult();
+                    if (result != null) {
+                        try (DataBuffer b = DataBuffer.create()) {
+                            ByteBuffer valueBuffer = b.write(valueType, result);
+                            result = valueBuffer.array();
+                        }
+                    }
+                    ac.setAsyncResult(result);
+                } else {
+                    ac.setAsyncResult(ar.getCause());
+                }
+            });
         }
+        return ac;
     }
 
     @Override

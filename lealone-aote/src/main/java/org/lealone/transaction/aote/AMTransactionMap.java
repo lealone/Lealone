@@ -30,6 +30,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
@@ -458,18 +459,18 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     ////////////////////// 以下是分布式API的默认实现 ////////////////////////////////
 
     @Override
-    public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
-        return map.replicationPut(session, key, value, valueType);
-    }
-
-    @Override
     public Object replicationGet(Session session, Object key) {
         return map.replicationGet(session, key);
     }
 
     @Override
-    public Object replicationAppend(Session session, Object value, StorageDataType valueType) {
-        return map.replicationAppend(session, value, valueType);
+    public Future<Object> put(Session session, Object key, Object value, StorageDataType valueType, boolean addIfAbsent) {
+        return map.put(session, key, value, valueType, false);
+    }
+
+    @Override
+    public Future<Object> append(Session session, Object value, StorageDataType valueType) {
+        return map.append(session, value, valueType);
     }
 
     @Override
@@ -706,7 +707,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public K append(V value, Transaction.Listener listener) {
+    public void append(V value, Transaction.Listener listener, AsyncHandler<AsyncResult<K>> topHandler) {
         TransactionalValue ref = TransactionalValue.createRef(null);
         TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
                 null, ref);
@@ -720,7 +721,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         };
         K key = map.append(ref, handler);
         transaction.logAppend((StorageMap<Object, TransactionalValue>) map, key, newValue);
-        return key;
+        topHandler.handle(new AsyncResult<>(key));
     }
 
     @Override

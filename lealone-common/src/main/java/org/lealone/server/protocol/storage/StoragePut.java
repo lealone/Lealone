@@ -34,15 +34,17 @@ public class StoragePut implements Packet {
     public final boolean isDistributedTransaction;
     public final String replicationName;
     public final boolean raw;
+    public final boolean addIfAbsent;
 
     public StoragePut(String mapName, ByteBuffer key, ByteBuffer value, boolean isDistributedTransaction,
-            String replicationName, boolean raw) {
+            String replicationName, boolean raw, boolean addIfAbsent) {
         this.mapName = mapName;
         this.key = key;
         this.value = value;
         this.isDistributedTransaction = isDistributedTransaction;
         this.replicationName = replicationName;
         this.raw = raw;
+        this.addIfAbsent = addIfAbsent;
     }
 
     @Override
@@ -58,7 +60,7 @@ public class StoragePut implements Packet {
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value).writeBoolean(isDistributedTransaction)
-                .writeString(replicationName).writeBoolean(raw);
+                .writeString(replicationName).writeBoolean(raw).writeBoolean(addIfAbsent);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -67,7 +69,7 @@ public class StoragePut implements Packet {
         @Override
         public StoragePut decode(NetInputStream in, int version) throws IOException {
             return new StoragePut(in.readString(), in.readByteBuffer(), in.readByteBuffer(), in.readBoolean(),
-                    in.readString(), in.readBoolean());
+                    in.readString(), in.readBoolean(), in.readBoolean());
         }
     }
 }

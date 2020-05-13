@@ -24,7 +24,7 @@ import org.lealone.db.async.Future;
 
 public interface StorageCommand extends Command {
 
-    Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw);
+    Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent);
 
     Future<Object> get(String mapName, ByteBuffer key);
 

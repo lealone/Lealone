@@ -162,8 +162,11 @@ public class StandardPrimaryIndex extends StandardIndex {
             map.addIfAbsent(key, value, localListener);
         } else {
             globalListener.beforeOperation();
-            key = map.append(value, globalListener);
-            row.setKey(key.getLong());
+            map.append(value, globalListener, ar -> {
+                if (ar.isSucceeded()) {
+                    row.setKey(ar.getResult().getLong());
+                }
+            });
         }
         session.setLastRow(row);
         session.setLastIndex(this);

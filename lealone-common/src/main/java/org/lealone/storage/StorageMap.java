@@ -24,6 +24,7 @@ import java.util.Map;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
 import org.lealone.storage.type.StorageDataType;
 
@@ -287,16 +288,16 @@ public interface StorageMap<K, V> {
 
     ////////////////////// 以下是分布式API ////////////////////////////////
 
-    default Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
-        throw DbException.getUnsupportedException("replicationPut");
-    }
-
     default Object replicationGet(Session session, Object key) {
         throw DbException.getUnsupportedException("replicationGet");
     }
 
-    default Object replicationAppend(Session session, Object value, StorageDataType valueType) {
-        throw DbException.getUnsupportedException("replicationAppend");
+    default Future<Object> put(Session session, Object key, Object value, StorageDataType valueType, boolean addIfAbsent) {
+        throw DbException.getUnsupportedException("put");
+    }
+
+    default Future<Object> append(Session session, Object value, StorageDataType valueType) {
+        throw DbException.getUnsupportedException("append");
     }
 
     default void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {

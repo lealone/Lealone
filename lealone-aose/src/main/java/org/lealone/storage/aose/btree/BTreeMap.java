@@ -606,7 +606,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     StorageCommand c = rs.createStorageCommand()) {
                 ByteBuffer keyBuffer = k.write(keyType, key);
                 ByteBuffer valueBuffer = v.write(valueType, value);
-                byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, true).get();
+                byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, true, false).get();
                 if (oldValue != null) {
                     returnValue = valueType.read(ByteBuffer.wrap(oldValue));
                 }
@@ -981,22 +981,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object replicationPut(Session session, Object key, Object value, StorageDataType valueType) {
-        List<NetNode> replicationNodes = getReplicationNodes(key);
-        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
-        try (DataBuffer k = DataBuffer.create();
-                DataBuffer v = DataBuffer.create();
-                StorageCommand c = rs.createStorageCommand()) {
-            ByteBuffer keyBuffer = k.write(keyType, key);
-            ByteBuffer valueBuffer = v.write(valueType, value);
-            byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, false).get();
-            if (oldValue == null)
-                return null;
-            return valueType.read(ByteBuffer.wrap(oldValue));
-        }
-    }
-
-    @Override
     public Object replicationGet(Session session, Object key) {
         List<NetNode> replicationNodes = getReplicationNodes(key);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
@@ -1010,13 +994,26 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object replicationAppend(Session session, Object value, StorageDataType valueType) {
+    public Future<Object> put(Session session, Object key, Object value, StorageDataType valueType,
+            boolean addIfAbsent) {
+        List<NetNode> replicationNodes = getReplicationNodes(key);
+        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
+        try (DataBuffer k = DataBuffer.create();
+                DataBuffer v = DataBuffer.create();
+                StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = k.write(keyType, key);
+            ByteBuffer valueBuffer = v.write(valueType, value);
+            return c.put(getName(), keyBuffer, valueBuffer, false, addIfAbsent);
+        }
+    }
+
+    @Override
+    public Future<Object> append(Session session, Object value, StorageDataType valueType) {
         List<NetNode> replicationNodes = getLastPageReplicationNodes();
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer v = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer valueBuffer = v.write(valueType, value);
-            Future<Object> f = c.append(getName(), valueBuffer);
-            return f.get();
+            return c.append(getName(), valueBuffer);
         }
     }
 

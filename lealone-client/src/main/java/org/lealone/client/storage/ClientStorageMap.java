@@ -42,7 +42,7 @@ public class ClientStorageMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public V put(K key, V value) {
-        Object b = storageCommand.put(name, k2b(key), v2b(value), true).get();
+        Object b = storageCommand.put(name, k2b(key), v2b(value), true, false).get();
         return b2v((ByteBuffer) b);
     }
 

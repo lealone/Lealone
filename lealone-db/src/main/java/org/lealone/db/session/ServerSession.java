@@ -1320,13 +1320,17 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public StorageMap<Object, Object> getStorageMap(String mapName) {
+        return getTransactionMap(mapName);
+    }
+
+    @SuppressWarnings("unchecked")
+    public TransactionMap<Object, Object> getTransactionMap(String mapName) {
         // 数据库可能还没有初始化，这时事务引擎中就找不到对应的Map
         if (!database.isInitialized())
             database.init();
         TransactionEngine transactionEngine = database.getTransactionEngine();
-        return (StorageMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
+        return (TransactionMap<Object, Object>) transactionEngine.getTransactionMap(mapName, getTransaction());
     }
 
     public void replicatePages(String dbName, String storageName, ByteBuffer data) {

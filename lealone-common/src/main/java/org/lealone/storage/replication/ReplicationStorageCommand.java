@@ -49,11 +49,12 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw) {
-        return executePut(mapName, key, value, raw, 1);
+    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent) {
+        return executePut(mapName, key, value, raw, addIfAbsent, 1);
     }
 
-    private Future<Object> executePut(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, int tries) {
+    private Future<Object> executePut(String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
+            boolean addIfAbsent, int tries) {
         String rn = session.createReplicationName();
         AsyncCallback<Object> ac = new AsyncCallback<>();
         AsyncHandler<AsyncResult<Object>> handler = ar -> {
@@ -63,7 +64,8 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
 
         for (int i = 0; i < session.n; i++) {
             ReplicaStorageCommand c = commands[i];
-            c.executeReplicaPut(rn, mapName, key.slice(), value.slice(), raw).onComplete(writeResponseHandler);
+            c.executeReplicaPut(rn, mapName, key.slice(), value.slice(), raw, addIfAbsent)
+                    .onComplete(writeResponseHandler);
         }
         try {
             writeResponseHandler.getResult(session.rpcTimeoutMillis);
@@ -72,7 +74,7 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
             if (tries < session.maxTries) {
                 key.rewind();
                 value.rewind();
-                return executePut(mapName, key, value, raw, ++tries);
+                return executePut(mapName, key, value, raw, addIfAbsent, ++tries);
             } else {
                 writeResponseHandler.initCause(e);
                 throw e;

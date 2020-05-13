@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.StorageMap;
 
@@ -81,7 +83,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     public void addIfAbsent(K key, V value, Transaction.Listener listener);
 
-    public K append(V value, Transaction.Listener listener);
+    public void append(V value, Transaction.Listener listener, AsyncHandler<AsyncResult<K>> handler);
 
     public default int tryUpdate(K key, V newValue) {
         Object oldTransactionalValue = getTransactionalValue(key);

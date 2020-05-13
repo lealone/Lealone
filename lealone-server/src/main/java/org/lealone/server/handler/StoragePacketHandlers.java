@@ -23,6 +23,7 @@ import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.ValueLong;
+import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.storage.StorageAppend;
@@ -41,6 +42,8 @@ import org.lealone.server.protocol.storage.StorageReplicatePages;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
+import org.lealone.transaction.Transaction;
+import org.lealone.transaction.TransactionMap;
 
 class StoragePacketHandlers extends PacketHandlers {
 
@@ -57,39 +60,70 @@ class StoragePacketHandlers extends PacketHandlers {
 
     private static class Put implements PacketHandler<StoragePut> {
         @Override
-        public Packet handle(ServerSession session, StoragePut packet) {
+        public Packet handle(PacketDeliveryTask task, StoragePut packet) {
+            ServerSession session = task.session;
             if (packet.isDistributedTransaction) {
                 session.setAutoCommit(false);
                 session.setRoot(false);
             }
             session.setReplicationName(packet.replicationName);
 
-            StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
-            if (packet.raw) {
-                map = map.getRawMap();
-            }
+            if (packet.addIfAbsent) {
+                Transaction.Listener localListener = new Transaction.Listener() {
+                    @Override
+                    public void operationUndo() {
+                        ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
+                        resultByteBuffer.put((byte) 0);
+                        sendResponse(task, packet, resultByteBuffer);
+                    }
 
-            StorageDataType valueType = map.getValueType();
-            Object k = map.getKeyType().read(packet.key);
-            Object v = valueType.read(packet.value);
-            Object result = map.put(k, v);
-
-            ByteBuffer resultByteBuffer;
-            if (result != null) {
-                try (DataBuffer writeBuffer = DataBuffer.create()) {
-                    valueType.write(writeBuffer, result);
-                    resultByteBuffer = writeBuffer.getAndFlipBuffer();
-                }
+                    @Override
+                    public void operationComplete() {
+                        ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
+                        resultByteBuffer.put((byte) 1);
+                        sendResponse(task, packet, resultByteBuffer);
+                    }
+                };
+                TransactionMap<Object, Object> map = session.getTransactionMap(packet.mapName);
+                map.addIfAbsent(map.getKeyType().read(packet.key), map.getValueType().read(packet.value),
+                        localListener);
             } else {
-                resultByteBuffer = null;
+                StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
+                if (packet.raw) {
+                    map = map.getRawMap();
+                }
+                StorageDataType valueType = map.getValueType();
+                Object k = map.getKeyType().read(packet.key);
+                Object v = valueType.read(packet.value);
+                map.put(k, v, ar -> {
+                    if (ar.isSucceeded()) {
+                        Object result = ar.getResult();
+                        ByteBuffer resultByteBuffer;
+                        if (result != null) {
+                            try (DataBuffer writeBuffer = DataBuffer.create()) {
+                                valueType.write(writeBuffer, result);
+                                resultByteBuffer = writeBuffer.getAndFlipBuffer();
+                            }
+                        } else {
+                            resultByteBuffer = null;
+                        }
+                        sendResponse(task, packet, resultByteBuffer);
+                    } else {
+                        task.conn.sendError(task.session, task.packetId, ar.getCause());
+                    }
+                });
             }
+            return null;
+        }
+
+        private void sendResponse(PacketDeliveryTask task, StoragePut packet, ByteBuffer resultByteBuffer) {
             String localTransactionNames;
             if (packet.isDistributedTransaction) {
-                localTransactionNames = session.getTransaction().getLocalTransactionNames();
+                localTransactionNames = task.session.getTransaction().getLocalTransactionNames();
             } else {
                 localTransactionNames = null;
             }
-            return new StoragePutAck(resultByteBuffer, localTransactionNames);
+            task.conn.sendResponse(task, new StoragePutAck(resultByteBuffer, localTransactionNames));
         }
     }
 
