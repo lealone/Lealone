@@ -51,6 +51,7 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMapBase;
 import org.lealone.storage.StorageMapCursor;
 import org.lealone.storage.aose.AOStorage;
+import org.lealone.storage.aose.btree.PageOperations.Append;
 import org.lealone.storage.aose.btree.PageOperations.Get;
 import org.lealone.storage.aose.btree.PageOperations.Put;
 import org.lealone.storage.aose.btree.PageOperations.PutIfAbsent;
@@ -235,6 +236,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return listener.await();
     }
 
+    @Override
+    public K append(V value) {
+        PageOperation.Listener<K> listener = getPageOperationListener();
+        K key = append(value, listener);
+        listener.await();
+        return key;
+    }
+
     /**
      * Use the new root page from now on.
      * 
@@ -403,6 +412,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         List<String> replicationHostIds = root.getReplicationHostIds();
         root.removeAllRecursive();
         size.set(0);
+        maxKey.set(0);
         newRoot(BTreeLeafPage.createEmpty(this));
         disableParallelIfNeeded();
         root.setReplicationHostIds(replicationHostIds);
@@ -552,10 +562,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public K append(V value, AsyncHandler<AsyncResult<V>> handler) {
-        // 先得到一个long类型的key，再调用put
+    public K append(V value, AsyncHandler<AsyncResult<K>> handler) {
+        checkWrite();
+        // 先得到一个long类型的key
         K key = (K) ValueLong.get(maxKey.incrementAndGet());
-        put(key, value, handler);
+        Append<K, V> append = new Append<>(this, key, value, handler);
+        pohFactory.addPageOperation(append);
         return key;
     }
 
@@ -981,7 +993,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public Object replicationGet(Session session, Object key) {
+    public Object get(Session session, Object key) {
         List<NetNode> replicationNodes = getReplicationNodes(key);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
@@ -997,6 +1009,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public Future<Object> put(Session session, Object key, Object value, StorageDataType valueType,
             boolean addIfAbsent) {
         List<NetNode> replicationNodes = getReplicationNodes(key);
+        // TODO 如果当前节点也是复制节点之一，可以优化一下，减少key和value的编解码操作
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer k = DataBuffer.create();
                 DataBuffer v = DataBuffer.create();

@@ -106,6 +106,10 @@ public interface StorageMap<K, V> {
      */
     boolean replace(K key, V oldValue, V newValue);
 
+    K append(V value);
+
+    void setMaxKey(Object key);
+
     /**
      * Get the first key, or null if the map is empty.
      *
@@ -234,10 +238,6 @@ public interface StorageMap<K, V> {
      */
     void save();
 
-    K append(V value);
-
-    void setMaxKey(Object key);
-
     long getDiskSpaceUsed();
 
     long getMemorySpaceUsed();
@@ -274,9 +274,9 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, v);
     }
 
-    default K append(V value, AsyncHandler<AsyncResult<V>> handler) {
+    default K append(V value, AsyncHandler<AsyncResult<K>> handler) {
         K k = append(value);
-        handleAsyncResult(handler, value);
+        handleAsyncResult(handler, k);
         return k;
     }
 
@@ -288,11 +288,12 @@ public interface StorageMap<K, V> {
 
     ////////////////////// 以下是分布式API ////////////////////////////////
 
-    default Object replicationGet(Session session, Object key) {
-        throw DbException.getUnsupportedException("replicationGet");
+    default Object get(Session session, Object key) {
+        throw DbException.getUnsupportedException("get");
     }
 
-    default Future<Object> put(Session session, Object key, Object value, StorageDataType valueType, boolean addIfAbsent) {
+    default Future<Object> put(Session session, Object key, Object value, StorageDataType valueType,
+            boolean addIfAbsent) {
         throw DbException.getUnsupportedException("put");
     }
 

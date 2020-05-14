@@ -459,12 +459,13 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     ////////////////////// 以下是分布式API的默认实现 ////////////////////////////////
 
     @Override
-    public Object replicationGet(Session session, Object key) {
-        return map.replicationGet(session, key);
+    public Object get(Session session, Object key) {
+        return map.get(session, key);
     }
 
     @Override
-    public Future<Object> put(Session session, Object key, Object value, StorageDataType valueType, boolean addIfAbsent) {
+    public Future<Object> put(Session session, Object key, Object value, StorageDataType valueType,
+            boolean addIfAbsent) {
         return map.put(session, key, value, valueType, false);
     }
 
@@ -712,7 +713,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
                 null, ref);
         ref.setRefValue(newValue);
-        AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
+        AsyncHandler<AsyncResult<K>> handler = (ar) -> {
             if (ar.isSucceeded()) {
                 listener.operationComplete();
             } else {

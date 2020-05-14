@@ -46,7 +46,7 @@ public class SerializedObjectType extends StorageDataTypeBase {
         }
         StorageDataType ta = getType(aObj);
         StorageDataType tb = getType(bObj);
-        if (ta != this || tb != this) {
+        if (ta.getClass() != this.getClass() || tb.getClass() != this.getClass()) {
             if (ta == tb) {
                 return ta.compare(aObj, bObj);
             }
@@ -75,7 +75,7 @@ public class SerializedObjectType extends StorageDataTypeBase {
     @Override
     public int getMemory(Object obj) {
         StorageDataType t = getType(obj);
-        if (t == this) {
+        if (t.getClass() == this.getClass()) {
             return averageSize;
         }
         return t.getMemory(obj);

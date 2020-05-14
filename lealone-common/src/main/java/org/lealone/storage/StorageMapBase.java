@@ -93,6 +93,10 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         }
     }
 
+    public long getMaxKey() {
+        return maxKey.get();
+    }
+
     @Override
     public long getDiskSpaceUsed() {
         return 0;
@@ -103,8 +107,8 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         return 0;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
+    @SuppressWarnings("unchecked")
     public StorageMap<Object, Object> getRawMap() {
         return (StorageMap<Object, Object>) this;
     }

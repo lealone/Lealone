@@ -60,6 +60,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
                 public void operationUndo() {
                     ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
                     resultByteBuffer.put((byte) 0);
+                    resultByteBuffer.flip();
                     ac.setAsyncResult(resultByteBuffer);
                 }
 
@@ -67,6 +68,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
                 public void operationComplete() {
                     ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
                     resultByteBuffer.put((byte) 1);
+                    resultByteBuffer.flip();
                     ac.setAsyncResult(resultByteBuffer);
                 }
             };
@@ -111,7 +113,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     @Override
     public Future<Object> executeReplicaAppend(String replicationName, String mapName, ByteBuffer value) {
         session.setReplicationName(replicationName);
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
         Object result = map.append(map.getValueType().read(value));
         Transaction parentTransaction = session.getParentTransaction();
         if (parentTransaction != null && !parentTransaction.isAutoCommit()) {

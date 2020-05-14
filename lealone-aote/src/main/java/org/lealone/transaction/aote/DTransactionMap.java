@@ -37,10 +37,10 @@ public class DTransactionMap<K, V> extends AOTransactionMap<K, V> {
         valueType = getValueType();
     }
 
-    @SuppressWarnings("unchecked")
     @Override
+    @SuppressWarnings("unchecked")
     public V get(K key) {
-        return (V) map.replicationGet(session, key);
+        return (V) map.get(session, key);
     }
 
     @Override

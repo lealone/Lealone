@@ -74,6 +74,7 @@ class StoragePacketHandlers extends PacketHandlers {
                     public void operationUndo() {
                         ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
                         resultByteBuffer.put((byte) 0);
+                        resultByteBuffer.flip();
                         sendResponse(task, packet, resultByteBuffer);
                     }
 
@@ -81,6 +82,7 @@ class StoragePacketHandlers extends PacketHandlers {
                     public void operationComplete() {
                         ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
                         resultByteBuffer.put((byte) 1);
+                        resultByteBuffer.flip();
                         sendResponse(task, packet, resultByteBuffer);
                     }
                 };

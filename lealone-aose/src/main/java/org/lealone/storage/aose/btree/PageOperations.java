@@ -133,7 +133,7 @@ public abstract class PageOperations {
         private PageOperationResult write(PageOperationHandler currentHandler, boolean isShiftEnabled) {
             if (p == null) {
                 // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
-                p = map.gotoLeafPage(key);
+                p = gotoLeafPage();
 
                 // 处理分布式场景
                 if (p.isRemote() || p.getLeafPageMovePlan() != null) {
@@ -174,7 +174,7 @@ public abstract class PageOperations {
             // if (!p.isSplitEnabled() && p.getKeyCount() > 10) {
             // System.out.println(p.getKeyCount());
             // }
-            int index = p.binarySearch(key);
+            int index = getKeyIndex();
             Object result = writeLocal(index);
             handleAsyncResult(result); // 可以提前执行回调函数了，不需要考虑后续的代码
 
@@ -216,6 +216,15 @@ public abstract class PageOperations {
                 parentRef.page.markDirty();
                 parentRef = parentRef.page.parentRef;
             }
+        }
+
+        // 允许子类覆盖，比如Append操作可以做自己的特殊优化
+        protected BTreePage gotoLeafPage() {
+            return map.gotoLeafPage(key);
+        }
+
+        protected int getKeyIndex() {
+            return p.binarySearch(key);
         }
     }
 
@@ -260,6 +269,37 @@ public abstract class PageOperations {
                 return null;
             }
             return p.getValue(index);
+        }
+    }
+
+    public static class Append<K, V> extends Put<K, V, K> {
+
+        public Append(BTreeMap<K, V> map, K key, V value, AsyncHandler<AsyncResult<K>> asyncResultHandler) {
+            super(map, key, value, asyncResultHandler);
+        }
+
+        @Override
+        protected Object writeLocal(int index) {
+            markDirtyPages();
+            insertLeaf(index, value);
+            return key;
+        }
+
+        @Override
+        protected BTreePage gotoLeafPage() { // 直接定位到最后一页
+            BTreePage p = map.root;
+            while (true) {
+                if (p.isLeaf()) {
+                    p = p.redirectIfSplited(false);
+                    return p;
+                }
+                p = p.getChildPage(map.getChildPageCount(p) - 1);
+            }
+        }
+
+        @Override
+        protected int getKeyIndex() {
+            return -(p.getKeyCount() + 1);
         }
     }
 
