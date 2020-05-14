@@ -1273,14 +1273,14 @@ public class ServerSession extends SessionBase {
     }
 
     public String checkReplicationConflict(ReplicationCheckConflict packet) {
-        TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(packet.mapName);
+        TransactionMap<Object, Object> map = getTransactionMap(packet.mapName);
         return map.checkReplicationConflict(packet.key, packet.replicationName);
     }
 
     public void handleReplicationConflict(ReplicationHandleConflict packet) {
         if (!transaction.getGlobalReplicationName().equals(packet.replicationName)) {
             transaction.rollbackToSavepoint(transaction.getSavepointId() - 1);
-            TransactionMap<Object, Object> map = (TransactionMap<Object, Object>) getStorageMap(packet.mapName);
+            TransactionMap<Object, Object> map = getTransactionMap(packet.mapName);
             if (map.tryLock(map.getKeyType().read(packet.key))) {
                 transaction.setGlobalReplicationName(packet.replicationName);
             }
@@ -1319,7 +1319,6 @@ public class ServerSession extends SessionBase {
         return database.isShardingMode();
     }
 
-    @Override
     public StorageMap<Object, Object> getStorageMap(String mapName) {
         return getTransactionMap(mapName);
     }

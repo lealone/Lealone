@@ -24,7 +24,6 @@ import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
-import org.lealone.storage.StorageMap;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 import org.lealone.storage.replication.ReplicaStorageCommand;
 import org.lealone.transaction.Transaction;
@@ -159,8 +158,6 @@ public interface Session extends Closeable, Transaction.Participant {
     boolean isLocal();
 
     boolean isShardingMode();
-
-    StorageMap<Object, Object> getStorageMap(String mapName);
 
     int getNextId();
 
