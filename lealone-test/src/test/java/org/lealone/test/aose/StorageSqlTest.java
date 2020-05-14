@@ -21,6 +21,13 @@ import org.junit.Test;
 import org.lealone.test.sql.SqlTestBase;
 
 public class StorageSqlTest extends SqlTestBase {
+
+    public StorageSqlTest() {
+        super("StorageSqlTest");
+        initTransactionEngine();
+        setEmbedded(true);
+    }
+
     @Test
     public void run() {
         executeUpdate("CREATE TABLE IF NOT EXISTS StorageSqlTest(f1 int, f2 int) ENGINE " + DEFAULT_STORAGE_ENGINE_NAME

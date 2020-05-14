@@ -380,5 +380,4 @@ public class SpatialDataType implements StorageDataType {
             b.setMax(i, Math.max(b.max(i), a.min(i)));
         }
     }
-
 }

@@ -22,13 +22,13 @@ import org.lealone.storage.type.StorageDataType;
  *
  * @param <V> the value class
  */
-// 此类目前未使用，并且还有一些bug
+// 此类目前未使用
 public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
 
     /**
      * The spatial key type. 
      */
-    final SpatialDataType keyType;
+    private final SpatialDataType keyType;
 
     private boolean quadraticSplit;
 
@@ -49,6 +49,11 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
     public static <V> RTreeMap<V> create(String name, int dimensions, StorageDataType valueType,
             Map<String, Object> config, AOStorage aoStorage) {
         return new RTreeMap<V>(name, dimensions, valueType, config, aoStorage);
+    }
+
+    @Override
+    public String getType() {
+        return "RTree";
     }
 
     @Override
@@ -121,8 +126,28 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
         return null;
     }
 
-    @Deprecated
-    protected synchronized Object remove(BTreePage p, Object key) {
+    @Override
+    @SuppressWarnings("unchecked")
+    public V remove(SpatialKey key) {
+        checkWrite();
+        V result = get(key);
+        if (result == null) {
+            return null;
+        }
+        synchronized (this) {
+            BTreePage p = root.copy();
+            result = (V) remove(p, key);
+            if (p.isNode() && p.isEmpty()) {
+                p.removePage();
+                p = newPage(true);
+            }
+            newRoot(p);
+        }
+        return result;
+    }
+
+    @SuppressWarnings("deprecation")
+    private synchronized Object remove(BTreePage p, Object key) {
         Object result = null;
         if (p.isLeaf()) {
             for (int i = 0; i < p.getKeyCount(); i++) {
@@ -538,10 +563,5 @@ public class RTreeMap<V> extends BTreeMap<SpatialKey, V> {
         protected boolean check(boolean leaf, SpatialKey key, SpatialKey test) {
             return true;
         }
-    }
-
-    @Override
-    public String getType() {
-        return "RTree";
     }
 }

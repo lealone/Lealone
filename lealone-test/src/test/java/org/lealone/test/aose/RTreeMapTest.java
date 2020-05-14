@@ -29,17 +29,34 @@ public class RTreeMapTest extends TestBase {
     public void run() {
         AOStorage storage = AOStorageTest.openStorage();
         String name = "RTreeMapTest";
-        RTreeMap<String> rmap = storage.openRTreeMap(name, ValueString.type, 3);
+        int dimensions = 3;
+        RTreeMap<String> rmap = storage.openRTreeMap(name, ValueString.type, dimensions);
         assertEquals(rmap, storage.getMap(name));
         assertTrue(storage.hasMap(name));
+        rmap.clear();
 
-        for (int i = 1; i <= 100; i++) {
-            SpatialKey key = new SpatialKey(i, i * 1.0F, i * 2.0F);
+        int count = 300;
+        for (int i = 1; i <= count; i++) {
+            // SpatialKey右边的参数必须是dimensions*2
+            SpatialKey key = getSpatialKey(i);
             // p(key);
-            rmap.put(key, "value" + i);
+            String value = "value" + i;
+            rmap.put(key, value);
         }
-        // rmap.save(); // TODO 还有bug，h2也有
 
-        assertEquals(100, rmap.size());
+        assertEquals(300, rmap.size());
+
+        int id = 10;
+        String value = "value" + id;
+        SpatialKey key = getSpatialKey(id);
+        assertEquals(value, rmap.get(key));
+        assertEquals(value, rmap.remove(key));
+        assertEquals(count - 1, rmap.size());
+
+        rmap.save();
+    }
+
+    private SpatialKey getSpatialKey(int i) {
+        return new SpatialKey(i, i * 1.0F, i * 2.0F, i * 3.0F, i * 4.0F, i * 5.0F, i * 6.0F);
     }
 }

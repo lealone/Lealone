@@ -26,6 +26,10 @@ public class SpatialKey {
         this.minMax = minMax;
     }
 
+    public long getId() {
+        return id;
+    }
+
     /**
      * Get the minimum value for the given dimension.
      *
@@ -64,10 +68,6 @@ public class SpatialKey {
      */
     public void setMax(int dim, float x) {
         minMax[dim + dim + 1] = x;
-    }
-
-    public long getId() {
-        return id;
     }
 
     public boolean isNull() {
@@ -115,5 +115,4 @@ public class SpatialKey {
     public boolean equalsIgnoringId(SpatialKey o) {
         return Arrays.equals(minMax, o.minMax);
     }
-
 }
