@@ -136,6 +136,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         disableParallelIfNeeded();
     }
 
+    private boolean containsLocalNode(String[] replicationNodes) {
+        NetNode local = NetNode.getLocalTcpNode();
+        for (String e : replicationNodes) {
+            if (local.equals(NetNode.createTCP(e)))
+                return true;
+        }
+        return false;
+    }
+
     private void disableParallelIfNeeded() {
         if (root.isLeaf())
             parallelDisabled = true;
@@ -577,15 +586,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     protected IDatabase db;
     private String[] oldNodes;
 
-    private boolean containsLocalNode(String[] replicationNodes) {
-        NetNode local = NetNode.getLocalTcpNode();
-        for (String e : replicationNodes) {
-            if (local.equals(NetNode.createTCP(e)))
-                return true;
-        }
-        return false;
-    }
-
     protected IDatabase getDatabase() {
         return db;
     }
@@ -606,7 +606,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     protected <R> Object putRemote(BTreePage p, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
-        if (p.getLeafPageMovePlan().moverHostId.equals(getLocalHostId())) {
+        if (p.getLeafPageMovePlan() != null && p.getLeafPageMovePlan().moverHostId.equals(getLocalHostId())) {
             int size = p.getLeafPageMovePlan().replicationNodes.size();
             List<NetNode> replicationNodes = new ArrayList<>(size);
             replicationNodes.addAll(p.getLeafPageMovePlan().replicationNodes);
@@ -630,6 +630,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 return returnValue;
             }
         } else {
+            AsyncResult<R> ar = new AsyncResult<>();
+            ar.setResult((R) null);
+            asyncResultHandler.handle(ar);
             return null; // 不是由当前节点移动的，那么put操作就可以忽略了
         }
     }
@@ -837,7 +840,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     @Override
     public synchronized void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
-        addLeafPage(pageKey, page, addPage, false);
+        checkWrite();
+        BTreePage newPage = readLeafPage(page, false);
+        addLeafPage(pageKey, newPage, addPage);
+    }
+
+    private BTreePage readLeafPage(ByteBuffer buff, boolean readStreamPage) {
+        return readStreamPage ? readStreamPage(buff) : BTreePage.readLeafPage(this, buff);
     }
 
     private BTreePage readStreamPage(ByteBuffer buff) {
@@ -848,25 +857,22 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return p;
     }
 
-    private BTreePage readLeafPage(ByteBuffer buff, boolean readStreamPage) {
-        return readStreamPage ? readStreamPage(buff) : BTreePage.readLeafPage(this, buff);
-    }
-
-    private synchronized void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage, boolean readStreamPage) {
+    private synchronized void addLeafPage(PageKey pageKey, BTreePage newPage, boolean addPage) {
         if (pageKey == null) {
-            root = readLeafPage(page, readStreamPage);
+            root = newPage;
             return;
         }
         BTreePage p = root;
-        Object k = pageKey.key;
+        Object key = pageKey.key;
         if (p.isLeaf() || p.isRemote()) {
-            Object[] keys = { k };
-            BTreePage left = p.isLeaf() ? BTreeLeafPage.createEmpty(this) : new BTreeRemotePage(this);
-            left.setReplicationHostIds(p.getReplicationHostIds());
+            BTreePage emptyPage = p.isLeaf() ? BTreeLeafPage.createEmpty(this) : new BTreeRemotePage(this);
+            emptyPage.setReplicationHostIds(p.getReplicationHostIds());
 
-            BTreePage right = readLeafPage(page, readStreamPage);
+            BTreePage left = pageKey.first ? newPage : emptyPage;
+            BTreePage right = pageKey.first ? emptyPage : newPage;
 
-            PageReference[] children = { new PageReference(left, k, true), new PageReference(right, k, false) };
+            Object[] keys = { key };
+            PageReference[] children = { new PageReference(left, key, true), new PageReference(right, key, false) };
             p = BTreePage.createNode(this, keys, children, 0);
             newRoot(p);
         } else {
@@ -874,7 +880,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             int index = 0;
             while (p.isNode()) {
                 parent = p;
-                index = p.binarySearch(k);
+                index = p.binarySearch(key);
                 if (index < 0) {
                     index = -index - 1;
                 } else {
@@ -886,11 +892,11 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 }
                 p = p.getChildPage(index);
             }
-            BTreePage right = readLeafPage(page, readStreamPage);
+            BTreePage right = newPage;
             if (addPage) {
                 BTreePage left = parent.getChildPage(index);
                 parent.setChild(index, right);
-                parent.insertNode(index, k, left);
+                parent.insertNode(index, key, left);
             } else {
                 parent.setChild(index, right);
             }
@@ -1122,11 +1128,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    @Deprecated
-    public void replicateAllRemotePages() {
-        root.readRemotePagesRecursive();
-    }
-
     public void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
         if (root.isNode() || (root.isLeaf() && !root.isEmpty()))
             root.moveAllLocalLeafPages(oldNodes, newNodes, newRunMode);
@@ -1205,10 +1206,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             for (int size = getChildPageCount(p); index < size; index++) {
                 int keyIndex = index - 1;
                 Object k = p.getKey(keyIndex < 0 ? 0 : keyIndex);
+                getPageKey(map, random, pageKeys, p, index, k);
                 if (needsCompare && keyType.compare(k, to) > 0) {
                     return;
                 }
-                getPageKey(map, random, pageKeys, p, index, k);
             }
         } else if (keyCount == 1) {
             Object k = p.getKey(0);

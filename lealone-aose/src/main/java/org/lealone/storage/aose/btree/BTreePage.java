@@ -597,11 +597,6 @@ public class BTreePage {
         throw ie();
     }
 
-    @Deprecated
-    void readRemotePagesRecursive() {
-        throw ie();
-    }
-
     void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
         throw ie();
     }

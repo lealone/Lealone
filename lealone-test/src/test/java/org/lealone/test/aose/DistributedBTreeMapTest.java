@@ -27,6 +27,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.junit.Test;
+import org.lealone.db.value.ValueNull;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageMapCursor;
@@ -87,11 +88,10 @@ public class DistributedBTreeMapTest extends TestBase {
         testGetNodeToKeyMap(map); // 测试有root node page的map
 
         map.clear();
-
         ArrayList<PageKey> pageKeys = new ArrayList<>();
         map.getNodeToPageKeyMap(null, 1, 9, pageKeys);
         assertEquals(1, pageKeys.size());
-        assertNull(pageKeys.get(0).key);
+        assertTrue(pageKeys.get(0).key == ValueNull.INSTANCE);
 
         map.put(1, "value" + 1);
 
@@ -203,8 +203,8 @@ public class DistributedBTreeMapTest extends TestBase {
         assertEquals(2, map.getRootPage().getReplicationHostIds().size());
 
         try {
-            map.put(1, "abc");
-            fail();
+            assertNull(map.put(1, "abc"));
+            // fail();
         } catch (Exception e) {
             System.out.println("RemotePage put: " + e.getMessage());
         }

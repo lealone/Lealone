@@ -113,7 +113,8 @@ public class BTreeNodePage extends BTreeLocalPage {
     public long getTotalCount() {
         long totalCount = 0;
         for (PageReference x : children) {
-            totalCount += x.page.getTotalCount();
+            if (x.page != null)
+                totalCount += x.page.getTotalCount();
         }
         return totalCount;
     }
@@ -435,29 +436,6 @@ public class BTreeNodePage extends BTreeLocalPage {
                 }
             };
             map.pohFactory.addPageOperation(new CallableOperation(task));
-        }
-    }
-
-    @Deprecated
-    @Override
-    void readRemotePagesRecursive() {
-        for (int i = 0, len = children.length; i < len; i++) {
-            if (children[i].isRemotePage()) {
-                final int index = i;
-                Callable<BTreePage> task = new Callable<BTreePage>() {
-                    @Override
-                    public BTreePage call() throws Exception {
-                        BTreePage p = getChildPage(index);
-                        if (p.isNode()) {
-                            p.readRemotePagesRecursive();
-                        }
-                        return p;
-                    }
-                };
-                map.pohFactory.addPageOperation(new CallableOperation(task));
-            } else if (children[i].page != null && children[i].page.isNode()) {
-                readRemotePagesRecursive();
-            }
         }
     }
 
