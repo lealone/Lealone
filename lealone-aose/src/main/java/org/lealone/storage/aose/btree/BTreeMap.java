@@ -543,12 +543,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public PageOperation createPutOperation(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        checkWrite(value);
-        return new Put<>(this, key, value, handler);
-    }
-
-    @Override
     public void putIfAbsent(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         checkWrite(value);
         PutIfAbsent<K, V> putIfAbsent = new PutIfAbsent<>(this, key, value, handler);

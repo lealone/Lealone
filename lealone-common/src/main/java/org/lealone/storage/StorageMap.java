@@ -250,10 +250,6 @@ public interface StorageMap<K, V> {
         throw DbException.getUnsupportedException("async get");
     }
 
-    default PageOperation createPutOperation(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
-        throw DbException.getUnsupportedException("createPutOperation");
-    }
-
     default void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {
         V v = put(key, value);
         handleAsyncResult(handler, v);
