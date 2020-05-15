@@ -108,7 +108,7 @@ public interface StorageMap<K, V> {
 
     K append(V value);
 
-    void setMaxKey(Object key);
+    void setMaxKey(K key);
 
     /**
      * Get the first key, or null if the map is empty.
@@ -242,12 +242,11 @@ public interface StorageMap<K, V> {
 
     long getMemorySpaceUsed();
 
-    StorageMap<Object, Object> getRawMap();
-
-    //////////////////// 以下是异步API ////////////////////////////////
+    //////////////////// 以下是异步API， 默认直接用同步API实现 ////////////////////////////////
 
     default void get(K key, AsyncHandler<AsyncResult<V>> handler) {
-        throw DbException.getUnsupportedException("async get");
+        V v = get(key);
+        handleAsyncResult(handler, v);
     }
 
     default void put(K key, V value, AsyncHandler<AsyncResult<V>> handler) {

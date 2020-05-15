@@ -30,7 +30,7 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     protected final StorageDataType keyType;
     protected final StorageDataType valueType;
     protected final Storage storage;
-    // TODO 考虑是否要使用总是递增的数字
+
     protected final AtomicLong maxKey = new AtomicLong(0);
 
     protected StorageMapBase(String name, StorageDataType keyType, StorageDataType valueType, Storage storage) {
@@ -75,10 +75,10 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         return key;
     }
 
-    // 如果新key比lastKey大就更新lastKey
+    // 如果新key比maxKey大就更新maxKey
     // 允许多线程并发更新
     @Override
-    public void setMaxKey(Object key) {
+    public void setMaxKey(K key) {
         if (key instanceof ValueLong) {
             long k = ((ValueLong) key).getLong();
             while (true) {
@@ -105,11 +105,5 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     @Override
     public long getMemorySpaceUsed() {
         return 0;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public StorageMap<Object, Object> getRawMap() {
-        return (StorageMap<Object, Object>) this;
     }
 }

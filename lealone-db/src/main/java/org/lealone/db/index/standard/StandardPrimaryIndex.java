@@ -315,7 +315,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     @Override
     public double getCost(ServerSession session, int[] masks, SortOrder sortOrder) {
         try {
-            long cost = 10 * (dataMap.rawSize() + Constants.COST_ROW_OFFSET);
+            long cost = 10 * (dataMap.getRawSize() + Constants.COST_ROW_OFFSET);
             return cost;
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
@@ -356,7 +356,7 @@ public class StandardPrimaryIndex extends StandardIndex {
      */
     public long getRowCountMax() {
         try {
-            return dataMap.rawSize();
+            return dataMap.getRawSize();
         } catch (IllegalStateException e) {
             throw DbException.get(ErrorCode.OBJECT_CLOSED, e);
         }

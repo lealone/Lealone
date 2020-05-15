@@ -30,12 +30,19 @@ import org.lealone.storage.StorageMap;
 public interface TransactionMap<K, V> extends StorageMap<K, V> {
 
     /**
+     * Get the raw map.
+     *
+     * @return the raw map
+     */
+    public StorageMap<?, ?> getRawMap();
+
+    /**
      * Get the size of the raw map. This includes uncommitted entries, and
      * transiently removed entries, so it is the maximum number of entries.
      *
      * @return the maximum size
      */
-    public long rawSize();
+    public long getRawSize();
 
     /**
      * Get a clone of this map for the given transaction.

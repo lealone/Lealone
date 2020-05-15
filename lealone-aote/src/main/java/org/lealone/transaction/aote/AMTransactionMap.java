@@ -437,7 +437,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public void setMaxKey(Object key) {
+    public void setMaxKey(K key) {
         map.setMaxKey(key);
     }
 
@@ -449,11 +449,6 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public long getMemorySpaceUsed() {
         return map.getMemorySpaceUsed();
-    }
-
-    @Override
-    public StorageMap<Object, Object> getRawMap() {
-        return map.getRawMap();
     }
 
     ////////////////////// 以下是分布式API的默认实现 ////////////////////////////////
@@ -502,7 +497,12 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     ///////////////////////// 以下是TransactionMap接口API的实现 /////////////////////////
 
     @Override
-    public long rawSize() {
+    public StorageMap<?, ?> getRawMap() {
+        return map;
+    }
+
+    @Override
+    public long getRawSize() {
         return map.size();
     }
 

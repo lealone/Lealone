@@ -50,9 +50,11 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Future<Object> executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
             boolean raw, boolean addIfAbsent) {
         session.setReplicationName(replicationName);
+        TransactionMap<Object, Object> tmap = session.getTransactionMap(mapName);
         AsyncCallback<Object> ac = new AsyncCallback<>();
         if (addIfAbsent) {
             Transaction.Listener localListener = new Transaction.Listener() {
@@ -72,12 +74,11 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
                     ac.setAsyncResult(resultByteBuffer);
                 }
             };
-            TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
-            map.addIfAbsent(map.getKeyType().read(key), map.getValueType().read(value), localListener);
+            tmap.addIfAbsent(tmap.getKeyType().read(key), tmap.getValueType().read(value), localListener);
         } else {
-            StorageMap<Object, Object> map = session.getStorageMap(mapName);
+            StorageMap<Object, Object> map = tmap;
             if (raw) {
-                map = map.getRawMap();
+                map = (StorageMap<Object, Object>) tmap.getRawMap();
             }
             StorageDataType valueType = map.getValueType();
             map.put(map.getKeyType().read(key), valueType.read(value), ar -> {

@@ -60,6 +60,7 @@ class StoragePacketHandlers extends PacketHandlers {
 
     private static class Put implements PacketHandler<StoragePut> {
         @Override
+        @SuppressWarnings("unchecked")
         public Packet handle(PacketDeliveryTask task, StoragePut packet) {
             ServerSession session = task.session;
             if (packet.isDistributedTransaction) {
@@ -67,7 +68,7 @@ class StoragePacketHandlers extends PacketHandlers {
                 session.setRoot(false);
             }
             session.setReplicationName(packet.replicationName);
-
+            TransactionMap<Object, Object> tmap = session.getTransactionMap(packet.mapName);
             if (packet.addIfAbsent) {
                 Transaction.Listener localListener = new Transaction.Listener() {
                     @Override
@@ -86,13 +87,12 @@ class StoragePacketHandlers extends PacketHandlers {
                         sendResponse(task, packet, resultByteBuffer);
                     }
                 };
-                TransactionMap<Object, Object> map = session.getTransactionMap(packet.mapName);
-                map.addIfAbsent(map.getKeyType().read(packet.key), map.getValueType().read(packet.value),
+                tmap.addIfAbsent(tmap.getKeyType().read(packet.key), tmap.getValueType().read(packet.value),
                         localListener);
             } else {
-                StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
+                StorageMap<Object, Object> map = tmap;
                 if (packet.raw) {
-                    map = map.getRawMap();
+                    map = (StorageMap<Object, Object>) tmap.getRawMap();
                 }
                 StorageDataType valueType = map.getValueType();
                 Object k = map.getKeyType().read(packet.key);

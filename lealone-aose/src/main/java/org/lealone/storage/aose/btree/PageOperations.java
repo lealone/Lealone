@@ -97,7 +97,7 @@ public abstract class PageOperations {
         }
     }
 
-    // 只针对单Key的写操作，包括: Put、PutIfAbsent、Replace、Remove
+    // 只针对单Key的写操作，包括: Put、PutIfAbsent、Replace、Remove、Append
     public static abstract class SingleWrite<K, V, R> implements PageOperation {
         final BTreeMap<K, V> map;
         final K key;
