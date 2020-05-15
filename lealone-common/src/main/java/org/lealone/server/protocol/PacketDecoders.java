@@ -79,7 +79,11 @@ import org.lealone.server.protocol.storage.StoragePut;
 import org.lealone.server.protocol.storage.StoragePutAck;
 import org.lealone.server.protocol.storage.StorageReadPage;
 import org.lealone.server.protocol.storage.StorageReadPageAck;
+import org.lealone.server.protocol.storage.StorageRemove;
+import org.lealone.server.protocol.storage.StorageRemoveAck;
 import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
+import org.lealone.server.protocol.storage.StorageReplace;
+import org.lealone.server.protocol.storage.StorageReplaceAck;
 import org.lealone.server.protocol.storage.StorageReplicatePages;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -162,12 +166,17 @@ public class PacketDecoders {
         register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE, DTransactionValidate.decoder);
         register(PacketType.DISTRIBUTED_TRANSACTION_VALIDATE_ACK, DTransactionValidateAck.decoder);
 
+        register(PacketType.STORAGE_GET, StorageGet.decoder);
+        register(PacketType.STORAGE_GET_ACK, StorageGetAck.decoder);
         register(PacketType.STORAGE_PUT, StoragePut.decoder);
         register(PacketType.STORAGE_PUT_ACK, StoragePutAck.decoder);
         register(PacketType.STORAGE_APPEND, StorageAppend.decoder);
         register(PacketType.STORAGE_APPEND_ACK, StorageAppendAck.decoder);
-        register(PacketType.STORAGE_GET, StorageGet.decoder);
-        register(PacketType.STORAGE_GET_ACK, StorageGetAck.decoder);
+        register(PacketType.STORAGE_REPLACE, StorageReplace.decoder);
+        register(PacketType.STORAGE_REPLACE_ACK, StorageReplaceAck.decoder);
+        register(PacketType.STORAGE_REMOVE, StorageRemove.decoder);
+        register(PacketType.STORAGE_REMOVE_ACK, StorageRemoveAck.decoder);
+
         register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE, StoragePrepareMoveLeafPage.decoder);
         register(PacketType.STORAGE_PREPARE_MOVE_LEAF_PAGE_ACK, StoragePrepareMoveLeafPageAck.decoder);
         register(PacketType.STORAGE_MOVE_LEAF_PAGE, StorageMoveLeafPage.decoder);

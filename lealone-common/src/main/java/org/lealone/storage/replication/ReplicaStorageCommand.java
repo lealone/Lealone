@@ -29,4 +29,9 @@ public interface ReplicaStorageCommand extends ReplicaCommand, StorageCommand {
 
     Future<Object> executeReplicaAppend(String replicationName, String mapName, ByteBuffer value);
 
+    Future<Boolean> executeReplicaReplace(String replicationName, String mapName, ByteBuffer key, ByteBuffer oldValue,
+            ByteBuffer newValue);
+
+    Future<Object> executeReplicaRemove(String replicationName, String mapName, ByteBuffer key);
+
 }

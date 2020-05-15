@@ -454,7 +454,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     ////////////////////// 以下是分布式API的默认实现 ////////////////////////////////
 
     @Override
-    public Object get(Session session, Object key) {
+    public Future<Object> get(Session session, Object key) {
         return map.get(session, key);
     }
 
@@ -467,6 +467,17 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     public Future<Object> append(Session session, Object value, StorageDataType valueType) {
         return map.append(session, value, valueType);
+    }
+
+    @Override
+    public Future<Boolean> replace(Session session, Object key, Object oldValue, Object newValue,
+            StorageDataType valueType) {
+        return map.replace(session, key, oldValue, newValue, valueType);
+    }
+
+    @Override
+    public Future<Object> remove(Session session, Object key) {
+        return map.remove(session, key);
     }
 
     @Override

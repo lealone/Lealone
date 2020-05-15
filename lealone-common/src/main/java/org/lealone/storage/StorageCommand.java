@@ -24,11 +24,15 @@ import org.lealone.db.async.Future;
 
 public interface StorageCommand extends Command {
 
-    Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent);
-
     Future<Object> get(String mapName, ByteBuffer key);
 
+    Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent);
+
     Future<Object> append(String mapName, ByteBuffer value);
+
+    Future<Boolean> replace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue);
+
+    Future<Object> remove(String mapName, ByteBuffer key);
 
     Future<LeafPageMovePlan> prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan);
 

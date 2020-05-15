@@ -49,40 +49,6 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent) {
-        return executePut(mapName, key, value, raw, addIfAbsent, 1);
-    }
-
-    private Future<Object> executePut(String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
-            boolean addIfAbsent, int tries) {
-        String rn = session.createReplicationName();
-        AsyncCallback<Object> ac = new AsyncCallback<>();
-        AsyncHandler<AsyncResult<Object>> handler = ar -> {
-            ac.setAsyncResult(ar);
-        };
-        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(session, commands, handler);
-
-        for (int i = 0; i < session.n; i++) {
-            ReplicaStorageCommand c = commands[i];
-            c.executeReplicaPut(rn, mapName, key.slice(), value.slice(), raw, addIfAbsent)
-                    .onComplete(writeResponseHandler);
-        }
-        try {
-            writeResponseHandler.getResult(session.rpcTimeoutMillis);
-            return ac;
-        } catch (WriteTimeoutException | WriteFailureException e) {
-            if (tries < session.maxTries) {
-                key.rewind();
-                value.rewind();
-                return executePut(mapName, key, value, raw, addIfAbsent, ++tries);
-            } else {
-                writeResponseHandler.initCause(e);
-                throw e;
-            }
-        }
-    }
-
-    @Override
     public Future<Object> get(String mapName, ByteBuffer key) {
         int n = session.n;
         int r = session.r;
@@ -120,6 +86,40 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
+    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent) {
+        return executePut(mapName, key, value, raw, addIfAbsent, 1);
+    }
+
+    private Future<Object> executePut(String mapName, ByteBuffer key, ByteBuffer value, boolean raw,
+            boolean addIfAbsent, int tries) {
+        String rn = session.createReplicationName();
+        AsyncCallback<Object> ac = new AsyncCallback<>();
+        AsyncHandler<AsyncResult<Object>> handler = ar -> {
+            ac.setAsyncResult(ar);
+        };
+        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(session, commands, handler);
+
+        for (int i = 0; i < session.n; i++) {
+            ReplicaStorageCommand c = commands[i];
+            c.executeReplicaPut(rn, mapName, key.slice(), value.slice(), raw, addIfAbsent)
+                    .onComplete(writeResponseHandler);
+        }
+        try {
+            writeResponseHandler.getResult(session.rpcTimeoutMillis);
+            return ac;
+        } catch (WriteTimeoutException | WriteFailureException e) {
+            if (tries < session.maxTries) {
+                key.rewind();
+                value.rewind();
+                return executePut(mapName, key, value, raw, addIfAbsent, ++tries);
+            } else {
+                writeResponseHandler.initCause(e);
+                throw e;
+            }
+        }
+    }
+
+    @Override
     public Future<Object> append(String mapName, ByteBuffer value) {
         return executeAppend(mapName, value, 1);
     }
@@ -143,6 +143,72 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
             if (tries < session.maxTries) {
                 value.rewind();
                 return executeAppend(mapName, value, ++tries).onComplete(writeResponseHandler);
+            } else {
+                writeResponseHandler.initCause(e);
+                throw e;
+            }
+        }
+    }
+
+    @Override
+    public Future<Boolean> replace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue) {
+        return executeReplace(mapName, key, oldValue, newValue, 1);
+    }
+
+    private Future<Boolean> executeReplace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue,
+            int tries) {
+        String rn = session.createReplicationName();
+        AsyncCallback<Boolean> ac = new AsyncCallback<>();
+        AsyncHandler<AsyncResult<Boolean>> handler = ar -> {
+            ac.setAsyncResult(ar);
+        };
+        WriteResponseHandler<Boolean> writeResponseHandler = new WriteResponseHandler<>(session, commands, handler);
+
+        for (int i = 0; i < session.n; i++) {
+            ReplicaStorageCommand c = commands[i];
+            c.executeReplicaReplace(rn, mapName, key.slice(), oldValue.slice(), newValue.slice())
+                    .onComplete(writeResponseHandler);
+        }
+        try {
+            writeResponseHandler.getResult(session.rpcTimeoutMillis);
+            return ac;
+        } catch (WriteTimeoutException | WriteFailureException e) {
+            if (tries < session.maxTries) {
+                key.rewind();
+                oldValue.rewind();
+                newValue.rewind();
+                return executeReplace(mapName, key, oldValue, newValue, ++tries);
+            } else {
+                writeResponseHandler.initCause(e);
+                throw e;
+            }
+        }
+    }
+
+    @Override
+    public Future<Object> remove(String mapName, ByteBuffer key) {
+        return executeRemove(mapName, key, 1);
+    }
+
+    private Future<Object> executeRemove(String mapName, ByteBuffer key, int tries) {
+        String rn = session.createReplicationName();
+        AsyncCallback<Object> ac = new AsyncCallback<>();
+        AsyncHandler<AsyncResult<Object>> handler = ar -> {
+            ac.setAsyncResult(ar);
+        };
+        WriteResponseHandler<Object> writeResponseHandler = new WriteResponseHandler<>(session, commands, handler);
+
+        for (int i = 0; i < session.n; i++) {
+            ReplicaStorageCommand c = commands[i];
+            c.executeReplicaRemove(rn, mapName, key.slice()).onComplete(writeResponseHandler);
+        }
+        try {
+            writeResponseHandler.getResult(session.rpcTimeoutMillis);
+            return ac;
+        } catch (WriteTimeoutException | WriteFailureException e) {
+            if (tries < session.maxTries) {
+                key.rewind();
+                return executeRemove(mapName, key, ++tries);
             } else {
                 writeResponseHandler.initCause(e);
                 throw e;

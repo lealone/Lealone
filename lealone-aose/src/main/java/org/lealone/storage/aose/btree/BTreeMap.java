@@ -576,59 +576,36 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     ////////////////////// 以下是分布式API的实现 ////////////////////////////////
 
-    protected boolean isShardingMode;
-    protected IDatabase db;
+    private boolean isShardingMode;
+    private IDatabase db;
     private String[] oldNodes;
 
-    protected IDatabase getDatabase() {
+    public IDatabase getDatabase() {
         return db;
     }
 
-    protected void fireLeafPageSplit(Object splitKey) {
-        if (isShardingMode()) {
-            PageKey pk = new PageKey(splitKey, false); // 移动右边的Page
-            moveLeafPageLazy(pk);
-        }
+    public void setDatabase(IDatabase db) {
+        this.db = db;
+    }
+
+    public void replicateRootPage(DataBuffer p) {
+        root.replicatePage(p, NetNode.getLocalTcpNode());
+    }
+
+    public void setOldNodes(String[] oldNodes) {
+        this.oldNodes = oldNodes;
+    }
+
+    public void setRunMode(RunMode runMode) {
+        isShardingMode = runMode == RunMode.SHARDING;
+    }
+
+    boolean isShardingMode() {
+        return isShardingMode;
     }
 
     private String getLocalHostId() {
         return db.getLocalHostId();
-    }
-
-    protected <R> Object removeRemote(BTreePage p, K key, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
-        return null;
-    }
-
-    protected <R> Object putRemote(BTreePage p, K key, V value, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
-        if (p.getLeafPageMovePlan() != null && p.getLeafPageMovePlan().moverHostId.equals(getLocalHostId())) {
-            int size = p.getLeafPageMovePlan().replicationNodes.size();
-            List<NetNode> replicationNodes = new ArrayList<>(size);
-            replicationNodes.addAll(p.getLeafPageMovePlan().replicationNodes);
-            boolean containsLocalNode = replicationNodes.remove(getLocalNode());
-            Object returnValue = null;
-            ReplicationSession rs = db.createReplicationSession(db.createInternalSession(), replicationNodes);
-            try (DataBuffer k = DataBuffer.create();
-                    DataBuffer v = DataBuffer.create();
-                    StorageCommand c = rs.createStorageCommand()) {
-                ByteBuffer keyBuffer = k.write(keyType, key);
-                ByteBuffer valueBuffer = v.write(valueType, value);
-                byte[] oldValue = (byte[]) c.put(getName(), keyBuffer, valueBuffer, true, false).get();
-                if (oldValue != null) {
-                    returnValue = valueType.read(ByteBuffer.wrap(oldValue));
-                }
-            }
-            // 如果新的复制节点中还包含本地节点，那么还需要put到本地节点中
-            if (containsLocalNode) {
-                return put(key, value); // TODO 可能还有bug
-            } else {
-                return returnValue;
-            }
-        } else {
-            AsyncResult<R> ar = new AsyncResult<>();
-            ar.setResult((R) null);
-            asyncResultHandler.handle(ar);
-            return null; // 不是由当前节点移动的，那么put操作就可以忽略了
-        }
     }
 
     private Set<NetNode> getCandidateNodes() {
@@ -650,6 +627,13 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             page.setLeafPageMovePlan(leafPageMovePlan);
         }
         return page;
+    }
+
+    protected void fireLeafPageSplit(Object splitKey) {
+        if (isShardingMode()) {
+            PageKey pk = new PageKey(splitKey, false); // 移动右边的Page
+            moveLeafPageLazy(pk);
+        }
     }
 
     private void moveLeafPageLazy(PageKey pageKey) {
@@ -943,6 +927,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    private NetNode getLocalNode() {
+        return NetNode.getLocalP2pNode();
+    }
+
     private List<NetNode> getReplicationNodes(Object key) {
         return getReplicationNodes(root, key);
     }
@@ -969,7 +957,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return getReplicationNodes(db, Arrays.asList(replicationHostIds));
     }
 
-    static List<NetNode> getReplicationNodes(IDatabase db, List<String> replicationHostIds) {
+    private static List<NetNode> getReplicationNodes(IDatabase db, List<String> replicationHostIds) {
+        if (db == null)
+            return null;
         int size = replicationHostIds.size();
         List<NetNode> replicationNodes = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
@@ -988,20 +978,28 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
-    NetNode getLocalNode() {
-        return NetNode.getLocalP2pNode();
+    private List<NetNode> getRemoteReplicationNodes(BTreePage p) {
+        if (p.getLeafPageMovePlan() != null) {
+            if (p.getLeafPageMovePlan().moverHostId.equals(getLocalHostId())) {
+                return new ArrayList<>(p.getLeafPageMovePlan().replicationNodes);
+            } else {
+                // 不是由当前节点移动的，那么操作就可以忽略了
+                return null;
+            }
+        } else if (p.isRemote()) {
+            return getReplicationNodes(db, p.getReplicationHostIds());
+        } else {
+            return null;
+        }
     }
 
     @Override
-    public Object get(Session session, Object key) {
+    public Future<Object> get(Session session, Object key) {
         List<NetNode> replicationNodes = getReplicationNodes(key);
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
-            ByteBuffer value = (ByteBuffer) c.get(getName(), keyBuffer).get();
-            if (value == null)
-                return null;
-            return valueType.read(value);
+            return c.get(getName(), keyBuffer);
         }
     }
 
@@ -1009,6 +1007,28 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public Future<Object> put(Session session, Object key, Object value, StorageDataType valueType,
             boolean addIfAbsent) {
         List<NetNode> replicationNodes = getReplicationNodes(key);
+        return putRemote(session, replicationNodes, key, value, valueType, false, addIfAbsent);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <R> void putRemote(BTreePage p, K key, V value, boolean addIfAbsent,
+            AsyncHandler<AsyncResult<R>> handler) {
+        List<NetNode> replicationNodes = getRemoteReplicationNodes(p);
+        if (replicationNodes == null) {
+            handler.handle(new AsyncResult<>((R) null));
+        } else {
+            putRemote(db.createInternalSession(), replicationNodes, key, value, valueType, true, addIfAbsent)
+                    .onSuccess(r -> {
+                        ByteBuffer resultByteBuffer = (ByteBuffer) r;
+                        handler.handle(new AsyncResult<>((R) getValueType().read(resultByteBuffer)));
+                    }).onFailure(t -> {
+                        handler.handle(new AsyncResult<>(t));
+                    });
+        }
+    }
+
+    private Future<Object> putRemote(Session session, List<NetNode> replicationNodes, Object key, Object value,
+            StorageDataType valueType, boolean raw, boolean addIfAbsent) {
         // TODO 如果当前节点也是复制节点之一，可以优化一下，减少key和value的编解码操作
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer k = DataBuffer.create();
@@ -1016,17 +1036,102 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                 StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer keyBuffer = k.write(keyType, key);
             ByteBuffer valueBuffer = v.write(valueType, value);
-            return c.put(getName(), keyBuffer, valueBuffer, false, addIfAbsent);
+            return c.put(getName(), keyBuffer, valueBuffer, raw, addIfAbsent);
         }
     }
 
     @Override
     public Future<Object> append(Session session, Object value, StorageDataType valueType) {
         List<NetNode> replicationNodes = getLastPageReplicationNodes();
+        return appendRemote(session, replicationNodes, value, valueType);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <R> void appendRemote(BTreePage p, V value, AsyncHandler<AsyncResult<R>> handler) {
+        List<NetNode> replicationNodes = getRemoteReplicationNodes(p);
+        if (replicationNodes == null) {
+            handler.handle(new AsyncResult<>((R) null));
+        } else {
+            appendRemote(db.createInternalSession(), replicationNodes, value, valueType).onSuccess(r -> {
+                ByteBuffer resultByteBuffer = (ByteBuffer) r;
+                handler.handle(new AsyncResult<>((R) getKeyType().read(resultByteBuffer)));
+            }).onFailure(t -> {
+                handler.handle(new AsyncResult<>(t));
+            });
+        }
+    }
+
+    private Future<Object> appendRemote(Session session, List<NetNode> replicationNodes, Object value,
+            StorageDataType valueType) {
         ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
         try (DataBuffer v = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
             ByteBuffer valueBuffer = v.write(valueType, value);
             return c.append(getName(), valueBuffer);
+        }
+    }
+
+    @Override
+    public Future<Boolean> replace(Session session, Object key, Object oldValue, Object newValue,
+            StorageDataType valueType) {
+        List<NetNode> replicationNodes = getReplicationNodes(key);
+        return replaceRemote(session, replicationNodes, key, oldValue, newValue, valueType);
+    }
+
+    protected void replaceRemote(BTreePage p, K key, V oldValue, V newValue,
+            AsyncHandler<AsyncResult<Boolean>> handler) {
+        List<NetNode> replicationNodes = getRemoteReplicationNodes(p);
+        if (replicationNodes == null) {
+            handler.handle(new AsyncResult<>(false));
+        } else {
+            replaceRemote(db.createInternalSession(), replicationNodes, key, oldValue, newValue, valueType)
+                    .onSuccess(r -> {
+                        handler.handle(new AsyncResult<>(r));
+                    }).onFailure(t -> {
+                        handler.handle(new AsyncResult<>(t));
+                    });
+        }
+    }
+
+    private Future<Boolean> replaceRemote(Session session, List<NetNode> replicationNodes, Object key, Object oldValue,
+            Object newValue, StorageDataType valueType) {
+        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
+        try (DataBuffer k = DataBuffer.create();
+                DataBuffer v1 = DataBuffer.create();
+                DataBuffer v2 = DataBuffer.create();
+                StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = k.write(keyType, key);
+            ByteBuffer oldValueBuffer = v1.write(valueType, oldValue);
+            ByteBuffer newValueBuffer = v2.write(valueType, newValue);
+            return c.replace(getName(), keyBuffer, oldValueBuffer, newValueBuffer);
+        }
+    }
+
+    @Override
+    public Future<Object> remove(Session session, Object key) {
+        List<NetNode> replicationNodes = getReplicationNodes(key);
+        return removeRemote(session, replicationNodes, key);
+    }
+
+    @SuppressWarnings("unchecked")
+    protected <R> void removeRemote(BTreePage p, K key, AsyncHandler<AsyncResult<R>> handler) {
+        List<NetNode> replicationNodes = getRemoteReplicationNodes(p);
+        if (replicationNodes == null) {
+            handler.handle(new AsyncResult<>((R) null));
+        } else {
+            removeRemote(db.createInternalSession(), replicationNodes, key).onSuccess(r -> {
+                ByteBuffer resultByteBuffer = (ByteBuffer) r;
+                handler.handle(new AsyncResult<>((R) getValueType().read(resultByteBuffer)));
+            }).onFailure(t -> {
+                handler.handle(new AsyncResult<>(t));
+            });
+        }
+    }
+
+    private Future<Object> removeRemote(Session session, List<NetNode> replicationNodes, Object key) {
+        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
+        try (DataBuffer k = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+            ByteBuffer keyBuffer = k.write(keyType, key);
+            return c.remove(getName(), keyBuffer);
         }
     }
 
@@ -1041,26 +1146,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             return p.getLeafPageMovePlan();
         }
         return null;
-    }
-
-    public void replicateRootPage(DataBuffer p) {
-        root.replicatePage(p, NetNode.getLocalTcpNode());
-    }
-
-    public void setOldNodes(String[] oldNodes) {
-        this.oldNodes = oldNodes;
-    }
-
-    public void setDatabase(IDatabase db) {
-        this.db = db;
-    }
-
-    public void setRunMode(RunMode runMode) {
-        isShardingMode = runMode == RunMode.SHARDING;
-    }
-
-    boolean isShardingMode() {
-        return isShardingMode;
     }
 
     @Override

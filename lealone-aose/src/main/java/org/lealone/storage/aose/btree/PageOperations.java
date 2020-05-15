@@ -200,8 +200,7 @@ public abstract class PageOperations {
         protected abstract Object writeLocal(int index);
 
         // 在分布式场景，当前leaf page已经被移到其他节点了
-        protected void writeRemote() {
-        }
+        protected abstract void writeRemote();
 
         protected void insertLeaf(int index, V value) {
             index = -index - 1;
@@ -251,7 +250,7 @@ public abstract class PageOperations {
 
         @Override
         protected void writeRemote() {
-            map.putRemote(p, key, value, asyncResultHandler);
+            map.putRemote(p, key, value, false, asyncResultHandler);
         }
     }
 
@@ -269,6 +268,11 @@ public abstract class PageOperations {
                 return null;
             }
             return p.getValue(index);
+        }
+
+        @Override
+        protected void writeRemote() {
+            map.putRemote(p, key, value, true, asyncResultHandler);
         }
     }
 
@@ -301,6 +305,11 @@ public abstract class PageOperations {
         protected int getKeyIndex() {
             return -(p.getKeyCount() + 1);
         }
+
+        @Override
+        protected void writeRemote() {
+            map.appendRemote(p, value, asyncResultHandler);
+        }
     }
 
     public static class Replace<K, V> extends Put<K, V, Boolean> {
@@ -325,6 +334,11 @@ public abstract class PageOperations {
                 return Boolean.TRUE;
             }
             return Boolean.FALSE;
+        }
+
+        @Override
+        protected void writeRemote() {
+            map.replaceRemote(p, key, oldValue, value, asyncResultHandler);
         }
     }
 

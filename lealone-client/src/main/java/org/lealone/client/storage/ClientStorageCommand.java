@@ -33,7 +33,11 @@ import org.lealone.server.protocol.storage.StoragePut;
 import org.lealone.server.protocol.storage.StoragePutAck;
 import org.lealone.server.protocol.storage.StorageReadPage;
 import org.lealone.server.protocol.storage.StorageReadPageAck;
+import org.lealone.server.protocol.storage.StorageRemove;
+import org.lealone.server.protocol.storage.StorageRemoveAck;
 import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
+import org.lealone.server.protocol.storage.StorageReplace;
+import org.lealone.server.protocol.storage.StorageReplaceAck;
 import org.lealone.server.protocol.storage.StorageReplicatePages;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
@@ -50,6 +54,23 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     @Override
     public int getType() {
         return CLIENT_STORAGE_COMMAND;
+    }
+
+    @Override
+    public Future<Object> get(String mapName, ByteBuffer key) {
+        try {
+            boolean isDistributed = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
+            StorageGet packet = new StorageGet(mapName, key, isDistributed);
+            return session.<Object, StorageGetAck> send(packet, ack -> {
+                if (isDistributed)
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ack.result;
+            });
+        } catch (Exception e) {
+            session.handleException(e);
+        }
+        return null;
     }
 
     @Override
@@ -76,23 +97,6 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Object> get(String mapName, ByteBuffer key) {
-        try {
-            boolean isDistributed = session.getParentTransaction() != null
-                    && !session.getParentTransaction().isAutoCommit();
-            StorageGet packet = new StorageGet(mapName, key, isDistributed);
-            return session.<Object, StorageGetAck> send(packet, ack -> {
-                if (isDistributed)
-                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                return ack.result;
-            });
-        } catch (Exception e) {
-            session.handleException(e);
-        }
-        return null;
-    }
-
-    @Override
     public Future<Object> append(String mapName, ByteBuffer value) {
         return executeReplicaAppend(null, mapName, value);
     }
@@ -107,6 +111,52 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
                 if (isDistributed)
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                 return ValueLong.get(ack.result);
+            });
+        } catch (Exception e) {
+            session.handleException(e);
+        }
+        return null;
+    }
+
+    @Override
+    public Future<Boolean> replace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue) {
+        return executeReplicaReplace(null, mapName, key, oldValue, newValue);
+    }
+
+    @Override
+    public Future<Boolean> executeReplicaReplace(String replicationName, String mapName, ByteBuffer key,
+            ByteBuffer oldValue, ByteBuffer newValue) {
+        try {
+            boolean isDistributed = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
+            StorageReplace packet = new StorageReplace(mapName, key, oldValue, newValue, isDistributed,
+                    replicationName);
+            return session.<Boolean, StorageReplaceAck> send(packet, ack -> {
+                if (isDistributed)
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ack.result;
+            });
+        } catch (Exception e) {
+            session.handleException(e);
+        }
+        return null;
+    }
+
+    @Override
+    public Future<Object> remove(String mapName, ByteBuffer key) {
+        return executeReplicaRemove(null, mapName, key);
+    }
+
+    @Override
+    public Future<Object> executeReplicaRemove(String replicationName, String mapName, ByteBuffer key) {
+        try {
+            boolean isDistributed = session.getParentTransaction() != null
+                    && !session.getParentTransaction().isAutoCommit();
+            StorageRemove packet = new StorageRemove(mapName, key, isDistributed, replicationName);
+            return session.<Object, StorageRemoveAck> send(packet, ack -> {
+                if (isDistributed)
+                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ack.result;
             });
         } catch (Exception e) {
             session.handleException(e);

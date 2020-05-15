@@ -21,7 +21,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
@@ -242,7 +241,7 @@ public interface StorageMap<K, V> {
 
     long getMemorySpaceUsed();
 
-    //////////////////// 以下是异步API， 默认直接用同步API实现 ////////////////////////////////
+    //////////////////// 以下是异步API， 默认用同步API实现 ////////////////////////////////
 
     default void get(K key, AsyncHandler<AsyncResult<V>> handler) {
         V v = get(key);
@@ -259,6 +258,12 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, v);
     }
 
+    default K append(V value, AsyncHandler<AsyncResult<K>> handler) {
+        K k = append(value);
+        handleAsyncResult(handler, k);
+        return k;
+    }
+
     default void replace(K key, V oldValue, V newValue, AsyncHandler<AsyncResult<Boolean>> handler) {
         Boolean b = replace(key, oldValue, newValue);
         handleAsyncResult(handler, b);
@@ -269,12 +274,6 @@ public interface StorageMap<K, V> {
         handleAsyncResult(handler, v);
     }
 
-    default K append(V value, AsyncHandler<AsyncResult<K>> handler) {
-        K k = append(value);
-        handleAsyncResult(handler, k);
-        return k;
-    }
-
     static <R> void handleAsyncResult(AsyncHandler<AsyncResult<R>> handler, R result) {
         AsyncResult<R> ar = new AsyncResult<>();
         ar.setResult(result);
@@ -283,36 +282,23 @@ public interface StorageMap<K, V> {
 
     ////////////////////// 以下是分布式API ////////////////////////////////
 
-    default Object get(Session session, Object key) {
-        throw DbException.getUnsupportedException("get");
-    }
+    Future<Object> get(Session session, Object key);
 
-    default Future<Object> put(Session session, Object key, Object value, StorageDataType valueType,
-            boolean addIfAbsent) {
-        throw DbException.getUnsupportedException("put");
-    }
+    Future<Object> put(Session session, Object key, Object value, StorageDataType valueType, boolean addIfAbsent);
 
-    default Future<Object> append(Session session, Object value, StorageDataType valueType) {
-        throw DbException.getUnsupportedException("append");
-    }
+    Future<Object> append(Session session, Object value, StorageDataType valueType);
 
-    default void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage) {
-        throw DbException.getUnsupportedException("addLeafPage");
-    }
+    Future<Boolean> replace(Session session, Object key, Object oldValue, Object newValue, StorageDataType valueType);
 
-    default void removeLeafPage(PageKey pageKey) {
-        throw DbException.getUnsupportedException("removeLeafPage");
-    }
+    Future<Object> remove(Session session, Object key);
 
-    default LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan) {
-        throw DbException.getUnsupportedException("prepareMoveLeafPage");
-    }
+    void addLeafPage(PageKey pageKey, ByteBuffer page, boolean addPage);
 
-    default ByteBuffer readPage(PageKey pageKey) {
-        throw DbException.getUnsupportedException("readPage");
-    }
+    void removeLeafPage(PageKey pageKey);
 
-    default Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to) {
-        throw DbException.getUnsupportedException("getNodeToPageKeyMap");
-    }
+    LeafPageMovePlan prepareMoveLeafPage(LeafPageMovePlan leafPageMovePlan);
+
+    ByteBuffer readPage(PageKey pageKey);
+
+    Map<String, List<PageKey>> getNodeToPageKeyMap(Session session, K from, K to);
 }

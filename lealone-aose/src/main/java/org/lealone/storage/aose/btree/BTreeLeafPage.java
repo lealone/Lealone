@@ -649,7 +649,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     @Override
     void moveAllLocalLeafPages(String[] oldNodes, String[] newNodes, RunMode newRunMode) {
-        Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.db, newNodes);
+        Set<NetNode> candidateNodes = BTreeMap.getCandidateNodes(map.getDatabase(), newNodes);
         map.replicateOrMovePage(null, this, null, 0, oldNodes, false, candidateNodes, newRunMode);
     }
 

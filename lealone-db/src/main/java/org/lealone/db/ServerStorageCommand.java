@@ -45,6 +45,13 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
+    public Future<Object> get(String mapName, ByteBuffer key) {
+        StorageMap<Object, Object> map = session.getStorageMap(mapName);
+        Object result = map.get(map.getKeyType().read(key));
+        return Future.succeededFuture(result);
+    }
+
+    @Override
     public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent) {
         return executeReplicaPut(null, mapName, key, value, raw, addIfAbsent);
     }
@@ -100,13 +107,6 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Object> get(String mapName, ByteBuffer key) {
-        StorageMap<Object, Object> map = session.getStorageMap(mapName);
-        Object result = map.get(map.getKeyType().read(key));
-        return Future.succeededFuture(result);
-    }
-
-    @Override
     public Future<Object> append(String mapName, ByteBuffer value) {
         return executeReplicaAppend(null, mapName, value);
     }
@@ -116,6 +116,42 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
         session.setReplicationName(replicationName);
         TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
         Object result = map.append(map.getValueType().read(value));
+        Transaction parentTransaction = session.getParentTransaction();
+        if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
+            parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
+        }
+        return Future.succeededFuture(result);
+    }
+
+    @Override
+    public Future<Boolean> replace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue) {
+        return executeReplicaReplace(null, mapName, key, oldValue, newValue);
+    }
+
+    @Override
+    public Future<Boolean> executeReplicaReplace(String replicationName, String mapName, ByteBuffer key,
+            ByteBuffer oldValue, ByteBuffer newValue) {
+        session.setReplicationName(replicationName);
+        TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
+        Boolean result = map.replace(map.getKeyType().read(key), map.getValueType().read(oldValue),
+                map.getValueType().read(newValue));
+        Transaction parentTransaction = session.getParentTransaction();
+        if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
+            parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
+        }
+        return Future.succeededFuture(result);
+    }
+
+    @Override
+    public Future<Object> remove(String mapName, ByteBuffer key) {
+        return executeReplicaRemove(null, mapName, key);
+    }
+
+    @Override
+    public Future<Object> executeReplicaRemove(String replicationName, String mapName, ByteBuffer key) {
+        session.setReplicationName(replicationName);
+        TransactionMap<Object, Object> map = session.getTransactionMap(mapName);
+        Object result = map.remove(map.getKeyType().read(key));
         Transaction parentTransaction = session.getParentTransaction();
         if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
             parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
