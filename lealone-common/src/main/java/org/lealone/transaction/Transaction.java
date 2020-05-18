@@ -165,6 +165,10 @@ public interface Transaction {
         default void setException(RuntimeException e) {
         }
 
+        default void setException(Throwable t) {
+            setException(new RuntimeException(t));
+        }
+
         default RuntimeException getException() {
             return null;
         }

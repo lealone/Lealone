@@ -195,7 +195,7 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     public Future<LeafPageMovePlan> prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan) {
         try {
             StoragePrepareMoveLeafPage packet = new StoragePrepareMoveLeafPage(mapName, leafPageMovePlan);
-            session.<LeafPageMovePlan, StoragePrepareMoveLeafPageAck> send(packet, ack -> {
+            return session.<LeafPageMovePlan, StoragePrepareMoveLeafPageAck> send(packet, ack -> {
                 return ack.leafPageMovePlan;
             });
         } catch (Exception e) {

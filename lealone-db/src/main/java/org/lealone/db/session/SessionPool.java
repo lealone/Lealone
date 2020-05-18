@@ -20,6 +20,7 @@ package org.lealone.db.session;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.Command;
@@ -30,11 +31,13 @@ import org.lealone.db.SysProperties;
 import org.lealone.db.async.Future;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
+import org.lealone.transaction.Transaction;
 
 public class SessionPool {
+
     private static final int QUEUE_SIZE = 3;
 
-    // key是集群中每个节点的URL
+    // key是访问数据库的JDBC URL
     private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<Session>> pool = new ConcurrentHashMap<>();
 
     private static ConcurrentLinkedQueue<Session> getQueue(String url) {
@@ -60,21 +63,22 @@ public class SessionPool {
         Session session = remote ? getQueue(url).poll() : null; // 在本地创建session时不用从缓存队列中找
 
         if (session == null || session.isClosed()) {
-            ConnectionInfo oldCi = originalSession.getConnectionInfo();
-            // 未来新加的代码如果忘记设置这个字段，出问题时方便查找原因
-            if (oldCi == null) {
-                throw DbException.throwInternalError();
-            }
-
-            ConnectionInfo ci = new ConnectionInfo(url, oldCi.getProperties());
-            ci.setProperty(ConnectionSetting.IS_LOCAL, "true");
-            ci.setUserName(oldCi.getUserName());
-            ci.setUserPasswordHash(oldCi.getUserPasswordHash());
-            ci.setFilePasswordHash(oldCi.getFilePasswordHash());
-            ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
-            ci.setRemote(remote);
-            // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
-            session = ci.getSessionFactory().createSession(ci, false).get();
+            // 这里没有直接使用Future.get，是因为在分布式场景下两个节点互联时，
+            // 若是调用getSession的线程和解析session初始化包时分配的线程是同一个，会导致死锁。
+            Transaction.Listener listener = Transaction.getTransactionListener();
+            listener.beforeOperation();
+            AtomicReference<Session> sessionRef = new AtomicReference<>();
+            getSessionAsync(originalSession, url, remote).onComplete(ar -> {
+                if (ar.isSucceeded()) {
+                    sessionRef.set(ar.getResult());
+                    listener.operationComplete();
+                } else {
+                    listener.setException(ar.getCause());
+                    listener.operationUndo();
+                }
+            });
+            listener.await();
+            session = sessionRef.get();
         }
         return session;
     }
@@ -104,6 +108,11 @@ public class SessionPool {
     public static void release(Session session) {
         if (session == null || session.isClosed())
             return;
+
+        if (session instanceof ServerSession) {
+            session.close();
+            return;
+        }
 
         ConcurrentLinkedQueue<Session> queue = getQueue(session.getURL());
         if (queue.size() > QUEUE_SIZE)

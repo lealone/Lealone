@@ -52,7 +52,7 @@ public class DTransactionMap<K, V> extends AOTransactionMap<K, V> {
             else
                 listener.operationUndo();
         }).onFailure(t -> {
-            listener.setException(new RuntimeException(t));
+            listener.setException(t);
             listener.operationUndo();
         });
     }
@@ -64,7 +64,7 @@ public class DTransactionMap<K, V> extends AOTransactionMap<K, V> {
             listener.operationComplete();
             topHandler.handle(new AsyncResult<>((K) r));
         }).onFailure(t -> {
-            listener.setException(new RuntimeException(t));
+            listener.setException(t);
             listener.operationUndo();
         });
     }
