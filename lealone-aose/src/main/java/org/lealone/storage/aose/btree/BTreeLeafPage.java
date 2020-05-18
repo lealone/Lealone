@@ -373,13 +373,13 @@ public class BTreeLeafPage extends BTreeLocalPage {
         }
     }
 
-    static BTreeLeafPage readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
+    static BTreePage readLeafPage(BTreeMap<?, ?> map, ByteBuffer page) {
         List<String> replicationHostIds = readReplicationHostIds(page);
         boolean remote = page.get() == 1;
-        BTreeLeafPage p;
+        BTreePage p;
 
         if (remote) {
-            p = BTreeLeafPage.createEmpty(map);
+            p = new BTreeRemotePage(map); // 这里并没有使用空的LeafPage
         } else {
             StorageDataType kt = map.getKeyType();
             StorageDataType vt = map.getValueType();
@@ -392,8 +392,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
             }
             p = BTreeLeafPage.create(map, keys, values, length, 0);
         }
-
-        p.replicationHostIds = replicationHostIds;
+        p.setReplicationHostIds(replicationHostIds);
         return p;
     }
 
