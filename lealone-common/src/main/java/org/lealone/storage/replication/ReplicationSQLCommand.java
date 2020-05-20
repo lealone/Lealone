@@ -83,23 +83,6 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             if (c != null)
                 c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
         }
-        //
-        // while (true) {
-        // try {
-        // readResponseHandler.getResult(session.rpcTimeoutMillis);
-        // return ac;
-        // } catch (ReadTimeoutException | ReadFailureException e) {
-        // if (tries + 1 < session.maxTries) {
-        // ReplicaSQLCommand c = getRandomNode(seen);
-        // if (c != null) {
-        // c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
-        // continue;
-        // }
-        // }
-        // readResponseHandler.initCause(e);
-        // throw e;
-        // }
-        // }
     }
 
     @Override
@@ -123,15 +106,5 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         for (int i = 0; i < session.n; i++) {
             commands[i].executeReplicaUpdate(rn).onComplete(writeResponseHandler);
         }
-        // try {
-        // writeResponseHandler.getResult(session.rpcTimeoutMillis);
-        // } catch (WriteTimeoutException | WriteFailureException e) {
-        // if (tries < session.maxTries)
-        // executeUpdate(++tries, ac);
-        // else {
-        // writeResponseHandler.initCause(e);
-        // throw e;
-        // }
-        // }
     }
 }
