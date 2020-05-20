@@ -15,14 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.common.exceptions;
+package org.lealone.storage.replication.exceptions;
 
-public class RequestValidationException extends LealoneException {
-    protected RequestValidationException(ExceptionCode code, String msg) {
+import org.lealone.common.exceptions.ExceptionCode;
+import org.lealone.common.exceptions.LealoneException;
+
+public class ReplicationException extends LealoneException {
+    protected ReplicationException(ExceptionCode code, String msg) {
         super(code, msg);
     }
 
-    protected RequestValidationException(ExceptionCode code, String msg, Throwable e) {
+    protected ReplicationException(ExceptionCode code, String msg, Throwable e) {
         super(code, msg, e);
     }
 }

@@ -17,7 +17,7 @@
  */
 package org.lealone.common.exceptions;
 
-public class ConfigException extends RequestValidationException {
+public class ConfigException extends LealoneException {
     public ConfigException(String msg) {
         super(ExceptionCode.CONFIG_ERROR, msg);
     }

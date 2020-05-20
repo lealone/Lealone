@@ -18,10 +18,9 @@
 package org.lealone.storage.replication.exceptions;
 
 import org.lealone.common.exceptions.ExceptionCode;
-import org.lealone.common.exceptions.RequestExecutionException;
 import org.lealone.storage.replication.ConsistencyLevel;
 
-public class RequestFailureException extends RequestExecutionException {
+public class RequestFailureException extends ReplicationException {
     public final ConsistencyLevel consistency;
     public final int received;
     public final int failures;
