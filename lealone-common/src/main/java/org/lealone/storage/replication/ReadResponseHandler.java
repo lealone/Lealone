@@ -22,23 +22,8 @@ import org.lealone.db.async.AsyncResult;
 
 class ReadResponseHandler<T> extends ReplicationHandler<T> {
 
-    private final int r;
-
-    ReadResponseHandler(ReplicationSession session, AsyncHandler<AsyncResult<T>> topHandler) {
-        super(session.n, topHandler);
-        r = session.r;
-    }
-
-    @Override
-    synchronized void response(AsyncResult<T> result) {
-        results.add(result);
-        if (!successful && results.size() >= r) {
-            successful = true;
-            signal();
-            if (topHandler != null) {
-                topHandler.handle(results.get(0));
-            }
-        }
+    ReadResponseHandler(ReplicationSession session, AsyncHandler<AsyncResult<T>> finalResultHandler) {
+        super(session.n, session.r, finalResultHandler);
     }
 
     @Override
@@ -47,7 +32,9 @@ class ReadResponseHandler<T> extends ReplicationHandler<T> {
     }
 
     @Override
-    int totalBlockFor() {
-        return r;
+    void onSuccess() {
+        if (finalResultHandler != null) {
+            finalResultHandler.handle(results.get(0));
+        }
     }
 }

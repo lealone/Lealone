@@ -31,33 +31,91 @@ import org.lealone.storage.replication.exceptions.WriteTimeoutException;
 
 abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
 
-    protected final long start;
-    protected final int n;
-    protected final AsyncHandler<AsyncResult<T>> topHandler;
+    private final long start;
+    private final int totalNodes;
+    private final int totalBlockFor;
+
+    protected final AsyncHandler<AsyncResult<T>> finalResultHandler;
     protected final CopyOnWriteArrayList<AsyncResult<T>> results = new CopyOnWriteArrayList<>();
 
-    private final SimpleCondition condition = new SimpleCondition();
     private final CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
+    private final SimpleCondition condition = new SimpleCondition();
 
     @SuppressWarnings("rawtypes")
     private final AtomicIntegerFieldUpdater<ReplicationHandler> failuresUpdater = AtomicIntegerFieldUpdater
             .newUpdater(ReplicationHandler.class, "failures");
-    private volatile int failures = 0;
-    protected volatile boolean successful = false;
+    private volatile int failures;
+    private volatile boolean successful;
 
-    public ReplicationHandler(int n, AsyncHandler<AsyncResult<T>> topHandler) {
+    public ReplicationHandler(int totalNodes, int totalBlockFor, AsyncHandler<AsyncResult<T>> finalResultHandler) {
         start = System.nanoTime();
-        this.n = n;
-        this.topHandler = topHandler;
+        this.totalNodes = totalNodes;
+        this.totalBlockFor = totalBlockFor;
+        this.finalResultHandler = finalResultHandler;
     }
-
-    abstract void response(AsyncResult<T> result);
-
-    abstract int totalBlockFor();
 
     abstract boolean isRead();
 
-    void await(long rpcTimeoutMillis) {
+    abstract void onSuccess();
+
+    @Override
+    public void handle(AsyncResult<T> ar) {
+        if (ar.isSucceeded()) {
+            handleResult(ar);
+        } else {
+            handleException(ar.getCause());
+        }
+    }
+
+    private synchronized void handleResult(AsyncResult<T> result) {
+        results.add(result);
+        if (!successful && results.size() >= totalBlockFor) {
+            successful = true;
+            try {
+                onSuccess();
+            } finally {
+                signal();
+            }
+        }
+    }
+
+    private synchronized void handleException(Throwable t) {
+        exceptions.add(t);
+        int f = failuresUpdater.incrementAndGet(this);
+        if (totalBlockFor + f >= totalNodes) {
+            try {
+                if (finalResultHandler != null) {
+                    AsyncResult<T> ar = new AsyncResult<>();
+                    ar.setCause(exceptions.get(0));
+                    finalResultHandler.handle(ar);
+                }
+            } finally {
+                signal();
+            }
+        }
+    }
+
+    private void signal() {
+        condition.signalAll();
+    }
+
+    @Deprecated
+    T getResult(long rpcTimeoutMillis) {
+        await(rpcTimeoutMillis);
+        return results.get(0).getResult();
+    }
+
+    @Deprecated
+    void initCause(Throwable e) {
+        if (!exceptions.isEmpty())
+            e.initCause(exceptions.get(0));
+    }
+
+    private int ackCount() {
+        return results.size();
+    }
+
+    private void await(long rpcTimeoutMillis) {
         // 超时时间把调用构造函数开始直到调用get前的这段时间也算在内
         long timeout = rpcTimeoutMillis > 0
                 ? TimeUnit.MILLISECONDS.toNanos(rpcTimeoutMillis) - (System.nanoTime() - start)
@@ -76,7 +134,7 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
         }
         if (!successful) {
             if (!success) {
-                int blockedFor = totalBlockFor();
+                int blockedFor = totalBlockFor;
                 int acks = ackCount();
                 // It's pretty unlikely, but we can race between exiting await above and here, so
                 // that we could now have enough acks. In that case, we "lie" on the acks count to
@@ -89,58 +147,12 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
                     throw new WriteTimeoutException(ConsistencyLevel.QUORUM, acks, blockedFor);
             }
 
-            if (totalBlockFor() + failures >= totalNodes()) {
+            if (totalBlockFor + failures >= totalNodes) {
                 if (isRead())
-                    throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor(),
-                            false);
+                    throw new ReadFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor, false);
                 else
-                    throw new WriteFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor());
+                    throw new WriteFailureException(ConsistencyLevel.QUORUM, ackCount(), failures, totalBlockFor);
             }
-        }
-    }
-
-    T getResult(long rpcTimeoutMillis) {
-        await(rpcTimeoutMillis);
-        return results.get(0).getResult();
-    }
-
-    void initCause(Throwable e) {
-        if (!exceptions.isEmpty())
-            e.initCause(exceptions.get(0));
-    }
-
-    private void onFailure() {
-        int f = failuresUpdater.incrementAndGet(this);
-
-        if (totalBlockFor() + f >= totalNodes()) {
-            signal();
-            if (topHandler != null) {
-                AsyncResult<T> ar = new AsyncResult<>();
-                ar.setCause(exceptions.get(0));
-                topHandler.handle(ar);
-            }
-        }
-    }
-
-    void signal() {
-        condition.signalAll();
-    }
-
-    int totalNodes() {
-        return n;
-    }
-
-    int ackCount() {
-        return results.size();
-    }
-
-    @Override
-    public void handle(AsyncResult<T> ar) {
-        if (ar.isSucceeded()) {
-            response(ar);
-        } else {
-            exceptions.add(ar.getCause());
-            onFailure();
         }
     }
 }

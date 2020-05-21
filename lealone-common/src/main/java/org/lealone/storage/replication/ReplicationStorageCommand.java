@@ -188,18 +188,18 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     private void prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan, int tries,
-            AsyncHandler<AsyncResult<LeafPageMovePlan>> topHandler) {
+            AsyncHandler<AsyncResult<LeafPageMovePlan>> finalResultHandler) {
         int n = session.n;
         ReplicationResultHandler<LeafPageMovePlan> replicationResultHandler = results -> {
             LeafPageMovePlan plan = getValidPlan(results, n);
             if (plan == null && tries - 1 > 0) {
                 leafPageMovePlan.incrementIndex();
-                prepareMoveLeafPage(mapName, leafPageMovePlan, tries + 1, topHandler);
+                prepareMoveLeafPage(mapName, leafPageMovePlan, tries + 1, finalResultHandler);
             }
             return plan;
         };
         WriteResponseHandler<LeafPageMovePlan> writeResponseHandler = new WriteResponseHandler<>(session, commands,
-                topHandler, replicationResultHandler);
+                finalResultHandler, replicationResultHandler);
 
         for (int i = 0; i < n; i++) {
             commands[i].prepareMoveLeafPage(mapName, leafPageMovePlan).onComplete(writeResponseHandler);
