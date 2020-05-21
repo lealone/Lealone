@@ -35,11 +35,13 @@ public class ReplicationSession extends DelegatedSession {
     private final String replicationNamePrefix;
     private final AtomicInteger counter = new AtomicInteger(1);
 
-    private ConsistencyLevel consistencyLevel = ConsistencyLevel.ALL;
+    private ConsistencyLevel consistencyLevel;
 
     final int n; // 复制集群节点总个数
-    final int w; // 写成功的最少节点个数
-    final int r; // 读成功的最少节点个数
+
+    // 当改变ConsistencyLevel时这两个字段也会随之改动
+    int r; // 读成功的最少节点个数
+    int w; // 写成功的最少节点个数
 
     int maxTries = 5;
     long rpcTimeoutMillis;
@@ -65,7 +67,6 @@ public class ReplicationSession extends DelegatedSession {
         }
 
         n = sessions.length;
-        w = r = n / 2 + 1;
         servers = new String[n];
         StringBuilder buff = new StringBuilder();
         for (int i = 0; i < n; i++) {
@@ -81,6 +82,9 @@ public class ReplicationSession extends DelegatedSession {
             replicationNamePrefix = replicationNodes + "@" + replicationNamePrefix;
         }
         this.replicationNamePrefix = replicationNamePrefix;
+
+        // 设置默认级别
+        setConsistencyLevel(ConsistencyLevel.ALL);
     }
 
     public void setMaxTries(int maxTries) {
@@ -97,6 +101,13 @@ public class ReplicationSession extends DelegatedSession {
 
     public void setConsistencyLevel(ConsistencyLevel consistencyLevel) {
         this.consistencyLevel = consistencyLevel;
+        // 使用Write all read one模式
+        if (consistencyLevel == ConsistencyLevel.ALL) {
+            w = n;
+            r = 1;
+        } else {
+            w = r = n / 2 + 1;
+        }
     }
 
     // 复制名的格式: hostName:port_sessionId_time_counter,consistencyLevel,serversStr

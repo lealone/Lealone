@@ -65,9 +65,6 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
     private void executeQuery(int maxRows, boolean scrollable, int tries, HashSet<ReplicaSQLCommand> seen,
             AsyncCallback<Result> ac) {
-        int n = session.n;
-        int r = session.r;
-        r = 1; // 使用Write all read one模式
         AsyncHandler<AsyncResult<Result>> handler = ar -> {
             if (ar.isFailed() && tries < session.maxTries) {
                 executeQuery(maxRows, scrollable, tries + 1, seen, ac);
@@ -75,10 +72,10 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                 ac.setAsyncResult(ar);
             }
         };
-        ReadResponseHandler<Result> readResponseHandler = new ReadResponseHandler<>(n, handler);
+        ReadResponseHandler<Result> readResponseHandler = new ReadResponseHandler<>(session, handler);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
-        for (int i = 0; i < r; i++) {
+        for (int i = 0; i < session.r; i++) {
             ReplicaSQLCommand c = getRandomNode(seen);
             if (c != null)
                 c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);

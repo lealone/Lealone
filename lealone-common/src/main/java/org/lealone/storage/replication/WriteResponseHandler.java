@@ -41,8 +41,7 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
     WriteResponseHandler(ReplicationSession session, ReplicaCommand[] commands, AsyncHandler<AsyncResult<T>> topHandler,
             ReplicationResultHandler<T> replicationResultHandler) {
         super(session.n, topHandler);
-        // w = n / 2 + 1;
-        w = n; // 使用Write all read one模式
+        w = session.w;
 
         // 手动提交事务的场景不用执行副本提交
         if (!session.isAutoCommit())

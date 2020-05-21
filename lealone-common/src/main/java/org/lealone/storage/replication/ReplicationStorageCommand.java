@@ -54,9 +54,6 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
 
     public void get(String mapName, ByteBuffer key, int tries, HashSet<ReplicaStorageCommand> seen,
             AsyncCallback<Object> ac) {
-        int n = session.n;
-        int r = session.r;
-        r = 1; // 使用Write all read one模式
         AsyncHandler<AsyncResult<Object>> handler = ar -> {
             if (ar.isFailed() && tries < session.maxTries) {
                 key.rewind();
@@ -65,10 +62,10 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
                 ac.setAsyncResult(ar);
             }
         };
-        ReadResponseHandler<Object> readResponseHandler = new ReadResponseHandler<>(n, handler);
+        ReadResponseHandler<Object> readResponseHandler = new ReadResponseHandler<>(session, handler);
 
         // 随机选择R个节点并行读，如果读不到再试其他节点
-        for (int i = 0; i < r; i++) {
+        for (int i = 0; i < session.r; i++) {
             ReplicaStorageCommand c = getRandomNode(seen);
             c.get(mapName, key.slice()).onComplete(readResponseHandler);
         }

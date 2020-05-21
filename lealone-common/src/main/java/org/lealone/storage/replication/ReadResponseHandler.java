@@ -24,10 +24,9 @@ class ReadResponseHandler<T> extends ReplicationHandler<T> {
 
     private final int r;
 
-    ReadResponseHandler(int n, AsyncHandler<AsyncResult<T>> topHandler) {
-        super(n, topHandler);
-        // r = n / 2 + 1;
-        r = 1; // 使用Write all read one模式
+    ReadResponseHandler(ReplicationSession session, AsyncHandler<AsyncResult<T>> topHandler) {
+        super(session.n, topHandler);
+        r = session.r;
     }
 
     @Override
