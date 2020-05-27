@@ -207,6 +207,10 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     private LeafPageMovePlan getValidPlan(List<LeafPageMovePlan> plans, int n) {
+        int w = n / 2 + 1;
+        LeafPageMovePlan validPlan = null;
+
+        // 1. 先看看是否有满足>=w的
         HashMap<String, ArrayList<LeafPageMovePlan>> groupPlans = new HashMap<>(1);
         for (LeafPageMovePlan p : plans) {
             ArrayList<LeafPageMovePlan> group = groupPlans.get(p.moverHostId);
@@ -216,14 +220,24 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
             }
             group.add(p);
         }
-        int w = n / 2 + 1;
-        LeafPageMovePlan validPlan = null;
         for (Entry<String, ArrayList<LeafPageMovePlan>> e : groupPlans.entrySet()) {
             ArrayList<LeafPageMovePlan> group = e.getValue();
             if (group.size() >= w) {
                 validPlan = group.get(0);
                 break;
             }
+        }
+        // 2. 如果没有，那就排序取moverHostId最大的那个
+        if (validPlan == null && plans.size() >= w) {
+            int index = 0;
+            String moverHostId = plans.get(0).moverHostId;
+            for (int i = 1; i < plans.size(); i++) {
+                if (plans.get(i).moverHostId.compareTo(moverHostId) > 0) {
+                    moverHostId = plans.get(i).moverHostId;
+                    index = i;
+                }
+            }
+            validPlan = plans.get(index);
         }
         return validPlan;
     }
