@@ -53,7 +53,8 @@ class ReplicationPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            return new ReplicationUpdateAck(updateCount);
+            long key = task.session.getLastRowKey();
+            return new ReplicationUpdateAck(updateCount, key);
         }
     }
 
@@ -67,7 +68,8 @@ class ReplicationPacketHandlers extends PacketHandlers {
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            return new ReplicationPreparedUpdateAck(updateCount);
+            long key = task.session.getLastRowKey();
+            return new ReplicationPreparedUpdateAck(updateCount, key);
         }
     }
 

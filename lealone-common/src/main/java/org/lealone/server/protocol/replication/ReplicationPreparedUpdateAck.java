@@ -25,8 +25,8 @@ import org.lealone.server.protocol.PacketType;
 
 public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
 
-    public ReplicationPreparedUpdateAck(int updateCount) {
-        super(updateCount);
+    public ReplicationPreparedUpdateAck(int updateCount, long key) {
+        super(updateCount, key);
     }
 
     @Override
@@ -39,7 +39,7 @@ public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationPreparedUpdateAck> {
         @Override
         public ReplicationPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationPreparedUpdateAck(in.readInt());
+            return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong());
         }
     }
 }

@@ -28,6 +28,7 @@ import org.lealone.server.protocol.dt.DTransactionUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationCommit;
 import org.lealone.server.protocol.replication.ReplicationRollback;
 import org.lealone.server.protocol.replication.ReplicationUpdate;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.statement.StatementQuery;
 import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdate;
@@ -140,8 +141,14 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public Future<Integer> executeReplicaUpdate(String replicationName) {
-        return update(replicationName, null);
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        int packetId = session.getNextId();
+        commandId = packetId;
+        Packet packet = new ReplicationUpdate(null, sql, replicationName);
+        return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
+            ack.setReplicaCommand(ClientSQLCommand.this);
+            return ack;
+        });
     }
 
     protected Future<Integer> update(String replicationName, List<PageKey> pageKeys) {
@@ -155,13 +162,17 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
                 return ack.updateCount;
             });
         } else {
-            if (replicationName != null)
+            if (replicationName != null) {
                 packet = new ReplicationUpdate(pageKeys, sql, replicationName);
-            else
+                return session.<Integer, ReplicationUpdateAck> send(packet, packetId, ack -> {
+                    return ack.updateCount;
+                });
+            } else {
                 packet = new StatementUpdate(pageKeys, sql);
-            return session.<Integer, StatementUpdateAck> send(packet, packetId, ack -> {
-                return ack.updateCount;
-            });
+                return session.<Integer, StatementUpdateAck> send(packet, packetId, ack -> {
+                    return ack.updateCount;
+                });
+            }
         }
     }
 

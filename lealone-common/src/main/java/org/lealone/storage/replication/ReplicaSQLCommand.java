@@ -18,9 +18,10 @@
 package org.lealone.storage.replication;
 
 import org.lealone.db.async.Future;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.SQLCommand;
 
 public interface ReplicaSQLCommand extends ReplicaCommand, SQLCommand {
 
-    Future<Integer> executeReplicaUpdate(String replicationName);
+    Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName);
 }

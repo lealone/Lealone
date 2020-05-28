@@ -42,7 +42,8 @@ public class ReplicationTest extends SqlTestBase {
         stmt.executeUpdate(sql);
 
         // new AsyncReplicationTest().runTest();
-        new ReplicationConflictTest().runTest();
+        // new ReplicationConflictTest().runTest();
+        new ReplicationAppendTest().runTest();
     }
 
     static class AsyncReplicationTest extends SqlTestBase {
@@ -104,6 +105,45 @@ public class ReplicationTest extends SqlTestBase {
             // assertEquals(20, rs.getLong(2));
             rs.close();
             // stmt.executeUpdate("DELETE FROM ReplicationTest WHERE f1 = 1");
+        }
+    }
+
+    static class ReplicationAppendTest extends SqlTestBase {
+
+        static class InsertTest extends CrudTest {
+            int value;
+
+            public InsertTest(int v) {
+                value = v;
+            }
+
+            @Override
+            protected void test() throws Exception {
+                int f1 = value * 10;
+                int f2 = value * 100;
+                String sql = "INSERT INTO ReplicationAppendTest(f1, f2) VALUES(" + f1 + ", " + f2 + ")";
+                stmt.executeUpdate(sql);
+            }
+        }
+
+        public ReplicationAppendTest() {
+            super(REPLICATION_DB_NAME);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationAppendTest");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationAppendTest (f1 int, f2 long)");
+
+            Thread t1 = new Thread(new InsertTest(1));
+            Thread t2 = new Thread(new InsertTest(2));
+            Thread t3 = new Thread(new InsertTest(3));
+            t1.start();
+            t2.start();
+            t3.start();
+            t1.join();
+            t2.join();
+            t3.join();
         }
     }
 

@@ -27,6 +27,7 @@ import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
@@ -576,8 +577,10 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<Integer> executeReplicaUpdate(String replicationName) {
-        return executeUpdate(null);
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        Future<Integer> f = executeUpdate(null);
+        ReplicationUpdateAck ack = new ReplicationUpdateAck(f.get(), session.getLastRowKey());
+        return Future.succeededFuture(ack);
     }
 
     @Override

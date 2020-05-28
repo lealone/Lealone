@@ -165,11 +165,11 @@ public class StandardPrimaryIndex extends StandardIndex {
             map.append(value, globalListener, ar -> {
                 if (ar.isSucceeded()) {
                     row.setKey(ar.getResult().getLong());
+                    session.setLastRow(row);
+                    session.setLastIndex(this);
                 }
             });
         }
-        session.setLastRow(row);
-        session.setLastIndex(this);
         return true;
     }
 

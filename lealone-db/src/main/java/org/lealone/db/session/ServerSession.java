@@ -1364,12 +1364,11 @@ public class ServerSession extends SessionBase {
     @Override
     public long getLastRowKey() {
         if (lastRow == null)
-            return 0;
+            return -1;
         return lastRow.getKey();
     }
 
     public void replicationCommit(long validKey, boolean autoCommit) {
-        // 这段代码已经废弃
         if (validKey != -1) {
             if (transaction != null) {
                 transaction.replicationPrepareCommit(validKey);
