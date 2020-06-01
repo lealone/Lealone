@@ -11,6 +11,7 @@ import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -49,6 +50,8 @@ import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
+import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -565,7 +568,6 @@ public class ServerSession extends SessionBase {
 
         containsDDL = false;
         containsDatabaseStatement = false;
-        setReplicationName(null);
     }
 
     private void commitFinal() {
@@ -1369,7 +1371,7 @@ public class ServerSession extends SessionBase {
     }
 
     public void replicationCommit(long validKey, boolean autoCommit) {
-        if (validKey != -1) {
+        if (validKey != -1 && getLastRowKey() != validKey) {
             if (transaction != null) {
                 transaction.replicationPrepareCommit(validKey);
             }
@@ -1400,8 +1402,38 @@ public class ServerSession extends SessionBase {
     }
 
     private void clean() {
+        if (lastIndex != null && replicationName != null)
+            lastIndex.removeReplicationSession(this);
         lastRow = null;
         lastIndex = null;
+        setReplicationName(null);
+    }
+
+    private List<ServerSession> getUncommittedReplicationSessions() {
+        if (lastIndex != null && replicationName != null)
+            return lastIndex.getUncommittedReplicationSessions(this);
+        else
+            return null;
+    }
+
+    public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
+        long key = getLastRowKey();
+        List<ServerSession> sessions = getUncommittedReplicationSessions();
+        long first;
+        List<String> uncommittedReplicationNames;
+        if (sessions == null || sessions.isEmpty()) {
+            first = key;
+            uncommittedReplicationNames = null;
+        } else {
+            first = sessions.get(0).getLastRowKey();
+            uncommittedReplicationNames = new ArrayList<>(sessions.size());
+            for (ServerSession s : sessions)
+                uncommittedReplicationNames.add(s.getReplicationName());
+        }
+        if (prepared)
+            return new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationNames);
+        else
+            return new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationNames);
     }
 
     private byte[] lobMacSalt;

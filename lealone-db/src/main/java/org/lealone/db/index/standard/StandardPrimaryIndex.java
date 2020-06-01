@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -54,6 +55,8 @@ public class StandardPrimaryIndex extends StandardIndex {
      * The maximum long value.
      */
     static final ValueLong MAX = ValueLong.get(Long.MAX_VALUE);
+
+    private final ConcurrentLinkedQueue<ServerSession> uncommittedReplicationSessions = new ConcurrentLinkedQueue<>();
 
     private final StandardTable table;
     private final String mapName;
@@ -167,6 +170,9 @@ public class StandardPrimaryIndex extends StandardIndex {
                     row.setKey(ar.getResult().getLong());
                     session.setLastRow(row);
                     session.setLastIndex(this);
+                    if (session.getReplicationName() != null) {
+                        uncommittedReplicationSessions.add(session);
+                    }
                 }
             });
         }
@@ -485,6 +491,20 @@ public class StandardPrimaryIndex extends StandardIndex {
         ValueLong[] minAndMaxValues = getMinAndMaxValues(first, last);
         StorageMap<Value, VersionedValue> map = getMap(session);
         return map.getNodeToPageKeyMap(session, minAndMaxValues[0], minAndMaxValues[1]);
+    }
+
+    public void removeReplicationSession(ServerSession session) {
+        uncommittedReplicationSessions.remove(session);
+    }
+
+    public List<ServerSession> getUncommittedReplicationSessions(ServerSession exclude) {
+        ArrayList<ServerSession> sessions = new ArrayList<>();
+        for (ServerSession session : uncommittedReplicationSessions) {
+            if (session == exclude)
+                break;
+            sessions.add(session);
+        }
+        return sessions;
     }
 
     /**

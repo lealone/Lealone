@@ -579,7 +579,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
         Future<Integer> f = executeUpdate(null);
-        ReplicationUpdateAck ack = new ReplicationUpdateAck(f.get(), session.getLastRowKey());
+        ReplicationUpdateAck ack = (ReplicationUpdateAck) session.createReplicationUpdateAckPacket(f.get(), false);
         return Future.succeededFuture(ack);
     }
 

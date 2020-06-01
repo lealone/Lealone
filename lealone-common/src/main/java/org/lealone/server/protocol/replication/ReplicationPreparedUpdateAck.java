@@ -18,6 +18,7 @@
 package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.server.protocol.PacketDecoder;
@@ -25,8 +26,9 @@ import org.lealone.server.protocol.PacketType;
 
 public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
 
-    public ReplicationPreparedUpdateAck(int updateCount, long key) {
-        super(updateCount, key);
+    public ReplicationPreparedUpdateAck(int updateCount, long key, long first,
+            List<String> uncommittedReplicationNames) {
+        super(updateCount, key, first, uncommittedReplicationNames);
     }
 
     @Override
@@ -39,7 +41,8 @@ public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationPreparedUpdateAck> {
         @Override
         public ReplicationPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong());
+            return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong(), in.readLong(),
+                    readUncommittedReplicationNames(in));
         }
     }
 }

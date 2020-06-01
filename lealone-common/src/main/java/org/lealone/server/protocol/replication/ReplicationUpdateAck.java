@@ -18,6 +18,8 @@
 package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
@@ -29,12 +31,15 @@ import org.lealone.storage.replication.ReplicaCommand;
 public class ReplicationUpdateAck extends StatementUpdateAck {
 
     public final long key;
-
+    public final long first;
+    public final List<String> uncommittedReplicationNames;
     private ReplicaCommand replicaCommand;
 
-    public ReplicationUpdateAck(int updateCount, long key) {
+    public ReplicationUpdateAck(int updateCount, long key, long first, List<String> uncommittedReplicationNames) {
         super(updateCount);
         this.key = key;
+        this.first = first;
+        this.uncommittedReplicationNames = uncommittedReplicationNames;
     }
 
     @Override
@@ -54,6 +59,14 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
         out.writeLong(key);
+        out.writeLong(first);
+        if (uncommittedReplicationNames == null) {
+            out.writeInt(0);
+        } else {
+            out.writeInt(uncommittedReplicationNames.size());
+            for (String name : uncommittedReplicationNames)
+                out.writeString(name);
+        }
     }
 
     public static final Decoder decoder = new Decoder();
@@ -61,7 +74,19 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationUpdateAck> {
         @Override
         public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationUpdateAck(in.readInt(), in.readLong());
+            return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readLong(),
+                    readUncommittedReplicationNames(in));
         }
+    }
+
+    public static List<String> readUncommittedReplicationNames(NetInputStream in) throws IOException {
+        int size = in.readInt();
+        if (size == 0)
+            return new ArrayList<>();
+        ArrayList<String> uncommittedReplicationNames = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            uncommittedReplicationNames.add(in.readString());
+        }
+        return uncommittedReplicationNames;
     }
 }

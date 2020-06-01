@@ -18,7 +18,6 @@
 package org.lealone.server.handler;
 
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.Session;
 import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
@@ -27,10 +26,8 @@ import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
 import org.lealone.server.protocol.replication.ReplicationCommit;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
 import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
-import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationRollback;
 import org.lealone.server.protocol.replication.ReplicationUpdate;
-import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 
 class ReplicationPacketHandlers extends PacketHandlers {
 
@@ -46,30 +43,26 @@ class ReplicationPacketHandlers extends PacketHandlers {
     private static class Update extends UpdatePacketHandler<ReplicationUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, ReplicationUpdate packet) {
-            final Session session = task.session;
-            session.setReplicationName(packet.replicationName);
+            task.session.setReplicationName(packet.replicationName);
             return handlePacket(task, packet);
         }
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            long key = task.session.getLastRowKey();
-            return new ReplicationUpdateAck(updateCount, key);
+            return task.session.createReplicationUpdateAckPacket(updateCount, false);
         }
     }
 
     private static class PreparedUpdate extends PreparedUpdatePacketHandler<ReplicationPreparedUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, ReplicationPreparedUpdate packet) {
-            final Session session = task.session;
-            session.setReplicationName(packet.replicationName);
+            task.session.setReplicationName(packet.replicationName);
             return handlePacket(task, packet);
         }
 
         @Override
         protected Packet createAckPacket(PacketDeliveryTask task, int updateCount) {
-            long key = task.session.getLastRowKey();
-            return new ReplicationPreparedUpdateAck(updateCount, key);
+            return task.session.createReplicationUpdateAckPacket(updateCount, true);
         }
     }
 
