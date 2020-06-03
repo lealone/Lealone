@@ -17,9 +17,6 @@
  */
 package org.lealone.transaction.aote;
 
-import java.nio.ByteBuffer;
-
-import org.lealone.db.DataBuffer;
 import org.lealone.net.NetNode;
 import org.lealone.storage.StorageMap;
 import org.lealone.transaction.Transaction;
@@ -106,27 +103,28 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
     @Override
     protected int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue,
             Transaction.Listener listener) {
-        if (transaction.globalReplicationName != null) {
-            ByteBuffer keyBuff;
-            try (DataBuffer buff = DataBuffer.create()) {
-                getKeyType().write(buff, key);
-                keyBuff = buff.getAndCopyBuffer();
-            }
-            DTRValidator
-                    .handleReplicationConflict(getName(), keyBuff, transaction.globalReplicationName,
-                            transaction.getSession(), oldTransactionalValue.getGlobalReplicationName())
-                    .onSuccess(candidateReplicationName -> {
-                        if (candidateReplicationName.equals(transaction.globalReplicationName)) {
-                            AMTransaction old = transaction.transactionEngine
-                                    .getTransaction(oldTransactionalValue.getTid());
-                            if (old != null) {
-                                old.getUndoLog().undo();
-                                oldTransactionalValue.rollback();
-                                old.wakeUpWaitingTransaction(transaction);
-                            }
-                        }
-                    });
-        }
+        // 老的实现方案
+        // if (transaction.globalReplicationName != null) {
+        // ByteBuffer keyBuff;
+        // try (DataBuffer buff = DataBuffer.create()) {
+        // getKeyType().write(buff, key);
+        // keyBuff = buff.getAndCopyBuffer();
+        // }
+        // DTRValidator
+        // .handleReplicationConflict(getName(), keyBuff, transaction.globalReplicationName,
+        // transaction.getSession(), oldTransactionalValue.getGlobalReplicationName())
+        // .onSuccess(candidateReplicationName -> {
+        // if (candidateReplicationName.equals(transaction.globalReplicationName)) {
+        // AMTransaction old = transaction.transactionEngine
+        // .getTransaction(oldTransactionalValue.getTid());
+        // if (old != null) {
+        // old.getUndoLog().undo();
+        // oldTransactionalValue.rollback();
+        // old.wakeUpWaitingTransaction(transaction);
+        // }
+        // }
+        // });
+        // }
         if (listener != null)
             return super.addWaitingTransaction(key, oldTransactionalValue, listener);
         else

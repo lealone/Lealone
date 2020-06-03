@@ -1358,9 +1358,10 @@ public class ServerSession extends SessionBase {
     private StandardPrimaryIndex lastIndex;
     private Row lastRow;
 
-    public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy) {
+    public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy,
+            ReplicationConflictType replicationConflictType) {
         this.lockedExclusivelyBy = lockedExclusivelyBy;
-        setReplicationConflictType(ReplicationConflictType.DB_OBJECT_LOCK);
+        setReplicationConflictType(replicationConflictType);
     }
 
     public void setReplicationConflictType(ReplicationConflictType replicationConflictType) {
@@ -1391,6 +1392,13 @@ public class ServerSession extends SessionBase {
         } else if (validKey == -3) {
             // 数据库对象锁发生冲突， 撤销当前session拥有的锁
             unlockAll(false);
+        } else if (validKey == -4) {
+            // 行锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+            if (lockedExclusivelyBy != null)
+                lockedExclusivelyBy.rollback();
+        } else if (validKey == -5) {
+            // 行锁发生冲突， 撤销当前session拥有的锁
+            rollback();
         } else if (validKey != -1 && getLastRowKey() != validKey) {
             if (transaction != null) {
                 transaction.replicationPrepareCommit(validKey);
@@ -1445,11 +1453,7 @@ public class ServerSession extends SessionBase {
         long first = -1;
         List<String> uncommittedReplicationNames = null;
         switch (replicationConflictType) {
-        case ROW_LOCK: {
-            uncommittedReplicationNames = new ArrayList<>(1);
-            uncommittedReplicationNames.add(lockedExclusivelyBy.getReplicationName());
-            break;
-        }
+        case ROW_LOCK: // 两种锁的的响应格式一样
         case DB_OBJECT_LOCK: {
             uncommittedReplicationNames = new ArrayList<>(1);
             uncommittedReplicationNames.add(lockedExclusivelyBy.getReplicationName());

@@ -99,6 +99,7 @@ public class AMTransaction implements Transaction {
         this.session = session;
     }
 
+    @Override
     public Session getSession() {
         return session;
     }
@@ -341,6 +342,11 @@ public class AMTransaction implements Transaction {
                 break;
         }
         lockedBy = null;
+    }
+
+    @Override
+    public Transaction getLockedBy() {
+        return lockedBy;
     }
 
     @Override

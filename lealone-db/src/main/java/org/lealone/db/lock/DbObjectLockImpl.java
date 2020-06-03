@@ -24,6 +24,7 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.ServerSession;
+import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.transaction.Transaction;
 
 //数据库对象模型已经支持多版本，所以对象锁只需要像行锁一样实现即可
@@ -65,7 +66,7 @@ public class DbObjectLockImpl implements DbObjectLock {
 
                 // 在复制模式下执行时用得着
                 if (session.getReplicationName() != null)
-                    session.setLockedExclusivelyBy(lockOwner);
+                    session.setLockedExclusivelyBy(lockOwner, ReplicationConflictType.DB_OBJECT_LOCK);
             }
         }
     }

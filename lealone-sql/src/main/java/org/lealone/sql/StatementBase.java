@@ -33,6 +33,7 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.PageKey;
+import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -886,6 +887,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         protected boolean executeInternal() {
             if (!loopEnd) {
                 if (executeAndListen()) {
+                    if (session.getReplicationName() != null && asyncHandler != null
+                            && session.getTransaction().getLockedBy() != null) {
+                        session.setLockedExclusivelyBy(
+                                (ServerSession) session.getTransaction().getLockedBy().getSession(),
+                                ReplicationConflictType.ROW_LOCK);
+                        asyncHandler.handle(new AsyncResult<>(-1));
+                    }
                     return true;
                 }
             }

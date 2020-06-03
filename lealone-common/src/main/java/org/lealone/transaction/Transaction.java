@@ -88,6 +88,8 @@ public interface Transaction {
 
     void setSession(Session session);
 
+    Session getSession();
+
     void addParticipant(Participant participant);
 
     void checkTimeout();
@@ -143,6 +145,8 @@ public interface Transaction {
     void wakeUpWaitingTransaction(Transaction transaction);
 
     int addWaitingTransaction(Object key, Transaction transaction, Listener listener);
+
+    Transaction getLockedBy();
 
     interface Participant {
         void addSavepoint(String name);

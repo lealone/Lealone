@@ -44,7 +44,9 @@ public class ReplicationTest extends SqlTestBase {
         // new AsyncReplicationTest().runTest();
         // new ReplicationConflictTest().runTest();
         // new ReplicationAppendTest().runTest();
-        new ReplicationDdlConflictTest().runTest();
+        // new ReplicationDdlConflictTest().runTest();
+        // new ReplicationUpdateRowLockConflictTest().runTest();
+        new ReplicationDeleteRowLockConflictTest().runTest();
     }
 
     static class AsyncReplicationTest extends SqlTestBase {
@@ -172,6 +174,85 @@ public class ReplicationTest extends SqlTestBase {
             t1.join();
             t2.join();
             t3.join();
+        }
+    }
+
+    static class ReplicationUpdateRowLockConflictTest extends SqlTestBase {
+        static int key = 1;
+
+        static class UpdateTest extends CrudTest {
+            int value;
+
+            public UpdateTest(int v) {
+                value = v;
+            }
+
+            @Override
+            protected void test() throws Exception {
+                String sql = "update ReplicationUpdateRowLockConflictTest set f2 = " + value + " where f1 = " + key;
+                stmt.executeUpdate(sql);
+            }
+        }
+
+        public ReplicationUpdateRowLockConflictTest() {
+            super(REPLICATION_DB_NAME);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            init();
+            Thread t1 = new Thread(new UpdateTest(1));
+            Thread t2 = new Thread(new UpdateTest(2));
+            Thread t3 = new Thread(new UpdateTest(3));
+            t1.start();
+            t2.start();
+            t3.start();
+            t1.join();
+            t2.join();
+            t3.join();
+        }
+
+        private void init() throws Exception {
+            stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationUpdateRowLockConflictTest");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationUpdateRowLockConflictTest (f1 int, f2 long)");
+            int f2 = key * 100;
+            String sql = "INSERT INTO ReplicationUpdateRowLockConflictTest(f1, f2) VALUES(" + key + ", " + f2 + ")";
+            stmt.executeUpdate(sql);
+        }
+    }
+
+    static class ReplicationDeleteRowLockConflictTest extends SqlTestBase {
+
+        static class DeleteTest extends CrudTest {
+            @Override
+            protected void test() throws Exception {
+                stmt.executeUpdate("delete from ReplicationDeleteRowLockConflictTest where f1 = 1");
+            }
+        }
+
+        public ReplicationDeleteRowLockConflictTest() {
+            super(REPLICATION_DB_NAME);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            init();
+            Thread t1 = new Thread(new DeleteTest());
+            Thread t2 = new Thread(new DeleteTest());
+            Thread t3 = new Thread(new DeleteTest());
+            t1.start();
+            t2.start();
+            t3.start();
+            t1.join();
+            t2.join();
+            t3.join();
+        }
+
+        private void init() throws Exception {
+            stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationDeleteRowLockConflictTest");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationDeleteRowLockConflictTest (f1 int, f2 long)");
+            String sql = "INSERT INTO ReplicationDeleteRowLockConflictTest(f1, f2) VALUES(1, 2)";
+            stmt.executeUpdate(sql);
         }
     }
 
