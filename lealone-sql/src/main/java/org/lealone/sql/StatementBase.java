@@ -956,6 +956,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                     if (ar.isSucceeded()) {
                         if (ar.getResult() < 0) {
                             completed = null; // 需要重新执行
+
+                            // 在复制模式下执行时，可以把结果返回给客户端做冲突检测
+                            if (session.getReplicationName() != null && asyncHandler != null) {
+                                asyncHandler.handle(new AsyncResult<>(-1));
+                            }
                         } else {
                             completed = true;
                             setResult(ar.getResult());

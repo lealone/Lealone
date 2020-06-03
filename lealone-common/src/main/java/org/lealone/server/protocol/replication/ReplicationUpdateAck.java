@@ -27,19 +27,24 @@ import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.storage.replication.ReplicaCommand;
+import org.lealone.storage.replication.ReplicationConflictType;
 
 public class ReplicationUpdateAck extends StatementUpdateAck {
 
     public final long key;
     public final long first;
     public final List<String> uncommittedReplicationNames;
+    public final ReplicationConflictType replicationConflictType;
     private ReplicaCommand replicaCommand;
 
-    public ReplicationUpdateAck(int updateCount, long key, long first, List<String> uncommittedReplicationNames) {
+    public ReplicationUpdateAck(int updateCount, long key, long first, List<String> uncommittedReplicationNames,
+            ReplicationConflictType replicationConflictType) {
         super(updateCount);
         this.key = key;
         this.first = first;
         this.uncommittedReplicationNames = uncommittedReplicationNames;
+        this.replicationConflictType = replicationConflictType == null ? ReplicationConflictType.NONE
+                : replicationConflictType;
     }
 
     @Override
@@ -67,6 +72,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
             for (String name : uncommittedReplicationNames)
                 out.writeString(name);
         }
+        out.writeInt(replicationConflictType.value);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -75,7 +81,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
         @Override
         public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
             return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readLong(),
-                    readUncommittedReplicationNames(in));
+                    readUncommittedReplicationNames(in), ReplicationConflictType.getType(in.readInt()));
         }
     }
 

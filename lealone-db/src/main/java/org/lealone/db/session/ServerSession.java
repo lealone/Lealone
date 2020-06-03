@@ -62,6 +62,7 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 import org.lealone.storage.replication.ReplicaStorageCommand;
+import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionEngine;
 import org.lealone.transaction.TransactionMap;
@@ -1352,8 +1353,19 @@ public class ServerSession extends SessionBase {
         return sessionStatus;
     }
 
+    private ServerSession lockedExclusivelyBy;
+    private ReplicationConflictType replicationConflictType;
     private StandardPrimaryIndex lastIndex;
     private Row lastRow;
+
+    public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy) {
+        this.lockedExclusivelyBy = lockedExclusivelyBy;
+        setReplicationConflictType(ReplicationConflictType.DB_OBJECT_LOCK);
+    }
+
+    public void setReplicationConflictType(ReplicationConflictType replicationConflictType) {
+        this.replicationConflictType = replicationConflictType;
+    }
 
     public void setLastIndex(StandardPrimaryIndex i) {
         lastIndex = i;
@@ -1361,6 +1373,7 @@ public class ServerSession extends SessionBase {
 
     public void setLastRow(Row r) {
         lastRow = r;
+        setReplicationConflictType(ReplicationConflictType.APPEND);
     }
 
     @Override
@@ -1371,7 +1384,14 @@ public class ServerSession extends SessionBase {
     }
 
     public void replicationCommit(long validKey, boolean autoCommit) {
-        if (validKey != -1 && getLastRowKey() != validKey) {
+        if (validKey == -2) {
+            // 数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+            if (lockedExclusivelyBy != null)
+                lockedExclusivelyBy.unlockAll(false);
+        } else if (validKey == -3) {
+            // 数据库对象锁发生冲突， 撤销当前session拥有的锁
+            unlockAll(false);
+        } else if (validKey != -1 && getLastRowKey() != validKey) {
             if (transaction != null) {
                 transaction.replicationPrepareCommit(validKey);
             }
@@ -1407,6 +1427,8 @@ public class ServerSession extends SessionBase {
         lastRow = null;
         lastIndex = null;
         setReplicationName(null);
+        lockedExclusivelyBy = null;
+        replicationConflictType = null;
     }
 
     private List<ServerSession> getUncommittedReplicationSessions() {
@@ -1417,23 +1439,44 @@ public class ServerSession extends SessionBase {
     }
 
     public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
-        long key = getLastRowKey();
-        List<ServerSession> sessions = getUncommittedReplicationSessions();
-        long first;
-        List<String> uncommittedReplicationNames;
-        if (sessions == null || sessions.isEmpty()) {
-            first = key;
-            uncommittedReplicationNames = null;
-        } else {
-            first = sessions.get(0).getLastRowKey();
-            uncommittedReplicationNames = new ArrayList<>(sessions.size());
-            for (ServerSession s : sessions)
-                uncommittedReplicationNames.add(s.getReplicationName());
+        if (replicationConflictType == null)
+            replicationConflictType = ReplicationConflictType.NONE;
+        long key = -1;
+        long first = -1;
+        List<String> uncommittedReplicationNames = null;
+        switch (replicationConflictType) {
+        case ROW_LOCK: {
+            uncommittedReplicationNames = new ArrayList<>(1);
+            uncommittedReplicationNames.add(lockedExclusivelyBy.getReplicationName());
+            break;
         }
+        case DB_OBJECT_LOCK: {
+            uncommittedReplicationNames = new ArrayList<>(1);
+            uncommittedReplicationNames.add(lockedExclusivelyBy.getReplicationName());
+            break;
+        }
+        case APPEND: {
+            key = getLastRowKey();
+            List<ServerSession> sessions = getUncommittedReplicationSessions();
+            if (sessions == null || sessions.isEmpty()) {
+                first = key;
+                uncommittedReplicationNames = null;
+            } else {
+                first = sessions.get(0).getLastRowKey();
+                uncommittedReplicationNames = new ArrayList<>(sessions.size());
+                for (ServerSession s : sessions)
+                    uncommittedReplicationNames.add(s.getReplicationName());
+            }
+            break;
+        }
+        }
+
         if (prepared)
-            return new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationNames);
+            return new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationNames,
+                    replicationConflictType);
         else
-            return new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationNames);
+            return new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationNames,
+                    replicationConflictType);
     }
 
     private byte[] lobMacSalt;

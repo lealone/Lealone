@@ -38,12 +38,13 @@ public class ReplicationTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         sql = "CREATE DATABASE IF NOT EXISTS " + REPLICATION_DB_NAME
-                + " RUN MODE replication  PARAMETERS (replication_factor: 3)";
+                + " RUN MODE replication PARAMETERS (replication_factor: 3)";
         stmt.executeUpdate(sql);
 
         // new AsyncReplicationTest().runTest();
         // new ReplicationConflictTest().runTest();
-        new ReplicationAppendTest().runTest();
+        // new ReplicationAppendTest().runTest();
+        new ReplicationDdlConflictTest().runTest();
     }
 
     static class AsyncReplicationTest extends SqlTestBase {
@@ -138,6 +139,33 @@ public class ReplicationTest extends SqlTestBase {
             Thread t1 = new Thread(new InsertTest(1));
             Thread t2 = new Thread(new InsertTest(2));
             Thread t3 = new Thread(new InsertTest(3));
+            t1.start();
+            t2.start();
+            t3.start();
+            t1.join();
+            t2.join();
+            t3.join();
+        }
+    }
+
+    static class ReplicationDdlConflictTest extends SqlTestBase {
+
+        static class DdlTest extends CrudTest {
+            @Override
+            protected void test() throws Exception {
+                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS DdlTest (f1 int, f2 long)");
+            }
+        }
+
+        public ReplicationDdlConflictTest() {
+            super(REPLICATION_DB_NAME);
+        }
+
+        @Override
+        protected void test() throws Exception {
+            Thread t1 = new Thread(new DdlTest());
+            Thread t2 = new Thread(new DdlTest());
+            Thread t3 = new Thread(new DdlTest());
             t1.start();
             t2.start();
             t3.start();

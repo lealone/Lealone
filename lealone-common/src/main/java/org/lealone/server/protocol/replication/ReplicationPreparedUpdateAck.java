@@ -23,12 +23,13 @@ import java.util.List;
 import org.lealone.net.NetInputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.storage.replication.ReplicationConflictType;
 
 public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
 
-    public ReplicationPreparedUpdateAck(int updateCount, long key, long first,
-            List<String> uncommittedReplicationNames) {
-        super(updateCount, key, first, uncommittedReplicationNames);
+    public ReplicationPreparedUpdateAck(int updateCount, long key, long first, List<String> uncommittedReplicationNames,
+            ReplicationConflictType replicationConflictType) {
+        super(updateCount, key, first, uncommittedReplicationNames, replicationConflictType);
     }
 
     @Override
@@ -42,7 +43,7 @@ public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
         @Override
         public ReplicationPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
             return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong(), in.readLong(),
-                    readUncommittedReplicationNames(in));
+                    readUncommittedReplicationNames(in), ReplicationConflictType.getType(in.readInt()));
         }
     }
 }

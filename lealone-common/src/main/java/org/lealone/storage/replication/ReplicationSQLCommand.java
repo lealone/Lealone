@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.CommandParameter;
 import org.lealone.db.async.AsyncCallback;
@@ -116,137 +117,45 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         }
     }
 
-    @SuppressWarnings("unused")
-    private ReplicationUpdateAck handleReplicationConflictOld(String replicationName,
+    private ReplicationUpdateAck handleReplicationConflict(String replicationName,
             List<ReplicationUpdateAck> ackResults) {
-        if (ackResults.size() > 0 && ackResults.get(0).key < 0) {
-            for (ReplicaCommand c : commands) {
-                c.replicaCommit(-1, true);
+        ReplicationConflictType replicationConflictType = ReplicationConflictType.NONE;
+        for (ReplicationUpdateAck ack : ackResults) {
+            if (ack.replicationConflictType != ReplicationConflictType.NONE) {
+                replicationConflictType = ack.replicationConflictType;
+                break;
+            }
+        }
+
+        switch (replicationConflictType) {
+        case ROW_LOCK: {
+            return handleRowLockConflict(replicationName, ackResults);
+        }
+        case DB_OBJECT_LOCK: {
+            return handleDbObjectLockConflict(replicationName, ackResults);
+        }
+        case APPEND: {
+            long minKey = Long.MAX_VALUE;
+            for (ReplicationUpdateAck ack : ackResults) {
+                ack.uncommittedReplicationNames.add(replicationName);
+                if (ack.first < minKey) {
+                    minKey = ack.first;
+                }
+            }
+            return handleAppendConflict(replicationName, ackResults, minKey);
+        }
+        case NONE:
+        default:
+            boolean autoCommit = session.isAutoCommit();
+            for (ReplicationUpdateAck ack : ackResults) {
+                ack.getReplicaCommand().replicaCommit(-1, autoCommit);
             }
             return ackResults.get(0);
         }
-
-        final int n = session.n;
-        final int w = session.w;
-        final boolean autoCommit = session.isAutoCommit();
-
-        HashMap<Long, ArrayList<ReplicationUpdateAck>> groupResults = new HashMap<>(1);
-        for (ReplicationUpdateAck ack : ackResults) {
-            ArrayList<ReplicationUpdateAck> group = groupResults.get(ack.key);
-            if (group == null) {
-                group = new ArrayList<>(n);
-                groupResults.put(ack.key, group);
-            }
-            group.add(ack);
-        }
-        boolean successful = false;
-        long validKey = -1;
-        ArrayList<ReplicationUpdateAck> validNodes = null;
-        ArrayList<ReplicationUpdateAck> invalidNodes = new ArrayList<>(n);
-        for (Entry<Long, ArrayList<ReplicationUpdateAck>> e : groupResults.entrySet()) {
-            ArrayList<ReplicationUpdateAck> nodes = e.getValue();
-            if (nodes.size() >= w) {
-                successful = true;
-                validKey = e.getKey();
-                validNodes = e.getValue();
-            } else {
-                invalidNodes.addAll(nodes);
-            }
-        }
-        if (successful) {
-            if (validNodes.size() == n) {
-                for (ReplicationUpdateAck ack : ackResults) {
-                    ack.getReplicaCommand().replicaCommit(-1, autoCommit);
-                }
-            } else {
-                for (ReplicationUpdateAck ack : validNodes) {
-                    ack.getReplicaCommand().replicaCommit(-1, autoCommit);
-                }
-                for (ReplicationUpdateAck ack : invalidNodes) {
-                    ack.getReplicaCommand().replicaCommit(validKey, autoCommit);
-                }
-            }
-            return validNodes.get(0);
-        } else {
-            if (ackResults.size() == n) {
-                TreeSet<String> uncommittedReplicationNames = new TreeSet<>();
-                uncommittedReplicationNames.add(replicationName);
-                for (ReplicationUpdateAck ack : ackResults) {
-                    if (ack.uncommittedReplicationNames != null) {
-                        for (String name : ack.uncommittedReplicationNames) {
-                            uncommittedReplicationNames.add(name);
-                        }
-                    }
-                }
-                String validReplicationName = uncommittedReplicationNames.first();
-
-                int minIndex = Integer.MAX_VALUE;
-                for (ReplicationUpdateAck ack : ackResults) {
-                    if (ack.uncommittedReplicationNames != null && !ack.uncommittedReplicationNames.isEmpty()) {
-                        for (int i = 0; i < ack.uncommittedReplicationNames.size(); i++) {
-                            String name = ack.uncommittedReplicationNames.get(i);
-                            if (validReplicationName.equals(name)) {
-                                if (i <= minIndex) {
-                                    validKey = ack.key;
-                                    minIndex = i;
-                                }
-                            }
-                        }
-                    } else {
-                        if (validReplicationName.equals(replicationName)) {
-                            validKey = ack.key;
-                            break;
-                        }
-                    }
-                }
-
-                for (ReplicationUpdateAck ack : ackResults) {
-                    if (ack.uncommittedReplicationNames != null) {
-                        for (String name : ack.uncommittedReplicationNames) {
-                            if (name.equals(validReplicationName)) {
-                                ack.getReplicaCommand().replicaCommit(validKey, autoCommit);
-                                break;
-                            }
-                        }
-                    } else {
-                        if (validReplicationName.equals(replicationName)) {
-                            ack.getReplicaCommand().replicaCommit(-1, autoCommit);
-                        } else {
-                            ack.getReplicaCommand().replicaCommit(validKey, autoCommit);
-                        }
-                    }
-                }
-                return validNodes.get(0);
-            } else {
-                for (ReplicationUpdateAck ack : ackResults) {
-                    ack.getReplicaCommand().replicaRollback();
-                }
-                return null;
-            }
-        }
     }
 
-    private ReplicationUpdateAck handleReplicationConflict(String replicationName,
-            List<ReplicationUpdateAck> ackResults) {
-        if (ackResults.size() > 0 && ackResults.get(0).key < 0) {
-            for (ReplicaCommand c : commands) {
-                c.replicaCommit(-1, true);
-            }
-            return ackResults.get(0);
-        }
-
-        long minKey = Long.MAX_VALUE;
-        for (ReplicationUpdateAck ack : ackResults) {
-            ack.uncommittedReplicationNames.add(replicationName);
-            if (ack.first < minKey) {
-                minKey = ack.first;
-            }
-        }
-        return handleReplicationConflict(replicationName, ackResults, minKey);
-    }
-
-    private ReplicationUpdateAck handleReplicationConflict(String replicationName,
-            List<ReplicationUpdateAck> ackResults, long minKey) {
+    private ReplicationUpdateAck handleAppendConflict(String replicationName, List<ReplicationUpdateAck> ackResults,
+            long minKey) {
         TreeSet<String> uncommittedReplicationNames = new TreeSet<>();
         for (ReplicationUpdateAck ack : ackResults) {
             uncommittedReplicationNames.add(ack.uncommittedReplicationNames.get(0));
@@ -266,7 +175,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             for (ReplicationUpdateAck ack : ackResults) {
                 ack.getReplicaCommand().replicaCommit(validKey, autoCommit);
             }
-            return new ReplicationUpdateAck(1, validKey, validKey, null);
+            return new ReplicationUpdateAck(1, validKey, validKey, null, null);
         }
 
         for (ReplicationUpdateAck ack : ackResults) {
@@ -281,6 +190,60 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             }
         }
         int uncommittedNodes = uncommittedReplicationNames.size();
-        return handleReplicationConflict(replicationName, ackResults, minKey + uncommittedNodes - 1);
+        return handleAppendConflict(replicationName, ackResults, minKey + uncommittedNodes - 1);
+    }
+
+    private ReplicationUpdateAck handleRowLockConflict(String replicationName, List<ReplicationUpdateAck> ackResults) {
+        return ackResults.get(0);
+    }
+
+    private ReplicationUpdateAck handleDbObjectLockConflict(String replicationName,
+            List<ReplicationUpdateAck> ackResults) {
+        HashMap<String, AtomicInteger> groupResults = new HashMap<>(1);
+        for (ReplicationUpdateAck ack : ackResults) {
+            if (ack.uncommittedReplicationNames.isEmpty())
+                ack.uncommittedReplicationNames.add(replicationName);
+            String name = ack.uncommittedReplicationNames.get(0);
+            AtomicInteger counter = groupResults.get(name);
+            if (counter == null) {
+                counter = new AtomicInteger();
+                groupResults.put(name, counter);
+            }
+            counter.incrementAndGet();
+        }
+
+        int w = session.w;
+        String validReplicationName = null;
+        for (Entry<String, AtomicInteger> e : groupResults.entrySet()) {
+            AtomicInteger counter = e.getValue();
+            if (counter.get() >= w) {
+                validReplicationName = e.getKey();
+                break;
+            }
+        }
+        if (validReplicationName == null) {
+            if (ackResults.size() == session.n) {
+                TreeSet<String> uncommittedReplicationNames = new TreeSet<>();
+                for (ReplicationUpdateAck ack : ackResults) {
+                    for (String name : ack.uncommittedReplicationNames) {
+                        uncommittedReplicationNames.add(name);
+                    }
+                }
+                validReplicationName = uncommittedReplicationNames.first();
+            }
+        }
+        if (validReplicationName != null) {
+            boolean autoCommit = session.isAutoCommit();
+            if (validReplicationName.equals(replicationName)) {
+                for (ReplicationUpdateAck ack : ackResults) {
+                    ack.getReplicaCommand().replicaCommit(-2, autoCommit);
+                }
+            } else {
+                for (ReplicationUpdateAck ack : ackResults) {
+                    ack.getReplicaCommand().replicaCommit(-3, autoCommit);
+                }
+            }
+        }
+        return ackResults.get(0);
     }
 }

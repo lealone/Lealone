@@ -186,7 +186,6 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
 
     @Override
     public boolean tryExclusiveLock(ServerSession session) {
-        // nothing to do
         return dbObjectLock.tryExclusiveLock(session);
     }
 
