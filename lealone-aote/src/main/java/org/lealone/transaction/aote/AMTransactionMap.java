@@ -755,9 +755,10 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         DataUtils.checkArgument(oldTransactionalValue != null, "The oldTransactionalValue may not be null");
         transaction.checkNotClosed();
         String mapName = getName();
+        // 进入循环前先取出原来的值
+        TransactionalValue refValue = oldTransactionalValue.getRefValue();
         // 不同事务更新不同字段时，在循环里重试是可以的
         while (!oldTransactionalValue.isLocked(transaction.transactionId, columnIndexes)) {
-            TransactionalValue refValue = oldTransactionalValue.getRefValue();
             TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
                     map.getValueType(), columnIndexes, oldTransactionalValue);
             transaction.undoLog.add(mapName, key, refValue, newValue);
@@ -770,6 +771,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     // 所以只要一个compareAndSet成功了，另一个就没必要重试了
                     return addWaitingTransaction(key, oldTransactionalValue);
                 }
+                refValue = oldTransactionalValue.getRefValue();
             }
         }
         // 当前行已经被其他事务锁住了
