@@ -194,16 +194,15 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
     }
 
     private ReplicationUpdateAck handleRowLockConflict(String replicationName, List<ReplicationUpdateAck> ackResults) {
-        return handleLockConflict(replicationName, ackResults, -4, -5);
+        return handleLockConflict(replicationName, ackResults);
     }
 
     private ReplicationUpdateAck handleDbObjectLockConflict(String replicationName,
             List<ReplicationUpdateAck> ackResults) {
-        return handleLockConflict(replicationName, ackResults, -2, -3);
+        return handleLockConflict(replicationName, ackResults);
     }
 
-    private ReplicationUpdateAck handleLockConflict(String replicationName, List<ReplicationUpdateAck> ackResults,
-            long validKeyForSelf, long validKeyForOther) {
+    private ReplicationUpdateAck handleLockConflict(String replicationName, List<ReplicationUpdateAck> ackResults) {
         HashMap<String, AtomicInteger> groupResults = new HashMap<>(1);
         for (ReplicationUpdateAck ack : ackResults) {
             if (ack.uncommittedReplicationNames.isEmpty())
@@ -241,11 +240,11 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             boolean autoCommit = session.isAutoCommit();
             if (validReplicationName.equals(replicationName)) {
                 for (ReplicationUpdateAck ack : ackResults) {
-                    ack.getReplicaCommand().replicaCommit(validKeyForSelf, autoCommit);
+                    ack.getReplicaCommand().replicaCommit(-1, autoCommit);
                 }
             } else {
                 for (ReplicationUpdateAck ack : ackResults) {
-                    ack.getReplicaCommand().replicaCommit(validKeyForOther, autoCommit);
+                    ack.getReplicaCommand().replicaCommit(1, autoCommit);
                 }
             }
         }

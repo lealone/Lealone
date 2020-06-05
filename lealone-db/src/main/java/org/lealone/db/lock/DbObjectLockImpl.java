@@ -24,7 +24,6 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.ServerSession;
-import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.transaction.Transaction;
 
 //数据库对象模型已经支持多版本，所以对象锁只需要像行锁一样实现即可
@@ -63,10 +62,6 @@ public class DbObjectLockImpl implements DbObjectLock {
             Transaction transaction = lockOwner.getTransaction();
             if (transaction != null) {
                 transaction.addWaitingTransaction(this, session.getTransaction(), Transaction.getTransactionListener());
-
-                // 在复制模式下执行时用得着
-                if (session.getReplicationName() != null)
-                    session.setLockedExclusivelyBy(lockOwner, ReplicationConflictType.DB_OBJECT_LOCK);
             }
         }
     }
@@ -94,12 +89,19 @@ public class DbObjectLockImpl implements DbObjectLock {
 
     @Override
     public void unlock(ServerSession session) {
-        unlock(session, true);
+        unlock(session, true, null);
     }
 
     @Override
     public void unlock(ServerSession session, boolean succeeded) {
-        if (ref.compareAndSet(session, null)) {
+        unlock(session, succeeded, null);
+    }
+
+    @Override
+    public void unlock(ServerSession oldSession, boolean succeeded, ServerSession newSession) {
+        if (ref.compareAndSet(oldSession, newSession)) {
+            if (newSession != null)
+                newSession.addLock(this);
             if (handlers != null) {
                 handlers.forEach(h -> {
                     h.handle(new AsyncResult<>(succeeded));

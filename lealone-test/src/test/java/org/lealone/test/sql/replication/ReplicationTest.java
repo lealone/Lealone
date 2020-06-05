@@ -44,9 +44,9 @@ public class ReplicationTest extends SqlTestBase {
         // new AsyncReplicationTest().runTest();
         // new ReplicationConflictTest().runTest();
         // new ReplicationAppendTest().runTest();
-        // new ReplicationDdlConflictTest().runTest();
+        new ReplicationDdlConflictTest().runTest();
         // new ReplicationUpdateRowLockConflictTest().runTest();
-        new ReplicationDeleteRowLockConflictTest().runTest();
+        // new ReplicationDeleteRowLockConflictTest().runTest();
     }
 
     static class AsyncReplicationTest extends SqlTestBase {

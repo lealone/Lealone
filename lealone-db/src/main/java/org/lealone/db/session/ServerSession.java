@@ -632,6 +632,37 @@ public class ServerSession extends SessionBase {
         sessionStatus = SessionStatus.NO_TRANSACTION;
     }
 
+    public void rollback(ServerSession lockOwner) {
+        checkCommitRollback();
+        if (transaction != null) {
+            Transaction transaction = this.transaction;
+            this.transaction = null;
+            transaction.rollback();
+            endTransaction();
+        }
+        cleanTempTables(false);
+        unlockAll(false, lockOwner);
+        if (autoCommitAtTransactionEnd) {
+            autoCommit = true;
+            autoCommitAtTransactionEnd = false;
+        }
+
+        if (containsDatabaseStatement) {
+            LealoneDatabase.getInstance().copy();
+            containsDatabaseStatement = false;
+        }
+
+        if (containsDDL) {
+            Database db = this.database;
+            db.copy();
+            containsDDL = false;
+        }
+
+        clean();
+        releaseSessionCache();
+        sessionStatus = SessionStatus.NO_TRANSACTION;
+    }
+
     /**
      * Partially roll back the current transaction.
      *
@@ -700,11 +731,15 @@ public class ServerSession extends SessionBase {
     }
 
     private void unlockAll(boolean succeeded) {
+        unlockAll(succeeded, null);
+    }
+
+    private void unlockAll(boolean succeeded, ServerSession newLockOwner) {
         if (!locks.isEmpty()) {
             // don't use the enhanced for loop to save memory
             for (int i = 0, size = locks.size(); i < size; i++) {
                 DbObjectLock lock = locks.get(i);
-                lock.unlock(this, succeeded);
+                lock.unlock(this, succeeded, newLockOwner);
             }
             locks.clear();
         }
@@ -1368,6 +1403,22 @@ public class ServerSession extends SessionBase {
         this.replicationConflictType = replicationConflictType;
     }
 
+    public boolean needsHandleReplicationRowLockConflict() {
+        return needsHandleReplicationLockConflict(ReplicationConflictType.ROW_LOCK);
+    }
+
+    public boolean needsHandleReplicationDbObjectLockConflict() {
+        return needsHandleReplicationLockConflict(ReplicationConflictType.DB_OBJECT_LOCK);
+    }
+
+    private boolean needsHandleReplicationLockConflict(ReplicationConflictType type) {
+        if (getReplicationName() != null && getTransaction().getLockedBy() != null) {
+            setLockedExclusivelyBy((ServerSession) getTransaction().getLockedBy().getSession(), type);
+            return true;
+        }
+        return false;
+    }
+
     public void setLastIndex(StandardPrimaryIndex i) {
         lastIndex = i;
     }
@@ -1385,45 +1436,64 @@ public class ServerSession extends SessionBase {
     }
 
     public void replicationCommit(long validKey, boolean autoCommit) {
-        if (validKey == -2) {
-            // 数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-            if (lockedExclusivelyBy != null)
-                lockedExclusivelyBy.unlockAll(false);
-        } else if (validKey == -3) {
-            // 数据库对象锁发生冲突， 撤销当前session拥有的锁
-            unlockAll(false);
-        } else if (validKey == -4) {
-            // 行锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-            if (lockedExclusivelyBy != null)
-                lockedExclusivelyBy.rollback();
-        } else if (validKey == -5) {
-            // 行锁发生冲突， 撤销当前session拥有的锁
-            rollback();
-        } else if (validKey != -1 && getLastRowKey() != validKey) {
-            if (transaction != null) {
-                transaction.replicationPrepareCommit(validKey);
+        if (replicationConflictType == null)
+            replicationConflictType = ReplicationConflictType.NONE;
+        switch (replicationConflictType) {
+        case ROW_LOCK: {
+            if (validKey < 0) {
+                // 行锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+                if (lockedExclusivelyBy != null)
+                    lockedExclusivelyBy.rollback(this);
+            } else {
+                // 行锁发生冲突， 撤销当前session拥有的锁
+                rollback();
             }
-            if (lastRow != null) {
-                Table table = lastIndex.getTable();
-                Row oldRow = lastIndex.getRow(this, validKey);
-                // 已经修正过了
-                if (oldRow != null && oldRow.getValueList() == lastRow.getValueList()) {
-                    if (autoCommit)
-                        commit();
-                    return;
-                }
-                if (oldRow != null)
-                    table.removeRow(this, oldRow);
-                table.removeRow(this, lastRow);
-
-                if (oldRow != null) {
-                    oldRow.setKey(lastRow.getKey());
-                    table.addRow(this, oldRow);
-                }
-                lastRow.setKey(validKey);
-                table.addRow(this, lastRow);
-            }
+            break;
         }
+        case DB_OBJECT_LOCK: {
+            if (validKey < 0) {
+                // 数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+                if (lockedExclusivelyBy != null)
+                    lockedExclusivelyBy.rollback(this); // lockedExclusivelyBy.unlockAll(false, this);
+            } else {
+                // 数据库对象锁发生冲突， 撤销当前session拥有的锁
+                rollback(); // unlockAll(false);
+            }
+            break;
+        }
+        case APPEND: {
+            if (validKey != -1 && getLastRowKey() != validKey) {
+                if (transaction != null) {
+                    transaction.replicationPrepareCommit(validKey);
+                }
+                if (lastRow != null) {
+                    Table table = lastIndex.getTable();
+                    Row oldRow = lastIndex.getRow(this, validKey);
+                    // 已经修正过了
+                    if (oldRow != null && oldRow.getValueList() == lastRow.getValueList()) {
+                        if (autoCommit)
+                            commit();
+                        return;
+                    }
+                    if (oldRow != null)
+                        table.removeRow(this, oldRow);
+                    table.removeRow(this, lastRow);
+
+                    if (oldRow != null) {
+                        oldRow.setKey(lastRow.getKey());
+                        table.addRow(this, oldRow);
+                    }
+                    lastRow.setKey(validKey);
+                    table.addRow(this, lastRow);
+                }
+            }
+            break;
+        }
+        default:
+            // nothing to do
+            break;
+        }
+
         if (autoCommit) {
             commit();
         }
@@ -1454,12 +1524,11 @@ public class ServerSession extends SessionBase {
         List<String> uncommittedReplicationNames = null;
         switch (replicationConflictType) {
         case ROW_LOCK: // 两种锁的的响应格式一样
-        case DB_OBJECT_LOCK: {
+        case DB_OBJECT_LOCK:
             uncommittedReplicationNames = new ArrayList<>(1);
             uncommittedReplicationNames.add(lockedExclusivelyBy.getReplicationName());
             break;
-        }
-        case APPEND: {
+        case APPEND:
             key = getLastRowKey();
             List<ServerSession> sessions = getUncommittedReplicationSessions();
             if (sessions == null || sessions.isEmpty()) {
@@ -1472,7 +1541,6 @@ public class ServerSession extends SessionBase {
                     uncommittedReplicationNames.add(s.getReplicationName());
             }
             break;
-        }
         }
 
         if (prepared)

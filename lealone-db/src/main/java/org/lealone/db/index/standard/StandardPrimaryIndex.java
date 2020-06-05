@@ -233,9 +233,12 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
+        Value key = ValueLong.get(row.getKey());
+        Object oldTransactionalValue = row.getRawValue();
         TransactionMap<Value, VersionedValue> map = getMap(session);
-        if (map.isLocked(row.getRawValue(), null))
-            return map.addWaitingTransaction(ValueLong.get(row.getKey()), row.getRawValue(), globalListener);
+
+        if (map.isLocked(oldTransactionalValue, null))
+            return map.addWaitingTransaction(key, oldTransactionalValue, globalListener);
 
         if (table.containsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
@@ -245,7 +248,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 }
             }
         }
-        return map.tryRemove(ValueLong.get(row.getKey()), row.getRawValue());
+        return map.tryRemove(key, oldTransactionalValue);
     }
 
     @Override

@@ -33,7 +33,6 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.router.SQLRouter;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.transaction.Transaction;
 
 /**
@@ -887,11 +886,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         protected boolean executeInternal() {
             if (!loopEnd) {
                 if (executeAndListen()) {
-                    if (session.getReplicationName() != null && asyncHandler != null
-                            && session.getTransaction().getLockedBy() != null) {
-                        session.setLockedExclusivelyBy(
-                                (ServerSession) session.getTransaction().getLockedBy().getSession(),
-                                ReplicationConflictType.ROW_LOCK);
+                    if (asyncHandler != null && session.needsHandleReplicationRowLockConflict()) {
                         asyncHandler.handle(new AsyncResult<>(-1));
                     }
                     return true;
@@ -966,7 +961,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                             completed = null; // 需要重新执行
 
                             // 在复制模式下执行时，可以把结果返回给客户端做冲突检测
-                            if (session.getReplicationName() != null && asyncHandler != null) {
+                            if (asyncHandler != null && session.needsHandleReplicationDbObjectLockConflict()) {
                                 asyncHandler.handle(new AsyncResult<>(-1));
                             }
                         } else {

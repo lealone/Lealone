@@ -204,6 +204,11 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
         dbObjectLock.unlock(s, succeeded);
     }
 
+    @Override
+    public void unlock(ServerSession oldSession, boolean succeeded, ServerSession newSession) {
+        dbObjectLock.unlock(oldSession, succeeded, newSession);
+    }
+
     /**
      * Check if this table is locked exclusively.
      *
