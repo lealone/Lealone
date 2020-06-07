@@ -371,7 +371,7 @@ public class Scheduler extends Thread
                         continue;
                     }
                 } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION
-                        || sessionStatus == SessionStatus.EXCLUSIVE_MODE) {
+                        || sessionStatus == SessionStatus.EXCLUSIVE_MODE || sessionStatus == SessionStatus.WAITING) {
                     continue;
                 }
             }

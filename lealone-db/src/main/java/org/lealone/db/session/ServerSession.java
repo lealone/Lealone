@@ -1413,6 +1413,7 @@ public class ServerSession extends SessionBase {
 
     private boolean needsHandleReplicationLockConflict(ReplicationConflictType type) {
         if (getReplicationName() != null && getTransaction().getLockedBy() != null) {
+            sessionStatus = SessionStatus.WAITING;
             setLockedExclusivelyBy((ServerSession) getTransaction().getLockedBy().getSession(), type);
             return true;
         }
@@ -1439,25 +1440,15 @@ public class ServerSession extends SessionBase {
         if (replicationConflictType == null)
             replicationConflictType = ReplicationConflictType.NONE;
         switch (replicationConflictType) {
-        case ROW_LOCK: {
-            if (validKey < 0) {
-                // 行锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-                if (lockedExclusivelyBy != null)
-                    lockedExclusivelyBy.rollback(this);
-            } else {
-                // 行锁发生冲突， 撤销当前session拥有的锁
-                rollback();
-            }
-            break;
-        }
+        case ROW_LOCK:
         case DB_OBJECT_LOCK: {
-            if (validKey < 0) {
-                // 数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-                if (lockedExclusivelyBy != null)
-                    lockedExclusivelyBy.rollback(this); // lockedExclusivelyBy.unlockAll(false, this);
-            } else {
-                // 数据库对象锁发生冲突， 撤销当前session拥有的锁
-                rollback(); // unlockAll(false);
+            // 行锁和数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+            if (lockedExclusivelyBy != null) {
+                lockedExclusivelyBy.rollback(this);
+                replicationConflictType = null;
+                lockedExclusivelyBy = null;
+                sessionStatus = SessionStatus.RETRYING;
+                return;
             }
             break;
         }
@@ -1494,6 +1485,7 @@ public class ServerSession extends SessionBase {
             break;
         }
 
+        sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
         if (autoCommit) {
             commit();
         }

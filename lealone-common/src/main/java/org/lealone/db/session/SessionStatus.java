@@ -23,6 +23,8 @@ public enum SessionStatus {
     COMMITTING_TRANSACTION,
     TRANSACTION_NOT_COMMIT,
     SESSION_CLOSED,
+    WAITING,
+    RETRYING,
     EXCLUSIVE_MODE;
 
 }

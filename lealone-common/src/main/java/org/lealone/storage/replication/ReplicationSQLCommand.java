@@ -105,7 +105,9 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             if (ar.isFailed() && tries < session.maxTries) {
                 executeUpdate(tries + 1, ac);
             } else {
-                ac.setAsyncResult(new AsyncResult<>(ar.getResult().updateCount));
+                // 如果为null，说明还没有确定该返回什么结果，那就让客户端继续等待
+                if (ar.getResult() != null)
+                    ac.setAsyncResult(new AsyncResult<>(ar.getResult().updateCount));
             }
         };
         // commands参数设为null，在handleReplicationConflict中处理提交或回滚
@@ -216,11 +218,11 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             counter.incrementAndGet();
         }
 
-        int w = session.w;
+        int quorum = session.n / 2 + 1; // 不直接使用session.w，因为session.w有可能是session.n
         String validReplicationName = null;
         for (Entry<String, AtomicInteger> e : groupResults.entrySet()) {
             AtomicInteger counter = e.getValue();
-            if (counter.get() >= w) {
+            if (counter.get() >= quorum) {
                 validReplicationName = e.getKey();
                 break;
             }
@@ -239,15 +241,20 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         if (validReplicationName != null) {
             boolean autoCommit = session.isAutoCommit();
             if (validReplicationName.equals(replicationName)) {
+                ReplicationUpdateAck ret = null;
                 for (ReplicationUpdateAck ack : ackResults) {
                     ack.getReplicaCommand().replicaCommit(-1, autoCommit);
+                    if (ret == null && ack.uncommittedReplicationNames.get(0).equals(validReplicationName))
+                        ret = ack;
                 }
+                return ret;
             } else {
-                for (ReplicationUpdateAck ack : ackResults) {
-                    ack.getReplicaCommand().replicaCommit(1, autoCommit);
-                }
+                // 什么都不用做
+                // for (ReplicationUpdateAck ack : ackResults) {
+                // ack.getReplicaCommand().replicaCommit(1, autoCommit);
+                // }
             }
         }
-        return ackResults.get(0);
+        return null;
     }
 }
