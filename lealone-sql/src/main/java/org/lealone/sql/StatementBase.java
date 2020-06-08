@@ -26,7 +26,6 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.expression.Expression;
@@ -825,32 +824,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
         protected void stop() {
             stopInternal();
-            session.closeTemporaryResults();
-            session.closeCurrentCommand();
-            // 发生复制冲突时当前session进行重试，此时已经不需要再向客户端返回结果了，直接提交即可
-            if (session.getStatus() == SessionStatus.RETRYING) {
-                if (asyncResult != null)
-                    session.asyncCommit(() -> {
-                    });
-                else
-                    session.commit();
-            } else {
-                if (asyncResult != null) {
-                    // 在复制模式下不能自动提交
-                    if (session.isAutoCommit() && session.getReplicationName() == null) {
-                        // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
-                        session.asyncCommit(() -> asyncHandler.handle(asyncResult));
-                    } else {
-                        // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
-                        asyncHandler.handle(asyncResult);
-                    }
-                } else {
-                    if (session.isAutoCommit() && session.getReplicationName() == null) {
-                        // 阻塞当前线程，可能需要等事务日志写完为止
-                        session.commit();
-                    }
-                }
-            }
+            session.stopCurrentCommand(asyncHandler, asyncResult);
+
             if (startTimeNanos > 0 && trace.isInfoEnabled()) {
                 long timeMillis = (System.nanoTime() - startTimeNanos) / 1000 / 1000;
                 // 如果一条sql的执行时间大于100毫秒，记下它

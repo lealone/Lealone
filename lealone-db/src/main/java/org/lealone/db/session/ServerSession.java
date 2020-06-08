@@ -30,6 +30,8 @@ import org.lealone.db.ServerStorageCommand;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.AsyncHandler;
+import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.auth.User;
 import org.lealone.db.constraint.Constraint;
@@ -866,11 +868,42 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    public void closeCurrentCommand() {
+    private void closeCurrentCommand() {
         // 关闭后一些DML语句才可以重用
         if (currentCommand != null) {
             currentCommand.close();
             currentCommand = null;
+        }
+    }
+
+    public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+        closeTemporaryResults();
+        closeCurrentCommand();
+        // 发生复制冲突时当前session进行重试，此时已经不需要再向客户端返回结果了，直接提交即可
+        if (getStatus() == SessionStatus.RETRYING) {
+            if (isAutoCommit()) {
+                if (asyncResult != null)
+                    asyncCommit(() -> {
+                    });
+                else
+                    commit();
+            }
+        } else {
+            if (asyncResult != null) {
+                // 在复制模式下不能自动提交
+                if (isAutoCommit() && getReplicationName() == null) {
+                    // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
+                    asyncCommit(() -> asyncHandler.handle(asyncResult));
+                } else {
+                    // 当前语句是在一个手动提交的事务中进行，提前给客户端返回语句的执行结果
+                    asyncHandler.handle(asyncResult);
+                }
+            } else {
+                if (isAutoCommit() && getReplicationName() == null) {
+                    // 阻塞当前线程，可能需要等事务日志写完为止
+                    commit();
+                }
+            }
         }
     }
 
