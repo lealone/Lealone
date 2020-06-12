@@ -26,6 +26,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.expression.Expression;
@@ -937,6 +938,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
         @Override
         protected boolean executeInternal() {
+            if (session.getStatus() == SessionStatus.REPLICATION_COMPLETED) {
+                session.setStatus(SessionStatus.TRANSACTION_NOT_COMMIT);
+                callStop = false;
+                return false;
+            }
             // session.setLastScopeIdentity(ValueNull.INSTANCE);
             if (completed == null) {
                 completed = false;
@@ -950,7 +956,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                                 asyncHandler.handle(new AsyncResult<>(-1));
                             }
                         } else {
-                            completed = true;
+                            if (session.getReplicationName() != null) {
+                                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                                completed = null;
+                            } else {
+                                completed = true;
+                            }
                             setResult(ar.getResult());
                             stop();
                         }

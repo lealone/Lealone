@@ -25,6 +25,8 @@ public enum SessionStatus {
     SESSION_CLOSED,
     WAITING,
     RETRYING,
+    STATEMENT_COMPLETED,
+    REPLICATION_COMPLETED,
     EXCLUSIVE_MODE;
 
 }

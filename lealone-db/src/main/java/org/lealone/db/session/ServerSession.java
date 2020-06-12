@@ -97,7 +97,8 @@ public class ServerSession extends SessionBase {
     private HashMap<String, Constraint> localTempTableConstraints;
     private int throttle;
     private long lastThrottle;
-    private Command currentCommand;
+    private PreparedSQLStatement currentCommand;
+    private int currentCommandSavepointId;
     private boolean allowLiterals;
     private String currentSchemaName;
     private String[] schemaSearchPath;
@@ -865,6 +866,7 @@ public class ServerSession extends SessionBase {
                 currentCommandStart = now;
                 cancelAt = now + queryTimeout;
             }
+            currentCommandSavepointId = getTransaction(statement).getSavepointId();
         }
     }
 
@@ -905,6 +907,12 @@ public class ServerSession extends SessionBase {
                 }
             }
         }
+    }
+
+    private void rollbackCurrentCommand(ServerSession newLockOwner) {
+        rollbackTo(currentCommandSavepointId);
+        unlockAll(false, newLockOwner);
+        sessionStatus = SessionStatus.WAITING;
     }
 
     /**
@@ -1421,6 +1429,10 @@ public class ServerSession extends SessionBase {
         return sessionStatus;
     }
 
+    public void setStatus(SessionStatus sessionStatus) {
+        this.sessionStatus = sessionStatus;
+    }
+
     private ServerSession lockedExclusivelyBy;
     private ReplicationConflictType replicationConflictType;
     private StandardPrimaryIndex lastIndex;
@@ -1477,7 +1489,7 @@ public class ServerSession extends SessionBase {
         case DB_OBJECT_LOCK: {
             // 行锁和数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
             if (lockedExclusivelyBy != null) {
-                lockedExclusivelyBy.rollback(this);
+                lockedExclusivelyBy.rollbackCurrentCommand(this);
                 replicationConflictType = null;
                 lockedExclusivelyBy = null;
                 sessionStatus = SessionStatus.RETRYING;
@@ -1518,7 +1530,7 @@ public class ServerSession extends SessionBase {
             break;
         }
 
-        sessionStatus = SessionStatus.TRANSACTION_NOT_COMMIT;
+        sessionStatus = SessionStatus.REPLICATION_COMPLETED;
         if (autoCommit) {
             commit();
         }
