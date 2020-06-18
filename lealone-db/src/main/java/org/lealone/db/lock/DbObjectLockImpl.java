@@ -18,12 +18,14 @@
 package org.lealone.db.lock;
 
 import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.db.DbObjectType;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.transaction.Transaction;
 
 //数据库对象模型已经支持多版本，所以对象锁只需要像行锁一样实现即可
@@ -32,6 +34,7 @@ public class DbObjectLockImpl implements DbObjectLock {
     private final AtomicReference<ServerSession> ref = new AtomicReference<>();
     private final DbObjectType type;
     private ArrayList<AsyncHandler<AsyncResult<Boolean>>> handlers;
+    private ConcurrentLinkedQueue<ServerSession> waitingSessions = new ConcurrentLinkedQueue<>();
 
     public DbObjectLockImpl(DbObjectType type) {
         this.type = type;
@@ -80,6 +83,7 @@ public class DbObjectLockImpl implements DbObjectLock {
             ServerSession oldSession = ref.get();
             if (oldSession != session) {
                 addWaitingTransaction(oldSession, session);
+                waitingSessions.add(session);
                 return false;
             } else {
                 return true;
@@ -100,13 +104,21 @@ public class DbObjectLockImpl implements DbObjectLock {
     @Override
     public void unlock(ServerSession oldSession, boolean succeeded, ServerSession newSession) {
         if (ref.compareAndSet(oldSession, newSession)) {
-            if (newSession != null)
-                newSession.addLock(this);
             if (handlers != null) {
                 handlers.forEach(h -> {
                     h.handle(new AsyncResult<>(succeeded));
                 });
                 handlers = null;
+            }
+
+            if (newSession != null) {
+                newSession.addLock(this);
+                waitingSessions.remove(newSession);
+                newSession.setStatus(SessionStatus.RETRYING);
+            } else {
+                for (ServerSession s : waitingSessions)
+                    s.setStatus(SessionStatus.RETRYING);
+                waitingSessions = new ConcurrentLinkedQueue<>();
             }
         }
     }

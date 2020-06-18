@@ -93,7 +93,7 @@ public abstract class SessionBase implements Session {
 
     @Override
     public SessionStatus getStatus() {
-        return SessionStatus.NO_TRANSACTION;
+        return SessionStatus.TRANSACTION_NOT_START;
     }
 
     @Override

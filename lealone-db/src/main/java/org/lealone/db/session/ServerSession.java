@@ -516,7 +516,7 @@ public class ServerSession extends SessionBase {
     public void asyncCommit(Runnable asyncTask) {
         if (transaction != null) {
             transaction.setStatus(Transaction.STATUS_COMMITTING);
-            sessionStatus = SessionStatus.COMMITTING_TRANSACTION;
+            sessionStatus = SessionStatus.TRANSACTION_COMMITTING;
             transaction.asyncCommit(asyncTask);
         } else {
             // 在手动提交模式下执行了COMMIT语句，然后再手动提交事务，
@@ -597,7 +597,7 @@ public class ServerSession extends SessionBase {
         unlockAll(true);
         clean();
         releaseSessionCache();
-        sessionStatus = SessionStatus.NO_TRANSACTION;
+        sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
     /**
@@ -632,7 +632,7 @@ public class ServerSession extends SessionBase {
 
         clean();
         releaseSessionCache();
-        sessionStatus = SessionStatus.NO_TRANSACTION;
+        sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
     public void rollback(ServerSession lockOwner) {
@@ -663,7 +663,7 @@ public class ServerSession extends SessionBase {
 
         clean();
         releaseSessionCache();
-        sessionStatus = SessionStatus.NO_TRANSACTION;
+        sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
     /**
@@ -1420,7 +1420,7 @@ public class ServerSession extends SessionBase {
         storage.replicateFrom(data);
     }
 
-    private SessionStatus sessionStatus = SessionStatus.NO_TRANSACTION;
+    private SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
 
     @Override
     public SessionStatus getStatus() {

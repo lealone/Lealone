@@ -102,7 +102,7 @@ public class Scheduler extends Thread
             // 如果当前线程就是当前session的scheduler，可以做一些优化，满足一些条件后可以不用放到队列中直接执行即可。
             if (scheduler == Thread.currentThread()) {
                 // 同一个session中的上一个事务还在执行中，不能立刻执行它
-                if (session.getStatus() == SessionStatus.COMMITTING_TRANSACTION) {
+                if (session.getStatus() == SessionStatus.TRANSACTION_COMMITTING) {
                     yieldableCommands.add(command);
                 } else {
                     // 如果command的优先级最高，立即执行它
@@ -370,9 +370,9 @@ public class Scheduler extends Thread
                         }
                         continue;
                     }
-                } else if (sessionStatus == SessionStatus.COMMITTING_TRANSACTION
+                } else if (sessionStatus == SessionStatus.TRANSACTION_COMMITTING
                         || sessionStatus == SessionStatus.EXCLUSIVE_MODE || sessionStatus == SessionStatus.WAITING
-                        || sessionStatus == SessionStatus.STATEMENT_COMPLETED) {
+                        || sessionStatus == SessionStatus.REPLICA_STATEMENT_COMPLETED) {
                     continue;
                 }
             }

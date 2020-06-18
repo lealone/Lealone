@@ -929,8 +929,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     private static class DefaultYieldableUpdate extends YieldableUpdateBase {
 
-        private Boolean completed;
-
         public DefaultYieldableUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
             callStop = false;
@@ -938,41 +936,46 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
         @Override
         protected boolean executeInternal() {
-            if (session.getStatus() == SessionStatus.REPLICATION_COMPLETED) {
-                session.setStatus(SessionStatus.TRANSACTION_NOT_COMMIT);
-                callStop = false;
-                return false;
-            }
-            // session.setLastScopeIdentity(ValueNull.INSTANCE);
-            if (completed == null) {
-                completed = false;
+            switch (session.getStatus()) {
+            case TRANSACTION_NOT_COMMIT:
+            case RETRYING:
+                // session.setLastScopeIdentity(ValueNull.INSTANCE);
                 SQLRouter.executeUpdate(statement, ar -> {
                     if (ar.isSucceeded()) {
                         if (ar.getResult() < 0) {
-                            completed = null; // 需要重新执行
-
                             // 在复制模式下执行时，可以把结果返回给客户端做冲突检测
                             if (asyncHandler != null && session.needsHandleReplicationDbObjectLockConflict()) {
                                 asyncHandler.handle(new AsyncResult<>(-1));
+                            } else {
+                                session.setStatus(SessionStatus.WAITING); // 需要等待然后重新执行
                             }
                         } else {
                             if (session.getReplicationName() != null) {
-                                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                                completed = null;
+                                session.setStatus(SessionStatus.REPLICA_STATEMENT_COMPLETED);
+                                if (asyncHandler != null)
+                                    asyncHandler.handle(new AsyncResult<>(ar.getResult()));
                             } else {
-                                completed = true;
+                                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                                setResult(ar.getResult());
+                                stop();
                             }
-                            setResult(ar.getResult());
-                            stop();
                         }
                     } else {
-                        completed = true;
+                        session.setStatus(SessionStatus.STATEMENT_COMPLETED);
                         DbException e = DbException.convert(ar.getCause());
                         handleException(e);
                     }
                 });
+                break;
+            case REPLICATION_COMPLETED:
+                session.setStatus(SessionStatus.TRANSACTION_NOT_COMMIT);
+                callStop = false;
+                return false;
             }
-            return completed == null || !completed;
+
+            // 当前事务已经成功提交或当前语句已经执行完时就不必再让调度器轮循检查session的状态了
+            return session.getStatus() != SessionStatus.STATEMENT_COMPLETED
+                    && session.getStatus() != SessionStatus.TRANSACTION_NOT_START;
         }
     }
 
