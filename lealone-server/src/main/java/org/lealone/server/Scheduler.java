@@ -358,7 +358,7 @@ public class Scheduler extends Thread
 
             if (checkStatus) {
                 SessionStatus sessionStatus = si.session.getStatus();
-                if (sessionStatus == SessionStatus.TRANSACTION_NOT_COMMIT) {
+                if (sessionStatus == SessionStatus.WAITING) {
                     Transaction t = si.session.getTransaction();
                     if (t.getStatus() == Transaction.STATUS_WAITING) {
                         try {
@@ -371,7 +371,7 @@ public class Scheduler extends Thread
                         continue;
                     }
                 } else if (sessionStatus == SessionStatus.TRANSACTION_COMMITTING
-                        || sessionStatus == SessionStatus.EXCLUSIVE_MODE || sessionStatus == SessionStatus.WAITING
+                        || sessionStatus == SessionStatus.EXCLUSIVE_MODE
                         || sessionStatus == SessionStatus.REPLICA_STATEMENT_COMPLETED) {
                     continue;
                 }

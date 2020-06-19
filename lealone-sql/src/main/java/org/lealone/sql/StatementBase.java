@@ -938,6 +938,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         protected boolean executeInternal() {
             switch (session.getStatus()) {
             case TRANSACTION_NOT_COMMIT:
+            case STATEMENT_COMPLETED:
             case RETRYING:
                 // session.setLastScopeIdentity(ValueNull.INSTANCE);
                 SQLRouter.executeUpdate(statement, ar -> {
