@@ -170,7 +170,6 @@ public class Scheduler extends Thread
 
     @Override
     public void run() {
-        // SQLEngineManager.getInstance().setSQLStatementExecutor(this);
         while (!stop) {
             runQueueTasks(maxPriorityQueue);
             runQueueTasks(normPriorityQueue);

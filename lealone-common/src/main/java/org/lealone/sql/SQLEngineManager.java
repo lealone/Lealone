@@ -27,28 +27,7 @@ public class SQLEngineManager extends PluggableEngineManager<SQLEngine> {
         return instance;
     }
 
-    private SQLStatementExecutor executor;
-
-    private SQLStatementExecutor[] executors;
-
     private SQLEngineManager() {
         super(SQLEngine.class);
     }
-
-    public void setSQLStatementExecutor(SQLStatementExecutor executor) {
-        this.executor = executor;
-    }
-
-    public SQLStatementExecutor getSQLStatementExecutor() {
-        return executor;
-    }
-
-    public void setSQLStatementExecutors(SQLStatementExecutor[] executors) {
-        this.executors = executors;
-    }
-
-    public SQLStatementExecutor[] getSQLStatementExecutors() {
-        return executors;
-    }
-
 }

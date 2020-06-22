@@ -29,7 +29,6 @@ import org.lealone.common.util.BitField;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.DataBuffer;
-import org.lealone.sql.SQLEngineManager;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.btree.PageOperations.CallableOperation;
@@ -353,8 +352,16 @@ public class BTreeStorage {
         return readLocalPageAsync(pos);
     }
 
+    private SQLStatementExecutor getSQLStatementExecutor() {
+        Thread t = Thread.currentThread();
+        if (t instanceof SQLStatementExecutor)
+            return (SQLStatementExecutor) t;
+        else
+            return null;
+    }
+
     private BTreePage readLocalPageAsync(final long pos) {
-        final SQLStatementExecutor sqlStatementExecutor = SQLEngineManager.getInstance().getSQLStatementExecutor();
+        final SQLStatementExecutor sqlStatementExecutor = getSQLStatementExecutor();
         if (sqlStatementExecutor == null)
             return readLocalPageSync(pos);
         Callable<BTreePage> task = null;

@@ -21,7 +21,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.async.AsyncTaskHandlerFactory;
-import org.lealone.sql.SQLEngineManager;
 import org.lealone.storage.PageOperationHandlerFactory;
 import org.lealone.storage.StorageEngine;
 import org.lealone.storage.StorageEngineManager;
@@ -44,7 +43,6 @@ public class ScheduleService {
             schedulers[i] = new Scheduler(i, config);
         }
 
-        SQLEngineManager.getInstance().setSQLStatementExecutors(schedulers);
         AsyncTaskHandlerFactory.setAsyncTaskHandlers(schedulers);
         PageOperationHandlerFactory pohFactory = PageOperationHandlerFactory.create(config, schedulers);
         for (StorageEngine e : StorageEngineManager.getInstance().getEngines()) {
