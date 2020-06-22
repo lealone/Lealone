@@ -21,8 +21,6 @@ public interface SQLStatementExecutor {
 
     void executeNextStatement();
 
-    void executeNextStatementIfNeeded(PreparedSQLStatement current);
-
     boolean yieldIfNeeded(PreparedSQLStatement current);
 
     void wakeUp();

@@ -151,7 +151,6 @@ public class Scheduler extends Thread
     private final Semaphore haveWork = new Semaphore(1);
     private final long loopInterval;
     private boolean stop;
-    private int nested;
     private YieldableCommand nextBestCommand;
 
     public Scheduler(int id, Map<String, String> config) {
@@ -303,34 +302,6 @@ public class Scheduler extends Thread
                 c.si.conn.sendError(c.si.session, c.packetId, e);
             }
         }
-    }
-
-    @Override
-    public void executeNextStatementIfNeeded(PreparedSQLStatement current) {
-        // 如果出来各高优化级的命令，最多只抢占3次，避免堆栈溢出
-        if (nested >= 3)
-            return;
-        nested++;
-        int priority = current.getPriority();
-        boolean hasHigherPriorityCommand = false;
-        while (true) {
-            YieldableCommand c = getNextBestCommand(priority, false);
-            if (c == null) {
-                break;
-            }
-
-            hasHigherPriorityCommand = true;
-            try {
-                c.execute();
-            } catch (Throwable e) {
-                c.si.conn.sendError(c.si.session, c.packetId, e);
-            }
-        }
-
-        if (hasHigherPriorityCommand) {
-            current.setPriority(priority + 1);
-        }
-        nested--;
     }
 
     @Override
