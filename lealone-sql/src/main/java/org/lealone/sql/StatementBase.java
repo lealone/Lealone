@@ -652,11 +652,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         protected AsyncResult<T> asyncResult;
         protected T result;
         protected long startTimeNanos;
-        protected boolean isUpdate;
         protected boolean callStop = true;
 
         private State state = State.start;
-        private int savepointId = 0;
 
         public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
             this.statement = statement;
@@ -727,11 +725,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
                 startTimeNanos = System.nanoTime();
             }
-            if (isUpdate)
-                savepointId = session.getTransaction(statement).getSavepointId();
-            else
-                session.getTransaction(statement);
-            session.setCurrentCommand(statement);
+            session.startCurrentCommand(statement);
 
             recompileIfNeeded();
             setProgress(DatabaseEventListener.STATE_STATEMENT_START);
@@ -766,26 +760,19 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         }
 
         private boolean execute() {
-            Database database = session.getDatabase();
             try {
-                database.checkPowerOff();
-                try {
-                    return executeInternal();
-                } catch (DbException e) {
-                    filterConcurrentUpdate(e);
-                    return true;
-                } catch (Throwable e) {
-                    throw DbException.convert(e);
-                }
+                session.getDatabase().checkPowerOff();
+                return executeInternal();
             } catch (DbException e) {
+                // 并发异常，直接重试
+                if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
+                    return true;
+                }
                 handleException(e);
                 return false;
-            }
-        }
-
-        private void filterConcurrentUpdate(DbException e) {
-            if (e.getErrorCode() != ErrorCode.CONCURRENT_UPDATE_1) {
-                throw e;
+            } catch (Throwable e) {
+                handleException(DbException.convert(e));
+                return false;
             }
         }
 
@@ -804,11 +791,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                 throw e;
             }
             database.checkPowerOff();
-            if (isUpdate) {
+            if (!statement.isQuery()) {
                 if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
                     session.rollback();
                 } else {
-                    session.rollbackTo(savepointId);
+                    session.rollbackCurrentCommand();
                 }
             }
             if (asyncHandler != null) {
@@ -844,7 +831,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
         public YieldableUpdateBase(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
-            isUpdate = true;
         }
 
         protected void setResult(Integer result) {
@@ -923,7 +909,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             super(statement, asyncHandler);
             this.maxRows = maxRows;
             this.scrollable = scrollable;
-            isUpdate = false;
         }
     }
 

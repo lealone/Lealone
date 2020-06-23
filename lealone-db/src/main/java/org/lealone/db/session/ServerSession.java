@@ -846,13 +846,7 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    /**
-     * Set the current command of this session. This is done just before
-     * executing the statement.
-     *
-     * @param command the command
-     */
-    public void setCurrentCommand(PreparedSQLStatement statement) {
+    public void startCurrentCommand(PreparedSQLStatement statement) {
         currentCommand = statement;
         if (statement != null) {
             // 在一个事务中可能会执行多条语句，所以记录一下其中有哪些类型
@@ -907,6 +901,10 @@ public class ServerSession extends SessionBase {
                 }
             }
         }
+    }
+
+    public void rollbackCurrentCommand() {
+        rollbackTo(currentCommandSavepointId);
     }
 
     private void rollbackCurrentCommand(ServerSession newLockOwner) {
