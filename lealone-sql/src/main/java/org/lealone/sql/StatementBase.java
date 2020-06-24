@@ -725,9 +725,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
                 startTimeNanos = System.nanoTime();
             }
-            session.startCurrentCommand(statement);
-
             recompileIfNeeded();
+            session.startCurrentCommand(statement);
             setProgress(DatabaseEventListener.STATE_STATEMENT_START);
             statement.checkParameters();
             return startInternal();

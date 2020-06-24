@@ -92,10 +92,9 @@ public class TcpServerConnection extends TransferConnection {
                 sessionNotFound(packetId, sessionId);
             }
         } else {
-            si.updateLastActiveTime();
             in.setSession(si.session);
             PacketDeliveryTask task = new PacketDeliveryTask(this, in, packetId, packetType, si);
-            si.getScheduler().handle(task);
+            si.submitTask(task);
         }
     }
 
