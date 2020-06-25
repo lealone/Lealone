@@ -75,8 +75,8 @@ public class Scheduler extends Thread
         private final TcpServerConnection conn;
 
         private final int sessionTimeout;
-        final Session session;
         final int sessionId;
+        Session session; // 处理完第一个InitPacket任务后才会赋值
 
         private YieldableCommand yieldableCommand;
         private long lastActiveTime;
@@ -188,11 +188,11 @@ public class Scheduler extends Thread
             return;
         for (SessionInfo si : sessions) {
             // 只有前面一条SQL执行完时才可以执行下一条
-            if (si.yieldableCommand != null)
-                continue;
-            AsyncTask task = si.taskQueue.poll();
-            if (task != null)
-                runTask(task);
+            if (si.yieldableCommand == null) {
+                AsyncTask task = si.taskQueue.poll();
+                if (task != null)
+                    runTask(task);
+            }
         }
     }
 

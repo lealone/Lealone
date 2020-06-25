@@ -82,11 +82,12 @@ public class TcpServerConnection extends TransferConnection {
         int sessionId = in.readInt();
         SessionInfo si = sessions.get(sessionId);
         if (si == null) {
-            // 创建新session时临时分配一个调度器，当新session创建成功后再分配一个固定的调度器，
-            // 之后此session相关的请求包和命令都由固定的调度器负责处理。
             if (packetType == PacketType.SESSION_INIT.value) {
-                ScheduleService.getScheduler().handle(() -> {
-                    readInitPacket(in, packetId, sessionId);
+                // 同一个session的请求包(含InitPacket)都由同一个调度器负责处理
+                // 新session创建成功后再回填session字段
+                SessionInfo newSi = new SessionInfo(this, null, sessionId, tcpServer.getSessionTimeout());
+                newSi.submitTask(() -> {
+                    readInitPacket(in, packetId, sessionId, newSi);
                 });
             } else {
                 sessionNotFound(packetId, sessionId);
@@ -98,7 +99,7 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    private void readInitPacket(TransferInputStream in, int packetId, int sessionId) {
+    private void readInitPacket(TransferInputStream in, int packetId, int sessionId, SessionInfo si) {
         try {
             SessionInit packet = SessionInit.decoder.decode(in, 0);
             ConnectionInfo ci = packet.ci;
@@ -110,7 +111,7 @@ public class TcpServerConnection extends TransferConnection {
             if (baseDir != null) {
                 ci.setBaseDir(baseDir);
             }
-            Session session = createSession(ci, sessionId);
+            Session session = createSession(ci, sessionId, si);
             session.setProtocolVersion(packet.clientVersion);
             in.setSession(session);
 
@@ -121,12 +122,13 @@ public class TcpServerConnection extends TransferConnection {
             ack.encode(out, packet.clientVersion);
             out.flush();
         } catch (Throwable e) {
+            si.remove();
             logger.error("Failed to create session, packetId: " + packetId + ", sessionId: " + sessionId, e);
             sendError(null, packetId, e);
         }
     }
 
-    private Session createSession(ConnectionInfo ci, int sessionId) {
+    private Session createSession(ConnectionInfo ci, int sessionId, SessionInfo si) {
         Session session = ci.createSession();
         // 在复制模式和sharding模式下，客户端可以从任何一个节点接入，
         // 如果接入节点不是客户端想要访问的数据库的所在节点，就会给客户端返回数据库的所有节点，
@@ -136,8 +138,10 @@ public class TcpServerConnection extends TransferConnection {
             // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
             // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
             // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
-            SessionInfo si = new SessionInfo(this, session, sessionId, tcpServer.getSessionTimeout());
+            si.session = session;
             sessions.put(sessionId, si);
+        } else {
+            si.remove();
         }
         return session;
     }
