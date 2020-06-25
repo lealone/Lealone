@@ -92,24 +92,19 @@ public class Scheduler extends Thread
             scheduler.addSessionInfo(this);
         }
 
+        void updateLastActiveTime() {
+            lastActiveTime = System.currentTimeMillis();
+        }
+
         void submitTask(AsyncTask task) {
             updateLastActiveTime();
             taskQueue.add(task);
             scheduler.wakeUp();
         }
 
-        void updateLastActiveTime() {
-            lastActiveTime = System.currentTimeMillis();
-        }
-
         public void submitYieldableCommand(int packetId, PreparedSQLStatement stmt,
                 PreparedSQLStatement.Yieldable<?> yieldable) {
-            YieldableCommand bestCommand = scheduler.getNextBestCommand(stmt.getPriority(), true);
             yieldableCommand = new YieldableCommand(packetId, this, stmt, yieldable);
-            // 如果yieldableCommand的优先级最高，立即执行它
-            if (bestCommand == null) {
-                yieldableCommand.execute();
-            }
         }
 
         void remove() {
@@ -187,11 +182,15 @@ public class Scheduler extends Thread
         if (sessions.isEmpty())
             return;
         for (SessionInfo si : sessions) {
-            // 只有前面一条SQL执行完时才可以执行下一条
+            // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
             if (si.yieldableCommand == null) {
                 AsyncTask task = si.taskQueue.poll();
-                if (task != null)
+                while (task != null) {
                     runTask(task);
+                    if (si.yieldableCommand != null)
+                        break;
+                    task = si.taskQueue.poll();
+                }
             }
         }
     }
@@ -231,9 +230,7 @@ public class Scheduler extends Thread
 
     @Override
     public long getLoad() {
-        return sessions.size();// maxPriorityQueue.size() + minPriorityQueue.size() + normPriorityQueue.size() +
-                               // pageOperationQueue.size()
-        // + sessions.size();
+        return sessions.size();
     }
 
     @Override

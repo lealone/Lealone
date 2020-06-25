@@ -83,7 +83,7 @@ public class TcpServerConnection extends TransferConnection {
         SessionInfo si = sessions.get(sessionId);
         if (si == null) {
             if (packetType == PacketType.SESSION_INIT.value) {
-                // 同一个session的请求包(含InitPacket)都由同一个调度器负责处理
+                // 同一个session的所有请求包(含InitPacket)都由同一个调度器负责处理
                 // 新session创建成功后再回填session字段
                 SessionInfo newSi = new SessionInfo(this, null, sessionId, tcpServer.getSessionTimeout());
                 newSi.submitTask(() -> {
