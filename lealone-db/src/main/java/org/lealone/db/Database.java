@@ -899,7 +899,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
         if (lock != null) {
             lock.addHandler(ar -> {
-                if (ar.isSucceeded()) {
+                if (ar.isSucceeded() && ar.getResult()) {
                     dbObjectsRef.set(dbObjectsRef.get().commit());
                 } else {
                     clearObjectId(obj.getId());
@@ -943,7 +943,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
         if (lock != null) {
             lock.addHandler(ar -> {
-                if (ar.isSucceeded()) {
+                if (ar.isSucceeded() && ar.getResult()) {
                     dbObjectsRef.set(dbObjectsRef.get().commit());
                     removeInternal(obj);
                 } else {
@@ -988,7 +988,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         dbObjectsRef.set(dbObjects);
 
         lock.addHandler(ar -> {
-            if (ar.isSucceeded()) {
+            if (ar.isSucceeded() && ar.getResult()) {
                 dbObjectsRef.set(dbObjectsRef.get().commit());
             } else {
                 obj.rename(oldName);

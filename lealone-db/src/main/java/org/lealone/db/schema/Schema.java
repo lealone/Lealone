@@ -229,7 +229,7 @@ public class Schema extends DbObjectBase {
 
         if (lock != null) {
             lock.addHandler(ar -> {
-                if (ar.isSucceeded()) {
+                if (ar.isSucceeded() && ar.getResult()) {
                     dbObjectsRef.set(dbObjectsRef.get().commit());
                 } else {
                     database.clearObjectId(obj.getId());
@@ -272,7 +272,7 @@ public class Schema extends DbObjectBase {
             dbObjectsRef.set(dbObjects);
             if (lock != null) {
                 lock.addHandler(ar -> {
-                    if (ar.isSucceeded()) {
+                    if (ar.isSucceeded() && ar.getResult()) {
                         dbObjectsRef.set(dbObjectsRef.get().commit());
                         removeInternal(obj);
                     } else {
@@ -343,7 +343,7 @@ public class Schema extends DbObjectBase {
         dbObjectsRef.set(dbObjects);
 
         lock.addHandler(ar -> {
-            if (ar.isSucceeded()) {
+            if (ar.isSucceeded() && ar.getResult()) {
                 dbObjectsRef.set(dbObjectsRef.get().commit());
             } else {
                 obj.rename(oldName);
