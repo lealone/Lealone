@@ -49,6 +49,7 @@ public class DbObjectLockTest extends SqlTestBase {
             if (!isAutoCommit)
                 conn.setAutoCommit(false);
             Statement stmt = conn.createStatement();
+            stmt.executeUpdate("set LOCK_TIMEOUT 200000");
             stmt.executeUpdate("create table IF NOT EXISTS DbObjectLockTest(id int, name varchar(500))");
             if (!isAutoCommit)
                 conn.commit();

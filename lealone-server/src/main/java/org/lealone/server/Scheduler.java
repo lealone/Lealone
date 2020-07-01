@@ -183,7 +183,8 @@ public class Scheduler extends Thread
             return;
         for (SessionInfo si : sessions) {
             // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
-            if (si.yieldableCommand == null) {
+            // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
+            if (si.yieldableCommand == null || (si.session != null && si.session.getReplicationName() != null)) {
                 AsyncTask task = si.taskQueue.poll();
                 while (task != null) {
                     runTask(task);
