@@ -159,7 +159,10 @@ public class CreateService extends SchemaStatement {
         buff.append("public interface ").append(serviceName).append(" {\r\n");
         buff.append("\r\n");
         buff.append("    static ").append(serviceName).append(" create(String url) {\r\n");
-        buff.append("        return new Proxy(url);\r\n");
+        buff.append("        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())\r\n");
+        buff.append("            return new ").append(getServiceImplementClassName()).append("();\r\n");
+        buff.append("        else;\r\n");
+        buff.append("            return new Proxy(url);\r\n");
         buff.append("    }\r\n");
 
         for (CreateTable m : serviceMethods) {
@@ -248,6 +251,10 @@ public class CreateService extends SchemaStatement {
         // System.out.println();
 
         writeFile(codePath, packageName, serviceName, ibuff, buff);
+    }
+
+    private String getServiceImplementClassName() {
+        return implementBy;
     }
 
     private void genServiceExecutorCode() {
