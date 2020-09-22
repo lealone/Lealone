@@ -18,6 +18,7 @@
 package org.lealone.storage.aose.btree;
 
 import org.lealone.common.util.DataUtils;
+import org.lealone.storage.PageOperationHandler;
 import org.lealone.storage.type.StorageDataType;
 
 public abstract class BTreeLocalPage extends BTreePage {
@@ -55,6 +56,10 @@ public abstract class BTreeLocalPage extends BTreePage {
 
     protected BTreeLocalPage(BTreeMap<?, ?> map) {
         super(map);
+    }
+
+    protected BTreeLocalPage(BTreeMap<?, ?> map, PageOperationHandler handler) {
+        super(map, handler);
     }
 
     @Override

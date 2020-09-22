@@ -26,6 +26,7 @@ import org.lealone.db.DataBuffer;
 import org.lealone.db.RunMode;
 import org.lealone.net.NetNode;
 import org.lealone.storage.LeafPageMovePlan;
+import org.lealone.storage.PageOperationHandler;
 import org.lealone.storage.type.StorageDataType;
 
 public class BTreeLeafPage extends BTreeLocalPage {
@@ -53,6 +54,10 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     BTreeLeafPage(BTreeMap<?, ?> map) {
         super(map);
+    }
+
+    BTreeLeafPage(BTreeMap<?, ?> map, PageOperationHandler handler) {
+        super(map, handler);
     }
 
     @Override
@@ -192,6 +197,28 @@ public class BTreeLeafPage extends BTreeLocalPage {
         totalCount++;
         map.incrementSize();// 累加全局计数器
         addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
+    }
+
+    @Override
+    public BTreePage copyLeaf(int index, Object key, Object value) {
+        int len = keys.length + 1;
+        Object[] newKeys = new Object[len];
+        DataUtils.copyWithGap(keys, newKeys, len - 1, index);
+        Object[] newValues = new Object[len];
+        DataUtils.copyWithGap(values, newValues, len - 1, index);
+        newKeys[index] = key;
+        newValues[index] = value;
+        map.incrementSize();// 累加全局计数器
+        addMemory(map.getKeyType().getMemory(key) + map.getValueType().getMemory(value));
+        BTreeLeafPage newPage = create(map, newKeys, newValues, totalCount + 1, getMemory(), handler);
+        newPage.cachedCompare = cachedCompare;
+        newPage.replicationHostIds = replicationHostIds;
+        newPage.leafPageMovePlan = leafPageMovePlan;
+        newPage.parentRef = parentRef;
+        newPage.pageIndex = this.pageIndex;
+        // mark the old as deleted
+        removePage();
+        return newPage;
     }
 
     @Override
@@ -634,6 +661,21 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     static BTreeLeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount, int memory) {
         BTreeLeafPage p = new BTreeLeafPage(map);
+        // the position is 0
+        p.keys = keys;
+        p.values = values;
+        p.totalCount = totalCount;
+        if (memory == 0) {
+            p.recalculateMemory();
+        } else {
+            p.addMemory(memory);
+        }
+        return p;
+    }
+
+    static BTreeLeafPage create(BTreeMap<?, ?> map, Object[] keys, Object[] values, long totalCount, int memory,
+            PageOperationHandler handler) {
+        BTreeLeafPage p = new BTreeLeafPage(map, handler);
         // the position is 0
         p.keys = keys;
         p.values = values;

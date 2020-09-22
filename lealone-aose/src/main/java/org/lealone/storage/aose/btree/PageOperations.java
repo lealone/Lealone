@@ -135,6 +135,9 @@ public abstract class PageOperations {
                 // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
                 p = gotoLeafPage();
 
+                // 看看是否被切割了，这一步是避免移交到旧的leaf page处理器
+                p = p.redirectIfSplited(key);
+
                 // 处理分布式场景
                 if (p.isRemote() || p.getLeafPageMovePlan() != null) {
                     writeRemote();
@@ -147,8 +150,7 @@ public abstract class PageOperations {
                     return PageOperationResult.SHIFTED;
                 }
             }
-
-            // 看看是否被切割了
+            // 看看是否被切割了，这一步还是需要的，其他处理器处理移交过来时预先得到的leaf page可能过时了
             p = p.redirectIfSplited(key);
 
             // 如果已经被删除，重新从root page开始
@@ -204,7 +206,15 @@ public abstract class PageOperations {
 
         protected void insertLeaf(int index, V value) {
             index = -index - 1;
-            p.insertLeaf(index, key, value);
+            BTreePage old = p;
+            p = old.copyLeaf(index, key, value);
+            if (old.parentRef != null) {
+                old.parentRef.page.getChildPageReference(old.pageIndex).replacePage(p);
+            } else {
+                old.map.newRoot(p);
+            }
+            BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.COPIED, p);
+            old.dynamicInfo = dynamicInfo;
             map.setMaxKey(key);
         }
 
@@ -564,8 +574,8 @@ public abstract class PageOperations {
         // 第三步:
         // 禁用新leaf page的切割功能，
         // 避免在父节点完成AddChild操作前又产生出新的page，这会引入不必要的复杂性
-        tmp.left.page.disableSplit();
-        tmp.right.page.disableSplit();
+        // tmp.left.page.disableSplit();
+        // tmp.right.page.disableSplit();
 
         // 第四步:
         // 先重定向到临时的父节点，等实际的父节点完成AddChild操作后再修正
@@ -576,7 +586,7 @@ public abstract class PageOperations {
         // 把AddChild操作放入父节点的处理器队列中，等候处理。
         // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
         AddChild task = new AddChild(tmp);
-        p.map.nodePageOperationHandler.handlePageOperation(task);
+        // p.map.nodePageOperationHandler.handlePageOperation(task);
 
         // 第六步:
         // 对于分布式场景，通知发生切割了，需要选一个leaf page来移动

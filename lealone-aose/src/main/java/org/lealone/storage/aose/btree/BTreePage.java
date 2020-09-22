@@ -76,6 +76,7 @@ public class BTreePage {
 
     public static enum State {
         NORMAL,
+        COPIED,
         SPLITTING,
         SPLITTED,
         REMOVING,
@@ -99,6 +100,7 @@ public class BTreePage {
     protected final BTreeMap<?, ?> map;
     protected final PageOperationHandler handler;
     protected long pos;
+    protected int pageIndex;
 
     private boolean splitEnabled = true;
     volatile DynamicInfo dynamicInfo = new DynamicInfo();
@@ -113,6 +115,11 @@ public class BTreePage {
             handler = map.nodePageOperationHandler;
         else
             handler = null;
+    }
+
+    protected BTreePage(BTreeMap<?, ?> map, PageOperationHandler handler) {
+        this.map = map;
+        this.handler = null;
     }
 
     public boolean isSplitEnabled() {
@@ -142,14 +149,18 @@ public class BTreePage {
     // 有可能发生多次切割，所以需要用循环来遍历
     BTreePage redirectIfSplited(Object key) {
         BTreePage p = this;
-        while (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
+        State state = p.dynamicInfo.state;
+        while (state == BTreePage.State.SPLITTED || state == BTreePage.State.COPIED) {
             p = p.dynamicInfo.redirect;
-            int index;
-            if (map.getKeyType().compare(key, p.getKey(0)) < 0)
-                index = 0;
-            else
-                index = 1;
-            p = p.getChildPage(index);
+            if (state == BTreePage.State.SPLITTED) {
+                int index;
+                if (map.getKeyType().compare(key, p.getKey(0)) < 0)
+                    index = 0;
+                else
+                    index = 1;
+                p = p.getChildPage(index);
+            }
+            state = p.dynamicInfo.state;
         }
         return p;
     }
@@ -384,6 +395,10 @@ public class BTreePage {
         throw ie();
     }
 
+    public BTreePage copyLeaf(int index, Object key, Object value) {
+        throw ie();
+    }
+
     /**
      * Insert a child page into this node.
      * 
@@ -581,8 +596,9 @@ public class BTreePage {
     // 只找到key对应的LeafPage就行了，不关心key是否存在
     BTreePage gotoLeafPage(Object key) {
         BTreePage p = this;
+        int index = 0;
         while (p.isNode()) {
-            int index = p.binarySearch(key);
+            index = p.binarySearch(key);
             if (index < 0) {
                 index = -index - 1;
             } else {
@@ -590,6 +606,7 @@ public class BTreePage {
             }
             p = p.getChildPage(index);
         }
+        p.pageIndex = index;
         return p;
     }
 
