@@ -348,7 +348,8 @@ public class Scheduler extends Thread
             // session处于以下状态时不会被当成候选的对象
             switch (si.session.getStatus()) {
             case WAITING:
-                if (checkTimeout) {
+                // 复制模式下不主动检查超时
+                if (checkTimeout && si.session.getReplicationName() == null) {
                     si.checkTransactionTimeout();
                 }
             case TRANSACTION_COMMITTING:
