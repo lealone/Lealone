@@ -105,6 +105,7 @@ public abstract class PageOperations {
 
         // 最终要操作的leaf page
         BTreePage p;
+        PageReference pRef;
 
         public SingleWrite(BTreeMap<K, V> map, K key, AsyncHandler<AsyncResult<R>> asyncResultHandler) {
             this.map = map;
@@ -134,6 +135,12 @@ public abstract class PageOperations {
             if (p == null) {
                 // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
                 p = gotoLeafPage();
+                if (p.parentRef != null)
+                    pRef = p.parentRef.page.getChildPageReference(p.pageIndex);
+            }
+
+            if (pRef != null) {
+                p = pRef.page;
             }
 
             // 看看是否需要重定向，比如发生了拷贝或切割，
@@ -210,8 +217,13 @@ public abstract class PageOperations {
             } else {
                 old.map.newRoot(p);
             }
-            BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.COPIED, p);
-            old.dynamicInfo = dynamicInfo;
+
+            if (pRef != null) {
+                pRef.replacePage(p);
+            } else {
+                BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.COPIED, p);
+                old.dynamicInfo = dynamicInfo;
+            }
             map.setMaxKey(key);
         }
 
