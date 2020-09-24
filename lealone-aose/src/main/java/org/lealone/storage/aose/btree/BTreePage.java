@@ -119,7 +119,7 @@ public class BTreePage {
 
     protected BTreePage(BTreeMap<?, ?> map, PageOperationHandler handler) {
         this.map = map;
-        this.handler = null;
+        this.handler = handler;
     }
 
     public boolean isSplitEnabled() {
@@ -148,6 +148,24 @@ public class BTreePage {
     // 但是当前处理器已经把原来的leaf page切割了，此时需要从一个重定向后的临时node page找到最新的leaf page，
     // 有可能发生多次切割，所以需要用循环来遍历
     BTreePage redirectIfSplited(Object key) {
+        BTreePage p = this;
+        State state = p.dynamicInfo.state;
+        while (state == BTreePage.State.SPLITTED || state == BTreePage.State.COPIED) {
+            p = p.dynamicInfo.redirect;
+            if (state == BTreePage.State.SPLITTED) {
+                int index;
+                if (map.getKeyType().compare(key, p.getKey(0)) < 0)
+                    index = 0;
+                else
+                    index = 1;
+                p = p.getChildPage(index);
+            }
+            state = p.dynamicInfo.state;
+        }
+        return p;
+    }
+
+    BTreePage redirectIfNeeded(Object key) {
         BTreePage p = this;
         State state = p.dynamicInfo.state;
         while (state == BTreePage.State.SPLITTED || state == BTreePage.State.COPIED) {

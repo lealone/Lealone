@@ -134,24 +134,23 @@ public abstract class PageOperations {
             if (p == null) {
                 // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
                 p = gotoLeafPage();
-
-                // 看看是否被切割了，这一步是避免移交到旧的leaf page处理器
-                p = p.redirectIfSplited(key);
-
-                // 处理分布式场景
-                if (p.isRemote() || p.getLeafPageMovePlan() != null) {
-                    writeRemote();
-                    return PageOperationResult.SHIFTED;
-                }
-
-                // 当前处理器不是leaf page的处理器时需要移交给leaf page的处理器处理
-                if (isShiftEnabled && currentHandler != p.getHandler()) {
-                    p.addPageOperation(this);
-                    return PageOperationResult.SHIFTED;
-                }
             }
-            // 看看是否被切割了，这一步还是需要的，其他处理器处理移交过来时预先得到的leaf page可能过时了
-            p = p.redirectIfSplited(key);
+
+            // 看看是否需要重定向，比如发生了拷贝或切割，
+            // 避免移交到旧的leaf page处理器
+            p = p.redirectIfNeeded(key);
+
+            // 处理分布式场景
+            if (p.isRemote() || p.getLeafPageMovePlan() != null) {
+                writeRemote();
+                return PageOperationResult.SHIFTED;
+            }
+
+            // 当前处理器不是leaf page的处理器时需要移交给leaf page的处理器处理
+            if (isShiftEnabled && currentHandler != p.getHandler()) {
+                p.addPageOperation(this);
+                return PageOperationResult.SHIFTED;
+            }
 
             // 如果已经被删除，重新从root page开始
             DynamicInfo oldDynamicInfo = p.dynamicInfo;
@@ -173,9 +172,7 @@ public abstract class PageOperations {
                     DbException.throwInternalError();
                 }
             }
-            // if (!p.isSplitEnabled() && p.getKeyCount() > 10) {
-            // System.out.println(p.getKeyCount());
-            // }
+
             int index = getKeyIndex();
             Object result = writeLocal(index);
             handleAsyncResult(result); // 可以提前执行回调函数了，不需要考虑后续的代码
@@ -585,7 +582,7 @@ public abstract class PageOperations {
         // 第五步:
         // 把AddChild操作放入父节点的处理器队列中，等候处理。
         // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
-        AddChild task = new AddChild(tmp);
+        // AddChild task = new AddChild(tmp);
         // p.map.nodePageOperationHandler.handlePageOperation(task);
 
         // 第六步:
