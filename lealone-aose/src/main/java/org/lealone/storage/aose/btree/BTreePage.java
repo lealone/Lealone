@@ -76,7 +76,6 @@ public class BTreePage {
 
     public static enum State {
         NORMAL,
-        COPIED,
         SPLITTING,
         SPLITTED,
         REMOVING,
@@ -100,12 +99,12 @@ public class BTreePage {
     protected final BTreeMap<?, ?> map;
     protected final PageOperationHandler handler;
     protected long pos;
-    protected int pageIndex;
 
     private boolean splitEnabled = true;
     volatile DynamicInfo dynamicInfo = new DynamicInfo();
 
     PageReference parentRef;
+    PageReference ref;
 
     protected BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
@@ -149,36 +148,14 @@ public class BTreePage {
     // 有可能发生多次切割，所以需要用循环来遍历
     BTreePage redirectIfSplited(Object key) {
         BTreePage p = this;
-        State state = p.dynamicInfo.state;
-        while (state == BTreePage.State.SPLITTED || state == BTreePage.State.COPIED) {
+        while (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
             p = p.dynamicInfo.redirect;
-            if (state == BTreePage.State.SPLITTED) {
-                int index;
-                if (map.getKeyType().compare(key, p.getKey(0)) < 0)
-                    index = 0;
-                else
-                    index = 1;
-                p = p.getChildPage(index);
-            }
-            state = p.dynamicInfo.state;
-        }
-        return p;
-    }
-
-    BTreePage redirectIfNeeded(Object key) {
-        BTreePage p = this;
-        State state = p.dynamicInfo.state;
-        while (state == BTreePage.State.SPLITTED || state == BTreePage.State.COPIED) {
-            p = p.dynamicInfo.redirect;
-            if (state == BTreePage.State.SPLITTED) {
-                int index;
-                if (map.getKeyType().compare(key, p.getKey(0)) < 0)
-                    index = 0;
-                else
-                    index = 1;
-                p = p.getChildPage(index);
-            }
-            state = p.dynamicInfo.state;
+            int index;
+            if (map.getKeyType().compare(key, p.getKey(0)) < 0)
+                index = 0;
+            else
+                index = 1;
+            p = p.getChildPage(index);
         }
         return p;
     }
@@ -211,6 +188,13 @@ public class BTreePage {
 
     boolean updateDynamicInfo(DynamicInfo expect, DynamicInfo update) {
         return dynamicInfoUpdater.compareAndSet(this, expect, update);
+    }
+
+    void setTmp(boolean b) {
+    }
+
+    boolean isTmp() {
+        return false;
     }
 
     /**
@@ -614,9 +598,8 @@ public class BTreePage {
     // 只找到key对应的LeafPage就行了，不关心key是否存在
     BTreePage gotoLeafPage(Object key) {
         BTreePage p = this;
-        int index = 0;
         while (p.isNode()) {
-            index = p.binarySearch(key);
+            int index = p.binarySearch(key);
             if (index < 0) {
                 index = -index - 1;
             } else {
@@ -624,7 +607,6 @@ public class BTreePage {
             }
             p = p.getChildPage(index);
         }
-        p.pageIndex = index;
         return p;
     }
 

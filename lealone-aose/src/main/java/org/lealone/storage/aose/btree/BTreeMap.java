@@ -174,6 +174,27 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return binarySearch(key, columnIndexes);
     }
 
+    public int getLevel(K key) {
+        int level = 1;
+        BTreePage p = root.gotoLeafPage(key);
+        PageReference parentRef = p.parentRef;
+        while (parentRef != null) {
+            level++;
+            parentRef = parentRef.page.parentRef;
+        }
+        while (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
+            p = p.dynamicInfo.redirect;
+            int index;
+            if (getKeyType().compare(key, p.getKey(0)) < 0)
+                index = 0;
+            else
+                index = 1;
+            p = p.getChildPage(index);
+            level++;
+        }
+        return level;
+    }
+
     @SuppressWarnings("unchecked")
     private V binarySearch(Object key, boolean allColumns) {
         BTreePage p = root.gotoLeafPage(key);

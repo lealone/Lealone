@@ -135,17 +135,21 @@ public abstract class PageOperations {
             if (p == null) {
                 // 不管当前处理器是不是leaf page的处理器都可以事先定位到leaf page
                 p = gotoLeafPage();
-                if (p.parentRef != null)
-                    pRef = p.parentRef.page.getChildPageReference(p.pageIndex);
+                pRef = p.ref;
             }
 
             if (pRef != null) {
                 p = pRef.page;
             }
 
-            // 看看是否需要重定向，比如发生了拷贝或切割，
+            // 看看是否需要重定向，比如发生了切割，
             // 避免移交到旧的leaf page处理器
-            p = p.redirectIfNeeded(key);
+            p = p.redirectIfSplited(key);
+
+            // 发生切割后，重新获取最新的pRef
+            if (pRef != null && pRef.page != p) {
+                pRef = p.ref;
+            }
 
             // 处理分布式场景
             if (p.isRemote() || p.getLeafPageMovePlan() != null) {
@@ -212,17 +216,10 @@ public abstract class PageOperations {
             index = -index - 1;
             BTreePage old = p;
             p = old.copyLeaf(index, key, value);
-            if (old.parentRef != null) {
-                old.parentRef.page.getChildPageReference(old.pageIndex).replacePage(p);
+            if (old.ref != null) {
+                old.ref.replacePage(p);
             } else {
                 old.map.newRoot(p);
-            }
-
-            if (pRef != null) {
-                pRef.replacePage(p);
-            } else {
-                BTreePage.DynamicInfo dynamicInfo = new BTreePage.DynamicInfo(BTreePage.State.COPIED, p);
-                old.dynamicInfo = dynamicInfo;
             }
             map.setMaxKey(key);
         }
@@ -483,6 +480,8 @@ public abstract class PageOperations {
             }
             tmpNodePage.left.page.enableSplit();
             tmpNodePage.right.page.enableSplit();
+            tmpNodePage.left.page.setTmp(false);
+            tmpNodePage.right.page.setTmp(false);
         }
     }
 
@@ -594,8 +593,12 @@ public abstract class PageOperations {
         // 第五步:
         // 把AddChild操作放入父节点的处理器队列中，等候处理。
         // leaf page的切割需要更新父节点的相关数据，所以交由父节点处理器处理，避免引入复杂的并发问题
-        // AddChild task = new AddChild(tmp);
-        // p.map.nodePageOperationHandler.handlePageOperation(task);
+        if (!p.isTmp()) {
+            tmp.left.page.setTmp(true);
+            tmp.right.page.setTmp(true);
+            AddChild task = new AddChild(tmp);
+            p.map.nodePageOperationHandler.handlePageOperation(task);
+        }
 
         // 第六步:
         // 对于分布式场景，通知发生切割了，需要选一个leaf page来移动
@@ -620,6 +623,8 @@ public abstract class PageOperations {
         PageReference parentRef = new PageReference(parent);
         leftChildPage.parentRef = parentRef;
         rightChildPage.parentRef = parentRef;
+        leftChildPage.ref = leftRef;
+        rightChildPage.ref = rightRef;
         return new TmpNodePage(parent, old, leftRef, rightRef, k);
     }
 }
