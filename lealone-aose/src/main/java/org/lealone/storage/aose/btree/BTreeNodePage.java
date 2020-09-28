@@ -46,6 +46,14 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
+    void setRef(PageReference ref) {
+        if (ref != null && map.getRootPage().getRef() != ref) {
+            map.getRootPage();
+        }
+        super.setRef(ref);
+    }
+
+    @Override
     boolean isRemoteChildPage(int index) {
         return getChildPageReference(index).isRemotePage();
     }
@@ -154,7 +162,7 @@ public class BTreeNodePage extends BTreeLocalPage {
 
     @Override
     void setAndInsertChild(int index, TmpNodePage tmpNodePage) {
-        children = children.clone();
+        children = children.clone(); // 必须弄一份新的，否则影响其他线程
         children[index] = tmpNodePage.right;
         Object[] newKeys = new Object[keys.length + 1];
         DataUtils.copyWithGap(keys, newKeys, keys.length, index);
@@ -167,9 +175,8 @@ public class BTreeNodePage extends BTreeLocalPage {
         newChildren[index] = tmpNodePage.left;
         children = newChildren;
 
-        PageReference parentRef = new PageReference(this);
-        tmpNodePage.left.page.parentRef = parentRef;
-        tmpNodePage.right.page.parentRef = parentRef;
+        tmpNodePage.left.page.setParentRef(getRef());
+        tmpNodePage.right.page.setParentRef(getRef());
         addMemory(map.getKeyType().getMemory(tmpNodePage.key) + PageUtils.PAGE_MEMORY_CHILD);
     }
 
@@ -186,8 +193,7 @@ public class BTreeNodePage extends BTreeLocalPage {
         newChildren[index] = new PageReference(childPage, key, index == 0);
         children = newChildren;
 
-        PageReference parentRef = new PageReference(this);
-        childPage.parentRef = parentRef;
+        childPage.setParentRef(getRef());
         addMemory(map.getKeyType().getMemory(key) + PageUtils.PAGE_MEMORY_CHILD);
     }
 
@@ -380,6 +386,8 @@ public class BTreeNodePage extends BTreeLocalPage {
     private BTreeNodePage copy(boolean removePage) {
         BTreeNodePage newPage = create(map, keys, children, getMemory());
         newPage.cachedCompare = cachedCompare;
+        newPage.setParentRef(getParentRef());
+        newPage.setRef(getRef());
         if (removePage) {
             // mark the old as deleted
             removePage();

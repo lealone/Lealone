@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
@@ -174,13 +175,17 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return binarySearch(key, columnIndexes);
     }
 
+    public PageOperationHandler getNodePageOperationHandler() {
+        return nodePageOperationHandler;
+    }
+
     public int getLevel(K key) {
         int level = 1;
         BTreePage p = root.gotoLeafPage(key);
-        PageReference parentRef = p.parentRef;
+        PageReference parentRef = p.getParentRef();
         while (parentRef != null) {
             level++;
-            parentRef = parentRef.page.parentRef;
+            parentRef = parentRef.page.getParentRef();
         }
         while (p.dynamicInfo.state == BTreePage.State.SPLITTED) {
             p = p.dynamicInfo.redirect;
@@ -439,6 +444,21 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     @Override
     public synchronized void clear() {
         checkWrite();
+
+        // 等待所有的操作完成
+        List<PageOperationHandler> handlers = pohFactory.getAllPageOperationHandlers();
+        CountDownLatch latch = new CountDownLatch(handlers.size());
+        for (PageOperationHandler handler : handlers) {
+            handler.handlePageOperation(new RunnableOperation(() -> {
+                latch.countDown();
+            }));
+        }
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            throw DbException.convert(e);
+        }
+
         List<String> replicationHostIds = root.getReplicationHostIds();
         root.removeAllRecursive();
         size.set(0);

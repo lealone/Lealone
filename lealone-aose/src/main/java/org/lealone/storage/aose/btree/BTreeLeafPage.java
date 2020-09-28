@@ -225,8 +225,8 @@ public class BTreeLeafPage extends BTreeLocalPage {
         newPage.cachedCompare = cachedCompare;
         newPage.replicationHostIds = replicationHostIds;
         newPage.leafPageMovePlan = leafPageMovePlan;
-        newPage.parentRef = parentRef;
-        newPage.ref = ref;
+        newPage.parentRefRef = parentRefRef;
+        newPage.setRef(getRef());
         newPage.isTmpPage = isTmpPage;
         // mark the old as deleted
         removePage();

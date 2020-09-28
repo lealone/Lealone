@@ -19,6 +19,7 @@ package org.lealone.storage.aose.btree;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.db.IDatabase;
 import org.lealone.db.async.Future;
@@ -40,7 +41,9 @@ public class PageReference {
         return new PageReference(null, REMOTE_PAGE_POS);
     }
 
-    BTreePage page;
+    private static final AtomicReferenceFieldUpdater<PageReference, BTreePage> pageUpdater = AtomicReferenceFieldUpdater
+            .newUpdater(PageReference.class, BTreePage.class, "page");
+    volatile BTreePage page;
     PageKey pageKey;
     long pos;
     List<String> replicationHostIds;
@@ -73,6 +76,10 @@ public class PageReference {
     PageReference(BTreePage page, Object key, boolean first) {
         this(page);
         setPageKey(key, first);
+    }
+
+    boolean updatePage(BTreePage expect, BTreePage update) {
+        return pageUpdater.compareAndSet(this, expect, update);
     }
 
     public void replacePage(BTreePage page) {

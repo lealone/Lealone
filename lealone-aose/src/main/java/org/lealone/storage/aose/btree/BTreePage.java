@@ -20,6 +20,7 @@ package org.lealone.storage.aose.btree;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.lealone.common.compress.Compressor;
@@ -103,8 +104,9 @@ public class BTreePage {
     private boolean splitEnabled = true;
     volatile DynamicInfo dynamicInfo = new DynamicInfo();
 
-    PageReference parentRef;
-    PageReference ref;
+    // PageReference parentRef;
+    AtomicReference<PageReference> parentRefRef = new AtomicReference<>();
+    private PageReference ref;
 
     protected BTreePage(BTreeMap<?, ?> map) {
         this.map = map;
@@ -119,6 +121,29 @@ public class BTreePage {
     protected BTreePage(BTreeMap<?, ?> map, PageOperationHandler handler) {
         this.map = map;
         this.handler = handler;
+    }
+
+    void setParentRef(PageReference parentRef) {
+        if (parentRef != null && map.getRootPage().ref != parentRef) {
+            map.getRootPage();
+        }
+        parentRefRef.set(parentRef);
+    }
+
+    PageReference getParentRef() {
+        return parentRefRef.get();
+    }
+
+    void setRef(PageReference ref) {
+        this.ref = ref;
+    }
+
+    void setRef0(PageReference ref) {
+        this.ref = ref;
+    }
+
+    PageReference getRef() {
+        return ref;
     }
 
     public boolean isSplitEnabled() {

@@ -17,7 +17,10 @@
  */
 package org.lealone.storage;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -52,6 +55,13 @@ public abstract class PageOperationHandlerFactory {
 
     public PageOperationHandler getNodePageOperationHandler() {
         return nodePageOperationHandler;
+    }
+
+    public List<PageOperationHandler> getAllPageOperationHandlers() {
+        ArrayList<PageOperationHandler> list = new ArrayList<>(1 + pageOperationHandlers.length);
+        list.add(nodePageOperationHandler);
+        list.addAll(Arrays.asList(pageOperationHandlers));
+        return list;
     }
 
     public abstract PageOperationHandler getPageOperationHandler();
