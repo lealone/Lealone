@@ -46,14 +46,6 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void setRef(PageReference ref) {
-        if (ref != null && map.getRootPage().getRef() != ref) {
-            map.getRootPage();
-        }
-        super.setRef(ref);
-    }
-
-    @Override
     boolean isRemoteChildPage(int index) {
         return getChildPageReference(index).isRemotePage();
     }

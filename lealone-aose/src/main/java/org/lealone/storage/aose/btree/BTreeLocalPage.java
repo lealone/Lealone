@@ -152,7 +152,7 @@ public abstract class BTreeLocalPage extends BTreePage {
 
     @Override
     boolean needSplit() {
-        return isSplitEnabled() && memory > map.btreeStorage.getPageSplitSize() && keys.length > 1;
+        return memory > map.btreeStorage.getPageSplitSize() && keys.length > 1;
     }
 
     /**

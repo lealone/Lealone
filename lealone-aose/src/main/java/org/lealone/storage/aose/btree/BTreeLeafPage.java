@@ -42,7 +42,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
     private LeafPageMovePlan leafPageMovePlan;
     private ColumnPageReference[] columnPages;
     private volatile long totalCount;
-    private volatile boolean isTmpPage;
 
     static class ColumnPageReference {
         BTreeColumnPage page;
@@ -59,16 +58,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     BTreeLeafPage(BTreeMap<?, ?> map, PageOperationHandler handler) {
         super(map, handler);
-    }
-
-    @Override
-    void setTmp(boolean b) {
-        isTmpPage = b;
-    }
-
-    @Override
-    boolean isTmp() {
-        return isTmpPage;
     }
 
     @Override
@@ -227,7 +216,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         newPage.leafPageMovePlan = leafPageMovePlan;
         newPage.parentRefRef = parentRefRef;
         newPage.setRef(getRef());
-        newPage.isTmpPage = isTmpPage;
         // mark the old as deleted
         removePage();
         return newPage;

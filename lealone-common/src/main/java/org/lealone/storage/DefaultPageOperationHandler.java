@@ -34,7 +34,6 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
     private static final Logger logger = LoggerFactory.getLogger(DefaultPageOperationHandler.class);
     // LinkedBlockingQueue测出的性能不如ConcurrentLinkedQueue好
     private final ConcurrentLinkedQueue<PageOperation> tasks = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<PageOperation> tasks2 = new ConcurrentLinkedQueue<>();
     private final AtomicLong size = new AtomicLong();
     private final Semaphore haveWork = new Semaphore(1);
     private final String name;
@@ -110,10 +109,6 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
         return shiftCount;
     }
 
-    public ConcurrentLinkedQueue<PageOperation> tasks2() {
-        return tasks2;
-    }
-
     @Override
     public void run() {
         while (!stopped) {
@@ -133,7 +128,6 @@ public class DefaultPageOperationHandler implements PageOperationHandler, Runnab
         PageOperation task = tasks.poll();
         while (task != null) {
             size.decrementAndGet();
-            // tasks2.add(task);
             try {
                 task.run(this);
                 // PageOperationResult result = task.run(this);

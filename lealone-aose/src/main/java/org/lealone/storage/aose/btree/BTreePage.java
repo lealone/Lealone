@@ -101,10 +101,8 @@ public class BTreePage {
     protected final PageOperationHandler handler;
     protected long pos;
 
-    private boolean splitEnabled = true;
     volatile DynamicInfo dynamicInfo = new DynamicInfo();
 
-    // PageReference parentRef;
     AtomicReference<PageReference> parentRefRef = new AtomicReference<>();
     private PageReference ref;
 
@@ -124,9 +122,6 @@ public class BTreePage {
     }
 
     void setParentRef(PageReference parentRef) {
-        if (parentRef != null && map.getRootPage().ref != parentRef) {
-            map.getRootPage();
-        }
         parentRefRef.set(parentRef);
     }
 
@@ -138,24 +133,8 @@ public class BTreePage {
         this.ref = ref;
     }
 
-    void setRef0(PageReference ref) {
-        this.ref = ref;
-    }
-
     PageReference getRef() {
         return ref;
-    }
-
-    public boolean isSplitEnabled() {
-        return splitEnabled;
-    }
-
-    public void enableSplit() {
-        splitEnabled = true;
-    }
-
-    public void disableSplit() {
-        splitEnabled = false;
     }
 
     public PageOperationHandler getHandler() {
@@ -213,13 +192,6 @@ public class BTreePage {
 
     boolean updateDynamicInfo(DynamicInfo expect, DynamicInfo update) {
         return dynamicInfoUpdater.compareAndSet(this, expect, update);
-    }
-
-    void setTmp(boolean b) {
-    }
-
-    boolean isTmp() {
-        return false;
     }
 
     /**
@@ -672,7 +644,6 @@ public class BTreePage {
         throw ie();
     }
 
-    // test only
     public PageReference[] getChildren() {
         throw ie();
     }
