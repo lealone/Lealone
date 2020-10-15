@@ -11,7 +11,10 @@ import org.lealone.orm.json.JsonArray;
 public interface HelloWorldService {
 
     static HelloWorldService create(String url) {
-        return new Proxy(url);
+        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())
+            return new org.lealone.test.service.impl.HelloWorldServiceImpl();
+        else;
+            return new Proxy(url);
     }
 
     void sayHello();

@@ -13,7 +13,10 @@ import org.lealone.test.orm.generated.User;
 public interface UserService {
 
     static UserService create(String url) {
-        return new Proxy(url);
+        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())
+            return new org.lealone.test.service.impl.UserServiceImpl();
+        else;
+            return new Proxy(url);
     }
 
     Long add(User user);
