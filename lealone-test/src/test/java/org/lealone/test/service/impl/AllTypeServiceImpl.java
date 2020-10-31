@@ -15,23 +15,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.service;
+package org.lealone.test.service.impl;
 
-import org.junit.Test;
-import org.lealone.test.orm.SqlScript;
-import org.lealone.test.sql.SqlTestBase;
+import java.math.BigDecimal;
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.Date;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.util.UUID;
 
-public class ServiceProviderTest extends SqlTestBase {
-    @Test
-    public void testService() {
-        // 创建user表
-        SqlScript.createUserTable(this);
-        createService(this);
+import org.lealone.test.orm.generated.User;
+import org.lealone.test.service.generated.AllTypeService;
+
+public class AllTypeServiceImpl implements AllTypeService {
+
+    @Override
+    public User testType(Integer f1, Boolean f2, Byte f3, Short f4, Long f5, Long f6, BigDecimal f7, Double f8,
+            Float f9, Time f10, Date f11, Timestamp f12, byte[] f13, Object f14, String f15, String f16, String f17,
+            Blob f18, Clob f19, UUID f20, Array f21) {
+        return null;
     }
 
-    public static void createService(SqlExecutor executor) {
-        SqlScript.createUserService(executor);
-        SqlScript.createHelloWorldService(executor);
-        SqlScript.createAllTypeService(executor);
-    }
 }

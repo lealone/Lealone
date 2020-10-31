@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.TreeSet;
+import java.util.UUID;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
@@ -37,6 +38,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.value.DataType;
+import org.lealone.db.value.Value;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -319,7 +321,6 @@ public class CreateService extends SchemaStatement {
                 buff.append("            ja = new JsonArray(json);\r\n");
                 for (int i = 0; i < size; i++) {
                     if (i != 0) {
-                        buff.append(", ");
                         argsBuff.append(", ");
                     }
                     Column c = data.columns.get(i);
@@ -420,7 +421,16 @@ public class CreateService extends SchemaStatement {
                 cType = packageName + "." + cType;
         } else {
             // cType = c.getOriginalSQL();
-            cType = DataType.getTypeClassName(c.getType());
+            switch (c.getType()) {
+            case Value.BYTES:
+                cType = "byte[]";
+                break;
+            case Value.UUID:
+                cType = UUID.class.getName();
+                break;
+            default:
+                cType = DataType.getTypeClassName(c.getType());
+            }
         }
         int lastDotPos = cType.lastIndexOf('.');
         if (lastDotPos > 0) {
@@ -468,38 +478,36 @@ public class CreateService extends SchemaStatement {
         case "STRING_IGNORECASE":
         case "STRING_FIXED":
             return "result";
-        case "BLOB":
-            // "java.sql.Blob";
-            throw DbException.throwInternalError("type=" + type); // return java.sql.Blob.class.getName(); // TODO
-        case "CLOB":
-            // "java.sql.Clob";
-            throw DbException.throwInternalError("type=" + type); // return java.sql.Clob.class.getName(); // TODO
         case "DOUBLE":
             return "Double.valueOf(result)";
         case "FLOAT":
             return "Float.valueOf(result)";
         case "NULL":
             return null;
+        case "UNKNOWN": // anything
         case "JAVA_OBJECT":
-            // "java.lang.Object";
-            throw DbException.throwInternalError("type=" + type); // return Object.class.getName(); // TODO
-        case "UNKNOWN":
-            // anything
-            throw DbException.throwInternalError("type=" + type);
+            return "(Object)result";
+        case "BLOB":
+            type = "java.sql.Blob";
+            break;
+        case "CLOB":
+            type = "java.sql.Clob";
+            break;
         case "ARRAY":
-            throw DbException.throwInternalError("type=" + type);
+            type = "java.sql.Array";
+            break;
         case "RESULT_SET":
-            throw DbException.throwInternalError("type=" + type); // return ResultSet.class.getName(); // TODO
-        default:
-            throw DbException.throwInternalError("type=" + type);
+            type = "java.sql.ResultSet";
+            break;
         }
+        return "(" + type + ")result";
     }
 
     private static String m(String str, int i) {
         return str + "(ja.getValue(" + i + ").toString())";
     }
 
-    // TODO 判断具体类型调用合适的JsonArray方法
+    // 根据具体类型调用合适的JsonArray方法
     private static String getJsonArrayMethodName(String type0, int i) {
         String type = type0.toUpperCase();
         switch (type) {
@@ -509,7 +517,7 @@ public class CreateService extends SchemaStatement {
             return m("Byte.valueOf", i);
         case "SHORT":
             return m("Short.valueOf", i);
-        case "INT":
+        case "INTEGER":
             return m("Integer.valueOf", i);
         case "LONG":
             return m("Long.valueOf", i);
@@ -522,7 +530,6 @@ public class CreateService extends SchemaStatement {
         case "TIMESTAMP":
             return m("java.sql.Timestamp.valueOf", i);
         case "BYTES":
-            // "[B", not "byte[]";
             return "ja.getString(" + i + ").getBytes()";
         case "UUID":
             return m("java.util.UUID.fromString", i);
@@ -530,31 +537,28 @@ public class CreateService extends SchemaStatement {
         case "STRING_IGNORECASE":
         case "STRING_FIXED":
             return "ja.getString(" + i + ")";
-        case "BLOB":
-            // "java.sql.Blob";
-            throw DbException.throwInternalError("type=" + type); // return java.sql.Blob.class.getName(); // TODO
-        case "CLOB":
-            // "java.sql.Clob";
-            throw DbException.throwInternalError("type=" + type); // return java.sql.Clob.class.getName(); // TODO
         case "DOUBLE":
             return m("Double.valueOf", i);
         case "FLOAT":
             return m("Float.valueOf", i);
         case "NULL":
             return null;
+        case "UNKNOWN": // anything
         case "JAVA_OBJECT":
-            // "java.lang.Object";
-            throw DbException.throwInternalError("type=" + type); // return Object.class.getName(); // TODO
-        case "UNKNOWN":
-            // anything
-            throw DbException.throwInternalError("type=" + type);
+            return "ja.getJsonObject(" + i + ")";
+        case "BLOB":
+            type0 = "java.sql.Blob";
+            break;
+        case "CLOB":
+            type0 = "java.sql.Clob";
+            break;
         case "ARRAY":
-            throw DbException.throwInternalError("type=" + type);
+            type0 = "java.sql.Array";
+            break;
         case "RESULT_SET":
-            throw DbException.throwInternalError("type=" + type); // return ResultSet.class.getName(); // TODO
-        default:
-            return "ja.getJsonObject(" + i + ").mapTo(" + type0 + ".class)";
-        // throw DbException.throwInternalError("type=" + type);
+            type0 = "java.sql.ResultSet";
+            break;
         }
+        return "ja.getJsonObject(" + i + ").mapTo(" + type0 + ".class)";
     }
 }

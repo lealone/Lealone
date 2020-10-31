@@ -20,6 +20,7 @@ package org.lealone.test.orm;
 import org.lealone.test.TestBase.SqlExecutor;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.service.ServiceProviderTest;
+import org.lealone.test.service.impl.AllTypeServiceImpl;
 import org.lealone.test.service.impl.HelloWorldServiceImpl;
 import org.lealone.test.service.impl.UserServiceImpl;
 
@@ -114,61 +115,76 @@ public class SqlScript {
         );
     }
 
+    // 21种模型属性类型，目前不支持GEOMETRY类型
+    // INT
+    // BOOLEAN
+    // TINYINT
+    // SMALLINT
+    // BIGINT
+    // IDENTITY
+    // DECIMAL
+    // DOUBLE
+    // REAL
+    // TIME
+    // DATE
+    // TIMESTAMP
+    // BINARY
+    // OTHER
+    // VARCHAR
+    // VARCHAR_IGNORECASE
+    // CHAR
+    // BLOB
+    // CLOB
+    // UUID
+    // ARRAY
+    public static String TEST_TYPES = "" //
+            + " f1  INT," //
+            + " f2  BOOLEAN," //
+            + " f3  TINYINT," //
+            + " f4  SMALLINT," //
+            + " f5  BIGINT," //
+            + " f6  IDENTITY," //
+            + " f7  DECIMAL," //
+            + " f8  DOUBLE," //
+            + " f9  REAL," //
+            + " f10 TIME," //
+            + " f11 DATE," //
+            + " f12 TIMESTAMP," //
+            + " f13 BINARY," //
+            + " f14 OTHER," //
+            + " f15 VARCHAR," //
+            + " f16 VARCHAR_IGNORECASE," //
+            + " f17 CHAR," //
+            + " f18 BLOB," //
+            + " f19 CLOB," //
+            + " f20 UUID," //
+            + " f21 ARRAY" //
+    ;
+
     public static void createAllModelPropertyTable(SqlExecutor executor) {
-        // 21种模型属性类型，目前不支持GEOMETRY类型
-        // INT
-        // BOOLEAN
-        // TINYINT
-        // SMALLINT
-        // BIGINT
-        // IDENTITY
-        // DECIMAL
-        // DOUBLE
-        // REAL
-        // TIME
-        // DATE
-        // TIMESTAMP
-        // BINARY
-        // OTHER
-        // VARCHAR
-        // VARCHAR_IGNORECASE
-        // CHAR
-        // BLOB
-        // CLOB
-        // UUID
-        // ARRAY
         executor.execute("CREATE TABLE all_model_property (" //
-                + " f1  INT," //
-                + " f2  BOOLEAN," //
-                + " f3  TINYINT," //
-                + " f4  SMALLINT," //
-                + " f5  BIGINT," //
-                + " f6  IDENTITY," //
-                + " f7  DECIMAL," //
-                + " f8  DOUBLE," //
-                + " f9  REAL," //
-                + " f10 TIME," //
-                + " f11 DATE," //
-                + " f12 TIMESTAMP," //
-                + " f13 BINARY," //
-                + " f14 OTHER," //
-                + " f15 VARCHAR," //
-                + " f16 VARCHAR_IGNORECASE," //
-                + " f17 CHAR," //
-                + " f18 BLOB," //
-                + " f19 CLOB," //
-                + " f20 UUID," //
-                + " f21 ARRAY" //
-                + ")" //
+                + TEST_TYPES + ")" //
                 + " PACKAGE '" + MODEL_PACKAGE_NAME + "'" //
                 + " GENERATE CODE '" + GENERATED_CODE_PATH + "'");
 
         System.out.println("create table: all_model_property");
     }
 
+    public static void createAllTypeService(SqlExecutor executor) {
+        System.out.println("create service: all_type_service");
+        executor.execute("drop service if exists all_type_service");
+        // 创建服务: all_type_service
+        executor.execute("create service if not exists all_type_service (" //
+                + "test_type(" + TEST_TYPES + ") user)" //
+                + " package '" + SERVICE_PACKAGE_NAME + "'" //
+                // 如果是内部类，不能用getClassName()，会包含$字符
+                + " implement by '" + AllTypeServiceImpl.class.getCanonicalName() + "'" //
+                + " generate code '" + GENERATED_CODE_PATH + "'");
+    }
+
     public static void createUserService(SqlExecutor executor) {
         System.out.println("create service: user_service");
-
+        executor.execute("drop service if exists user_service");
         // 创建服务: user_service
         executor.execute("create service if not exists user_service (" //
                 + " add(user user) long," // 第一个user是参数名，第二个user是参数类型
