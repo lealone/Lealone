@@ -20,7 +20,9 @@ package org.lealone.client;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.HashMap;
 
 public class ClientServiceProxy {
 
@@ -52,5 +54,29 @@ public class ClientServiceProxy {
         } catch (SQLException e) {
             throw new RuntimeException("Failed to execute service: " + serviceName, e);
         }
+    }
+
+    private static HashMap<String, Connection> connMap = new HashMap<>(1);
+
+    public static PreparedStatement prepareStatement(String url, String sql) {
+        try {
+            Connection conn = connMap.get(url);
+            if (conn == null) {
+                synchronized (connMap) {
+                    conn = connMap.get(url);
+                    if (conn == null) {
+                        conn = DriverManager.getConnection(url);
+                        connMap.put(url, conn);
+                    }
+                }
+            }
+            return conn.prepareStatement(sql);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to prepare statement: " + sql, e);
+        }
+    }
+
+    public static RuntimeException failed(String serviceName, Throwable cause) {
+        return new RuntimeException("Failed to execute service: " + serviceName, cause);
     }
 }

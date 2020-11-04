@@ -151,10 +151,15 @@ public class CreateService extends SchemaStatement {
         StringBuilder buff = new StringBuilder();
         StringBuilder ibuff = new StringBuilder();
         StringBuilder proxyMethodsBuff = new StringBuilder();
+        StringBuilder proxyMethodsBuffJdbc = new StringBuilder();
+
+        StringBuilder psBuff = new StringBuilder();
+        StringBuilder psInitBuff = new StringBuilder();
 
         TreeSet<String> importSet = new TreeSet<>();
         importSet.add("org.lealone.orm.json.JsonArray");
         importSet.add("org.lealone.client.ClientServiceProxy");
+        importSet.add("java.sql.*");
 
         String serviceName = toClassName(this.serviceName);
 
@@ -164,13 +169,30 @@ public class CreateService extends SchemaStatement {
         buff.append("        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())\r\n");
         buff.append("            return new ").append(getServiceImplementClassName()).append("();\r\n");
         buff.append("        else;\r\n");
-        buff.append("            return new Proxy(url);\r\n");
+        buff.append("            return new JdbcProxy(url);\r\n");
         buff.append("    }\r\n");
 
+        int methodIndex = 0;
         for (CreateTable m : serviceMethods) {
+            methodIndex++;
+            String psVarName = "ps" + methodIndex;
+            CreateTableData data = m.data;
             buff.append("\r\n");
             proxyMethodsBuff.append("\r\n");
-            CreateTableData data = m.data;
+            proxyMethodsBuffJdbc.append("\r\n");
+
+            psBuff.append("        private final PreparedStatement ").append(psVarName).append(";\r\n");
+            psInitBuff.append("            ").append(psVarName)
+                    .append(" = ClientServiceProxy.prepareStatement(url, \"EXECUTE SERVICE ").append(this.serviceName)
+                    .append(" ").append(data.tableName).append("(");
+            for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
+                if (i != 0) {
+                    psInitBuff.append(", ");
+                }
+                psInitBuff.append("?");
+            }
+            psInitBuff.append(")\");\r\n");
+
             Column returnColumn = data.columns.get(data.columns.size() - 1);
             String returnType = getTypeName(returnColumn, importSet);
             String methodName = toMethodName(data.tableName);
@@ -179,23 +201,35 @@ public class CreateService extends SchemaStatement {
             proxyMethodsBuff.append("        @Override\r\n");
             proxyMethodsBuff.append("        public ").append(returnType).append(" ").append(methodName).append("(");
 
+            proxyMethodsBuffJdbc.append("        @Override\r\n");
+            proxyMethodsBuffJdbc.append("        public ").append(returnType).append(" ").append(methodName)
+                    .append("(");
+
             StringBuilder argsBuff = new StringBuilder();
+            StringBuilder argsBuffJdbc = new StringBuilder();
+
             argsBuff.append("            JsonArray ja = new JsonArray();\r\n");
             for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
                 if (i != 0) {
                     buff.append(", ");
                     proxyMethodsBuff.append(", ");
+                    proxyMethodsBuffJdbc.append(", ");
                 }
                 Column c = data.columns.get(i);
                 String cType = getTypeName(c, importSet);
                 String cName = toFieldName(c.getName());
                 buff.append(cType).append(" ").append(cName);
                 proxyMethodsBuff.append(cType).append(" ").append(cName);
+                proxyMethodsBuffJdbc.append(cType).append(" ").append(cName);
                 if (c.getTable() != null) {
                     importSet.add("org.lealone.orm.json.JsonObject");
                     argsBuff.append("            ja.add(JsonObject.mapFrom(").append(cName).append("));\r\n");
                 } else {
                     argsBuff.append("            ja.add(").append(cName).append(");\r\n");
+
+                    argsBuffJdbc.append("                ").append(psVarName).append(".")
+                            .append(getPreparedStatementSetterMethodName(cType)).append("(").append(i + 1).append(", ")
+                            .append(cName).append(");\r\n");
                 }
             }
             buff.append(");\r\n");
@@ -221,6 +255,34 @@ public class CreateService extends SchemaStatement {
                 proxyMethodsBuff.append("            return null;\r\n");
             }
             proxyMethodsBuff.append("        }\r\n");
+
+            proxyMethodsBuffJdbc.append(") {\r\n");
+            proxyMethodsBuffJdbc.append("            try {\r\n");
+            proxyMethodsBuffJdbc.append(argsBuffJdbc);
+            if (returnType.equalsIgnoreCase("void")) {
+                proxyMethodsBuffJdbc.append("                ").append(psVarName).append(".executeUpdate();\r\n");
+            } else {
+                proxyMethodsBuffJdbc.append("                ResultSet rs = ").append(psVarName)
+                        .append(".executeQuery();\r\n");
+                proxyMethodsBuffJdbc.append("                rs.next();\r\n");
+
+                if (returnColumn.getTable() != null) {
+                    importSet.add("org.lealone.orm.json.JsonObject");
+                    proxyMethodsBuffJdbc.append("                JsonObject jo = new JsonObject(result);\r\n");
+                    proxyMethodsBuffJdbc.append("                return jo.mapTo(").append(returnType)
+                            .append(".class);\r\n");
+                } else {
+                    proxyMethodsBuffJdbc.append("                ").append(returnType).append(" ret = rs.")
+                            .append(getResultSetReturnMethodName(returnType)).append("(1);\r\n");
+                    proxyMethodsBuffJdbc.append("                rs.close();\r\n");
+                    proxyMethodsBuffJdbc.append("                return ret;\r\n");
+                }
+            }
+            proxyMethodsBuffJdbc.append("            } catch (Throwable e) {\r\n");
+            proxyMethodsBuffJdbc.append("                throw ClientServiceProxy.failed(\"").append(this.serviceName)
+                    .append('.').append(data.tableName).append("\", e);\r\n");
+            proxyMethodsBuffJdbc.append("            }\r\n");
+            proxyMethodsBuffJdbc.append("        }\r\n");
         }
 
         // 生成Proxy类
@@ -233,6 +295,18 @@ public class CreateService extends SchemaStatement {
         buff.append("            this.url = url;\r\n");
         buff.append("        }\r\n");
         buff.append(proxyMethodsBuff);
+        buff.append("    }\r\n");
+
+        // 生成Jdbc Proxy类
+        buff.append("\r\n");
+        buff.append("    static class JdbcProxy implements ").append(serviceName).append(" {\r\n");
+        buff.append("\r\n");
+        buff.append(psBuff);
+        buff.append("\r\n");
+        buff.append("        private JdbcProxy(String url) {\r\n");
+        buff.append(psInitBuff);
+        buff.append("        }\r\n");
+        buff.append(proxyMethodsBuffJdbc);
         buff.append("    }\r\n");
         buff.append("}\r\n");
 
@@ -248,9 +322,6 @@ public class CreateService extends SchemaStatement {
         ibuff.append(" *\r\n");
         ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
         ibuff.append(" */\r\n");
-        // System.out.println(ibuff);
-        // System.out.println(buff);
-        // System.out.println();
 
         writeFile(codePath, packageName, serviceName, ibuff, buff);
     }
@@ -358,6 +429,71 @@ public class CreateService extends SchemaStatement {
         buff.append("        }\r\n");
         if (hasNoReturnValueMethods)
             buff.append("        return NO_RETURN_VALUE;\r\n");
+
+        buff.append("    }\r\n");
+
+        // 生成public Value executeService(String methodName, Value[] methodArgs)方法
+        // importSet.add(Value.class.getName());
+        // importSet.add(ValueNull.class.getName());
+        importSet.add("org.lealone.db.value.*");
+        buff.append("\r\n");
+        buff.append("    @Override\r\n");
+        buff.append("    public Value executeService(String methodName, Value[] methodArgs) {\r\n");
+        buff.append("        switch (methodName) {\r\n");
+
+        hasNoReturnValueMethods = false;
+        index = 0;
+        for (CreateTable m : serviceMethods) {
+            index++;
+            // switch语句不同case代码块的本地变量名不能相同
+            String resultVarName = "result" + index;
+            CreateTableData data = m.data;
+
+            Column returnColumn = data.columns.get(data.columns.size() - 1);
+            String returnType = getTypeName(returnColumn, importSet);
+            if (returnType.equalsIgnoreCase("void")) {
+                hasNoReturnValueMethods = true;
+            }
+            StringBuilder argsBuff = new StringBuilder();
+            String methodName = toMethodName(data.tableName);
+            buff.append("        case \"").append(data.tableName).append("\":\r\n");
+            // 有参数，参数放在一个json数组中
+            int size = data.columns.size() - 1;
+            if (size > 0) {
+                for (int i = 0; i < size; i++) {
+                    if (i != 0) {
+                        argsBuff.append(", ");
+                    }
+                    Column c = data.columns.get(i);
+                    String cType = getTypeName(c, importSet);
+                    String cName = "p_" + toFieldName(c.getName()) + index;
+                    buff.append("            ").append(cType).append(" ").append(cName).append(" = ")
+                            .append("methodArgs[").append(i).append("].").append(getValueMethodName(cType))
+                            .append("();\r\n");
+                    argsBuff.append(cName);
+                }
+            }
+            boolean isVoid = returnType.equalsIgnoreCase("void");
+            buff.append("            ");
+            if (!isVoid) {
+                buff.append(returnType).append(" ").append(resultVarName).append(" = ");
+            }
+            buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
+            if (!isVoid) {
+                buff.append("            if (").append(resultVarName).append(" == null)\r\n");
+                buff.append("                return ValueNull.INSTANCE;\r\n");
+                buff.append("            return ")// .append("org.lealone.db.value.")
+                        .append(getReturnMethodName(returnType)).append("(").append(resultVarName).append(")")
+                        .append(";\r\n");
+            } else {
+                buff.append("            break;\r\n");
+            }
+        }
+        buff.append("        default:\r\n");
+        buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
+        buff.append("        }\r\n");
+        if (hasNoReturnValueMethods)
+            buff.append("        return ValueNull.INSTANCE;\r\n");
 
         buff.append("    }\r\n");
         buff.append("}\r\n");
@@ -503,6 +639,56 @@ public class CreateService extends SchemaStatement {
         return "(" + type + ")result";
     }
 
+    private static String getReturnMethodName(String type) {
+        type = type.toUpperCase();
+        switch (type) {
+        case "BOOLEAN":
+            return "ValueBoolean.get";
+        case "BYTE":
+            return "ValueByte.get";
+        case "SHORT":
+            return "ValueShort.get";
+        case "INTEGER":
+            return "ValueInt.get";
+        case "LONG":
+            return "ValueLong.get";
+        case "DECIMAL":
+            return "ValueDecimal.get";
+        case "TIME":
+            return "ValueTime.get";
+        case "DATE":
+            return "ValueDate.get";
+        case "TIMESTAMP":
+            return "ValueTimestamp.get";
+        case "BYTES":
+            return "ValueBytes.get";
+        case "UUID":
+            return "ValueUuid.get";
+        case "STRING":
+        case "STRING_IGNORECASE":
+        case "STRING_FIXED":
+            return "ValueString.get";
+        case "DOUBLE":
+            return "ValueDouble.get";
+        case "FLOAT":
+            return "ValueFloat.get";
+        case "NULL":
+            return "ValueNull.INSTANCE";
+        case "UNKNOWN": // anything
+        case "JAVA_OBJECT":
+            return "ValueShort.get";
+        case "BLOB":
+            return "ValueShort.get";
+        case "CLOB":
+            return "ValueShort.get";
+        case "ARRAY":
+            return "ValueShort.get";
+        case "RESULT_SET":
+            return "ValueResultSet.get";
+        }
+        return "ValueShort.get";
+    }
+
     private static String m(String str, int i) {
         return str + "(ja.getValue(" + i + ").toString())";
     }
@@ -560,5 +746,156 @@ public class CreateService extends SchemaStatement {
             break;
         }
         return "ja.getJsonObject(" + i + ").mapTo(" + type0 + ".class)";
+    }
+
+    // 根据具体类型调用合适的Value方法
+    private static String getValueMethodName(String type) {
+        type = type.toUpperCase();
+        switch (type) {
+        case "BOOLEAN":
+            return "getBoolean";
+        case "BYTE":
+            return "getByte";
+        case "SHORT":
+            return "getShort";
+        case "INTEGER":
+            return "getInt";
+        case "LONG":
+            return "getLong";
+        case "DECIMAL":
+            return "getBigDecimal";
+        case "TIME":
+            return "getTime";
+        case "DATE":
+            return "getDate";
+        case "TIMESTAMP":
+            return "getTimestamp";
+        case "BYTES":
+            return "getBytes";
+        case "UUID":
+            return "getUuid";
+        case "STRING":
+        case "STRING_IGNORECASE":
+        case "STRING_FIXED":
+            return "getString";
+        case "DOUBLE":
+            return "getDouble";
+        case "FLOAT":
+            return "getFloat";
+        case "NULL":
+            return null;
+        case "UNKNOWN": // anything
+        case "JAVA_OBJECT":
+            return "getObject";
+        case "BLOB":
+            return "getBlob";
+        case "CLOB":
+            return "getClob";
+        case "ARRAY":
+            return "getArray";
+        case "RESULT_SET":
+            return "getResultSet";
+        }
+        return "getObject";
+    } // 根据具体类型调用合适的Value方法
+
+    private static String getResultSetReturnMethodName(String type) {
+        type = type.toUpperCase();
+        switch (type) {
+        case "BOOLEAN":
+            return "getBoolean";
+        case "BYTE":
+            return "getByte";
+        case "SHORT":
+            return "getShort";
+        case "INTEGER":
+            return "getInt";
+        case "LONG":
+            return "getLong";
+        case "DECIMAL":
+            return "getBigDecimal";
+        case "TIME":
+            return "getTime";
+        case "DATE":
+            return "getDate";
+        case "TIMESTAMP":
+            return "getTimestamp";
+        case "BYTES":
+            return "getBytes";
+        case "UUID":
+            return "getUuid"; // TODO
+        case "STRING":
+        case "STRING_IGNORECASE":
+        case "STRING_FIXED":
+            return "getString";
+        case "DOUBLE":
+            return "getDouble";
+        case "FLOAT":
+            return "getFloat";
+        case "NULL":
+            return null;
+        case "UNKNOWN": // anything
+        case "JAVA_OBJECT":
+            return "getObject";
+        case "BLOB":
+            return "getBlob";
+        case "CLOB":
+            return "getClob";
+        case "ARRAY":
+            return "getArray";
+        case "RESULT_SET":
+            return "getResultSet"; // TODO
+        }
+        return "getObject";
+    }
+
+    private static String getPreparedStatementSetterMethodName(String type) {
+        type = type.toUpperCase();
+        switch (type) {
+        case "BOOLEAN":
+            return "setBoolean";
+        case "BYTE":
+            return "setByte";
+        case "SHORT":
+            return "setShort";
+        case "INTEGER":
+            return "setInt";
+        case "LONG":
+            return "setLong";
+        case "DECIMAL":
+            return "setBigDecimal";
+        case "TIME":
+            return "setTime";
+        case "DATE":
+            return "setDate";
+        case "TIMESTAMP":
+            return "setTimestamp";
+        case "BYTES":
+            return "setBytes";
+        case "UUID":
+            return "setUuid"; // TODO
+        case "STRING":
+        case "STRING_IGNORECASE":
+        case "STRING_FIXED":
+            return "setString";
+        case "DOUBLE":
+            return "setDouble";
+        case "FLOAT":
+            return "setFloat";
+        case "NULL":
+            return null;
+        case "UNKNOWN": // anything
+        case "JAVA_OBJECT":
+            return "setObject";
+        case "BLOB":
+            return "setBlob";
+        case "CLOB":
+            return "setClob";
+        case "ARRAY":
+            return "setArray";
+        case "RESULT_SET":
+            return "setResultSet"; // TODO
+        }
+        return "setObject";
     }
 }

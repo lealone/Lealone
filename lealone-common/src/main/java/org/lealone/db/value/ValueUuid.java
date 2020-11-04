@@ -119,6 +119,10 @@ public class ValueUuid extends Value {
         return (ValueUuid) Value.cache(new ValueUuid(high, low));
     }
 
+    public static ValueUuid get(UUID uuid) {
+        return get(uuid.getMostSignificantBits(), uuid.getLeastSignificantBits());
+    }
+
     @Override
     public String getSQL() {
         return StringUtils.quoteStringSQL(getString());
@@ -175,6 +179,11 @@ public class ValueUuid extends Value {
 
     @Override
     public Object getObject() {
+        return new UUID(high, low);
+    }
+
+    @Override
+    public UUID getUuid() {
         return new UUID(high, low);
     }
 

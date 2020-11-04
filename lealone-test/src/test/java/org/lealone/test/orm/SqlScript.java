@@ -199,10 +199,13 @@ public class SqlScript {
 
     public static void createHelloWorldService(SqlExecutor executor) {
         System.out.println("create service: hello_world_service");
-
+        executor.execute("drop service if exists hello_world_service");
         // 创建服务: hello_world_service
         executor.execute("create service hello_world_service (" //
                 + "             say_hello() void," //
+                + "             get_date() date," //
+                + "             get_int() int," //
+                + "             get_two(name varchar, age int) int," //
                 + "             say_goodbye_to(name varchar) varchar" //
                 + "         ) package '" + SERVICE_PACKAGE_NAME + "'" //
                 + "           implement by '" + HelloWorldServiceImpl.class.getName() + "'" //

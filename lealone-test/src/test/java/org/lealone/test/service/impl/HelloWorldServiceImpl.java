@@ -17,6 +17,8 @@
  */
 package org.lealone.test.service.impl;
 
+import java.sql.Date;
+
 import org.lealone.test.service.generated.HelloWorldService;
 
 public class HelloWorldServiceImpl implements HelloWorldService {
@@ -31,4 +33,19 @@ public class HelloWorldServiceImpl implements HelloWorldService {
         return "Bye " + name;
     }
 
+    @Override
+    public Date getDate() {
+        return new Date(System.currentTimeMillis());
+    }
+
+    @Override
+    public Integer getInt() {
+        return 0;
+    }
+
+    @Override
+    public Integer getTwo(String name, Integer age) {
+        System.out.println("getTwo, name: " + name);
+        return age + 10;
+    }
 }

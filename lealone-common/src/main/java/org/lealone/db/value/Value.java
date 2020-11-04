@@ -12,6 +12,9 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.lang.ref.SoftReference;
 import java.math.BigDecimal;
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,6 +22,7 @@ import java.sql.SQLException;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.UUID;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DateTimeUtils;
@@ -424,12 +428,28 @@ public abstract class Value implements Comparable<Value> {
         return ((ValueLong) convertTo(Value.LONG)).getLong();
     }
 
+    public UUID getUuid() {
+        return ((ValueUuid) convertTo(Value.UUID)).getUuid();
+    }
+
     public InputStream getInputStream() {
         return new ByteArrayInputStream(getBytesNoCopy());
     }
 
     public Reader getReader() {
         return new StringReader(getString());
+    }
+
+    public Blob getBlob() {
+        return new ReadonlyBlob(ValueLob.createSmallLob(Value.BLOB, getBytesNoCopy()));
+    }
+
+    public Clob getClob() {
+        return new ReadonlyClob(ValueLob.createSmallLob(Value.CLOB, getString().getBytes(Constants.UTF8)));
+    }
+
+    public Array getArray() {
+        return new ReadonlyArray(ValueArray.get(new Value[] { ValueString.get(getString()) }));
     }
 
     /**

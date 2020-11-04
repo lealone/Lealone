@@ -26,6 +26,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.SchemaObjectBase;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.value.Value;
 
 public class Service extends SchemaObjectBase {
 
@@ -118,6 +119,20 @@ public class Service extends SchemaObjectBase {
         Service service = schema.findService(session, serviceName);
         if (service != null) {
             return service.getExecutor().executeService(methodName, json);
+        } else {
+            throw new RuntimeException("service " + serviceName + " not found");
+        }
+    }
+
+    public static Value execute(ServerSession session, String serviceName, String methodName, Value[] methodArgs) {
+        String schemaName = session.getCurrentSchemaName();
+        Schema schema = session.getDatabase().findSchema(session, schemaName);
+        if (schema == null) {
+            throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
+        }
+        Service service = schema.findService(session, serviceName);
+        if (service != null) {
+            return service.getExecutor().executeService(methodName, methodArgs);
         } else {
             throw new RuntimeException("service " + serviceName + " not found");
         }

@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import org.lealone.db.Procedure;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
@@ -20,32 +19,13 @@ import org.lealone.sql.expression.Parameter;
  * This class represents the statement
  * EXECUTE
  */
-public class ExecuteProcedure extends ManipulationStatement {
+public class ExecuteProcedure extends ExecuteStatement {
 
-    private final ArrayList<Expression> expressions = new ArrayList<>();
-    private Procedure procedure;
+    private final Procedure procedure;
 
-    public ExecuteProcedure(ServerSession session) {
+    public ExecuteProcedure(ServerSession session, Procedure procedure) {
         super(session);
-    }
-
-    @Override
-    public int getType() {
-        return SQLStatement.EXECUTE;
-    }
-
-    public void setProcedure(Procedure procedure) {
         this.procedure = procedure;
-    }
-
-    /**
-     * Set the expression at the given index.
-     *
-     * @param index the index (0 based)
-     * @param expr the expression
-     */
-    public void setExpression(int index, Expression expr) {
-        expressions.add(index, expr);
     }
 
     @Override

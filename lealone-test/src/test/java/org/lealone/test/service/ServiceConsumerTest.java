@@ -18,9 +18,7 @@
 package org.lealone.test.service;
 
 import org.junit.Test;
-import org.lealone.test.orm.generated.User;
 import org.lealone.test.service.generated.HelloWorldService;
-import org.lealone.test.service.generated.UserService;
 import org.lealone.test.sql.SqlTestBase;
 
 public class ServiceConsumerTest extends SqlTestBase {
@@ -35,16 +33,19 @@ public class ServiceConsumerTest extends SqlTestBase {
         String r = helloWorldService.sayGoodbyeTo("zhh");
         System.out.println(r);
 
-        UserService userService = UserService.create(url);
+        System.out.println(helloWorldService.getDate());
+        System.out.println(helloWorldService.getTwo("zhh", 18));
 
-        User user = new User().name.set("zhh").phone.set(123);
-        userService.add(user);
-
-        user = userService.find("zhh");
-
-        user.notes.set("call remote service");
-        userService.update(user);
-
-        userService.delete("zhh");
+        // UserService userService = UserService.create(url);
+        //
+        // User user = new User().name.set("zhh").phone.set(123);
+        // userService.add(user);
+        //
+        // user = userService.find("zhh");
+        //
+        // user.notes.set("call remote service");
+        // userService.update(user);
+        //
+        // userService.delete("zhh");
     }
 }

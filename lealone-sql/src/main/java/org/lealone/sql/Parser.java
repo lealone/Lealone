@@ -116,6 +116,8 @@ import org.lealone.sql.dml.Backup;
 import org.lealone.sql.dml.Call;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.ExecuteProcedure;
+import org.lealone.sql.dml.ExecuteService;
+import org.lealone.sql.dml.ExecuteStatement;
 import org.lealone.sql.dml.Explain;
 import org.lealone.sql.dml.GenScript;
 import org.lealone.sql.dml.Insert;
@@ -1320,14 +1322,24 @@ public class Parser implements SQLParser {
     }
 
     private StatementBase parseExecute() {
-        ExecuteProcedure command = new ExecuteProcedure(session);
-        String procedureName = readAliasIdentifier();
-        Procedure p = session.getProcedure(procedureName);
-        if (p == null) {
-            throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, procedureName);
+        ExecuteStatement command;
+        if (readIf("SERVICE")) {
+            String serviceName = readIdentifierWithSchema();
+            String methodName = readAliasIdentifier();
+            command = new ExecuteService(session, serviceName, methodName);
+        } else {
+            readIf("PROCEDURE");
+            String procedureName = readAliasIdentifier();
+            Procedure p = session.getProcedure(procedureName);
+            if (p == null) {
+                throw DbException.get(ErrorCode.FUNCTION_ALIAS_NOT_FOUND_1, procedureName);
+            }
+            command = new ExecuteProcedure(session, p);
         }
-        command.setProcedure(p);
         if (readIf("(")) {
+            if (readIf(")")) {
+                return command;
+            }
             for (int i = 0;; i++) {
                 command.setExpression(i, readExpression());
                 if (readIf(")")) {

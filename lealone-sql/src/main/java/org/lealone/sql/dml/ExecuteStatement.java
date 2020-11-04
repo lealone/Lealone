@@ -15,19 +15,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.db.service;
+package org.lealone.sql.dml;
 
-import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueNull;
+import java.util.ArrayList;
 
-public interface ServiceExecutor {
+import org.lealone.db.session.ServerSession;
+import org.lealone.sql.SQLStatement;
+import org.lealone.sql.expression.Expression;
 
-    final String NO_RETURN_VALUE = "__NO_RETURN_VALUE__";
+public abstract class ExecuteStatement extends ManipulationStatement {
 
-    String executeService(String methodName, String json);
+    protected final ArrayList<Expression> expressions = new ArrayList<>();
 
-    default Value executeService(String methodName, Value[] methodArgs) {
-        return ValueNull.INSTANCE;
+    public ExecuteStatement(ServerSession session) {
+        super(session);
     }
 
+    @Override
+    public int getType() {
+        return SQLStatement.EXECUTE;
+    }
+
+    /**
+     * Set the expression at the given index.
+     *
+     * @param index the index (0 based)
+     * @param expr the expression
+     */
+    public void setExpression(int index, Expression expr) {
+        expressions.add(index, expr);
+    }
 }
