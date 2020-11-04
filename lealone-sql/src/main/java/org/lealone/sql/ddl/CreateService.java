@@ -23,6 +23,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.UUID;
 
@@ -432,6 +433,84 @@ public class CreateService extends SchemaStatement {
 
         buff.append("    }\r\n");
 
+        // 生成String executeService(String methodName, Map<String, String> methodArgs)方法
+        importSet.add(Map.class.getName());
+        buff.append("\r\n");
+        buff.append("    @Override\r\n");
+        buff.append("    public String executeService(String methodName, Map<String, String> methodArgs) {\r\n");
+        buff.append("        switch (methodName) {\r\n");
+
+        hasNoReturnValueMethods = false;
+        index = 0;
+        for (CreateTable m : serviceMethods) {
+            index++;
+            // switch语句不同case代码块的本地变量名不能相同
+            String resultVarName = "result" + index;
+            CreateTableData data = m.data;
+
+            Column returnColumn = data.columns.get(data.columns.size() - 1);
+            String returnType = getTypeName(returnColumn, importSet);
+            if (returnType.equalsIgnoreCase("void")) {
+                hasNoReturnValueMethods = true;
+            }
+            StringBuilder argsBuff = new StringBuilder();
+            String methodName = toMethodName(data.tableName);
+            buff.append("        case \"").append(data.tableName).append("\":\r\n");
+            // 有参数，参数放在一个json数组中
+            int size = data.columns.size() - 1;
+            if (size > 0) {
+                for (int i = 0; i < size; i++) {
+                    if (i != 0) {
+                        argsBuff.append(", ");
+                    }
+                    Column c = data.columns.get(i);
+                    String cType = getTypeName(c, importSet);
+                    String cName = "p_" + toFieldName(c.getName()) + index;
+
+                    buff.append("            ").append(cType).append(" ").append(cName).append(" = ");
+                    switch (cType.toUpperCase()) {
+                    case "STRING":
+                        buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
+                        break;
+                    case "BYTES":
+                        buff.append("methodArgs.get(\"").append(c.getName()).append("\").getBytes();\r\n");
+                        break;
+                    default:
+                        buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"").append(c.getName())
+                                .append("\"));\r\n");
+                    }
+                    argsBuff.append(cName);
+                }
+            }
+            boolean isVoid = returnType.equalsIgnoreCase("void");
+            buff.append("            ");
+            if (!isVoid) {
+                buff.append(returnType).append(" ").append(resultVarName).append(" = ");
+            }
+            buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
+            if (!isVoid) {
+                buff.append("            if (").append(resultVarName).append(" == null)\r\n");
+                buff.append("                return null;\r\n");
+                if (returnColumn.getTable() != null) {
+                    importSet.add("org.lealone.orm.json.JsonObject");
+                    buff.append("            return JsonObject.mapFrom(").append(resultVarName)
+                            .append(").encode();\r\n");
+                } else if (!returnType.equalsIgnoreCase("string")) {
+                    buff.append("            return ").append(resultVarName).append(".toString();\r\n");
+                } else {
+                    buff.append("            return ").append(resultVarName).append(";\r\n");
+                }
+            } else {
+                buff.append("            break;\r\n");
+            }
+        }
+        buff.append("        default:\r\n");
+        buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
+        buff.append("        }\r\n");
+        if (hasNoReturnValueMethods)
+            buff.append("        return NO_RETURN_VALUE;\r\n");
+        buff.append("    }\r\n");
+
         // 生成public Value executeService(String methodName, Value[] methodArgs)方法
         // importSet.add(Value.class.getName());
         // importSet.add(ValueNull.class.getName());
@@ -746,6 +825,61 @@ public class CreateService extends SchemaStatement {
             break;
         }
         return "ja.getJsonObject(" + i + ").mapTo(" + type0 + ".class)";
+    }
+
+    // 根据具体类型调用合适的Map方法
+    private static String getMapMethodName(String type0) {
+        String type = type0.toUpperCase();
+        switch (type) {
+        case "BOOLEAN":
+            return "Boolean.valueOf";
+        case "BYTE":
+            return "Byte.valueOf";
+        case "SHORT":
+            return "Short.valueOf";
+        case "INTEGER":
+            return "Integer.valueOf";
+        case "LONG":
+            return "Long.valueOf";
+        case "DECIMAL":
+            return "new java.math.BigDecimal";
+        case "TIME":
+            return "java.sql.Time.valueOf";
+        case "DATE":
+            return "java.sql.Date.valueOf";
+        case "TIMESTAMP":
+            return "java.sql.Timestamp.valueOf";
+        case "BYTES":
+            return "s.getBytes()";
+        case "UUID":
+            return "java.util.UUID.fromString";
+        case "STRING":
+        case "STRING_IGNORECASE":
+        case "STRING_FIXED":
+            return "";
+        case "DOUBLE":
+            return "Double.valueOf";
+        case "FLOAT":
+            return "Float.valueOf";
+        case "NULL":
+            return null;
+        case "UNKNOWN": // anything
+        case "JAVA_OBJECT":
+            return "";
+        case "BLOB":
+            type0 = "java.sql.Blob";
+            break;
+        case "CLOB":
+            type0 = "java.sql.Clob";
+            break;
+        case "ARRAY":
+            type0 = "java.sql.Array";
+            break;
+        case "RESULT_SET":
+            type0 = "java.sql.ResultSet";
+            break;
+        }
+        return "";
     }
 
     // 根据具体类型调用合适的Value方法

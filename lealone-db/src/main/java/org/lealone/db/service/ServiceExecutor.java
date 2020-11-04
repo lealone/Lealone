@@ -17,6 +17,8 @@
  */
 package org.lealone.db.service;
 
+import java.util.Map;
+
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 
@@ -25,6 +27,10 @@ public interface ServiceExecutor {
     final String NO_RETURN_VALUE = "__NO_RETURN_VALUE__";
 
     String executeService(String methodName, String json);
+
+    default String executeService(String methodName, Map<String, String> methodArgs) {
+        return NO_RETURN_VALUE;
+    }
 
     default Value executeService(String methodName, Value[] methodArgs) {
         return ValueNull.INSTANCE;

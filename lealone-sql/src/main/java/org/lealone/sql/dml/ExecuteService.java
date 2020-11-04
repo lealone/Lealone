@@ -46,11 +46,6 @@ public class ExecuteService extends ExecuteStatement {
     }
 
     @Override
-    public void setExpression(int index, Expression expr) {
-        expressions.add(index, expr);
-    }
-
-    @Override
     public boolean isCacheable() {
         return true;
     }
@@ -62,7 +57,6 @@ public class ExecuteService extends ExecuteStatement {
 
     @Override
     public Result getMetaData() {
-
         LocalResult result = new LocalResult(session, resultExpressions, 1);
         result.done();
         return result;

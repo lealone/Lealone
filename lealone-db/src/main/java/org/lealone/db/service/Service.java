@@ -17,6 +17,8 @@
  */
 package org.lealone.db.service;
 
+import java.util.Map;
+
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.Database;
@@ -98,6 +100,31 @@ public class Service extends SchemaObjectBase {
             methodName = a[1];
         }
         return execute(session, session.getDatabase(), schemaName, serviceName, methodName, json);
+    }
+
+    public static String execute(String serviceName, String methodName, Map<String, String> methodArgs) {
+        serviceName = serviceName.toUpperCase();
+        methodName = methodName.toUpperCase();
+        String[] a = StringUtils.arraySplit(serviceName, '.');
+        if (a.length == 3) {
+            return execute(null, LealoneDatabase.getInstance().getDatabase(a[0]), a[1], a[2], methodName, methodArgs);
+        } else {
+            throw new RuntimeException("service " + serviceName + " not found");
+        }
+    }
+
+    private static String execute(ServerSession session, Database db, String schemaName, String serviceName,
+            String methodName, Map<String, String> methodArgs) {
+        Schema schema = db.findSchema(session, schemaName);
+        if (schema == null) {
+            throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
+        }
+        Service service = schema.findService(session, serviceName);
+        if (service != null) {
+            return service.getExecutor().executeService(methodName, methodArgs);
+        } else {
+            throw new RuntimeException("service " + serviceName + " not found");
+        }
     }
 
     public static String execute(String serviceName, String json) {

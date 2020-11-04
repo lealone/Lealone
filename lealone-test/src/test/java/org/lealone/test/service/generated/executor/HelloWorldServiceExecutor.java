@@ -1,6 +1,7 @@
 package org.lealone.test.service.generated.executor;
 
 import java.sql.Date;
+import java.util.Map;
 import org.lealone.db.service.ServiceExecutor;
 import org.lealone.db.value.*;
 import org.lealone.orm.json.JsonArray;
@@ -46,6 +47,41 @@ public class HelloWorldServiceExecutor implements ServiceExecutor {
         case "SAY_GOODBYE_TO":
             ja = new JsonArray(json);
             String p_name5 = ja.getString(0);
+            String result5 = this.s.sayGoodbyeTo(p_name5);
+            if (result5 == null)
+                return null;
+            return result5;
+        default:
+            throw new RuntimeException("no method: " + methodName);
+        }
+        return NO_RETURN_VALUE;
+    }
+
+    @Override
+    public String executeService(String methodName, Map<String, String> methodArgs) {
+        switch (methodName) {
+        case "SAY_HELLO":
+            this.s.sayHello();
+            break;
+        case "GET_DATE":
+            Date result2 = this.s.getDate();
+            if (result2 == null)
+                return null;
+            return result2.toString();
+        case "GET_INT":
+            Integer result3 = this.s.getInt();
+            if (result3 == null)
+                return null;
+            return result3.toString();
+        case "GET_TWO":
+            String p_name4 = methodArgs.get("NAME");
+            Integer p_age4 = Integer.valueOf(methodArgs.get("AGE"));
+            Integer result4 = this.s.getTwo(p_name4, p_age4);
+            if (result4 == null)
+                return null;
+            return result4.toString();
+        case "SAY_GOODBYE_TO":
+            String p_name5 = methodArgs.get("NAME");
             String result5 = this.s.sayGoodbyeTo(p_name5);
             if (result5 == null)
                 return null;
