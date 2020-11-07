@@ -43,7 +43,6 @@ import org.lealone.db.Mode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.schema.Sequence;
-import org.lealone.db.service.Service;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
@@ -107,8 +106,6 @@ public class Function extends Expression implements FunctionCall {
             MEMORY_USED = 213, LOCK_MODE = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217, LINK_SCHEMA = 218,
             GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, TABLE = 223, TABLE_DISTINCT = 224,
             FILE_READ = 225, TRANSACTION_ID = 226, TRUNCATE_VALUE = 227, NVL2 = 228, DECODE = 229, ARRAY_CONTAINS = 230;
-
-    public static final int EXECUTE_SERVICE_NO_RETURN_VALUE = 500, EXECUTE_SERVICE_WITH_RETURN_VALUE = 501;
 
     /**
      * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
@@ -373,11 +370,6 @@ public class Function extends Expression implements FunctionCall {
 
         // pseudo function
         addFunctionWithNull("ROW_NUMBER", ROW_NUMBER, 0, Value.LONG);
-
-        // service function
-        addFunctionNotDeterministic("EXECUTE_SERVICE_NO_RETURN_VALUE", EXECUTE_SERVICE_NO_RETURN_VALUE, 2, Value.NULL);
-        addFunctionNotDeterministic("EXECUTE_SERVICE_WITH_RETURN_VALUE", EXECUTE_SERVICE_WITH_RETURN_VALUE, 2,
-                Value.STRING);
     }
 
     protected Function(Database database, FunctionInfo info) {
@@ -945,21 +937,6 @@ public class Function extends Expression implements FunctionCall {
         }
         case TRANSACTION_ID: {
             result = session.getTransactionId();
-            break;
-        }
-        case EXECUTE_SERVICE_NO_RETURN_VALUE: {
-            Value v1 = getNullOrValue(session, args, values, 1);
-            Service.execute(session, v0.getString(), v1.getString());
-            result = ValueNull.INSTANCE;
-            break;
-        }
-        case EXECUTE_SERVICE_WITH_RETURN_VALUE: {
-            Value v1 = getNullOrValue(session, args, values, 1);
-            String r = Service.execute(session, v0.getString(), v1.getString());
-            if (r == null)
-                result = ValueNull.INSTANCE;
-            else
-                result = ValueString.get(r);
             break;
         }
         default:
