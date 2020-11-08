@@ -34,6 +34,10 @@ public class ReadonlyClob extends TraceObject implements Clob, NClob {
         this.trace = Trace.NO_TRACE;
     }
 
+    public ReadonlyClob(String value) {
+        this(ValueString.get(value));
+    }
+
     /**
      * Returns the length.
      *

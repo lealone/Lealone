@@ -152,13 +152,11 @@ public class CreateService extends SchemaStatement {
         StringBuilder buff = new StringBuilder();
         StringBuilder ibuff = new StringBuilder();
         StringBuilder proxyMethodsBuff = new StringBuilder();
-        StringBuilder proxyMethodsBuffJdbc = new StringBuilder();
 
         StringBuilder psBuff = new StringBuilder();
         StringBuilder psInitBuff = new StringBuilder();
 
         TreeSet<String> importSet = new TreeSet<>();
-        importSet.add("org.lealone.orm.json.JsonArray");
         importSet.add("org.lealone.client.ClientServiceProxy");
         importSet.add("java.sql.*");
 
@@ -170,7 +168,7 @@ public class CreateService extends SchemaStatement {
         buff.append("        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())\r\n");
         buff.append("            return new ").append(getServiceImplementClassName()).append("();\r\n");
         buff.append("        else;\r\n");
-        buff.append("            return new JdbcProxy(url);\r\n");
+        buff.append("            return new ServiceProxy(url);\r\n");
         buff.append("    }\r\n");
 
         int methodIndex = 0;
@@ -180,7 +178,6 @@ public class CreateService extends SchemaStatement {
             CreateTableData data = m.data;
             buff.append("\r\n");
             proxyMethodsBuff.append("\r\n");
-            proxyMethodsBuffJdbc.append("\r\n");
 
             psBuff.append("        private final PreparedStatement ").append(psVarName).append(";\r\n");
             psInitBuff.append("            ").append(psVarName)
@@ -202,116 +199,70 @@ public class CreateService extends SchemaStatement {
             proxyMethodsBuff.append("        @Override\r\n");
             proxyMethodsBuff.append("        public ").append(returnType).append(" ").append(methodName).append("(");
 
-            proxyMethodsBuffJdbc.append("        @Override\r\n");
-            proxyMethodsBuffJdbc.append("        public ").append(returnType).append(" ").append(methodName)
-                    .append("(");
-
             StringBuilder argsBuff = new StringBuilder();
-            StringBuilder argsBuffJdbc = new StringBuilder();
 
-            argsBuff.append("            JsonArray ja = new JsonArray();\r\n");
             for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
                 if (i != 0) {
                     buff.append(", ");
                     proxyMethodsBuff.append(", ");
-                    proxyMethodsBuffJdbc.append(", ");
                 }
                 Column c = data.columns.get(i);
                 String cType = getTypeName(c, importSet);
                 String cName = toFieldName(c.getName());
                 buff.append(cType).append(" ").append(cName);
                 proxyMethodsBuff.append(cType).append(" ").append(cName);
-                proxyMethodsBuffJdbc.append(cType).append(" ").append(cName);
-                if (c.getTable() != null) {
+                if (c.getTable() != null || cType.toUpperCase().equals("UUID")) {
                     importSet.add("org.lealone.orm.json.JsonObject");
-                    argsBuff.append("            ja.add(JsonObject.mapFrom(").append(cName).append("));\r\n");
-
-                    argsBuffJdbc.append("                ").append(psVarName).append(".setString(").append(i + 1)
+                    argsBuff.append("                ").append(psVarName).append(".setString(").append(i + 1)
                             .append(", JsonObject.mapFrom(").append(cName).append(").encode());\r\n");
                 } else {
-                    argsBuff.append("            ja.add(").append(cName).append(");\r\n");
-
-                    argsBuffJdbc.append("                ").append(psVarName).append(".")
+                    argsBuff.append("                ").append(psVarName).append(".")
                             .append(getPreparedStatementSetterMethodName(cType)).append("(").append(i + 1).append(", ")
                             .append(cName).append(");\r\n");
                 }
             }
             buff.append(");\r\n");
+
             proxyMethodsBuff.append(") {\r\n");
+            proxyMethodsBuff.append("            try {\r\n");
             proxyMethodsBuff.append(argsBuff);
             if (returnType.equalsIgnoreCase("void")) {
-                proxyMethodsBuff.append("            ClientServiceProxy.executeNoReturnValue(url, \"")
-                        .append(this.serviceName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
+                proxyMethodsBuff.append("                ").append(psVarName).append(".executeUpdate();\r\n");
             } else {
-                proxyMethodsBuff.append("            String result = ClientServiceProxy.executeWithReturnValue(url, \"")
-                        .append(this.serviceName).append('.').append(data.tableName).append("\", ja.encode());\r\n");
-                proxyMethodsBuff.append("            if (result != null) {\r\n");
+                proxyMethodsBuff.append("                ResultSet rs = ").append(psVarName)
+                        .append(".executeQuery();\r\n");
+                proxyMethodsBuff.append("                rs.next();\r\n");
+
                 if (returnColumn.getTable() != null) {
                     importSet.add("org.lealone.orm.json.JsonObject");
-                    proxyMethodsBuff.append("                JsonObject jo = new JsonObject(result);\r\n");
+                    proxyMethodsBuff.append("                JsonObject jo = new JsonObject(rs.getString(1));\r\n");
+                    proxyMethodsBuff.append("                rs.close();\r\n");
                     proxyMethodsBuff.append("                return jo.mapTo(").append(returnType)
                             .append(".class);\r\n");
                 } else {
-                    proxyMethodsBuff.append("                return ").append(getResultMethodName(returnType))
-                            .append(";\r\n");
-                }
-                proxyMethodsBuff.append("            }\r\n");
-                proxyMethodsBuff.append("            return null;\r\n");
-            }
-            proxyMethodsBuff.append("        }\r\n");
-
-            proxyMethodsBuffJdbc.append(") {\r\n");
-            proxyMethodsBuffJdbc.append("            try {\r\n");
-            proxyMethodsBuffJdbc.append(argsBuffJdbc);
-            if (returnType.equalsIgnoreCase("void")) {
-                proxyMethodsBuffJdbc.append("                ").append(psVarName).append(".executeUpdate();\r\n");
-            } else {
-                proxyMethodsBuffJdbc.append("                ResultSet rs = ").append(psVarName)
-                        .append(".executeQuery();\r\n");
-                proxyMethodsBuffJdbc.append("                rs.next();\r\n");
-
-                if (returnColumn.getTable() != null) {
-                    importSet.add("org.lealone.orm.json.JsonObject");
-                    proxyMethodsBuffJdbc.append("                JsonObject jo = new JsonObject(rs.getString(1));\r\n");
-                    proxyMethodsBuffJdbc.append("                rs.close();\r\n");
-                    proxyMethodsBuffJdbc.append("                return jo.mapTo(").append(returnType)
-                            .append(".class);\r\n");
-                } else {
-                    proxyMethodsBuffJdbc.append("                ").append(returnType).append(" ret = rs.")
+                    proxyMethodsBuff.append("                ").append(returnType).append(" ret = rs.")
                             .append(getResultSetReturnMethodName(returnType)).append("(1);\r\n");
-                    proxyMethodsBuffJdbc.append("                rs.close();\r\n");
-                    proxyMethodsBuffJdbc.append("                return ret;\r\n");
+                    proxyMethodsBuff.append("                rs.close();\r\n");
+                    proxyMethodsBuff.append("                return ret;\r\n");
                 }
             }
-            proxyMethodsBuffJdbc.append("            } catch (Throwable e) {\r\n");
-            proxyMethodsBuffJdbc.append("                throw ClientServiceProxy.failed(\"").append(this.serviceName)
+            proxyMethodsBuff.append("            } catch (Throwable e) {\r\n");
+            proxyMethodsBuff.append("                throw ClientServiceProxy.failed(\"").append(this.serviceName)
                     .append('.').append(data.tableName).append("\", e);\r\n");
-            proxyMethodsBuffJdbc.append("            }\r\n");
-            proxyMethodsBuffJdbc.append("        }\r\n");
+            proxyMethodsBuff.append("            }\r\n");
+            proxyMethodsBuff.append("        }\r\n");
         }
 
-        // 生成Proxy类
+        // 生成Service Proxy类
         buff.append("\r\n");
-        buff.append("    static class Proxy implements ").append(serviceName).append(" {\r\n");
-        buff.append("\r\n");
-        buff.append("        private final String url;\r\n");
-        buff.append("\r\n");
-        buff.append("        private Proxy(String url) {\r\n");
-        buff.append("            this.url = url;\r\n");
-        buff.append("        }\r\n");
-        buff.append(proxyMethodsBuff);
-        buff.append("    }\r\n");
-
-        // 生成Jdbc Proxy类
-        buff.append("\r\n");
-        buff.append("    static class JdbcProxy implements ").append(serviceName).append(" {\r\n");
+        buff.append("    static class ServiceProxy implements ").append(serviceName).append(" {\r\n");
         buff.append("\r\n");
         buff.append(psBuff);
         buff.append("\r\n");
-        buff.append("        private JdbcProxy(String url) {\r\n");
+        buff.append("        private ServiceProxy(String url) {\r\n");
         buff.append(psInitBuff);
         buff.append("        }\r\n");
-        buff.append(proxyMethodsBuffJdbc);
+        buff.append(proxyMethodsBuff);
         buff.append("    }\r\n");
         buff.append("}\r\n");
 
@@ -333,6 +284,161 @@ public class CreateService extends SchemaStatement {
 
     private String getServiceImplementClassName() {
         return implementBy;
+    }
+
+    private abstract class ServiceExecutorMethodGenerator {
+        public void genCode(StringBuilder buff, TreeSet<String> importSet, String method) {
+            genCode(buff, importSet, method, "");
+        }
+
+        public void genCode(StringBuilder buff, TreeSet<String> importSet, String method, String varInit) {
+            buff.append("\r\n");
+            buff.append("    @Override\r\n");
+            buff.append("    public ").append(method).append(" {\r\n");
+            buff.append(varInit);
+            buff.append("        switch (methodName) {\r\n");
+
+            boolean hasNoReturnValueMethods = false;
+            int index = 0;
+            for (CreateTable m : serviceMethods) {
+                index++;
+                // switch语句不同case代码块的本地变量名不能相同
+                String resultVarName = "result" + index;
+                CreateTableData data = m.data;
+
+                Column returnColumn = data.columns.get(data.columns.size() - 1);
+                String returnType = getTypeName(returnColumn, importSet);
+                if (returnType.equalsIgnoreCase("void")) {
+                    hasNoReturnValueMethods = true;
+                }
+                StringBuilder argsBuff = new StringBuilder();
+                String methodName = toMethodName(data.tableName);
+                buff.append("        case \"").append(data.tableName).append("\":\r\n");
+                // 有参数，参数放在一个json数组中
+                int size = data.columns.size() - 1;
+                if (size > 0) {
+                    if (varInit.length() > 0)
+                        buff.append("            ja = new JsonArray(json);\r\n");
+                    for (int i = 0; i < size; i++) {
+                        if (i != 0) {
+                            argsBuff.append(", ");
+                        }
+                        Column c = data.columns.get(i);
+                        String cType = getTypeName(c, importSet);
+                        String cName = "p_" + toFieldName(c.getName()) + index;
+
+                        buff.append("            ").append(cType).append(" ").append(cName).append(" = ");
+                        genVarInitCode(buff, importSet, c, cType, i);
+                        argsBuff.append(cName);
+                    }
+                }
+                boolean isVoid = returnType.equalsIgnoreCase("void");
+                buff.append("            ");
+                if (!isVoid) {
+                    buff.append(returnType).append(" ").append(resultVarName).append(" = ");
+                }
+                buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
+                if (!isVoid) {
+                    genReturnCode(buff, importSet, returnColumn, returnType, resultVarName);
+                } else {
+                    buff.append("            break;\r\n");
+                }
+            }
+            buff.append("        default:\r\n");
+            buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
+            buff.append("        }\r\n");
+            if (hasNoReturnValueMethods)
+                buff.append("        return ").append(getReturnType()).append(";\r\n");
+            buff.append("    }\r\n");
+        }
+
+        protected abstract void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
+                int cIndex);
+
+        protected void genReturnCode(StringBuilder buff, TreeSet<String> importSet, Column returnColumn,
+                String returnType, String resultVarName) {
+            buff.append("            if (").append(resultVarName).append(" == null)\r\n");
+            buff.append("                return null;\r\n");
+            if (returnColumn.getTable() != null) {
+                importSet.add("org.lealone.orm.json.JsonObject");
+                buff.append("            return JsonObject.mapFrom(").append(resultVarName).append(").encode();\r\n");
+            } else if (!returnType.equalsIgnoreCase("string")) {
+                buff.append("            return ").append(resultVarName).append(".toString();\r\n");
+            } else {
+                buff.append("            return ").append(resultVarName).append(";\r\n");
+            }
+        }
+
+        protected String getReturnType() {
+            return "NO_RETURN_VALUE";
+        }
+    }
+
+    private class ValueServiceExecutorMethodGenerator extends ServiceExecutorMethodGenerator {
+        @Override
+        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
+                int cIndex) {
+            if (c.getTable() != null) {
+                importSet.add("org.lealone.orm.json.JsonObject");
+                buff.append(" new JsonObject(").append("methodArgs[").append(cIndex).append("].getString()).mapTo(")
+                        .append(cType).append(".class);\r\n");
+            } else {
+                buff.append("methodArgs[").append(cIndex).append("].").append(getValueMethodName(cType))
+                        .append("();\r\n");
+            }
+        }
+
+        @Override
+        protected void genReturnCode(StringBuilder buff, TreeSet<String> importSet, Column returnColumn,
+                String returnType, String resultVarName) {
+            buff.append("            if (").append(resultVarName).append(" == null)\r\n");
+            buff.append("                return ValueNull.INSTANCE;\r\n");
+            if (returnColumn.getTable() != null) {
+                importSet.add("org.lealone.orm.json.JsonObject");
+                buff.append("            return ValueString.get(JsonObject.mapFrom(").append(resultVarName)
+                        .append(").encode());\r\n");
+            } else {
+                buff.append("            return ").append(getReturnMethodName(returnType)).append("(")
+                        .append(resultVarName).append(")").append(";\r\n");
+            }
+        }
+
+        @Override
+        protected String getReturnType() {
+            return "ValueNull.INSTANCE";
+        }
+    }
+
+    private class MapServiceExecutorMethodGenerator extends ServiceExecutorMethodGenerator {
+        @Override
+        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
+                int cIndex) {
+            if (c.getTable() != null) {
+                importSet.add("org.lealone.orm.json.JsonObject");
+                buff.append(" new JsonObject(").append("methodArgs.get(\"").append(c.getName()).append("\")).mapTo(")
+                        .append(cType).append(".class);\r\n");
+            } else {
+                switch (cType.toUpperCase()) {
+                case "STRING":
+                    buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
+                    break;
+                case "BYTE[]":
+                    buff.append("methodArgs.get(\"").append(c.getName()).append("\").getBytes();\r\n");
+                    break;
+                default:
+                    buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"").append(c.getName())
+                            .append("\"));\r\n");
+                }
+            }
+        }
+    }
+
+    private class JsonServiceExecutorMethodGenerator extends ServiceExecutorMethodGenerator {
+        @Override
+        protected void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
+                int cIndex) {
+            buff.append(getJsonArrayMethodName(cType, cIndex)).append(";\r\n");
+        }
     }
 
     private void genServiceExecutorCode() {
@@ -359,248 +465,37 @@ public class CreateService extends SchemaStatement {
         buff.append("\r\n");
         buff.append("    private final ").append(serviceImplementClassName).append(" s = new ")
                 .append(serviceImplementClassName).append("();\r\n");
-        buff.append("\r\n");
-        buff.append("    public ").append(className).append("() {\r\n");
-        buff.append("    }\r\n");
-        buff.append("\r\n");
-        buff.append("    @Override\r\n");
-        buff.append("    public String executeService(String methodName, String json) {\r\n");
+
+        // 生成默认构造函数
+        // buff.append("\r\n");
+        // buff.append(" public ").append(className).append("() {\r\n");
+        // buff.append(" }\r\n");
+        // buff.append("\r\n");
+
+        // 生成public Value executeService(String methodName, Value[] methodArgs)方法
+        importSet.add("org.lealone.db.value.*");
+        new ValueServiceExecutorMethodGenerator().genCode(buff, importSet,
+                "Value executeService(String methodName, Value[] methodArgs)");
+
+        // 生成public String executeService(String methodName, Map<String, String> methodArgs)方法
+        importSet.add(Map.class.getName());
+        new MapServiceExecutorMethodGenerator().genCode(buff, importSet,
+                "String executeService(String methodName, Map<String, String> methodArgs)");
+
+        // 生成public String executeService(String methodName, String json)方法
         // 提前看一下是否用到JsonArray
+        String varInit = "";
         for (CreateTable m : serviceMethods) {
             if (m.data.columns.size() - 1 > 0) {
-                buff.append("        JsonArray ja = null;\r\n");
+                importSet.add("org.lealone.orm.json.JsonArray");
+                varInit = "        JsonArray ja = null;\r\n";
                 break;
             }
         }
-        buff.append("        switch (methodName) {\r\n");
+        new JsonServiceExecutorMethodGenerator().genCode(buff, importSet,
+                "String executeService(String methodName, String json)", varInit);
 
-        boolean hasNoReturnValueMethods = false;
-        int index = 0;
-        for (CreateTable m : serviceMethods) {
-            index++;
-            // switch语句不同case代码块的本地变量名不能相同
-            String resultVarName = "result" + index;
-            CreateTableData data = m.data;
-
-            Column returnColumn = data.columns.get(data.columns.size() - 1);
-            String returnType = getTypeName(returnColumn, importSet);
-            if (returnType.equalsIgnoreCase("void")) {
-                hasNoReturnValueMethods = true;
-            }
-            StringBuilder argsBuff = new StringBuilder();
-            String methodName = toMethodName(data.tableName);
-            buff.append("        case \"").append(data.tableName).append("\":\r\n");
-            // 有参数，参数放在一个json数组中
-            int size = data.columns.size() - 1;
-            if (size > 0) {
-                importSet.add("org.lealone.orm.json.JsonArray");
-                buff.append("            ja = new JsonArray(json);\r\n");
-                for (int i = 0; i < size; i++) {
-                    if (i != 0) {
-                        argsBuff.append(", ");
-                    }
-                    Column c = data.columns.get(i);
-                    String cType = getTypeName(c, importSet);
-                    String cName = "p_" + toFieldName(c.getName()) + index;
-                    buff.append("            ").append(cType).append(" ").append(cName).append(" = ")
-                            .append(getJsonArrayMethodName(cType, i)).append(";\r\n");
-                    argsBuff.append(cName);
-                }
-            }
-            boolean isVoid = returnType.equalsIgnoreCase("void");
-            buff.append("            ");
-            if (!isVoid) {
-                buff.append(returnType).append(" ").append(resultVarName).append(" = ");
-            }
-            buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
-            if (!isVoid) {
-                buff.append("            if (").append(resultVarName).append(" == null)\r\n");
-                buff.append("                return null;\r\n");
-                if (returnColumn.getTable() != null) {
-                    importSet.add("org.lealone.orm.json.JsonObject");
-                    buff.append("            return JsonObject.mapFrom(").append(resultVarName)
-                            .append(").encode();\r\n");
-                } else if (!returnType.equalsIgnoreCase("string")) {
-                    buff.append("            return ").append(resultVarName).append(".toString();\r\n");
-                } else {
-                    buff.append("            return ").append(resultVarName).append(";\r\n");
-                }
-            } else {
-                buff.append("            break;\r\n");
-            }
-        }
-        buff.append("        default:\r\n");
-        buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
-        buff.append("        }\r\n");
-        if (hasNoReturnValueMethods)
-            buff.append("        return NO_RETURN_VALUE;\r\n");
-
-        buff.append("    }\r\n");
-
-        // 生成String executeService(String methodName, Map<String, String> methodArgs)方法
-        importSet.add(Map.class.getName());
-        buff.append("\r\n");
-        buff.append("    @Override\r\n");
-        buff.append("    public String executeService(String methodName, Map<String, String> methodArgs) {\r\n");
-        buff.append("        switch (methodName) {\r\n");
-
-        hasNoReturnValueMethods = false;
-        index = 0;
-        for (CreateTable m : serviceMethods) {
-            index++;
-            // switch语句不同case代码块的本地变量名不能相同
-            String resultVarName = "result" + index;
-            CreateTableData data = m.data;
-
-            Column returnColumn = data.columns.get(data.columns.size() - 1);
-            String returnType = getTypeName(returnColumn, importSet);
-            if (returnType.equalsIgnoreCase("void")) {
-                hasNoReturnValueMethods = true;
-            }
-            StringBuilder argsBuff = new StringBuilder();
-            String methodName = toMethodName(data.tableName);
-            buff.append("        case \"").append(data.tableName).append("\":\r\n");
-            // 有参数，参数放在一个json数组中
-            int size = data.columns.size() - 1;
-            if (size > 0) {
-                for (int i = 0; i < size; i++) {
-                    if (i != 0) {
-                        argsBuff.append(", ");
-                    }
-                    Column c = data.columns.get(i);
-                    String cType = getTypeName(c, importSet);
-                    String cName = "p_" + toFieldName(c.getName()) + index;
-
-                    buff.append("            ").append(cType).append(" ").append(cName).append(" = ");
-                    if (c.getTable() != null) {
-                        importSet.add("org.lealone.orm.json.JsonObject");
-                        buff.append(" new JsonObject(").append("methodArgs.get(\"").append(c.getName())
-                                .append("\")).mapTo(").append(cType).append(".class);\r\n");
-                    } else {
-                        switch (cType.toUpperCase()) {
-                        case "STRING":
-                            buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
-                            break;
-                        case "BYTES":
-                            buff.append("methodArgs.get(\"").append(c.getName()).append("\").getBytes();\r\n");
-                            break;
-                        default:
-                            buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"")
-                                    .append(c.getName()).append("\"));\r\n");
-                        }
-                    }
-                    argsBuff.append(cName);
-                }
-            }
-            boolean isVoid = returnType.equalsIgnoreCase("void");
-            buff.append("            ");
-            if (!isVoid) {
-                buff.append(returnType).append(" ").append(resultVarName).append(" = ");
-            }
-            buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
-            if (!isVoid) {
-                buff.append("            if (").append(resultVarName).append(" == null)\r\n");
-                buff.append("                return null;\r\n");
-                if (returnColumn.getTable() != null) {
-                    importSet.add("org.lealone.orm.json.JsonObject");
-                    buff.append("            return JsonObject.mapFrom(").append(resultVarName)
-                            .append(").encode();\r\n");
-                } else if (!returnType.equalsIgnoreCase("string")) {
-                    buff.append("            return ").append(resultVarName).append(".toString();\r\n");
-                } else {
-                    buff.append("            return ").append(resultVarName).append(";\r\n");
-                }
-            } else {
-                buff.append("            break;\r\n");
-            }
-        }
-        buff.append("        default:\r\n");
-        buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
-        buff.append("        }\r\n");
-        if (hasNoReturnValueMethods)
-            buff.append("        return NO_RETURN_VALUE;\r\n");
-        buff.append("    }\r\n");
-
-        // 生成public Value executeService(String methodName, Value[] methodArgs)方法
-        // importSet.add(Value.class.getName());
-        // importSet.add(ValueNull.class.getName());
-        importSet.add("org.lealone.db.value.*");
-        buff.append("\r\n");
-        buff.append("    @Override\r\n");
-        buff.append("    public Value executeService(String methodName, Value[] methodArgs) {\r\n");
-        buff.append("        switch (methodName) {\r\n");
-
-        hasNoReturnValueMethods = false;
-        index = 0;
-        for (CreateTable m : serviceMethods) {
-            index++;
-            // switch语句不同case代码块的本地变量名不能相同
-            String resultVarName = "result" + index;
-            CreateTableData data = m.data;
-
-            Column returnColumn = data.columns.get(data.columns.size() - 1);
-            String returnType = getTypeName(returnColumn, importSet);
-            if (returnType.equalsIgnoreCase("void")) {
-                hasNoReturnValueMethods = true;
-            }
-            StringBuilder argsBuff = new StringBuilder();
-            String methodName = toMethodName(data.tableName);
-            buff.append("        case \"").append(data.tableName).append("\":\r\n");
-            // 有参数，参数放在一个json数组中
-            int size = data.columns.size() - 1;
-            if (size > 0) {
-                for (int i = 0; i < size; i++) {
-                    if (i != 0) {
-                        argsBuff.append(", ");
-                    }
-                    Column c = data.columns.get(i);
-                    String cType = getTypeName(c, importSet);
-                    String cName = "p_" + toFieldName(c.getName()) + index;
-                    buff.append("            ").append(cType).append(" ").append(cName).append(" = ");
-                    if (c.getTable() != null) {
-                        importSet.add("org.lealone.orm.json.JsonObject");
-                        buff.append(" new JsonObject(").append("methodArgs[").append(i).append("].getString()).mapTo(")
-                                .append(cType).append(".class);\r\n");
-                    } else {
-                        buff.append("methodArgs[").append(i).append("].").append(getValueMethodName(cType))
-                                .append("();\r\n");
-                    }
-                    argsBuff.append(cName);
-                }
-            }
-            boolean isVoid = returnType.equalsIgnoreCase("void");
-            buff.append("            ");
-            if (!isVoid) {
-                buff.append(returnType).append(" ").append(resultVarName).append(" = ");
-            }
-            buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
-            if (!isVoid) {
-
-                buff.append("            if (").append(resultVarName).append(" == null)\r\n");
-                buff.append("                return ValueNull.INSTANCE;\r\n");
-
-                if (returnColumn.getTable() != null) {
-                    importSet.add("org.lealone.orm.json.JsonObject");
-                    buff.append("            return ValueString.get(JsonObject.mapFrom(").append(resultVarName)
-                            .append(").encode());\r\n");
-                } else {
-                    buff.append("            return ")// .append("org.lealone.db.value.")
-                            .append(getReturnMethodName(returnType)).append("(").append(resultVarName).append(")")
-                            .append(";\r\n");
-                }
-            } else {
-                buff.append("            break;\r\n");
-            }
-        }
-        buff.append("        default:\r\n");
-        buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
-        buff.append("        }\r\n");
-        if (hasNoReturnValueMethods)
-            buff.append("        return ValueNull.INSTANCE;\r\n");
-
-        buff.append("    }\r\n");
         buff.append("}\r\n");
-
         ibuff.append("package ").append(getExecutorPackageName()).append(";\r\n");
         ibuff.append("\r\n");
         for (String i : importSet) {
@@ -687,61 +582,6 @@ public class CreateService extends SchemaStatement {
         return cType;
     }
 
-    private static String getResultMethodName(String type) {
-        type = type.toUpperCase();
-        switch (type) {
-        case "BOOLEAN":
-            return "Boolean.valueOf(result)";
-        case "BYTE":
-            return "Byte.valueOf(result)";
-        case "SHORT":
-            return "Short.valueOf(result)";
-        case "INTEGER":
-            return "Integer.valueOf(result)";
-        case "LONG":
-            return "Long.valueOf(result)";
-        case "DECIMAL":
-            return "new java.math.BigDecimal(result)";
-        case "TIME":
-            return "java.sql.Time.valueOf(result)";
-        case "DATE":
-            return "java.sql.Date.valueOf(result)";
-        case "TIMESTAMP":
-            return "java.sql.Timestamp.valueOf(result)";
-        case "BYTES":
-            // "[B", not "byte[]";
-            return "result.getBytes()";
-        case "UUID":
-            return "java.util.UUID.fromString(result)";
-        case "STRING":
-        case "STRING_IGNORECASE":
-        case "STRING_FIXED":
-            return "result";
-        case "DOUBLE":
-            return "Double.valueOf(result)";
-        case "FLOAT":
-            return "Float.valueOf(result)";
-        case "NULL":
-            return null;
-        case "UNKNOWN": // anything
-        case "JAVA_OBJECT":
-            return "(Object)result";
-        case "BLOB":
-            type = "java.sql.Blob";
-            break;
-        case "CLOB":
-            type = "java.sql.Clob";
-            break;
-        case "ARRAY":
-            type = "java.sql.Array";
-            break;
-        case "RESULT_SET":
-            type = "java.sql.ResultSet";
-            break;
-        }
-        return "(" + type + ")result";
-    }
-
     private static String getReturnMethodName(String type) {
         type = type.toUpperCase();
         switch (type) {
@@ -763,7 +603,7 @@ public class CreateService extends SchemaStatement {
             return "ValueDate.get";
         case "TIMESTAMP":
             return "ValueTimestamp.get";
-        case "BYTES":
+        case "BYTE[]":
             return "ValueBytes.get";
         case "UUID":
             return "ValueUuid.get";
@@ -818,7 +658,7 @@ public class CreateService extends SchemaStatement {
             return m("java.sql.Date.valueOf", i);
         case "TIMESTAMP":
             return m("java.sql.Timestamp.valueOf", i);
-        case "BYTES":
+        case "BYTE[]":
             return "ja.getString(" + i + ").getBytes()";
         case "UUID":
             return m("java.util.UUID.fromString", i);
@@ -865,7 +705,7 @@ public class CreateService extends SchemaStatement {
             return "Integer.valueOf";
         case "LONG":
             return "Long.valueOf";
-        case "DECIMAL":
+        case "BIGDECIMAL":
             return "new java.math.BigDecimal";
         case "TIME":
             return "java.sql.Time.valueOf";
@@ -873,7 +713,7 @@ public class CreateService extends SchemaStatement {
             return "java.sql.Date.valueOf";
         case "TIMESTAMP":
             return "java.sql.Timestamp.valueOf";
-        case "BYTES":
+        case "BYTE[]":
             return "s.getBytes()";
         case "UUID":
             return "java.util.UUID.fromString";
@@ -891,14 +731,11 @@ public class CreateService extends SchemaStatement {
         case "JAVA_OBJECT":
             return "";
         case "BLOB":
-            type0 = "java.sql.Blob";
-            break;
+            return "new org.lealone.db.value.ReadonlyBlob";
         case "CLOB":
-            type0 = "java.sql.Clob";
-            break;
+            return "new org.lealone.db.value.ReadonlyClob";
         case "ARRAY":
-            type0 = "java.sql.Array";
-            break;
+            return "new org.lealone.db.value.ReadonlyArray";
         case "RESULT_SET":
             type0 = "java.sql.ResultSet";
             break;
@@ -920,7 +757,7 @@ public class CreateService extends SchemaStatement {
             return "getInt";
         case "LONG":
             return "getLong";
-        case "DECIMAL":
+        case "BIGDECIMAL":
             return "getBigDecimal";
         case "TIME":
             return "getTime";
@@ -928,7 +765,7 @@ public class CreateService extends SchemaStatement {
             return "getDate";
         case "TIMESTAMP":
             return "getTimestamp";
-        case "BYTES":
+        case "BYTE[]":
             return "getBytes";
         case "UUID":
             return "getUuid";
@@ -978,7 +815,7 @@ public class CreateService extends SchemaStatement {
             return "getDate";
         case "TIMESTAMP":
             return "getTimestamp";
-        case "BYTES":
+        case "BYTE[]":
             return "getBytes";
         case "UUID":
             return "getUuid"; // TODO
@@ -1028,7 +865,7 @@ public class CreateService extends SchemaStatement {
             return "setDate";
         case "TIMESTAMP":
             return "setTimestamp";
-        case "BYTES":
+        case "BYTE[]":
             return "setBytes";
         case "UUID":
             return "setUuid"; // TODO

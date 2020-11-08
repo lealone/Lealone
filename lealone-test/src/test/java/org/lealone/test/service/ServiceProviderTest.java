@@ -32,6 +32,6 @@ public class ServiceProviderTest extends SqlTestBase {
     public static void createService(SqlExecutor executor) {
         SqlScript.createUserService(executor);
         SqlScript.createHelloWorldService(executor);
-        // SqlScript.createAllTypeService(executor);
+        SqlScript.createAllTypeService(executor);
     }
 }

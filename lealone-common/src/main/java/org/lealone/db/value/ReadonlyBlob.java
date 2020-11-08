@@ -30,6 +30,10 @@ public class ReadonlyBlob extends TraceObject implements Blob {
         this.value = value;
     }
 
+    public ReadonlyBlob(String value) {
+        this(ValueString.get(value));
+    }
+
     /**
      * Returns the length.
      *

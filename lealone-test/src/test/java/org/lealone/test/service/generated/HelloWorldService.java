@@ -3,7 +3,6 @@ package org.lealone.test.service.generated;
 import java.sql.*;
 import java.sql.Date;
 import org.lealone.client.ClientServiceProxy;
-import org.lealone.orm.json.JsonArray;
 
 /**
  * Service interface for 'hello_world_service'.
@@ -16,7 +15,7 @@ public interface HelloWorldService {
         if (new org.lealone.db.ConnectionInfo(url).isEmbedded())
             return new org.lealone.test.service.impl.HelloWorldServiceImpl();
         else;
-            return new JdbcProxy(url);
+            return new ServiceProxy(url);
     }
 
     void sayHello();
@@ -29,65 +28,7 @@ public interface HelloWorldService {
 
     String sayGoodbyeTo(String name);
 
-    static class Proxy implements HelloWorldService {
-
-        private final String url;
-
-        private Proxy(String url) {
-            this.url = url;
-        }
-
-        @Override
-        public void sayHello() {
-            JsonArray ja = new JsonArray();
-            ClientServiceProxy.executeNoReturnValue(url, "HELLO_WORLD_SERVICE.SAY_HELLO", ja.encode());
-        }
-
-        @Override
-        public Date getDate() {
-            JsonArray ja = new JsonArray();
-            String result = ClientServiceProxy.executeWithReturnValue(url, "HELLO_WORLD_SERVICE.GET_DATE", ja.encode());
-            if (result != null) {
-                return java.sql.Date.valueOf(result);
-            }
-            return null;
-        }
-
-        @Override
-        public Integer getInt() {
-            JsonArray ja = new JsonArray();
-            String result = ClientServiceProxy.executeWithReturnValue(url, "HELLO_WORLD_SERVICE.GET_INT", ja.encode());
-            if (result != null) {
-                return Integer.valueOf(result);
-            }
-            return null;
-        }
-
-        @Override
-        public Integer getTwo(String name, Integer age) {
-            JsonArray ja = new JsonArray();
-            ja.add(name);
-            ja.add(age);
-            String result = ClientServiceProxy.executeWithReturnValue(url, "HELLO_WORLD_SERVICE.GET_TWO", ja.encode());
-            if (result != null) {
-                return Integer.valueOf(result);
-            }
-            return null;
-        }
-
-        @Override
-        public String sayGoodbyeTo(String name) {
-            JsonArray ja = new JsonArray();
-            ja.add(name);
-            String result = ClientServiceProxy.executeWithReturnValue(url, "HELLO_WORLD_SERVICE.SAY_GOODBYE_TO", ja.encode());
-            if (result != null) {
-                return result;
-            }
-            return null;
-        }
-    }
-
-    static class JdbcProxy implements HelloWorldService {
+    static class ServiceProxy implements HelloWorldService {
 
         private final PreparedStatement ps1;
         private final PreparedStatement ps2;
@@ -95,7 +36,7 @@ public interface HelloWorldService {
         private final PreparedStatement ps4;
         private final PreparedStatement ps5;
 
-        private JdbcProxy(String url) {
+        private ServiceProxy(String url) {
             ps1 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE HELLO_WORLD_SERVICE SAY_HELLO()");
             ps2 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE HELLO_WORLD_SERVICE GET_DATE()");
             ps3 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE HELLO_WORLD_SERVICE GET_INT()");

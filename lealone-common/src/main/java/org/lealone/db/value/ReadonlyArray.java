@@ -30,6 +30,10 @@ public class ReadonlyArray extends TraceObject implements Array {
         this.trace = Trace.NO_TRACE;
     }
 
+    public ReadonlyArray(String value) {
+        this(ValueString.get(value));
+    }
+
     /**
      * Returns the value as a Java array.
      * This method always returns an Object[].

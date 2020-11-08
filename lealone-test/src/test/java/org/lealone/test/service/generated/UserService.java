@@ -2,7 +2,6 @@ package org.lealone.test.service.generated;
 
 import java.sql.*;
 import org.lealone.client.ClientServiceProxy;
-import org.lealone.orm.json.JsonArray;
 import org.lealone.orm.json.JsonObject;
 import org.lealone.test.orm.generated.User;
 
@@ -17,7 +16,7 @@ public interface UserService {
         if (new org.lealone.db.ConnectionInfo(url).isEmbedded())
             return new org.lealone.test.service.impl.UserServiceImpl();
         else;
-            return new JdbcProxy(url);
+            return new ServiceProxy(url);
     }
 
     Long add(User user);
@@ -28,68 +27,14 @@ public interface UserService {
 
     Integer delete(String name);
 
-    static class Proxy implements UserService {
-
-        private final String url;
-
-        private Proxy(String url) {
-            this.url = url;
-        }
-
-        @Override
-        public Long add(User user) {
-            JsonArray ja = new JsonArray();
-            ja.add(JsonObject.mapFrom(user));
-            String result = ClientServiceProxy.executeWithReturnValue(url, "USER_SERVICE.ADD", ja.encode());
-            if (result != null) {
-                return Long.valueOf(result);
-            }
-            return null;
-        }
-
-        @Override
-        public User find(String name) {
-            JsonArray ja = new JsonArray();
-            ja.add(name);
-            String result = ClientServiceProxy.executeWithReturnValue(url, "USER_SERVICE.FIND", ja.encode());
-            if (result != null) {
-                JsonObject jo = new JsonObject(result);
-                return jo.mapTo(User.class);
-            }
-            return null;
-        }
-
-        @Override
-        public Integer update(User user) {
-            JsonArray ja = new JsonArray();
-            ja.add(JsonObject.mapFrom(user));
-            String result = ClientServiceProxy.executeWithReturnValue(url, "USER_SERVICE.UPDATE", ja.encode());
-            if (result != null) {
-                return Integer.valueOf(result);
-            }
-            return null;
-        }
-
-        @Override
-        public Integer delete(String name) {
-            JsonArray ja = new JsonArray();
-            ja.add(name);
-            String result = ClientServiceProxy.executeWithReturnValue(url, "USER_SERVICE.DELETE", ja.encode());
-            if (result != null) {
-                return Integer.valueOf(result);
-            }
-            return null;
-        }
-    }
-
-    static class JdbcProxy implements UserService {
+    static class ServiceProxy implements UserService {
 
         private final PreparedStatement ps1;
         private final PreparedStatement ps2;
         private final PreparedStatement ps3;
         private final PreparedStatement ps4;
 
-        private JdbcProxy(String url) {
+        private ServiceProxy(String url) {
             ps1 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE ADD(?)");
             ps2 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE FIND(?)");
             ps3 = ClientServiceProxy.prepareStatement(url, "EXECUTE SERVICE USER_SERVICE UPDATE(?)");

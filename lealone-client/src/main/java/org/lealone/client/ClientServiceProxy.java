@@ -17,7 +17,6 @@
  */
 package org.lealone.client;
 
-import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -25,36 +24,6 @@ import java.sql.SQLException;
 import java.util.HashMap;
 
 public class ClientServiceProxy {
-
-    // 不需要加{}，避免做字符串翻译操作
-    private static final String sqlNoReturnValue = "call EXECUTE_SERVICE_NO_RETURN_VALUE(?,?)";
-    private static final String sqlWithReturnValue = "? = call EXECUTE_SERVICE_WITH_RETURN_VALUE(?,?)";
-
-    public static String executeWithReturnValue(String url, String serviceName, String json) {
-        try (Connection conn = DriverManager.getConnection(url);
-                CallableStatement stmt = conn.prepareCall(sqlWithReturnValue)) {
-            stmt.setString(2, serviceName);
-            stmt.setString(3, json);
-            stmt.registerOutParameter(1, java.sql.Types.VARCHAR);
-            if (stmt.execute()) {
-                return stmt.getString(1);
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to execute service: " + serviceName, e);
-        }
-        return null;
-    }
-
-    public static void executeNoReturnValue(String url, String serviceName, String json) {
-        try (Connection conn = DriverManager.getConnection(url);
-                CallableStatement stmt = conn.prepareCall(sqlNoReturnValue)) {
-            stmt.setString(1, serviceName);
-            stmt.setString(2, json);
-            stmt.execute();
-        } catch (SQLException e) {
-            throw new RuntimeException("Failed to execute service: " + serviceName, e);
-        }
-    }
 
     private static HashMap<String, Connection> connMap = new HashMap<>(1);
 
