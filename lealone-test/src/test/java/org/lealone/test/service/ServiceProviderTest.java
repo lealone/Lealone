@@ -25,12 +25,12 @@ public class ServiceProviderTest extends SqlTestBase {
     @Test
     public void testService() {
         // 创建user表
-        // SqlScript.createUserTable(this);
+        SqlScript.createUserTable(this);
         createService(this);
     }
 
     public static void createService(SqlExecutor executor) {
-        // SqlScript.createUserService(executor);
+        SqlScript.createUserService(executor);
         SqlScript.createHelloWorldService(executor);
         // SqlScript.createAllTypeService(executor);
     }

@@ -225,6 +225,9 @@ public class CreateService extends SchemaStatement {
                 if (c.getTable() != null) {
                     importSet.add("org.lealone.orm.json.JsonObject");
                     argsBuff.append("            ja.add(JsonObject.mapFrom(").append(cName).append("));\r\n");
+
+                    argsBuffJdbc.append("                ").append(psVarName).append(".setString(").append(i + 1)
+                            .append(", JsonObject.mapFrom(").append(cName).append(").encode());\r\n");
                 } else {
                     argsBuff.append("            ja.add(").append(cName).append(");\r\n");
 
@@ -269,7 +272,8 @@ public class CreateService extends SchemaStatement {
 
                 if (returnColumn.getTable() != null) {
                     importSet.add("org.lealone.orm.json.JsonObject");
-                    proxyMethodsBuffJdbc.append("                JsonObject jo = new JsonObject(result);\r\n");
+                    proxyMethodsBuffJdbc.append("                JsonObject jo = new JsonObject(rs.getString(1));\r\n");
+                    proxyMethodsBuffJdbc.append("                rs.close();\r\n");
                     proxyMethodsBuffJdbc.append("                return jo.mapTo(").append(returnType)
                             .append(".class);\r\n");
                 } else {
@@ -468,16 +472,22 @@ public class CreateService extends SchemaStatement {
                     String cName = "p_" + toFieldName(c.getName()) + index;
 
                     buff.append("            ").append(cType).append(" ").append(cName).append(" = ");
-                    switch (cType.toUpperCase()) {
-                    case "STRING":
-                        buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
-                        break;
-                    case "BYTES":
-                        buff.append("methodArgs.get(\"").append(c.getName()).append("\").getBytes();\r\n");
-                        break;
-                    default:
-                        buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"").append(c.getName())
-                                .append("\"));\r\n");
+                    if (c.getTable() != null) {
+                        importSet.add("org.lealone.orm.json.JsonObject");
+                        buff.append(" new JsonObject(").append("methodArgs.get(\"").append(c.getName())
+                                .append("\")).mapTo(").append(cType).append(".class);\r\n");
+                    } else {
+                        switch (cType.toUpperCase()) {
+                        case "STRING":
+                            buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
+                            break;
+                        case "BYTES":
+                            buff.append("methodArgs.get(\"").append(c.getName()).append("\").getBytes();\r\n");
+                            break;
+                        default:
+                            buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"")
+                                    .append(c.getName()).append("\"));\r\n");
+                        }
                     }
                     argsBuff.append(cName);
                 }
@@ -546,9 +556,15 @@ public class CreateService extends SchemaStatement {
                     Column c = data.columns.get(i);
                     String cType = getTypeName(c, importSet);
                     String cName = "p_" + toFieldName(c.getName()) + index;
-                    buff.append("            ").append(cType).append(" ").append(cName).append(" = ")
-                            .append("methodArgs[").append(i).append("].").append(getValueMethodName(cType))
-                            .append("();\r\n");
+                    buff.append("            ").append(cType).append(" ").append(cName).append(" = ");
+                    if (c.getTable() != null) {
+                        importSet.add("org.lealone.orm.json.JsonObject");
+                        buff.append(" new JsonObject(").append("methodArgs[").append(i).append("].getString()).mapTo(")
+                                .append(cType).append(".class);\r\n");
+                    } else {
+                        buff.append("methodArgs[").append(i).append("].").append(getValueMethodName(cType))
+                                .append("();\r\n");
+                    }
                     argsBuff.append(cName);
                 }
             }
@@ -559,11 +575,19 @@ public class CreateService extends SchemaStatement {
             }
             buff.append("this.s.").append(methodName).append("(").append(argsBuff).append(");\r\n");
             if (!isVoid) {
+
                 buff.append("            if (").append(resultVarName).append(" == null)\r\n");
                 buff.append("                return ValueNull.INSTANCE;\r\n");
-                buff.append("            return ")// .append("org.lealone.db.value.")
-                        .append(getReturnMethodName(returnType)).append("(").append(resultVarName).append(")")
-                        .append(";\r\n");
+
+                if (returnColumn.getTable() != null) {
+                    importSet.add("org.lealone.orm.json.JsonObject");
+                    buff.append("            return ValueString.get(JsonObject.mapFrom(").append(resultVarName)
+                            .append(").encode());\r\n");
+                } else {
+                    buff.append("            return ")// .append("org.lealone.db.value.")
+                            .append(getReturnMethodName(returnType)).append("(").append(resultVarName).append(")")
+                            .append(";\r\n");
+                }
             } else {
                 buff.append("            break;\r\n");
             }
