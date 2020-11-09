@@ -54,6 +54,12 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             if (result1 == null)
                 return ValueNull.INSTANCE;
             return ValueString.get(JsonObject.mapFrom(result1).encode());
+        case "TEST_UUID":
+            UUID p_f12 = methodArgs[0].getUuid();
+            UUID result2 = this.s.testUuid(p_f12);
+            if (result2 == null)
+                return ValueNull.INSTANCE;
+            return ValueUuid.get(result2);
         default:
             throw new RuntimeException("no method: " + methodName);
         }
@@ -88,6 +94,12 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             if (result1 == null)
                 return null;
             return JsonObject.mapFrom(result1).encode();
+        case "TEST_UUID":
+            UUID p_f12 = java.util.UUID.fromString(methodArgs.get("F1"));
+            UUID result2 = this.s.testUuid(p_f12);
+            if (result2 == null)
+                return null;
+            return result2.toString();
         default:
             throw new RuntimeException("no method: " + methodName);
         }
@@ -105,7 +117,7 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             Short p_f41 = Short.valueOf(ja.getValue(3).toString());
             Long p_f51 = Long.valueOf(ja.getValue(4).toString());
             Long p_f61 = Long.valueOf(ja.getValue(5).toString());
-            BigDecimal p_f71 = ja.getJsonObject(6).mapTo(BigDecimal.class);
+            BigDecimal p_f71 = new java.math.BigDecimal(ja.getValue(6).toString());
             Double p_f81 = Double.valueOf(ja.getValue(7).toString());
             Float p_f91 = Float.valueOf(ja.getValue(8).toString());
             Time p_f101 = java.sql.Time.valueOf(ja.getValue(9).toString());
@@ -124,6 +136,13 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             if (result1 == null)
                 return null;
             return JsonObject.mapFrom(result1).encode();
+        case "TEST_UUID":
+            ja = new JsonArray(json);
+            UUID p_f12 = java.util.UUID.fromString(ja.getValue(0).toString());
+            UUID result2 = this.s.testUuid(p_f12);
+            if (result2 == null)
+                return null;
+            return result2.toString();
         default:
             throw new RuntimeException("no method: " + methodName);
         }

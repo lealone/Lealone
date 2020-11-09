@@ -40,6 +40,7 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
 import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueUuid;
 import org.lealone.sql.SQLStatement;
 
 /**
@@ -149,10 +150,6 @@ public class CreateService extends SchemaStatement {
     }
 
     private void genServiceInterfaceCode() {
-        StringBuilder buff = new StringBuilder();
-        StringBuilder ibuff = new StringBuilder();
-        StringBuilder proxyMethodsBuff = new StringBuilder();
-
         StringBuilder psBuff = new StringBuilder();
         StringBuilder psInitBuff = new StringBuilder();
 
@@ -160,29 +157,23 @@ public class CreateService extends SchemaStatement {
         importSet.add("org.lealone.client.ClientServiceProxy");
         importSet.add("java.sql.*");
 
-        String serviceName = toClassName(this.serviceName);
+        // 生成方法签名和方法体的代码
+        int methodSize = serviceMethods.size();
+        ArrayList<StringBuilder> methodSignatureList = new ArrayList<>(methodSize);
+        ArrayList<StringBuilder> proxyMethodBodyList = new ArrayList<>(methodSize);
 
-        buff.append("public interface ").append(serviceName).append(" {\r\n");
-        buff.append("\r\n");
-        buff.append("    static ").append(serviceName).append(" create(String url) {\r\n");
-        buff.append("        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())\r\n");
-        buff.append("            return new ").append(getServiceImplementClassName()).append("();\r\n");
-        buff.append("        else;\r\n");
-        buff.append("            return new ServiceProxy(url);\r\n");
-        buff.append("    }\r\n");
-
-        int methodIndex = 0;
-        for (CreateTable m : serviceMethods) {
-            methodIndex++;
-            String psVarName = "ps" + methodIndex;
-            CreateTableData data = m.data;
-            buff.append("\r\n");
-            proxyMethodsBuff.append("\r\n");
+        for (int methodIndex = 0; methodIndex < methodSize; methodIndex++) {
+            StringBuilder methodSignatureBuff = new StringBuilder();
+            StringBuilder proxyMethodBodyBuff = new StringBuilder();
+            String psVarName = "ps" + (methodIndex + 1);
+            CreateTableData data = serviceMethods.get(methodIndex).data;
 
             psBuff.append("        private final PreparedStatement ").append(psVarName).append(";\r\n");
             psInitBuff.append("            ").append(psVarName)
-                    .append(" = ClientServiceProxy.prepareStatement(url, \"EXECUTE SERVICE ").append(this.serviceName)
+                    .append(" = ClientServiceProxy.prepareStatement(url, \"EXECUTE SERVICE ").append(serviceName)
                     .append(" ").append(data.tableName).append("(");
+
+            // 最后一例是返回类型所以要减一
             for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
                 if (i != 0) {
                     psInitBuff.append(", ");
@@ -194,92 +185,129 @@ public class CreateService extends SchemaStatement {
             Column returnColumn = data.columns.get(data.columns.size() - 1);
             String returnType = getTypeName(returnColumn, importSet);
             String methodName = toMethodName(data.tableName);
-            buff.append("    ").append(returnType).append(" ").append(methodName).append("(");
+            methodSignatureBuff.append(returnType).append(" ").append(methodName).append("(");
 
-            proxyMethodsBuff.append("        @Override\r\n");
-            proxyMethodsBuff.append("        public ").append(returnType).append(" ").append(methodName).append("(");
-
-            StringBuilder argsBuff = new StringBuilder();
+            proxyMethodBodyBuff.append("            try {\r\n");
 
             for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
                 if (i != 0) {
-                    buff.append(", ");
-                    proxyMethodsBuff.append(", ");
+                    methodSignatureBuff.append(", ");
                 }
                 Column c = data.columns.get(i);
                 String cType = getTypeName(c, importSet);
                 String cName = toFieldName(c.getName());
-                buff.append(cType).append(" ").append(cName);
-                proxyMethodsBuff.append(cType).append(" ").append(cName);
-                if (c.getTable() != null || cType.toUpperCase().equals("UUID")) {
+                methodSignatureBuff.append(cType).append(" ").append(cName);
+                proxyMethodBodyBuff.append("                ").append(psVarName).append(".");
+                if (c.getTable() != null) {
                     importSet.add("org.lealone.orm.json.JsonObject");
-                    argsBuff.append("                ").append(psVarName).append(".setString(").append(i + 1)
-                            .append(", JsonObject.mapFrom(").append(cName).append(").encode());\r\n");
+                    proxyMethodBodyBuff.append("setString(").append(i + 1).append(", JsonObject.mapFrom(").append(cName)
+                            .append(").encode());\r\n");
                 } else {
-                    argsBuff.append("                ").append(psVarName).append(".")
-                            .append(getPreparedStatementSetterMethodName(cType)).append("(").append(i + 1).append(", ")
-                            .append(cName).append(");\r\n");
+                    proxyMethodBodyBuff.append(getPreparedStatementSetterMethodName(cType)).append("(").append(i + 1)
+                            .append(", ");
+                    if (cType.toUpperCase().equals("UUID")) {
+                        importSet.add(UUID.class.getName());
+                        importSet.add(ValueUuid.class.getName());
+                        proxyMethodBodyBuff.append("ValueUuid.get(").append(cName).append(").getBytes()");
+                    } else {
+                        proxyMethodBodyBuff.append(cName);
+                    }
+                    proxyMethodBodyBuff.append(");\r\n");
                 }
             }
-            buff.append(");\r\n");
+            methodSignatureBuff.append(")");
+            methodSignatureList.add(methodSignatureBuff);
 
-            proxyMethodsBuff.append(") {\r\n");
-            proxyMethodsBuff.append("            try {\r\n");
-            proxyMethodsBuff.append(argsBuff);
             if (returnType.equalsIgnoreCase("void")) {
-                proxyMethodsBuff.append("                ").append(psVarName).append(".executeUpdate();\r\n");
+                proxyMethodBodyBuff.append("                ").append(psVarName).append(".executeUpdate();\r\n");
             } else {
-                proxyMethodsBuff.append("                ResultSet rs = ").append(psVarName)
+                proxyMethodBodyBuff.append("                ResultSet rs = ").append(psVarName)
                         .append(".executeQuery();\r\n");
-                proxyMethodsBuff.append("                rs.next();\r\n");
+                proxyMethodBodyBuff.append("                rs.next();\r\n");
 
                 if (returnColumn.getTable() != null) {
                     importSet.add("org.lealone.orm.json.JsonObject");
-                    proxyMethodsBuff.append("                JsonObject jo = new JsonObject(rs.getString(1));\r\n");
-                    proxyMethodsBuff.append("                rs.close();\r\n");
-                    proxyMethodsBuff.append("                return jo.mapTo(").append(returnType)
+                    proxyMethodBodyBuff.append("                JsonObject jo = new JsonObject(rs.getString(1));\r\n");
+                    proxyMethodBodyBuff.append("                rs.close();\r\n");
+                    proxyMethodBodyBuff.append("                return jo.mapTo(").append(returnType)
                             .append(".class);\r\n");
                 } else {
-                    proxyMethodsBuff.append("                ").append(returnType).append(" ret = rs.")
-                            .append(getResultSetReturnMethodName(returnType)).append("(1);\r\n");
-                    proxyMethodsBuff.append("                rs.close();\r\n");
-                    proxyMethodsBuff.append("                return ret;\r\n");
+                    proxyMethodBodyBuff.append("                ").append(returnType).append(" ret = ");
+                    if (returnType.toUpperCase().equals("UUID")) {
+                        importSet.add(UUID.class.getName());
+                        importSet.add(ValueUuid.class.getName());
+                        proxyMethodBodyBuff.append("ValueUuid.get(rs.").append(getResultSetReturnMethodName(returnType))
+                                .append("(1)).getUuid();\r\n");
+                    } else {
+                        proxyMethodBodyBuff.append(" rs.").append(getResultSetReturnMethodName(returnType))
+                                .append("(1);\r\n");
+                    }
+                    proxyMethodBodyBuff.append("                rs.close();\r\n");
+                    proxyMethodBodyBuff.append("                return ret;\r\n");
                 }
             }
-            proxyMethodsBuff.append("            } catch (Throwable e) {\r\n");
-            proxyMethodsBuff.append("                throw ClientServiceProxy.failed(\"").append(this.serviceName)
+            proxyMethodBodyBuff.append("            } catch (Throwable e) {\r\n");
+            proxyMethodBodyBuff.append("                throw ClientServiceProxy.failed(\"").append(serviceName)
                     .append('.').append(data.tableName).append("\", e);\r\n");
-            proxyMethodsBuff.append("            }\r\n");
-            proxyMethodsBuff.append("        }\r\n");
+            proxyMethodBodyBuff.append("            }\r\n");
+
+            proxyMethodBodyList.add(proxyMethodBodyBuff);
+
+        }
+
+        // 生成package和import代码
+        StringBuilder buff = new StringBuilder();
+        buff.append("package ").append(packageName).append(";\r\n");
+        buff.append("\r\n");
+        for (String i : importSet) {
+            buff.append("import ").append(i).append(";\r\n");
+        }
+        buff.append("\r\n");
+
+        // 接口注释
+        buff.append("/**\r\n");
+        buff.append(" * Service interface for '").append(serviceName.toLowerCase()).append("'.\r\n");
+        buff.append(" *\r\n");
+        buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
+        buff.append(" */\r\n");
+
+        // 服务接口
+        String serviceInterfaceName = toClassName(serviceName);
+        buff.append("public interface ").append(serviceInterfaceName).append(" {\r\n");
+        buff.append("\r\n");
+        buff.append("    static ").append(serviceInterfaceName).append(" create(String url) {\r\n");
+        buff.append("        if (new org.lealone.db.ConnectionInfo(url).isEmbedded())\r\n");
+        buff.append("            return new ").append(getServiceImplementClassName()).append("();\r\n");
+        buff.append("        else\r\n");
+        buff.append("            return new ServiceProxy(url);\r\n");
+        buff.append("    }\r\n");
+
+        // 生成服务接口方法
+        for (StringBuilder m : methodSignatureList) {
+            buff.append("\r\n");
+            buff.append("    ").append(m).append(";\r\n");
         }
 
         // 生成Service Proxy类
         buff.append("\r\n");
-        buff.append("    static class ServiceProxy implements ").append(serviceName).append(" {\r\n");
+        buff.append("    static class ServiceProxy implements ").append(serviceInterfaceName).append(" {\r\n");
         buff.append("\r\n");
         buff.append(psBuff);
         buff.append("\r\n");
         buff.append("        private ServiceProxy(String url) {\r\n");
         buff.append(psInitBuff);
         buff.append("        }\r\n");
-        buff.append(proxyMethodsBuff);
+        for (int i = 0; i < methodSize; i++) {
+            buff.append("\r\n");
+            buff.append("        @Override\r\n");
+            buff.append("        public ").append(methodSignatureList.get(i)).append(" {\r\n");
+            buff.append(proxyMethodBodyList.get(i));
+            buff.append("        }\r\n");
+        }
         buff.append("    }\r\n");
         buff.append("}\r\n");
 
-        ibuff.append("package ").append(packageName).append(";\r\n");
-        ibuff.append("\r\n");
-        for (String i : importSet) {
-            ibuff.append("import ").append(i).append(";\r\n");
-        }
-        ibuff.append("\r\n");
-
-        ibuff.append("/**\r\n");
-        ibuff.append(" * Service interface for '").append(this.serviceName.toLowerCase()).append("'.\r\n");
-        ibuff.append(" *\r\n");
-        ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
-        ibuff.append(" */\r\n");
-
-        writeFile(codePath, packageName, serviceName, ibuff, buff);
+        writeFile(codePath, packageName, serviceInterfaceName, buff);
     }
 
     private String getServiceImplementClassName() {
@@ -595,7 +623,7 @@ public class CreateService extends SchemaStatement {
             return "ValueInt.get";
         case "LONG":
             return "ValueLong.get";
-        case "DECIMAL":
+        case "BIGDECIMAL":
             return "ValueDecimal.get";
         case "TIME":
             return "ValueTime.get";
@@ -650,7 +678,7 @@ public class CreateService extends SchemaStatement {
             return m("Integer.valueOf", i);
         case "LONG":
             return m("Long.valueOf", i);
-        case "DECIMAL":
+        case "BIGDECIMAL":
             return m("new java.math.BigDecimal", i);
         case "TIME":
             return m("java.sql.Time.valueOf", i);
@@ -792,7 +820,7 @@ public class CreateService extends SchemaStatement {
             return "getResultSet";
         }
         return "getObject";
-    } // 根据具体类型调用合适的Value方法
+    }
 
     private static String getResultSetReturnMethodName(String type) {
         type = type.toUpperCase();
@@ -807,7 +835,7 @@ public class CreateService extends SchemaStatement {
             return "getInt";
         case "LONG":
             return "getLong";
-        case "DECIMAL":
+        case "BIGDECIMAL":
             return "getBigDecimal";
         case "TIME":
             return "getTime";
@@ -818,7 +846,7 @@ public class CreateService extends SchemaStatement {
         case "BYTE[]":
             return "getBytes";
         case "UUID":
-            return "getUuid"; // TODO
+            return "getBytes";
         case "STRING":
         case "STRING_IGNORECASE":
         case "STRING_FIXED":
@@ -828,7 +856,7 @@ public class CreateService extends SchemaStatement {
         case "FLOAT":
             return "getFloat";
         case "NULL":
-            return null;
+            throw DbException.throwInternalError();
         case "UNKNOWN": // anything
         case "JAVA_OBJECT":
             return "getObject";
@@ -839,7 +867,7 @@ public class CreateService extends SchemaStatement {
         case "ARRAY":
             return "getArray";
         case "RESULT_SET":
-            return "getResultSet"; // TODO
+            throw DbException.throwInternalError();
         }
         return "getObject";
     }
@@ -857,7 +885,7 @@ public class CreateService extends SchemaStatement {
             return "setInt";
         case "LONG":
             return "setLong";
-        case "DECIMAL":
+        case "BIGDECIMAL":
             return "setBigDecimal";
         case "TIME":
             return "setTime";
@@ -868,7 +896,7 @@ public class CreateService extends SchemaStatement {
         case "BYTE[]":
             return "setBytes";
         case "UUID":
-            return "setUuid"; // TODO
+            return "setBytes";
         case "STRING":
         case "STRING_IGNORECASE":
         case "STRING_FIXED":
@@ -878,7 +906,7 @@ public class CreateService extends SchemaStatement {
         case "FLOAT":
             return "setFloat";
         case "NULL":
-            return null;
+            throw DbException.throwInternalError();
         case "UNKNOWN": // anything
         case "JAVA_OBJECT":
             return "setObject";
@@ -889,7 +917,7 @@ public class CreateService extends SchemaStatement {
         case "ARRAY":
             return "setArray";
         case "RESULT_SET":
-            return "setResultSet"; // TODO
+            throw DbException.throwInternalError();
         }
         return "setObject";
     }

@@ -175,7 +175,9 @@ public class SqlScript {
         executor.execute("drop service if exists all_type_service");
         // 创建服务: all_type_service
         executor.execute("create service if not exists all_type_service (" //
-                + "test_type(" + TEST_TYPES + ") user)" //
+                + " test_type(" + TEST_TYPES + ") user," //
+                + " test_uuid(f1 uuid) uuid" //
+                + ")" //
                 + " package '" + SERVICE_PACKAGE_NAME + "'" //
                 // 如果是内部类，不能用getClassName()，会包含$字符
                 + " implement by '" + AllTypeServiceImpl.class.getCanonicalName() + "'" //

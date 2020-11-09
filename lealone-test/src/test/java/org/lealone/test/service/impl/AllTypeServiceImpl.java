@@ -38,4 +38,8 @@ public class AllTypeServiceImpl implements AllTypeService {
         return null;
     }
 
+    @Override
+    public UUID testUuid(UUID f1) {
+        return null;
+    }
 }
