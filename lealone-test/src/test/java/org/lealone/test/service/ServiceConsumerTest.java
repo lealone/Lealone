@@ -17,7 +17,10 @@
  */
 package org.lealone.test.service;
 
+import java.util.UUID;
+
 import org.junit.Test;
+import org.lealone.test.service.generated.AllTypeService;
 import org.lealone.test.service.generated.HelloWorldService;
 import org.lealone.test.sql.SqlTestBase;
 
@@ -47,5 +50,11 @@ public class ServiceConsumerTest extends SqlTestBase {
         // userService.update(user);
         //
         // userService.delete("zhh");
+
+        AllTypeService allTypeService = AllTypeService.create(url);
+        UUID f1 = UUID.randomUUID();
+        System.out.println(f1);
+        f1 = allTypeService.testUuid(f1);
+        System.out.println(f1);
     }
 }

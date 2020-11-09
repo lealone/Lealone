@@ -40,6 +40,9 @@ public class AllTypeServiceImpl implements AllTypeService {
 
     @Override
     public UUID testUuid(UUID f1) {
-        return null;
+        System.out.println(f1);
+        f1 = UUID.randomUUID();
+        System.out.println(f1);
+        return f1;
     }
 }

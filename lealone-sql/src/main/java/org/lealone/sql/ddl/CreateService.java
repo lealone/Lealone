@@ -315,18 +315,18 @@ public class CreateService extends SchemaStatement {
     }
 
     private abstract class ServiceExecutorMethodGenerator {
-        public void genCode(StringBuilder buff, TreeSet<String> importSet, String method) {
-            genCode(buff, importSet, method, "");
+        public StringBuilder genCode(TreeSet<String> importSet, String method) {
+            return genCode(importSet, method, "");
         }
 
-        public void genCode(StringBuilder buff, TreeSet<String> importSet, String method, String varInit) {
+        public StringBuilder genCode(TreeSet<String> importSet, String method, String varInit) {
+            StringBuilder buff = new StringBuilder();
             buff.append("\r\n");
             buff.append("    @Override\r\n");
             buff.append("    public ").append(method).append(" {\r\n");
             buff.append(varInit);
             buff.append("        switch (methodName) {\r\n");
 
-            boolean hasNoReturnValueMethods = false;
             int index = 0;
             for (CreateTable m : serviceMethods) {
                 index++;
@@ -336,9 +336,6 @@ public class CreateService extends SchemaStatement {
 
                 Column returnColumn = data.columns.get(data.columns.size() - 1);
                 String returnType = getTypeName(returnColumn, importSet);
-                if (returnType.equalsIgnoreCase("void")) {
-                    hasNoReturnValueMethods = true;
-                }
                 StringBuilder argsBuff = new StringBuilder();
                 String methodName = toMethodName(data.tableName);
                 buff.append("        case \"").append(data.tableName).append("\":\r\n");
@@ -353,7 +350,7 @@ public class CreateService extends SchemaStatement {
                         }
                         Column c = data.columns.get(i);
                         String cType = getTypeName(c, importSet);
-                        String cName = "p_" + toFieldName(c.getName()) + index;
+                        String cName = "p_" + toFieldName(c.getName()) + "_" + index;
 
                         buff.append("            ").append(cType).append(" ").append(cName).append(" = ");
                         genVarInitCode(buff, importSet, c, cType, i);
@@ -369,15 +366,14 @@ public class CreateService extends SchemaStatement {
                 if (!isVoid) {
                     genReturnCode(buff, importSet, returnColumn, returnType, resultVarName);
                 } else {
-                    buff.append("            break;\r\n");
+                    buff.append("            return ").append(getReturnType()).append(";\r\n");
                 }
             }
             buff.append("        default:\r\n");
             buff.append("            throw new RuntimeException(\"no method: \" + methodName);\r\n");
             buff.append("        }\r\n");
-            if (hasNoReturnValueMethods)
-                buff.append("        return ").append(getReturnType()).append(";\r\n");
             buff.append("    }\r\n");
+            return buff;
         }
 
         protected abstract void genVarInitCode(StringBuilder buff, TreeSet<String> importSet, Column c, String cType,
@@ -470,44 +466,17 @@ public class CreateService extends SchemaStatement {
     }
 
     private void genServiceExecutorCode() {
-        StringBuilder buff = new StringBuilder();
-        StringBuilder ibuff = new StringBuilder();
-
         TreeSet<String> importSet = new TreeSet<>();
         importSet.add(ServiceExecutor.class.getName());
-        String serviceImplementClassName = implementBy;
-        if (implementBy != null) {
-            if (implementBy.startsWith(packageName)) {
-                serviceImplementClassName = implementBy.substring(packageName.length() + 1);
-            } else {
-                int lastDotPos = implementBy.lastIndexOf('.');
-                if (lastDotPos > 0) {
-                    serviceImplementClassName = implementBy.substring(lastDotPos + 1);
-                    importSet.add(implementBy);
-                }
-            }
-        }
-        String className = getExecutorSimpleName();
-
-        buff.append("public class ").append(className).append(" implements ServiceExecutor {\r\n");
-        buff.append("\r\n");
-        buff.append("    private final ").append(serviceImplementClassName).append(" s = new ")
-                .append(serviceImplementClassName).append("();\r\n");
-
-        // 生成默认构造函数
-        // buff.append("\r\n");
-        // buff.append(" public ").append(className).append("() {\r\n");
-        // buff.append(" }\r\n");
-        // buff.append("\r\n");
 
         // 生成public Value executeService(String methodName, Value[] methodArgs)方法
         importSet.add("org.lealone.db.value.*");
-        new ValueServiceExecutorMethodGenerator().genCode(buff, importSet,
+        StringBuilder buffValueMethod = new ValueServiceExecutorMethodGenerator().genCode(importSet,
                 "Value executeService(String methodName, Value[] methodArgs)");
 
         // 生成public String executeService(String methodName, Map<String, String> methodArgs)方法
         importSet.add(Map.class.getName());
-        new MapServiceExecutorMethodGenerator().genCode(buff, importSet,
+        StringBuilder buffMapMethod = new MapServiceExecutorMethodGenerator().genCode(importSet,
                 "String executeService(String methodName, Map<String, String> methodArgs)");
 
         // 生成public String executeService(String methodName, String json)方法
@@ -520,24 +489,57 @@ public class CreateService extends SchemaStatement {
                 break;
             }
         }
-        new JsonServiceExecutorMethodGenerator().genCode(buff, importSet,
+        StringBuilder buffJsonMethod = new JsonServiceExecutorMethodGenerator().genCode(importSet,
                 "String executeService(String methodName, String json)", varInit);
 
-        buff.append("}\r\n");
-        ibuff.append("package ").append(getExecutorPackageName()).append(";\r\n");
-        ibuff.append("\r\n");
-        for (String i : importSet) {
-            ibuff.append("import ").append(i).append(";\r\n");
+        // 生成package和import代码
+        String serviceImplementClassName = implementBy;
+        if (implementBy != null) {
+            if (implementBy.startsWith(packageName)) {
+                serviceImplementClassName = implementBy.substring(packageName.length() + 1);
+            } else {
+                int lastDotPos = implementBy.lastIndexOf('.');
+                if (lastDotPos > 0) {
+                    serviceImplementClassName = implementBy.substring(lastDotPos + 1);
+                    importSet.add(implementBy);
+                }
+            }
         }
-        ibuff.append("\r\n");
+        StringBuilder buff = new StringBuilder();
+        buff.append("package ").append(getExecutorPackageName()).append(";\r\n");
+        buff.append("\r\n");
+        for (String i : importSet) {
+            buff.append("import ").append(i).append(";\r\n");
+        }
+        buff.append("\r\n");
 
-        ibuff.append("/**\r\n");
-        ibuff.append(" * Service executor for '").append(this.serviceName.toLowerCase()).append("'.\r\n");
-        ibuff.append(" *\r\n");
-        ibuff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
-        ibuff.append(" */\r\n");
+        // Service executor注释
+        buff.append("/**\r\n");
+        buff.append(" * Service executor for '").append(serviceName.toLowerCase()).append("'.\r\n");
+        buff.append(" *\r\n");
+        buff.append(" * THIS IS A GENERATED OBJECT, DO NOT MODIFY THIS CLASS.\r\n");
+        buff.append(" */\r\n");
 
-        writeFile(codePath, getExecutorPackageName(), className, ibuff, buff);
+        // 生成Service executor类的代码
+        String className = getExecutorSimpleName();
+        buff.append("public class ").append(className).append(" implements ServiceExecutor {\r\n");
+        buff.append("\r\n");
+        buff.append("    private final ").append(serviceImplementClassName).append(" s = new ")
+                .append(serviceImplementClassName).append("();\r\n");
+
+        // 生成默认构造函数
+        // buff.append("\r\n");
+        // buff.append(" public ").append(className).append("() {\r\n");
+        // buff.append(" }\r\n");
+        // buff.append("\r\n");
+
+        buff.append(buffValueMethod);
+        buff.append(buffMapMethod);
+        buff.append(buffJsonMethod);
+
+        buff.append("}\r\n");
+
+        writeFile(codePath, getExecutorPackageName(), className, buff);
     }
 
     private String getExecutorPackageName() {
