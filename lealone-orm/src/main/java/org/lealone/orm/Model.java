@@ -165,6 +165,9 @@ public abstract class Model<T> {
     private ExpressionBuilder<T> having;
     private ExpressionBuilder<T> whereExpressionBuilder;
 
+    private Expression limitExpr;
+    private Expression offsetExpr;
+
     /**
     * The underlying expression builders held as a stack. Pushed and popped based on and/or (conjunction/disjunction).
     */
@@ -504,6 +507,11 @@ public abstract class Model<T> {
         if (whereExpressionBuilder != null)
             select.setOrder(whereExpressionBuilder.getOrderList());
 
+        if (limitExpr != null)
+            select.setLimit(limitExpr);
+        if (offsetExpr != null)
+            select.setOffset(offsetExpr);
+
         return select;
     }
 
@@ -841,6 +849,24 @@ public abstract class Model<T> {
             jsonString = e.getMessage();
         }
         return jsonString;
+    }
+
+    public T limit(long v) {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.limit(v);
+        }
+        limitExpr = ValueExpression.get(ValueLong.get(v));
+        return root;
+    }
+
+    public T offset(long v) {
+        Model<T> m = maybeCopy();
+        if (m != this) {
+            return m.offset(v);
+        }
+        offsetExpr = ValueExpression.get(ValueLong.get(v));
+        return root;
     }
 
     /**

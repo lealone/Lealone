@@ -17,6 +17,8 @@
  */
 package org.lealone.test.orm;
 
+import java.util.List;
+
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.User;
 
@@ -38,5 +40,18 @@ public class OrmExpressionTest extends UnitTestBase {
 
         d.printSQL();
         d.findList();
+
+        new User().id.set(1001).name.set("rob1").insert();
+        new User().id.set(1002).name.set("rob2").insert();
+        new User().id.set(1003).name.set("rob3").insert();
+        new User().id.set(1004).name.set("rob4").insert();
+        new User().id.set(1005).name.set("rob5").insert();
+
+        List<User> list = User.dao.offset(2).findList();
+        assertEquals(3, list.size());
+        list = User.dao.limit(3).findList();
+        assertEquals(3, list.size());
+        list = User.dao.offset(1).limit(2).findList();
+        assertEquals(2, list.size());
     }
 }

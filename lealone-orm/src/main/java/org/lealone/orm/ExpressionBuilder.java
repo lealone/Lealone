@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -160,12 +161,12 @@ public class ExpressionBuilder<T> {
     }
 
     public ExpressionBuilder<T> isNull(String propertyName) {
-        // TODO Auto-generated method stub
+        setRootExpression(propertyName, ValueNull.INSTANCE, Comparison.IS_NULL);
         return this;
     }
 
     public ExpressionBuilder<T> isNotNull(String propertyName) {
-        // TODO Auto-generated method stub
+        setRootExpression(propertyName, ValueNull.INSTANCE, Comparison.IS_NOT_NULL);
         return this;
     }
 
