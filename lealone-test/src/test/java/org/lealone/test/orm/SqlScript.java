@@ -94,7 +94,7 @@ public class SqlScript {
     public static void createOrderTable(SqlExecutor executor) {
         System.out.println("create table: order");
 
-        // order是关键字，索引要用特殊方式表式
+        // order是关键字，所以要用特殊方式表式
         executor.execute(
                 "create table `order`(customer_id long, order_id int primary key, order_date date, total double,"
                         + " FOREIGN KEY(customer_id) REFERENCES customer(id))" //
@@ -106,7 +106,6 @@ public class SqlScript {
     public static void createOrderItemTable(SqlExecutor executor) {
         System.out.println("create table: order_item");
 
-        // order是关键字，索引要用特殊方式表式
         executor.execute("create table order_item(order_id int, product_id long, product_count int, "
                 + " FOREIGN KEY(order_id) REFERENCES `order`(order_id)," //
                 + " FOREIGN KEY(product_id) REFERENCES product(product_id))" //

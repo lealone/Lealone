@@ -17,6 +17,7 @@
  */
 package org.lealone.orm;
 
+import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSessionFactory;
@@ -81,9 +82,10 @@ public class ModelTable {
         if (table == null) {
             String url = System.getProperty("lealone.jdbc.url");
             if (url == null) {
-                throw new RuntimeException("'lealone.jdbc.url' must be set");
+                // 默认用嵌入式
+                url = Constants.URL_PREFIX + Constants.URL_EMBED + databaseName + ";password=;user=root";
+                // throw new RuntimeException("'lealone.jdbc.url' must be set");
             }
-
             session = (ServerSession) ServerSessionFactory.getInstance().createSession(url).get();
             Database db = session.getDatabase();
 
