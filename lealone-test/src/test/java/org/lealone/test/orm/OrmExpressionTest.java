@@ -35,6 +35,7 @@ public class OrmExpressionTest extends UnitTestBase {
         testOffsetLimit();
         testNot();
         testIn();
+        testLike();
     }
 
     void testSelect() {
@@ -94,5 +95,35 @@ public class OrmExpressionTest extends UnitTestBase {
         d = User.dao.where().notes.notIn("notes1", "notes2");
         d.printSQL();
         d.findList();
+    }
+
+    void testLike() {
+        List<User> list = User.dao.where().name.eq("ROB1").findList();
+        assertEquals(0, list.size());
+        list = User.dao.where().name.ieq("ROB1").findList();
+        assertEquals(1, list.size());
+
+        list = User.dao.where().name.like("%ROB%").findList();
+        assertEquals(0, list.size());
+        list = User.dao.where().name.ilike("%ROB%").findList();
+        assertEquals(5, list.size());
+
+        list = User.dao.where().name.startsWith("ROB").findList();
+        assertEquals(0, list.size());
+        list = User.dao.where().name.istartsWith("ROB").findList();
+        assertEquals(5, list.size());
+
+        list = User.dao.where().name.endsWith("OB1").findList();
+        assertEquals(0, list.size());
+        list = User.dao.where().name.iendsWith("OB1").findList();
+        assertEquals(1, list.size());
+
+        list = User.dao.where().name.contains("OB").findList();
+        assertEquals(0, list.size());
+        list = User.dao.where().name.icontains("OB").findList();
+        assertEquals(5, list.size());
+
+        list = User.dao.where().name.match("[rob/d]").findList();
+        assertEquals(5, list.size());
     }
 }

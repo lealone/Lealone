@@ -32,6 +32,7 @@ import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.expression.condition.ConditionIn;
 import org.lealone.sql.expression.condition.ConditionNot;
+import org.lealone.sql.expression.function.Function;
 
 public class ExpressionBuilder<T> {
 
@@ -145,7 +146,11 @@ public class ExpressionBuilder<T> {
     }
 
     public ExpressionBuilder<T> ieq(String propertyName, String value) {
-        setRootExpression(propertyName, value, Comparison.EQUAL);
+        Expression left = createExpressionColumn(propertyName, true);
+        value = value.toUpperCase();
+        ValueExpression v = ValueExpression.get(ValueString.get(value));
+        Comparison c = new Comparison(getModelTable().getSession(), Comparison.EQUAL, left, v);
+        setRootExpression(c);
         return this;
     }
 
@@ -238,52 +243,70 @@ public class ExpressionBuilder<T> {
         return this;
     }
 
-    public ExpressionBuilder<T> like(String propertyName, String value) {
+    private ExpressionBuilder<T> like(String propertyName, String value, boolean caseInsensitive) {
+        return like(propertyName, value, caseInsensitive, false);
+    }
+
+    private Expression createExpressionColumn(String propertyName, boolean caseInsensitive) {
         ExpressionColumn ec = model.getExpressionColumn(propertyName);
+        if (!caseInsensitive)
+            return ec;
+        Function f = Function.getFunction(getModelTable().getDatabase(), "UPPER");
+        f.setParameter(0, ec);
+        return f;
+    }
+
+    private ExpressionBuilder<T> like(String propertyName, String value, boolean caseInsensitive, boolean regexp) {
+        Expression left = createExpressionColumn(propertyName, caseInsensitive);
+        if (caseInsensitive) {
+            value = value.toUpperCase();
+        }
         ValueExpression v = ValueExpression.get(ValueString.get(value));
-        CompareLike like = new CompareLike(getModelTable().getDatabase(), ec, v, null, false);
+        CompareLike like = new CompareLike(getModelTable().getDatabase(), left, v, null, regexp);
         setRootExpression(like);
         return this;
     }
 
+    public ExpressionBuilder<T> like(String propertyName, String value) {
+        return like(propertyName, value, false);
+    }
+
     public ExpressionBuilder<T> ilike(String propertyName, String value) {
-        // TODO Auto-generated method stub
-        return this;
+        return like(propertyName, value, true);
     }
 
     public ExpressionBuilder<T> startsWith(String propertyName, String value) {
-        // TODO Auto-generated method stub
-        return this;
+        value = value + "%";
+        return like(propertyName, value, false);
     }
 
     public ExpressionBuilder<T> istartsWith(String propertyName, String value) {
-        // TODO Auto-generated method stub
-        return this;
+        value = value + "%";
+        return like(propertyName, value, true);
     }
 
     public ExpressionBuilder<T> endsWith(String propertyName, String value) {
-        // TODO Auto-generated method stub
-        return this;
+        value = "%" + value;
+        return like(propertyName, value, false);
     }
 
     public ExpressionBuilder<T> iendsWith(String propertyName, String value) {
-        // TODO Auto-generated method stub
-        return this;
+        value = "%" + value;
+        return like(propertyName, value, true);
     }
 
     public ExpressionBuilder<T> contains(String propertyName, String value) {
-        // TODO Auto-generated method stub
-        return this;
+        value = "%" + value + "%";
+        return like(propertyName, value, false);
     }
 
     public ExpressionBuilder<T> icontains(String propertyName, String value) {
-        // TODO Auto-generated method stub
-        return this;
+        value = "%" + value + "%";
+        return like(propertyName, value, true);
     }
 
     public ExpressionBuilder<T> match(String propertyName, String search) {
-        // TODO Auto-generated method stub
-        return this;
+        return like(propertyName, search, false, true);
     }
 
     public ExpressionBuilder<T> and() {

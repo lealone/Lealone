@@ -57,12 +57,7 @@ public class PString<R> extends PBaseComparable<R, String> {
      * @return the root model bean instance
      */
     public R ieq(String value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).ieq(value);
-        }
-        expr().ieq(name, value);
-        return root;
+        return iequalTo(value);
     }
 
     /**
