@@ -30,6 +30,7 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.condition.CompareLike;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
+import org.lealone.sql.expression.condition.ConditionNot;
 
 public class ExpressionBuilder<T> {
 
@@ -38,6 +39,7 @@ public class ExpressionBuilder<T> {
     private Expression expression;
     private ArrayList<SelectOrderBy> orderList;
     private boolean isAnd = true;
+    private boolean isNot;
 
     ExpressionBuilder(Model<?> model) {
         this.model = this.oldModel = model;
@@ -94,6 +96,10 @@ public class ExpressionBuilder<T> {
     }
 
     private void setRootExpression(Expression e) {
+        if (isNot) {
+            e = new ConditionNot(e);
+            isNot = false;
+        }
         if (expression == null) {
             expression = e;
         } else {
@@ -269,8 +275,8 @@ public class ExpressionBuilder<T> {
     }
 
     public ExpressionBuilder<T> not() {
-        // TODO Auto-generated method stub
-        return null;
+        isNot = !isNot; // 两次not相当于无
+        return this;
     }
 
     public ExpressionBuilder<T> orderBy(String propertyName, boolean isDesc) {

@@ -31,7 +31,12 @@ public class OrmExpressionTest extends UnitTestBase {
     @Override
     public void test() {
         SqlScript.createUserTable(this);
+        testSelect();
+        testOffsetLimit();
+        testNot();
+    }
 
+    void testSelect() {
         User d = User.dao;
         // select name, phone from user where name = 'zhh' and (notes = 'notes1' or notes = 'notes2')
         // group by name, phone having name = 'zhh' order by name asc, phone desc;
@@ -40,7 +45,9 @@ public class OrmExpressionTest extends UnitTestBase {
 
         d.printSQL();
         d.findList();
+    }
 
+    void testOffsetLimit() {
         new User().id.set(1001).name.set("rob1").insert();
         new User().id.set(1002).name.set("rob2").insert();
         new User().id.set(1003).name.set("rob3").insert();
@@ -53,5 +60,20 @@ public class OrmExpressionTest extends UnitTestBase {
         assertEquals(3, list.size());
         list = User.dao.offset(1).limit(2).findList();
         assertEquals(2, list.size());
+    }
+
+    void testNot() {
+        User d = User.dao.where().name.eq("zhh").and().not().notes.eq("notes1");
+        d.printSQL();
+        d.findList();
+
+        d = User.dao.where().name.eq("zhh").and().not().lp().notes.eq("notes1").or().notes.eq("notes2").rp();
+        d.printSQL();
+        d.findList();
+
+        d = User.dao.where().not().not().notes.eq("notes1");
+        d.printSQL();
+        d = User.dao.where().not().not().not().notes.eq("notes1");
+        d.printSQL();
     }
 }

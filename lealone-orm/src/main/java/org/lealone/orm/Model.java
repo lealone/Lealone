@@ -375,12 +375,15 @@ public abstract class Model<T> {
 
     public void printSQL() {
         StringBuilder sql = new StringBuilder();
+        sql.append("SELECT ");
         if (selectExpressions != null) {
-            sql.append("SELECT (").append(selectExpressions.get(0).getSQL());
+            sql.append(selectExpressions.get(0).getSQL());
             for (int i = 1, size = selectExpressions.size(); i < size; i++)
                 sql.append(", ").append(selectExpressions.get(i).getSQL());
-            sql.append(") FROM ").append(modelTable.getTableName());
+        } else {
+            sql.append("*");
         }
+        sql.append(" FROM ").append(modelTable.getTableName());
         if (whereExpressionBuilder != null) {
             sql.append("\r\n  WHERE ").append(whereExpressionBuilder.getExpression().getSQL());
         }
@@ -406,13 +409,12 @@ public abstract class Model<T> {
         System.out.println(sql);
     }
 
-    // TODO
     public T not() {
         Model<T> m = maybeCopy();
         if (m != this) {
             return m.not();
         }
-        pushExprBuilder(peekExprBuilder().not());
+        peekExprBuilder().not();
         return root;
     }
 
@@ -665,7 +667,7 @@ public abstract class Model<T> {
     }
 
     public long insert(Long tid) {
-        // TODO 是否允许通过 XXX.dao来insert记录?
+        // 不允许通过 X.dao来insert记录
         if (isDao()) {
             String name = this.getClass().getSimpleName();
             throw new UnsupportedOperationException("The insert operation is not allowed for " + name
