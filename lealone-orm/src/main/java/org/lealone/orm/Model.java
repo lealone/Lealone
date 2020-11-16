@@ -109,7 +109,6 @@ public abstract class Model<T> {
         public final long get() {
             return value;
         }
-
     }
 
     private static class NVPair {
@@ -145,7 +144,6 @@ public abstract class Model<T> {
                 return false;
             return true;
         }
-
     }
 
     @SuppressWarnings("unchecked")
@@ -188,7 +186,7 @@ public abstract class Model<T> {
         this.modelType = modelType;
     }
 
-    ModelTable getTable() {
+    ModelTable getModelTable() {
         return modelTable;
     }
 
@@ -405,7 +403,6 @@ public abstract class Model<T> {
                 sql.append(")");
             }
         }
-        // reset();
         System.out.println(sql);
     }
 

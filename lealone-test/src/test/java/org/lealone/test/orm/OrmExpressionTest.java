@@ -34,6 +34,7 @@ public class OrmExpressionTest extends UnitTestBase {
         testSelect();
         testOffsetLimit();
         testNot();
+        testIn();
     }
 
     void testSelect() {
@@ -75,5 +76,23 @@ public class OrmExpressionTest extends UnitTestBase {
         d.printSQL();
         d = User.dao.where().not().not().not().notes.eq("notes1");
         d.printSQL();
+    }
+
+    void testIn() {
+        User d = User.dao.where().notes.in("notes1");
+        d.printSQL();
+        d.findList();
+
+        d = User.dao.where().notes.notIn("notes1");
+        d.printSQL();
+        d.findList();
+
+        d = User.dao.where().notes.in("notes1", "notes2");
+        d.printSQL();
+        d.findList();
+
+        d = User.dao.where().notes.notIn("notes1", "notes2");
+        d.printSQL();
+        d.findList();
     }
 }

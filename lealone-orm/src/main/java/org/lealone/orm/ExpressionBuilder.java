@@ -30,6 +30,7 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.condition.CompareLike;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.expression.condition.ConditionAndOr;
+import org.lealone.sql.expression.condition.ConditionIn;
 import org.lealone.sql.expression.condition.ConditionNot;
 
 public class ExpressionBuilder<T> {
@@ -43,10 +44,6 @@ public class ExpressionBuilder<T> {
 
     ExpressionBuilder(Model<?> model) {
         this.model = this.oldModel = model;
-    }
-
-    void setAnd(boolean isAnd) {
-        this.isAnd = isAnd;
     }
 
     // 用于join时切换
@@ -76,19 +73,31 @@ public class ExpressionBuilder<T> {
         return orderList;
     }
 
-    private ModelTable getTable() {
-        return model.getTable();
+    private ModelTable getModelTable() {
+        return model.getModelTable();
     }
 
-    private Comparison createComparison(String propertyName, Object value, int compareType) {
-        ExpressionColumn ec = model.getExpressionColumn(propertyName);
+    private ValueExpression createValueExpression(Object value) {
         ValueExpression v;
         if (value instanceof Value) {
             v = ValueExpression.get((Value) value);
         } else {
             v = ValueExpression.get(ValueString.get(value.toString()));
         }
-        return new Comparison(getTable().getSession(), compareType, ec, v);
+        return v;
+    }
+
+    private ArrayList<Expression> createExpressionList(Object... values) {
+        ArrayList<Expression> list = new ArrayList<>(values.length);
+        for (Object v : values)
+            list.add(createValueExpression(v));
+        return list;
+    }
+
+    private Comparison createComparison(String propertyName, Object value, int compareType) {
+        ExpressionColumn ec = model.getExpressionColumn(propertyName);
+        ValueExpression v = createValueExpression(value);
+        return new Comparison(getModelTable().getSession(), compareType, ec, v);
     }
 
     private ConditionAndOr createConditionAnd(Expression left, Expression right) {
@@ -120,7 +129,7 @@ public class ExpressionBuilder<T> {
     public ExpressionBuilder<T> eq(String propertyName, ModelProperty<?> p) {
         ExpressionColumn left = model.getExpressionColumn(propertyName);
         ExpressionColumn right = Model.getExpressionColumn(p);
-        Comparison c = new Comparison(getTable().getSession(), Comparison.EQUAL, left, right);
+        Comparison c = new Comparison(getModelTable().getSession(), Comparison.EQUAL, left, right);
         setRootExpression(c);
         return this;
     }
@@ -196,30 +205,43 @@ public class ExpressionBuilder<T> {
         return this;
     }
 
+    private ConditionIn createConditionIn(String propertyName, Object... values) {
+        ExpressionColumn left = model.getExpressionColumn(propertyName);
+        ArrayList<Expression> valueList = createExpressionList(values);
+        ConditionIn c = new ConditionIn(getModelTable().getDatabase(), left, valueList);
+        return c;
+    }
+
     public ExpressionBuilder<T> in(String propertyName, Object... values) {
-        // TODO Auto-generated method stub
+        ConditionIn c = createConditionIn(propertyName, values);
+        setRootExpression(c);
         return this;
     }
 
     public ExpressionBuilder<T> in(String propertyName, Collection<?> values) {
-        // TODO Auto-generated method stub
+        Object[] valueArray = new Object[values.size()];
+        values.toArray(valueArray);
+        in(propertyName, valueArray);
         return this;
     }
 
     public ExpressionBuilder<T> notIn(String propertyName, Object... values) {
-        // TODO Auto-generated method stub
+        ConditionIn c = createConditionIn(propertyName, values);
+        setRootExpression(new ConditionNot(c));
         return this;
     }
 
     public ExpressionBuilder<T> notIn(String propertyName, Collection<?> values) {
-        // TODO Auto-generated method stub
+        Object[] valueArray = new Object[values.size()];
+        values.toArray(valueArray);
+        notIn(propertyName, valueArray);
         return this;
     }
 
     public ExpressionBuilder<T> like(String propertyName, String value) {
         ExpressionColumn ec = model.getExpressionColumn(propertyName);
         ValueExpression v = ValueExpression.get(ValueString.get(value));
-        CompareLike like = new CompareLike(getTable().getDatabase(), ec, v, null, false);
+        CompareLike like = new CompareLike(getModelTable().getDatabase(), ec, v, null, false);
         setRootExpression(like);
         return this;
     }
