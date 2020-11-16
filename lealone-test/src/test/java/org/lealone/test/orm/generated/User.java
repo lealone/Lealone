@@ -7,6 +7,7 @@ import org.lealone.orm.ModelDeserializer;
 import org.lealone.orm.ModelProperty;
 import org.lealone.orm.ModelSerializer;
 import org.lealone.orm.ModelTable;
+import org.lealone.orm.property.PArray;
 import org.lealone.orm.property.PInteger;
 import org.lealone.orm.property.PLong;
 import org.lealone.orm.property.PString;
@@ -27,6 +28,7 @@ public class User extends Model<User> {
     public final PString<User> notes;
     public final PInteger<User> phone;
     public final PLong<User> id;
+    public final PArray<User> phones;
 
     public User() {
         this(null, REGULAR_MODEL);
@@ -40,7 +42,8 @@ public class User extends Model<User> {
         this.notes = new PString<>("NOTES", this);
         this.phone = new PInteger<>("PHONE", this);
         this.id = new PLong<>("ID", this);
-        super.setModelProperties(new ModelProperty[] { this.name, this.notes, this.phone, this.id });
+        this.phones = new PArray<>("PHONES", this);
+        super.setModelProperties(new ModelProperty[] { this.name, this.notes, this.phone, this.id, this.phones });
     }
 
     @Override

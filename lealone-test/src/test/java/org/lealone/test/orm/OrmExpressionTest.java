@@ -36,6 +36,7 @@ public class OrmExpressionTest extends UnitTestBase {
         testNot();
         testIn();
         testLike();
+        testArray();
     }
 
     void testSelect() {
@@ -125,5 +126,30 @@ public class OrmExpressionTest extends UnitTestBase {
 
         list = User.dao.where().name.match("[rob/d]").findList();
         assertEquals(5, list.size());
+    }
+
+    void testArray() {
+        new User().id.set(1006).name.set("rob6").phones.set(new Object[] { 1, 2, 3 }).insert();
+
+        List<User> list = User.dao.where().id.eq(1006).findList();
+        assertEquals(1, list.size());
+
+        list = User.dao.where().id.eq(1006).phones.isEmpty().findList();
+        assertEquals(0, list.size());
+
+        list = User.dao.where().id.eq(1006).phones.isNotEmpty().findList();
+        assertEquals(1, list.size());
+
+        list = User.dao.where().id.eq(1006).phones.contains(1).findList();
+        assertEquals(1, list.size());
+
+        list = User.dao.where().id.eq(1006).phones.contains(1, 3).findList();
+        assertEquals(1, list.size());
+
+        list = User.dao.where().id.eq(1006).phones.notContains(4).findList();
+        assertEquals(1, list.size());
+
+        list = User.dao.where().id.eq(1006).phones.notContains(4, 3).findList();
+        assertEquals(1, list.size());
     }
 }

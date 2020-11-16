@@ -21,6 +21,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 import org.lealone.db.value.Value;
+import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueBoolean;
+import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.sql.expression.Expression;
@@ -190,23 +193,48 @@ public class ExpressionBuilder<T> {
         return this;
     }
 
+    private void arrayComparison(String propertyName, boolean contains, Object... values) {
+        ExpressionColumn ec = model.getExpressionColumn(propertyName);
+        Function f = Function.getFunction(getModelTable().getDatabase(), "ARRAY_CONTAINS");
+        f.setParameter(0, ec);
+
+        Value[] array = new Value[values.length];
+        for (int i = 0; i < values.length; i++) {
+            array[i] = ValueString.get(values[i].toString());
+        }
+        ValueExpression v = ValueExpression.get(ValueArray.get(array));
+        f.setParameter(1, v);
+
+        Comparison c = new Comparison(getModelTable().getSession(), Comparison.EQUAL, f,
+                ValueExpression.get(contains ? ValueBoolean.TRUE : ValueBoolean.FALSE));
+        setRootExpression(c);
+    }
+
     public ExpressionBuilder<T> arrayContains(String propertyName, Object... values) {
-        // TODO Auto-generated method stub
+        arrayComparison(propertyName, true, values);
         return this;
     }
 
     public ExpressionBuilder<T> arrayNotContains(String propertyName, Object... values) {
-        // TODO Auto-generated method stub
+        arrayComparison(propertyName, false, values);
         return this;
     }
 
     public ExpressionBuilder<T> arrayIsEmpty(String propertyName) {
-        // TODO Auto-generated method stub
-        return this;
+        return arrayLength(propertyName, Comparison.EQUAL);
     }
 
     public ExpressionBuilder<T> arrayIsNotEmpty(String propertyName) {
-        // TODO Auto-generated method stub
+        return arrayLength(propertyName, Comparison.BIGGER);
+    }
+
+    private ExpressionBuilder<T> arrayLength(String propertyName, int compareType) {
+        ExpressionColumn ec = model.getExpressionColumn(propertyName);
+        Function f = Function.getFunction(getModelTable().getDatabase(), "ARRAY_LENGTH");
+        f.setParameter(0, ec);
+        ValueExpression v = ValueExpression.get(ValueInt.get(0));
+        Comparison c = new Comparison(getModelTable().getSession(), compareType, f, v);
+        setRootExpression(c);
         return this;
     }
 

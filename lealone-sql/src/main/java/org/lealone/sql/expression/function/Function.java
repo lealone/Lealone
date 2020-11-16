@@ -922,10 +922,29 @@ public class Function extends Expression implements FunctionCall {
             if (v0.getType() == Value.ARRAY) {
                 Value v1 = getNullOrValue(session, args, values, 1);
                 Value[] list = ((ValueArray) v0).getList();
-                for (Value v : list) {
-                    if (v.equals(v1)) {
-                        result = ValueBoolean.get(true);
-                        break;
+                if (v1 instanceof ValueArray) {
+                    result = ValueBoolean.get(true);
+                    Value[] list2 = ((ValueArray) v1).getList();
+                    for (int i = 0; i < list2.length; i++) {
+                        v1 = list2[i];
+                        boolean b = false;
+                        for (Value v : list) {
+                            if (v.equals(v1)) {
+                                b = true;
+                                break;
+                            }
+                        }
+                        if (b == false) {
+                            result = ValueBoolean.get(false);
+                            break;
+                        }
+                    }
+                } else {
+                    for (Value v : list) {
+                        if (v.equals(v1)) {
+                            result = ValueBoolean.get(true);
+                            break;
+                        }
                     }
                 }
             }

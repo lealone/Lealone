@@ -57,7 +57,7 @@ public class SqlScript {
         System.out.println("create table: user");
 
         // 创建表: user
-        executor.execute("create table user(name char(10) primary key, notes varchar, phone int, id long)" //
+        executor.execute("create table user(name char(10) primary key, notes varchar, phone int, id long, phones ARRAY)" //
                 + " package '" + MODEL_PACKAGE_NAME + "'" //
                 + " generate code '" + GENERATED_CODE_PATH + "'");
     }
