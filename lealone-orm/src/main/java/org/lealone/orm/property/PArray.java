@@ -28,6 +28,7 @@ import org.lealone.orm.ModelProperty;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 
 /**
  * Array property with E as the element type.
@@ -79,10 +80,13 @@ public class PArray<R> extends ModelProperty<R> {
     @Override
     public R serialize(JsonGenerator jgen) throws IOException {
         jgen.writeFieldName(getName());
-        jgen.writeNumber(values.length);
-        for (int i = 0; i < values.length; i++) {
-            jgen.writeObject(values[i]);
+        jgen.writeStartArray();
+        if (values != null) {
+            for (int i = 0; i < values.length; i++) {
+                jgen.writeObject(values[i]);
+            }
         }
+        jgen.writeEndArray();
         return root;
     }
 
@@ -92,13 +96,15 @@ public class PArray<R> extends ModelProperty<R> {
         if (node == null) {
             return root;
         }
-        node.asText();
-        int length = node.asInt();
-        Object[] values = new Object[length];
-        for (int i = 0; i < length; i++) {
-            values[i] = node.asText();
+        ArrayNode arrayNode = (ArrayNode) node;
+        int length = arrayNode.size();
+        if (length > 0) {
+            Object[] values = new Object[length];
+            for (int i = 0; i < length; i++) {
+                values[i] = arrayNode.get(i);
+            }
+            set(values);
         }
-        set(values);
         return root;
     }
 

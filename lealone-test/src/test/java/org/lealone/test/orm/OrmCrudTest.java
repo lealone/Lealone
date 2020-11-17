@@ -40,7 +40,7 @@ public class OrmCrudTest extends UnitTestBase {
 
     void json() {
         User u = new User();
-        u.name.set("Rob");
+        u.name.set("Rob").phones.set(new Object[] { 1, 2, 3 });
 
         JsonObject json = JsonObject.mapFrom(u);
         String str = json.encode();
@@ -48,6 +48,7 @@ public class OrmCrudTest extends UnitTestBase {
 
         u = new JsonObject(str).mapTo(User.class);
         assertEquals("Rob", u.name.get());
+        System.out.println("phones: " + u.phones.get().length);
     }
 
     private long getRowId(Object obj) {
