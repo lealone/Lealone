@@ -18,7 +18,6 @@
 package org.lealone.orm.property;
 
 import java.io.IOException;
-import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueByte;
@@ -93,11 +92,7 @@ public class PByte<R> extends PBaseNumber<R, Byte> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getByte();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getByte();
     }
 }

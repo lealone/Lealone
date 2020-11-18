@@ -19,7 +19,6 @@ package org.lealone.orm.property;
 
 import java.io.IOException;
 import java.sql.Timestamp;
-import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueTimestamp;
@@ -95,11 +94,7 @@ public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getTimestamp();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getTimestamp();
     }
 }

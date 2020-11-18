@@ -18,7 +18,6 @@
 package org.lealone.orm.property;
 
 import java.io.IOException;
-import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueString;
@@ -254,12 +253,7 @@ public class PString<R> extends PBaseComparable<R, String> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getString();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getString();
     }
-
 }

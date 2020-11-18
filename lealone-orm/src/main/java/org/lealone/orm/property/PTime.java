@@ -19,7 +19,6 @@ package org.lealone.orm.property;
 
 import java.io.IOException;
 import java.sql.Time;
-import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueTime;
@@ -95,11 +94,7 @@ public class PTime<R> extends PBaseNumber<R, Time> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getTime();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getTime();
     }
 }

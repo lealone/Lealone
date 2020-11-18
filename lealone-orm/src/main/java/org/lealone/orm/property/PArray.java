@@ -18,7 +18,6 @@
 package org.lealone.orm.property;
 
 import java.io.IOException;
-import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
@@ -109,9 +108,8 @@ public class PArray<R> extends ModelProperty<R> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null && (v instanceof ValueArray)) {
+    protected void deserialize(Value v) {
+        if (v instanceof ValueArray) {
             ValueArray array = (ValueArray) v;
             Value[] list = array.getList();
             int length = list.length;
@@ -121,7 +119,6 @@ public class PArray<R> extends ModelProperty<R> {
             }
             this.values = values;
         }
-        return root;
     }
 
     /**

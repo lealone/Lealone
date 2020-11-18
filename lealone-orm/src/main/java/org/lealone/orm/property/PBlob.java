@@ -20,7 +20,6 @@ package org.lealone.orm.property;
 import java.io.IOException;
 import java.sql.Blob;
 import java.sql.SQLException;
-import java.util.HashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.ReadonlyBlob;
@@ -89,11 +88,7 @@ public class PBlob<R> extends ModelProperty<R> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getBlob();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getBlob();
     }
 }

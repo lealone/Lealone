@@ -19,7 +19,6 @@ package org.lealone.orm.property;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueDecimal;
@@ -93,11 +92,7 @@ public class PBigDecimal<R> extends PBaseNumber<R, BigDecimal> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getBigDecimal();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getBigDecimal();
     }
 }

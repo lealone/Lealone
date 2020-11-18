@@ -159,10 +159,6 @@ public abstract class ModelProperty<R> {
     }
 
     public R set(Object value) {
-        Model<?> model = getModel();
-        if (model != root) {
-            return P(model).set(value);
-        }
         return root;
     }
 
@@ -174,9 +170,16 @@ public abstract class ModelProperty<R> {
         return root;
     }
 
-    public R deserialize(HashMap<String, Value> map) {
-        return root;
+    // map存放的是查询结果集某一条记录各个字段的值
+    protected void deserialize(HashMap<String, Value> map) {
+        Value v = map.get(getFullName());
+        if (v != null) {
+            deserialize(v);
+        }
     }
+
+    // 子类不需要再对参数v做null判断
+    protected abstract void deserialize(Value v);
 
     protected JsonNode getJsonNode(JsonNode node) {
         JsonNode n = node.get(name);

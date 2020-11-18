@@ -18,7 +18,6 @@
 package org.lealone.orm.property;
 
 import java.io.IOException;
-import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueFloat;
@@ -93,11 +92,7 @@ public class PFloat<R> extends PBaseNumber<R, Float> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getFloat();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getFloat();
     }
 }

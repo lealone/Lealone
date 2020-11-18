@@ -18,7 +18,6 @@
 package org.lealone.orm.property;
 
 import java.io.IOException;
-import java.util.HashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.value.Value;
@@ -90,11 +89,7 @@ public class PBytes<R> extends ModelProperty<R> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getBytes();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getBytes();
     }
 }

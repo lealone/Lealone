@@ -18,7 +18,6 @@
 package org.lealone.orm.property;
 
 import java.io.IOException;
-import java.util.HashMap;
 
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
@@ -153,11 +152,7 @@ public class PBoolean<R> extends PBaseValueEqual<R, Boolean> {
     }
 
     @Override
-    public R deserialize(HashMap<String, Value> map) {
-        Value v = map.get(getFullName());
-        if (v != null) {
-            value = v.getBoolean();
-        }
-        return root;
+    protected void deserialize(Value v) {
+        value = v.getBoolean();
     }
 }

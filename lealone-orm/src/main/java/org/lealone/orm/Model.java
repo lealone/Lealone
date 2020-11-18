@@ -98,12 +98,8 @@ public abstract class Model<T> {
         }
 
         @Override
-        public final T deserialize(HashMap<String, Value> map) {
-            Value v = map.get(getFullName());
-            if (v != null) {
-                value = v.getLong();
-            }
-            return root;
+        protected void deserialize(Value v) {
+            value = v.getLong();
         }
 
         public final long get() {
