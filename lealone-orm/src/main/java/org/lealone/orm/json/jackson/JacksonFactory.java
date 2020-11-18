@@ -8,7 +8,6 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-
 package org.lealone.orm.json.jackson;
 
 import org.lealone.orm.json.spi.JsonCodec;

@@ -8,7 +8,6 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-
 package org.lealone.orm.json.jackson;
 
 import java.io.IOException;
@@ -162,7 +161,7 @@ public class DatabindCodec extends JacksonCodec {
             if (o instanceof List) {
                 List list = (List) o;
                 return new JsonArray(list);
-            } else if (o instanceof Map) { 
+            } else if (o instanceof Map) {
                 Map<String, Object> map = (Map<String, Object>) o;
                 return new JsonObject(map);
             }

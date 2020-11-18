@@ -8,7 +8,6 @@
  *
  * SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
  */
-
 package org.lealone.orm.json;
 
 import org.lealone.orm.json.jackson.JacksonFactory;
@@ -21,9 +20,6 @@ import org.lealone.orm.json.util.ServiceHelper;
  */
 public class Json {
 
-    /**
-     *
-     */
     public static final JsonCodec CODEC = JsonFactory.INSTANCE.codec();
 
     /**
@@ -33,9 +29,8 @@ public class Json {
      * When {@code jackson-databind} is available then a codec using it will be used otherwise
      * the codec will only use {@code jackson-core} and provide best effort mapping.
      */
-    public static org.lealone.orm.json.spi.JsonFactory load() {
-        org.lealone.orm.json.spi.JsonFactory factory = ServiceHelper
-                .loadFactoryOrNull(org.lealone.orm.json.spi.JsonFactory.class);
+    public static JsonFactory load() {
+        JsonFactory factory = ServiceHelper.loadFactoryOrNull(JsonFactory.class);
         if (factory == null) {
             factory = JacksonFactory.INSTANCE;
         }
@@ -81,7 +76,8 @@ public class Json {
      *
      * @param str the JSON string.
      *
-     * @return a JSON element which can be a {@link JsonArray}, {@link JsonObject}, {@link String}, ...etc if the content is an array, object, string, ...etc
+     * @return a JSON element which can be a {@link JsonArray}, {@link JsonObject}, {@link String}, 
+     *         ...etc if the content is an array, object, string, ...etc
      * @throws DecodeException when there is a parsing or invalid mapping.
      */
     public static Object decodeValue(String str) throws DecodeException {
