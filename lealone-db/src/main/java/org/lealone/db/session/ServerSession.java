@@ -1468,6 +1468,7 @@ public class ServerSession extends SessionBase {
     }
 
     public void setLastRow(Row r) {
+        setLastIdentity(ValueLong.get(r.getKey()));
         lastRow = r;
         setReplicationConflictType(ReplicationConflictType.APPEND);
     }

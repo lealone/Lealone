@@ -684,7 +684,7 @@ public abstract class Model<T> {
         insert.prepare();
         logger.info("execute sql: " + insert.getPlanSQL());
         insert.executeUpdate();
-        long rowId = session.getLastRowKey();
+        long rowId = session.getLastIdentity().getLong(); // session.getLastRowKey()在事务提交时被设为null了
         _rowid_.set(rowId);
 
         if (session.isAutoCommit()) {
