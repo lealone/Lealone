@@ -4284,7 +4284,7 @@ public class Parser implements SQLParser {
             } while (readIfMore());
         }
         if (readIf("PACKAGE")) {
-            String packageName = readString();
+            String packageName = readExpression().getValue(session).getString();
             command.setPackageName(packageName);
         }
         if (readIf("IMPLEMENT")) {
@@ -4294,8 +4294,9 @@ public class Parser implements SQLParser {
         }
         if (readIf("GENERATE")) {
             read("CODE");
+            String codePath = readExpression().getValue(session).getString();
             command.setGenCode(true);
-            command.setCodePath(readString());
+            command.setCodePath(codePath);
         }
         return command;
     }
@@ -5677,13 +5678,14 @@ public class Parser implements SQLParser {
             command.setHidden(true);
         }
         if (readIf("PACKAGE")) {
-            String packageName = readString();
+            String packageName = readExpression().getValue(session).getString();
             command.setPackageName(packageName);
         }
         if (readIf("GENERATE")) {
             read("CODE");
+            String codePath = readExpression().getValue(session).getString();
             command.setGenCode(true);
-            command.setCodePath(readString());
+            command.setCodePath(codePath);
         }
         if (readIf("AS")) {
             command.setQuery(parseSelect());
