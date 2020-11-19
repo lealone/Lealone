@@ -373,10 +373,10 @@ public class SysProperties {
      * INTERNAL
      */
     public static String getBaseDir() {
-        String dir = getProperty(BASE_DIR, null);
-        if (dir == null)
-            throw new RuntimeException("Fatal error: base dir is null, the system property '"
-                    + Constants.PROJECT_NAME_PREFIX + BASE_DIR + "' must be set");
+        String dir = getProperty(BASE_DIR, Constants.DEFAULT_BASE_DIR);
+        // if (dir == null)
+        // throw new RuntimeException("Fatal error: base dir is null, the system property '"
+        // + Constants.PROJECT_NAME_PREFIX + BASE_DIR + "' must be set");
         return dir;
     }
 

@@ -18,6 +18,7 @@
 package org.lealone.transaction.aote;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -28,10 +29,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.ShutdownHookUtils;
 import org.lealone.db.RunMode;
+import org.lealone.db.SysProperties;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageEventListener;
 import org.lealone.storage.StorageMap;
@@ -175,7 +176,9 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
     @Override
     public AMTransaction beginTransaction(boolean autoCommit, RunMode runMode) {
         if (logSyncService == null) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
+            // 直接抛异常对上层很不友好，还不如用默认配置初始化
+            init(getDefaultConfig());
+            // throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
         long tid = getTransactionId(runMode == RunMode.SHARDING);
         AMTransaction t = createTransaction(tid, runMode);
@@ -183,6 +186,14 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         t.setRunMode(runMode);
         currentTransactions.put(tid, t);
         return t;
+    }
+
+    private static Map<String, String> getDefaultConfig() {
+        Map<String, String> config = new HashMap<>();
+        config.put("base_dir", SysProperties.getBaseDir());
+        config.put("redo_log_dir", "redo_log");
+        config.put("log_sync_type", LogSyncService.LOG_SYNC_TYPE_PERIODIC);
+        return config;
     }
 
     private long getTransactionId(boolean isShardingMode) {

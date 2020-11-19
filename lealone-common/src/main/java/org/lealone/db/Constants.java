@@ -26,6 +26,8 @@ public class Constants {
      */
     public static final String PROJECT_NAME_PREFIX = PROJECT_NAME + ".";
 
+    public static final String DEFAULT_BASE_DIR = "./target/lealone_db_base_dir";
+
     public static final String DEFAULT_STORAGE_ENGINE_NAME = "AOSE";
 
     public static final String DEFAULT_TRANSACTION_ENGINE_NAME = "AOTE";
