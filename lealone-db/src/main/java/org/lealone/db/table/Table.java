@@ -541,6 +541,13 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
         // before removing the table object)
         while (sequences != null && sequences.size() > 0) {
             Sequence sequence = sequences.get(0);
+            // 清除字段对Sequence的引用，否则Sequence是无法删除的
+            for (Column c : getColumns()) {
+                if (c.getSequence() == sequence) {
+                    c.setSequence(null);
+                    c.setDefaultExpression(session, null);
+                }
+            }
             sequences.remove(0);
             if (!isTemporary()) {
                 // only remove if no other table depends on this sequence
