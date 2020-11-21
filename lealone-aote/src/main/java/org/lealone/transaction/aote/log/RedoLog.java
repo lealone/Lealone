@@ -122,7 +122,9 @@ public class RedoLog {
                     map.remove(key);
                 else {
                     Object value = vt.read(kv);
-                    map.put(key, TransactionalValue.createCommitted(value));
+                    // 需要返回引用，否则无法在修改和删除时使用CAS
+                    TransactionalValue ref = TransactionalValue.createRef(TransactionalValue.createCommitted(value));
+                    map.put(key, ref);
                 }
             }
         }

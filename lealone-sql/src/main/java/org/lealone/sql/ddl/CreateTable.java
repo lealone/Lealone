@@ -460,7 +460,7 @@ public class CreateTable extends SchemaStatement {
                     listBuff.append("    public ").append(className).append(" add").append(ownerClassName).append("(")
                             .append(ownerClassName).append(" m) {\r\n");
                     listBuff.append("        m.set").append(refTableClassName).append("(this);\r\n");
-                    listBuff.append("        super.addModel(m);;\r\n");
+                    listBuff.append("        super.addModel(m);\r\n");
                     listBuff.append("        return this;\r\n");
                     listBuff.append("    }\r\n");
                     listBuff.append("\r\n");
