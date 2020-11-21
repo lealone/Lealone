@@ -342,11 +342,19 @@ public class CreateTable extends SchemaStatement {
         return codePath;
     }
 
+    // table.getConstraints()可能返回null
+    private static ArrayList<Constraint> getConstraints(Table table) {
+        ArrayList<Constraint> constraints = table.getConstraints();
+        if (constraints == null)
+            constraints = new ArrayList<>(0);
+        return constraints;
+    }
+
     private static void genCode(ServerSession session, Table table, Table owner, int level) {
         String packageName = table.getPackageName();
         String tableName = table.getName();
         Schema schema = table.getSchema();
-        for (Constraint constraint : table.getConstraints()) {
+        for (Constraint constraint : getConstraints(table)) {
             if (constraint instanceof ConstraintReferential) {
                 ConstraintReferential ref = (ConstraintReferential) constraint;
                 Table refTable = ref.getRefTable();
@@ -372,7 +380,7 @@ public class CreateTable extends SchemaStatement {
         importSet.add("com.fasterxml.jackson.databind.annotation.JsonSerialize");
         importSet.add(packageName + "." + className + "." + className + "Deserializer");
 
-        for (Constraint constraint : table.getConstraints()) {
+        for (Constraint constraint : getConstraints(table)) {
             if (constraint instanceof ConstraintReferential) {
                 ConstraintReferential ref = (ConstraintReferential) constraint;
                 Table refTable = ref.getRefTable();
@@ -447,7 +455,7 @@ public class CreateTable extends SchemaStatement {
         StringBuilder listBuff = new StringBuilder();
         StringBuilder newAssociateInstanceBuff = new StringBuilder();
         int mVar = 0;
-        for (Constraint constraint : table.getConstraints()) {
+        for (Constraint constraint : getConstraints(table)) {
             if (constraint instanceof ConstraintReferential) {
                 ConstraintReferential ref = (ConstraintReferential) constraint;
                 Table refTable = ref.getRefTable();
