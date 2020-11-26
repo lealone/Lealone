@@ -59,7 +59,7 @@ public class FileStorage {
     private boolean checkedWriting = true;
     private String mode;
     private TempFileDeleter tempFileDeleter;
-    private java.nio.channels.FileLock lock;
+    private FileLock lock;
 
     /**
      * The number of read operations.

@@ -92,6 +92,8 @@ public class DataBuffer implements AutoCloseable {
 
     private ByteBuffer buff; // = reuse;
 
+    private boolean direct;
+
     /**
      * Create a new buffer for the given handler. The
      * handler will decide what type of buffer is created.
@@ -102,6 +104,10 @@ public class DataBuffer implements AutoCloseable {
      */
     public static DataBuffer create(DataHandler handler, int capacity) {
         return new DataBuffer(handler, capacity);
+    }
+
+    public static DataBuffer create(DataHandler handler, int capacity, boolean direct) {
+        return new DataBuffer(handler, capacity, direct);
     }
 
     public static DataBuffer create(DataHandler handler) {
@@ -121,7 +127,12 @@ public class DataBuffer implements AutoCloseable {
     }
 
     protected DataBuffer(DataHandler handler, int capacity) {
+        this(handler, capacity, true);
+    }
+
+    protected DataBuffer(DataHandler handler, int capacity, boolean direct) {
         this.handler = handler;
+        this.direct = direct;
         reuse = allocate(capacity);
         buff = reuse;
     }
@@ -816,9 +827,8 @@ public class DataBuffer implements AutoCloseable {
         this.buff.position(p);
     }
 
-    private static ByteBuffer allocate(int capacity) {
-        // return ByteBuffer.allocate(capacity);
-        return ByteBuffer.allocateDirect(capacity);
+    private ByteBuffer allocate(int capacity) {
+        return direct ? ByteBuffer.allocateDirect(capacity) : ByteBuffer.allocate(capacity);
     }
 
     private static class DataBufferPool {

@@ -32,7 +32,7 @@ public class FileStorageOutputStream extends OutputStream {
             this.compress = null;
             this.compressionAlgorithm = null;
         }
-        page = DataBuffer.create(handler, Constants.FILE_BLOCK_SIZE);
+        page = DataBuffer.create(handler, Constants.FILE_BLOCK_SIZE, false); // 不能用direct byte buffer
     }
 
     @Override

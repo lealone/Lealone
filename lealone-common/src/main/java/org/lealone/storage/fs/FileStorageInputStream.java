@@ -37,7 +37,7 @@ public class FileStorageInputStream extends InputStream {
         } else {
             compress = null;
         }
-        page = DataBuffer.create(handler, Constants.FILE_BLOCK_SIZE);
+        page = DataBuffer.create(handler, Constants.FILE_BLOCK_SIZE, false); // 不能用direct byte buffer
         try {
             if (fileStorage.length() <= FileStorage.HEADER_LENGTH) {
                 close();
