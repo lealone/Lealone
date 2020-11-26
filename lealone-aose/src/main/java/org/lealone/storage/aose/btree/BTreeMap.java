@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.lealone.common.exceptions.DbException;
@@ -445,19 +444,20 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public synchronized void clear() {
         checkWrite();
 
-        // 等待所有的操作完成
-        List<PageOperationHandler> handlers = pohFactory.getAllPageOperationHandlers();
-        CountDownLatch latch = new CountDownLatch(handlers.size());
-        for (PageOperationHandler handler : handlers) {
-            handler.handlePageOperation(new RunnableOperation(() -> {
-                latch.countDown();
-            }));
-        }
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            throw DbException.convert(e);
-        }
+        // TODO 对于truncate操作有bug
+        // // 等待所有的操作完成
+        // List<PageOperationHandler> handlers = pohFactory.getAllPageOperationHandlers();
+        // CountDownLatch latch = new CountDownLatch(handlers.size());
+        // for (PageOperationHandler handler : handlers) {
+        // handler.handlePageOperation(new RunnableOperation(() -> {
+        // latch.countDown();
+        // }));
+        // }
+        // try {
+        // latch.await();
+        // } catch (InterruptedException e) {
+        // throw DbException.convert(e);
+        // }
 
         List<String> replicationHostIds = root.getReplicationHostIds();
         root.removeAllRecursive();
