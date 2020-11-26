@@ -150,7 +150,8 @@ public class DataBuffer implements AutoCloseable {
      * Set the position to 0.
      */
     public void reset() {
-        buff.clear();
+        buff.position(0);
+        // buff.clear();
     }
 
     /**
@@ -533,6 +534,7 @@ public class DataBuffer implements AutoCloseable {
     }
 
     private void grow(int additional) {
+        int pos = buff.position();
         ByteBuffer temp = buff;
         int needed = additional - temp.remaining();
         // grow at least MIN_GROW
@@ -549,8 +551,10 @@ public class DataBuffer implements AutoCloseable {
         } catch (OutOfMemoryError e) {
             throw new OutOfMemoryError("Capacity: " + newCapacity);
         }
-        temp.flip();
+        // temp.flip();
+        temp.position(0);
         buff.put(temp);
+        buff.position(pos);
         if (newCapacity <= MAX_REUSE_CAPACITY) {
             reuse = buff;
         }
