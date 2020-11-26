@@ -119,12 +119,12 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
         int rowCount = ack.rowCount;
         ClientResult result = null;
         try {
+            TransferInputStream in = (TransferInputStream) ack.in;
+            in.setSession(session);
             if (rowCount < 0)
-                result = new RowCountUndeterminedClientResult(session, (TransferInputStream) ack.in, resultId,
-                        columnCount, fetch);
+                result = new RowCountUndeterminedClientResult(session, in, resultId, columnCount, fetch);
             else
-                result = new RowCountDeterminedClientResult(session, (TransferInputStream) ack.in, resultId,
-                        columnCount, rowCount, fetch);
+                result = new RowCountDeterminedClientResult(session, in, resultId, columnCount, rowCount, fetch);
         } catch (IOException e) {
             throw DbException.convert(e);
         }
