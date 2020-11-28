@@ -11,6 +11,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
@@ -96,9 +97,12 @@ public class ValueLob extends Value implements Value.ValueClob, Value.ValueBlob 
             while (true) {
                 int len = getBufferSize(this.handler, false, remaining);
                 len = IOUtils.readFully(in, buff, len);
-                if (len == 0) {
+                if (len <= 0) {
                     break;
                 }
+                byte[] data = new String(buff, 0, len).getBytes(StandardCharsets.UTF_8);
+                out.write(data);
+                tmpPrecision += len;
             }
         } finally {
             out.close();

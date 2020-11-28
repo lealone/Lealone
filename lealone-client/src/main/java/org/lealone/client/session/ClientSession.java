@@ -325,7 +325,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         try {
             LobReadAck ack = this.<LobReadAck> send(new LobRead(lobId, hmac, offset, length)).get();
             if (ack.buff != null && ack.buff.length > 0) {
-                System.arraycopy(ack.buff, 0, buff, off, length);
+                System.arraycopy(ack.buff, 0, buff, off, ack.buff.length);
                 return ack.buff.length;
             }
         } catch (Exception e) {

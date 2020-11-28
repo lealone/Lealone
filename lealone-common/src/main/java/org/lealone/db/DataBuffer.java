@@ -800,7 +800,7 @@ public class DataBuffer implements AutoCloseable {
      */
     public static void copyString(Reader source, OutputStream target) throws IOException {
         char[] buff = new char[Constants.IO_BUFFER_SIZE];
-        DataBuffer d = new DataBuffer(null, 3 * Constants.IO_BUFFER_SIZE);
+        DataBuffer d = new DataBuffer(null, 3 * Constants.IO_BUFFER_SIZE, false);
         while (true) {
             int l = source.read(buff);
             if (l < 0) {

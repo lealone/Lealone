@@ -252,7 +252,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     private void setChildrenPageKeys() {
-        if (children != null && keys != null) {
+        if (children != null && keys != null && keys.length > 0) {
             int keyLength = keys.length;
             children[0].setPageKey(keys[0], true);
             for (int i = 0; i < keyLength; i++) {

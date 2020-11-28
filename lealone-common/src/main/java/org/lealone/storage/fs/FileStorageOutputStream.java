@@ -17,6 +17,7 @@ import org.lealone.db.DataHandler;
  * An output stream that is backed by a file storage.
  */
 public class FileStorageOutputStream extends OutputStream {
+
     private FileStorage fileStorage;
     private final DataBuffer page;
     private final String compressionAlgorithm;

@@ -59,8 +59,9 @@ public class JdbcBlobTest extends SqlTestBase { // UnitTestBase {
 
         blob = (JdbcBlob) rs.getBlob(3);
         assertNotNull(blob);
-        blobStr = new String(blob.getBytes(1, blobStr.length()));
-        System.out.println("f3=" + blobStr);
+        String blobStr2 = new String(blob.getBytes(1, blobStr.length()));
+        assertEquals(blobStr2, blobStr);
+        // System.out.println("f3=" + blobStr);
 
         stmt.executeUpdate("DELETE FROM JdbcBlobTest WHERE f1 = 1");
 

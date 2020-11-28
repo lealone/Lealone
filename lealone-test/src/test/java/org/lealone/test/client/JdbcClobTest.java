@@ -24,16 +24,15 @@ import java.sql.Statement;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcClob;
-import org.lealone.common.trace.TraceSystem;
-import org.lealone.test.UnitTestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcClobTest extends UnitTestBase {
+public class JdbcClobTest extends SqlTestBase { // extends UnitTestBase {
     @Test
     public void run() throws Exception {
-        setEmbedded(true).enableTrace(TraceSystem.DEBUG);
+        // setEmbedded(true).enableTrace(TraceSystem.DEBUG);
         Connection conn = getConnection();
         Statement stmt = conn.createStatement();
-
+        // stmt.executeUpdate("set DB_CLOSE_DELAY 0");
         stmt.executeUpdate("DROP TABLE IF EXISTS JdbcClobTest");
         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS JdbcClobTest (f1 int, f2 long, f3 clob)");
 
@@ -59,8 +58,9 @@ public class JdbcClobTest extends UnitTestBase {
 
         clob = (JdbcClob) rs.getClob(3);
         assertNotNull(clob);
-        clobStr = clob.getSubString(1, clobStr.length());
-        System.out.println("f3=" + clobStr);
+        String clobStr2 = clob.getSubString(1, clobStr.length());
+        assertEquals(clobStr2, clobStr);
+        // System.out.println("f3=" + clobStr);
 
         stmt.executeUpdate("DELETE FROM JdbcClobTest WHERE f1 = 1");
 
