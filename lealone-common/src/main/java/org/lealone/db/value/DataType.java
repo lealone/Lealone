@@ -117,7 +117,7 @@ public class DataType {
     public boolean autoIncrement;
 
     /**
-     * If this data type is an autoincrement type.
+     * If this data type is case sensitive.
      */
     public boolean caseSensitive;
 
