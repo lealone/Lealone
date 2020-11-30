@@ -43,6 +43,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.CompareMode;
+import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
@@ -1442,12 +1443,23 @@ public class JdbcConnection extends TraceObject implements Connection {
     }
 
     /**
-     * [Not supported] Create a new empty Array object.
+     * Create a new Array object.
+     *
+     * @param typeName the type name
+     * @param elements the values
+     * @return the array
      */
-    // ## Java 1.6 ##
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-        throw unsupported("createArray");
+        try {
+            int id = getNextTraceId(TraceObjectType.ARRAY);
+            debugCodeAssign("Array", TraceObjectType.ARRAY, id, "createArrayOf()");
+            checkClosed();
+            Value value = DataType.convertToValue(session, elements, Value.ARRAY);
+            return new JdbcArray(this, value, id);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
     }
 
     /**
