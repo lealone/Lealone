@@ -86,6 +86,9 @@ public class Service extends SchemaObjectBase {
     }
 
     private static Service getService(ServerSession session, Database db, String schemaName, String serviceName) {
+        // 调用服务前数据库可能没有初始化
+        if (!db.isInitialized())
+            db.init();
         Schema schema = db.findSchema(session, schemaName);
         if (schema == null) {
             throw DbException.get(ErrorCode.SCHEMA_NOT_FOUND_1, schemaName);
