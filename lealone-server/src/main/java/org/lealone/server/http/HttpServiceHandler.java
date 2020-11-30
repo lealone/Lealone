@@ -70,6 +70,9 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
             result = "failed to execute service: " + serviceName + ", cause: " + e.getMessage();
             logger.error(result, e);
         }
+        // 如果为null就返回"null"字符串
+        if (result == null)
+            result = "null";
         return Buffer.buffer(result);
     }
 

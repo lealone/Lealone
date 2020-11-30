@@ -113,7 +113,7 @@ public class HttpServer extends ProtocolServerBase {
     public synchronized void init(Map<String, String> config) {
         if (inited)
             return;
-        config = new HashMap<>(config);
+        config = new CaseInsensitiveMap<>(config);
         config.putAll(this.config);
         if (!config.containsKey("port"))
             config.put("port", String.valueOf(DEFAULT_HTTP_PORT));
@@ -182,7 +182,11 @@ public class HttpServer extends ProtocolServerBase {
             apiPath = "/_lealone_sockjs_/*";
         final String path = apiPath;
         VertxOptions opt = new VertxOptions();
-        opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
+        String blockedThreadCheckInterval = config.get("blocked_thread_check_interval");
+        if (blockedThreadCheckInterval == null)
+            opt.setBlockedThreadCheckInterval(Integer.MAX_VALUE);
+        else
+            opt.setBlockedThreadCheckInterval(Long.parseLong(blockedThreadCheckInterval));
         vertx = Vertx.vertx(opt);
         vertxHttpServer = vertx.createHttpServer();
         Router router = Router.router(vertx);
