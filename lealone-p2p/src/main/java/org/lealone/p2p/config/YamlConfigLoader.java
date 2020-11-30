@@ -55,6 +55,13 @@ public class YamlConfigLoader implements ConfigLoader {
             url = new URL(configUrl);
             url.openStream().close(); // catches well-formed but bogus URLs
         } catch (Exception e) {
+            try {
+                File file = new File(configUrl).getCanonicalFile();
+                url = file.toURI().toURL();
+                url.openStream().close();
+                return url;
+            } catch (Exception e2) {
+            }
             ClassLoader loader = YamlConfigLoader.class.getClassLoader();
             url = loader.getResource(configUrl);
             if (url == null) {
