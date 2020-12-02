@@ -105,16 +105,21 @@ public interface Index extends SchemaObject {
         int ret = tryUpdate(session, oldRow, newRow, updateColumns, listener);
         if (ret == Transaction.OPERATION_COMPLETE)
             listener.operationComplete();
-        else
-            listener.operationUndo();
+        // 不能在这里调用operationUndo
+        // else
+        // listener.operationUndo();
         listener.await();
     }
 
     default int tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
             Transaction.Listener globalListener) {
         int ret = tryRemove(session, oldRow, globalListener);
-        if (ret == Transaction.OPERATION_COMPLETE)
+        if (ret == Transaction.OPERATION_COMPLETE) {
             tryAdd(session, newRow, globalListener);
+            // 等待tryAdd完成
+            if (globalListener != null)
+                ret = Transaction.OPERATION_NEED_WAIT;
+        }
         return ret;
     }
 
