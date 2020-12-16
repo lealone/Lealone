@@ -402,9 +402,9 @@ public class Column {
         return getCreateSQL(false);
     }
 
-    public String getCreateSQL(boolean isAlter) {
+    public String getCreateSQL(boolean exceptName) {
         StringBuilder buff = new StringBuilder();
-        if (name != null) {
+        if (!exceptName && name != null) {
             buff.append(SQLEngineHolder.quoteIdentifier(name)).append(' ');
         }
         if (originalSQL != null) {

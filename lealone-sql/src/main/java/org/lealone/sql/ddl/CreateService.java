@@ -29,6 +29,8 @@ import java.util.UUID;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CamelCaseHelper;
+import org.lealone.common.util.StatementBuilder;
+import org.lealone.common.util.StringUtils;
 import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.lock.DbObjectLock;
@@ -120,6 +122,10 @@ public class CreateService extends SchemaStatement {
             throw DbException.get(ErrorCode.SERVICE_ALREADY_EXISTS_1, serviceName);
         }
         int id = getObjectId();
+        // 替换变量，重建SQL
+        if (sql.indexOf('@') >= 0) {
+            sql = getCreateSQL();
+        }
         Service service = new Service(schema, id, serviceName, sql, getExecutorFullName());
         service.setImplementBy(implementBy);
         service.setPackageName(packageName);
@@ -129,6 +135,45 @@ public class CreateService extends SchemaStatement {
         if (genCode && !session.getDatabase().isStarting())
             genCode();
         return 0;
+    }
+
+    private String getCreateSQL() {
+        StatementBuilder buff = new StatementBuilder("CREATE SERVICE ");
+        buff.append(session.getDatabase().quoteIdentifier(serviceName));
+        if (comment != null) {
+            buff.append(" COMMENT ").append(StringUtils.quoteStringSQL(comment));
+        }
+        buff.append(" (\n");
+        int methodSize = serviceMethods.size();
+        for (int methodIndex = 0; methodIndex < methodSize; methodIndex++) {
+            CreateTableData data = serviceMethods.get(methodIndex).data;
+            buff.append("    ").append(session.getDatabase().quoteIdentifier(data.tableName)).append("(");
+            // 最后一例是返回类型所以要减一
+            for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
+                Column column = data.columns.get(i);
+                if (i != 0) {
+                    buff.append(", ");
+                }
+                buff.append(column.getCreateSQL());
+            }
+            // 返回类型不需要生成列名
+            buff.append(") ").append(data.columns.get(data.columns.size() - 1).getCreateSQL(true));
+            if (methodIndex != methodSize - 1) {
+                buff.append(",");
+            }
+            buff.append("\n");
+        }
+        buff.append(")\n");
+        if (packageName != null) {
+            buff.append("PACKAGE '").append(packageName).append("'\n");
+        }
+        if (implementBy != null) {
+            buff.append("IMPLEMENT BY '").append(implementBy).append("'\n");
+        }
+        if (genCode && codePath != null) {
+            buff.append("GENERATE CODE '").append(codePath).append("'\n");
+        }
+        return buff.toString();
     }
 
     public static String toClassName(String n) {
