@@ -484,19 +484,26 @@ public class CreateService extends SchemaStatement {
                 int cIndex) {
             if (c.getTable() != null) {
                 importSet.add("org.lealone.orm.json.JsonObject");
-                buff.append(" new JsonObject(").append("methodArgs.get(\"").append(c.getName()).append("\")).mapTo(")
-                        .append(cType).append(".class);\r\n");
+                buff.append(" new JsonObject(").append("ServiceExecutor.toString(\"").append(c.getName())
+                        .append("\", methodArgs)).mapTo(").append(cType).append(".class);\r\n");
             } else {
                 switch (cType.toUpperCase()) {
                 case "STRING":
-                    buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
+                    buff.append("ServiceExecutor.toString(\"").append(c.getName()).append("\", methodArgs);\r\n");
                     break;
                 case "BYTE[]":
-                    buff.append("methodArgs.get(\"").append(c.getName()).append("\").getBytes();\r\n");
+                    buff.append("ServiceExecutor.toBytes(\"").append(c.getName()).append("\", methodArgs);\r\n");
                     break;
-                default:
+                case "OBJECT":
+                    buff.append("methodArgs.get(\"").append(c.getName()).append("\");\r\n");
+                    break;
+                case "ARRAY":
                     buff.append(getMapMethodName(cType)).append("(").append("methodArgs.get(\"").append(c.getName())
                             .append("\"));\r\n");
+                    break;
+                default:
+                    buff.append(getMapMethodName(cType)).append("(").append("ServiceExecutor.toString(\"")
+                            .append(c.getName()).append("\", methodArgs));\r\n");
                 }
             }
         }
@@ -519,10 +526,10 @@ public class CreateService extends SchemaStatement {
         StringBuilder buffValueMethod = new ValueServiceExecutorMethodGenerator().genCode(importSet,
                 "Value executeService(String methodName, Value[] methodArgs)");
 
-        // 生成public String executeService(String methodName, Map<String, String> methodArgs)方法
+        // 生成public String executeService(String methodName, Map<String, Object> methodArgs)方法
         importSet.add(Map.class.getName());
         StringBuilder buffMapMethod = new MapServiceExecutorMethodGenerator().genCode(importSet,
-                "String executeService(String methodName, Map<String, String> methodArgs)");
+                "String executeService(String methodName, Map<String, Object> methodArgs)");
 
         // 生成public String executeService(String methodName, String json)方法
         // 提前看一下是否用到JsonArray
@@ -693,7 +700,7 @@ public class CreateService extends SchemaStatement {
         case "NULL":
             return "ValueNull.INSTANCE";
         case "UNKNOWN": // anything
-        case "JAVA_OBJECT":
+        case "OBJECT":
             return "ValueShort.get";
         case "BLOB":
             return "ValueShort.get";
@@ -748,7 +755,7 @@ public class CreateService extends SchemaStatement {
         case "NULL":
             return null;
         case "UNKNOWN": // anything
-        case "JAVA_OBJECT":
+        case "OBJECT":
             return "ja.getJsonObject(" + i + ")";
         case "BLOB":
             type0 = "java.sql.Blob";
@@ -803,7 +810,7 @@ public class CreateService extends SchemaStatement {
         case "NULL":
             return null;
         case "UNKNOWN": // anything
-        case "JAVA_OBJECT":
+        case "OBJECT":
             return "";
         case "BLOB":
             return "new org.lealone.db.value.ReadonlyBlob";
@@ -855,7 +862,7 @@ public class CreateService extends SchemaStatement {
         case "NULL":
             return null;
         case "UNKNOWN": // anything
-        case "JAVA_OBJECT":
+        case "OBJECT":
             return "getObject";
         case "BLOB":
             return "getBlob";
@@ -905,7 +912,7 @@ public class CreateService extends SchemaStatement {
         case "NULL":
             throw DbException.throwInternalError();
         case "UNKNOWN": // anything
-        case "JAVA_OBJECT":
+        case "OBJECT":
             return "getObject";
         case "BLOB":
             return "getBlob";
@@ -955,7 +962,7 @@ public class CreateService extends SchemaStatement {
         case "NULL":
             throw DbException.throwInternalError();
         case "UNKNOWN": // anything
-        case "JAVA_OBJECT":
+        case "OBJECT":
             return "setObject";
         case "BLOB":
             return "setBlob";

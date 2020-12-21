@@ -51,7 +51,7 @@ public class HelloWorldServiceExecutor implements ServiceExecutor {
     }
 
     @Override
-    public String executeService(String methodName, Map<String, String> methodArgs) {
+    public String executeService(String methodName, Map<String, Object> methodArgs) {
         switch (methodName) {
         case "SAY_HELLO":
             this.s.sayHello();
@@ -67,14 +67,14 @@ public class HelloWorldServiceExecutor implements ServiceExecutor {
                 return null;
             return result3.toString();
         case "GET_TWO":
-            String p_name_4 = methodArgs.get("NAME");
-            Integer p_age_4 = Integer.valueOf(methodArgs.get("AGE"));
+            String p_name_4 = ServiceExecutor.toString("NAME", methodArgs);
+            Integer p_age_4 = Integer.valueOf(ServiceExecutor.toString("AGE", methodArgs));
             Integer result4 = this.s.getTwo(p_name_4, p_age_4);
             if (result4 == null)
                 return null;
             return result4.toString();
         case "SAY_GOODBYE_TO":
-            String p_name_5 = methodArgs.get("NAME");
+            String p_name_5 = ServiceExecutor.toString("NAME", methodArgs);
             String result5 = this.s.sayGoodbyeTo(p_name_5);
             if (result5 == null)
                 return null;

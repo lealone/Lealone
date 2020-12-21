@@ -30,11 +30,29 @@ public interface ServiceExecutor {
         return ValueNull.INSTANCE;
     }
 
-    default String executeService(String methodName, Map<String, String> methodArgs) {
+    default String executeService(String methodName, Map<String, Object> methodArgs) {
         return NO_RETURN_VALUE;
     }
 
     default String executeService(String methodName, String json) {
         return NO_RETURN_VALUE;
+    }
+
+    public static String toString(String key, Map<String, Object> methodArgs) {
+        Object v = methodArgs.get(key);
+        if (v == null)
+            return null;
+        else {
+            return v.toString().trim();
+        }
+    }
+
+    public static byte[] toBytes(String key, Map<String, Object> methodArgs) {
+        Object v = methodArgs.get(key);
+        if (v == null)
+            return null;
+        else {
+            return v.toString().trim().getBytes();
+        }
     }
 }

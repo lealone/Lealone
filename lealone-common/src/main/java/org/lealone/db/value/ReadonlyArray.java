@@ -10,6 +10,7 @@ import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
@@ -24,14 +25,42 @@ import org.lealone.db.result.SimpleResultSet;
 public class ReadonlyArray extends TraceObject implements Array {
 
     private Value value;
-
-    public ReadonlyArray(Value value) {
-        this.value = value;
+    {
         this.trace = Trace.NO_TRACE;
     }
 
+    public ReadonlyArray(Value value) {
+        this.value = value;
+    }
+
     public ReadonlyArray(String value) {
-        this(ValueString.get(value));
+        setValue(value);
+    }
+
+    @SuppressWarnings("unchecked")
+    public ReadonlyArray(Object value) {
+        if (value instanceof List) {
+            setValue((List<String>) value);
+        } else {
+            setValue(value.toString());
+        }
+    }
+
+    public ReadonlyArray(List<String> list) {
+        setValue(list);
+    }
+
+    private void setValue(String value) {
+        this.value = ValueString.get(value);
+    }
+
+    private void setValue(List<String> list) {
+        int size = list.size();
+        Value[] values = new Value[size];
+        for (int i = 0; i < size; i++) {
+            values[i] = ValueString.get(list.get(i));
+        }
+        this.value = ValueArray.get(values);
     }
 
     /**

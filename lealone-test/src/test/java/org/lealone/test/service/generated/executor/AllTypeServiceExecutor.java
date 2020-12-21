@@ -66,36 +66,36 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
     }
 
     @Override
-    public String executeService(String methodName, Map<String, String> methodArgs) {
+    public String executeService(String methodName, Map<String, Object> methodArgs) {
         switch (methodName) {
         case "TEST_TYPE":
-            Integer p_f1_1 = Integer.valueOf(methodArgs.get("F1"));
-            Boolean p_f2_1 = Boolean.valueOf(methodArgs.get("F2"));
-            Byte p_f3_1 = Byte.valueOf(methodArgs.get("F3"));
-            Short p_f4_1 = Short.valueOf(methodArgs.get("F4"));
-            Long p_f5_1 = Long.valueOf(methodArgs.get("F5"));
-            Long p_f6_1 = Long.valueOf(methodArgs.get("F6"));
-            BigDecimal p_f7_1 = new java.math.BigDecimal(methodArgs.get("F7"));
-            Double p_f8_1 = Double.valueOf(methodArgs.get("F8"));
-            Float p_f9_1 = Float.valueOf(methodArgs.get("F9"));
-            Time p_f10_1 = java.sql.Time.valueOf(methodArgs.get("F10"));
-            Date p_f11_1 = java.sql.Date.valueOf(methodArgs.get("F11"));
-            Timestamp p_f12_1 = java.sql.Timestamp.valueOf(methodArgs.get("F12"));
-            byte[] p_f13_1 = methodArgs.get("F13").getBytes();
-            Object p_f14_1 = (methodArgs.get("F14"));
-            String p_f15_1 = methodArgs.get("F15");
-            String p_f16_1 = methodArgs.get("F16");
-            String p_f17_1 = methodArgs.get("F17");
-            Blob p_f18_1 = new org.lealone.db.value.ReadonlyBlob(methodArgs.get("F18"));
-            Clob p_f19_1 = new org.lealone.db.value.ReadonlyClob(methodArgs.get("F19"));
-            UUID p_f20_1 = java.util.UUID.fromString(methodArgs.get("F20"));
+            Integer p_f1_1 = Integer.valueOf(ServiceExecutor.toString("F1", methodArgs));
+            Boolean p_f2_1 = Boolean.valueOf(ServiceExecutor.toString("F2", methodArgs));
+            Byte p_f3_1 = Byte.valueOf(ServiceExecutor.toString("F3", methodArgs));
+            Short p_f4_1 = Short.valueOf(ServiceExecutor.toString("F4", methodArgs));
+            Long p_f5_1 = Long.valueOf(ServiceExecutor.toString("F5", methodArgs));
+            Long p_f6_1 = Long.valueOf(ServiceExecutor.toString("F6", methodArgs));
+            BigDecimal p_f7_1 = new java.math.BigDecimal(ServiceExecutor.toString("F7", methodArgs));
+            Double p_f8_1 = Double.valueOf(ServiceExecutor.toString("F8", methodArgs));
+            Float p_f9_1 = Float.valueOf(ServiceExecutor.toString("F9", methodArgs));
+            Time p_f10_1 = java.sql.Time.valueOf(ServiceExecutor.toString("F10", methodArgs));
+            Date p_f11_1 = java.sql.Date.valueOf(ServiceExecutor.toString("F11", methodArgs));
+            Timestamp p_f12_1 = java.sql.Timestamp.valueOf(ServiceExecutor.toString("F12", methodArgs));
+            byte[] p_f13_1 = ServiceExecutor.toBytes("F13", methodArgs);
+            Object p_f14_1 = methodArgs.get("F14");
+            String p_f15_1 = ServiceExecutor.toString("F15", methodArgs);
+            String p_f16_1 = ServiceExecutor.toString("F16", methodArgs);
+            String p_f17_1 = ServiceExecutor.toString("F17", methodArgs);
+            Blob p_f18_1 = new org.lealone.db.value.ReadonlyBlob(ServiceExecutor.toString("F18", methodArgs));
+            Clob p_f19_1 = new org.lealone.db.value.ReadonlyClob(ServiceExecutor.toString("F19", methodArgs));
+            UUID p_f20_1 = java.util.UUID.fromString(ServiceExecutor.toString("F20", methodArgs));
             Array p_f21_1 = new org.lealone.db.value.ReadonlyArray(methodArgs.get("F21"));
             User result1 = this.s.testType(p_f1_1, p_f2_1, p_f3_1, p_f4_1, p_f5_1, p_f6_1, p_f7_1, p_f8_1, p_f9_1, p_f10_1, p_f11_1, p_f12_1, p_f13_1, p_f14_1, p_f15_1, p_f16_1, p_f17_1, p_f18_1, p_f19_1, p_f20_1, p_f21_1);
             if (result1 == null)
                 return null;
             return JsonObject.mapFrom(result1).encode();
         case "TEST_UUID":
-            UUID p_f1_2 = java.util.UUID.fromString(methodArgs.get("F1"));
+            UUID p_f1_2 = java.util.UUID.fromString(ServiceExecutor.toString("F1", methodArgs));
             UUID result2 = this.s.testUuid(p_f1_2);
             if (result2 == null)
                 return null;
@@ -124,7 +124,7 @@ public class AllTypeServiceExecutor implements ServiceExecutor {
             Date p_f11_1 = java.sql.Date.valueOf(ja.getValue(10).toString());
             Timestamp p_f12_1 = java.sql.Timestamp.valueOf(ja.getValue(11).toString());
             byte[] p_f13_1 = ja.getString(12).getBytes();
-            Object p_f14_1 = ja.getJsonObject(13).mapTo(Object.class);
+            Object p_f14_1 = ja.getJsonObject(13);
             String p_f15_1 = ja.getString(14);
             String p_f16_1 = ja.getString(15);
             String p_f17_1 = ja.getString(16);

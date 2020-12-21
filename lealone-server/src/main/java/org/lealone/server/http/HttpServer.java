@@ -17,7 +17,9 @@
  */
 package org.lealone.server.http;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.logging.Logger;
@@ -217,12 +219,28 @@ public class HttpServer extends ProtocolServerBase {
         });
     }
 
+    @SuppressWarnings("unchecked")
     private void handleHttpServiceRequest(final HttpServiceHandler serviceHandler, RoutingContext routingContext) {
         String serviceName = routingContext.request().params().get("serviceName");
         String methodName = routingContext.request().params().get("methodName");
-        CaseInsensitiveMap<String> methodArgs = new CaseInsensitiveMap<>();
+        CaseInsensitiveMap<Object> methodArgs = new CaseInsensitiveMap<>();
         for (Map.Entry<String, String> e : routingContext.request().params().entries()) {
-            methodArgs.put(e.getKey(), e.getValue());
+            String key = e.getKey();
+            String value = e.getValue();
+            Object oldValue = methodArgs.get(key);
+            if (oldValue != null) {
+                List<String> list;
+                if (oldValue instanceof String) {
+                    list = new ArrayList<String>();
+                    list.add((String) oldValue);
+                    methodArgs.put(key, list);
+                } else {
+                    list = (List<String>) oldValue;
+                }
+                list.add(value);
+            } else {
+                methodArgs.put(key, value);
+            }
         }
         Buffer result = serviceHandler.executeService(serviceName, methodName, methodArgs);
         routingContext.request().response().headers().set("Access-Control-Allow-Origin", "*");

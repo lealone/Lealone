@@ -55,7 +55,7 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
         });
     }
 
-    public Buffer executeService(String serviceName, String methodName, Map<String, String> methodArgs) {
+    public Buffer executeService(String serviceName, String methodName, Map<String, Object> methodArgs) {
         String[] serviceNameArray = StringUtils.arraySplit(serviceName, '.');
         if (serviceNameArray.length == 1 && defaultDatabase != null && defaultSchema != null)
             serviceName = defaultDatabase + "." + defaultSchema + "." + serviceName;
@@ -66,6 +66,8 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
         try {
             logger.info("execute service: " + serviceName);
             result = Service.execute(serviceName, methodName, methodArgs);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             result = "failed to execute service: " + serviceName + ", cause: " + e.getMessage();
             logger.error(result, e);

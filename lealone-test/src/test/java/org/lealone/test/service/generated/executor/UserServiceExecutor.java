@@ -50,28 +50,28 @@ public class UserServiceExecutor implements ServiceExecutor {
     }
 
     @Override
-    public String executeService(String methodName, Map<String, String> methodArgs) {
+    public String executeService(String methodName, Map<String, Object> methodArgs) {
         switch (methodName) {
         case "ADD":
-            User p_user_1 =  new JsonObject(methodArgs.get("USER")).mapTo(User.class);
+            User p_user_1 =  new JsonObject(ServiceExecutor.toString("USER", methodArgs)).mapTo(User.class);
             Long result1 = this.s.add(p_user_1);
             if (result1 == null)
                 return null;
             return result1.toString();
         case "FIND":
-            String p_name_2 = methodArgs.get("NAME");
+            String p_name_2 = ServiceExecutor.toString("NAME", methodArgs);
             User result2 = this.s.find(p_name_2);
             if (result2 == null)
                 return null;
             return JsonObject.mapFrom(result2).encode();
         case "UPDATE":
-            User p_user_3 =  new JsonObject(methodArgs.get("USER")).mapTo(User.class);
+            User p_user_3 =  new JsonObject(ServiceExecutor.toString("USER", methodArgs)).mapTo(User.class);
             Integer result3 = this.s.update(p_user_3);
             if (result3 == null)
                 return null;
             return result3.toString();
         case "DELETE":
-            String p_name_4 = methodArgs.get("NAME");
+            String p_name_4 = ServiceExecutor.toString("NAME", methodArgs);
             Integer result4 = this.s.delete(p_name_4);
             if (result4 == null)
                 return null;

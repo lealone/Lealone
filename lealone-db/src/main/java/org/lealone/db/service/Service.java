@@ -108,7 +108,7 @@ public class Service extends SchemaObjectBase {
     }
 
     // 通过http调用
-    public static String execute(String serviceName, String methodName, Map<String, String> methodArgs) {
+    public static String execute(String serviceName, String methodName, Map<String, Object> methodArgs) {
         serviceName = serviceName.toUpperCase();
         methodName = methodName.toUpperCase();
         String[] a = StringUtils.arraySplit(serviceName, '.');
