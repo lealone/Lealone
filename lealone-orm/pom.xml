@@ -30,7 +30,7 @@
     <version>5.0.0-SNAPSHOT</version>
 
     <properties>
-        <jackson.version>2.10.2</jackson.version>
+        <jackson.version>2.11.3</jackson.version>
     </properties>
 
     <dependencies>
