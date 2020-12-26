@@ -17,11 +17,13 @@
  */
 package org.lealone.orm;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import org.lealone.common.logging.Logger;
@@ -48,6 +50,7 @@ import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.transaction.Transaction;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -423,6 +426,11 @@ public abstract class Model<T> {
         if (m != this) {
             return m.where();
         }
+        joinTableFilter();
+        return root;
+    }
+
+    private void joinTableFilter() {
         if (tableFilterStack != null) {
             TableFilter first = tableFilterStack.first();
             while (tableFilterStack.size() > 1) {
@@ -431,7 +439,6 @@ public abstract class Model<T> {
                 first.addJoin(joined, false, false, on.getExpression());
             }
         }
-        return root;
     }
 
     /**
@@ -468,6 +475,10 @@ public abstract class Model<T> {
         Select select = new Select(session);
         TableFilter tableFilter;
         if (tableFilterStack != null && !tableFilterStack.isEmpty()) {
+            if (tableFilterStack.size() > 1) {
+                // 表join时，如果没加where条件，在这里把TableFilter连在一起
+                joinTableFilter();
+            }
             tableFilter = tableFilterStack.peek();
             select.addTableFilter(tableFilter, true);
             boolean selectExpressionsIsNull = false;
@@ -567,6 +578,18 @@ public abstract class Model<T> {
         for (ModelProperty p : modelProperties) {
             p.deserialize(node);
         }
+    }
+
+    protected void serialize(JsonGenerator jgen) throws IOException {
+        for (ModelProperty p : modelProperties) {
+            p.serialize(jgen);
+        }
+        if (modelMap != null) {
+            for (Entry<Class, ArrayList<Model<?>>> e : modelMap.entrySet()) {
+                jgen.writeObjectField(e.getKey().getSimpleName() + "List", e.getValue());
+            }
+        }
+        jgen.writeNumberField("modelType", modelType);
     }
 
     /**

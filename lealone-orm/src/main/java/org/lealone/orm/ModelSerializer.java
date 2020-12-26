@@ -30,10 +30,12 @@ public class ModelSerializer<T extends Model> extends JsonSerializer<T> {
     public void serialize(T value, JsonGenerator jgen, SerializerProvider provider)
             throws IOException, JsonProcessingException {
         jgen.writeStartObject();
-        for (ModelProperty p : ((Model) value).modelProperties) {
-            p.serialize(jgen);
-        }
-        jgen.writeNumberField("modelType", ((Model) value).modelType);
+        // for (ModelProperty p : ((Model) value).modelProperties) {
+        // p.serialize(jgen);
+        // }
+        // jgen.writeNumberField("modelType", ((Model) value).modelType);
+
+        ((Model) value).serialize(jgen);
         jgen.writeEndObject();
     }
 }

@@ -59,7 +59,7 @@ public class Order extends Model<Order> {
 
     public Order addOrderItem(OrderItem m) {
         m.setOrder(this);
-        super.addModel(m);;
+        super.addModel(m);
         return this;
     }
 

@@ -47,7 +47,7 @@ public class Customer extends Model<Customer> {
 
     public Customer addCustomerAddress(CustomerAddress m) {
         m.setCustomer(this);
-        super.addModel(m);;
+        super.addModel(m);
         return this;
     }
 
@@ -63,7 +63,7 @@ public class Customer extends Model<Customer> {
 
     public Customer addOrder(Order m) {
         m.setCustomer(this);
-        super.addModel(m);;
+        super.addModel(m);
         return this;
     }
 
