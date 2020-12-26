@@ -158,6 +158,12 @@ public class StandardTable extends Table {
         if (isHidden) {
             buff.append("\nHIDDEN");
         }
+        if (getPackageName() != null) {
+            buff.append("\nPACKAGE '").append(getPackageName()).append("'");
+        }
+        if (getCodePath() != null) {
+            buff.append("\nGENERATE CODE '").append(getCodePath()).append("'");
+        }
         return buff.toString();
     }
 

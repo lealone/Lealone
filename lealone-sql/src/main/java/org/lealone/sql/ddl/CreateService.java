@@ -707,7 +707,7 @@ public class CreateService extends SchemaStatement {
         case "CLOB":
             return "ValueShort.get";
         case "ARRAY":
-            return "ValueShort.get";
+            return "ValueArray.get";
         case "RESULT_SET":
             return "ValueResultSet.get";
         }

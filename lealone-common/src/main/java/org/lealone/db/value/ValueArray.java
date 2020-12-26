@@ -8,8 +8,10 @@ package org.lealone.db.value;
 
 import java.lang.reflect.Array;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Arrays;
 
+import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.Constants;
@@ -41,6 +43,21 @@ public class ValueArray extends Value {
      */
     public static ValueArray get(Value[] list) {
         return new ValueArray(list);
+    }
+
+    public static ValueArray get(java.sql.Array array) {
+        Object[] objArray;
+        try {
+            objArray = (Object[]) array.getArray();
+            int size = objArray.length;
+            Value[] values = new Value[size];
+            for (int i = 0; i < size; i++) {
+                values[i] = ValueString.get(objArray[i].toString());
+            }
+            return new ValueArray(values);
+        } catch (SQLException e) {
+            throw DbException.convert(e);
+        }
     }
 
     /**
