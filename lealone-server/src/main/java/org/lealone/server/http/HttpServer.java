@@ -17,11 +17,10 @@
  */
 package org.lealone.server.http;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
+import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.CaseInsensitiveMap;
@@ -34,15 +33,7 @@ import org.lealone.transaction.TransactionEngineManager;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
-import io.vertx.ext.web.handler.CorsHandler;
-import io.vertx.ext.web.handler.StaticHandler;
-import io.vertx.ext.web.handler.sockjs.SockJSHandler;
-import io.vertx.ext.web.handler.sockjs.SockJSHandlerOptions;
 
 public class HttpServer extends ProtocolServerBase {
 
@@ -54,6 +45,7 @@ public class HttpServer extends ProtocolServerBase {
     private String jdbcUrl;
     private String apiPath;
     private Vertx vertx;
+    private RouterFactory routerFactory = new HttpRouterFactory();
     private io.vertx.core.http.HttpServer vertxHttpServer;
 
     private boolean inited;
@@ -129,6 +121,15 @@ public class HttpServer extends ProtocolServerBase {
 
         webRoot = config.get("web_root");
         apiPath = config.get("api_path");
+
+        String routerFactoryStr = config.get("router_factory");
+        if (routerFactoryStr != null) {
+            try {
+                routerFactory = (RouterFactory) Class.forName(routerFactoryStr).newInstance();
+            } catch (Exception e) {
+                throw new ConfigException("Failed to init router factory: " + routerFactoryStr, e);
+            }
+        }
         super.init(config);
         String url = config.get("jdbc_url");
         if (url != null) {
@@ -180,8 +181,10 @@ public class HttpServer extends ProtocolServerBase {
     }
 
     private void startVertxHttpServer() {
-        if (apiPath == null)
+        if (apiPath == null) {
             apiPath = "/_lealone_sockjs_/*";
+            config.put("api_path", apiPath);
+        }
         final String path = apiPath;
         VertxOptions opt = new VertxOptions();
         String blockedThreadCheckInterval = config.get("blocked_thread_check_interval");
@@ -191,23 +194,7 @@ public class HttpServer extends ProtocolServerBase {
             opt.setBlockedThreadCheckInterval(Long.parseLong(blockedThreadCheckInterval));
         vertx = Vertx.vertx(opt);
         vertxHttpServer = vertx.createHttpServer();
-        Router router = Router.router(vertx);
-
-        final HttpServiceHandler serviceHandler = new HttpServiceHandler(config);
-        String servicePath = "/service/:serviceName/:methodName";
-        router.post(servicePath).handler(BodyHandler.create());
-        router.post(servicePath).handler(routingContext -> {
-            handleHttpServiceRequest(serviceHandler, routingContext);
-        });
-        router.get(servicePath).handler(routingContext -> {
-            handleHttpServiceRequest(serviceHandler, routingContext);
-        });
-
-        router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
-        setSockJSHandler(router);
-        // 放在最后
-        setStaticHandler(router);
-
+        Router router = routerFactory.createRouter(config, vertx);
         vertxHttpServer.requestHandler(router::handle).listen(port, host, res -> {
             if (res.succeeded()) {
                 logger.info("web root: " + webRoot);
@@ -217,51 +204,5 @@ public class HttpServer extends ProtocolServerBase {
                 logger.error("failed to bind " + port + " port!", res.cause());
             }
         });
-    }
-
-    @SuppressWarnings("unchecked")
-    private void handleHttpServiceRequest(final HttpServiceHandler serviceHandler, RoutingContext routingContext) {
-        String serviceName = routingContext.request().params().get("serviceName");
-        String methodName = routingContext.request().params().get("methodName");
-        CaseInsensitiveMap<Object> methodArgs = new CaseInsensitiveMap<>();
-        for (Map.Entry<String, String> e : routingContext.request().params().entries()) {
-            String key = e.getKey();
-            String value = e.getValue();
-            Object oldValue = methodArgs.get(key);
-            if (oldValue != null) {
-                List<String> list;
-                if (oldValue instanceof String) {
-                    list = new ArrayList<String>();
-                    list.add((String) oldValue);
-                    methodArgs.put(key, list);
-                } else {
-                    list = (List<String>) oldValue;
-                }
-                list.add(value);
-            } else {
-                methodArgs.put(key, value);
-            }
-        }
-        Buffer result = serviceHandler.executeService(serviceName, methodName, methodArgs);
-        routingContext.request().response().headers().set("Access-Control-Allow-Origin", "*");
-        routingContext.request().response().end(result);
-    }
-
-    private void setSockJSHandler(Router router) {
-        SockJSHandlerOptions options = new SockJSHandlerOptions().setHeartbeatInterval(2000);
-        SockJSHandler sockJSHandler = SockJSHandler.create(vertx, options);
-        sockJSHandler.socketHandler(new HttpServiceHandler(config));
-        router.route(apiPath).handler(sockJSHandler);
-    }
-
-    private void setStaticHandler(Router router) {
-        for (String root : webRoot.split(",", -1)) {
-            root = root.trim();
-            if (root.isEmpty())
-                continue;
-            StaticHandler sh = StaticHandler.create(root);
-            sh.setCachingEnabled(false);
-            router.route("/*").handler(sh);
-        }
     }
 }
