@@ -72,6 +72,11 @@ public class HttpRouterFactory implements RouterFactory {
         String methodName = routingContext.request().params().get("methodName");
         CaseInsensitiveMap<Object> methodArgs = getMethodArgs(routingContext);
         Buffer result = serviceHandler.executeService(serviceName, methodName, methodArgs);
+        sendHttpServiceResponse(routingContext, serviceName, methodName, result);
+    }
+
+    protected void sendHttpServiceResponse(RoutingContext routingContext, String serviceName, String methodName,
+            Buffer result) {
         routingContext.response().putHeader("content-type", "application/json; charset=utf-8");
         routingContext.response().putHeader("Access-Control-Allow-Origin", "*");
         routingContext.response().end(result);
