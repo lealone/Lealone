@@ -9,6 +9,7 @@ import org.lealone.common.util.CaseInsensitiveMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
@@ -43,28 +44,41 @@ public class HttpRouterFactory implements RouterFactory {
     protected void initRouter(Map<String, String> config, Vertx vertx, Router router) {
     }
 
-    @SuppressWarnings("unchecked")
     protected static CaseInsensitiveMap<Object> getMethodArgs(RoutingContext routingContext) {
         CaseInsensitiveMap<Object> methodArgs = new CaseInsensitiveMap<>();
         for (Map.Entry<String, String> e : routingContext.request().params().entries()) {
-            String key = e.getKey();
-            String value = e.getValue();
-            Object oldValue = methodArgs.get(key);
-            if (oldValue != null) {
-                List<String> list;
-                if (oldValue instanceof String) {
-                    list = new ArrayList<String>();
-                    list.add((String) oldValue);
-                    methodArgs.put(key, list);
-                } else {
-                    list = (List<String>) oldValue;
+            addMethodArgs(methodArgs, e.getKey(), e.getValue());
+        }
+
+        // 当请求头包含content-type: application/json时，客户端发送的是一个json类型的数据，
+        // BodyHandler只能处理表单类的数据，所以在这里需要从json中取出参数
+        if (routingContext.request().method() == HttpMethod.POST) {
+            JsonObject json = routingContext.getBodyAsJson();
+            if (json != null) {
+                for (Map.Entry<String, Object> e : json.getMap().entrySet()) {
+                    addMethodArgs(methodArgs, e.getKey(), e.getValue().toString());
                 }
-                list.add(value);
-            } else {
-                methodArgs.put(key, value);
             }
         }
         return methodArgs;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void addMethodArgs(CaseInsensitiveMap<Object> methodArgs, String key, String value) {
+        Object oldValue = methodArgs.get(key);
+        if (oldValue != null) {
+            List<String> list;
+            if (oldValue instanceof String) {
+                list = new ArrayList<String>();
+                list.add((String) oldValue);
+                methodArgs.put(key, list);
+            } else {
+                list = (List<String>) oldValue;
+            }
+            list.add(value);
+        } else {
+            methodArgs.put(key, value);
+        }
     }
 
     protected void handleHttpServiceRequest(final HttpServiceHandler serviceHandler, RoutingContext routingContext) {
