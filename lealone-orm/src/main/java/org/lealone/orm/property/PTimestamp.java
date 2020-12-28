@@ -78,7 +78,7 @@ public class PTimestamp<R> extends PBaseDate<R, Timestamp> {
 
     @Override
     public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeNumberField(getName(), value.getTime());
+        jgen.writeNumberField(getName(), value == null ? 0 : value.getTime());
         return root;
     }
 

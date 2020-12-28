@@ -62,7 +62,7 @@ public class PObject<R> extends ModelProperty<R> {
     public R serialize(JsonGenerator jgen) throws IOException {
         JsonObject json = JsonObject.mapFrom(value);
         String str = json.encode();
-        jgen.writeStringField(getName(), value.getClass().getName() + "," + str);
+        jgen.writeStringField(getName(), value == null ? null : value.getClass().getName() + "," + str);
         return root;
     }
 

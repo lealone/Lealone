@@ -36,6 +36,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
+import org.lealone.db.value.ValueNull;
 import org.lealone.orm.property.PBaseNumber;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
@@ -530,8 +531,11 @@ public abstract class Model<T> {
         int len = row.length;
         HashMap<String, Value> map = new HashMap<>(len);
         for (int i = 0; i < len; i++) {
-            String key = result.getSchemaName(i) + "." + result.getTableName(i) + "." + result.getColumnName(i);
-            map.put(key, row[i]);
+            // 只反序列化非null字段
+            if (row[i] != null && row[i] != ValueNull.INSTANCE) {
+                String key = result.getSchemaName(i) + "." + result.getTableName(i) + "." + result.getColumnName(i);
+                map.put(key, row[i]);
+            }
         }
 
         Model m = newInstance(modelTable, REGULAR_MODEL);

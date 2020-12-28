@@ -77,7 +77,7 @@ public class PUuid<R> extends PBaseValueEqual<R, UUID> {
 
     @Override
     public R serialize(JsonGenerator jgen) throws IOException {
-        jgen.writeStringField(getName(), value.toString());
+        jgen.writeStringField(getName(), value == null ? null : value.toString());
         return root;
     }
 
