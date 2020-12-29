@@ -24,17 +24,8 @@ public class HttpRouterFactory implements RouterFactory {
     public Router createRouter(Map<String, String> config, Vertx vertx) {
         Router router = Router.router(vertx);
         initRouter(config, vertx, router);
-        final HttpServiceHandler serviceHandler = new HttpServiceHandler(config);
-        String servicePath = "/service/:serviceName/:methodName";
-        router.post(servicePath).handler(BodyHandler.create());
-        router.post(servicePath).handler(routingContext -> {
-            handleHttpServiceRequest(serviceHandler, routingContext);
-        });
-        router.get(servicePath).handler(routingContext -> {
-            handleHttpServiceRequest(serviceHandler, routingContext);
-        });
-
-        router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
+        setCorsHandler(config, vertx, router);
+        setHttpServiceHandler(config, vertx, router);
         setSockJSHandler(router, config, vertx);
         // 放在最后
         setStaticHandler(router, config);
@@ -79,6 +70,26 @@ public class HttpRouterFactory implements RouterFactory {
         } else {
             methodArgs.put(key, value);
         }
+    }
+
+    protected void setCorsHandler(Map<String, String> config, Vertx vertx, Router router) {
+        router.route().handler(CorsHandler.create("*").allowedMethod(HttpMethod.GET).allowedMethod(HttpMethod.POST));
+    }
+
+    protected String getServicePath(Map<String, String> config) {
+        String servicePath = config.get("service_path");
+        if (servicePath == null)
+            servicePath = "/service/:serviceName/:methodName";
+        return servicePath;
+    }
+
+    protected void setHttpServiceHandler(Map<String, String> config, Vertx vertx, Router router) {
+        final HttpServiceHandler serviceHandler = new HttpServiceHandler(config);
+        String servicePath = getServicePath(config);
+        router.post(servicePath).handler(BodyHandler.create());
+        router.route(servicePath).handler(routingContext -> {
+            handleHttpServiceRequest(serviceHandler, routingContext);
+        });
     }
 
     protected void handleHttpServiceRequest(final HttpServiceHandler serviceHandler, RoutingContext routingContext) {
