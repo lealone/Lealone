@@ -23,8 +23,9 @@ public class HttpRouterFactory implements RouterFactory {
     @Override
     public Router createRouter(Map<String, String> config, Vertx vertx) {
         Router router = Router.router(vertx);
-        initRouter(config, vertx, router);
+        // CorsHandler放在前面
         setCorsHandler(config, vertx, router);
+        initRouter(config, vertx, router);
         setHttpServiceHandler(config, vertx, router);
         setSockJSHandler(router, config, vertx);
         // 放在最后
@@ -122,8 +123,24 @@ public class HttpRouterFactory implements RouterFactory {
             if (root.isEmpty())
                 continue;
             StaticHandler sh = StaticHandler.create(root);
-            sh.setCachingEnabled(false);
+            String defaultEncoding = config.get("default_encoding");
+            if (defaultEncoding == null)
+                defaultEncoding = "UTF-8";
+            sh.setDefaultContentEncoding(defaultEncoding);
+            if (isDevelopmentEnvironment(config))
+                sh.setCachingEnabled(false);
             router.route("/*").handler(sh);
         }
+    }
+
+    protected boolean isDevelopmentEnvironment(Map<String, String> config) {
+        String environment = config.get("environment");
+        if (environment != null) {
+            environment = environment.trim().toLowerCase();
+            if (environment.equals("development") || environment.equals("dev")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

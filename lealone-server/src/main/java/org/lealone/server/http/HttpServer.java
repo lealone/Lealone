@@ -19,6 +19,7 @@ package org.lealone.server.http;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
@@ -195,14 +196,20 @@ public class HttpServer extends ProtocolServerBase {
         vertx = Vertx.vertx(opt);
         vertxHttpServer = vertx.createHttpServer();
         Router router = routerFactory.createRouter(config, vertx);
+        CountDownLatch latch = new CountDownLatch(1);
         vertxHttpServer.requestHandler(router::handle).listen(port, host, res -> {
             if (res.succeeded()) {
-                logger.info("web root: " + webRoot);
-                logger.info("sockjs path: " + path);
-                logger.info("http server is now listening on port: " + vertxHttpServer.actualPort());
+                logger.info("Web root: " + webRoot);
+                logger.info("Sockjs path: " + path);
+                logger.info("HttpServer is now listening on port: " + vertxHttpServer.actualPort());
             } else {
-                logger.error("failed to bind " + port + " port!", res.cause());
+                logger.error("Failed to bind " + port + " port!", res.cause());
             }
+            latch.countDown();
         });
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+        }
     }
 }
