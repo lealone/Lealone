@@ -82,13 +82,22 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
         // 不能直接这样用: command.split(";");
         // 因为参数里可能包含分号
         int pos1 = command.indexOf(';');
-        int pos2 = command.indexOf(';', pos1 + 1);
-
+        if (pos1 == -1) {
+            return Buffer.buffer("invalid service: " + command);
+        }
+        String json;
+        String oldServiceName;
         int type = Integer.parseInt(command.substring(0, pos1));
-        String json = command.substring(pos2 + 1);
-        String oldServiceName = command.substring(pos1 + 1, pos2);
-        String serviceName = CamelCaseHelper.toUnderscoreFromCamel(oldServiceName);
+        int pos2 = command.indexOf(';', pos1 + 1);
+        if (pos2 == -1) {
+            json = "[]"; // 没有参数
+            oldServiceName = command.substring(pos1 + 1);
+        } else {
+            json = command.substring(pos2 + 1);
+            oldServiceName = command.substring(pos1 + 1, pos2);
+        }
 
+        String serviceName = CamelCaseHelper.toUnderscoreFromCamel(oldServiceName);
         String[] serviceNameArray = StringUtils.arraySplit(serviceName, '.');
         if (serviceNameArray.length == 2 && defaultDatabase != null && defaultSchema != null)
             serviceName = defaultDatabase + "." + defaultSchema + "." + serviceName;
