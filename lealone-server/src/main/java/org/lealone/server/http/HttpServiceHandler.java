@@ -79,18 +79,21 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
     }
 
     private Buffer executeService(String command) {
-        String a[] = command.split(";");
-        int type = Integer.parseInt(a[0]);
-        String serviceName = CamelCaseHelper.toUnderscoreFromCamel(a[1]);
+        // 不能直接这样用: command.split(";");
+        // 因为参数里可能包含分号
+        int pos1 = command.indexOf(';');
+        int pos2 = command.indexOf(';', pos1 + 1);
+
+        int type = Integer.parseInt(command.substring(0, pos1));
+        String json = command.substring(pos2 + 1);
+        String oldServiceName = command.substring(pos1 + 1, pos2);
+        String serviceName = CamelCaseHelper.toUnderscoreFromCamel(oldServiceName);
+
         String[] serviceNameArray = StringUtils.arraySplit(serviceName, '.');
         if (serviceNameArray.length == 2 && defaultDatabase != null && defaultSchema != null)
             serviceName = defaultDatabase + "." + defaultSchema + "." + serviceName;
         else if (serviceNameArray.length == 3 && defaultDatabase != null)
             serviceName = defaultDatabase + "." + serviceName;
-        String json = null;
-        if (a.length >= 3) {
-            json = a[2];
-        }
         JsonArray ja = new JsonArray();
         String result = null;
         switch (type) {
@@ -110,7 +113,7 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
             result = "unknown request type: " + type + ", serviceName: " + serviceName;
             logger.error(result);
         }
-        ja.add(a[1]); // 前端传来的方法名不一定是下划线风格的，所以用最初的
+        ja.add(oldServiceName); // 前端传来的方法名不一定是下划线风格的，所以用最初的
         ja.add(result);
         return Buffer.buffer(ja.toString());
     }
