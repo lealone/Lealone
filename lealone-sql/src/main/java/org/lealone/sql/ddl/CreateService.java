@@ -37,6 +37,7 @@ import org.lealone.db.lock.DbObjectLock;
 import org.lealone.db.schema.Schema;
 import org.lealone.db.service.Service;
 import org.lealone.db.service.ServiceExecutor;
+import org.lealone.db.service.ServiceMethod;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
@@ -126,7 +127,22 @@ public class CreateService extends SchemaStatement {
         if (sql.indexOf('@') >= 0) {
             sql = getCreateSQL();
         }
-        Service service = new Service(schema, id, serviceName, sql, getExecutorFullName());
+        int methodSize = this.serviceMethods.size();
+        ArrayList<ServiceMethod> serviceMethods = new ArrayList<>(methodSize);
+        for (int methodIndex = 0; methodIndex < methodSize; methodIndex++) {
+            CreateTableData data = this.serviceMethods.get(methodIndex).data;
+            ServiceMethod m = new ServiceMethod();
+            m.setMethodName(data.tableName);
+            int size = data.columns.size() - 1;
+            ArrayList<Column> parameters = new ArrayList<>(size);
+            m.setParameters(parameters);
+            m.setReturnType(data.columns.get(size)); // 最后一列是返回类型
+            for (int i = 0; i < size; i++) {
+                parameters.add(data.columns.get(i));
+            }
+            serviceMethods.add(m);
+        }
+        Service service = new Service(schema, id, serviceName, sql, getExecutorFullName(), serviceMethods);
         service.setImplementBy(implementBy);
         service.setPackageName(packageName);
         service.setComment(comment);
@@ -148,7 +164,7 @@ public class CreateService extends SchemaStatement {
         for (int methodIndex = 0; methodIndex < methodSize; methodIndex++) {
             CreateTableData data = serviceMethods.get(methodIndex).data;
             buff.append("    ").append(session.getDatabase().quoteIdentifier(data.tableName)).append("(");
-            // 最后一例是返回类型所以要减一
+            // 最后一列是返回类型所以要减一
             for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
                 Column column = data.columns.get(i);
                 if (i != 0) {
@@ -218,7 +234,7 @@ public class CreateService extends SchemaStatement {
                     .append(" = ClientServiceProxy.prepareStatement(url, \"EXECUTE SERVICE ").append(serviceName)
                     .append(" ").append(data.tableName).append("(");
 
-            // 最后一例是返回类型所以要减一
+            // 最后一列是返回类型所以要减一
             for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
                 if (i != 0) {
                     psInitBuff.append(", ");

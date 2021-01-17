@@ -17,6 +17,7 @@
  */
 package org.lealone.db.service;
 
+import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
@@ -36,12 +37,16 @@ public class Service extends SchemaObjectBase {
     private String implementBy;
     private final String sql;
     private final String serviceExecutorClassName;
+    private final List<ServiceMethod> serviceMethods;
+
     private ServiceExecutor executor;
 
-    public Service(Schema schema, int id, String name, String sql, String serviceExecutorClassName) {
+    public Service(Schema schema, int id, String name, String sql, String serviceExecutorClassName,
+            List<ServiceMethod> serviceMethods) {
         super(schema, id, name);
         this.sql = sql;
         this.serviceExecutorClassName = serviceExecutorClassName;
+        this.serviceMethods = serviceMethods;
     }
 
     @Override
@@ -65,6 +70,10 @@ public class Service extends SchemaObjectBase {
         this.implementBy = implementBy;
     }
 
+    public List<ServiceMethod> getServiceMethods() {
+        return serviceMethods;
+    }
+
     @Override
     public String getCreateSQL() {
         return sql;
@@ -85,7 +94,7 @@ public class Service extends SchemaObjectBase {
         return executor;
     }
 
-    private static Service getService(ServerSession session, Database db, String schemaName, String serviceName) {
+    public static Service getService(ServerSession session, Database db, String schemaName, String serviceName) {
         // 调用服务前数据库可能没有初始化
         if (!db.isInitialized())
             db.init();
