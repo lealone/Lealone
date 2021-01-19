@@ -66,11 +66,12 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
         try {
             logger.info("execute service: " + serviceName);
             result = Service.execute(serviceName, methodName, methodArgs);
-        } catch (RuntimeException e) {
-            throw e;
         } catch (Exception e) {
             result = "failed to execute service: " + serviceName + ", cause: " + e.getMessage();
             logger.error(result, e);
+            // 这种异常还是得抛给调用者
+            if (e instanceof RuntimeException)
+                throw e;
         }
         // 如果为null就返回"null"字符串
         if (result == null)
