@@ -54,6 +54,10 @@ public class HttpRouterFactory implements RouterFactory {
     }
 
     protected static CaseInsensitiveMap<Object> getMethodArgs(RoutingContext routingContext) {
+        return getMethodArgs(routingContext, true);
+    }
+
+    protected static CaseInsensitiveMap<Object> getMethodArgs(RoutingContext routingContext, boolean parseJson) {
         CaseInsensitiveMap<Object> methodArgs = new CaseInsensitiveMap<>();
         for (Map.Entry<String, String> e : routingContext.request().params().entries()) {
             addMethodArgs(methodArgs, e.getKey(), e.getValue());
@@ -61,7 +65,7 @@ public class HttpRouterFactory implements RouterFactory {
 
         // 当请求头包含content-type: application/json时，客户端发送的是一个json类型的数据，
         // BodyHandler只能处理表单类的数据，所以在这里需要从json中取出参数
-        if (routingContext.request().method() == HttpMethod.POST) {
+        if (parseJson && routingContext.request().method() == HttpMethod.POST) {
             JsonObject json = routingContext.getBodyAsJson();
             if (json != null) {
                 for (Map.Entry<String, Object> e : json.getMap().entrySet()) {
