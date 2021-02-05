@@ -126,17 +126,12 @@
                     <exclusion>
                         <groupId>io.vertx</groupId>
                         <artifactId>vertx-bridge-common</artifactId>
-                    </exclusion>
+                    </exclusion><!--
                     <exclusion>
                         <groupId>io.vertx</groupId>
                         <artifactId>vertx-auth-common</artifactId>
-                    </exclusion>
+                    </exclusion>-->
                 </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.jsoup</groupId>
-            <artifactId>jsoup</artifactId>
-            <version>1.13.1</version>
         </dependency>
     </dependencies>
 </project>
