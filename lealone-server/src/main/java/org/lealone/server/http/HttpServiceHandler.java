@@ -79,6 +79,11 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
         return Buffer.buffer(result);
     }
 
+    public Buffer executeService(String serviceName, String methodName, String methodArgs) {
+        String command = "1;" + serviceName + "." + methodName + ";" + methodArgs;
+        return executeService(command);
+    }
+
     private Buffer executeService(String command) {
         // 不能直接这样用: command.split(";");
         // 因为参数里可能包含分号

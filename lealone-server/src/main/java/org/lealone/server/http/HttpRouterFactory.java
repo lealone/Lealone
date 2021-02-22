@@ -120,7 +120,11 @@ public class HttpRouterFactory implements RouterFactory {
         String serviceName = routingContext.request().params().get("serviceName");
         String methodName = routingContext.request().params().get("methodName");
         CaseInsensitiveMap<Object> methodArgs = getMethodArgs(routingContext);
-        Buffer result = serviceHandler.executeService(serviceName, methodName, methodArgs);
+        Buffer result;
+        if (methodArgs.containsKey("methodArgs"))
+            result = serviceHandler.executeService(serviceName, methodName, methodArgs.get("methodArgs").toString());
+        else
+            result = serviceHandler.executeService(serviceName, methodName, methodArgs);
         sendHttpServiceResponse(routingContext, serviceName, methodName, result);
     }
 
