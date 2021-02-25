@@ -65,7 +65,11 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
         String result = null;
         try {
             logger.info("execute service: " + serviceName);
-            result = Service.execute(serviceName, methodName, methodArgs);
+            if (serviceName.toUpperCase().contains("LEALONE_SYSTEM_SERVICE")) {
+                result = SystemService.execute(serviceName, methodName, methodArgs);
+            } else {
+                result = Service.execute(serviceName, methodName, methodArgs);
+            }
         } catch (Exception e) {
             result = "failed to execute service: " + serviceName + ", cause: " + e.getMessage();
             logger.error(result, e);
@@ -115,7 +119,11 @@ public class HttpServiceHandler implements Handler<SockJSSocket> {
         case 1:
             try {
                 logger.info("execute service: " + serviceName);
-                result = Service.execute(serviceName, json);
+                if (serviceName.toUpperCase().contains("LEALONE_SYSTEM_SERVICE")) {
+                    result = SystemService.execute(serviceName, json);
+                } else {
+                    result = Service.execute(serviceName, json);
+                }
                 ja.add(2);
             } catch (Exception e) {
                 ja.add(3);
