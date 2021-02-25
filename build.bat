@@ -21,10 +21,13 @@ set ARG=%1
 
 if /i "%ARG%" == "" goto usage
 if /i "%ARG%" == "-e" goto e
+if /i "%ARG%" == "-ec" goto ec
 if /i "%ARG%" == "-es" goto es
 if /i "%ARG%" == "-p" goto p
 if /i "%ARG%" == "-pc" goto pc
 if /i "%ARG%" == "-i" goto i
+if /i "%ARG%" == "-c" goto c
+if /i "%ARG%" == "-dt" goto dt
 if /i "%ARG%" == "-vu" goto vu
 
 goto usage
@@ -33,15 +36,22 @@ goto usage
 echo usage: build [options]
 echo    options:
 echo    -e            mvn eclipse:eclipse
+echo    -ec           mvn eclipse:clean
 echo    -es           mvn eclipse:eclipse -DdownloadSources=true
 echo    -p            mvn package assembly:assembly -Dmaven.test.skip=true
 echo    -pc           mvn clean package assembly:assembly -Dmaven.test.skip=true
 echo    -i            mvn install -Dmaven.test.skip=true
+echo    -c            mvn clean
+echo    -dt           mvn dependency:tree
 echo    -vu version   pom.xml version update
 goto end
 
 :e
 call mvn eclipse:eclipse
+goto end
+
+:ec
+call mvn eclipse:clean
 goto end
 
 :es
@@ -53,11 +63,19 @@ call mvn package assembly:assembly -Dmaven.test.skip=true
 goto end
 
 :pc
-call mvn clean package assembly:assembly -Dmaven.test.skip=true
+mvn clean package assembly:assembly -Dmaven.test.skip=true
+goto p
+
+:c
+call mvn clean
 goto end
 
 :i
 call mvn install -Dmaven.test.skip=true
+goto end
+
+:dt
+call mvn dependency:tree
 goto end
 
 :vu
