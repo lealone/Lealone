@@ -207,6 +207,7 @@ public class CreateService extends SchemaStatement {
 
     private void genCode() {
         genServiceInterfaceCode();
+        genServiceImplementClassCode();
         genServiceExecutorCode();
     }
 
@@ -369,6 +370,81 @@ public class CreateService extends SchemaStatement {
         buff.append("}\r\n");
 
         writeFile(codePath, packageName, serviceInterfaceName, buff);
+    }
+
+    private boolean isServiceImplementClassExists() {
+        String path = codePath;
+        path = path.replace('/', File.separatorChar);
+        if (!path.endsWith(File.separator))
+            path = path + File.separator;
+        String srcFile = path + implementBy.replace('.', File.separatorChar) + ".java";
+        return new File(srcFile).exists();
+    }
+
+    private void genServiceImplementClassCode() {
+        if (isServiceImplementClassExists()) {
+            return;
+        }
+        TreeSet<String> importSet = new TreeSet<>();
+
+        // 生成方法签名和方法体的代码
+        int methodSize = serviceMethods.size();
+        ArrayList<StringBuilder> methodSignatureList = new ArrayList<>(methodSize);
+        ArrayList<String> methodReturnTypeList = new ArrayList<>(methodSize);
+
+        for (int methodIndex = 0; methodIndex < methodSize; methodIndex++) {
+            StringBuilder methodSignatureBuff = new StringBuilder();
+            CreateTableData data = serviceMethods.get(methodIndex).data;
+
+            Column returnColumn = data.columns.get(data.columns.size() - 1);
+            String returnType = getTypeName(returnColumn, importSet);
+            String methodName = toMethodName(data.tableName);
+            methodSignatureBuff.append(returnType).append(" ").append(methodName).append("(");
+            methodReturnTypeList.add(returnType);
+
+            for (int i = 0, size = data.columns.size() - 1; i < size; i++) {
+                if (i != 0) {
+                    methodSignatureBuff.append(", ");
+                }
+                Column c = data.columns.get(i);
+                String cType = getTypeName(c, importSet);
+                String cName = toFieldName(c.getName());
+                methodSignatureBuff.append(cType).append(" ").append(cName);
+            }
+            methodSignatureBuff.append(")");
+            methodSignatureList.add(methodSignatureBuff);
+        }
+
+        String serviceInterfaceName = toClassName(serviceName);
+        int pos = implementBy.lastIndexOf('.');
+        String implementPackageName = implementBy.substring(0, pos);
+        String implementClassName = implementBy.substring(pos + 1);
+        if (!implementPackageName.equals(packageName)) {
+            importSet.add(packageName + "." + serviceInterfaceName);
+        }
+        // 生成package和import代码
+        StringBuilder buff = new StringBuilder();
+        buff.append("package ").append(implementPackageName).append(";\r\n");
+        buff.append("\r\n");
+        for (String i : importSet) {
+            buff.append("import ").append(i).append(";\r\n");
+        }
+        buff.append("\r\n");
+
+        // 生成Service实现类的骨架代码
+        buff.append("public class ").append(implementClassName).append(" implements ").append(serviceInterfaceName)
+                .append(" {\r\n");
+        for (int i = 0; i < methodSize; i++) {
+            buff.append("\r\n");
+            buff.append("    @Override\r\n");
+            buff.append("    public ").append(methodSignatureList.get(i)).append(" {\r\n");
+            if (!methodReturnTypeList.get(i).equals("void"))
+                buff.append("        return null;\r\n");
+            buff.append("    }\r\n");
+        }
+        buff.append("}\r\n");
+
+        writeFile(codePath, implementPackageName, implementClassName, buff);
     }
 
     private String getServiceImplementClassName() {
