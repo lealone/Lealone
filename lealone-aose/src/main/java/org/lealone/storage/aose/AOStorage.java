@@ -39,8 +39,6 @@ import org.lealone.storage.StorageCommand;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeMapBuilder;
-import org.lealone.storage.aose.rtree.RTreeMap;
-import org.lealone.storage.aose.rtree.RTreeMapBuilder;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.replication.ReplicationSession;
@@ -104,13 +102,6 @@ public class AOStorage extends StorageBase {
         builder.keyType(keyType);
         builder.valueType(valueType);
         return openMap(name, builder, parameters);
-    }
-
-    public <V> RTreeMap<V> openRTreeMap(String name, StorageDataType valueType, int dimensions) {
-        RTreeMapBuilder<V> builder = new RTreeMapBuilder<>();
-        builder.dimensions(dimensions);
-        builder.valueType(valueType);
-        return (RTreeMap<V>) openMap(name, builder, null);
     }
 
     @SuppressWarnings("unchecked")

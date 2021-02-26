@@ -14,7 +14,6 @@
 package org.lealone.test.aose;
 
 import org.junit.Test;
-import org.lealone.db.value.ValueString;
 import org.lealone.storage.aose.AOStorage;
 import org.lealone.storage.aose.AOStorageBuilder;
 import org.lealone.storage.aose.btree.BTreeMap;
@@ -71,16 +70,14 @@ public class AOStorageTest extends TestBase {
 
     void testOpenMap() {
         storage.openBTreeMap("AOStorageTest_map1");
-        storage.openRTreeMap("AOStorageTest_map2", ValueString.type, 3);
-        storage.openBTreeMap("AOStorageTest_map3", null, null, null);
+        storage.openBTreeMap("AOStorageTest_map2", null, null, null);
 
-        assertEquals(3, storage.getMapNames().size());
+        assertEquals(2, storage.getMapNames().size());
         assertTrue(storage.hasMap("AOStorageTest_map1"));
         assertTrue(storage.hasMap("AOStorageTest_map2"));
-        assertTrue(storage.hasMap("AOStorageTest_map3"));
 
         storage.closeMap("AOStorageTest_map1");
-        assertEquals(2, storage.getMapNames().size());
+        assertEquals(1, storage.getMapNames().size());
         assertFalse(storage.hasMap("AOStorageTest_map1"));
         assertTrue(storage.nextTemporaryMapName().length() > 0);
 
