@@ -126,7 +126,6 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
                     root = new BTreeRemotePage(this);
                 }
                 root.setReplicationHostIds(Arrays.asList(replicationNodes));
-                btreeStorage.addHostIds(replicationNodes);
                 // 强制把replicationHostIds持久化
                 btreeStorage.forceSave();
             } else {

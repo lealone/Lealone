@@ -11,7 +11,6 @@ import java.io.RandomAccessFile;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -63,7 +62,6 @@ public class BTreeStorage {
     private final BTreeMap<Object, Object> map;
     private final String btreeStoragePath;
 
-    private final ConcurrentHashMap<Long, String> hashCodeToHostIdMap = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
     private final RandomAccessFile chunkMetaData;
@@ -152,20 +150,17 @@ public class BTreeStorage {
         } catch (IllegalStateException e) {
             throw panic(e);
         } catch (IOException e) {
-            throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED,
-                    "Failed to read chunkMetaData: {0}", file, e));
+            throw panic(DataUtils.ERROR_READING_FAILED, "Failed to read chunkMetaData: {0}", file, e);
         }
     }
 
     private List<Integer> getAllChunkIds() {
         String[] files = new File(btreeStoragePath).list();
         List<Integer> ids = new ArrayList<>(files.length);
-        if (files != null && files.length > 0) {
-            for (String f : files) {
-                if (f.endsWith(AOStorage.SUFFIX_AO_FILE)) {
-                    int id = Integer.parseInt(f.substring(0, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
-                    ids.add(id);
-                }
+        for (String f : files) {
+            if (f.endsWith(AOStorage.SUFFIX_AO_FILE)) {
+                int id = Integer.parseInt(f.substring(0, f.length() - AOStorage.SUFFIX_AO_FILE_LENGTH));
+                ids.add(id);
             }
         }
         return ids;
@@ -180,9 +175,6 @@ public class BTreeStorage {
         for (int i = 0; i < removedPagesCount; i++)
             removedPages.add(chunkMetaData.readLong());
 
-        int hashCodeToHostIdMapSize = chunkMetaData.readInt();
-        for (int i = 0; i < hashCodeToHostIdMapSize; i++)
-            addHostIds(chunkMetaData.readUTF());
         return lastChunkId;
     }
 
@@ -196,11 +188,9 @@ public class BTreeStorage {
                 for (int i = 0; i < removedPagesCount; i++)
                     removedPages.add(chunkMetaData.readLong());
             }
-
             return removedPages;
         } catch (IOException e) {
-            throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_READING_FAILED, "Failed to readRemovedPages",
-                    e));
+            throw panic(DataUtils.ERROR_READING_FAILED, "Failed to readRemovedPages", e);
         }
     }
 
@@ -213,16 +203,15 @@ public class BTreeStorage {
             for (long pos : removedPages) {
                 chunkMetaData.writeLong(pos);
             }
-            chunkMetaData.writeInt(hashCodeToHostIdMap.size());
-            for (String hostId : hashCodeToHostIdMap.values()) {
-                chunkMetaData.writeUTF(hostId);
-            }
-            // chunkMetaData.setLength(4 + 4 + removedPages.size() * 8);
             chunkMetaData.getFD().sync();
         } catch (IOException e) {
-            throw panic(DataUtils.newIllegalStateException(DataUtils.ERROR_WRITING_FAILED,
-                    "Failed to writeChunkMetaData", e));
+            throw panic(DataUtils.ERROR_WRITING_FAILED, "Failed to writeChunkMetaData", e);
         }
+    }
+
+    private IllegalStateException panic(int errorCode, String message, Object... arguments) {
+        IllegalStateException e = DataUtils.newIllegalStateException(errorCode, message, arguments);
+        return panic(e);
     }
 
     private IllegalStateException panic(IllegalStateException e) {
@@ -503,6 +492,17 @@ public class BTreeStorage {
             cache.setMaxMemory((long) mb * 1024 * 1024);
             cache.clear();
         }
+    }
+
+    long getDiskSpaceUsed() {
+        return org.lealone.storage.fs.FileUtils.folderSize(new File(btreeStoragePath));
+    }
+
+    long getMemorySpaceUsed() {
+        if (cache != null)
+            return cache.getUsedMemory();
+        else
+            return 0;
     }
 
     /**
@@ -841,43 +841,4 @@ public class BTreeStorage {
     }
 
     // //////////////////////////////// Compact END /////////////////////////////////////
-
-    void addHostIds(Collection<String> hostIds) {
-        if (hostIds != null)
-            addHostIds(hostIds.toArray(new String[0]));
-    }
-
-    void addHostIds(String... hostIds) {
-        if (hostIds != null) {
-            for (String hostId : hostIds) {
-                if (hostId != null) {
-                    hashCodeToHostIdMap.put(Long.valueOf(getHostIdHashCode(hostId)), hostId);
-                }
-            }
-        }
-    }
-
-    String findHostId(long hashCode) {
-        return hashCodeToHostIdMap.get(hashCode);
-    }
-
-    long getHostIdHashCode(String hostId) {
-        int hashCode = hostId.hashCode();
-        // 统一取负值，这样可以区分是不是真实的pos
-        if (hashCode > 0) {
-            hashCode = -hashCode;
-        }
-        return hashCode;
-    }
-
-    long getDiskSpaceUsed() {
-        return org.lealone.storage.fs.FileUtils.folderSize(new File(btreeStoragePath));
-    }
-
-    long getMemorySpaceUsed() {
-        if (cache != null)
-            return cache.getUsedMemory();
-        else
-            return 0;
-    }
 }
