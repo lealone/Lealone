@@ -135,7 +135,7 @@ public abstract class RedoLogRecord {
         private final String mapName;
 
         DroppedMapRedoLogRecord(String mapName) {
-            DataUtils.checkArgument(mapName != null, "The mapName may not be null");
+            DataUtils.checkNotNull(mapName, "mapName");
             this.mapName = mapName;
         }
 

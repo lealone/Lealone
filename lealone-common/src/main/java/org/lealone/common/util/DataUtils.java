@@ -580,6 +580,12 @@ public class DataUtils {
         }
     }
 
+    public static void checkNotNull(Object argument, String argumentName) {
+        if (argument == null) {
+            throw newIllegalArgumentException("The " + argumentName + " may not be null");
+        }
+    }
+
     /**
      * Create a new IllegalArgumentException.
      *

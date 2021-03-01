@@ -93,7 +93,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     protected BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
             AOStorage aoStorage) {
         super(name, keyType, valueType, aoStorage);
-        DataUtils.checkArgument(config != null, "The config may not be null");
+        DataUtils.checkNotNull(config, "config");
 
         this.readOnly = config.containsKey("readOnly");
         this.config = config;
@@ -118,7 +118,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         } else {
             if (isShardingMode) {
                 String initReplicationNodes = (String) config.get("initReplicationNodes");
-                DataUtils.checkArgument(initReplicationNodes != null, "The initReplicationNodes may not be null");
+                DataUtils.checkNotNull(initReplicationNodes, "initReplicationNodes");
                 String[] replicationNodes = StringUtils.arraySplit(initReplicationNodes, '&');
                 if (containsLocalNode(replicationNodes)) {
                     root = BTreeLeafPage.createEmpty(this);
@@ -217,7 +217,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     // 如果map是只读的或者已经关闭了就不能再写了，并且不允许值为null
     private void checkWrite(V value) {
-        DataUtils.checkArgument(value != null, "The value may not be null");
+        DataUtils.checkNotNull(value, "value");
         checkWrite();
     }
 

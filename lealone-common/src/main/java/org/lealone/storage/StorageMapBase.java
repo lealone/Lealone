@@ -40,7 +40,7 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
     protected final AtomicLong maxKey = new AtomicLong(0);
 
     protected StorageMapBase(String name, StorageDataType keyType, StorageDataType valueType, Storage storage) {
-        DataUtils.checkArgument(name != null, "The name may not be null");
+        DataUtils.checkNotNull(name, "name");
         if (keyType == null) {
             keyType = new ObjectDataType();
         }

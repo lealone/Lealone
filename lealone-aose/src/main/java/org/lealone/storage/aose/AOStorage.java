@@ -60,7 +60,7 @@ public class AOStorage extends StorageBase {
         super(config);
         this.pohFactory = pohFactory;
         String storagePath = getStoragePath();
-        DataUtils.checkArgument(storagePath != null, "The storage path may not be null");
+        DataUtils.checkNotNull(storagePath, "storage path");
         if (!FileUtils.exists(storagePath))
             FileUtils.createDirectories(storagePath);
         FilePath dir = FilePath.get(storagePath);

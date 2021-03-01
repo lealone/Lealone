@@ -121,7 +121,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public V put(K key, V value) {
-        DataUtils.checkArgument(value != null, "The value may not be null");
+        DataUtils.checkNotNull(value, "value");
         return setSync(key, value);
     }
 
@@ -526,7 +526,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     @Override
     @SuppressWarnings("unchecked")
     public V putCommitted(K key, V value) {
-        DataUtils.checkArgument(value != null, "The value may not be null");
+        DataUtils.checkNotNull(value, "value");
         TransactionalValue newValue = TransactionalValue.createCommitted(value);
         TransactionalValue oldValue = map.put(key, newValue);
         return (V) (oldValue == null ? null : oldValue.getValue());
@@ -676,7 +676,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get
     public void addIfAbsent(K key, V value, Transaction.Listener listener) {
-        DataUtils.checkArgument(value != null, "The value may not be null");
+        DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
         TransactionalValue ref = TransactionalValue.createRef();
         TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
@@ -739,7 +739,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue) {
-        DataUtils.checkArgument(newValue != null, "The newValue may not be null");
+        DataUtils.checkNotNull(newValue, "newValue");
         return tryUpdateOrRemove(key, newValue, columnIndexes, (TransactionalValue) oldTransactionalValue);
     }
 
@@ -753,7 +753,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     // 当前事务要让出当前线程。
     // 当value为null时代表delete，否则代表update。
     protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
-        DataUtils.checkArgument(oldTransactionalValue != null, "The oldTransactionalValue may not be null");
+        DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
         transaction.checkNotClosed();
         String mapName = getName();
         // 进入循环前先取出原来的值
@@ -805,7 +805,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     public boolean tryLock(K key, Object oldTransactionalValue) {
-        DataUtils.checkArgument(oldTransactionalValue != null, "The oldTransactionalValue may not be null");
+        DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
         transaction.checkNotClosed();
         TransactionalValue ref = (TransactionalValue) oldTransactionalValue;
         if (ref.isLocked(transaction.transactionId, null))
