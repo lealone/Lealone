@@ -15,7 +15,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +35,7 @@ import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 
 /**
- * A persistent storage for map.
+ * A persistent storage for btree map.
  * 
  * @author H2 Group
  * @author zhh
@@ -62,11 +61,11 @@ public class BTreeStorage {
     private final BTreeMap<Object, Object> map;
     private final String btreeStoragePath;
 
+    private final TreeSet<Long> removedPages = new TreeSet<>();
+
     private final ConcurrentHashMap<Integer, BTreeChunk> chunks = new ConcurrentHashMap<>();
     private final BitField chunkIds = new BitField();
     private final RandomAccessFile chunkMetaData;
-
-    private final TreeSet<Long> removedPages = new TreeSet<>();
 
     /**
     * The newest chunk. If nothing was stored yet, this field is not set.
@@ -79,8 +78,7 @@ public class BTreeStorage {
 
     /**
      * The page cache. The default size is 16 MB, and the average size is 2 KB.
-     * It is split in 16 segments. The stack move distance is 2% of the expected
-     * number of entries.
+     * It is split in 16 segments. The stack move distance is 2% of the expected number of entries.
      */
     private final CacheLongKeyLIRS<BTreePage> cache;
 
@@ -93,8 +91,6 @@ public class BTreeStorage {
     private Compressor compressorHigh;
 
     private boolean closed;
-    private IllegalStateException panicException;
-
     private volatile boolean hasUnsavedChanges;
 
     /**
@@ -105,28 +101,19 @@ public class BTreeStorage {
      */
     BTreeStorage(BTreeMap<Object, Object> map) {
         this.map = map;
-        Map<String, Object> config = map.config;
+        pageSplitSize = getIntValue("pageSplitSize", 16 * 1024);
+        minFillRate = getIntValue("minFillRate", 30);
+        compressionLevel = getIntValue("compress", 0);
+        backgroundExceptionHandler = (UncaughtExceptionHandler) map.config.get("backgroundExceptionHandler");
 
-        Object value = config.get("pageSplitSize");
-        pageSplitSize = value != null ? (Integer) value : 16 * 1024;
-
-        value = config.get("minFillRate");
-        minFillRate = value != null ? (Integer) value : 30;
-
-        backgroundExceptionHandler = (UncaughtExceptionHandler) config.get("backgroundExceptionHandler");
-
-        value = config.get("cacheSize");
-        int mb = value == null ? 16 : (Integer) value;
+        int mb = getIntValue("cacheSize", 16);
         if (mb > 0) {
             CacheLongKeyLIRS.Config cc = new CacheLongKeyLIRS.Config();
             cc.maxMemory = mb * 1024L * 1024L;
             cache = new CacheLongKeyLIRS<>(cc);
         } else {
-            cache = null;
+            cache = null; // 当 cacheSize <= 0 时禁用缓存
         }
-
-        value = config.get("compress");
-        compressionLevel = value == null ? 0 : (Integer) value;
 
         btreeStoragePath = map.getStorage().getStoragePath() + File.separator + map.getName();
         if (!FileUtils.exists(btreeStoragePath))
@@ -151,6 +138,11 @@ public class BTreeStorage {
         } catch (IOException e) {
             throw panic(DataUtils.ERROR_READING_FAILED, "Failed to read chunkMetaData: {0}", file, e);
         }
+    }
+
+    private int getIntValue(String key, int defaultValue) {
+        Object value = map.config.get(key);
+        return value != null ? (Integer) value : defaultValue;
     }
 
     private List<Integer> getAllChunkIds() {
@@ -217,7 +209,6 @@ public class BTreeStorage {
         if (backgroundExceptionHandler != null) {
             backgroundExceptionHandler.uncaughtException(null, e);
         }
-        panicException = e;
         closeImmediately();
         return e;
     }
@@ -404,10 +395,6 @@ public class BTreeStorage {
         return p;
     }
 
-    void setUnsavedChanges(boolean b) {
-        hasUnsavedChanges = b;
-    }
-
     /**
      * Remove a page.
      * 
@@ -428,11 +415,14 @@ public class BTreeStorage {
 
         if (cache != null) {
             if (PageUtils.isLeafPage(pos)) {
-                // keep nodes in the cache, because they are still used for
-                // garbage collection
+                // keep nodes in the cache, because they are still used for garbage collection
                 cache.remove(pos);
             }
         }
+    }
+
+    int getCompressionLevel() {
+        return compressionLevel;
     }
 
     Compressor getCompressorFast() {
@@ -449,24 +439,8 @@ public class BTreeStorage {
         return compressorHigh;
     }
 
-    int getCompressionLevel() {
-        return compressionLevel;
-    }
-
     public int getPageSplitSize() {
         return pageSplitSize;
-    }
-
-    /**
-     * Get the amount of memory used for caching, in MB.
-     * 
-     * @return the amount of memory used for caching
-     */
-    public int getCacheSizeUsed() {
-        if (cache == null) {
-            return 0;
-        }
-        return (int) (cache.getUsedMemory() / 1024 / 1024);
     }
 
     /**
@@ -488,13 +462,13 @@ public class BTreeStorage {
      */
     public void setCacheSize(int mb) {
         if (cache != null) {
-            cache.setMaxMemory((long) mb * 1024 * 1024);
+            cache.setMaxMemory(mb * 1024 * 1024L);
             cache.clear();
         }
     }
 
     long getDiskSpaceUsed() {
-        return org.lealone.storage.fs.FileUtils.folderSize(new File(btreeStoragePath));
+        return FileUtils.folderSize(new File(btreeStoragePath));
     }
 
     long getMemorySpaceUsed() {
@@ -508,7 +482,6 @@ public class BTreeStorage {
      * Remove this storage.
      */
     synchronized void remove() {
-        checkOpen();
         closeImmediately();
         FileUtils.deleteRecursive(btreeStoragePath, true);
     }
@@ -517,17 +490,11 @@ public class BTreeStorage {
         return closed;
     }
 
-    private void checkOpen() {
-        if (closed) {
-            throw DataUtils.newIllegalStateException(DataUtils.ERROR_CLOSED, "This storage is closed", panicException);
-        }
-    }
-
     /**
      * Close the file and the storage. Unsaved changes are written to disk first.
      */
     void close() {
-        closeStorage();
+        closeStorage(false);
     }
 
     /**
@@ -536,7 +503,7 @@ public class BTreeStorage {
      */
     private void closeImmediately() {
         try {
-            closeStorage();
+            closeStorage(true);
         } catch (Exception e) {
             if (backgroundExceptionHandler != null) {
                 backgroundExceptionHandler.uncaughtException(null, e);
@@ -544,11 +511,12 @@ public class BTreeStorage {
         }
     }
 
-    private void closeStorage() {
+    private void closeStorage(boolean immediate) {
         if (closed) {
             return;
         }
-        save();
+        if (!immediate)
+            save();
         closed = true;
         synchronized (this) {
             for (BTreeChunk c : chunks.values()) {
@@ -569,13 +537,16 @@ public class BTreeStorage {
         }
     }
 
+    void setUnsavedChanges(boolean b) {
+        hasUnsavedChanges = b;
+    }
+
     /**
      * Check whether there are any unsaved changes.
      * 
      * @return if there are any changes
      */
     private boolean hasUnsavedChanges() {
-        checkOpen();
         boolean b = hasUnsavedChanges;
         hasUnsavedChanges = false;
         return b;
@@ -606,6 +577,9 @@ public class BTreeStorage {
     }
 
     synchronized void forceSave() {
+        if (closed) {
+            return;
+        }
         executeSave(true);
     }
 
@@ -613,7 +587,7 @@ public class BTreeStorage {
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
         BTreeChunk c = new BTreeChunk(id);
-        chunks.put(c.id, c);
+        chunks.put(id, c);
         c.pagePositions = new ArrayList<>();
         c.pageLengths = new ArrayList<>();
 
