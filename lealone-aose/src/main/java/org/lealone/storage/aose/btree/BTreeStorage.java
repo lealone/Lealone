@@ -94,7 +94,6 @@ public class BTreeStorage {
 
     private boolean closed;
     private IllegalStateException panicException;
-    private DataBuffer writeBuffer;
 
     private volatile boolean hasUnsavedChanges;
 
@@ -611,7 +610,6 @@ public class BTreeStorage {
     }
 
     private TreeSet<Long> executeSave(boolean force) {
-        DataBuffer buff = getDataBuffer();
         int id = chunkIds.nextClearBit(1);
         chunkIds.set(id);
         BTreeChunk c = new BTreeChunk(id);
@@ -626,6 +624,8 @@ public class BTreeStorage {
             this.removedPages.clear();
             p = map.root;
         }
+
+        DataBuffer buff = DataBuffer.create();
         // 如果不写，rootPagePos会是0，重新打开时会报错
         // if (p.getTotalCount() > 0 || force) {
         p.writeUnsavedRecursive(c, buff);
@@ -637,8 +637,8 @@ public class BTreeStorage {
         for (long pos : c.pagePositions)
             buff.putLong(pos);
         c.pageLengthsOffset = buff.position();
-        for (int pos : c.pageLengths)
-            buff.putInt(pos);
+        for (int len : c.pageLengths)
+            buff.putInt(len);
 
         int chunkBodyLength = buff.position();
         chunkBodyLength = MathUtils.roundUpInt(chunkBodyLength, BLOCK_SIZE);
@@ -654,42 +654,12 @@ public class BTreeStorage {
         // chunk body
         write(c.fileStorage, CHUNK_HEADER_SIZE, buff.getBuffer());
         c.fileStorage.sync();
+        buff.close();
 
         removedPages.addAll(readRemovedPages());
         writeChunkMetaData(c.id, removedPages);
-
-        releaseDataBuffer(buff);
         lastChunk = c;
         return removedPages;
-    }
-
-    /**
-     * Get a buffer for writing. This caller must synchronize on the storage
-     * before calling the method and until after using the buffer.
-     * 
-     * @return the buffer
-     */
-    private DataBuffer getDataBuffer() {
-        DataBuffer buff;
-        if (writeBuffer != null) {
-            buff = writeBuffer;
-            buff.clear();
-        } else {
-            buff = DataBuffer.create();
-        }
-        return buff;
-    }
-
-    /**
-     * Release a buffer for writing. This caller must synchronize on the storage
-     * before calling the method and until after using the buffer.
-     * 
-     * @param buff the buffer than can be re-used
-     */
-    private void releaseDataBuffer(DataBuffer buff) {
-        if (buff.capacity() <= 4 * 1024 * 1024) {
-            writeBuffer = buff;
-        }
     }
 
     /**
