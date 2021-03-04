@@ -57,7 +57,6 @@ public class DistributedBTreeMapTest extends TestBase {
         // pageSplitSize = 32 * 1024;
         storage = AOStorageTest.openStorage(pageSplitSize);
         storagePath = storage.getStoragePath();
-        // storage.getPageOperationHandlerFactory().startHandlers();
     }
 
     private BTreeMap<Integer, String> openDistributedBTreeMap(String name) {

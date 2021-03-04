@@ -111,7 +111,6 @@ public class AOStorageTest extends TestBase {
         builder.compressHigh();
         builder.storagePath(storagePath).reuseSpace().minFillRate(30);
         AOStorage storage = builder.openStorage();
-        storage.getPageOperationHandlerFactory().startHandlers();
         return storage;
     }
 }

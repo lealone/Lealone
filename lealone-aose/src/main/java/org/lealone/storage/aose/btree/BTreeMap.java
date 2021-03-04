@@ -110,10 +110,10 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         db = (IDatabase) config.get("db");
 
         btreeStorage = new BTreeStorage((BTreeMap<Object, Object>) this);
-
-        if (btreeStorage.lastChunk != null) {
-            root = btreeStorage.readPage(btreeStorage.lastChunk.rootPagePos);
-            size.set(btreeStorage.lastChunk.mapSize);
+        BTreeChunk lastChunk = btreeStorage.getLastChunk();
+        if (lastChunk != null) {
+            root = btreeStorage.readPage(lastChunk.rootPagePos);
+            size.set(lastChunk.mapSize);
             setMaxKey(lastKey());
         } else {
             if (isShardingMode) {
