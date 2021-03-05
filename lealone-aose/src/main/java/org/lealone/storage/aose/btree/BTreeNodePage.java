@@ -262,7 +262,18 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    int write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+        write0(chunk, buff, replicatePage);
+    }
+
+    /**
+    * Store the page and update the position.
+    *
+    * @param chunk the chunk
+    * @param buff the target buffer
+    * @return the position of the buffer just after the type
+    */
+    private int write0(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         buff.putInt(0);
@@ -296,21 +307,14 @@ public class BTreeNodePage extends BTreeLocalPage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (replicatePage) {
-            return typePos + 1;
-        }
+        if (!replicatePage) {
+            updateChunkAndCachePage(chunk, start, pageLength, type);
 
-        updateChunkAndCachePage(chunk, start, pageLength, type);
+            // cache again - this will make sure nodes stays in the cache
+            // for a longer time
+            map.getBTreeStorage().cachePage(pos, this, getMemory());
 
-        // cache again - this will make sure nodes stays in the cache
-        // for a longer time
-        map.getBTreeStorage().cachePage(pos, this, getMemory());
-
-        if (removedInMemory) {
-            // if the page was removed _before_ the position was assigned, we
-            // need to mark it removed here, so the fields are updated
-            // when the next chunk is stored
-            map.getBTreeStorage().removePage(pos, memory);
+            removeIfInMemory();
         }
         return typePos + 1;
     }
@@ -327,7 +331,7 @@ public class BTreeNodePage extends BTreeLocalPage {
             // already stored before
             return;
         }
-        int patch = write(chunk, buff, false);
+        int patch = write0(chunk, buff, false);
         for (int i = 0, len = children.length; i < len; i++) {
             BTreePage p = children[i].page;
             if (p != null) {

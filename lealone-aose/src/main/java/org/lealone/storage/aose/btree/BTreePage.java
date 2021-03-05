@@ -434,14 +434,7 @@ public class BTreePage {
         throw ie();
     }
 
-    /**
-    * Store the page and update the position.
-    *
-    * @param chunk the chunk
-    * @param buff the target buffer
-    * @return the position of the buffer just after the type
-    */
-    int write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         throw ie();
     }
 

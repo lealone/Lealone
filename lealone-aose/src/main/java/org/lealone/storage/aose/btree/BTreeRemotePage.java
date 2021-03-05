@@ -64,13 +64,21 @@ public class BTreeRemotePage extends BTreePage {
     }
 
     @Override
-    int write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    void writeUnsavedRecursive(BTreeChunk chunk, DataBuffer buff) {
+        if (pos != 0) {
+            // already stored before
+            return;
+        }
+        write(chunk, buff, false);
+    }
+
+    @Override
+    void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int type = PageUtils.PAGE_TYPE_REMOTE;
         buff.putInt(0);
         int checkPos = buff.position();
         buff.putShort((short) 0);
-        int typePos = buff.position();
         buff.put((byte) type);
         writeReplicationHostIds(replicationHostIds, buff);
 
@@ -80,21 +88,9 @@ public class BTreeRemotePage extends BTreePage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (replicatePage) {
-            return typePos + 1;
+        if (!replicatePage) {
+            updateChunkAndCachePage(chunk, start, pageLength, type);
         }
-
-        updateChunkAndCachePage(chunk, start, pageLength, type);
-        return typePos + 1;
-    }
-
-    @Override
-    void writeUnsavedRecursive(BTreeChunk chunk, DataBuffer buff) {
-        if (pos != 0) {
-            // already stored before
-            return;
-        }
-        write(chunk, buff, false);
     }
 
     @Override

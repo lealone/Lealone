@@ -239,7 +239,22 @@ public class BTreeLeafPage extends BTreeLocalPage {
         map.decrementSize(); // 递减全局计数器
     }
 
-    void readRowStorage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    @Override
+    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+        int mode = buff.get(buff.position() + 4);
+        switch (PageStorageMode.values()[mode]) {
+        case COLUMN_STORAGE:
+            readColumnStorageMultiPages(buff, chunkId, offset, maxLength, disableCheck);
+            break;
+        case COLUMN_STORAGE_SINGLE_PAGE:
+            readColumnStorageSinglePage(buff, chunkId, offset, maxLength, disableCheck);
+            break;
+        default:
+            readRowStorage(buff, chunkId, offset, maxLength, disableCheck);
+        }
+    }
+
+    private void readRowStorage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, maxLength);
@@ -265,7 +280,8 @@ public class BTreeLeafPage extends BTreeLocalPage {
         oldBuff.limit(oldLimit);
     }
 
-    void readColumnStorageSinglePage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    private void readColumnStorageSinglePage(ByteBuffer buff, int chunkId, int offset, int maxLength,
+            boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, maxLength);
@@ -307,7 +323,8 @@ public class BTreeLeafPage extends BTreeLocalPage {
         oldBuff.limit(oldLimit);
     }
 
-    void readColumnStorageMultiPages(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    private void readColumnStorageMultiPages(ByteBuffer buff, int chunkId, int offset, int maxLength,
+            boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, maxLength);
@@ -357,22 +374,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         oldBuff.limit(oldLimit);
     }
 
-    @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
-        int mode = buff.get(buff.position() + 4);
-        switch (PageStorageMode.values()[mode]) {
-        case COLUMN_STORAGE:
-            readColumnStorageMultiPages(buff, chunkId, offset, maxLength, disableCheck);
-            break;
-        case COLUMN_STORAGE_SINGLE_PAGE:
-            readColumnStorageSinglePage(buff, chunkId, offset, maxLength, disableCheck);
-            break;
-        default:
-            readRowStorage(buff, chunkId, offset, maxLength, disableCheck);
-        }
-    }
-
-    void readColumnPage(int columnIndex) {
+    private void readColumnPage(int columnIndex) {
         BTreeColumnPage page = (BTreeColumnPage) map.btreeStorage.readPage(columnPages[columnIndex].pos);
         if (page.values == null) {
             columnPages[columnIndex].page = page;
@@ -381,22 +383,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         } else {
             // 有可能因为缓存紧张，导致keys所在的page被逐出了，但是列所在的某些page还在
             values = page.values;
-        }
-    }
-
-    @Override
-    void writeLeaf(DataBuffer buff, boolean remote) {
-        buff.put((byte) PageUtils.PAGE_TYPE_LEAF);
-        writeReplicationHostIds(replicationHostIds, buff);
-        buff.put((byte) (remote ? 1 : 0));
-        if (!remote) {
-            StorageDataType kt = map.getKeyType();
-            StorageDataType vt = map.getValueType();
-            buff.putInt(keys.length);
-            for (int i = 0, len = keys.length; i < len; i++) {
-                kt.write(buff, keys[i]);
-                vt.write(buff, values[i]);
-            }
         }
     }
 
@@ -423,7 +409,47 @@ public class BTreeLeafPage extends BTreeLocalPage {
         return p;
     }
 
-    int writeRowStorage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    @Override
+    void writeLeaf(DataBuffer buff, boolean remote) {
+        buff.put((byte) PageUtils.PAGE_TYPE_LEAF);
+        writeReplicationHostIds(replicationHostIds, buff);
+        buff.put((byte) (remote ? 1 : 0));
+        if (!remote) {
+            StorageDataType kt = map.getKeyType();
+            StorageDataType vt = map.getValueType();
+            buff.putInt(keys.length);
+            for (int i = 0, len = keys.length; i < len; i++) {
+                kt.write(buff, keys[i]);
+                vt.write(buff, values[i]);
+            }
+        }
+    }
+
+    @Override
+    void writeUnsavedRecursive(BTreeChunk chunk, DataBuffer buff) {
+        if (pos != 0) {
+            // already stored before
+            return;
+        }
+        write(chunk, buff, false);
+    }
+
+    @Override
+    void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+        switch (map.pageStorageMode) {
+        case COLUMN_STORAGE:
+            writeColumnStorageMultiPages(chunk, buff, replicatePage);
+            return;
+        case COLUMN_STORAGE_SINGLE_PAGE:
+            writeColumnStorageSinglePage(chunk, buff, replicatePage);
+            return;
+        default:
+            writeRowStorage(chunk, buff, replicatePage);
+            return;
+        }
+    }
+
+    private void writeRowStorage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -451,34 +477,13 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (replicatePage) {
-            return typePos + 1;
-        }
-
-        updateChunkAndCachePage(chunk, start, pageLength, type);
-
-        if (removedInMemory) {
-            // if the page was removed _before_ the position was assigned, we
-            // need to mark it removed here, so the fields are updated
-            // when the next chunk is stored
-            map.getBTreeStorage().removePage(pos, memory);
-        }
-        return typePos + 1;
-    }
-
-    @Override
-    int write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
-        switch (map.pageStorageMode) {
-        case COLUMN_STORAGE:
-            return writeColumnStorageMultiPages(chunk, buff, replicatePage);
-        case COLUMN_STORAGE_SINGLE_PAGE:
-            return writeColumnStorageSinglePage(chunk, buff, replicatePage);
-        default:
-            return writeRowStorage(chunk, buff, replicatePage);
+        if (!replicatePage) {
+            updateChunkAndCachePage(chunk, start, pageLength, type);
+            removeIfInMemory();
         }
     }
 
-    int writeColumnStorageSinglePage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void writeColumnStorageSinglePage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -488,7 +493,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         int columnCount = valueType.getColumnCount();
         int checkPos = buff.position();
         buff.putShort((short) 0).putVarInt(keyLength).putVarInt(columnCount);
-        int typePos = buff.position();
         buff.put((byte) type);
         int columnPageStartPos = buff.position();
         for (int i = 0; i < columnCount; i++) {
@@ -536,22 +540,13 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (replicatePage) {
-            return typePos + 1;
+        if (!replicatePage) {
+            updateChunkAndCachePage(chunk, start, pageLength, type);
+            removeIfInMemory();
         }
-
-        updateChunkAndCachePage(chunk, start, pageLength, type);
-
-        if (removedInMemory) {
-            // if the page was removed _before_ the position was assigned, we
-            // need to mark it removed here, so the fields are updated
-            // when the next chunk is stored
-            map.getBTreeStorage().removePage(pos, memory);
-        }
-        return typePos + 1;
     }
 
-    int writeColumnStorageMultiPages(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void writeColumnStorageMultiPages(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         int type = PageUtils.PAGE_TYPE_LEAF;
@@ -593,28 +588,10 @@ public class BTreeLeafPage extends BTreeLocalPage {
         }
         buff.position(oldPos);
 
-        if (replicatePage) {
-            return typePos + 1;
+        if (!replicatePage) {
+            updateChunkAndCachePage(chunk, start, pageLength, type);
+            removeIfInMemory();
         }
-
-        updateChunkAndCachePage(chunk, start, pageLength, type);
-
-        if (removedInMemory) {
-            // if the page was removed _before_ the position was assigned, we
-            // need to mark it removed here, so the fields are updated
-            // when the next chunk is stored
-            map.getBTreeStorage().removePage(pos, memory);
-        }
-        return typePos + 1;
-    }
-
-    @Override
-    void writeUnsavedRecursive(BTreeChunk chunk, DataBuffer buff) {
-        if (pos != 0) {
-            // already stored before
-            return;
-        }
-        write(chunk, buff, false);
     }
 
     @Override

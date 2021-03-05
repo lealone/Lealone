@@ -114,18 +114,9 @@ class BTreeColumnPage extends BTreePage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (replicatePage) {
-            return compressTypePos + 1;
+        if (!replicatePage) {
+            updateChunkAndCachePage(chunk, start, pageLength, type);
         }
-
-        updateChunkAndCachePage(chunk, start, pageLength, type);
-
-        // if (removedInMemory) {
-        // // if the page was removed _before_ the position was assigned, we
-        // // need to mark it removed here, so the fields are updated
-        // // when the next chunk is stored
-        // map.getBTreeStorage().removePage(pos, memory);
-        // }
         return pos;
     }
 }

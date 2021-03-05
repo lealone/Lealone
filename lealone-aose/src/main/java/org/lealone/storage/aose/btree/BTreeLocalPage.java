@@ -225,6 +225,15 @@ public abstract class BTreeLocalPage extends BTreePage {
         map.btreeStorage.removePage(pos, memory);
     }
 
+    protected void removeIfInMemory() {
+        if (removedInMemory) {
+            // if the page was removed _before_ the position was assigned, we
+            // need to mark it removed here, so the fields are updated
+            // when the next chunk is stored
+            map.getBTreeStorage().removePage(pos, memory);
+        }
+    }
+
     @Override
     public boolean equals(Object other) {
         if (other == this) {
