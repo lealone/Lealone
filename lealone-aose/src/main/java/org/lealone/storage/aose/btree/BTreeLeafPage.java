@@ -277,8 +277,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         oldBuff.limit(oldLimit);
     }
 
-    private void readColumnStorage(ByteBuffer buff, int chunkId, int offset, int maxLength,
-            boolean disableCheck) {
+    private void readColumnStorage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
         checkPageLength(chunkId, pageLength, maxLength);
@@ -374,8 +373,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         write(chunk, buff, false);
     }
 
-    @Override
-    void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         switch (map.pageStorageMode) {
         case COLUMN_STORAGE:
             writeColumnStorage(chunk, buff, replicatePage);

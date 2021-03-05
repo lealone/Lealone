@@ -261,11 +261,6 @@ public class BTreeNodePage extends BTreeLocalPage {
         }
     }
 
-    @Override
-    void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
-        write0(chunk, buff, replicatePage);
-    }
-
     /**
     * Store the page and update the position.
     *
@@ -273,7 +268,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     * @param buff the target buffer
     * @return the position of the buffer just after the type
     */
-    private int write0(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private int write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int keyLength = keys.length;
         buff.putInt(0);
@@ -331,7 +326,7 @@ public class BTreeNodePage extends BTreeLocalPage {
             // already stored before
             return;
         }
-        int patch = write0(chunk, buff, false);
+        int patch = write(chunk, buff, false);
         for (int i = 0, len = children.length; i < len; i++) {
             BTreePage p = children[i].page;
             if (p != null) {

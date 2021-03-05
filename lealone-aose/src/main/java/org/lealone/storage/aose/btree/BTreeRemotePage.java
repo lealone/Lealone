@@ -72,8 +72,7 @@ public class BTreeRemotePage extends BTreePage {
         write(chunk, buff, false);
     }
 
-    @Override
-    void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    private void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int type = PageUtils.PAGE_TYPE_REMOTE;
         buff.putInt(0);

@@ -72,11 +72,6 @@ class BTreeColumnPage extends BTreePage {
         ByteBuffer oldBuff = buff;
         buff = expandPage(buff, compressType, start, pageLength);
         this.buff = buff;
-        // StorageDataType valueType = map.getValueType();
-        // for (int row = 0, rowCount = values.length; row < rowCount; row++) {
-        // valueType.readColumn(buff, values[row], columnIndex);
-        // }
-        // recalculateMemory();
         oldBuff.limit(oldLimit);
     }
 

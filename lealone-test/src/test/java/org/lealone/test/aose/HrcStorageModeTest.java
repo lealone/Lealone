@@ -55,7 +55,7 @@ public class HrcStorageModeTest extends TestBase {
         for (int i = 0; i < 10; i++) {
             System.out.println();
             System.out.println("------------------loop " + (i + 1) + " start---------------------");
-            // testRowStorage(keyType, tvType);
+            testRowStorage(keyType, tvType);
 
             System.out.println();
             testColumnStorage(keyType, tvType);

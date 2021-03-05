@@ -437,10 +437,6 @@ public class BTreePage {
         throw ie();
     }
 
-    void write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
-        throw ie();
-    }
-
     void writeLeaf(DataBuffer buff, boolean remote) {
         throw ie();
     }

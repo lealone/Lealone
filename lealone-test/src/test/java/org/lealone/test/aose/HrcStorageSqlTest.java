@@ -22,7 +22,7 @@ import org.lealone.storage.aose.AOStorageEngine;
 import org.lealone.storage.aose.btree.PageStorageMode;
 import org.lealone.test.sql.SqlTestBase;
 
-//把CACHE_SIZE加到后，RowStorage的方式有更多内存就不会重复从硬盘读取page，此时就跟ColumnStorage的性能差不多
+//把CACHE_SIZE加大后，RowStorage的方式有更多内存就不会重复从硬盘读取page，此时就跟ColumnStorage的性能差不多
 public class HrcStorageSqlTest extends SqlTestBase {
 
     public HrcStorageSqlTest() {
