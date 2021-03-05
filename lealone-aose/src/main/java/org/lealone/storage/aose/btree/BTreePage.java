@@ -107,18 +107,21 @@ public class BTreePage {
     private PageReference ref;
 
     protected BTreePage(BTreeMap<?, ?> map) {
-        this.map = map;
-        if (isLeaf())
-            handler = map.pohFactory.getPageOperationHandler();
-        else if (isNode())
-            handler = map.nodePageOperationHandler;
-        else
-            handler = null;
+        this(map, null);
     }
 
     protected BTreePage(BTreeMap<?, ?> map, PageOperationHandler handler) {
         this.map = map;
-        this.handler = handler;
+        if (handler != null) {
+            this.handler = handler;
+        } else {
+            if (isLeaf())
+                this.handler = map.pohFactory.getPageOperationHandler();
+            else if (isNode())
+                this.handler = map.nodePageOperationHandler;
+            else
+                this.handler = null;
+        }
     }
 
     void setParentRef(PageReference parentRef) {

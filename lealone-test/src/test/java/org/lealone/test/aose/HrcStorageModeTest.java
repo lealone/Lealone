@@ -34,7 +34,7 @@ import org.lealone.test.TestBase;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;
 
-//把CACHE_SIZE加到后，RowStorage的方式有更多内存就不会重复从硬盘读取page，此时就跟ColumnStorage的性能差不多
+//把CACHE_SIZE加大后，RowStorage的方式有更多内存就不会重复从硬盘读取page，此时就跟ColumnStorage的性能差不多
 public class HrcStorageModeTest extends TestBase {
 
     public static void main(String[] args) throws Exception {
@@ -55,7 +55,7 @@ public class HrcStorageModeTest extends TestBase {
         for (int i = 0; i < 10; i++) {
             System.out.println();
             System.out.println("------------------loop " + (i + 1) + " start---------------------");
-            testRowStorage(keyType, tvType);
+            // testRowStorage(keyType, tvType);
 
             System.out.println();
             testColumnStorage(keyType, tvType);
@@ -135,6 +135,9 @@ public class HrcStorageModeTest extends TestBase {
         BTreeMap<ValueLong, TransactionalValue> map = storage.openBTreeMap("testColumnStorage", keyType, tvType, null);
         map.setPageStorageMode(PageStorageMode.COLUMN_STORAGE);
         putData(map);
+        map.close();
+        map = storage.openBTreeMap("testColumnStorage", keyType, tvType, null);
+        map.setPageStorageMode(PageStorageMode.COLUMN_STORAGE);
         long t2 = System.currentTimeMillis();
         System.out.println("ColumnStorage openBTreeMap time: " + (t2 - t1) + " ms");
         System.out.println("firstKey: " + map.firstKey());

@@ -19,6 +19,5 @@ package org.lealone.storage.aose.btree;
 
 public enum PageStorageMode {
     ROW_STORAGE,
-    COLUMN_STORAGE,
-    COLUMN_STORAGE_SINGLE_PAGE;
+    COLUMN_STORAGE;
 }
