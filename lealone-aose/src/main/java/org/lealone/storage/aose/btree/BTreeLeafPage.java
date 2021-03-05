@@ -317,7 +317,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         BTreeColumnPage page = (BTreeColumnPage) map.btreeStorage.readPage(columnPages[columnIndex].pos);
         if (page.values == null) {
             columnPages[columnIndex].page = page;
-            page.readColumnPage(values, columnIndex);
+            page.readColumn(values, columnIndex);
             map.btreeStorage.cachePage(columnPages[columnIndex].pos, page, page.getMemory());
         } else {
             // 有可能因为缓存紧张，导致keys所在的page被逐出了，但是列所在的某些page还在
@@ -445,7 +445,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
         long[] posArray = new long[columnCount];
         for (int col = 0; col < columnCount; col++) {
             BTreeColumnPage page = new BTreeColumnPage(map, values, col);
-            posArray[col] = page.writeColumnPage(chunk, buff, replicatePage);
+            posArray[col] = page.write(chunk, buff, replicatePage);
         }
         int oldPos = buff.position();
         buff.position(columnPageStartPos);

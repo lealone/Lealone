@@ -24,15 +24,16 @@ import org.lealone.storage.type.StorageDataType;
 
 class BTreeColumnPage extends BTreePage {
 
-    Object[] values;
-    int columnIndex;
-    ByteBuffer buff;
+    Object[] values; // 每个元素指向一条记录，并不是字段值
+    private int columnIndex;
+    private int columnStartPos;
+    private ByteBuffer buff;
 
-    protected BTreeColumnPage(BTreeMap<?, ?> map) {
+    BTreeColumnPage(BTreeMap<?, ?> map) {
         super(map);
     }
 
-    protected BTreeColumnPage(BTreeMap<?, ?> map, Object[] values, int columnIndex) {
+    BTreeColumnPage(BTreeMap<?, ?> map, Object[] values, int columnIndex) {
         super(map);
         this.values = values;
         this.columnIndex = columnIndex;
@@ -70,23 +71,30 @@ class BTreeColumnPage extends BTreePage {
 
         // 解压完之后就结束了，因为还不知道具体的行，所以延迟对列进行反序列化
         ByteBuffer oldBuff = buff;
+        columnStartPos = buff.position();
         buff = expandPage(buff, compressType, start, pageLength);
-        this.buff = buff;
+        if (oldBuff != buff) {
+            columnStartPos = 0;
+        }
+        this.buff = buff; // 如果没有压缩时，会指向一个外部buff，此时就需要用columnStartPos来设置起始位置
         oldBuff.limit(oldLimit);
     }
 
-    void readColumnPage(Object[] values, int columnIndex) {
+    // 在read方法中已经把buff读出来了，这里只是把字段从buff中解析出来
+    void readColumn(Object[] values, int columnIndex) {
         this.values = values;
         this.columnIndex = columnIndex;
+        int oldPos = buff.position();
+        buff.position(columnStartPos);
         StorageDataType valueType = map.getValueType();
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
             valueType.readColumn(buff, values[row], columnIndex);
         }
+        buff.position(oldPos);
         buff = null;
-        // recalculateMemory();
     }
 
-    long writeColumnPage(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
+    long write(BTreeChunk chunk, DataBuffer buff, boolean replicatePage) {
         int start = buff.position();
         int type = PageUtils.PAGE_TYPE_COLUMN;
         buff.putInt(0); // 回填pageLength
