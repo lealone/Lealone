@@ -767,8 +767,7 @@ public class BTreePage {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
         pos = PageUtils.getPagePos(chunk.id, start, type);
-        chunk.pagePositions.add(pos);
-        chunk.pageLengths.add(pageLength);
+        chunk.pagePositionToLengthMap.put(pos, pageLength);
         chunk.sumOfPageLength += pageLength;
         chunk.pageCount++;
 

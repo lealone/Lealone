@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -144,20 +145,14 @@ public class BTreeStorage {
     }
 
     private static void readPagePositions(BTreeChunk c) {
-        if (c.pagePositions != null)
+        if (!c.pagePositionToLengthMap.isEmpty())
             return;
         int size = c.pageCount;
-        c.pagePosition2pageLengthMap = new HashMap<>(size);
-        c.pagePositions = new ArrayList<>(size);
-        c.pageLengths = new ArrayList<>(size);
-        ByteBuffer bufferPositions = c.fileStorage.readFully(getFilePos(c.pagePositionsOffset), size * 8);
-        ByteBuffer bufferLengths = c.fileStorage.readFully(getFilePos(c.pageLengthsOffset), size * 4);
+        ByteBuffer buff = c.fileStorage.readFully(getFilePos(c.pagePositionAndLengthOffset), size * 8 + size * 4);
         for (int i = 0; i < size; i++) {
-            long position = bufferPositions.getLong();
-            int length = bufferLengths.getInt();
-            c.pagePositions.add(position);
-            c.pageLengths.add(length);
-            c.pagePosition2pageLengthMap.put(position, length);
+            long position = buff.getLong();
+            int length = buff.getInt();
+            c.pagePositionToLengthMap.put(position, length);
         }
     }
 
@@ -542,8 +537,6 @@ public class BTreeStorage {
         chunkIds.set(id);
         BTreeChunk c = new BTreeChunk(id);
         chunks.put(id, c);
-        c.pagePositions = new ArrayList<>();
-        c.pageLengths = new ArrayList<>();
 
         BTreePage p = map.root;
         DataBuffer buff = DataBuffer.create();
@@ -554,12 +547,10 @@ public class BTreeStorage {
         // p.writeEnd();
         // }
 
-        c.pagePositionsOffset = buff.position();
-        for (long pos : c.pagePositions)
-            buff.putLong(pos);
-        c.pageLengthsOffset = buff.position();
-        for (int len : c.pageLengths)
-            buff.putInt(len);
+        c.pagePositionAndLengthOffset = buff.position();
+        for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
+            buff.putLong(e.getKey()).putInt(e.getValue());
+        }
 
         int chunkBodyLength = buff.position();
         chunkBodyLength = MathUtils.roundUpInt(chunkBodyLength, BLOCK_SIZE);
@@ -704,7 +695,7 @@ public class BTreeStorage {
                 c.fileStorage.delete();
                 chunks.remove(c.id);
                 chunkIds.clear(c.id);
-                removedPages.removeAll(c.pagePositions);
+                removedPages.removeAll(c.pagePositionToLengthMap.keySet());
             }
 
             if (size > removedPages.size()) {
@@ -722,9 +713,9 @@ public class BTreeStorage {
             for (BTreeChunk c : chunks.values()) {
                 c.sumOfLivePageLength = 0;
                 boolean unused = true;
-                for (int i = 0, size = c.pagePositions.size(); i < size; i++) {
-                    if (!removedPages.contains(c.pagePositions.get(i))) {
-                        c.sumOfLivePageLength += c.pageLengths.get(i);
+                for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
+                    if (!removedPages.contains(e.getKey())) {
+                        c.sumOfLivePageLength += e.getValue();
                         unused = false;
                     }
                 }
@@ -781,8 +772,8 @@ public class BTreeStorage {
         private boolean rewrite(List<BTreeChunk> old, TreeSet<Long> removedPages) {
             boolean saveIfNeeded = false;
             for (BTreeChunk c : old) {
-                for (int i = 0, size = c.pagePositions.size(); i < size; i++) {
-                    long pos = c.pagePositions.get(i);
+                for (Entry<Long, Integer> e : c.pagePositionToLengthMap.entrySet()) {
+                    long pos = e.getKey();
                     if (PageUtils.isLeafPage(pos)) {
                         if (!removedPages.contains(pos)) {
                             BTreePage p = readPage(pos);
