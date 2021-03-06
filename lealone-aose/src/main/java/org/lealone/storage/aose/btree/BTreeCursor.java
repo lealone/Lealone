@@ -112,23 +112,4 @@ class BTreeCursor<K, V> implements StorageMapCursor<K, V> {
         }
         currentKey = null;
     }
-
-    @Override
-    public boolean hasNextBatch() {
-        return pos != null;
-    }
-
-    @Override
-    public V[] nextBatch() {
-        @SuppressWarnings("unchecked")
-        V[] values = (V[]) pos.page.getValues();
-        pos = pos.parent;
-        if (pos == null) {
-            return values;
-        }
-        if (pos.index < map.getChildPageCount(pos.page)) {
-            min(pos.page.getChildPage(pos.index++), null);
-        }
-        return values;
-    }
 }

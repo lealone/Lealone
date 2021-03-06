@@ -41,12 +41,4 @@ public interface StorageMapCursor<K, V> extends Iterator<K> {
     default void remove() {
         throw DataUtils.newUnsupportedOperationException("Removing is not supported");
     }
-
-    default boolean hasNextBatch() {
-        return false;
-    }
-
-    default V[] nextBatch() {
-        return null;
-    }
 }
