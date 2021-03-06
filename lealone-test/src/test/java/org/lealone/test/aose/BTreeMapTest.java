@@ -47,7 +47,7 @@ public class BTreeMapTest extends TestBase {
         testAppend();
         // }
 
-        perf();
+        // perf();
     }
 
     private void init() {

@@ -17,17 +17,15 @@
  */
 package org.lealone.test.aose;
 
+import org.junit.Test;
 import org.lealone.storage.memory.MemoryStorageEngine;
 import org.lealone.test.TestBase;
 import org.lealone.test.misc.CRUDExample;
 
-public class MemoryStorageTest {
+public class MemoryStorageTest extends TestBase {
 
-    public static void main(String[] args) throws Exception {
-        // 会自动加载src/test/resource/META-INF/services/org.lealone.storage.StorageEngine中的类，
-        // 这样的调用是多于的，会生成两个MemoryStorageEngine实例，不过StorageEngineManager只保留其中之一。
-        // StorageEngineManager.registerStorageEngine(new MemoryStorageEngine());
-
+    @Test
+    public void run() throws Exception {
         TestBase test = new TestBase();
         test.setStorageEngineName(MemoryStorageEngine.NAME);
         test.setEmbedded(true);
