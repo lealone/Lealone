@@ -63,7 +63,7 @@ class BTreeColumnPage extends BTreePage {
 
         readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
         buff.get(); // page type;
-        int compressType = buff.get(); // page type;
+        int compressType = buff.get();
 
         // 解压完之后就结束了，因为还不知道具体的行，所以延迟对列进行反序列化
         this.buff = expandPage(buff, compressType, start, pageLength);
@@ -91,7 +91,7 @@ class BTreeColumnPage extends BTreePage {
         buff.put((byte) type);
         int compressTypePos = buff.position();
         int compressType = 0;
-        buff.put((byte) compressType);
+        buff.put((byte) compressType); // 调用compressPage时会回填
         int compressStart = buff.position();
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
             valueType.writeColumn(buff, values[row], columnIndex);

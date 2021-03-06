@@ -14,7 +14,7 @@ import org.lealone.storage.fs.FileStorage;
  * A chunk of data, containing one or multiple pages.
  * <p>
  * Chunks are page aligned (each page is usually 4096 bytes).
- * There are at most 67 million (2^26) chunks,
+ * There are at most 1 billion (2^30) chunks,
  * each chunk is at most 2 GB large.
  * 
  * @author H2 Group
@@ -68,7 +68,9 @@ public class BTreeChunk {
     }
 
     /**
-     * Calculate the fill rate in %. 0 means empty, 100 means full.
+     * Calculate the fill rate in %. 
+     * <p>
+     * 0 means empty, 100 means full.
      *
      * @return the fill rate
      */
@@ -138,10 +140,8 @@ public class BTreeChunk {
 
         long format = DataUtils.readHexLong(map, "format", FORMAT_VERSION);
         if (format > FORMAT_VERSION) {
-            throw DataUtils.newIllegalStateException(
-                    DataUtils.ERROR_UNSUPPORTED_FORMAT, "The chunk format {0} is larger "
-                            + "than the supported format {1}, " + "and the file was not opened in read-only mode",
-                    format, FORMAT_VERSION);
+            throw DataUtils.newIllegalStateException(DataUtils.ERROR_UNSUPPORTED_FORMAT,
+                    "The chunk format {0} is larger than the supported format {1}", format, FORMAT_VERSION);
         }
         return c;
     }
