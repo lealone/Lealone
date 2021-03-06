@@ -1,15 +1,22 @@
 /*
- * Copyright 2004-2014 H2 Group. Multiple-Licensed under the MPL 2.0, and the
- * EPL 1.0 (http://h2database.com/html/license.html). Initial Developer: H2
- * Group
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.lealone.storage.aose.btree;
 
-/**
- * 
- * @author H2 Group
- * @author zhh
- */
 public class PageUtils {
 
     /**
@@ -53,18 +60,13 @@ public class PageUtils {
     public static final int PAGE_MEMORY_CHILD = 16;
 
     /**
-     * The marker size of a very large page.
-     */
-    public static final int PAGE_LARGE = 2 * 1024 * 1024;
-
-    /**
      * Get the chunk id from the position.
      *
      * @param pos the position
      * @return the chunk id
      */
     public static int getPageChunkId(long pos) {
-        return (int) (pos >>> 39);
+        return (int) (pos >>> 34);
     }
 
     /**
@@ -74,22 +76,7 @@ public class PageUtils {
      * @return the offset
      */
     public static int getPageOffset(long pos) {
-        return (int) (pos >> 7);
-    }
-
-    /**
-     * Get the maximum length for the given code.
-     * For the code 31, PAGE_LARGE is returned.
-     *
-     * @param pos the position
-     * @return the maximum length
-     */
-    public static int getPageMaxLength(long pos) {
-        int code = (int) ((pos >> 2) & 31);
-        if (code == 31) {
-            return PAGE_LARGE;
-        }
-        return (2 + (code & 1)) << ((code >> 1) + 4);
+        return (int) (pos >> 2);
     }
 
     /**
@@ -104,54 +91,18 @@ public class PageUtils {
 
     /**
      * Get the position of this page. The following information is encoded in
-     * the position: the chunk id, the offset, the maximum length, and the type
-     * (node or leaf).
+     * the position: the chunk id, the offset, and the type (node or leaf).
      *
      * @param chunkId the chunk id
      * @param offset the offset
-     * @param length the length
      * @param type the page type (1 for node, 0 for leaf)
      * @return the position
      */
-    public static long getPagePos(int chunkId, int offset, int length, int type) {
-        long pos = (long) chunkId << 39; // 往右移，相当于空出来38位，chunkId占64-39=25位
-        pos |= (long) offset << 7; // offset占39-7=32位
-        pos |= encodeLength(length) << 2; // encodeLength(length)占7-2=5位
+    public static long getPagePos(int chunkId, int offset, int type) {
+        long pos = (long) chunkId << 34; // 往右移，相当于空出来34位，chunkId占64-34=30位
+        pos |= (long) offset << 2; // offset占34-2=32位
         pos |= type; // type占2位
         return pos;
-    }
-
-    /**
-     * Convert the length to a length code 0..31. 31 means more than 1 MB.
-     *
-     * @param len the length
-     * @return the length code
-     */
-    private static int encodeLength(int len) {
-        if (len <= 32) {
-            return 0;
-        }
-        int code = Integer.numberOfLeadingZeros(len);
-        int remaining = len << (code + 1);
-        code += code;
-        if ((remaining & (1 << 31)) != 0) {
-            code--;
-        }
-        if ((remaining << 1) != 0) {
-            code--;
-        }
-        code = Math.min(31, 52 - code);
-        // alternative code (slower):
-        // int x = len;
-        // int shift = 0;
-        // while (x > 3) {
-        // shift++;
-        // x = (x >>> 1) + (x & 1);
-        // }
-        // shift = Math.max(0, shift - 4);
-        // int code = (shift << 1) + (x & 1);
-        // code = Math.min(31, code);
-        return code;
     }
 
     public static boolean isLeafPage(long pos) {

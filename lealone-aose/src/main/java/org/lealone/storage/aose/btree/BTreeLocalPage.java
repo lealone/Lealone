@@ -265,11 +265,11 @@ public abstract class BTreeLocalPage extends BTreePage {
             int chunkId = PageUtils.getPageChunkId(pos);
             buff.append("chunk: ").append(Long.toHexString(chunkId)).append("\n");
         }
-        toString0(buff);
+        toString(buff);
         return buff.toString();
     }
 
-    protected abstract void toString0(StringBuilder buff);
+    protected abstract void toString(StringBuilder buff);
 
     @Override
     String getPrettyPageInfo(boolean readOffLinePage) {

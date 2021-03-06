@@ -200,14 +200,10 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
-        checkPageLength(chunkId, pageLength, maxLength);
-
-        int oldLimit = buff.limit();
-        buff.limit(start + pageLength);
-
+        checkPageLength(chunkId, pageLength, expectedPageLength);
         readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
 
         int keyLength = DataUtils.readVarInt(buff);
@@ -242,13 +238,11 @@ public class BTreeNodePage extends BTreeLocalPage {
                 children[i].replicationHostIds = replicationHostIds; // node page的replicationHostIds为null
             }
         }
-        ByteBuffer oldBuff = buff;
         buff = expandPage(buff, type, start, pageLength);
 
         map.getKeyType().read(buff, keys, keyLength);
         setChildrenPageKeys();
         recalculateMemory();
-        oldBuff.limit(oldLimit);
     }
 
     private void setChildrenPageKeys() {
@@ -399,7 +393,8 @@ public class BTreeNodePage extends BTreeLocalPage {
                     long pos = children[i].pos;
                     int type = PageUtils.getPageType(pos);
                     if (type == PageUtils.PAGE_TYPE_LEAF) {
-                        int mem = PageUtils.getPageMaxLength(pos);
+                        BTreeChunk c = map.btreeStorage.getChunk(pos);
+                        int mem = c.getPageLength(pos);
                         map.btreeStorage.removePage(pos, mem);
                     } else {
                         map.btreeStorage.readPage(pos).removeAllRecursive();
@@ -480,7 +475,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    protected void toString0(StringBuilder buff) {
+    protected void toString(StringBuilder buff) {
         for (int i = 0, len = keys.length; i <= len; i++) {
             if (i > 0) {
                 buff.append(" ");

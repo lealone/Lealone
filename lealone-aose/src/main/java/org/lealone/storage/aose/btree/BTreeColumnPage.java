@@ -26,7 +26,6 @@ class BTreeColumnPage extends BTreePage {
 
     Object[] values; // 每个元素指向一条记录，并不是字段值
     private int columnIndex;
-    private int columnStartPos;
     private ByteBuffer buff;
 
     BTreeColumnPage(BTreeMap<?, ?> map) {
@@ -57,40 +56,27 @@ class BTreeColumnPage extends BTreePage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
-        checkPageLength(chunkId, pageLength, maxLength);
-
-        int oldLimit = buff.limit();
-        buff.limit(start + pageLength);
+        checkPageLength(chunkId, pageLength, expectedPageLength);
 
         readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
         buff.get(); // page type;
         int compressType = buff.get(); // page type;
 
         // 解压完之后就结束了，因为还不知道具体的行，所以延迟对列进行反序列化
-        ByteBuffer oldBuff = buff;
-        columnStartPos = buff.position();
-        buff = expandPage(buff, compressType, start, pageLength);
-        if (oldBuff != buff) {
-            columnStartPos = 0;
-        }
-        this.buff = buff; // 如果没有压缩时，会指向一个外部buff，此时就需要用columnStartPos来设置起始位置
-        oldBuff.limit(oldLimit);
+        this.buff = expandPage(buff, compressType, start, pageLength);
     }
 
     // 在read方法中已经把buff读出来了，这里只是把字段从buff中解析出来
     void readColumn(Object[] values, int columnIndex) {
         this.values = values;
         this.columnIndex = columnIndex;
-        int oldPos = buff.position();
-        buff.position(columnStartPos);
         StorageDataType valueType = map.getValueType();
         for (int row = 0, rowCount = values.length; row < rowCount; row++) {
             valueType.readColumn(buff, values[row], columnIndex);
         }
-        buff.position(oldPos);
         buff = null;
     }
 

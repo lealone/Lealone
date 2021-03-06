@@ -58,12 +58,17 @@ public class BTreeChunk {
     public int pagePositionsOffset;
     public ArrayList<Integer> pageLengths;
     public int pageLengthsOffset;
+    public HashMap<Long, Integer> pagePosition2pageLengthMap;
 
     public FileStorage fileStorage;
     public long mapSize;
 
     BTreeChunk(int id) {
         this.id = id;
+    }
+
+    int getPageLength(long pagePosition) {
+        return pagePosition2pageLengthMap.get(pagePosition);
     }
 
     /**

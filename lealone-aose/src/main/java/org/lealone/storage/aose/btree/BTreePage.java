@@ -427,13 +427,13 @@ public class BTreePage {
      * @param buff the buffer
      * @param chunkId the chunk id
      * @param offset the offset within the chunk
-     * @param maxLength the maximum length
+     * @param pageLength the page length
      */
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength) {
-        read(buff, chunkId, offset, maxLength, false);
+    void read(ByteBuffer buff, int chunkId, int offset, int pageLength) {
+        read(buff, chunkId, offset, pageLength, false);
     }
 
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
         throw ie();
     }
 
@@ -515,39 +515,30 @@ public class BTreePage {
     /**
      * Read a page.
      * 
+     * @param map the map
      * @param fileStorage the file storage
      * @param pos the position
-     * @param map the map
      * @param filePos the position in the file
-     * @param maxPos the maximum position (the end of the chunk)
+     * @param pageLength the page length
      * @return the page
      */
-    static BTreePage read(FileStorage fileStorage, long pos, BTreeMap<?, ?> map, long filePos, long maxPos) {
-        int maxLength = PageUtils.getPageMaxLength(pos);
-        ByteBuffer buff = readPageBuff(fileStorage, maxLength, filePos, maxPos);
+    static BTreePage read(BTreeMap<?, ?> map, FileStorage fileStorage, long pos, long filePos, int pageLength) {
+        ByteBuffer buff = readPageBuff(fileStorage, filePos, pageLength);
         int type = PageUtils.getPageType(pos);
         BTreePage p = create(map, type);
         p.pos = pos;
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
-        p.read(buff, chunkId, offset, maxLength);
+        p.read(buff, chunkId, offset, pageLength);
         return p;
     }
 
-    static ByteBuffer readPageBuff(FileStorage fileStorage, int maxLength, long filePos, long maxPos) {
-        ByteBuffer buff;
-        if (maxLength == PageUtils.PAGE_LARGE) {
-            buff = fileStorage.readFully(filePos, 128);
-            maxLength = buff.getInt();
-        }
-        maxLength = (int) Math.min(maxPos - filePos, maxLength);
-        int length = maxLength;
-        if (length < 0) {
+    private static ByteBuffer readPageBuff(FileStorage fileStorage, long filePos, int pageLength) {
+        if (pageLength < 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "Illegal page length {0} reading at {1}; max pos {2} ", length, filePos, maxPos);
+                    "Illegal page length {0} reading at {1} ", pageLength, filePos);
         }
-        buff = fileStorage.readFully(filePos, length);
-        return buff;
+        return fileStorage.readFully(filePos, pageLength);
     }
 
     private static BTreePage create(BTreeMap<?, ?> map, int type) {
@@ -714,10 +705,10 @@ public class BTreePage {
         buff.putShort(checkPos, (short) check);
     }
 
-    static void checkPageLength(int chunkId, int pageLength, int maxLength) {
-        if (pageLength > maxLength || pageLength < 4) {
+    static void checkPageLength(int chunkId, int pageLength, int expectedPageLength) {
+        if (pageLength != expectedPageLength || pageLength < 4) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_FILE_CORRUPT,
-                    "File corrupted in chunk {0}, expected page length 4..{1}, got {2}", chunkId, maxLength,
+                    "File corrupted in chunk {0}, expected page length 4..{1}, got {2}", chunkId, expectedPageLength,
                     pageLength);
         }
     }
@@ -775,7 +766,7 @@ public class BTreePage {
         if (pos != 0) {
             throw DataUtils.newIllegalStateException(DataUtils.ERROR_INTERNAL, "Page already stored");
         }
-        pos = PageUtils.getPagePos(chunk.id, start, pageLength, type);
+        pos = PageUtils.getPagePos(chunk.id, start, type);
         chunk.pagePositions.add(pos);
         chunk.pageLengths.add(pageLength);
         chunk.sumOfPageLength += pageLength;

@@ -31,11 +31,6 @@ import org.lealone.storage.type.StorageDataType;
 
 public class BTreeLeafPage extends BTreeLocalPage {
 
-    /**
-     * The values.
-     * <p>
-     * The array might be larger than needed, to avoid frequent re-sizing.
-     */
     private Object[] values;
 
     private List<String> replicationHostIds;
@@ -43,11 +38,11 @@ public class BTreeLeafPage extends BTreeLocalPage {
     private ColumnPageReference[] columnPages;
     private volatile long totalCount;
 
-    static class ColumnPageReference {
+    private static class ColumnPageReference {
         BTreeColumnPage page;
         long pos;
 
-        public ColumnPageReference(long pos) {
+        ColumnPageReference(long pos) {
             this.pos = pos;
         }
     }
@@ -111,7 +106,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
     @Override
     public Object getValue(int index, int[] columnIndexes) {
         if (columnPages != null && columnIndexes != null) {
-            // TODO 考虑一次加载连续的columnPage
             for (int columnIndex : columnIndexes) {
                 if (columnPages[columnIndex].page == null) {
                     readColumnPage(columnIndex);
@@ -123,8 +117,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
     @Override
     public Object getValue(int index, boolean allColumns) {
-        if (allColumns && columnPages != null) {
-            // TODO 考虑一次加载连续的columnPage
+        if (columnPages != null && allColumns) {
             for (int columnIndex = 0, len = columnPages.length; columnIndex < len; columnIndex++) {
                 if (columnPages[columnIndex].page == null) {
                     readColumnPage(columnIndex);
@@ -240,32 +233,28 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     @Override
-    void read(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
         int mode = buff.get(buff.position() + 4);
         switch (PageStorageMode.values()[mode]) {
         case COLUMN_STORAGE:
-            readColumnStorage(buff, chunkId, offset, maxLength, disableCheck);
+            readColumnStorage(buff, chunkId, offset, expectedPageLength, disableCheck);
             break;
         default:
-            readRowStorage(buff, chunkId, offset, maxLength, disableCheck);
+            readRowStorage(buff, chunkId, offset, expectedPageLength, disableCheck);
         }
     }
 
-    private void readRowStorage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    private void readRowStorage(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+            boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
-        checkPageLength(chunkId, pageLength, maxLength);
+        checkPageLength(chunkId, pageLength, expectedPageLength);
         buff.get(); // mode
-        int oldLimit = buff.limit();
-        buff.limit(start + pageLength);
-
         readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
 
         int keyLength = DataUtils.readVarInt(buff);
         keys = new Object[keyLength];
         int type = buff.get();
-
-        ByteBuffer oldBuff = buff;
         buff = expandPage(buff, type, start, pageLength);
 
         map.getKeyType().read(buff, keys, keyLength);
@@ -274,17 +263,14 @@ public class BTreeLeafPage extends BTreeLocalPage {
         totalCount = keyLength;
         replicationHostIds = readReplicationHostIds(buff);
         recalculateMemory();
-        oldBuff.limit(oldLimit);
     }
 
-    private void readColumnStorage(ByteBuffer buff, int chunkId, int offset, int maxLength, boolean disableCheck) {
+    private void readColumnStorage(ByteBuffer buff, int chunkId, int offset, int expectedPageLength,
+            boolean disableCheck) {
         int start = buff.position();
         int pageLength = buff.getInt();
-        checkPageLength(chunkId, pageLength, maxLength);
+        checkPageLength(chunkId, pageLength, expectedPageLength);
         buff.get(); // mode
-        int oldLimit = buff.limit();
-        buff.limit(start + pageLength);
-
         readCheckValue(buff, chunkId, offset, pageLength, disableCheck);
 
         int keyLength = DataUtils.readVarInt(buff);
@@ -296,8 +282,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
             long pos = buff.getLong();
             columnPages[i] = new ColumnPageReference(pos);
         }
-
-        ByteBuffer oldBuff = buff;
         buff = expandPage(buff, type, start, pageLength);
 
         map.getKeyType().read(buff, keys, keyLength);
@@ -310,7 +294,6 @@ public class BTreeLeafPage extends BTreeLocalPage {
         // 延迟加载列
         totalCount = keyLength;
         recalculateMemory();
-        oldBuff.limit(oldLimit);
     }
 
     private void readColumnPage(int columnIndex) {
@@ -536,7 +519,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     @Override
-    protected void toString0(StringBuilder buff) {
+    protected void toString(StringBuilder buff) {
         for (int i = 0, len = keys.length; i <= len; i++) {
             if (i > 0) {
                 buff.append(" ");

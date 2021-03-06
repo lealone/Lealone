@@ -26,34 +26,29 @@ public class PageUtilsTest extends Assert {
     public void run() {
         int chunkId = 123;
         int offset = Integer.MAX_VALUE - 1;
-        int length = 8 * 1024;
         int type = PageUtils.PAGE_TYPE_LEAF;
 
-        long pos = PageUtils.getPagePos(chunkId, offset, length, type);
+        long pos = PageUtils.getPagePos(chunkId, offset, type);
 
         assertEquals(chunkId, PageUtils.getPageChunkId(pos));
         assertEquals(offset, PageUtils.getPageOffset(pos));
-        assertTrue(PageUtils.getPageMaxLength(pos) >= length);
         assertEquals(type, PageUtils.getPageType(pos));
 
         type = PageUtils.PAGE_TYPE_NODE;
-        pos = PageUtils.getPagePos(chunkId, offset, length, type);
+        pos = PageUtils.getPagePos(chunkId, offset, type);
         assertEquals(type, PageUtils.getPageType(pos));
 
         type = PageUtils.PAGE_TYPE_REMOTE;
-        pos = PageUtils.getPagePos(chunkId, offset, length, type);
+        pos = PageUtils.getPagePos(chunkId, offset, type);
         assertEquals(type, PageUtils.getPageType(pos));
 
         chunkId = 2;
         offset = 10;
-        length = 30;
         type = 1;
 
-        pos = PageUtils.getPagePos(chunkId, offset, length, type);
-        int pageMaxLength = PageUtils.getPageMaxLength(pos);
+        pos = PageUtils.getPagePos(chunkId, offset, type);
         assertEquals(chunkId, PageUtils.getPageChunkId(pos));
         assertEquals(offset, PageUtils.getPageOffset(pos));
-        assertEquals(32, pageMaxLength);
         assertEquals(type, PageUtils.getPageType(pos));
     }
 }

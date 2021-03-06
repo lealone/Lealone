@@ -135,9 +135,6 @@ public class HrcStorageModeTest extends TestBase {
         BTreeMap<ValueLong, TransactionalValue> map = storage.openBTreeMap("testColumnStorage", keyType, tvType, null);
         map.setPageStorageMode(PageStorageMode.COLUMN_STORAGE);
         putData(map);
-        map.close();
-        map = storage.openBTreeMap("testColumnStorage", keyType, tvType, null);
-        map.setPageStorageMode(PageStorageMode.COLUMN_STORAGE);
         long t2 = System.currentTimeMillis();
         System.out.println("ColumnStorage openBTreeMap time: " + (t2 - t1) + " ms");
         System.out.println("firstKey: " + map.firstKey());
