@@ -22,11 +22,10 @@ import org.lealone.storage.aose.AOStorageEngine;
 import org.lealone.storage.aose.btree.PageStorageMode;
 import org.lealone.test.sql.SqlTestBase;
 
-//把CACHE_SIZE加大后，RowStorage的方式有更多内存就不会重复从硬盘读取page，此时就跟ColumnStorage的性能差不多
-public class HrcStorageSqlTest extends SqlTestBase {
+public class PageStorageModeSqlTest extends SqlTestBase {
 
-    public HrcStorageSqlTest() {
-        super("HrcStorageSqlTest");
+    public PageStorageModeSqlTest() {
+        super("PageStorageModeSqlTest");
         initTransactionEngine();
         setEmbedded(true);
         addConnectionParameter("PAGE_SIZE", (2 * 1024 * 1024) + "");
@@ -41,15 +40,8 @@ public class HrcStorageSqlTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
-        for (int i = 0; i < 20; i++) {
-            System.out.println();
-            System.out.println("------------------loop " + (i + 1) + " start---------------------");
-            testRowStorage();
-
-            System.out.println();
-            testColumnStorage();
-            System.out.println("------------------loop " + (i + 1) + " end---------------------");
-        }
+        testRowStorage();
+        testColumnStorage();
     }
 
     void createTestTable(String tableName, String pageStorageMode) {
@@ -97,18 +89,18 @@ public class HrcStorageSqlTest extends SqlTestBase {
     }
 
     void testRowStorage() {
-        testCRUD("testRowStorage", PageStorageMode.ROW_STORAGE.name());
+        testCRUD("testRowStorage", PageStorageMode.ROW_STORAGE);
     }
 
     void testColumnStorage() {
-        testCRUD("testColumnStorage", PageStorageMode.COLUMN_STORAGE.name());
+        testCRUD("testColumnStorage", PageStorageMode.COLUMN_STORAGE);
     }
 
-    void testCRUD(String tableName, String pageStorageMode) {
+    void testCRUD(String tableName, PageStorageMode pageStorageMode) {
         executeUpdate("SET OPTIMIZE_REUSE_RESULTS 0");
         long t0 = System.currentTimeMillis();
         long t1 = System.currentTimeMillis();
-        createTestTable(tableName, pageStorageMode);
+        createTestTable(tableName, pageStorageMode.name());
         putData(tableName);
         long t2 = System.currentTimeMillis();
         // System.out.println(pageStorageMode + " create table time: " + (t2 - t1) + " ms");
