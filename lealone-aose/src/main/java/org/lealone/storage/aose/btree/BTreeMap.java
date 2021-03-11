@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -88,6 +89,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     // btree的root page，最开始是一个leaf page，随时都会指向新的page
     protected volatile BTreePage root;
     protected volatile boolean parallelDisabled;
+
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     @SuppressWarnings("unchecked")
     protected BTreeMap(String name, StorageDataType keyType, StorageDataType valueType, Map<String, Object> config,
@@ -155,6 +158,22 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         }
     }
 
+    void acquireSharedLock() {
+        lock.readLock().lock();
+    }
+
+    void releaseSharedLock() {
+        lock.readLock().unlock();
+    }
+
+    void acquireExclusiveLock() {
+        lock.writeLock().lock();
+    }
+
+    void releaseExclusiveLock() {
+        lock.writeLock().unlock();
+    }
+
     @Override
     public V get(K key) {
         return binarySearch(key, true);
@@ -173,10 +192,12 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         return binarySearch(key, columnIndexes);
     }
 
+    // test only
     public PageOperationHandler getNodePageOperationHandler() {
         return nodePageOperationHandler;
     }
 
+    // test only
     public int getLevel(K key) {
         int level = 1;
         BTreePage p = root.gotoLeafPage(key);
@@ -440,37 +461,33 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized void clear() {
+    public void clear() {
         checkWrite();
+        try {
+            acquireExclusiveLock();
 
-        // TODO 对于truncate操作有bug
-        // // 等待所有的操作完成
-        // List<PageOperationHandler> handlers = pohFactory.getAllPageOperationHandlers();
-        // CountDownLatch latch = new CountDownLatch(handlers.size());
-        // for (PageOperationHandler handler : handlers) {
-        // handler.handlePageOperation(new RunnableOperation(() -> {
-        // latch.countDown();
-        // }));
-        // }
-        // try {
-        // latch.await();
-        // } catch (InterruptedException e) {
-        // throw DbException.convert(e);
-        // }
-
-        List<String> replicationHostIds = root.getReplicationHostIds();
-        root.removeAllRecursive();
-        size.set(0);
-        maxKey.set(0);
-        newRoot(BTreeLeafPage.createEmpty(this));
-        disableParallelIfNeeded();
-        root.setReplicationHostIds(replicationHostIds);
+            List<String> replicationHostIds = root.getReplicationHostIds();
+            root.removeAllRecursive();
+            size.set(0);
+            maxKey.set(0);
+            newRoot(BTreeLeafPage.createEmpty(this));
+            disableParallelIfNeeded();
+            root.setReplicationHostIds(replicationHostIds);
+        } finally {
+            releaseExclusiveLock();
+        }
     }
 
     @Override
-    public synchronized void remove() {
-        btreeStorage.remove();
-        closeMap();
+    public void remove() {
+        try {
+            acquireExclusiveLock();
+
+            btreeStorage.remove();
+            closeMap();
+        } finally {
+            releaseExclusiveLock();
+        }
     }
 
     @Override
@@ -479,9 +496,15 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized void close() {
-        closeMap();
-        btreeStorage.close();
+    public void close() {
+        try {
+            acquireExclusiveLock();
+
+            closeMap();
+            btreeStorage.close();
+        } finally {
+            releaseExclusiveLock();
+        }
     }
 
     private void closeMap() {
@@ -489,8 +512,14 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     @Override
-    public synchronized void save() {
-        btreeStorage.save();
+    public void save() {
+        try {
+            acquireSharedLock(); // 用共享锁
+
+            btreeStorage.save();
+        } finally {
+            releaseSharedLock();
+        }
     }
 
     public boolean isReadOnly() {

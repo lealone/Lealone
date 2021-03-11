@@ -38,6 +38,7 @@ public class BTreeMapTest extends TestBase {
     public void run() {
         init();
         // for (int i = 0; i < 10; i++) {
+
         testSyncOperations();
         testAsyncOperations();
         testCompact();
@@ -45,6 +46,7 @@ public class BTreeMapTest extends TestBase {
         testRemove();
         testSave();
         testAppend();
+
         // }
 
         // perf();
@@ -331,18 +333,27 @@ public class BTreeMapTest extends TestBase {
             map.remove(key);
         }
         map.printPage();
+
+        CountDownLatch latch = new CountDownLatch(1);
         map.remove(8, ar -> {
+            latch.countDown();
         });
-        CountDownLatch latch = new CountDownLatch(count - 8 + 1);
+        try {
+            latch.await();
+        } catch (InterruptedException e1) {
+            e1.printStackTrace();
+        }
+
+        CountDownLatch latch2 = new CountDownLatch(count - 8 + 1);
         for (int i = 8; i <= count; i++) {
             Integer key = i;
             String value = "value-" + i;
             map.put(key, value, ar -> {
-                latch.countDown();
+                latch2.countDown();
             });
         }
         try {
-            latch.await();
+            latch2.await();
         } catch (InterruptedException e1) {
             e1.printStackTrace();
         }

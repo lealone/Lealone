@@ -183,9 +183,15 @@ public abstract class PageOperations {
                     DbException.throwInternalError();
                 }
             }
-
-            int index = getKeyIndex();
-            Object result = writeLocal(index);
+            Object result;
+            int index;
+            try {
+                p.map.acquireSharedLock();
+                index = getKeyIndex();
+                result = writeLocal(index);
+            } finally {
+                p.map.releaseSharedLock();
+            }
             handleAsyncResult(result); // 可以提前执行回调函数了，不需要考虑后续的代码
 
             // 看看当前leaf page是否需要进行切割
