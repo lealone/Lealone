@@ -29,7 +29,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.RunMode;
 import org.lealone.db.value.ValueString;
-import org.lealone.net.NetNode;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageOperation;
 import org.lealone.storage.PageOperationHandler;
@@ -598,7 +597,7 @@ public class BTreePage {
         throw ie();
     }
 
-    void replicatePage(DataBuffer buff, NetNode localNode) {
+    void replicatePage(DataBuffer buff) {
         throw ie();
     }
 

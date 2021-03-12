@@ -657,8 +657,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         this.db = db;
     }
 
-    public void replicateRootPage(DataBuffer p) {
-        root.replicatePage(p, NetNode.getLocalTcpNode());
+    public void replicateRootPage(DataBuffer buff) {
+        root.replicatePage(buff);
     }
 
     public void setOldNodes(String[] oldNodes) {
@@ -1263,7 +1263,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private ByteBuffer replicatePage(BTreePage p) {
         try (DataBuffer buff = DataBuffer.create()) {
-            p.replicatePage(buff, getLocalNode());
+            p.replicatePage(buff);
             ByteBuffer pageBuffer = buff.getAndCopyBuffer();
             return pageBuffer;
         }

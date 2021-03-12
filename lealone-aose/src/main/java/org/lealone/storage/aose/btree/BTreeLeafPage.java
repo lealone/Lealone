@@ -511,7 +511,7 @@ public class BTreeLeafPage extends BTreeLocalPage {
     }
 
     @Override
-    void replicatePage(DataBuffer buff, NetNode localNode) {
+    void replicatePage(DataBuffer buff) {
         BTreeLeafPage p = copy(false);
         BTreeChunk chunk = new BTreeChunk(0);
         buff.put((byte) PageUtils.PAGE_TYPE_LEAF);

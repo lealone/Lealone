@@ -21,7 +21,6 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lealone.db.DataBuffer;
-import org.lealone.net.NetNode;
 
 public class BTreeRemotePage extends BTreePage {
 
@@ -122,7 +121,7 @@ public class BTreeRemotePage extends BTreePage {
     }
 
     @Override
-    void replicatePage(DataBuffer buff, NetNode localNode) {
+    void replicatePage(DataBuffer buff) {
         BTreeRemotePage p = copy(false);
         BTreeChunk chunk = new BTreeChunk(0);
         buff.put((byte) PageUtils.PAGE_TYPE_REMOTE);

@@ -458,7 +458,7 @@ public class BTreeNodePage extends BTreeLocalPage {
     }
 
     @Override
-    void replicatePage(DataBuffer buff, NetNode localNode) {
+    void replicatePage(DataBuffer buff) {
         BTreeNodePage p = copy(false);
         // 这里不需要为PageReference生成PageKey，
         // 生成PageReference只是为了调用write时把子Page当成RemotePage
