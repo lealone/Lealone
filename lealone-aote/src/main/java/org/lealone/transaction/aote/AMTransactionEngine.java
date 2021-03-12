@@ -178,7 +178,6 @@ public class AMTransactionEngine extends TransactionEngineBase implements Storag
         if (logSyncService == null) {
             // 直接抛异常对上层很不友好，还不如用默认配置初始化
             init(getDefaultConfig());
-            // throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_ILLEGAL_STATE, "Not initialized");
         }
         long tid = getTransactionId(runMode == RunMode.SHARDING);
         AMTransaction t = createTransaction(tid, runMode);

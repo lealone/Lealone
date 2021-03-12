@@ -78,11 +78,6 @@ public class DataUtils {
     public static final int ERROR_BLOCK_NOT_FOUND = 50;
 
     /**
-     * The transaction store is corrupt.
-     */
-    public static final int ERROR_TRANSACTION_CORRUPT = 100;
-
-    /**
      * An entry is still locked by another transaction.
      */
     public static final int ERROR_TRANSACTION_LOCKED = 101;
@@ -91,17 +86,6 @@ public class DataUtils {
      * There are too many open transactions.
      */
     public static final int ERROR_TOO_MANY_OPEN_TRANSACTIONS = 102;
-
-    /**
-     * The transaction store is in an illegal state (for example, not yet
-     * initialized).
-     */
-    public static final int ERROR_TRANSACTION_ILLEGAL_STATE = 103;
-
-    /**
-     * A very old transaction is still open.
-     */
-    public static final int ERROR_TRANSACTION_STILL_OPEN = 104;
 
     /**
      * The maximum length of a variable size int.

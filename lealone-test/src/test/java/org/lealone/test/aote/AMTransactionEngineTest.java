@@ -85,11 +85,6 @@ public class AMTransactionEngineTest extends TestBase {
     @Test
     public void testEngine() {
         AMTransactionEngine te = new AMTransactionEngine();
-        try {
-            te.beginTransaction(true);
-            fail();
-        } catch (Exception e) {
-        }
 
         te.init(getDefaultConfig());
         Storage storage = getStorage();
