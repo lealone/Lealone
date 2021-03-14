@@ -35,11 +35,10 @@ import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTaskHandlerFactory;
 import org.lealone.net.NetNode;
 import org.lealone.p2p.config.ConfigDescriptor;
+import org.lealone.p2p.metrics.ExponentiallyDecayingSample;
 import org.lealone.p2p.server.MessagingService;
 import org.lealone.p2p.server.P2pServer;
 import org.lealone.p2p.util.Utils;
-
-import com.yammer.metrics.stats.ExponentiallyDecayingSample;
 
 /**
  * A dynamic snitch that sorts nodes by latency with an adapted phi failure detector
