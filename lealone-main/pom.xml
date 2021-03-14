@@ -37,7 +37,7 @@
         </dependency>
         <dependency>
             <groupId>org.lealone</groupId>
-            <artifactId>lealone-server</artifactId>
+            <artifactId>lealone-web</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
