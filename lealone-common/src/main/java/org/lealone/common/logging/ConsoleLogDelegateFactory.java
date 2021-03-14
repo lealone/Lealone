@@ -27,4 +27,9 @@ public class ConsoleLogDelegateFactory implements LogDelegateFactory {
         return new ConsoleLogDelegate();
     }
 
+    @Override
+    public boolean isAvailable() {
+        return true;
+    }
+
 }

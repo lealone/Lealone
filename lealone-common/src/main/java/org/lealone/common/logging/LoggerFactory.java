@@ -58,8 +58,8 @@ public class LoggerFactory {
             } catch (Exception e) {
                 throw new IllegalArgumentException("Error instantiating transformer class \"" + className + "\"", e);
             }
-        } else if (LoggerFactory.class.getResource("/org/slf4j/LoggerFactory.class") != null) {
-            delegateFactory = new SLF4JLogDelegateFactory();
+        } else if (LoggerFactory.class.getResource("/org/apache/logging/log4j/spi/ExtendedLogger.class") != null) {
+            delegateFactory = new Log4j2LogDelegateFactory();
         } else {
             delegateFactory = new ConsoleLogDelegateFactory();
         }

@@ -27,7 +27,6 @@ fi
 LEALONE_MAIN=org.lealone.main.Shell
 
 JAVA_OPTS=-Xms10M
-JAVA_OPTS="$JAVA_OPTS -Dlogback.configurationFile=logback.xml"
 JAVA_OPTS="$JAVA_OPTS -Dlealone.logdir=$LEALONE_HOME/logs"
 
 CLASSPATH=$LEALONE_HOME/conf:$LEALONE_HOME/lib/*

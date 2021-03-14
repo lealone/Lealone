@@ -71,7 +71,6 @@ goto exec
 
 :exec
 set JAVA_OPTS=-Xms10M^
- -Dlogback.configurationFile=logback.xml^
  -Dlealone.logdir="%logdir%"^
  -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader
 

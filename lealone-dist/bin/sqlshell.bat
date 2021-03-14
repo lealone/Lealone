@@ -26,7 +26,6 @@ popd
 if NOT DEFINED LEALONE_MAIN set LEALONE_MAIN=org.lealone.main.Shell
 
 set JAVA_OPTS=-Xms10M^
- -Dlogback.configurationFile=logback.xml^
  -Dlealone.logdir="%LEALONE_HOME%\logs"
 
 REM ***** CLASSPATH library setting *****

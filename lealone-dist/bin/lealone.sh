@@ -38,7 +38,6 @@ LEALONE_MAIN=org.lealone.main.Lealone
 # JAVA_OPTS="$JAVA_OPTS -XX:+UseCMSInitiatingOccupancyOnly"
 
 JAVA_OPTS=-Xms10M
-JAVA_OPTS="$JAVA_OPTS -Dlogback.configurationFile=logback.xml"
 JAVA_OPTS="$JAVA_OPTS -Dlealone.logdir=$LEALONE_HOME/logs"
 JAVA_OPTS="$JAVA_OPTS -Dlealone.config.loader=org.lealone.aose.config.YamlConfigurationLoader"
 # JAVA_OPTS="$JAVA_OPTS -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=y"

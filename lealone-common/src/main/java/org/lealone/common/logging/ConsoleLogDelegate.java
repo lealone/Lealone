@@ -56,6 +56,11 @@ public class ConsoleLogDelegate implements LogDelegate {
     }
 
     @Override
+    public boolean isWarnEnabled() {
+        return true;
+    }
+
+    @Override
     public boolean isInfoEnabled() {
         return true;
     }
