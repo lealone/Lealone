@@ -17,6 +17,8 @@
  */
 package org.lealone.test.start;
 
+import java.util.concurrent.CountDownLatch;
+
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.p2p.config.Config;
 import org.lealone.p2p.config.Config.PluggableEngineDef;
@@ -43,4 +45,15 @@ public class TcpServerStart extends NodeBase {
         NodeBase.run(TcpServerStart.class, args);
     }
 
+    public static void run() {
+        CountDownLatch latch = new CountDownLatch(1);
+        new Thread(() -> {
+            NodeBase.run(TcpServerStart.class, new String[0], latch);
+        }).start();
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 }

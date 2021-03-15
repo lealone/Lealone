@@ -17,6 +17,8 @@
  */
 package org.lealone.test.start;
 
+import java.util.concurrent.CountDownLatch;
+
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.main.Lealone;
 import org.lealone.p2p.config.Config;
@@ -27,6 +29,11 @@ public class NodeBase extends YamlConfigLoader {
     public static void run(Class<?> loader, String[] args) {
         init(loader);
         Lealone.main(args);
+    }
+
+    public static void run(Class<?> loader, String[] args, CountDownLatch latch) {
+        init(loader);
+        Lealone.run(args, false, latch);
     }
 
     private static void init(Class<?> loader) {

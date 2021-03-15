@@ -19,6 +19,7 @@ package org.lealone.main;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.logging.Logger;
@@ -53,14 +54,15 @@ public class Lealone {
     private static Config config;
 
     public static void main(String[] args) {
-        main(args, false);
+        run(args, false, null);
     }
 
     public static void embed(String[] args) {
-        main(args, true);
+        run(args, true, null);
     }
 
-    public static void main(String[] args, boolean embedded) {
+    // 外部调用者如果在独立的线程中启动Lealone，可以传递一个CountDownLatch等待Lealone启动就绪
+    public static void run(String[] args, boolean embedded, CountDownLatch latch) {
         logger.info("Lealone version: {}", Utils.getReleaseVersionString());
 
         try {
@@ -76,8 +78,11 @@ public class Lealone {
             long t2 = (System.currentTimeMillis() - t);
             t = System.currentTimeMillis();
 
-            if (embedded)
+            if (embedded) {
+                if (latch != null)
+                    latch.countDown();
                 return;
+            }
 
             ProtocolServer mainProtocolServer = start();
 
@@ -85,6 +90,9 @@ public class Lealone {
             long totalTime = t1 + t2 + t3;
             logger.info("Total time: {} ms (Load config: {} ms, Init: {} ms, Start: {} ms)", totalTime, t1, t2, t3);
             logger.info("Exit with Ctrl+C");
+
+            if (latch != null)
+                latch.countDown();
 
             // 在主线程中运行，避免出现DestroyJavaVM线程
             if (mainProtocolServer != null)
