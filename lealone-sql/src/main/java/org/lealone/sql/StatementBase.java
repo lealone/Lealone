@@ -581,6 +581,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
         Future<Integer> f = executeUpdate(null);
         ReplicationUpdateAck ack = (ReplicationUpdateAck) session.createReplicationUpdateAckPacket(f.get(), false);
+        ack.setReplicaCommand(this);
         return Future.succeededFuture(ack);
     }
 
@@ -939,6 +940,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
                                 session.setStatus(SessionStatus.REPLICA_STATEMENT_COMPLETED);
                                 if (asyncHandler != null)
                                     asyncHandler.handle(new AsyncResult<>(ar.getResult()));
+                                else
+                                    setResult(ar.getResult()); // 当前节点也是目标节点的场景
                             } else {
                                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
                                 setResult(ar.getResult());
