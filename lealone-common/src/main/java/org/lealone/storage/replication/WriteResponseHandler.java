@@ -49,11 +49,6 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
     }
 
     @Override
-    boolean isRead() {
-        return false;
-    }
-
-    @Override
     void onSuccess() {
         AsyncResult<T> ar = null;
         if (replicationResultHandler != null) {

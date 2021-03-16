@@ -27,11 +27,6 @@ class ReadResponseHandler<T> extends ReplicationHandler<T> {
     }
 
     @Override
-    boolean isRead() {
-        return true;
-    }
-
-    @Override
     void onSuccess() {
         if (finalResultHandler != null) {
             finalResultHandler.handle(results.get(0));

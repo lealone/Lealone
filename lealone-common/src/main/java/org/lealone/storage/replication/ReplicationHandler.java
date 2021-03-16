@@ -40,8 +40,6 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
         this.finalResultHandler = finalResultHandler;
     }
 
-    abstract boolean isRead();
-
     abstract void onSuccess();
 
     @Override
