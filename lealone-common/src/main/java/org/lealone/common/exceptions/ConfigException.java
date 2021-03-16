@@ -17,16 +17,13 @@
  */
 package org.lealone.common.exceptions;
 
-public class ConfigException extends LealoneException {
+public class ConfigException extends RuntimeException {
+
     public ConfigException(String msg) {
-        super(ExceptionCode.CONFIG_ERROR, msg);
+        super(msg);
     }
 
     public ConfigException(String msg, Throwable e) {
-        super(ExceptionCode.CONFIG_ERROR, msg, e);
-    }
-
-    protected ConfigException(ExceptionCode code, String msg) {
-        super(code, msg);
+        super(msg, e);
     }
 }

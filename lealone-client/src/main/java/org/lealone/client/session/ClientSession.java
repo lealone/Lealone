@@ -14,7 +14,6 @@ import org.lealone.client.command.ClientSQLCommand;
 import org.lealone.client.storage.ClientLobStorage;
 import org.lealone.client.storage.ClientStorageCommand;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.exceptions.LealoneException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.util.MathUtils;
@@ -167,7 +166,7 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         checkClosed();
         if (e instanceof DbException)
             throw (DbException) e;
-        throw new LealoneException(e);
+        throw DbException.convert(e);
     }
 
     @Override
