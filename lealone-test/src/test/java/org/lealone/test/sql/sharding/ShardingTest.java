@@ -19,9 +19,9 @@ package org.lealone.test.sql.sharding;
 
 import org.junit.Test;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.test.sql.SqlTestBase;
+import org.lealone.test.sql.DSqlTestBase;
 
-public class ShardingTest extends SqlTestBase {
+public class ShardingTest extends DSqlTestBase {
 
     public ShardingTest() {
         super(LealoneDatabase.NAME); // 连到LealoneDatabase才能执行CREATE DATABASE
@@ -44,7 +44,7 @@ public class ShardingTest extends SqlTestBase {
         // new ShardingCrudTest(dbName).runTest();
     }
 
-    abstract class CrudTest extends SqlTestBase {
+    abstract class CrudTest extends DSqlTestBase {
 
         final String name = "Sharding" + getClass().getSimpleName();
 
@@ -122,7 +122,7 @@ public class ShardingTest extends SqlTestBase {
         }
     }
 
-    class TwoTablesTest extends SqlTestBase {
+    class TwoTablesTest extends DSqlTestBase {
 
         public TwoTablesTest(String dbName) {
             super(dbName);
@@ -143,7 +143,7 @@ public class ShardingTest extends SqlTestBase {
         }
     }
 
-    class ShardingCrudTest extends SqlTestBase {
+    class ShardingCrudTest extends DSqlTestBase {
 
         public ShardingCrudTest(String dbName) {
             super(dbName);
@@ -214,7 +214,7 @@ public class ShardingTest extends SqlTestBase {
             t2.join();
         }
 
-        private class MultiThreadShardingCrudTest extends SqlTestBase implements Runnable {
+        private class MultiThreadShardingCrudTest extends DSqlTestBase implements Runnable {
 
             public MultiThreadShardingCrudTest(String dbName) {
                 super(dbName);

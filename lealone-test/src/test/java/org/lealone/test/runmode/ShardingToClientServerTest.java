@@ -18,7 +18,7 @@
 package org.lealone.test.runmode;
 
 import org.junit.Test;
-import org.lealone.test.sql.SqlTestBase;
+import org.lealone.test.sql.DSqlTestBase;
 
 public class ShardingToClientServerTest extends RunModeTest {
 
@@ -41,7 +41,7 @@ public class ShardingToClientServerTest extends RunModeTest {
         executeUpdate("CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding " //
                 + "PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 2, assignment_factor: 5)");
 
-        class CreateTest extends SqlTestBase {
+        class CreateTest extends DSqlTestBase {
             public CreateTest(String dbName) {
                 super(dbName);
             }
@@ -56,7 +56,7 @@ public class ShardingToClientServerTest extends RunModeTest {
     }
 
     void insertTest(String dbName) {
-        class InsertTest extends SqlTestBase {
+        class InsertTest extends DSqlTestBase {
             public InsertTest(String dbName) {
                 super(dbName);
             }

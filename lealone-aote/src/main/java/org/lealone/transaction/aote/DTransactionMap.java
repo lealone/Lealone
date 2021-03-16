@@ -40,7 +40,7 @@ public class DTransactionMap<K, V> extends AOTransactionMap<K, V> {
     @Override
     @SuppressWarnings("unchecked")
     public V get(K key) {
-        return (V) map.get(session, key);
+        return (V) map.get(session, key).get();
     }
 
     @Override

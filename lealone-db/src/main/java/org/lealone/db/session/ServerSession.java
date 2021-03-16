@@ -1320,6 +1320,7 @@ public class ServerSession extends SessionBase {
         return sessionCache;
     }
 
+    @Deprecated
     public void addSession(String url, Session s) {
         if (transaction != null && !sessionCache.containsKey(url))
             transaction.addParticipant(s);

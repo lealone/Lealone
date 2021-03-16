@@ -62,15 +62,27 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
         return DbException.getRootCause(cause);
     }
 
+    protected boolean autoStartTcpServer() {
+        return true;
+    }
+
     private static boolean tcpServerStarted = false;
+    private static boolean testDatabaseCreated = false;
 
     @Before
     public void setUpBefore() {
-        synchronized (getClass()) {
-            if (!tcpServerStarted) {
-                TcpServerStart.run();
-                tcpServerStarted = true;
-                createTestDatabase();
+        if (autoStartTcpServer()) {
+            synchronized (getClass()) {
+                if (!tcpServerStarted) {
+                    tcpServerStarted = true;
+                    TcpServerStart.run();
+                }
+            }
+            synchronized (getClass()) {
+                if (!testDatabaseCreated) {
+                    testDatabaseCreated = true;
+                    createTestDatabase();
+                }
             }
         }
         try {

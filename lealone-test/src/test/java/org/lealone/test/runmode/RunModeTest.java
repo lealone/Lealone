@@ -18,16 +18,16 @@
 package org.lealone.test.runmode;
 
 import org.lealone.db.LealoneDatabase;
-import org.lealone.test.sql.SqlTestBase;
+import org.lealone.test.sql.DSqlTestBase;
 
-public abstract class RunModeTest extends SqlTestBase {
+public abstract class RunModeTest extends DSqlTestBase {
 
     public RunModeTest() {
         super(LealoneDatabase.NAME); // 连到LealoneDatabase才能执行CREATE DATABASE
     }
 
     protected void crudTest(String dbName) {
-        class CrudTest2 extends SqlTestBase {
+        class CrudTest2 extends DSqlTestBase {
             public CrudTest2(String dbName) {
                 super(dbName);
             }
@@ -46,7 +46,7 @@ public abstract class RunModeTest extends SqlTestBase {
         new CrudTest2(dbName).runTest();
     }
 
-    protected static class CrudTest extends SqlTestBase {
+    protected static class CrudTest extends DSqlTestBase {
 
         public CrudTest(String dbName) {
             super(dbName);

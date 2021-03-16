@@ -23,9 +23,10 @@ import java.sql.SQLException;
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.db.LealoneDatabase;
+import org.lealone.test.sql.DSqlTestBase;
 import org.lealone.test.sql.SqlTestBase;
 
-public class ReplicationTest extends SqlTestBase {
+public class ReplicationTest extends DSqlTestBase {
 
     private static final String REPLICATION_DB_NAME = "ReplicationTestDB";
 
