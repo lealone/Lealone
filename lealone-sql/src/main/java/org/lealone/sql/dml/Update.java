@@ -31,6 +31,8 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.yieldable.YieldableBase;
+import org.lealone.sql.yieldable.YieldableListenableUpdateBase;
 import org.lealone.transaction.Transaction;
 
 /**

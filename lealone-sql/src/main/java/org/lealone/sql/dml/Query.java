@@ -33,6 +33,7 @@ import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.yieldable.YieldableBase;
 
 /**
  * Represents a SELECT statement (simple, or union).

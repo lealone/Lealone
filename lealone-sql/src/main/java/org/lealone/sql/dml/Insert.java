@@ -26,6 +26,8 @@ import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.yieldable.YieldableBase;
+import org.lealone.sql.yieldable.YieldableListenableUpdateBase;
 
 /**
  * This class represents the statement

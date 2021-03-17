@@ -67,8 +67,8 @@ public class SQLRouter {
         Database db = currentSession.getDatabase();
         String[] hostIds = db.getHostIds();
         if (hostIds.length == 0) {
-            throw DbException
-                    .throwInternalError("DB: " + db.getShortName() + ", Run Mode: " + db.getRunMode() + ", no hostIds");
+            String msg = "DB: " + db.getShortName() + ", Run Mode: " + db.getRunMode() + ", no hostIds";
+            throw DbException.throwInternalError(msg);
         } else {
             candidateNodes = new HashSet<>(hostIds.length);
             for (String hostId : hostIds) {
@@ -93,14 +93,14 @@ public class SQLRouter {
         c.executeUpdate().onComplete(asyncHandler);
     }
 
-    public static int executeUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public static void executeUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         int updateCount = 0;
         // CREATE/ALTER/DROP DATABASE语句在执行update时才知道涉及哪些节点
         if (statement.isDatabaseStatement()) {
             updateCount = statement.update();
         } else if (statement.isDDL() && !statement.isLocal()) {
             executeDefineStatement(statement, asyncHandler);
-            return 0;
+            return;
         } else if (statement.isLocal()) {
             updateCount = statement.update();
         } else if (statement.getSession().isShardingMode()) {
@@ -108,9 +108,7 @@ public class SQLRouter {
         } else {
             updateCount = statement.update();
         }
-        if (asyncHandler != null)
-            asyncHandler.handle(new AsyncResult<Integer>(updateCount));
-        return updateCount;
+        asyncHandler.handle(new AsyncResult<Integer>(updateCount));
     }
 
     private static int maybeExecuteDistributedUpdate(StatementBase statement) {
@@ -220,7 +218,7 @@ public class SQLRouter {
         return updateCount;
     }
 
-    public static Result executeQuery(StatementBase statement, int maxRows, boolean scrollable,
+    public static void executeQuery(StatementBase statement, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
         Result result;
         if (statement.isLocal()) {
@@ -231,9 +229,7 @@ public class SQLRouter {
         } else {
             result = statement.query(maxRows);
         }
-        if (asyncHandler != null)
-            asyncHandler.handle(new AsyncResult<Result>(result));
-        return result;
+        asyncHandler.handle(new AsyncResult<Result>(result));
     }
 
     private static Result maybeExecuteDistributedQuery(StatementBase statement, int maxRows, boolean scrollable) {

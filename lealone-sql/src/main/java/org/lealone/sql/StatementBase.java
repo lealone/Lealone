@@ -5,18 +5,14 @@
  */
 package org.lealone.sql;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
-import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.CommandParameter;
-import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.DatabaseEventListener;
@@ -26,15 +22,15 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.sql.router.SQLRouter;
+import org.lealone.sql.yieldable.DefaultYieldableQuery;
+import org.lealone.sql.yieldable.DefaultYieldableUpdate;
+import org.lealone.sql.yieldable.YieldableBase;
 import org.lealone.storage.PageKey;
-import org.lealone.transaction.Transaction;
 
 /**
  * A parsed and prepared statement.
@@ -158,7 +154,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      *
      * @return the meta data modification id
      */
-    long getModificationMetaId() {
+    public long getModificationMetaId() {
         return modificationMetaId;
     }
 
@@ -167,7 +163,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      *
      * @param id the new id
      */
-    void setModificationMetaId(long id) {
+    public void setModificationMetaId(long id) {
         this.modificationMetaId = id;
     }
 
@@ -195,7 +191,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      *
      * @throws DbException if any parameter has not been set
      */
-    protected void checkParameters() {
+    public void checkParameters() {
         if (parameters != null) {
             for (int i = 0, size = parameters.size(); i < size; i++) {
                 Parameter param = parameters.get(i);
@@ -360,7 +356,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      * @param startTimeNanos when the statement was started
      * @param rowCount the query or update row count
      */
-    void trace(long startTimeNanos, int rowCount) {
+    public void trace(long startTimeNanos, int rowCount) {
         if (startTimeNanos > 0 && session.getTrace().isInfoEnabled()) {
             long deltaTimeNanos = System.nanoTime() - startTimeNanos;
             String params = Trace.formatParams(getParameters());
@@ -634,369 +630,5 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
         return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
-    }
-
-    public static abstract class YieldableBase<T> implements Yieldable<T> {
-
-        private static enum State {
-            start,
-            execute,
-            stop,
-            stopped;
-        }
-
-        protected StatementBase statement;
-        protected final ServerSession session;
-        protected final Trace trace;
-        protected final AsyncHandler<AsyncResult<T>> asyncHandler;
-        protected final boolean async;
-        protected AsyncResult<T> asyncResult;
-        protected T result;
-        protected long startTimeNanos;
-        protected boolean callStop = true;
-
-        private State state = State.start;
-
-        public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
-            this.statement = statement;
-            this.session = statement.getSession();
-            this.trace = session.getTrace(TraceModuleType.COMMAND);
-            this.asyncHandler = asyncHandler;
-            this.async = asyncHandler != null;
-        }
-
-        // 子类通常只需要实现以下三个方法
-        protected boolean startInternal() {
-            return false;
-        }
-
-        protected void stopInternal() {
-        }
-
-        protected abstract boolean executeInternal();
-
-        protected void setResult(T result, int rowCount) {
-            this.result = result;
-            if (result != null) {
-                if (asyncHandler != null) {
-                    asyncResult = new AsyncResult<>();
-                    asyncResult.setResult(result);
-                }
-                statement.trace(startTimeNanos, rowCount);
-                setProgress(DatabaseEventListener.STATE_STATEMENT_END);
-            }
-        }
-
-        @Override
-        public T getResult() {
-            return result;
-        }
-
-        @Override
-        public void setPageKeys(List<PageKey> pageKeys) {
-            TableFilter tf = statement.getTableFilter();
-            if (tf != null)
-                tf.setPageKeys(pageKeys);
-        }
-
-        @Override
-        public final boolean run() {
-            switch (state) {
-            case start:
-                if (start()) {
-                    return true;
-                }
-                state = State.execute;
-            case execute:
-                if (execute()) {
-                    return true;
-                }
-                state = State.stop;
-            case stop:
-                if (callStop) {
-                    stop();
-                }
-            }
-            return false;
-        }
-
-        private boolean start() {
-            if (session.isExclusiveMode())
-                return true;
-            if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
-                startTimeNanos = System.nanoTime();
-            }
-            recompileIfNeeded();
-            session.startCurrentCommand(statement);
-            setProgress(DatabaseEventListener.STATE_STATEMENT_START);
-            statement.checkParameters();
-            return startInternal();
-        }
-
-        private void recompileIfNeeded() {
-            if (statement.needRecompile()) {
-                statement.setModificationMetaId(0);
-                String sql = statement.getSQL();
-                ArrayList<Parameter> oldParams = statement.getParameters();
-                statement = (StatementBase) session.parseStatement(sql);
-                long mod = statement.getModificationMetaId();
-                statement.setModificationMetaId(0);
-                ArrayList<Parameter> newParams = statement.getParameters();
-                for (int i = 0, size = newParams.size(); i < size; i++) {
-                    Parameter old = oldParams.get(i);
-                    if (old.isValueSet()) {
-                        Value v = old.getValue(session);
-                        Parameter p = newParams.get(i);
-                        p.setValue(v);
-                    }
-                }
-                statement.prepare();
-                statement.setModificationMetaId(mod);
-            }
-        }
-
-        private void setProgress(int state) {
-            session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
-        }
-
-        private boolean execute() {
-            try {
-                session.getDatabase().checkPowerOff();
-                return executeInternal();
-            } catch (DbException e) {
-                // 并发异常，直接重试
-                if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
-                    return true;
-                }
-                handleException(e);
-                return false;
-            } catch (Throwable e) {
-                handleException(DbException.convert(e));
-                return false;
-            }
-        }
-
-        protected void handleException(DbException e) {
-            callStop = false;
-            e = e.addSQL(statement.getSQL());
-            SQLException s = e.getSQLException();
-            Database database = session.getDatabase();
-            database.exceptionThrown(s, statement.getSQL());
-            if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-                // there is a serious problem:
-                // the transaction may be applied partially
-                // in this case we need to panic:
-                // close the database
-                database.shutdownImmediately();
-                throw e;
-            }
-            database.checkPowerOff();
-            if (!statement.isQuery()) {
-                if (s.getErrorCode() == ErrorCode.DEADLOCK_1) {
-                    session.rollback();
-                } else {
-                    session.rollbackCurrentCommand();
-                }
-            }
-            if (asyncHandler != null) {
-                asyncResult = new AsyncResult<>();
-                asyncResult.setCause(e);
-                asyncHandler.handle(asyncResult);
-                asyncResult = null; // 不需要再回调了
-                stop();
-            } else {
-                stop();
-                throw e;
-            }
-        }
-
-        protected void stop() {
-            stopInternal();
-            session.stopCurrentCommand(asyncHandler, asyncResult);
-
-            if (startTimeNanos > 0 && trace.isInfoEnabled()) {
-                long timeMillis = (System.nanoTime() - startTimeNanos) / 1000 / 1000;
-                // 如果一条sql的执行时间大于100毫秒，记下它
-                if (timeMillis > Constants.SLOW_QUERY_LIMIT_MS) {
-                    trace.info("slow query: {0} ms, sql: {1}", timeMillis, statement.getSQL());
-                }
-            }
-            state = State.stopped;
-        }
-    }
-
-    public static abstract class YieldableUpdateBase extends YieldableBase<Integer> {
-
-        protected int affectedRows;
-
-        public YieldableUpdateBase(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, asyncHandler);
-        }
-
-        protected void setResult(Integer result) {
-            affectedRows = result;
-            super.setResult(result, affectedRows);
-        }
-    }
-
-    public static abstract class YieldableListenableUpdateBase extends YieldableUpdateBase
-            implements Transaction.Listener {
-
-        protected final AtomicInteger pendingOperationCounter = new AtomicInteger();
-        protected volatile RuntimeException pendingOperationException;
-        protected boolean loopEnd;
-
-        public YieldableListenableUpdateBase(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, asyncHandler);
-
-            // 执行操作时都是异步的，
-            // 当所有异步操作完成时才能调用stop方法给客户端发回响应结果
-            callStop = false;
-        }
-
-        @Override
-        protected boolean executeInternal() {
-            if (!loopEnd) {
-                if (executeAndListen()) {
-                    if (asyncHandler != null && session.needsHandleReplicationRowLockConflict()) {
-                        asyncHandler.handle(new AsyncResult<>(-1));
-                    }
-                    return true;
-                }
-            }
-            if (loopEnd) {
-                if (pendingOperationException != null)
-                    throw pendingOperationException;
-                if (pendingOperationCounter.get() <= 0) {
-                    setResult(affectedRows);
-                    callStop = true;
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        protected abstract boolean executeAndListen();
-
-        @Override
-        public void beforeOperation() {
-            pendingOperationCounter.incrementAndGet();
-        }
-
-        @Override
-        public void operationUndo() {
-            pendingOperationCounter.decrementAndGet();
-        }
-
-        @Override
-        public void operationComplete() {
-            pendingOperationCounter.decrementAndGet();
-        }
-
-        @Override
-        public void setException(RuntimeException e) {
-            pendingOperationException = e;
-        }
-    }
-
-    public static abstract class YieldableQueryBase extends YieldableBase<Result> {
-
-        protected final int maxRows;
-        protected final boolean scrollable;
-
-        public YieldableQueryBase(StatementBase statement, int maxRows, boolean scrollable,
-                AsyncHandler<AsyncResult<Result>> asyncHandler) {
-            super(statement, asyncHandler);
-            this.maxRows = maxRows;
-            this.scrollable = scrollable;
-        }
-    }
-
-    private static class DefaultYieldableUpdate extends YieldableUpdateBase {
-
-        public DefaultYieldableUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-            super(statement, asyncHandler);
-            callStop = false;
-        }
-
-        @Override
-        protected boolean executeInternal() {
-            switch (session.getStatus()) {
-            case TRANSACTION_NOT_COMMIT:
-            case STATEMENT_COMPLETED:
-            case RETRYING:
-                // session.setLastScopeIdentity(ValueNull.INSTANCE);
-                SQLRouter.executeUpdate(statement, ar -> {
-                    if (ar.isSucceeded()) {
-                        if (ar.getResult() < 0) {
-                            // 在复制模式下执行时，可以把结果返回给客户端做冲突检测
-                            if (asyncHandler != null && session.needsHandleReplicationDbObjectLockConflict()) {
-                                asyncHandler.handle(new AsyncResult<>(-1));
-                            } else {
-                                session.setStatus(SessionStatus.WAITING); // 需要等待然后重新执行
-                            }
-                        } else {
-                            if (session.getReplicationName() != null) {
-                                session.setStatus(SessionStatus.REPLICA_STATEMENT_COMPLETED);
-                                if (asyncHandler != null)
-                                    asyncHandler.handle(new AsyncResult<>(ar.getResult()));
-                                else
-                                    setResult(ar.getResult()); // 当前节点也是目标节点的场景
-                            } else {
-                                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                                setResult(ar.getResult());
-                                stop();
-                            }
-                        }
-                    } else {
-                        session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                        DbException e = DbException.convert(ar.getCause());
-                        handleException(e);
-                    }
-                });
-                break;
-            case REPLICATION_COMPLETED:
-                session.setStatus(SessionStatus.TRANSACTION_NOT_COMMIT);
-                callStop = false;
-                return false;
-            }
-
-            // 当前事务已经成功提交或当前语句已经执行完时就不必再让调度器轮循检查session的状态了
-            return session.getStatus() != SessionStatus.STATEMENT_COMPLETED
-                    && session.getStatus() != SessionStatus.TRANSACTION_NOT_START;
-        }
-    }
-
-    private static class DefaultYieldableQuery extends YieldableQueryBase {
-
-        private Boolean completed;
-
-        public DefaultYieldableQuery(StatementBase statement, int maxRows, boolean scrollable,
-                AsyncHandler<AsyncResult<Result>> asyncHandler) {
-            super(statement, maxRows, scrollable, asyncHandler);
-            callStop = false;
-        }
-
-        @Override
-        protected boolean executeInternal() {
-            if (completed == null) {
-                completed = false;
-                SQLRouter.executeQuery(statement, maxRows, scrollable, ar -> {
-                    try {
-                        if (ar.isSucceeded()) {
-                            Result result = ar.getResult();
-                            setResult(result, result.getRowCount());
-                            stop();
-                        } else {
-                            DbException e = DbException.convert(ar.getCause());
-                            handleException(e);
-                        }
-                    } finally {
-                        completed = true;
-                    }
-                });
-            }
-            return !completed;
-        }
     }
 }

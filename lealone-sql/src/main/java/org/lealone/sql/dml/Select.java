@@ -53,6 +53,8 @@ import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.Optimizer;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.yieldable.YieldableBase;
+import org.lealone.sql.yieldable.YieldableQueryBase;
 
 /**
  * This class represents a simple SELECT statement.
