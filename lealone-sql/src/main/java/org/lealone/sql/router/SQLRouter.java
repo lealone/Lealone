@@ -108,7 +108,7 @@ public class SQLRouter {
         } else {
             updateCount = statement.update();
         }
-        asyncHandler.handle(new AsyncResult<Integer>(updateCount));
+        asyncHandler.handle(new AsyncResult<>(updateCount));
     }
 
     private static int maybeExecuteDistributedUpdate(StatementBase statement) {
@@ -229,7 +229,7 @@ public class SQLRouter {
         } else {
             result = statement.query(maxRows);
         }
-        asyncHandler.handle(new AsyncResult<Result>(result));
+        asyncHandler.handle(new AsyncResult<>(result));
     }
 
     private static Result maybeExecuteDistributedQuery(StatementBase statement, int maxRows, boolean scrollable) {

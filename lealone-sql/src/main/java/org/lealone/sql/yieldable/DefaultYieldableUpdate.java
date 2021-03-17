@@ -38,34 +38,7 @@ public class DefaultYieldableUpdate extends YieldableUpdateBase {
         case TRANSACTION_NOT_COMMIT:
         case STATEMENT_COMPLETED:
         case RETRYING:
-            SQLRouter.executeUpdate(statement, ar -> {
-                if (ar.isSucceeded()) {
-                    if (ar.getResult() < 0) {
-                        // 在复制模式下执行时，可以把结果返回给客户端做冲突检测
-                        if (asyncHandler != null && session.needsHandleReplicationDbObjectLockConflict()) {
-                            asyncHandler.handle(new AsyncResult<>(-1));
-                        } else {
-                            session.setStatus(SessionStatus.WAITING); // 需要等待然后重新执行
-                        }
-                    } else {
-                        if (session.getReplicationName() != null) {
-                            session.setStatus(SessionStatus.REPLICA_STATEMENT_COMPLETED);
-                            if (asyncHandler != null)
-                                asyncHandler.handle(new AsyncResult<>(ar.getResult()));
-                            else
-                                setResult(ar.getResult()); // 当前节点也是目标节点的场景
-                        } else {
-                            session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                            setResult(ar.getResult());
-                            stop();
-                        }
-                    }
-                } else {
-                    session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                    DbException e = DbException.convert(ar.getCause());
-                    handleException(e);
-                }
-            });
+            SQLRouter.executeUpdate(statement, ar -> handleResult(ar));
             break;
         case REPLICATION_COMPLETED:
             session.setStatus(SessionStatus.TRANSACTION_NOT_COMMIT);
@@ -76,5 +49,34 @@ public class DefaultYieldableUpdate extends YieldableUpdateBase {
         // 当前事务已经成功提交或当前语句已经执行完时就不必再让调度器轮循检查session的状态了
         return session.getStatus() != SessionStatus.STATEMENT_COMPLETED
                 && session.getStatus() != SessionStatus.TRANSACTION_NOT_START;
+    }
+
+    private void handleResult(AsyncResult<Integer> ar) {
+        if (ar.isSucceeded()) {
+            if (ar.getResult() < 0) {
+                // 在复制模式下执行时，可以把结果返回给客户端做冲突检测
+                if (asyncHandler != null && session.needsHandleReplicationDbObjectLockConflict()) {
+                    asyncHandler.handle(new AsyncResult<>(-1));
+                } else {
+                    session.setStatus(SessionStatus.WAITING); // 需要等待然后重新执行
+                }
+            } else {
+                if (session.getReplicationName() != null) {
+                    session.setStatus(SessionStatus.REPLICA_STATEMENT_COMPLETED);
+                    if (asyncHandler != null)
+                        asyncHandler.handle(new AsyncResult<>(ar.getResult()));
+                    else
+                        setResult(ar.getResult()); // 当前节点也是目标节点的场景
+                } else {
+                    session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                    setResult(ar.getResult());
+                    stop();
+                }
+            }
+        } else {
+            session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+            DbException e = DbException.convert(ar.getCause());
+            handleException(e);
+        }
     }
 }

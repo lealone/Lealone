@@ -81,8 +81,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         this.result = result;
         if (result != null) {
             if (asyncHandler != null) {
-                asyncResult = new AsyncResult<>();
-                asyncResult.setResult(result);
+                asyncResult = new AsyncResult<>(result);
             }
             statement.trace(startTimeNanos, rowCount);
             setProgress(DatabaseEventListener.STATE_STATEMENT_END);

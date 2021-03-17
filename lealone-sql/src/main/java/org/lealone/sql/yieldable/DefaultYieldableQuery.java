@@ -38,21 +38,23 @@ public class DefaultYieldableQuery extends YieldableQueryBase {
     protected boolean executeInternal() {
         if (completed == null) {
             completed = false;
-            SQLRouter.executeQuery(statement, maxRows, scrollable, ar -> {
-                try {
-                    if (ar.isSucceeded()) {
-                        Result result = ar.getResult();
-                        setResult(result, result.getRowCount());
-                        stop();
-                    } else {
-                        DbException e = DbException.convert(ar.getCause());
-                        handleException(e);
-                    }
-                } finally {
-                    completed = true;
-                }
-            });
+            SQLRouter.executeQuery(statement, maxRows, scrollable, ar -> handleResult(ar));
         }
         return !completed;
+    }
+
+    private void handleResult(AsyncResult<Result> ar) {
+        try {
+            if (ar.isSucceeded()) {
+                Result result = ar.getResult();
+                setResult(result, result.getRowCount());
+                stop();
+            } else {
+                DbException e = DbException.convert(ar.getCause());
+                handleException(e);
+            }
+        } finally {
+            completed = true;
+        }
     }
 }
