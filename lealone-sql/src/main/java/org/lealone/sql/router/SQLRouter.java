@@ -59,11 +59,11 @@ public class SQLRouter {
         statement.getSession().getTransaction(statement);
     }
 
-    private static void executeDefineStatement(StatementBase defineStatement,
+    private static void executeDistributedDefinitionStatement(StatementBase definitionStatement,
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         NetNodeManager m = NetNodeManagerHolder.get();
         Set<NetNode> candidateNodes;
-        ServerSession currentSession = defineStatement.getSession();
+        ServerSession currentSession = definitionStatement.getSession();
         Database db = currentSession.getDatabase();
         String[] hostIds = db.getHostIds();
         if (hostIds.length == 0) {
@@ -77,7 +77,7 @@ public class SQLRouter {
         }
         List<String> initReplicationNodes = null;
         // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
-        if (defineStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
+        if (definitionStatement.isReplicationStatement() && db.isShardingMode() && !db.isStarting()) {
             List<NetNode> nodes = m.getReplicationNodes(db, new HashSet<>(0), candidateNodes);
             if (!nodes.isEmpty()) {
                 initReplicationNodes = new ArrayList<>(nodes.size());
@@ -88,8 +88,9 @@ public class SQLRouter {
             }
         }
 
-        ReplicationSession rs = m.createReplicationSession(currentSession, candidateNodes, initReplicationNodes);
-        SQLCommand c = rs.createSQLCommand(defineStatement.getSQL(), -1);
+        ReplicationSession rs = Database.createReplicationSession(currentSession, candidateNodes, null,
+                initReplicationNodes);
+        SQLCommand c = rs.createSQLCommand(definitionStatement.getSQL(), -1);
         c.executeUpdate().onComplete(asyncHandler);
     }
 
@@ -99,7 +100,7 @@ public class SQLRouter {
         if (statement.isDatabaseStatement()) {
             updateCount = statement.update();
         } else if (statement.isDDL() && !statement.isLocal()) {
-            executeDefineStatement(statement, asyncHandler);
+            executeDistributedDefinitionStatement(statement, asyncHandler);
             return;
         } else if (statement.isLocal()) {
             updateCount = statement.update();
@@ -135,7 +136,7 @@ public class SQLRouter {
 
         boolean isTopTransaction = false;
         boolean isNestedTransaction = false;
-        Session session = statement.getSession();
+        ServerSession session = statement.getSession();
 
         try {
             if (!statement.isLocal() && isBatch) {
@@ -183,7 +184,7 @@ public class SQLRouter {
         int updateCount = 0;
         int size = nodeToPageKeyMap.size();
         String sql = statement.getPlanSQL(true);
-        Session currentSession = statement.getSession();
+        ServerSession currentSession = statement.getSession();
         Session[] sessions = new Session[size];
         SQLCommand[] commands = new SQLCommand[size];
         ArrayList<Callable<Integer>> callables = new ArrayList<>(size);
@@ -237,7 +238,7 @@ public class SQLRouter {
         switch (type) {
         case SQLStatement.SELECT: {
             Select select = (Select) statement;
-            Session currentSession = statement.getSession();
+            ServerSession currentSession = statement.getSession();
             Map<String, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
             int size = nodeToPageKeyMap.size();
             if (size <= 0) {

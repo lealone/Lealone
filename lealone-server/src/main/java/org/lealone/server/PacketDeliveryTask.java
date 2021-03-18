@@ -47,7 +47,7 @@ public class PacketDeliveryTask implements AsyncTask {
         this.in = in;
         this.packetId = packetId;
         this.packetType = packetType;
-        this.session = (ServerSession) si.session;
+        this.session = si.session;
         this.sessionId = si.sessionId;
         this.si = si;
     }

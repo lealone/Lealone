@@ -2251,13 +2251,32 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
-        return getNetNodeManager().createReplicationSession(session, replicationNodes);
+        return createReplicationSession(session, replicationNodes, null, null);
     }
 
     @Override
     public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
             Boolean remote) {
-        return getNetNodeManager().createReplicationSession(session, replicationNodes, remote);
+        return createReplicationSession(session, replicationNodes, remote, null);
+    }
+
+    public static ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
+            Boolean remote, List<String> initReplicationNodes) {
+        ServerSession serverSession = (ServerSession) session;
+        NetNode localNode = NetNode.getLocalP2pNode();
+        int size = replicationNodes.size();
+        Session[] sessions = new Session[size];
+        int i = 0;
+        for (NetNode e : replicationNodes) {
+            String id = getNetNodeManager().getHostId(e);
+            boolean isRemote = remote != null ? remote.booleanValue() : !localNode.equals(e);
+            sessions[i++] = serverSession.getNestedSession(id, isRemote);
+        }
+        ReplicationSession rs = new ReplicationSession(sessions, initReplicationNodes);
+        rs.setRpcTimeout(getNetNodeManager().getRpcTimeout());
+        rs.setAutoCommit(serverSession.isAutoCommit());
+        rs.setParentTransaction(serverSession.getTransaction());
+        return rs;
     }
 
     @Override

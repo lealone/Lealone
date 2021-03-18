@@ -14,14 +14,11 @@ import org.lealone.common.trace.TraceObjectType;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
 import org.lealone.db.DataHandler;
-import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.async.Future;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
-import org.lealone.sql.ParsedSQLStatement;
-import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.replication.ReplicaSQLCommand;
@@ -62,9 +59,9 @@ public interface Session extends Closeable, Transaction.Participant {
 
     ReplicaSQLCommand prepareReplicaSQLCommand(String sql, int fetchSize);
 
-    ParsedSQLStatement parseStatement(String sql);
+    String getReplicationName();
 
-    PreparedSQLStatement prepareStatement(String sql, int fetchSize);
+    void setReplicationName(String replicationName);
 
     /**
      * Check if this session is in auto-commit mode.
@@ -80,6 +77,52 @@ public interface Session extends Closeable, Transaction.Participant {
      * @param autoCommit the new value
      */
     void setAutoCommit(boolean autoCommit);
+
+    Transaction getParentTransaction();
+
+    void setParentTransaction(Transaction transaction);
+
+    void asyncCommitComplete();
+
+    /**
+     * Cancel the current or next command (called when closing a connection).
+     */
+    void cancel();
+
+    void cancelStatement(int statementId);
+
+    /**
+     * Roll back pending transactions and close the session.
+     */
+    @Override
+    public void close();
+
+    /**
+     * Check if close was called.
+     *
+     * @return if the session has been closed
+     */
+    boolean isClosed();
+
+    void checkClosed();
+
+    void setInvalid(boolean v);
+
+    boolean isInvalid();
+
+    boolean isValid();
+
+    void setTargetNodes(String targetNodes);
+
+    String getTargetNodes();
+
+    void setRunMode(RunMode runMode);
+
+    RunMode getRunMode();
+
+    boolean isRunModeChanged();
+
+    void runModeChanged(String newTargetNodes);
 
     /**
      * Get the trace object
@@ -107,103 +150,21 @@ public interface Session extends Closeable, Transaction.Participant {
      */
     DataHandler getDataHandler();
 
-    /**
-     * Cancel the current or next command (called when closing a connection).
-     */
-    void cancel();
-
-    /**
-     * Roll back pending transactions and close the session.
-     */
-    @Override
-    public void close();
-
-    /**
-     * Check if close was called.
-     *
-     * @return if the session has been closed
-     */
-    boolean isClosed();
-
-    void checkClosed();
-
-    int getModificationId();
-
-    Transaction getTransaction();
-
-    Transaction getTransaction(PreparedSQLStatement statement);
-
-    Transaction getParentTransaction();
-
-    void setParentTransaction(Transaction transaction);
-
-    void rollback();
-
-    void setRoot(boolean isRoot);
-
-    void commit(String allLocalTransactionNames);
-
-    void asyncCommit(Runnable asyncTask);
-
-    void asyncCommitComplete();
+    String getLocalHostAndPort();
 
     String getURL();
 
-    String getReplicationName();
-
-    void setReplicationName(String replicationName);
+    int getNetworkTimeout();
 
     ConnectionInfo getConnectionInfo();
 
-    boolean isLocal();
-
-    boolean isShardingMode();
-
-    int getNextId();
-
-    SessionStatus getStatus();
-
-    void setInvalid(boolean v);
-
-    boolean isInvalid();
-
-    boolean isValid();
-
-    void setTargetNodes(String targetNodes);
-
-    String getTargetNodes();
-
-    void setRunMode(RunMode runMode);
-
-    RunMode getRunMode();
-
-    long getLastRowKey();
+    default void reconnectIfNeeded() {
+    }
 
     default void setLobMacSalt(byte[] lobMacSalt) {
     }
 
     default byte[] getLobMacSalt() {
-        return null;
-    }
-
-    boolean isRunModeChanged();
-
-    String getNewTargetNodes();
-
-    void runModeChanged(String newTargetNodes);
-
-    default void reconnectIfNeeded() {
-    }
-
-    default IDatabase getDatabase() {
-        return null;
-    }
-
-    default Session getNestedSession(String hostAndPort, boolean remote) {
-        return null;
-    }
-
-    default String getUserName() {
         return null;
     }
 
@@ -215,15 +176,9 @@ public interface Session extends Closeable, Transaction.Participant {
         return Constants.TCP_PROTOCOL_VERSION_CURRENT;
     }
 
-    int getNetworkTimeout();
-
-    void cancelStatement(int statementId);
-
     default int getLockTimeout() {
         return Integer.MAX_VALUE;
     }
-
-    String getLocalHostAndPort();
 
     @SuppressWarnings("unchecked")
     default <P extends AckPacket> Future<P> send(Packet packet) {

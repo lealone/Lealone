@@ -194,22 +194,4 @@ public class ReplicationSession extends DelegatedSession {
         for (int i = 0; i < n; i++)
             sessions[i].setParentTransaction(transaction);
     }
-
-    @Override
-    public void rollback() {
-        for (int i = 0; i < n; i++)
-            sessions[i].rollback();
-    }
-
-    @Override
-    public void setRoot(boolean isRoot) {
-        for (int i = 0; i < n; i++)
-            sessions[i].setRoot(isRoot);
-    }
-
-    @Override
-    public void commit(String allLocalTransactionNames) {
-        for (int i = 0; i < n; i++)
-            sessions[i].commit(allLocalTransactionNames);
-    }
 }

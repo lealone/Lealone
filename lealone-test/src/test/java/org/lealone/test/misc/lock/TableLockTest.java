@@ -32,7 +32,9 @@ public class TableLockTest extends SqlTestBase {
         stmt.executeUpdate("insert into TableLockTest(id, f1) values(1, 2)");
 
         // 如果t1先执行executeUpdate，那么t2和t3需要等待t1提交了才能执行，
-        // 如果t2或t3其中之一先执行了，t2也需要等待，t2和t3可以同时执行
+        // 如果t2或t3其中之一先执行了，t1也需要等待，t2和t3可以同时执行
+        // 2021-03-18更新:
+        // t1、t2、t3都可以同时执行了
         Thread t1 = new Thread(() -> {
             try {
                 Connection conn = TableLockTest.this.getConnection();

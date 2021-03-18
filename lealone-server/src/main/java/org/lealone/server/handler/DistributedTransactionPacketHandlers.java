@@ -19,7 +19,6 @@ package org.lealone.server.handler;
 
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.Session;
 import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
@@ -55,7 +54,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class Query extends QueryPacketHandler<DTransactionQuery> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionQuery packet) {
-            Session session = task.session;
+            ServerSession session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
             return handlePacket(task, packet);
@@ -71,7 +70,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class PreparedQuery extends PreparedQueryPacketHandler<DTransactionPreparedQuery> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionPreparedQuery packet) {
-            final Session session = task.session;
+            final ServerSession session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
             return handlePacket(task, packet);
@@ -87,7 +86,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class Update extends UpdatePacketHandler<DTransactionUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionUpdate packet) {
-            final Session session = task.session;
+            final ServerSession session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
             return handlePacket(task, packet);
@@ -102,7 +101,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
     private static class PreparedUpdate extends PreparedUpdatePacketHandler<DTransactionPreparedUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, DTransactionPreparedUpdate packet) {
-            final Session session = task.session;
+            final ServerSession session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
             return handlePacket(task, packet);

@@ -104,10 +104,6 @@ public class AMTransaction implements Transaction {
         return session;
     }
 
-    public boolean isShardingMode() {
-        return session != null && !session.isLocal() && session.isShardingMode();
-    }
-
     public void setRunMode(RunMode runMode) {
         this.runMode = runMode;
     }

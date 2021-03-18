@@ -29,7 +29,6 @@ import org.lealone.common.exceptions.ConfigException;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.IDatabase;
 import org.lealone.db.RunMode;
-import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManager;
 import org.lealone.p2p.config.ConfigDescriptor;
@@ -37,8 +36,6 @@ import org.lealone.p2p.gossip.FailureDetector;
 import org.lealone.p2p.gossip.Gossiper;
 import org.lealone.p2p.locator.AbstractNodeAssignmentStrategy;
 import org.lealone.p2p.locator.AbstractReplicationStrategy;
-import org.lealone.p2p.locator.TopologyMetaData;
-import org.lealone.storage.replication.ReplicationSession;
 
 public class P2pNetNodeManager implements NetNodeManager {
 
@@ -104,41 +101,6 @@ public class P2pNetNodeManager implements NetNodeManager {
     @Override
     public long getRpcTimeout() {
         return ConfigDescriptor.getRpcTimeout();
-    }
-
-    @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
-        return createReplicationSession(session, replicationNodes, null, null);
-    }
-
-    @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
-            List<String> initReplicationNodes) {
-        return createReplicationSession(session, replicationNodes, null, initReplicationNodes);
-    }
-
-    @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
-            Boolean remote) {
-        return createReplicationSession(session, replicationNodes, remote, null);
-    }
-
-    private ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
-            Boolean remote, List<String> initReplicationNodes) {
-        NetNode localNode = ConfigDescriptor.getLocalNode();
-        TopologyMetaData md = P2pServer.instance.getTopologyMetaData();
-        int size = replicationNodes.size();
-        Session[] sessions = new Session[size];
-        int i = 0;
-        for (NetNode e : replicationNodes) {
-            String id = md.getHostId(e);
-            sessions[i++] = session.getNestedSession(id, remote != null ? remote.booleanValue() : !localNode.equals(e));
-        }
-        ReplicationSession rs = new ReplicationSession(sessions, initReplicationNodes);
-        rs.setRpcTimeout(ConfigDescriptor.getRpcTimeout());
-        rs.setAutoCommit(session.isAutoCommit());
-        rs.setParentTransaction(session.getTransaction());
-        return rs;
     }
 
     @Override

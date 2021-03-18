@@ -53,6 +53,7 @@ public class DefaultYieldableUpdate extends YieldableUpdateBase {
 
     private void handleResult(AsyncResult<Integer> ar) {
         if (ar.isSucceeded()) {
+            // 返回的值为负数时，表示当前语句无法正常执行，需要等待其他事务释放锁
             if (ar.getResult() < 0) {
                 // 在复制模式下执行时，可以把结果返回给客户端做冲突检测
                 if (asyncHandler != null && session.needsHandleReplicationDbObjectLockConflict()) {

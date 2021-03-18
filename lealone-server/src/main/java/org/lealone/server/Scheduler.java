@@ -32,7 +32,7 @@ import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
-import org.lealone.db.session.Session;
+import org.lealone.db.session.ServerSession;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
@@ -76,12 +76,12 @@ public class Scheduler extends Thread
 
         private final int sessionTimeout;
         final int sessionId;
-        Session session; // 处理完第一个InitPacket任务后才会赋值
+        ServerSession session; // 处理完第一个InitPacket任务后才会赋值
 
         private YieldableCommand yieldableCommand;
         private long lastActiveTime;
 
-        SessionInfo(TcpServerConnection conn, Session session, int sessionId, int sessionTimeout) {
+        SessionInfo(TcpServerConnection conn, ServerSession session, int sessionId, int sessionTimeout) {
             scheduler = ScheduleService.getSchedulerForSession();
             taskQueue = new ConcurrentLinkedQueue<>();
             this.conn = conn;

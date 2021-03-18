@@ -68,11 +68,6 @@ public class TransferOutputStream implements NetOutputStream {
         resettableOutputStream.setPayloadSize(payloadStartPos, size);
     }
 
-    public TransferOutputStream writeRequestHeader(int packetType) throws IOException {
-        int packetId = session.getNextId();
-        return writeRequestHeader(packetId, packetType);
-    }
-
     public TransferOutputStream writeRequestHeader(int packetId, int packetType) throws IOException {
         writeByte(REQUEST).writeInt(packetId).writeInt(packetType).writeInt(session.getId());
         return this;

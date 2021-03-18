@@ -390,13 +390,11 @@ public class ServerSession extends SessionBase {
         this.local = local;
     }
 
-    @Override
     public boolean isLocal() {
         return (local != null && local.booleanValue()) || !database.isShardingMode() || connectionInfo == null
                 || connectionInfo.isEmbedded();
     }
 
-    @Override
     public ParsedSQLStatement parseStatement(String sql) {
         return database.createParser(this).parse(sql);
     }
@@ -470,7 +468,6 @@ public class ServerSession extends SessionBase {
         return prepareStatement(sql, fetchSize);
     }
 
-    @Override
     public PreparedSQLStatement prepareStatement(String sql, int fetchSize) {
         if (closed) {
             throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
@@ -507,12 +504,10 @@ public class ServerSession extends SessionBase {
         return ps;
     }
 
-    @Override
     public Database getDatabase() {
         return database;
     }
 
-    @Override
     public void asyncCommit(Runnable asyncTask) {
         if (transaction != null) {
             transaction.setStatus(Transaction.STATUS_COMMITTING);
@@ -543,7 +538,6 @@ public class ServerSession extends SessionBase {
      * definition statement, and if there are temporary tables that should be
      * dropped or truncated at commit, this is done as well.
      */
-    @Override
     public void commit(String allLocalTransactionNames) {
         if (transaction == null)
             return;
@@ -603,7 +597,6 @@ public class ServerSession extends SessionBase {
     /**
      * Fully roll back the current transaction.
      */
-    @Override
     public void rollback() {
         checkCommitRollback();
         if (transaction != null) {
@@ -1229,7 +1222,6 @@ public class ServerSession extends SessionBase {
         return waitForLockThread;
     }
 
-    @Override
     public int getModificationId() {
         return modificationId;
     }
@@ -1265,7 +1257,6 @@ public class ServerSession extends SessionBase {
         return isRoot;
     }
 
-    @Override
     public void setRoot(boolean isRoot) {
         this.isRoot = isRoot;
     }
@@ -1289,12 +1280,10 @@ public class ServerSession extends SessionBase {
         return buff.toString();
     }
 
-    @Override
     public Transaction getTransaction() {
         return getTransaction(null);
     }
 
-    @Override
     public Transaction getTransaction(PreparedSQLStatement p) {
         if (transaction != null)
             return transaction;
@@ -1328,7 +1317,6 @@ public class ServerSession extends SessionBase {
     }
 
     // 得到的嵌套session会参与当前事务
-    @Override
     public Session getNestedSession(String hostAndPort, boolean remote) {
         // 不能直接把hostAndPort当成key，因为每个Session是对应到具体数据库的，所以URL中要包含数据库名
         String url = getURL(hostAndPort);
@@ -1392,7 +1380,6 @@ public class ServerSession extends SessionBase {
         rollback();
     }
 
-    @Override
     public boolean isShardingMode() {
         return database.isShardingMode();
     }
@@ -1421,7 +1408,6 @@ public class ServerSession extends SessionBase {
 
     private SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
 
-    @Override
     public SessionStatus getStatus() {
         if (isExclusiveMode())
             return SessionStatus.EXCLUSIVE_MODE;
@@ -1474,7 +1460,6 @@ public class ServerSession extends SessionBase {
         setReplicationConflictType(ReplicationConflictType.APPEND);
     }
 
-    @Override
     public long getLastRowKey() {
         if (lastRow == null)
             return -1;
@@ -1600,7 +1585,6 @@ public class ServerSession extends SessionBase {
         return lobMacSalt;
     }
 
-    @Override
     public String getUserName() {
         return user.getName();
     }

@@ -23,8 +23,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.lealone.db.IDatabase;
-import org.lealone.db.session.Session;
-import org.lealone.storage.replication.ReplicationSession;
 
 public interface NetNodeManager {
 
@@ -34,20 +32,6 @@ public interface NetNodeManager {
 
     default long getRpcTimeout() {
         return 0;
-    }
-
-    default ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
-        return null;
-    }
-
-    default ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
-            List<String> initReplicationNodes) {
-        return null;
-    }
-
-    default ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
-            Boolean remote) {
-        return null;
     }
 
     default NetNode getNode(String hostId) {

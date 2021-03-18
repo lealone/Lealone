@@ -87,7 +87,7 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         liveMembers.remove(localNode);
         if (liveMembers.isEmpty())
             return;
-        ReplicationSession rs = m.createReplicationSession(session, liveMembers, true);
+        ReplicationSession rs = Database.createReplicationSession(session, liveMembers, true, null);
         try (SQLCommand c = rs.createSQLCommand(sql, -1)) {
             c.executeUpdate().get();
         } catch (Exception e) {

@@ -27,6 +27,7 @@ import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.Pair;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.SysProperties;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
@@ -138,7 +139,7 @@ public class TcpServerConnection extends TransferConnection {
             // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
             // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
             // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
-            si.session = session;
+            si.session = (ServerSession) session;
             sessions.put(sessionId, si);
         } else {
             si.remove();
@@ -197,7 +198,7 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     public void sendResponse(PacketDeliveryTask task, Packet packet) {
-        Session session = task.session;
+        ServerSession session = task.session;
         try {
             TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(task.packetId, getStatus(session));

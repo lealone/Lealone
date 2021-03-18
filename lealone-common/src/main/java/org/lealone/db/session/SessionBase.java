@@ -19,7 +19,6 @@ package org.lealone.db.session;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -33,26 +32,23 @@ import org.lealone.db.DbSetting;
 import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
-import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.transaction.Transaction;
 
 public abstract class SessionBase implements Session {
 
     protected String replicationName;
-    protected AtomicInteger nextId = new AtomicInteger(0);
-
-    protected String targetNodes;
-    protected RunMode runMode;
-    protected boolean invalid;
 
     protected boolean autoCommit = true;
     protected Transaction parentTransaction;
+    protected boolean closed;
 
+    protected boolean invalid;
+    protected String targetNodes;
+    protected RunMode runMode;
     protected String newTargetNodes;
 
     protected TraceSystem traceSystem;
-    protected boolean closed;
 
     @Override
     public String getReplicationName() {
@@ -65,26 +61,24 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public boolean isLocal() {
-        return true;
+    public boolean isAutoCommit() {
+        return autoCommit;
     }
 
     @Override
-    public boolean isShardingMode() {
-        return false;
+    public void setAutoCommit(boolean autoCommit) {
+        this.autoCommit = autoCommit;
     }
 
     @Override
-    public int getNextId() {
-        return nextId.incrementAndGet();
+    public Transaction getParentTransaction() {
+        return parentTransaction;
     }
 
-    public int getCurrentId() {
-        return nextId.get();
-    }
-
+    // 要加synchronized，避免ClientCommand在执行更新和查询时其他线程把transaction置null
     @Override
-    public void asyncCommit(Runnable asyncTask) {
+    public synchronized void setParentTransaction(Transaction parentTransaction) {
+        this.parentTransaction = parentTransaction;
     }
 
     @Override
@@ -92,8 +86,25 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public SessionStatus getStatus() {
-        return SessionStatus.TRANSACTION_NOT_START;
+    public void close() {
+        closed = true;
+    }
+
+    @Override
+    public boolean isClosed() {
+        return closed;
+    }
+
+    /**
+     * Check if this session is closed and throws an exception if so.
+     *
+     * @throws DbException if the session is closed
+     */
+    @Override
+    public void checkClosed() {
+        if (isClosed()) {
+            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
+        }
     }
 
     @Override
@@ -132,56 +143,19 @@ public abstract class SessionBase implements Session {
     }
 
     @Override
-    public long getLastRowKey() {
-        return 0;
-    }
-
-    @Override
-    public boolean isAutoCommit() {
-        return autoCommit;
-    }
-
-    @Override
-    public void setAutoCommit(boolean autoCommit) {
-        this.autoCommit = autoCommit;
-    }
-
-    @Override
-    public Transaction getTransaction() {
-        throw DbException.getUnsupportedException("getTransaction");
-    }
-
-    @Override
-    public Transaction getTransaction(PreparedSQLStatement statement) {
-        throw DbException.getUnsupportedException("getTransaction");
-    }
-
-    @Override
-    public Transaction getParentTransaction() {
-        return parentTransaction;
-    }
-
-    // 要加synchronized，避免ClientCommand在执行更新和查询时其他线程把transaction置null
-    @Override
-    public synchronized void setParentTransaction(Transaction parentTransaction) {
-        this.parentTransaction = parentTransaction;
-    }
-
-    @Override
     public boolean isRunModeChanged() {
         return newTargetNodes != null;
     }
 
     @Override
+    public void runModeChanged(String newTargetNodes) {
+        this.newTargetNodes = newTargetNodes;
+    }
+
     public String getNewTargetNodes() {
         String nodes = newTargetNodes;
         newTargetNodes = null;
         return nodes;
-    }
-
-    @Override
-    public void runModeChanged(String newTargetNodes) {
-        this.newTargetNodes = newTargetNodes;
     }
 
     public Trace getTrace(TraceModuleType traceModuleType) {
@@ -254,25 +228,4 @@ public abstract class SessionBase implements Session {
         return buff.toString();
     }
 
-    /**
-     * Check if this session is closed and throws an exception if so.
-     *
-     * @throws DbException if the session is closed
-     */
-    @Override
-    public void checkClosed() {
-        if (isClosed()) {
-            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, "session closed");
-        }
-    }
-
-    @Override
-    public boolean isClosed() {
-        return closed;
-    }
-
-    @Override
-    public void close() {
-        closed = true;
-    }
 }

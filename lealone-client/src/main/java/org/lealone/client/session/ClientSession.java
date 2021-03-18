@@ -45,8 +45,6 @@ import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.session.SessionCancelStatement;
 import org.lealone.server.protocol.session.SessionClose;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
-import org.lealone.sql.ParsedSQLStatement;
-import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
@@ -54,7 +52,6 @@ import org.lealone.storage.fs.FileStorage;
 import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 import org.lealone.storage.replication.ReplicaStorageCommand;
-import org.lealone.transaction.Transaction;
 
 /**
  * The client side part of a session when using the server mode. 
@@ -67,7 +64,7 @@ import org.lealone.transaction.Transaction;
 // 同JdbcConnection一样，每个ClientSession对象也不是线程安全的，只能在单线程中使用。
 // 另外，每个ClientSession只对应一个server，
 // 虽然ConnectionInfo允许在JDBC URL中指定多个server，但是放在ClientSessionFactory中处理了。
-public class ClientSession extends SessionBase implements DataHandler, Transaction.Participant {
+public class ClientSession extends SessionBase implements DataHandler {
 
     private final TcpClientConnection tcpConnection;
     private final ConnectionInfo ci;
@@ -104,13 +101,11 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
         return id;
     }
 
-    @Override
     public int getNextId() {
         checkClosed();
         return tcpConnection.getNextId();
     }
 
-    @Override
     public int getCurrentId() {
         return tcpConnection.getCurrentId();
     }
@@ -371,45 +366,18 @@ public class ClientSession extends SessionBase implements DataHandler, Transacti
     }
 
     @Override
+    public void runModeChanged(String newTargetNodes) {
+        parent.runModeChanged(newTargetNodes);
+    }
+
+    @Override
     public String getURL() {
         return ci.getURL();
     }
 
     @Override
-    public ParsedSQLStatement parseStatement(String sql) {
-        return null;
-    }
-
-    @Override
-    public PreparedSQLStatement prepareStatement(String sql, int fetchSize) {
-        return null;
-    }
-
-    @Override
-    public int getModificationId() {
-        return 0;
-    }
-
-    @Override
-    public void rollback() {
-    }
-
-    @Override
-    public void setRoot(boolean isRoot) {
-    }
-
-    @Override
-    public void commit(String allLocalTransactionNames) {
-    }
-
-    @Override
     public ConnectionInfo getConnectionInfo() {
         return ci;
-    }
-
-    @Override
-    public void runModeChanged(String newTargetNodes) {
-        parent.runModeChanged(newTargetNodes);
     }
 
     @Override
