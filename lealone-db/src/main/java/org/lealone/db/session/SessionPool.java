@@ -17,20 +17,14 @@
  */
 package org.lealone.db.session;
 
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.Command;
-import org.lealone.db.CommandParameter;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.ConnectionSetting;
-import org.lealone.db.SysProperties;
 import org.lealone.db.async.Future;
-import org.lealone.sql.PreparedSQLStatement;
-import org.lealone.sql.SQLCommand;
 import org.lealone.transaction.Transaction;
 
 public class SessionPool {
@@ -119,46 +113,5 @@ public class SessionPool {
             session.close();
         else
             queue.offer(session);
-    }
-
-    @Deprecated
-    public static Command getCommand(ServerSession originalSession, PreparedSQLStatement prepared, //
-            String url, String sql) throws Exception {
-        Session session = originalSession.getSession(url);
-        if (session != null && session.isClosed())
-            session = null;
-        boolean isNew = false;
-        if (session == null) {
-            isNew = true;
-            session = getSession(originalSession, url, true);
-        }
-
-        if (session.getParentTransaction() == null)
-            session.setParentTransaction(originalSession.getTransaction());
-
-        if (isNew)
-            originalSession.addSession(url, session);
-
-        List<? extends CommandParameter> parameters = prepared.getParameters();
-        int fetchSize = prepared.getFetchSize();
-        if (parameters == null || parameters.isEmpty())
-            return session.createSQLCommand(sql, fetchSize);
-
-        SQLCommand command = session.prepareSQLCommand(sql, fetchSize);
-
-        // 传递最初的参数值到新的Command
-        if (parameters != null) {
-            List<? extends CommandParameter> newParams = command.getParameters();
-            // SQL重写后可能没有占位符了
-            if (!newParams.isEmpty()) {
-                if (SysProperties.CHECK && newParams.size() != parameters.size())
-                    throw DbException.throwInternalError();
-                for (int i = 0, size = parameters.size(); i < size; i++) {
-                    newParams.get(i).setValue(parameters.get(i).getValue(), true);
-                }
-            }
-        }
-
-        return command;
     }
 }

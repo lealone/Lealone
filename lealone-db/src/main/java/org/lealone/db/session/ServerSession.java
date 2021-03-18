@@ -741,17 +741,6 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    private void releaseSessionCache() {
-        if (!sessionCache.isEmpty()) {
-            for (Session s : sessionCache.values()) {
-                s.setParentTransaction(null);
-                SessionPool.release(s);
-            }
-
-            sessionCache.clear();
-        }
-    }
-
     private void cleanTempTables(boolean closeSession) {
         if (localTempTables != null && localTempTables.size() > 0) {
             synchronized (database) {
@@ -1303,35 +1292,31 @@ public class ServerSession extends SessionBase {
     }
 
     // 参与本次事务的其他Session
-    protected final Map<String, Session> sessionCache = new HashMap<>();
-
-    public Map<String, Session> getSessionCache() {
-        return sessionCache;
-    }
-
-    @Deprecated
-    public void addSession(String url, Session s) {
-        if (transaction != null && !sessionCache.containsKey(url))
-            transaction.addParticipant(s);
-        sessionCache.put(url, s);
-    }
+    private final Map<String, Session> nestedSessionCache = new HashMap<>();
 
     // 得到的嵌套session会参与当前事务
     public Session getNestedSession(String hostAndPort, boolean remote) {
         // 不能直接把hostAndPort当成key，因为每个Session是对应到具体数据库的，所以URL中要包含数据库名
         String url = getURL(hostAndPort);
-        Session s = sessionCache.get(url);
+        Session s = nestedSessionCache.get(url);
         if (s == null) {
             s = SessionPool.getSession(this, url, remote);
             if (transaction != null)
                 transaction.addParticipant(s);
-            sessionCache.put(url, s);
+            nestedSessionCache.put(url, s);
         }
         return s;
     }
 
-    public Session getSession(String url) {
-        return sessionCache.get(url);
+    private void releaseSessionCache() {
+        if (!nestedSessionCache.isEmpty()) {
+            for (Session s : nestedSessionCache.values()) {
+                s.setParentTransaction(null);
+                SessionPool.release(s);
+            }
+
+            nestedSessionCache.clear();
+        }
     }
 
     public boolean validateTransaction(String localTransactionName) {
