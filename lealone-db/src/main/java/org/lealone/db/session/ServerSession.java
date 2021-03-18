@@ -80,9 +80,7 @@ public class ServerSession extends SessionBase {
      * they are case sensitive.
      */
     private static final String SYSTEM_IDENTIFIER_PREFIX = "_";
-    private static int nextSerialId;
 
-    private final int serialId = nextSerialId++;
     private Database database;
     private ConnectionInfo connectionInfo;
     private final User user;
@@ -1070,12 +1068,12 @@ public class ServerSession extends SessionBase {
 
     @Override
     public int hashCode() {
-        return serialId;
+        return id;
     }
 
     @Override
     public String toString() {
-        return "#" + serialId + " (user: " + user.getName() + ")";
+        return "#" + id + " (user: " + user.getName() + ")";
     }
 
     /**
