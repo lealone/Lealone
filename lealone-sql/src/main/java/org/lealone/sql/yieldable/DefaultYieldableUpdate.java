@@ -38,6 +38,7 @@ public class DefaultYieldableUpdate extends YieldableUpdateBase {
         case TRANSACTION_NOT_COMMIT:
         case STATEMENT_COMPLETED:
         case RETRYING:
+            session.setStatus(SessionStatus.STATEMENT_RUNNING);
             SQLRouter.executeUpdate(statement, ar -> handleResult(ar));
             break;
         case REPLICATION_COMPLETED:

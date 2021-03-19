@@ -589,6 +589,7 @@ public class ServerSession extends SessionBase {
         unlockAll(true);
         clean();
         releaseSessionCache();
+        yieldableCommand = null;
         sessionStatus = SessionStatus.TRANSACTION_NOT_START;
     }
 
@@ -1514,6 +1515,7 @@ public class ServerSession extends SessionBase {
         case TRANSACTION_COMMITTING:
         case EXCLUSIVE_MODE:
         case REPLICA_STATEMENT_COMPLETED:
+        case STATEMENT_RUNNING:
             return null;
         }
         return yieldableCommand;
