@@ -85,11 +85,8 @@ public class TcpServerConnection extends TransferConnection {
         if (si == null) {
             if (packetType == PacketType.SESSION_INIT.value) {
                 // 同一个session的所有请求包(含InitPacket)都由同一个调度器负责处理
-                // 新session创建成功后再回填session字段
-                SessionInfo newSi = new SessionInfo(this, null, sessionId, tcpServer.getSessionTimeout());
-                newSi.submitTask(() -> {
-                    readInitPacket(in, packetId, sessionId, newSi);
-                });
+                Scheduler scheduler = ScheduleService.getSchedulerForSession();
+                scheduler.handle(() -> readInitPacket(in, packetId, sessionId, scheduler));
             } else {
                 sessionNotFound(packetId, sessionId);
             }
@@ -100,7 +97,7 @@ public class TcpServerConnection extends TransferConnection {
         }
     }
 
-    private void readInitPacket(TransferInputStream in, int packetId, int sessionId, SessionInfo si) {
+    private void readInitPacket(TransferInputStream in, int packetId, int sessionId, Scheduler scheduler) {
         try {
             SessionInit packet = SessionInit.decoder.decode(in, 0);
             ConnectionInfo ci = packet.ci;
@@ -112,25 +109,23 @@ public class TcpServerConnection extends TransferConnection {
             if (baseDir != null) {
                 ci.setBaseDir(baseDir);
             }
-            Session session = createSession(ci, sessionId, si);
-            session.setProtocolVersion(packet.clientVersion);
-            in.setSession(session);
 
-            TransferOutputStream out = createTransferOutputStream(session);
-            out.writeResponseHeader(packetId, Session.STATUS_OK);
-            SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit(),
-                    session.getTargetNodes(), session.getRunMode(), session.isInvalid());
-            ack.encode(out, packet.clientVersion);
-            out.flush();
+            ServerSession session = createSession(ci, sessionId, scheduler);
+            session.setProtocolVersion(packet.clientVersion);
+            sendSessionInitAck(packet, packetId, session);
         } catch (Throwable e) {
-            si.remove();
-            logger.error("Failed to create session, packetId: " + packetId + ", sessionId: " + sessionId, e);
+            SessionInfo si = sessions.get(sessionId);
+            if (si != null) {
+                closeSession(si);
+            }
+            logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId, e);
             sendError(null, packetId, e);
         }
     }
 
-    private Session createSession(ConnectionInfo ci, int sessionId, SessionInfo si) {
-        Session session = ci.createSession();
+    private ServerSession createSession(ConnectionInfo ci, int sessionId, Scheduler scheduler) {
+        ServerSession session = (ServerSession) ci.createSession();
+
         // 在复制模式和sharding模式下，客户端可以从任何一个节点接入，
         // 如果接入节点不是客户端想要访问的数据库的所在节点，就会给客户端返回数据库的所有节点，
         // 此时，这样的session就是无效的，客户端会自动重定向到正确的节点。
@@ -139,12 +134,19 @@ public class TcpServerConnection extends TransferConnection {
             // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
             // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
             // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
-            si.session = (ServerSession) session;
+            SessionInfo si = new SessionInfo(scheduler, this, session, sessionId, tcpServer.getSessionTimeout());
             sessions.put(sessionId, si);
-        } else {
-            si.remove();
         }
         return session;
+    }
+
+    private void sendSessionInitAck(SessionInit packet, int packetId, ServerSession session) throws Exception {
+        TransferOutputStream out = createTransferOutputStream(session);
+        out.writeResponseHeader(packetId, Session.STATUS_OK);
+        SessionInitAck ack = new SessionInitAck(packet.clientVersion, session.isAutoCommit(), session.getTargetNodes(),
+                session.getRunMode(), session.isInvalid());
+        ack.encode(out, packet.clientVersion);
+        out.flush();
     }
 
     private void sessionNotFound(int packetId, int sessionId) {

@@ -70,20 +70,20 @@ public class Scheduler extends Thread
 
     public static class SessionInfo {
         // taskQueue中的命令统一由scheduler调度执行
+        private final ConcurrentLinkedQueue<AsyncTask> taskQueue = new ConcurrentLinkedQueue<>();
         private final Scheduler scheduler;
-        private final ConcurrentLinkedQueue<AsyncTask> taskQueue;
         private final TcpServerConnection conn;
 
-        private final int sessionTimeout;
+        final ServerSession session;
         final int sessionId;
-        ServerSession session; // 处理完第一个InitPacket任务后才会赋值
+        private final int sessionTimeout;
 
         private YieldableCommand yieldableCommand;
         private long lastActiveTime;
 
-        SessionInfo(TcpServerConnection conn, ServerSession session, int sessionId, int sessionTimeout) {
-            scheduler = ScheduleService.getSchedulerForSession();
-            taskQueue = new ConcurrentLinkedQueue<>();
+        SessionInfo(Scheduler scheduler, TcpServerConnection conn, ServerSession session, int sessionId,
+                int sessionTimeout) {
+            this.scheduler = scheduler;
             this.conn = conn;
             this.session = session;
             this.sessionId = sessionId;
@@ -184,7 +184,7 @@ public class Scheduler extends Thread
         for (SessionInfo si : sessions) {
             // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
             // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
-            if (si.yieldableCommand == null || (si.session != null && si.session.getReplicationName() != null)) {
+            if (si.yieldableCommand == null || si.session.getReplicationName() != null) {
                 AsyncTask task = si.taskQueue.poll();
                 while (task != null) {
                     runTask(task);
