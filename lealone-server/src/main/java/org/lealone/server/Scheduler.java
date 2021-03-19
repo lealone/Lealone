@@ -33,6 +33,7 @@ import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.storage.PageOperation;
@@ -44,30 +45,6 @@ public class Scheduler extends Thread
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
 
-    private static class YieldableCommand {
-        private final int packetId;
-        private final SessionInfo si;
-        private final PreparedSQLStatement stmt;
-        private final PreparedSQLStatement.Yieldable<?> yieldable;
-
-        YieldableCommand(int packetId, SessionInfo si, PreparedSQLStatement stmt,
-                PreparedSQLStatement.Yieldable<?> yieldable) {
-            this.packetId = packetId;
-            this.si = si;
-            this.stmt = stmt;
-            this.yieldable = yieldable;
-        }
-
-        void execute() {
-            // 同一session中的语句是按顺序一条一条执行的，
-            // 如时返回false，说明当前语句执行完成了，切换到下一条；
-            // 如果返回true，说明因为某些原因导致主动让出CPU，需要等待获得重新执行的机会。
-            if (!yieldable.run()) {
-                si.yieldableCommand = null;
-            }
-        }
-    }
-
     public static class SessionInfo {
         // taskQueue中的命令统一由scheduler调度执行
         private final ConcurrentLinkedQueue<AsyncTask> taskQueue = new ConcurrentLinkedQueue<>();
@@ -78,7 +55,6 @@ public class Scheduler extends Thread
         final int sessionId;
         private final int sessionTimeout;
 
-        private YieldableCommand yieldableCommand;
         private long lastActiveTime;
 
         SessionInfo(Scheduler scheduler, TcpServerConnection conn, ServerSession session, int sessionId,
@@ -92,11 +68,11 @@ public class Scheduler extends Thread
             scheduler.addSessionInfo(this);
         }
 
-        void updateLastActiveTime() {
+        private void updateLastActiveTime() {
             lastActiveTime = System.currentTimeMillis();
         }
 
-        void submitTask(AsyncTask task) {
+        public void submitTask(AsyncTask task) {
             updateLastActiveTime();
             taskQueue.add(task);
             scheduler.wakeUp();
@@ -104,14 +80,16 @@ public class Scheduler extends Thread
 
         public void submitYieldableCommand(int packetId, PreparedSQLStatement stmt,
                 PreparedSQLStatement.Yieldable<?> yieldable) {
-            yieldableCommand = new YieldableCommand(packetId, this, stmt, yieldable);
+            YieldableCommand yieldableCommand = new YieldableCommand(packetId, stmt, yieldable, session, sessionId);
+            session.setYieldableCommand(yieldableCommand);
+            // 执行此方法的当前线程就是scheduler，所以不用唤醒scheduler
         }
 
         void remove() {
             scheduler.removeSessionInfo(this);
         }
 
-        void checkSessionTimeout(long currentTime) {
+        private void checkSessionTimeout(long currentTime) {
             if (sessionTimeout <= 0)
                 return;
             if (lastActiveTime + sessionTimeout < currentTime) {
@@ -121,22 +99,28 @@ public class Scheduler extends Thread
             }
         }
 
-        void checkTransactionTimeout() {
-            Transaction t = session.getTransaction();
-            if (t.getStatus() == Transaction.STATUS_WAITING) {
-                try {
-                    t.checkTimeout();
-                } catch (Throwable e) {
-                    t.rollback();
-                    conn.sendError(session, yieldableCommand.packetId, e);
-                    yieldableCommand = null; // 移除当前命令
+        private void runSessionTasks() {
+            // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
+            // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
+            if (session.getYieldableCommand() == null || session.getReplicationName() != null) {
+                AsyncTask task = taskQueue.poll();
+                while (task != null) {
+                    try {
+                        task.run();
+                    } catch (Throwable e) {
+                        logger.warn("Failed to run async session task: " + task + ", session id: " + sessionId, e);
+                    }
+                    // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
+                    if (session.getYieldableCommand() != null)
+                        break;
+                    task = taskQueue.poll();
                 }
             }
         }
     }
 
-    private final ConcurrentLinkedQueue<PageOperation> pageOperationQueue = new ConcurrentLinkedQueue<>();
     private final CopyOnWriteArrayList<SessionInfo> sessions = new CopyOnWriteArrayList<>();
+    private final ConcurrentLinkedQueue<PageOperation> pageOperationQueue = new ConcurrentLinkedQueue<>();
 
     private final ConcurrentLinkedQueue<AsyncTask> minPriorityQueue = new ConcurrentLinkedQueue<>();
     private final ConcurrentLinkedQueue<AsyncTask> normPriorityQueue = new ConcurrentLinkedQueue<>();
@@ -147,7 +131,7 @@ public class Scheduler extends Thread
 
     private final Semaphore haveWork = new Semaphore(1);
     private final long loopInterval;
-    private boolean stop;
+    private boolean end;
     private YieldableCommand nextBestCommand;
 
     public Scheduler(int id, Map<String, String> config) {
@@ -167,7 +151,7 @@ public class Scheduler extends Thread
 
     @Override
     public void run() {
-        while (!stop) {
+        while (!end) {
             runQueueTasks(maxPriorityQueue);
             runQueueTasks(normPriorityQueue);
             runQueueTasks(minPriorityQueue);
@@ -178,36 +162,14 @@ public class Scheduler extends Thread
         }
     }
 
-    private void runSessionTasks() {
-        if (sessions.isEmpty())
-            return;
-        for (SessionInfo si : sessions) {
-            // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
-            // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
-            if (si.yieldableCommand == null || si.session.getReplicationName() != null) {
-                AsyncTask task = si.taskQueue.poll();
-                while (task != null) {
-                    runTask(task);
-                    if (si.yieldableCommand != null)
-                        break;
-                    task = si.taskQueue.poll();
-                }
-            }
-        }
-    }
-
-    private void runTask(AsyncTask task) {
-        try {
-            task.run();
-        } catch (Throwable e) {
-            logger.warn("Failed to run async task: " + task, e);
-        }
-    }
-
     private void runQueueTasks(ConcurrentLinkedQueue<AsyncTask> queue) {
         AsyncTask task = queue.poll();
         while (task != null) {
-            runTask(task);
+            try {
+                task.run();
+            } catch (Throwable e) {
+                logger.warn("Failed to run async queue task: " + task, e);
+            }
             task = queue.poll();
         }
     }
@@ -224,8 +186,16 @@ public class Scheduler extends Thread
         }
     }
 
+    private void runSessionTasks() {
+        if (sessions.isEmpty())
+            return;
+        for (SessionInfo si : sessions) {
+            si.runSessionTasks();
+        }
+    }
+
     void end() {
-        stop = true;
+        end = true;
         wakeUp();
     }
 
@@ -318,7 +288,8 @@ public class Scheduler extends Thread
                 }
                 last = c;
             } catch (Throwable e) {
-                c.si.conn.sendError(c.si.session, c.packetId, e);
+                SessionInfo si = sessions.get(c.getSessionId());
+                si.conn.sendError(si.session, c.getPacketId(), e);
             }
         }
     }
@@ -341,7 +312,7 @@ public class Scheduler extends Thread
             return null;
         YieldableCommand best = null;
         for (SessionInfo si : sessions) {
-            YieldableCommand c = si.yieldableCommand;
+            YieldableCommand c = si.session.getYieldableCommand();
             if (c == null)
                 continue;
 
@@ -350,7 +321,11 @@ public class Scheduler extends Thread
             case WAITING:
                 // 复制模式下不主动检查超时
                 if (checkTimeout && si.session.getReplicationName() == null) {
-                    si.checkTransactionTimeout();
+                    try {
+                        si.session.checkTransactionTimeout();
+                    } catch (Throwable e) {
+                        si.conn.sendError(si.session, c.getPacketId(), e);
+                    }
                 }
             case TRANSACTION_COMMITTING:
             case EXCLUSIVE_MODE:
@@ -358,9 +333,9 @@ public class Scheduler extends Thread
                 continue;
             }
 
-            if (c.stmt.getPriority() > priority) {
+            if (c.getPriority() > priority) {
                 best = c;
-                priority = c.stmt.getPriority();
+                priority = c.getPriority();
             }
         }
         return best;
@@ -384,7 +359,12 @@ public class Scheduler extends Thread
         if (periodicQueue.isEmpty())
             return;
         for (int i = 0, size = periodicQueue.size(); i < size; i++) {
-            periodicQueue.get(i).run();
+            AsyncTask task = periodicQueue.get(i);
+            try {
+                task.run();
+            } catch (Throwable e) {
+                logger.warn("Failed to run periodic task: " + task + ", task index: " + i, e);
+            }
         }
     }
 

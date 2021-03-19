@@ -1449,6 +1449,68 @@ public class ServerSession extends SessionBase {
         return lastRow.getKey();
     }
 
+    public static class YieldableCommand {
+
+        private final int packetId;
+        private final PreparedSQLStatement stmt;
+        private final PreparedSQLStatement.Yieldable<?> yieldable;
+        private final ServerSession session;
+        private final int sessionId;
+
+        public YieldableCommand(int packetId, PreparedSQLStatement stmt, PreparedSQLStatement.Yieldable<?> yieldable,
+                ServerSession session, int sessionId) {
+            this.packetId = packetId;
+            this.stmt = stmt;
+            this.yieldable = yieldable;
+            this.session = session;
+            this.sessionId = sessionId;
+        }
+
+        public int getPacketId() {
+            return packetId;
+        }
+
+        public int getSessionId() {
+            return sessionId;
+        }
+
+        public int getPriority() {
+            return stmt.getPriority();
+        }
+
+        public void execute() {
+            // 同一session中的语句是按顺序一条一条执行的，
+            // 如时返回false，说明当前语句执行完成了，切换到下一条；
+            // 如果返回true，说明因为某些原因导致主动让出CPU，需要等待获得重新执行的机会。
+            if (!yieldable.run()) {
+                session.setYieldableCommand(null);
+            }
+        }
+    }
+
+    private YieldableCommand yieldableCommand;
+
+    public YieldableCommand getYieldableCommand() {
+        return yieldableCommand;
+    }
+
+    public void setYieldableCommand(YieldableCommand yieldableCommand) {
+        this.yieldableCommand = yieldableCommand;
+    }
+
+    public void checkTransactionTimeout() {
+        Transaction t = transaction;
+        if (t != null && t.getStatus() == Transaction.STATUS_WAITING) {
+            try {
+                t.checkTimeout();
+            } catch (Throwable e) {
+                t.rollback();
+                yieldableCommand = null; // 移除当前命令
+                throw e;
+            }
+        }
+    }
+
     public void replicationCommit(long validKey, boolean autoCommit) {
         if (replicationConflictType == null)
             replicationConflictType = ReplicationConflictType.NONE;
@@ -1501,6 +1563,7 @@ public class ServerSession extends SessionBase {
         sessionStatus = SessionStatus.REPLICATION_COMPLETED;
         if (autoCommit) {
             commit();
+            yieldableCommand = null;
         }
     }
 
