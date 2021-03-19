@@ -61,19 +61,17 @@ public class SQLRouter {
 
     private static void executeDistributedDefinitionStatement(StatementBase definitionStatement,
             AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        NetNodeManager m = NetNodeManagerHolder.get();
-        Set<NetNode> candidateNodes;
         ServerSession currentSession = definitionStatement.getSession();
         Database db = currentSession.getDatabase();
         String[] hostIds = db.getHostIds();
         if (hostIds.length == 0) {
             String msg = "DB: " + db.getShortName() + ", Run Mode: " + db.getRunMode() + ", no hostIds";
             throw DbException.throwInternalError(msg);
-        } else {
-            candidateNodes = new HashSet<>(hostIds.length);
-            for (String hostId : hostIds) {
-                candidateNodes.add(m.getNode(hostId));
-            }
+        }
+        NetNodeManager m = NetNodeManagerHolder.get();
+        Set<NetNode> candidateNodes = new HashSet<>(hostIds.length);
+        for (String hostId : hostIds) {
+            candidateNodes.add(m.getNode(hostId));
         }
         List<String> initReplicationNodes = null;
         // 在sharding模式下执行ReplicationStatement时，需要预先为root page初始化默认的复制节点
@@ -87,7 +85,6 @@ public class SQLRouter {
                 }
             }
         }
-
         ReplicationSession rs = Database.createReplicationSession(currentSession, candidateNodes, null,
                 initReplicationNodes);
         SQLCommand c = rs.createSQLCommand(definitionStatement.getSQL(), -1);
