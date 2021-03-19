@@ -94,6 +94,11 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     @Override
+    public int getPriority() {
+        return statement.getPriority();
+    }
+
+    @Override
     public void setPageKeys(List<PageKey> pageKeys) {
         TableFilter tf = statement.getTableFilter();
         if (tf != null)

@@ -86,6 +86,8 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
 
         T getResult();
 
+        int getPriority();
+
         void setPageKeys(List<PageKey> pageKeys);
     }
 

@@ -1452,15 +1452,13 @@ public class ServerSession extends SessionBase {
     public static class YieldableCommand {
 
         private final int packetId;
-        private final PreparedSQLStatement stmt;
         private final PreparedSQLStatement.Yieldable<?> yieldable;
         private final ServerSession session;
         private final int sessionId;
 
-        public YieldableCommand(int packetId, PreparedSQLStatement stmt, PreparedSQLStatement.Yieldable<?> yieldable,
-                ServerSession session, int sessionId) {
+        public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable, ServerSession session,
+                int sessionId) {
             this.packetId = packetId;
-            this.stmt = stmt;
             this.yieldable = yieldable;
             this.session = session;
             this.sessionId = sessionId;
@@ -1475,7 +1473,7 @@ public class ServerSession extends SessionBase {
         }
 
         public int getPriority() {
-            return stmt.getPriority();
+            return yieldable.getPriority();
         }
 
         public void execute() {
