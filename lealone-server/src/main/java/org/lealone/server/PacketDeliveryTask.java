@@ -22,7 +22,6 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.ServerSession;
 import org.lealone.net.TransferInputStream;
-import org.lealone.server.Scheduler.SessionInfo;
 import org.lealone.server.handler.PacketHandler;
 import org.lealone.server.handler.PacketHandlers;
 import org.lealone.server.protocol.Packet;
@@ -47,8 +46,8 @@ public class PacketDeliveryTask implements AsyncTask {
         this.in = in;
         this.packetId = packetId;
         this.packetType = packetType;
-        this.session = si.session;
-        this.sessionId = si.sessionId;
+        this.session = si.getSession();
+        this.sessionId = si.getSessionId();
         this.si = si;
     }
 

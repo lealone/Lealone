@@ -1488,27 +1488,57 @@ public class ServerSession extends SessionBase {
         }
     }
 
-    private YieldableCommand yieldableCommand;
-
-    public YieldableCommand getYieldableCommand() {
-        return yieldableCommand;
+    public static interface TimeoutListener {
+        void onTimeout(YieldableCommand c, Throwable e);
     }
+
+    private YieldableCommand yieldableCommand;
 
     public void setYieldableCommand(YieldableCommand yieldableCommand) {
         this.yieldableCommand = yieldableCommand;
     }
 
-    public void checkTransactionTimeout() {
+    public YieldableCommand getYieldableCommand() {
+        return yieldableCommand;
+    }
+
+    public YieldableCommand getYieldableCommand(boolean checkTimeout, TimeoutListener timeoutListener) {
+        if (yieldableCommand == null)
+            return null;
+
+        // session处于以下状态时不会被当成候选的对象
+        switch (getStatus()) {
+        case WAITING:
+            // 复制模式下不主动检查超时
+            if (checkTimeout && getReplicationName() == null) {
+                checkTransactionTimeout(timeoutListener);
+            }
+        case TRANSACTION_COMMITTING:
+        case EXCLUSIVE_MODE:
+        case REPLICA_STATEMENT_COMPLETED:
+            return null;
+        }
+        return yieldableCommand;
+    }
+
+    private void checkTransactionTimeout(TimeoutListener timeoutListener) {
         Transaction t = transaction;
         if (t != null && t.getStatus() == Transaction.STATUS_WAITING) {
             try {
                 t.checkTimeout();
             } catch (Throwable e) {
                 t.rollback();
+                if (timeoutListener != null)
+                    timeoutListener.onTimeout(yieldableCommand, e);
                 yieldableCommand = null; // 移除当前命令
-                throw e;
             }
         }
+    }
+
+    public boolean canExecuteNextCommand() {
+        // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
+        // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
+        return yieldableCommand == null || getReplicationName() != null;
     }
 
     public void replicationCommit(long validKey, boolean autoCommit) {

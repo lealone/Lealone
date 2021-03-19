@@ -32,7 +32,6 @@ import org.lealone.common.util.DateTimeUtils;
 import org.lealone.db.async.AsyncPeriodicTask;
 import org.lealone.db.async.AsyncTask;
 import org.lealone.db.async.AsyncTaskHandler;
-import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatementExecutor;
@@ -44,80 +43,6 @@ public class Scheduler extends Thread
         implements SQLStatementExecutor, PageOperationHandler, AsyncTaskHandler, Transaction.Listener {
 
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
-
-    public static class SessionInfo {
-        // taskQueue中的命令统一由scheduler调度执行
-        private final ConcurrentLinkedQueue<AsyncTask> taskQueue = new ConcurrentLinkedQueue<>();
-        private final Scheduler scheduler;
-        private final TcpServerConnection conn;
-
-        final ServerSession session;
-        final int sessionId;
-        private final int sessionTimeout;
-
-        private long lastActiveTime;
-
-        SessionInfo(Scheduler scheduler, TcpServerConnection conn, ServerSession session, int sessionId,
-                int sessionTimeout) {
-            this.scheduler = scheduler;
-            this.conn = conn;
-            this.session = session;
-            this.sessionId = sessionId;
-            this.sessionTimeout = sessionTimeout;
-            updateLastActiveTime();
-            scheduler.addSessionInfo(this);
-        }
-
-        private void updateLastActiveTime() {
-            lastActiveTime = System.currentTimeMillis();
-        }
-
-        public void submitTask(AsyncTask task) {
-            updateLastActiveTime();
-            taskQueue.add(task);
-            scheduler.wakeUp();
-        }
-
-        public void submitYieldableCommand(int packetId, PreparedSQLStatement stmt,
-                PreparedSQLStatement.Yieldable<?> yieldable) {
-            YieldableCommand yieldableCommand = new YieldableCommand(packetId, stmt, yieldable, session, sessionId);
-            session.setYieldableCommand(yieldableCommand);
-            // 执行此方法的当前线程就是scheduler，所以不用唤醒scheduler
-        }
-
-        void remove() {
-            scheduler.removeSessionInfo(this);
-        }
-
-        private void checkSessionTimeout(long currentTime) {
-            if (sessionTimeout <= 0)
-                return;
-            if (lastActiveTime + sessionTimeout < currentTime) {
-                conn.closeSession(this);
-                logger.warn("Client session timeout, session id: " + sessionId + ", host: "
-                        + conn.getWritableChannel().getHost() + ", port: " + conn.getWritableChannel().getPort());
-            }
-        }
-
-        private void runSessionTasks() {
-            // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
-            // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
-            if (session.getYieldableCommand() == null || session.getReplicationName() != null) {
-                AsyncTask task = taskQueue.poll();
-                while (task != null) {
-                    try {
-                        task.run();
-                    } catch (Throwable e) {
-                        logger.warn("Failed to run async session task: " + task + ", session id: " + sessionId, e);
-                    }
-                    // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
-                    if (session.getYieldableCommand() != null)
-                        break;
-                    task = taskQueue.poll();
-                }
-            }
-        }
-    }
 
     private final CopyOnWriteArrayList<SessionInfo> sessions = new CopyOnWriteArrayList<>();
     private final ConcurrentLinkedQueue<PageOperation> pageOperationQueue = new ConcurrentLinkedQueue<>();
@@ -141,11 +66,11 @@ public class Scheduler extends Thread
         loopInterval = DateTimeUtils.getLoopInterval(config, "scheduler_loop_interval", 100);
     }
 
-    private void addSessionInfo(SessionInfo si) {
+    void addSessionInfo(SessionInfo si) {
         sessions.add(si);
     }
 
-    private void removeSessionInfo(SessionInfo si) {
+    void removeSessionInfo(SessionInfo si) {
         sessions.remove(si);
     }
 
@@ -289,7 +214,7 @@ public class Scheduler extends Thread
                 last = c;
             } catch (Throwable e) {
                 SessionInfo si = sessions.get(c.getSessionId());
-                si.conn.sendError(si.session, c.getPacketId(), e);
+                si.sendError(c.getPacketId(), e);
             }
         }
     }
@@ -312,27 +237,9 @@ public class Scheduler extends Thread
             return null;
         YieldableCommand best = null;
         for (SessionInfo si : sessions) {
-            YieldableCommand c = si.session.getYieldableCommand();
+            YieldableCommand c = si.getYieldableCommand(checkTimeout);
             if (c == null)
                 continue;
-
-            // session处于以下状态时不会被当成候选的对象
-            switch (si.session.getStatus()) {
-            case WAITING:
-                // 复制模式下不主动检查超时
-                if (checkTimeout && si.session.getReplicationName() == null) {
-                    try {
-                        si.session.checkTransactionTimeout();
-                    } catch (Throwable e) {
-                        si.conn.sendError(si.session, c.getPacketId(), e);
-                    }
-                }
-            case TRANSACTION_COMMITTING:
-            case EXCLUSIVE_MODE:
-            case REPLICA_STATEMENT_COMPLETED:
-                continue;
-            }
-
             if (c.getPriority() > priority) {
                 best = c;
                 priority = c.getPriority();

@@ -33,7 +33,6 @@ import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
-import org.lealone.server.Scheduler.SessionInfo;
 import org.lealone.server.handler.LobPacketHandlers.LobCache;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
@@ -91,7 +90,7 @@ public class TcpServerConnection extends TransferConnection {
                 sessionNotFound(packetId, sessionId);
             }
         } else {
-            in.setSession(si.session);
+            in.setSession(si.getSession());
             PacketDeliveryTask task = new PacketDeliveryTask(this, in, packetId, packetType, si);
             si.submitTask(task);
         }
@@ -168,13 +167,13 @@ public class TcpServerConnection extends TransferConnection {
 
     void closeSession(SessionInfo si) {
         try {
-            si.session.prepareStatement("ROLLBACK", -1).executeUpdate();
-            si.session.close();
+            si.getSession().prepareStatement("ROLLBACK", -1).executeUpdate();
+            si.getSession().close();
         } catch (Exception e) {
             logger.error("Failed to close session", e);
         } finally {
             si.remove();
-            sessions.remove(si.sessionId);
+            sessions.remove(si.getSessionId());
         }
     }
 
