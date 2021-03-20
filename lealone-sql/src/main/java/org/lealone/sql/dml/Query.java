@@ -259,10 +259,8 @@ public abstract class Query extends ManipulationStatement implements org.lealone
         return createYieldableQuery(maxRows, scrollable, asyncHandler, null);
     }
 
-    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
-        return createYieldableQuery(maxRows, scrollable, asyncHandler);
-    }
+    public abstract YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
+            AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target);
 
     public void setOffset(Expression offset) {
         this.offsetExpr = offset;

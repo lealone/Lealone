@@ -36,6 +36,7 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.yieldable.DefaultYieldableQuery;
 import org.lealone.sql.yieldable.YieldableBase;
 import org.lealone.sql.yieldable.YieldableQueryBase;
 
@@ -444,7 +445,7 @@ public class SelectUnion extends Query implements ISelectUnion {
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
         if (!isLocal() && getSession().isShardingMode())
-            return super.createYieldableQuery(maxRows, scrollable, asyncHandler);
+            return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
         else
             return new YieldableSelectUnion(this, maxRows, scrollable, asyncHandler, target);
     }

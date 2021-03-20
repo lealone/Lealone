@@ -53,6 +53,7 @@ import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.Optimizer;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.yieldable.DefaultYieldableQuery;
 import org.lealone.sql.yieldable.YieldableBase;
 import org.lealone.sql.yieldable.YieldableQueryBase;
 
@@ -1335,7 +1336,7 @@ public class Select extends Query {
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
         if (!isLocal() && getSession().isShardingMode())
-            return super.createYieldableQuery(maxRows, scrollable, asyncHandler);
+            return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
         else
             return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
     }
