@@ -32,7 +32,6 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.session.Session;
-import org.lealone.db.value.ValueNull;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
@@ -690,7 +689,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                 if (old != null) {
                     r.setUndone(true);
                     // 同一个事务，先删除再更新，因为删除记录时只是打了一个删除标记，存储层并没有真实删除
-                    if (old.getValue() == null || old.getValue() == ValueNull.INSTANCE) { // 辅助索引的值是ValueNull.INSTANCE
+                    if (old.getValue() == null) {// || old.getValue() == ValueNull.INSTANCE) { //唯一索引加上这个条件会出错
+                                                 // 辅助索引的值是ValueNull.INSTANCE
                         if (tryUpdate(key, value, old) == Transaction.OPERATION_COMPLETE) {
                             listener.operationComplete();
                             afterAddComplete();
@@ -713,6 +713,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             }
         };
         map.putIfAbsent(key, ref, handler);
+
     }
 
     protected void afterAddComplete() {

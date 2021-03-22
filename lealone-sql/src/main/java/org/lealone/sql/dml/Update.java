@@ -256,7 +256,7 @@ public class Update extends ManipulationStatement {
                                 if (tableFilter.rebuildSearchRow(session, oldRow) == null)
                                     hasNext = tableFilter.next();
                                 continue;
-                            } else if (ret != Transaction.OPERATION_COMPLETE) {
+                            } else if (ret != Transaction.OPERATION_COMPLETE && pendingOperationCounter.get() > 0) {
                                 this.oldRow = oldRow;
                                 return true;
                             }
