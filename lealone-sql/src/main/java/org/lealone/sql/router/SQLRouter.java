@@ -234,14 +234,13 @@ public class SQLRouter {
         int type = statement.getType();
         switch (type) {
         case SQLStatement.SELECT: {
-            Select select = (Select) statement;
-            ServerSession currentSession = statement.getSession();
             Map<String, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
             int size = nodeToPageKeyMap.size();
             if (size <= 0) {
                 return new LocalResult();
             }
 
+            ServerSession currentSession = statement.getSession();
             String sql = statement.getPlanSQL(true);
             Session[] sessions = new Session[size];
             SQLCommand[] commands = new SQLCommand[size];
@@ -261,6 +260,7 @@ public class SQLRouter {
             }
 
             try {
+                Select select = (Select) statement;
                 if (!select.isGroupQuery() && select.getSortOrder() == null) {
                     return new SerializedResult(callables, maxRows, scrollable, select.getLimitRows());
                 } else {

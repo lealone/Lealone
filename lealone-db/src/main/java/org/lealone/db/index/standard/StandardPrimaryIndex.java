@@ -470,7 +470,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         } else if (mainIndexColumn < 0) {
             max = ValueLong.get(last.getKey());
         } else {
-            Value value = first == null ? null : first.getValue(mainIndexColumn);
+            Value value = last == null ? null : last.getValue(mainIndexColumn);
             ValueLong v;
             if (value != null) {
                 if (value instanceof ValueLong)
