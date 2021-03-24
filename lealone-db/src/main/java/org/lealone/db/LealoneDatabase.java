@@ -91,7 +91,8 @@ public class LealoneDatabase extends Database {
 
     void closeDatabase(String dbName) {
         Database db = findDatabase(dbName);
-        removeDatabaseObject(null, db, null);
+        if (db != null)
+            getDatabasesMap().remove(dbName);
     }
 
     Map<String, Database> getDatabasesMap() {

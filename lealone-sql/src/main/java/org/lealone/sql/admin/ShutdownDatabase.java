@@ -42,24 +42,22 @@ public class ShutdownDatabase extends AdminStatement {
 
     @Override
     public int update() {
+        session.getUser().checkAdmin();
+        Database db = session.getDatabase();
         switch (type) {
         case SQLStatement.SHUTDOWN_IMMEDIATELY:
-            session.getUser().checkAdmin();
-            session.getDatabase().shutdownImmediately();
+            db.shutdownImmediately();
             break;
         case SQLStatement.SHUTDOWN:
         case SQLStatement.SHUTDOWN_COMPACT:
         case SQLStatement.SHUTDOWN_DEFRAG: {
-            session.getUser().checkAdmin();
             session.commit();
             if (type == SQLStatement.SHUTDOWN_COMPACT || type == SQLStatement.SHUTDOWN_DEFRAG) {
-                session.getDatabase().setCompactMode(type);
+                db.setCompactMode(type);
             }
             // close the database, but don't update the persistent setting
-            session.getDatabase().setCloseDelay(0);
-            Database db = session.getDatabase();
-            // throttle, to allow testing concurrent
-            // execution of shutdown and query
+            db.setCloseDelay(0);
+            // throttle, to allow testing concurrent execution of shutdown and query
             session.throttle();
             for (ServerSession s : db.getSessions(false)) {
                 synchronized (s) {

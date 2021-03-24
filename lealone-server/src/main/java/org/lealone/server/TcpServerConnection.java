@@ -167,8 +167,12 @@ public class TcpServerConnection extends TransferConnection {
 
     void closeSession(SessionInfo si) {
         try {
-            si.getSession().prepareStatement("ROLLBACK", -1).executeUpdate();
-            si.getSession().close();
+            ServerSession s = si.getSession();
+            // 执行SHUTDOWN IMMEDIATELY时会模拟PowerOff，此时不必再执行后续操作
+            if (!s.getDatabase().isPowerOff()) {
+                s.prepareStatement("ROLLBACK", -1).executeUpdate();
+                s.close();
+            }
         } catch (Exception e) {
             logger.error("Failed to close session", e);
         } finally {

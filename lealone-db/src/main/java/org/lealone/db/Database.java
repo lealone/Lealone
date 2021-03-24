@@ -102,7 +102,8 @@ public class Database implements DataHandler, DbObject, IDatabase {
         STARTING,
         STARTED,
         CLOSING,
-        CLOSED;
+        CLOSED,
+        POWER_OFF
     }
 
     private volatile State state = State.CONSTRUCTOR_CALLED;
@@ -176,7 +177,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     private boolean readOnly;
 
-    private int powerOffCount;
     private int closeDelay = -1; // 不关闭
     private DatabaseCloser delayedCloser;
     private boolean deleteFilesOnDisconnect;
@@ -648,43 +648,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         // (because MetaTable returns modificationDataId)
         modificationDataId.incrementAndGet();
         return modificationMetaId.getAndIncrement();
-    }
-
-    public void setPowerOffCount(int count) {
-        if (powerOffCount == -1) {
-            return;
-        }
-        powerOffCount = count;
-    }
-
-    public int getPowerOffCount() {
-        return powerOffCount;
-    }
-
-    @Override
-    public void checkPowerOff() {
-        if (powerOffCount == 0) {
-            return;
-        }
-        if (powerOffCount > 1) {
-            powerOffCount--;
-            return;
-        }
-        if (powerOffCount != -1) {
-            try {
-                powerOffCount = -1;
-                for (Storage s : getStorages()) {
-                    s.closeImmediately();
-                }
-                if (traceSystem != null) {
-                    traceSystem.close();
-                }
-            } catch (DbException e) {
-                DbException.traceThrowable(e);
-            }
-        }
-        LealoneDatabase.getInstance().closeDatabase(name);
-        throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
     }
 
     /**
@@ -1237,18 +1200,16 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
         try {
             if (systemSession != null) {
-                if (powerOffCount != -1) {
-                    for (Table table : getAllTablesAndViews(false)) {
-                        if (table.isGlobalTemporary()) {
-                            table.removeChildrenAndResources(systemSession, null);
-                        } else {
-                            table.close(systemSession);
-                        }
+                for (Table table : getAllTablesAndViews(false)) {
+                    if (table.isGlobalTemporary()) {
+                        table.removeChildrenAndResources(systemSession, null);
+                    } else {
+                        table.close(systemSession);
                     }
-                    for (SchemaObject obj : getAllSchemaObjects(DbObjectType.SEQUENCE)) {
-                        Sequence sequence = (Sequence) obj;
-                        sequence.close();
-                    }
+                }
+                for (SchemaObject obj : getAllSchemaObjects(DbObjectType.SEQUENCE)) {
+                    Sequence sequence = (Sequence) obj;
+                    sequence.close();
                 }
                 for (SchemaObject obj : getAllSchemaObjects(DbObjectType.TRIGGER)) {
                     TriggerObject trigger = (TriggerObject) obj;
@@ -1258,11 +1219,9 @@ public class Database implements DataHandler, DbObject, IDatabase {
                         trace.error(e, "close");
                     }
                 }
-                if (powerOffCount != -1) {
-                    if (meta != null)
-                        meta.close(systemSession);
-                    systemSession.commit();
-                }
+                if (meta != null)
+                    meta.close(systemSession);
+                systemSession.commit();
             }
         } catch (DbException e) {
             trace.error(e, "close");
@@ -1308,6 +1267,36 @@ public class Database implements DataHandler, DbObject, IDatabase {
             systemSession.close();
             systemSession = null;
         }
+    }
+
+    /**
+     * Immediately close the database.
+     */
+    public void shutdownImmediately() {
+        try {
+            userSessions.clear();
+            LealoneDatabase.getInstance().closeDatabase(name);
+            for (Storage s : getStorages()) {
+                s.closeImmediately();
+            }
+            if (traceSystem != null) {
+                traceSystem.close();
+            }
+        } catch (DbException e) {
+            DbException.traceThrowable(e);
+        } finally {
+            state = State.POWER_OFF;
+        }
+    }
+
+    @Override
+    public void checkPowerOff() {
+        if (state == State.POWER_OFF)
+            throw DbException.get(ErrorCode.DATABASE_IS_CLOSED);
+    }
+
+    public boolean isPowerOff() {
+        return state == State.POWER_OFF;
     }
 
     public ArrayList<Comment> getAllComments() {
@@ -1821,21 +1810,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
     @Override
     public String toString() {
         return name + ":" + super.toString();
-    }
-
-    /**
-     * Immediately close the database.
-     */
-    public void shutdownImmediately() {
-        setPowerOffCount(1);
-        try {
-            checkPowerOff();
-        } catch (DbException e) {
-            // ignore
-        }
-        for (Storage s : getStorages()) {
-            s.closeImmediately();
-        }
     }
 
     @Override
