@@ -22,6 +22,7 @@ import java.util.Map;
 public abstract class ProtocolServerEngineBase implements ProtocolServerEngine {
 
     protected final String name;
+    protected boolean inited;
 
     // 目前用不到
     // protected Map<String, String> config;
@@ -40,17 +41,16 @@ public abstract class ProtocolServerEngineBase implements ProtocolServerEngine {
     @Override
     public void init(Map<String, String> config) {
         // this.config = config;
+        inited = true;
+    }
+
+    @Override
+    public boolean isInited() {
+        return inited;
     }
 
     @Override
     public void close() {
     }
-
-    @Override
-    public void stopProtocolServer(int port) {
-        getProtocolServer(port).stop();
-    }
-
-    protected abstract ProtocolServer getProtocolServer(int port);
 
 }

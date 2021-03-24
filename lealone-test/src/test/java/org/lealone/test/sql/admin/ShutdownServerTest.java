@@ -22,11 +22,12 @@ import org.lealone.test.sql.SqlTestBase;
 public class ShutdownServerTest extends SqlTestBase {
 
     public static void main(String[] args) throws Exception {
-        new ShutdownServerTest().run();
+        new ShutdownServerTest().runTest();
     }
 
-    // @Test
-    public void run() throws Exception {
+    // @Test //不用这个，在做集成测试时会影响其他测试
+    @Override
+    protected void test() throws Exception {
         stmt.executeUpdate("admin shutdown server " + getPort());
     }
 }

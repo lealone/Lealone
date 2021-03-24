@@ -23,6 +23,6 @@ public interface ProtocolServerEngine extends PluggableEngine {
 
     ProtocolServer getProtocolServer();
 
-    void stopProtocolServer(int port);
+    boolean isInited();
 
 }

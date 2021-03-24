@@ -48,11 +48,6 @@ public class P2pServerEngine extends ProtocolServerEngineBase {
         P2pServer.instance.stop();
     }
 
-    @Override
-    protected ProtocolServer getProtocolServer(int port) {
-        return P2pServer.instance;
-    }
-
     private static void initNetNodeManager() {
         NetNodeManagerHolder.set(P2pNetNodeManager.getInstance());
     }

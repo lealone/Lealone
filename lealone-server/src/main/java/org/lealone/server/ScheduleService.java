@@ -61,9 +61,11 @@ public class ScheduleService {
             scheduler.end();
         }
         for (Scheduler scheduler : schedulers) {
-            try {
-                scheduler.join();
-            } catch (InterruptedException e) {
+            if (Thread.currentThread() != scheduler) {
+                try {
+                    scheduler.join();
+                } catch (InterruptedException e) {
+                }
             }
         }
     }

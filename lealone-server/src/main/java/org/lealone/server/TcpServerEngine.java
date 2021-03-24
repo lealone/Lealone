@@ -35,17 +35,13 @@ public class TcpServerEngine extends ProtocolServerEngineBase {
 
     @Override
     public void init(Map<String, String> config) {
+        super.init(config);
         tcpServer.init(config);
     }
 
     @Override
     public void close() {
         tcpServer.stop();
-    }
-
-    @Override
-    protected ProtocolServer getProtocolServer(int port) {
-        return tcpServer;
     }
 
 }

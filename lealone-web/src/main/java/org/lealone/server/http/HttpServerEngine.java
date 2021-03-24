@@ -38,16 +38,12 @@ public class HttpServerEngine extends ProtocolServerEngineBase {
 
     @Override
     public void init(Map<String, String> config) {
+        super.init(config);
         httpServer.init(config);
     }
 
     @Override
     public void close() {
         httpServer.stop();
-    }
-
-    @Override
-    protected ProtocolServer getProtocolServer(int port) {
-        return httpServer;
     }
 }
