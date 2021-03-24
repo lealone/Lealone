@@ -17,11 +17,11 @@
  */
 package org.lealone.test.sql.dml;
 
-import org.junit.Test;
+import org.lealone.test.TestBase.TodoTest;
 import org.lealone.test.sql.SqlTestBase;
 
-public class BackupTest extends SqlTestBase {
-    @Test
+public class BackupTest extends SqlTestBase implements TodoTest {
+    // @Test
     public void run() {
         executeUpdate("drop table IF EXISTS BackupTest");
         executeUpdate("create table IF NOT EXISTS BackupTest(id int, name varchar(500), b boolean)");

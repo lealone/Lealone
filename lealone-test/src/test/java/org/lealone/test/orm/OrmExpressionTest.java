@@ -19,17 +19,14 @@ package org.lealone.test.orm;
 
 import java.util.List;
 
+import org.junit.Test;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.User;
 
 public class OrmExpressionTest extends UnitTestBase {
 
-    public static void main(String[] args) {
-        new OrmExpressionTest().runTest();
-    }
-
-    @Override
-    public void test() {
+    @Test
+    public void run() {
         SqlScript.createUserTable(this);
         testSelect();
         testOffsetLimit();

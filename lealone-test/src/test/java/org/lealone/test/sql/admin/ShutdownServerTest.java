@@ -17,9 +17,10 @@
  */
 package org.lealone.test.sql.admin;
 
+import org.lealone.test.TestBase.MainTest;
 import org.lealone.test.sql.SqlTestBase;
 
-public class ShutdownServerTest extends SqlTestBase {
+public class ShutdownServerTest extends SqlTestBase implements MainTest {
 
     public static void main(String[] args) throws Exception {
         new ShutdownServerTest().runTest();

@@ -21,18 +21,15 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import org.junit.Test;
 import org.lealone.orm.json.JsonObject;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.User;
 
 public class OrmCrudTest extends UnitTestBase {
 
-    public static void main(String[] args) {
-        new OrmCrudTest().runTest();
-    }
-
-    @Override
-    public void test() {
+    @Test
+    public void run() {
         SqlScript.createUserTable(this);
         crud();
         json();

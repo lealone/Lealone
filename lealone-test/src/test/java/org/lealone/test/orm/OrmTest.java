@@ -19,18 +19,15 @@ package org.lealone.test.orm;
 
 import java.util.List;
 
+import org.junit.Test;
 import org.lealone.test.UnitTestBase;
 import org.lealone.test.orm.generated.Customer;
 import org.lealone.test.orm.generated.Order;
 
 public class OrmTest extends UnitTestBase {
 
-    public static void main(String[] args) {
-        new OrmTest().runTest();
-    }
-
-    @Override
-    public void test() {
+    @Test
+    public void run() {
         // 会自动生成Customer和Order两个模型类
         SqlScript.createCustomerTable(this);
         SqlScript.createOrderTable(this);

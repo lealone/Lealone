@@ -46,6 +46,14 @@ public class TestBase extends Assert {
         void execute(String sql);
     }
 
+    // 一个标记接口，指示那些通过main方式运行的测试类
+    public static interface MainTest {
+    }
+
+    // 一个标记接口，指示那些还有bug的测试类
+    public static interface TodoTest {
+    }
+
     public static String url;
     public static final String DEFAULT_STORAGE_ENGINE_NAME = getDefaultStorageEngineName();
     public static final String TEST_BASE_DIR = "." + File.separatorChar + "target" + File.separatorChar + "test-data";

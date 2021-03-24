@@ -23,6 +23,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import org.junit.After;
+import org.junit.Before;
+
 //一个标记类，标识它的子类是进行单元测试的
 public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.SqlExecutor {
 
@@ -61,6 +64,17 @@ public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.
         } catch (SQLException e) {
             e.printStackTrace();
         }
+    }
+
+    @Before
+    public void setUpBefore() {
+        setEmbedded(true);
+        setInMemory(true);
+    }
+
+    @After
+    public void tearDownAfter() {
+        closeTransactionEngine();
     }
 
     public void runTest() {

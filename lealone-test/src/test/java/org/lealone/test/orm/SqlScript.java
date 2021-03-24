@@ -55,26 +55,30 @@ public class SqlScript {
 
     public static void createUserTable(SqlExecutor executor) {
         System.out.println("create table: user");
-
+        executor.execute("drop table if exists user");
         // 创建表: user
-        executor.execute("create table user(name char(10) primary key, notes varchar, phone int, id long, phones ARRAY)" //
-                + " package '" + MODEL_PACKAGE_NAME + "'" //
-                + " generate code '" + GENERATED_CODE_PATH + "'");
+        executor.execute(
+                "create table if not exists user(name char(10) primary key, notes varchar, phone int, id long, phones ARRAY)" //
+                        + " package '" + MODEL_PACKAGE_NAME + "'" //
+                        + " generate code '" + GENERATED_CODE_PATH + "'");
     }
 
     public static void createCustomerTable(SqlExecutor executor) {
         System.out.println("create table: customer");
 
-        executor.execute("create table customer(id long primary key, name char(10), notes varchar, phone int)" //
-                + " package '" + MODEL_PACKAGE_NAME + "'" //
-                + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
+        executor.execute("drop table if exists customer");
+        executor.execute(
+                "create table if not exists customer(id long primary key, name char(10), notes varchar, phone int)" //
+                        + " package '" + MODEL_PACKAGE_NAME + "'" //
+                        + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
         );
     }
 
     public static void createCustomerAddressTable(SqlExecutor executor) {
         System.out.println("create table: customer_address");
 
-        executor.execute("create table customer_address(customer_id long, city varchar, street varchar, "
+        executor.execute("drop table if exists customer_address");
+        executor.execute("create table if not exists customer_address(customer_id long, city varchar, street varchar, "
                 + " FOREIGN KEY(customer_id) REFERENCES customer(id))" //
                 + " package '" + MODEL_PACKAGE_NAME + "'" //
                 + " generate code '" + GENERATED_CODE_PATH + "'" //
@@ -84,7 +88,8 @@ public class SqlScript {
     public static void createProductTable(SqlExecutor executor) {
         System.out.println("create table: product");
 
-        executor.execute("create table product(product_id long primary key, product_name varchar, "
+        executor.execute("drop table if exists product");
+        executor.execute("create table if not exists product(product_id long primary key, product_name varchar, "
                 + " category varchar, unit_price double)" //
                 + " package '" + MODEL_PACKAGE_NAME + "'" //
                 + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
@@ -94,9 +99,10 @@ public class SqlScript {
     public static void createOrderTable(SqlExecutor executor) {
         System.out.println("create table: order");
 
+        executor.execute("drop table if exists `order`");
         // order是关键字，所以要用特殊方式表式
         executor.execute(
-                "create table `order`(customer_id long, order_id int primary key, order_date date, total double,"
+                "create table if not exists `order`(customer_id long, order_id int primary key, order_date date, total double,"
                         + " FOREIGN KEY(customer_id) REFERENCES customer(id))" //
                         + " package '" + MODEL_PACKAGE_NAME + "'" //
                         + " generate code '" + GENERATED_CODE_PATH + "'" // 生成领域模型类和查询器类的代码
@@ -106,7 +112,8 @@ public class SqlScript {
     public static void createOrderItemTable(SqlExecutor executor) {
         System.out.println("create table: order_item");
 
-        executor.execute("create table order_item(order_id int, product_id long, product_count int, "
+        executor.execute("drop table if exists order_item");
+        executor.execute("create table if not exists order_item(order_id int, product_id long, product_count int, "
                 + " FOREIGN KEY(order_id) REFERENCES `order`(order_id)," //
                 + " FOREIGN KEY(product_id) REFERENCES product(product_id))" //
                 + " package '" + MODEL_PACKAGE_NAME + "'" //
@@ -161,7 +168,9 @@ public class SqlScript {
     ;
 
     public static void createAllModelPropertyTable(SqlExecutor executor) {
-        executor.execute("CREATE TABLE all_model_property (" //
+
+        executor.execute("drop table if exists all_model_property");
+        executor.execute("CREATE TABLE if not exists all_model_property (" //
                 + TEST_TYPES + ")" //
                 + " PACKAGE '" + MODEL_PACKAGE_NAME + "'" //
                 + " GENERATE CODE '" + GENERATED_CODE_PATH + "'");

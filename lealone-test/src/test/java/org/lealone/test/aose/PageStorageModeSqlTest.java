@@ -19,9 +19,10 @@ package org.lealone.test.aose;
 
 import org.lealone.storage.aose.AOStorageEngine;
 import org.lealone.storage.aose.btree.PageStorageMode;
+import org.lealone.test.TestBase.TodoTest;
 import org.lealone.test.sql.SqlTestBase;
 
-public class PageStorageModeSqlTest extends SqlTestBase {
+public class PageStorageModeSqlTest extends SqlTestBase implements TodoTest {
 
     public PageStorageModeSqlTest() {
         super("PageStorageModeSqlTest");

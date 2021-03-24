@@ -24,9 +24,10 @@ import java.sql.Statement;
 import java.util.Random;
 
 import org.lealone.common.util.JdbcUtils;
+import org.lealone.test.TestBase.MainTest;
 import org.lealone.test.sql.SqlTestBase;
 
-public class StatementPriorityTest extends SqlTestBase {
+public class StatementPriorityTest extends SqlTestBase implements MainTest {
 
     public static void main(String[] args) throws Exception {
         new StatementPriorityTest().runTest();

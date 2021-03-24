@@ -17,16 +17,13 @@
  */
 package org.lealone.test.orm;
 
+import org.junit.Test;
 import org.lealone.test.UnitTestBase;
 
 public class AllModelPropertyTest extends UnitTestBase {
 
-    public static void main(String[] args) {
-        new AllModelPropertyTest().runTest();
-    }
-
-    @Override
-    public void test() {
+    @Test
+    public void run() {
         SqlScript.createAllModelPropertyTable(this);
     }
 }

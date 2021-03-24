@@ -26,14 +26,17 @@ import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.StringUtils;
 import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
+import org.lealone.test.TestBase.MainTest;
 import org.lealone.test.sql.SqlTestBase;
 
-public class TransactionalDDLTest extends SqlTestBase {
+public class TransactionalDDLTest extends SqlTestBase implements MainTest {
     public static void main(String[] args) throws Exception {
-        new TransactionalDDLTest().run();
+        new TransactionalDDLTest().runTest();
     }
 
-    public void run() throws Exception {
+    // @Test
+    @Override
+    public void test() throws Exception {
         conn.setAutoCommit(false);
         runDLL();
         // runDLLs();

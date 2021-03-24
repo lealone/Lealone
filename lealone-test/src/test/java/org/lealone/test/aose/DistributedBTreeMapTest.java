@@ -36,8 +36,9 @@ import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreePage;
 import org.lealone.storage.aose.btree.PageReference;
 import org.lealone.test.TestBase;
+import org.lealone.test.TestBase.TodoTest;
 
-public class DistributedBTreeMapTest extends TestBase {
+public class DistributedBTreeMapTest extends TestBase implements TodoTest {
 
     private AOStorage storage;
     private String storagePath;
