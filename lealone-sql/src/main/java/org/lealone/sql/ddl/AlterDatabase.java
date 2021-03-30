@@ -47,6 +47,7 @@ public class AlterDatabase extends DatabaseStatement {
     private final Database db;
     private String[] newHostIds;
     private String[] oldHostIds;
+    private String hostIds; // 可以指定具体的hostId
 
     public AlterDatabase(ServerSession session, Database db, RunMode runMode, CaseInsensitiveMap<String> parameters) {
         super(session, db.getName());
@@ -55,6 +56,13 @@ public class AlterDatabase extends DatabaseStatement {
         // 先使用原有的参数，然后再用新的覆盖
         this.parameters = new CaseInsensitiveMap<>(db.getParameters());
         if (parameters != null && !parameters.isEmpty()) {
+            hostIds = parameters.get("hostIds");
+            if (hostIds != null) {
+                hostIds = hostIds.trim();
+                if (hostIds.isEmpty())
+                    hostIds = null;
+            }
+
             this.parameters.putAll(parameters);
             validateParameters();
         }
@@ -130,8 +138,8 @@ public class AlterDatabase extends DatabaseStatement {
         assignOperationNode();
         if (session.isRoot()) {
             oldHostIds = db.getHostIds();
-            if (parameters != null && parameters.containsKey("hostIds")) {
-                newHostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
+            if (hostIds != null) {
+                newHostIds = getNewNodes(oldHostIds, hostIds);
             } else {
                 newHostIds = NetNodeManagerHolder.get().assignNodes(db);
             }
@@ -145,17 +153,21 @@ public class AlterDatabase extends DatabaseStatement {
         } else {
             if (isTargetNode(db)) {
                 oldHostIds = db.getHostIds();
-                HashSet<String> oldSet = new HashSet<>(Arrays.asList(oldHostIds));
-                if (parameters != null && parameters.containsKey("hostIds")) {
-                    String[] hostIds = StringUtils.arraySplit(parameters.get("hostIds"), ',', true);
-                    HashSet<String> newSet = new HashSet<>(Arrays.asList(hostIds));
-                    newSet.removeAll(oldSet);
-                    newHostIds = newSet.toArray(new String[0]);
+                if (hostIds != null) {
+                    newHostIds = getNewNodes(oldHostIds, hostIds);
                 } else {
                     DbException.throwInternalError();
                 }
             }
         }
+    }
+
+    private static String[] getNewNodes(String[] oldHostIds, String newHostIds) {
+        String[] hostIds = StringUtils.arraySplit(newHostIds, ',', true);
+        HashSet<String> newSet = new HashSet<>(Arrays.asList(hostIds));
+        HashSet<String> oldSet = new HashSet<>(Arrays.asList(oldHostIds));
+        newSet.removeAll(oldSet);
+        return newSet.toArray(new String[0]);
     }
 
     private void assignOperationNode() {
@@ -181,25 +193,24 @@ public class AlterDatabase extends DatabaseStatement {
 
     // 判断当前节点是否是发起数据复制操作的节点
     private boolean isOperationNode(Database db) {
-        // 如果当前节点是接入节点并且是数据库所在的目标节点之一，
-        // 那么当前节点就会被选为发起数据复制操作的节点
-        if (session.isRoot()) {
-            if (isTargetNode(db)) {
+        // // 如果当前节点是接入节点并且是数据库所在的目标节点之一，
+        // // 那么当前节点就会被选为发起数据复制操作的节点
+        // if (session.isRoot()) {
+        // if (isTargetNode(db)) {
+        // return true;
+        // } else {
+        // return false;
+        // }
+        // }
+        // 看看当前节点是不是被选中的节点
+        String operationNode = db.getParameters().get("_operationNode_");
+        if (operationNode != null) {
+            NetNode node = db.getNode(operationNode);
+            if (node.equals(NetNode.getLocalP2pNode())) {
                 return true;
-            } else {
-                return false;
             }
-        } else {
-            // 看看当前节点是不是被选中的节点
-            String operationNode = parameters.get("_operationNode_");
-            if (operationNode != null) {
-                NetNode node = db.getNode(operationNode);
-                if (node.equals(NetNode.getLocalP2pNode())) {
-                    return true;
-                }
-            }
-            return false;
         }
+        return false;
     }
 
     private void rewriteSql() {
