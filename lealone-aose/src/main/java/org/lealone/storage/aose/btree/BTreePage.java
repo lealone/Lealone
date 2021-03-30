@@ -426,12 +426,9 @@ public class BTreePage {
      * @param buff the buffer
      * @param chunkId the chunk id
      * @param offset the offset within the chunk
-     * @param pageLength the page length
+     * @param expectedPageLength the expected page length
+     * @param disableCheck disable check
      */
-    void read(ByteBuffer buff, int chunkId, int offset, int pageLength) {
-        read(buff, chunkId, offset, pageLength, false);
-    }
-
     void read(ByteBuffer buff, int chunkId, int offset, int expectedPageLength, boolean disableCheck) {
         throw ie();
     }
@@ -528,7 +525,7 @@ public class BTreePage {
         p.pos = pos;
         int chunkId = PageUtils.getPageChunkId(pos);
         int offset = PageUtils.getPageOffset(pos);
-        p.read(buff, chunkId, offset, pageLength);
+        p.read(buff, chunkId, offset, pageLength, false);
         return p;
     }
 
@@ -606,7 +603,8 @@ public class BTreePage {
         BTreePage p = create(map, type);
         int chunkId = 0;
         int offset = buff.position();
-        p.read(buff, chunkId, offset, buff.limit());
+        int pageLength = buff.getInt();
+        p.read(buff, chunkId, offset, pageLength, true);
         return p;
     }
 

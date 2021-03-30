@@ -389,7 +389,9 @@ public class BTreeLeafPage extends BTreeLocalPage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (!replicatePage) {
+        if (replicatePage) {
+            chunk.pagePositionToLengthMap.put(0L, pageLength);
+        } else {
             updateChunkAndCachePage(chunk, start, pageLength, type);
             removeIfInMemory();
         }
@@ -437,7 +439,9 @@ public class BTreeLeafPage extends BTreeLocalPage {
         }
         buff.position(oldPos);
 
-        if (!replicatePage) {
+        if (replicatePage) {
+            chunk.pagePositionToLengthMap.put(0L, pageLength);
+        } else {
             updateChunkAndCachePage(chunk, start, pageLength, type);
             removeIfInMemory();
         }
@@ -515,7 +519,11 @@ public class BTreeLeafPage extends BTreeLocalPage {
         BTreeLeafPage p = copy(false);
         BTreeChunk chunk = new BTreeChunk(0);
         buff.put((byte) PageUtils.PAGE_TYPE_LEAF);
+        int start = buff.position();
+        buff.putInt(0); // 回填pageLength
         p.write(chunk, buff, true);
+        int pageLength = chunk.pagePositionToLengthMap.get(0L);
+        buff.putInt(start, pageLength);
     }
 
     @Override

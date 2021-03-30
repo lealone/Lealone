@@ -296,7 +296,9 @@ public class BTreeNodePage extends BTreeLocalPage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (!replicatePage) {
+        if (replicatePage) {
+            chunk.pagePositionToLengthMap.put(0L, pageLength);
+        } else {
             updateChunkAndCachePage(chunk, start, pageLength, type);
 
             // cache again - this will make sure nodes stays in the cache
@@ -471,7 +473,11 @@ public class BTreeNodePage extends BTreeLocalPage {
 
         BTreeChunk chunk = new BTreeChunk(0);
         buff.put((byte) PageUtils.PAGE_TYPE_NODE);
+        int start = buff.position();
+        buff.putInt(0); // 回填pageLength
         p.write(chunk, buff, true);
+        int pageLength = chunk.pagePositionToLengthMap.get(0L);
+        buff.putInt(start, pageLength);
     }
 
     @Override

@@ -78,7 +78,9 @@ public class BTreeRemotePage extends BTreePage {
 
         writeCheckValue(buff, chunkId, start, pageLength, checkPos);
 
-        if (!replicatePage) {
+        if (replicatePage) {
+            chunk.pagePositionToLengthMap.put(0L, pageLength);
+        } else {
             updateChunkAndCachePage(chunk, start, pageLength, type);
         }
     }
@@ -125,6 +127,10 @@ public class BTreeRemotePage extends BTreePage {
         BTreeRemotePage p = copy(false);
         BTreeChunk chunk = new BTreeChunk(0);
         buff.put((byte) PageUtils.PAGE_TYPE_REMOTE);
+        int start = buff.position();
+        buff.putInt(0); // 回填pageLength
         p.write(chunk, buff, true);
+        int pageLength = chunk.pagePositionToLengthMap.get(0L);
+        buff.putInt(start, pageLength);
     }
 }
