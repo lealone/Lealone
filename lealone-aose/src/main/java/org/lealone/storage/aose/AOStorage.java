@@ -173,14 +173,14 @@ public class AOStorage extends StorageBase {
         }
     }
 
-    private void replicateRootPage(IDatabase db, StorageMap<?, ?> map, DataBuffer p, String[] oldNodes,
+    private void replicateRootPage(IDatabase db, StorageMap<?, ?> map, DataBuffer buff, String[] oldNodes,
             RunMode runMode) {
         String mapName = map.getName();
-        ValueString.type.write(p, mapName);
+        ValueString.type.write(buff, mapName);
 
         BTreeMap<?, ?> btreeMap = (BTreeMap<?, ?>) map;
         setBTreeMap(btreeMap, db, runMode, oldNodes);
-        btreeMap.replicateRootPage(p);
+        btreeMap.replicateRootPage(buff);
     }
 
     @Override
