@@ -29,7 +29,7 @@ import org.lealone.transaction.Transaction;
 
 public class SessionPool {
 
-    private static final int QUEUE_SIZE = 3;
+    private static final int QUEUE_SIZE = Integer.parseInt(System.getProperty("lealone.session.pool.queue.size", "3"));
 
     // key是访问数据库的JDBC URL
     private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<Session>> pool = new ConcurrentHashMap<>();
@@ -49,39 +49,14 @@ public class SessionPool {
         return queue;
     }
 
-    public static Session getSession(ServerSession originalSession, String url) {
-        return getSession(originalSession, url, true);
-    }
-
-    public static Session getSession(ServerSession originalSession, String url, boolean remote) {
+    private static Session getSessionFromCache(String url, boolean remote) {
         Session session = remote ? getQueue(url).poll() : null; // 在本地创建session时不用从缓存队列中找
-
-        if (session == null || session.isClosed()) {
-            // 这里没有直接使用Future.get，是因为在分布式场景下两个节点互联时，
-            // 若是调用getSession的线程和解析session初始化包时分配的线程是同一个，会导致死锁。
-            Transaction.Listener listener = Transaction.getTransactionListener();
-            listener.beforeOperation();
-            AtomicReference<Session> sessionRef = new AtomicReference<>();
-            getSessionAsync(originalSession, url, remote).onComplete(ar -> {
-                if (ar.isSucceeded()) {
-                    sessionRef.set(ar.getResult());
-                    listener.operationComplete();
-                } else {
-                    listener.setException(ar.getCause());
-                    listener.operationUndo();
-                }
-            });
-            listener.await();
-            session = sessionRef.get();
-        }
+        if (session == null || session.isClosed())
+            return null;
         return session;
     }
 
-    public static Future<Session> getSessionAsync(ServerSession originalSession, String url) {
-        return getSessionAsync(originalSession, url, true);
-    }
-
-    public static Future<Session> getSessionAsync(ServerSession originalSession, String url, boolean remote) {
+    private static Future<Session> createSessionAsync(ServerSession originalSession, String url, boolean remote) {
         ConnectionInfo oldCi = originalSession.getConnectionInfo();
         // 未来新加的代码如果忘记设置这个字段，出问题时方便查找原因
         if (oldCi == null) {
@@ -95,8 +70,38 @@ public class SessionPool {
         ci.setFilePasswordHash(oldCi.getFilePasswordHash());
         ci.setFileEncryptionKey(oldCi.getFileEncryptionKey());
         ci.setRemote(remote);
-        // 因为已经精确知道要连哪个节点了，connect不用考虑运行模式，所以用false
+        // 因为已经精确知道要连哪个节点了，不用考虑运行模式，所以用false
         return ci.getSessionFactory().createSession(ci, false);
+    }
+
+    public static Session getSessionSync(ServerSession originalSession, String url, boolean remote) {
+        Session session = getSessionFromCache(url, remote);
+        if (session != null)
+            return session;
+
+        // 这里没有直接使用Future.get，是因为在分布式场景下两个节点互联时，
+        // 若是调用createSessionAsync的线程和解析session初始化包时分配的线程是同一个，会导致死锁。
+        Transaction.Listener listener = Transaction.getTransactionListener();
+        listener.beforeOperation();
+        AtomicReference<Session> sessionRef = new AtomicReference<>();
+        createSessionAsync(originalSession, url, remote).onComplete(ar -> {
+            if (ar.isSucceeded()) {
+                sessionRef.set(ar.getResult());
+                listener.operationComplete();
+            } else {
+                listener.setException(ar.getCause());
+                listener.operationUndo();
+            }
+        });
+        listener.await();
+        return sessionRef.get();
+    }
+
+    public static Future<Session> getSessionAsync(ServerSession originalSession, String url, boolean remote) {
+        Session session = getSessionFromCache(url, remote);
+        if (session != null)
+            return Future.succeededFuture(session);
+        return createSessionAsync(originalSession, url, remote);
     }
 
     public static void release(Session session) {

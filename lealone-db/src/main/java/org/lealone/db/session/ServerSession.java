@@ -1299,7 +1299,7 @@ public class ServerSession extends SessionBase {
         String url = getURL(hostAndPort);
         Session s = nestedSessionCache.get(url);
         if (s == null) {
-            s = SessionPool.getSession(this, url, remote);
+            s = SessionPool.getSessionSync(this, url, remote);
             if (transaction != null)
                 transaction.addParticipant(s);
             nestedSessionCache.put(url, s);
@@ -1313,7 +1313,6 @@ public class ServerSession extends SessionBase {
                 s.setParentTransaction(null);
                 SessionPool.release(s);
             }
-
             nestedSessionCache.clear();
         }
     }
@@ -1689,7 +1688,7 @@ public class ServerSession extends SessionBase {
 
         AsyncCallback<R> ac = new AsyncCallback<>();
         // 不参与当前事务，所以不用当成当前session的嵌套session
-        SessionPool.getSessionAsync(this, url).onComplete(ar -> {
+        SessionPool.getSessionAsync(this, url, true).onComplete(ar -> {
             if (ar.isSucceeded()) {
                 Session s = ar.getResult();
                 s.send(packet, hostAndPort, ackPacketHandler).onComplete(ar2 -> {
