@@ -21,9 +21,7 @@ import java.util.Properties;
 
 import org.lealone.client.jdbc.JdbcConnection;
 import org.lealone.client.jdbc.JdbcDriver;
-import org.lealone.client.storage.ClientStorage;
 import org.lealone.db.async.Future;
-import org.lealone.storage.Storage;
 
 public class LealoneClient {
 
@@ -37,10 +35,5 @@ public class LealoneClient {
 
     public static Future<JdbcConnection> getConnection(String url, Properties info) {
         return JdbcDriver.getConnection(url, info);
-    }
-
-    public static Storage getStorage(String url) {
-        // return ClientStorageEngine.getInstance().getStorageBuilder().openStorage();
-        return new ClientStorage(url);
     }
 }

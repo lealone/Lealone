@@ -23,24 +23,13 @@ import java.sql.SQLException;
 import org.lealone.client.LealoneClient;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.db.async.Future;
-import org.lealone.storage.Storage;
-import org.lealone.storage.StorageMap;
 import org.lealone.test.TestBase;
 
 public class LealoneClientTest {
 
     public static void main(String[] args) {
         String url = new TestBase().getURL(LealoneDatabase.NAME);
-        // storageTest(url);
         connectionTest(url);
-    }
-
-    static void storageTest(String url) {
-        Storage storage = LealoneClient.getStorage(url);
-        StorageMap<String, String> map = storage.openMap("test", null);
-        map.put("k1", "v1");
-        String key = map.get("k1");
-        System.out.println(key);
     }
 
     static void connectionTest(String url) {
