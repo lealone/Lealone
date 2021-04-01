@@ -83,6 +83,8 @@ public class ConnectionInfo implements Cloneable {
     private int networkTimeout = DEFAULT_NETWORK_TIMEOUT;
     private boolean traceEnabled;
 
+    private boolean isServiceConnection;
+
     public ConnectionInfo() {
     }
 
@@ -128,6 +130,7 @@ public class ConnectionInfo implements Cloneable {
 
         setUserName(removeProperty(ConnectionSetting.USER, ""));
         convertPasswords();
+        isServiceConnection = removeProperty(ConnectionSetting.IS_SERVICE_CONNECTION, false);
 
         if (isEmbedded() && isPersistent()) {
             String baseDir = SysProperties.getBaseDirSilently();
@@ -766,5 +769,9 @@ public class ConnectionInfo implements Cloneable {
 
     public void initTraceProperty() {
         traceEnabled = getProperty(ConnectionSetting.TRACE_ENABLED, false);
+    }
+
+    public boolean isServiceConnection() {
+        return isServiceConnection;
     }
 }

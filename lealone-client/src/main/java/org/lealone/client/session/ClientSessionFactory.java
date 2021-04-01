@@ -153,6 +153,10 @@ public class ClientSessionFactory implements SessionFactory {
     private static void redirectIfNeeded(AutoReconnectSession parent, ClientSession clientSession, ConnectionInfo ci,
             AsyncCallback<Session> topAc) {
         if (clientSession.getRunMode() == RunMode.REPLICATION) {
+            if (ci.isServiceConnection()) {
+                createServiceSession(parent, clientSession, ci, topAc);
+                return;
+            }
             String[] replicationServers = StringUtils.arraySplit(clientSession.getTargetNodes(), ',', true);
             int size = replicationServers.length;
             AtomicInteger count = new AtomicInteger();
@@ -211,6 +215,18 @@ public class ClientSessionFactory implements SessionFactory {
             rs.setAutoCommit(clientSession.isAutoCommit());
             parent.setSession(rs);
             topAc.setAsyncResult(parent);
+        }
+    }
+
+    // 在复制模式场景下调用微服务不需要创建ReplicationSession，只需随机选择一个节点即可
+    private static void createServiceSession(AutoReconnectSession parent, ClientSession clientSession,
+            ConnectionInfo ci, AsyncCallback<Session> topAc) {
+        if (clientSession.isValid()) {
+            parent.setSession(clientSession);
+            topAc.setAsyncResult(parent);
+        } else {
+            ConnectionInfo ci2 = ci.copy(clientSession.getTargetNodes());
+            createSession(ci2, false, topAc);
         }
     }
 }

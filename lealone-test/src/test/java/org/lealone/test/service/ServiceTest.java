@@ -20,17 +20,28 @@ package org.lealone.test.service;
 import java.util.UUID;
 
 import org.junit.Test;
+import org.lealone.test.orm.SqlScript;
 import org.lealone.test.service.generated.AllTypeService;
 import org.lealone.test.service.generated.HelloWorldService;
 import org.lealone.test.sql.SqlTestBase;
 
-public class ServiceConsumerTest extends SqlTestBase {
+public class ServiceTest extends SqlTestBase {
+
     @Test
-    public void testService() {
+    public void run() throws Exception {
+        // 创建user表
+        SqlScript.createUserTable(this);
+        createService(this);
         callService(getURL());
     }
 
-    public static void callService(String url) {
+    private static void createService(SqlExecutor executor) {
+        SqlScript.createUserService(executor);
+        SqlScript.createHelloWorldService(executor);
+        SqlScript.createAllTypeService(executor);
+    }
+
+    private static void callService(String url) {
         HelloWorldService helloWorldService = HelloWorldService.create(url);
         helloWorldService.sayHello();
         String r = helloWorldService.sayGoodbyeTo("zhh");

@@ -24,6 +24,7 @@ public enum ConnectionSetting {
     PASSWORD,
     PASSWORD_HASH,
     IS_LOCAL,
+    IS_SERVICE_CONNECTION,
     NET_FACTORY_NAME,
     NETWORK_TIMEOUT,
     TRACE_ENABLED;

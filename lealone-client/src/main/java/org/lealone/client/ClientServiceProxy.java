@@ -18,10 +18,12 @@
 package org.lealone.client;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashMap;
+import java.util.Properties;
+
+import org.lealone.db.ConnectionSetting;
 
 public class ClientServiceProxy {
 
@@ -34,7 +36,9 @@ public class ClientServiceProxy {
                 synchronized (connMap) {
                     conn = connMap.get(url);
                     if (conn == null) {
-                        conn = DriverManager.getConnection(url);
+                        Properties info = new Properties();
+                        info.put(ConnectionSetting.IS_SERVICE_CONNECTION.name(), "true");
+                        conn = LealoneClient.getConnection(url, info).get();
                         connMap.put(url, conn);
                     }
                 }
