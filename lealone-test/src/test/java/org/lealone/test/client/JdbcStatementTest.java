@@ -82,7 +82,7 @@ public class JdbcStatementTest extends TestBase {
             e.printStackTrace();
         }).get();
 
-        stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(2, 2)", res -> {
+        stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(2, 2)").onComplete(res -> {
             if (res.isSucceeded()) {
                 System.out.println("updateCount: " + res.getResult());
             } else {
@@ -92,7 +92,7 @@ public class JdbcStatementTest extends TestBase {
             }
 
             try {
-                stmt.executeQueryAsync("SELECT * FROM test where f2 = 2", res2 -> {
+                stmt.executeQueryAsync("SELECT * FROM test where f2 = 2").onComplete(res2 -> {
                     if (res2.isSucceeded()) {
                         ResultSet rs = res2.getResult();
                         try {

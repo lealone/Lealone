@@ -37,8 +37,6 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.value.DataType;
@@ -106,10 +104,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         return executeQueryInternal(false);
     }
 
-    public Future<ResultSet> executeQueryAsync(AsyncHandler<AsyncResult<ResultSet>> handler) {
-        return executeQueryAsync().onComplete(handler);
-    }
-
     private Future<ResultSet> executeQueryInternal(boolean sync) {
         try {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
@@ -170,10 +164,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     public Future<Integer> executeUpdateAsync() {
         debugCodeCall("executeUpdateAsync");
         return executeUpdateInternal(false);
-    }
-
-    public Future<Integer> executeUpdateAsync(AsyncHandler<AsyncResult<Integer>> handler) {
-        return executeUpdateAsync().onComplete(handler);
     }
 
     private Future<Integer> executeUpdateInternal(boolean sync) {

@@ -55,7 +55,7 @@ public class JdbcPreparedStatementTest extends TestBase {
         for (int i = 1; i <= count; i++) {
             ps.setInt(1, i * 100);
             ps.setLong(2, 2 * i * 200);
-            ps.executeUpdateAsync(ar -> {
+            ps.executeUpdateAsync().onComplete(ar -> {
                 latch.countDown();
             });
         }
@@ -68,7 +68,7 @@ public class JdbcPreparedStatementTest extends TestBase {
 
         CountDownLatch latch2 = new CountDownLatch(1);
         ps.setLong(1, 2);
-        ps.executeQueryAsync(ar -> {
+        ps.executeQueryAsync().onComplete(ar -> {
             ResultSet rs = ar.getResult();
             try {
                 while (rs.next()) {
@@ -118,7 +118,7 @@ public class JdbcPreparedStatementTest extends TestBase {
         CountDownLatch latch = new CountDownLatch(1);
         ps.setInt(1, 2);
         ps.setLong(2, 2);
-        ps.executeUpdateAsync(res -> {
+        ps.executeUpdateAsync().onComplete(res -> {
             System.out.println("updateCount: " + res.getResult());
             latch.countDown();
         });
@@ -134,7 +134,7 @@ public class JdbcPreparedStatementTest extends TestBase {
 
         JdbcPreparedStatement ps2 = ps;
         ps2.setLong(1, 2);
-        ps2.executeQueryAsync(res -> {
+        ps2.executeQueryAsync().onComplete(res -> {
             ResultSet rs2 = res.getResult();
             try {
                 while (rs2.next()) {

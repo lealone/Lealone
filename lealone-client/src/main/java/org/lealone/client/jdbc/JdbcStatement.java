@@ -23,8 +23,6 @@ import org.lealone.db.ConnectionInfo;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.Session;
@@ -77,10 +75,6 @@ public class JdbcStatement extends TraceObject implements Statement {
 
     public Future<ResultSet> executeQueryAsync(String sql) {
         return executeQueryInternal(sql, false);
-    }
-
-    public Future<ResultSet> executeQueryAsync(String sql, AsyncHandler<AsyncResult<ResultSet>> handler) {
-        return executeQueryAsync(sql).onComplete(handler);
     }
 
     private Future<ResultSet> executeQueryInternal(String sql, boolean sync) {
@@ -211,10 +205,6 @@ public class JdbcStatement extends TraceObject implements Statement {
     public Future<Integer> executeUpdateAsync(String sql) {
         debugCodeCall("executeUpdateAsync", sql);
         return executeUpdateInternal(sql, false);
-    }
-
-    public Future<Integer> executeUpdateAsync(String sql, AsyncHandler<AsyncResult<Integer>> handler) {
-        return executeUpdateAsync(sql).onComplete(handler);
     }
 
     private Future<Integer> executeUpdateInternal(String sql, boolean sync) {

@@ -23,9 +23,9 @@ import java.sql.SQLException;
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcDriver;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcDriverTest extends TestBase {
+public class JdbcDriverTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         String url = getURL(LealoneDatabase.NAME);

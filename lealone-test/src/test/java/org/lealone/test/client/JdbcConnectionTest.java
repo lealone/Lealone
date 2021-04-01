@@ -24,9 +24,9 @@ import java.util.concurrent.CountDownLatch;
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.db.LealoneDatabase;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcConnectionTest extends TestBase {
+public class JdbcConnectionTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
@@ -74,7 +74,7 @@ public class JdbcConnectionTest extends TestBase {
                     CountDownLatch asyncLatch = new CountDownLatch(asyncCount);
                     for (int j = 0; j < asyncCount; j++) {
 
-                        stmt.executeUpdateAsync(sql, ar -> {
+                        stmt.executeUpdateAsync(sql).onComplete(ar -> {
                             asyncLatch.countDown();
                         });
 
