@@ -63,7 +63,7 @@ public class ClientSessionFactory implements SessionFactory {
         return ac;
     }
 
-    private void createSession(ConnectionInfo ci, boolean allowRedirect, AsyncCallback<Session> ac) {
+    private static void createSession(ConnectionInfo ci, boolean allowRedirect, AsyncCallback<Session> ac) {
         String[] servers = StringUtils.arraySplit(ci.getServers(), ',', true);
         Random random = new Random(System.currentTimeMillis());
         AutoReconnectSession parent = new AutoReconnectSession(ci);
@@ -74,8 +74,8 @@ public class ClientSessionFactory implements SessionFactory {
     // 这时接入节点会返回数据库的真实所在节点，最后再根据数据库的运行模式打开合适的连接即可，
     // 复制模式需要打开所有节点，其他运行模式只需要打开一个。
     // 如果第一次从servers中随机选择的一个连接失败了，会尝试其他的，当所有尝试都失败了才会抛出异常。
-    private void createSession(AutoReconnectSession parent, ConnectionInfo ci, String[] servers, boolean allowRedirect,
-            Random random, AsyncCallback<Session> topAc) {
+    private static void createSession(AutoReconnectSession parent, ConnectionInfo ci, String[] servers,
+            boolean allowRedirect, Random random, AsyncCallback<Session> topAc) {
         int randomIndex = random.nextInt(servers.length);
         String server = servers[randomIndex];
         AsyncCallback<ClientSession> ac = new AsyncCallback<>();
@@ -96,10 +96,9 @@ public class ClientSessionFactory implements SessionFactory {
                     e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, e, e + ": " + server);
                     topAc.setAsyncResult(e);
                 } else {
-                    int i = 0;
                     int len = servers.length;
                     String[] newServers = new String[len - 1];
-                    for (int j = 0; j < len; j++) {
+                    for (int i = 0, j = 0; j < len; j++) {
                         if (j != randomIndex)
                             newServers[i++] = servers[j];
                     }
@@ -110,7 +109,7 @@ public class ClientSessionFactory implements SessionFactory {
         createClientSession(parent, ci, server, ac);
     }
 
-    private void createClientSession(AutoReconnectSession parent, ConnectionInfo ci, String server,
+    private static void createClientSession(AutoReconnectSession parent, ConnectionInfo ci, String server,
             AsyncCallback<ClientSession> ac) {
         NetNode node = NetNode.createTCP(server);
         NetFactory factory = NetFactoryManager.getFactory(ci.getNetFactoryName());
@@ -151,7 +150,7 @@ public class ClientSessionFactory implements SessionFactory {
         });
     }
 
-    private void redirectIfNeeded(AutoReconnectSession parent, ClientSession clientSession, final ConnectionInfo ci,
+    private static void redirectIfNeeded(AutoReconnectSession parent, ClientSession clientSession, ConnectionInfo ci,
             AsyncCallback<Session> topAc) {
         if (clientSession.getRunMode() == RunMode.REPLICATION) {
             String[] replicationServers = StringUtils.arraySplit(clientSession.getTargetNodes(), ',', true);
@@ -162,15 +161,11 @@ public class ClientSessionFactory implements SessionFactory {
             AsyncCallback<ClientSession> replicationAc = new AsyncCallback<>();
             replicationAc.onComplete(ar -> {
                 if (ar.isSucceeded()) {
-                    sessions.add(ar.getResult());
-                    if (count.incrementAndGet() == size) {
-                        ReplicationSession rs = new ReplicationSession(sessions.toArray(new Session[0]));
-                        rs.setAutoCommit(clientSession.isAutoCommit());
-                        parent.setSession(rs);
-                        topAc.setAsyncResult(parent);
-                    }
+                    addSessionForReplication(parent, ar.getResult(), sessions, size, count, topAc);
                 } else {
-                    count.incrementAndGet();
+                    if (count.incrementAndGet() == size) {
+                        topAc.setAsyncResult(ar.getCause());
+                    }
                 }
             });
 
@@ -180,8 +175,7 @@ public class ClientSessionFactory implements SessionFactory {
                 if (clientSession.isValid()) {
                     NetNode node = NetNode.createTCP(replicationServers[i]);
                     if (node.getInetSocketAddress().equals(inetSocketAddress)) {
-                        sessions.add(clientSession);
-                        count.incrementAndGet();
+                        addSessionForReplication(parent, clientSession, sessions, size, count, topAc);
                         continue;
                     }
                 }
@@ -206,6 +200,17 @@ public class ClientSessionFactory implements SessionFactory {
                 parent.setSession(clientSession);
                 topAc.setAsyncResult(parent);
             }
+        }
+    }
+
+    private static void addSessionForReplication(AutoReconnectSession parent, ClientSession clientSession,
+            CopyOnWriteArrayList<Session> sessions, int size, AtomicInteger count, AsyncCallback<Session> topAc) {
+        sessions.add(clientSession);
+        if (count.incrementAndGet() == size) {
+            ReplicationSession rs = new ReplicationSession(sessions.toArray(new Session[0]));
+            rs.setAutoCommit(clientSession.isAutoCommit());
+            parent.setSession(rs);
+            topAc.setAsyncResult(parent);
         }
     }
 }

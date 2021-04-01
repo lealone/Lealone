@@ -60,7 +60,7 @@ import org.lealone.storage.replication.ReplicaStorageCommand;
  * @author H2 Group
  * @author zhh
  */
-// 一个ClientSession对应一条JdbcConnection，多个ClientSession其用一个TcpClientConnection。
+// 一个ClientSession对应一条JdbcConnection，多个ClientSession共用一个TcpClientConnection。
 // 同JdbcConnection一样，每个ClientSession对象也不是线程安全的，只能在单线程中使用。
 // 另外，每个ClientSession只对应一个server，
 // 虽然ConnectionInfo允许在JDBC URL中指定多个server，但是放在ClientSessionFactory中处理了。
