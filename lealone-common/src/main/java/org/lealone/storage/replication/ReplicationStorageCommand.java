@@ -48,16 +48,16 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     public Future<Object> get(String mapName, ByteBuffer key) {
         HashSet<ReplicaStorageCommand> seen = new HashSet<>();
         AsyncCallback<Object> ac = new AsyncCallback<>();
-        get(mapName, key, 1, seen, ac);
+        executeGet(mapName, key, 1, seen, ac);
         return ac;
     }
 
-    public void get(String mapName, ByteBuffer key, int tries, HashSet<ReplicaStorageCommand> seen,
+    private void executeGet(String mapName, ByteBuffer key, int tries, HashSet<ReplicaStorageCommand> seen,
             AsyncCallback<Object> ac) {
         AsyncHandler<AsyncResult<Object>> handler = ar -> {
             if (ar.isFailed() && tries < session.maxTries) {
                 key.rewind();
-                get(mapName, key, tries + 1, seen, ac);
+                executeGet(mapName, key, tries + 1, seen, ac);
             } else {
                 ac.setAsyncResult(ar);
             }

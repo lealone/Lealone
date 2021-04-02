@@ -24,16 +24,14 @@ import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.sql.DSqlTestBase;
-import org.lealone.test.sql.SqlTestBase;
 
 public class ReplicationTest extends DSqlTestBase {
 
     private static final String REPLICATION_DB_NAME = "ReplicationTestDB";
 
     public ReplicationTest() {
-        // super(REPLICATION_DB_NAME, RunMode.REPLICATION); // 自动创建一个使用复制模式的ReplicationTestDB数据库
-        // setHost("127.0.0.1");
         super(LealoneDatabase.NAME);
+        // setHost("127.0.0.1");
     }
 
     @Test
@@ -42,20 +40,28 @@ public class ReplicationTest extends DSqlTestBase {
                 + " RUN MODE replication PARAMETERS (replication_factor: 3)";
         stmt.executeUpdate(sql);
 
-        // new AsyncReplicationTest().runTest();
-        // new ReplicationConflictTest().runTest();
-        // new ReplicationAppendTest().runTest();
+        new AsyncReplicationTest().runTest();
+        new ReplicationConflictTest().runTest();
+        new ReplicationAppendTest().runTest();
         new ReplicationDdlConflictTest().runTest();
-        // new ReplicationUpdateRowLockConflictTest().runTest();
-        // new ReplicationDeleteRowLockConflictTest().runTest();
+        new ReplicationUpdateRowLockConflictTest().runTest();
+        new ReplicationDeleteRowLockConflictTest().runTest();
     }
 
-    static class AsyncReplicationTest extends SqlTestBase {
-
-        public AsyncReplicationTest() {
+    static class ReplicationTestBase extends DSqlTestBase {
+        public ReplicationTestBase() {
             super(REPLICATION_DB_NAME);
         }
+    }
 
+    static abstract class CrudTest extends ReplicationTestBase implements Runnable {
+        @Override
+        public void run() {
+            runTest();
+        }
+    }
+
+    static class AsyncReplicationTest extends ReplicationTestBase {
         @Override
         protected void test() throws Exception {
             executeUpdate("drop table IF EXISTS AsyncReplicationTest");
@@ -78,10 +84,28 @@ public class ReplicationTest extends DSqlTestBase {
         }
     }
 
-    static class ReplicationConflictTest extends SqlTestBase {
+    static class ReplicationConflictTest extends ReplicationTestBase {
 
-        public ReplicationConflictTest() {
-            super(REPLICATION_DB_NAME);
+        static class InsertTest extends CrudTest {
+            @Override
+            protected void test() throws Exception {
+                stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
+            }
+        }
+
+        static class UpdateTest extends CrudTest {
+            int value;
+
+            public UpdateTest(int v) {
+                value = v;
+            }
+
+            @Override
+            protected void test() throws Exception {
+                // conn.setAutoCommit(false);
+                stmt.executeUpdate("update ReplicationTest set f2 = " + value + " where f1 = 1");
+                // conn.commit();
+            }
         }
 
         @Override
@@ -112,7 +136,7 @@ public class ReplicationTest extends DSqlTestBase {
         }
     }
 
-    static class ReplicationAppendTest extends SqlTestBase {
+    static class ReplicationAppendTest extends ReplicationTestBase {
 
         static class InsertTest extends CrudTest {
             int value;
@@ -128,10 +152,6 @@ public class ReplicationTest extends DSqlTestBase {
                 String sql = "INSERT INTO ReplicationAppendTest(f1, f2) VALUES(" + f1 + ", " + f2 + ")";
                 stmt.executeUpdate(sql);
             }
-        }
-
-        public ReplicationAppendTest() {
-            super(REPLICATION_DB_NAME);
         }
 
         @Override
@@ -151,17 +171,13 @@ public class ReplicationTest extends DSqlTestBase {
         }
     }
 
-    static class ReplicationDdlConflictTest extends SqlTestBase {
+    static class ReplicationDdlConflictTest extends ReplicationTestBase {
 
         static class DdlTest extends CrudTest {
             @Override
             protected void test() throws Exception {
                 stmt.executeUpdate("CREATE TABLE IF NOT EXISTS DdlTest (f1 int, f2 long)");
             }
-        }
-
-        public ReplicationDdlConflictTest() {
-            super(REPLICATION_DB_NAME);
         }
 
         @Override
@@ -178,7 +194,7 @@ public class ReplicationTest extends DSqlTestBase {
         }
     }
 
-    static class ReplicationUpdateRowLockConflictTest extends SqlTestBase {
+    static class ReplicationUpdateRowLockConflictTest extends ReplicationTestBase {
         static int key = 1;
 
         static class UpdateTest extends CrudTest {
@@ -193,10 +209,6 @@ public class ReplicationTest extends DSqlTestBase {
                 String sql = "update ReplicationUpdateRowLockConflictTest set f2 = " + value + " where f1 = " + key;
                 stmt.executeUpdate(sql);
             }
-        }
-
-        public ReplicationUpdateRowLockConflictTest() {
-            super(REPLICATION_DB_NAME);
         }
 
         @Override
@@ -222,17 +234,13 @@ public class ReplicationTest extends DSqlTestBase {
         }
     }
 
-    static class ReplicationDeleteRowLockConflictTest extends SqlTestBase {
+    static class ReplicationDeleteRowLockConflictTest extends ReplicationTestBase {
 
         static class DeleteTest extends CrudTest {
             @Override
             protected void test() throws Exception {
                 stmt.executeUpdate("delete from ReplicationDeleteRowLockConflictTest where f1 = 1");
             }
-        }
-
-        public ReplicationDeleteRowLockConflictTest() {
-            super(REPLICATION_DB_NAME);
         }
 
         @Override
@@ -254,61 +262,6 @@ public class ReplicationTest extends DSqlTestBase {
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationDeleteRowLockConflictTest (f1 int, f2 long)");
             String sql = "INSERT INTO ReplicationDeleteRowLockConflictTest(f1, f2) VALUES(1, 2)";
             stmt.executeUpdate(sql);
-        }
-    }
-
-    static class InsertTest extends CrudTest {
-        @Override
-        protected void test() throws Exception {
-            stmt.executeUpdate("INSERT INTO ReplicationTest(f1, f2) VALUES(1, 2)");
-        }
-    }
-
-    static class QueryTest extends CrudTest {
-        @Override
-        protected void test() throws Exception {
-            sql = "select * from ReplicationTest where f1 = 1";
-            printResultSet();
-        }
-    }
-
-    static class UpdateTest extends CrudTest {
-        int value;
-
-        public UpdateTest(int v) {
-            value = v;
-        }
-
-        @Override
-        protected void test() throws Exception {
-            // conn.setAutoCommit(false);
-            stmt.executeUpdate("update ReplicationTest set f2 = " + value + " where f1 = 1");
-            // conn.commit();
-        }
-    }
-
-    static class SelectTest extends CrudTest {
-        @Override
-        protected void test() throws Exception {
-            sql = "select * from ReplicationTest where _rowid_=1";
-            printResultSet();
-            sql = "select * from ReplicationTest where _rowid_=1";
-            printResultSet();
-            sql = "select * from ReplicationTest where _rowid_=1";
-            printResultSet();
-            sql = "select * from ReplicationTest where _rowid_=1";
-            printResultSet();
-        }
-    }
-
-    static abstract class CrudTest extends SqlTestBase implements Runnable {
-        public CrudTest() {
-            super(REPLICATION_DB_NAME);
-        }
-
-        @Override
-        public void run() {
-            runTest();
         }
     }
 }
