@@ -37,8 +37,8 @@ public class DefaultYieldableUpdate extends YieldableUpdateBase {
         case TRANSACTION_NOT_START:
         case TRANSACTION_NOT_COMMIT:
         case STATEMENT_COMPLETED:
-        case RETRYING:
             session.setStatus(SessionStatus.STATEMENT_RUNNING);
+        case RETRYING:
             SQLRouter.executeUpdate(statement, ar -> handleResult(ar));
             break;
         case REPLICATION_COMPLETED:
@@ -64,11 +64,16 @@ public class DefaultYieldableUpdate extends YieldableUpdateBase {
                 }
             } else {
                 if (session.getReplicationName() != null) {
-                    session.setStatus(SessionStatus.REPLICA_STATEMENT_COMPLETED);
-                    if (asyncHandler != null)
-                        asyncHandler.handle(new AsyncResult<>(ar.getResult()));
-                    else
-                        setResult(ar.getResult()); // 当前节点也是目标节点的场景
+                    // 发生复制冲突时当前session进行重试，此时已经不需要再向客户端返回结果了，直接提交即可
+                    if (session.getStatus() == SessionStatus.RETRYING) {
+                        stop();
+                    } else {
+                        session.setStatus(SessionStatus.REPLICA_STATEMENT_COMPLETED);
+                        if (asyncHandler != null)
+                            asyncHandler.handle(new AsyncResult<>(ar.getResult()));
+                        else
+                            setResult(ar.getResult()); // 当前节点也是目标节点的场景
+                    }
                 } else {
                     session.setStatus(SessionStatus.STATEMENT_COMPLETED);
                     setResult(ar.getResult());

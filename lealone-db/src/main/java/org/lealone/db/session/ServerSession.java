@@ -858,6 +858,7 @@ public class ServerSession extends SessionBase {
         closeCurrentCommand();
         // 发生复制冲突时当前session进行重试，此时已经不需要再向客户端返回结果了，直接提交即可
         if (getStatus() == SessionStatus.RETRYING) {
+            setStatus(SessionStatus.STATEMENT_COMPLETED);
             if (isAutoCommit()) {
                 if (asyncResult != null)
                     asyncCommit(() -> {
