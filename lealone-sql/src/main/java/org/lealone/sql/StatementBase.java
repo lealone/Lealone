@@ -8,6 +8,7 @@ package org.lealone.sql;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -597,8 +598,8 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public void replicaCommit(long validKey, boolean autoCommit) {
-        session.replicationCommit(validKey, autoCommit);
+    public void replicaCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
+        session.replicationCommit(validKey, autoCommit, retryReplicationNames);
     }
 
     @Override

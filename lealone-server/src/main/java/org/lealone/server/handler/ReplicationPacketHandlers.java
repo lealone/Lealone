@@ -69,7 +69,7 @@ class ReplicationPacketHandlers extends PacketHandlers {
     private static class Commit implements PacketHandler<ReplicationCommit> {
         @Override
         public Packet handle(ServerSession session, ReplicationCommit packet) {
-            session.replicationCommit(packet.validKey, packet.autoCommit);
+            session.replicationCommit(packet.validKey, packet.autoCommit, packet.retryReplicationNames);
             return null;
         }
     }

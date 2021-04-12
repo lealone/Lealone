@@ -18,6 +18,7 @@
 package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
+import java.util.TreeSet;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
@@ -29,10 +30,12 @@ public class ReplicationCommit implements NoAckPacket {
 
     public final long validKey;
     public final boolean autoCommit;
+    public final TreeSet<String> retryReplicationNames;
 
-    public ReplicationCommit(long validKey, boolean autoCommit) {
+    public ReplicationCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
         this.validKey = validKey;
         this.autoCommit = autoCommit;
+        this.retryReplicationNames = retryReplicationNames;
     }
 
     @Override
@@ -43,6 +46,9 @@ public class ReplicationCommit implements NoAckPacket {
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         out.writeLong(validKey).writeBoolean(autoCommit);
+        out.writeInt(retryReplicationNames.size());
+        for (String name : retryReplicationNames)
+            out.writeString(name);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -50,7 +56,16 @@ public class ReplicationCommit implements NoAckPacket {
     private static class Decoder implements PacketDecoder<ReplicationCommit> {
         @Override
         public ReplicationCommit decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationCommit(in.readLong(), in.readBoolean());
+            return new ReplicationCommit(in.readLong(), in.readBoolean(), readRetryReplicationNames(in));
         }
+    }
+
+    private static TreeSet<String> readRetryReplicationNames(NetInputStream in) throws IOException {
+        TreeSet<String> retryReplicationNames = new TreeSet<>();
+        int size = in.readInt();
+        for (int i = 0; i < size; i++) {
+            retryReplicationNames.add(in.readString());
+        }
+        return retryReplicationNames;
     }
 }

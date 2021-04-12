@@ -18,6 +18,7 @@
 package org.lealone.db.lock;
 
 import java.util.ArrayList;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -35,6 +36,7 @@ public class DbObjectLockImpl implements DbObjectLock {
     private final DbObjectType type;
     private ArrayList<AsyncHandler<AsyncResult<Boolean>>> handlers;
     private ConcurrentLinkedQueue<ServerSession> waitingSessions = new ConcurrentLinkedQueue<>();
+    private TreeSet<String> retryReplicationNames;
 
     public DbObjectLockImpl(DbObjectType type) {
         this.type = type;
@@ -76,17 +78,29 @@ public class DbObjectLockImpl implements DbObjectLock {
 
     @Override
     public boolean tryExclusiveLock(ServerSession session) {
-        if (ref.compareAndSet(null, session)) {
-            session.addLock(this);
-            return true;
+        if (retryReplicationNames == null || retryReplicationNames.isEmpty()) {
+            if (ref.compareAndSet(null, session)) {
+                session.addLock(this);
+                return true;
+            } else {
+                ServerSession oldSession = ref.get();
+                if (oldSession != session) {
+                    addWaitingTransaction(oldSession, session);
+                    waitingSessions.add(session);
+                    return false;
+                } else {
+                    return true;
+                }
+            }
         } else {
-            ServerSession oldSession = ref.get();
-            if (oldSession != session) {
-                addWaitingTransaction(oldSession, session);
+            String name = retryReplicationNames.first();
+            if (name.equals(session.getReplicationName())) {
+                session.addLock(this);
+                retryReplicationNames.pollFirst();
+                return true;
+            } else {
                 waitingSessions.add(session);
                 return false;
-            } else {
-                return true;
             }
         }
     }
@@ -114,11 +128,24 @@ public class DbObjectLockImpl implements DbObjectLock {
             if (newSession != null) {
                 newSession.addLock(this);
                 waitingSessions.remove(newSession);
+                tryExclusiveLock(oldSession);
                 newSession.setStatus(SessionStatus.RETRYING);
             } else {
-                for (ServerSession s : waitingSessions)
-                    s.setStatus(SessionStatus.RETRYING);
-                waitingSessions = new ConcurrentLinkedQueue<>();
+                if (retryReplicationNames == null || retryReplicationNames.isEmpty()) {
+                    for (ServerSession s : waitingSessions)
+                        s.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
+                    waitingSessions = new ConcurrentLinkedQueue<>();
+                } else {
+                    String name = retryReplicationNames.first();
+                    for (ServerSession s : waitingSessions) {
+                        if (name.equals(s.getReplicationName())) {
+                            s.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
+                            waitingSessions.remove(s);
+                            retryReplicationNames.pollFirst();
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
@@ -131,5 +158,10 @@ public class DbObjectLockImpl implements DbObjectLock {
     @Override
     public boolean isLockedExclusivelyBy(ServerSession session) {
         return ref.get() == session;
+    }
+
+    @Override
+    public void setRetryReplicationNames(TreeSet<String> retryReplicationNames) {
+        this.retryReplicationNames = retryReplicationNames;
     }
 }

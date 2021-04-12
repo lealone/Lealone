@@ -53,13 +53,15 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
         AsyncResult<T> ar = null;
         if (replicationResultHandler != null) {
             T ret = replicationResultHandler.handleResults(getResults());
+            // if (ret == null)
+            // reset(); // 复制发生成冲突后，当前事务返回的值无效，需要重置准备处理下一次的返回结果
             ar = new AsyncResult<>(ret);
         } else {
             ar = results.get(0);
         }
         if (commands != null) {
             for (ReplicaCommand c : commands) {
-                c.replicaCommit(-1, true);
+                c.replicaCommit(-1, true, null);
             }
         }
         if (finalResultHandler != null) {

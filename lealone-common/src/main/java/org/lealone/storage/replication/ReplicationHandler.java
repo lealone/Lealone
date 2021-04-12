@@ -32,7 +32,7 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
 
     private final CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
 
-    private volatile boolean successful;
+    // private volatile boolean successful;
     private volatile boolean failed;
 
     public ReplicationHandler(int totalNodes, int totalBlockFor, AsyncHandler<AsyncResult<T>> finalResultHandler) {
@@ -54,8 +54,13 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
 
     private synchronized void handleResult(AsyncResult<T> result) {
         results.add(result);
-        if (!successful && results.size() >= totalBlockFor) {
-            successful = true;
+        // if (!successful && results.size() >= totalBlockFor) {
+        // successful = true;
+        // onSuccess();
+        // }
+
+        if (results.size() >= totalBlockFor) {
+            // successful = true;
             onSuccess();
         }
     }
@@ -72,4 +77,10 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
         }
     }
 
+    synchronized void reset() {
+        results.clear();
+        exceptions.clear();
+        // successful = false;
+        failed = false;
+    }
 }

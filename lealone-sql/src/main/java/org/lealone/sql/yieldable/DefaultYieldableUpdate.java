@@ -39,6 +39,7 @@ public class DefaultYieldableUpdate extends YieldableUpdateBase {
         case STATEMENT_COMPLETED:
             session.setStatus(SessionStatus.STATEMENT_RUNNING);
         case RETRYING:
+        case RETRYING_RETURN_RESULT:
             SQLRouter.executeUpdate(statement, ar -> handleResult(ar));
             break;
         case REPLICATION_COMPLETED:

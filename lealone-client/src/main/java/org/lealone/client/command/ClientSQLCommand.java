@@ -8,6 +8,7 @@ package org.lealone.client.command;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeSet;
 
 import org.lealone.client.result.ClientResult;
 import org.lealone.client.result.RowCountDeterminedClientResult;
@@ -200,9 +201,9 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public void replicaCommit(long validKey, boolean autoCommit) {
+    public void replicaCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
         try {
-            session.send(new ReplicationCommit(validKey, autoCommit));
+            session.send(new ReplicationCommit(validKey, autoCommit, retryReplicationNames));
         } catch (Exception e) {
             session.getTrace().error(e, "replicationCommit");
         }
@@ -215,6 +216,11 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
         } catch (Exception e) {
             session.getTrace().error(e, "replicationRollback");
         }
+    }
+
+    @Override
+    public void removeAsyncCallback() {
+        session.removeAsyncCallback(commandId);
     }
 
     public int[] executeBatchSQLCommands(List<String> batchCommands) {

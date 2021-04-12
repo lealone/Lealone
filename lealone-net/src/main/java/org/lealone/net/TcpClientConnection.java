@@ -58,6 +58,10 @@ public class TcpClientConnection extends TransferConnection {
         callbackMap.put(packetId, ac);
     }
 
+    public void removeAsyncCallback(int packetId) {
+        callbackMap.remove(packetId);
+    }
+
     @Override
     public void close() {
         // 如果还有回调未处理需要设置异常，避免等待回调结果的线程一直死等
@@ -104,11 +108,18 @@ public class TcpClientConnection extends TransferConnection {
             int sessionId = in.readInt();
             session = getSession(sessionId);
             newTargetNodes = in.readString();
+        } else if (status == Session.STATUS_REPLICATING) {
+            // ok
         } else {
             e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + status);
         }
 
-        AsyncCallback<?> ac = callbackMap.remove(packetId);
+        AsyncCallback<?> ac;
+        if (status == Session.STATUS_REPLICATING) {
+            ac = callbackMap.get(packetId);
+        } else {
+            ac = callbackMap.remove(packetId);
+        }
         if (ac == null) {
             String msg = "Async callback is null, may be a bug! packetId = " + packetId;
             if (e != null) {

@@ -17,14 +17,19 @@
  */
 package org.lealone.storage.replication;
 
+import java.util.TreeSet;
+
 import org.lealone.db.Command;
 
 //与单个副本相关的命令
 public interface ReplicaCommand extends Command {
 
-    default void replicaCommit(long validKey, boolean autoCommit) {
+    default void replicaCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
     }
 
     default void replicaRollback() {
+    }
+
+    default void removeAsyncCallback() {
     }
 }

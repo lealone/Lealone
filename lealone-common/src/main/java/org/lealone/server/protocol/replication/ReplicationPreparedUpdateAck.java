@@ -28,8 +28,8 @@ import org.lealone.storage.replication.ReplicationConflictType;
 public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
 
     public ReplicationPreparedUpdateAck(int updateCount, long key, long first, List<String> uncommittedReplicationNames,
-            ReplicationConflictType replicationConflictType) {
-        super(updateCount, key, first, uncommittedReplicationNames, replicationConflictType);
+            ReplicationConflictType replicationConflictType, int ackVersion) {
+        super(updateCount, key, first, uncommittedReplicationNames, replicationConflictType, ackVersion);
     }
 
     @Override
@@ -43,7 +43,7 @@ public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
         @Override
         public ReplicationPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
             return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong(), in.readLong(),
-                    readUncommittedReplicationNames(in), ReplicationConflictType.getType(in.readInt()));
+                    readUncommittedReplicationNames(in), ReplicationConflictType.getType(in.readInt()), in.readInt());
         }
     }
 }

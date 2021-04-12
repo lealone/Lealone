@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -1541,7 +1542,15 @@ public class ServerSession extends SessionBase {
         return yieldableCommand == null || getReplicationName() != null;
     }
 
-    public void replicationCommit(long validKey, boolean autoCommit) {
+    public void replicationCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
+        ackVersion = 0;
+        if (!locks.isEmpty()) {
+            for (int i = 0, size = locks.size(); i < size; i++) {
+                DbObjectLock lock = locks.get(i);
+                lock.setRetryReplicationNames(retryReplicationNames);
+            }
+        }
+
         if (replicationConflictType == null)
             replicationConflictType = ReplicationConflictType.NONE;
         switch (replicationConflictType) {
@@ -1614,6 +1623,8 @@ public class ServerSession extends SessionBase {
             return null;
     }
 
+    private int ackVersion;
+
     public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
         if (replicationConflictType == null)
             replicationConflictType = ReplicationConflictType.NONE;
@@ -1643,10 +1654,10 @@ public class ServerSession extends SessionBase {
 
         if (prepared)
             return new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationNames,
-                    replicationConflictType);
+                    replicationConflictType, ++ackVersion);
         else
             return new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationNames,
-                    replicationConflictType);
+                    replicationConflictType, ++ackVersion);
     }
 
     private byte[] lobMacSalt;

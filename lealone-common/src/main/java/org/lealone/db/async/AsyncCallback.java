@@ -85,13 +85,13 @@ public class AsyncCallback<T> implements Future<T> {
         // 放在最前面，不能放在最后面，
         // 否则调用了countDown，但是在设置runEnd为true前，调用await的线程读到的是false就会抛异常
         runEnd = true;
-        if (asyncResult == null) {
-            try {
-                runInternal(in);
-            } catch (Throwable t) {
-                setAsyncResult(t);
-            }
+        // if (asyncResult == null) {
+        try {
+            runInternal(in);
+        } catch (Throwable t) {
+            setAsyncResult(t);
         }
+        // }
     }
 
     protected void runInternal(NetInputStream in) throws Exception {

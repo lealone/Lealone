@@ -40,12 +40,12 @@ public class ReplicationTest extends DSqlTestBase {
                 + " RUN MODE replication PARAMETERS (replication_factor: 3)";
         stmt.executeUpdate(sql);
 
-        new AsyncReplicationTest().runTest();
-        new ReplicationConflictTest().runTest();
-        new ReplicationAppendTest().runTest();
-        new ReplicationDdlConflictTest().runTest();
-        new ReplicationUpdateRowLockConflictTest().runTest();
-        new ReplicationDeleteRowLockConflictTest().runTest();
+        // new AsyncReplicationTest().runTest();
+        // new ReplicationConflictTest().runTest();
+        // new ReplicationAppendTest().runTest();
+        new ReplicationDdlConflictTest().runTest(); // 有bug
+        // new ReplicationUpdateRowLockConflictTest().runTest();
+        // new ReplicationDeleteRowLockConflictTest().runTest(); // 有bug
     }
 
     static class ReplicationTestBase extends DSqlTestBase {
@@ -185,12 +185,15 @@ public class ReplicationTest extends DSqlTestBase {
             Thread t1 = new Thread(new DdlTest());
             Thread t2 = new Thread(new DdlTest());
             Thread t3 = new Thread(new DdlTest());
+            Thread t4 = new Thread(new DdlTest());
             t1.start();
             t2.start();
             t3.start();
+            t4.start();
             t1.join();
             t2.join();
             t3.join();
+            t4.join();
         }
     }
 

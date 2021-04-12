@@ -35,16 +35,18 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     public final long first;
     public final List<String> uncommittedReplicationNames;
     public final ReplicationConflictType replicationConflictType;
+    public final int ackVersion; // 复制操作有可能返回多次，这个字段表示第几次返回响应结果
     private ReplicaCommand replicaCommand;
 
     public ReplicationUpdateAck(int updateCount, long key, long first, List<String> uncommittedReplicationNames,
-            ReplicationConflictType replicationConflictType) {
+            ReplicationConflictType replicationConflictType, int ackVersion) {
         super(updateCount);
         this.key = key;
         this.first = first;
         this.uncommittedReplicationNames = uncommittedReplicationNames;
         this.replicationConflictType = replicationConflictType == null ? ReplicationConflictType.NONE
                 : replicationConflictType;
+        this.ackVersion = ackVersion;
     }
 
     @Override
@@ -73,6 +75,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
                 out.writeString(name);
         }
         out.writeInt(replicationConflictType.value);
+        out.writeInt(ackVersion);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -81,7 +84,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
         @Override
         public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
             return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readLong(),
-                    readUncommittedReplicationNames(in), ReplicationConflictType.getType(in.readInt()));
+                    readUncommittedReplicationNames(in), ReplicationConflictType.getType(in.readInt()), in.readInt());
         }
     }
 

@@ -443,4 +443,8 @@ public class ClientSession extends SessionBase implements DataHandler {
         }
         return ac;
     }
+
+    public void removeAsyncCallback(int packetId) {
+        tcpConnection.removeAsyncCallback(packetId);
+    }
 }

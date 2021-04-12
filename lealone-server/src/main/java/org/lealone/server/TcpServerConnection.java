@@ -197,6 +197,8 @@ public class TcpServerConnection extends TransferConnection {
             return Session.STATUS_CLOSED;
         } else if (session.isRunModeChanged()) {
             return Session.STATUS_RUN_MODE_CHANGED;
+        } else if (session.getReplicationName() != null) {
+            return Session.STATUS_REPLICATING;
         } else {
             return Session.STATUS_OK;
         }
