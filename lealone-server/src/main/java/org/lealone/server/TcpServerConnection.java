@@ -36,6 +36,7 @@ import org.lealone.net.WritableChannel;
 import org.lealone.server.handler.LobPacketHandlers.LobCache;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.session.SessionInit;
 import org.lealone.server.protocol.session.SessionInitAck;
 
@@ -205,6 +206,12 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     public void sendResponse(PacketDeliveryTask task, Packet packet) {
+        if (packet instanceof ReplicationUpdateAck) {
+            ReplicationUpdateAck ack = (ReplicationUpdateAck) packet;
+            // 在复制模式下执行DDL语句发生冲突时，只需发送一次结果即可
+            if (ack.isDDL && ack.ackVersion > 1)
+                return;
+        }
         ServerSession session = task.session;
         try {
             TransferOutputStream out = createTransferOutputStream(session);

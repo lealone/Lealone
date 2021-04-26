@@ -1654,10 +1654,10 @@ public class ServerSession extends SessionBase {
 
         if (prepared)
             return new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationNames,
-                    replicationConflictType, ++ackVersion);
+                    replicationConflictType, ++ackVersion, currentCommand.isDDL());
         else
             return new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationNames,
-                    replicationConflictType, ++ackVersion);
+                    replicationConflictType, ++ackVersion, currentCommand.isDDL());
     }
 
     private byte[] lobMacSalt;

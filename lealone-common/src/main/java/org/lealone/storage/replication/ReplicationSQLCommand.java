@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -130,8 +129,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             if (ack.ackVersion == maxAckVersion)
                 newAckResults.add(ack);
         }
-        int quorum = session.n / 2 + 1;
-        if (newAckResults.size() < quorum)
+        if (newAckResults.size() < session.n)
             return null;
         else
             return newAckResults;
@@ -169,10 +167,11 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         }
         case NONE:
         default:
+            TreeSet<String> retryReplicationNames = new TreeSet<>();
             boolean autoCommit = session.isAutoCommit();
             for (ReplicationUpdateAck ack : ackResults) {
                 ack.getReplicaCommand().removeAsyncCallback();
-                ack.getReplicaCommand().replicaCommit(-1, autoCommit, null);
+                ack.getReplicaCommand().replicaCommit(-1, autoCommit, retryReplicationNames);
             }
             return ackResults.get(0);
         }
@@ -200,7 +199,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                 ack.getReplicaCommand().removeAsyncCallback();
                 ack.getReplicaCommand().replicaCommit(validKey, autoCommit, null);
             }
-            return new ReplicationUpdateAck(1, validKey, validKey, null, null, 0);
+            return new ReplicationUpdateAck(1, validKey, validKey, null, null, 0, false);
         }
 
         for (ReplicationUpdateAck ack : ackResults) {
@@ -228,6 +227,8 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
     }
 
     private ReplicationUpdateAck handleLockConflict(String replicationName, List<ReplicationUpdateAck> ackResults) {
+        int quorum = session.n / 2 + 1;
+        String validReplicationName = null;
         HashMap<String, AtomicInteger> groupResults = new HashMap<>(1);
         for (ReplicationUpdateAck ack : ackResults) {
             if (ack.uncommittedReplicationNames.isEmpty())
@@ -238,54 +239,37 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                 counter = new AtomicInteger();
                 groupResults.put(name, counter);
             }
-            counter.incrementAndGet();
+            if (counter.incrementAndGet() >= quorum) {
+                validReplicationName = name;
+            }
         }
 
-        int quorum = session.n / 2 + 1; // 不直接使用session.w，因为session.w有可能是session.n
-        String validReplicationName = null;
-        // String quorumReplicationName = null;
-        TreeSet<String> retryReplicationNames = new TreeSet<>();
-        for (Entry<String, AtomicInteger> e : groupResults.entrySet()) {
-            AtomicInteger counter = e.getValue();
-            if (counter.get() >= quorum) {
-                validReplicationName = e.getKey();
-                // quorumReplicationName = validReplicationName;
-                break;
-            }
-        }
+        TreeSet<String> retryReplicationNames = new TreeSet<>(groupResults.keySet());
         if (validReplicationName == null) {
-            if (ackResults.size() == session.n) {
-                TreeSet<String> uncommittedReplicationNames = new TreeSet<>();
-                for (ReplicationUpdateAck ack : ackResults) {
-                    for (String name : ack.uncommittedReplicationNames) {
-                        uncommittedReplicationNames.add(name);
-                    }
-                }
-                validReplicationName = uncommittedReplicationNames.first();
-                // if (quorumReplicationName != null)
-                // uncommittedReplicationNames.remove(quorumReplicationName);
-                retryReplicationNames = uncommittedReplicationNames;
-            }
+            validReplicationName = retryReplicationNames.pollFirst();
+        } else {
+            retryReplicationNames.remove(validReplicationName);
         }
-        if (validReplicationName != null) {
+
+        if (validReplicationName.equals(replicationName)) {
             boolean autoCommit = session.isAutoCommit();
-            if (validReplicationName.equals(replicationName)) {
-                retryReplicationNames.remove(replicationName);
-                ReplicationUpdateAck ret = null;
-                for (ReplicationUpdateAck ack : ackResults) {
-                    ack.getReplicaCommand().removeAsyncCallback();
-                    ack.getReplicaCommand().replicaCommit(-1, autoCommit, null);
-                    if (ret == null && ack.uncommittedReplicationNames.get(0).equals(validReplicationName))
-                        ret = ack;
-                }
-                return ret;
-            } else {
-                // 什么都不用做
-                // for (ReplicationUpdateAck ack : ackResults) {
-                // ack.getReplicaCommand().replicaCommit(1, autoCommit);
-                // }
+            ReplicationUpdateAck ret = null;
+            for (ReplicationUpdateAck ack : ackResults) {
+                ack.getReplicaCommand().removeAsyncCallback();
+                ack.getReplicaCommand().replicaCommit(-1, autoCommit, retryReplicationNames);
+                if (ret == null && ack.uncommittedReplicationNames.get(0).equals(validReplicationName))
+                    ret = ack;
             }
+            return ret;
+        } else if (retryReplicationNames.contains(replicationName) && ackResults.get(0).isDDL) { // DDL语句不需要等了，返回的结果都是一样的
+            ReplicationUpdateAck ret = null;
+            for (ReplicationUpdateAck ack : ackResults) {
+                ack.getReplicaCommand().removeAsyncCallback();
+                if (ret == null && ack.uncommittedReplicationNames.get(0).equals(validReplicationName))
+                    ret = ack;
+            }
+            return ret;
         }
-        return null;
+        return null; // 继续等待
     }
 }
