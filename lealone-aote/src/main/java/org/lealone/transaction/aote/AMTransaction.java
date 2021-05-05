@@ -29,7 +29,6 @@ import org.lealone.common.util.DataUtils;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
-import org.lealone.db.value.ValueLong;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.ObjectDataType;
@@ -504,27 +503,7 @@ public class AMTransaction implements Transaction {
         return buff.toString();
     }
 
-    private Object lastKey;
-    private TransactionalValue lastValue;
-    private StorageMap<Object, TransactionalValue> lastStorageMap;
-
-    @Override
-    public void replicationPrepareCommit(long validKey) {
-        if (lastValue != null && validKey != -1) {
-            Object key = ValueLong.get(validKey);
-            TransactionalValue newValue = lastStorageMap.get(lastKey);
-            if (newValue == lastValue) {
-                lastStorageMap.remove(lastKey);
-            }
-            lastStorageMap.put(key, lastValue);
-            undoLog.getLast().setKey(key); // 替换原来的key
-        }
-    }
-
     void logAppend(StorageMap<Object, TransactionalValue> map, Object key, TransactionalValue newValue) {
         undoLog.add(map.getName(), key, null, newValue);
-        lastKey = key;
-        lastValue = newValue;
-        lastStorageMap = map;
     }
 }

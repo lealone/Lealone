@@ -140,8 +140,6 @@ public interface Transaction {
 
     void rollbackToSavepoint(int savepointId);
 
-    void replicationPrepareCommit(long validKey);
-
     void wakeUpWaitingTransaction(Transaction transaction);
 
     int addWaitingTransaction(Object key, Transaction transaction, Listener listener);
