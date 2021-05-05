@@ -79,10 +79,12 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
 
     protected void setResult(T result, int rowCount) {
         this.result = result;
-        if (result != null) {
-            if (asyncHandler != null) {
-                asyncResult = new AsyncResult<>(result);
-            }
+        if (asyncHandler != null && result != null) {
+            asyncResult = new AsyncResult<>(result);
+        }
+        if (rowCount < 0) {
+            setProgress(DatabaseEventListener.STATE_STATEMENT_WAITING);
+        } else {
             statement.trace(startTimeNanos, rowCount);
             setProgress(DatabaseEventListener.STATE_STATEMENT_END);
         }
@@ -216,7 +218,8 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         }
     }
 
-    protected void stop() {
+    @Override
+    public void stop() {
         stopInternal();
         session.stopCurrentCommand(asyncHandler, asyncResult);
 

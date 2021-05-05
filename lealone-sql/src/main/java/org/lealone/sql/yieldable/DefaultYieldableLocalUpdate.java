@@ -22,16 +22,25 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
 
-public abstract class DefaultYieldableUpdate extends YieldableUpdateBase {
+public class DefaultYieldableLocalUpdate extends DefaultYieldableUpdate {
 
-    public DefaultYieldableUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public DefaultYieldableLocalUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
-        callStop = false;
     }
 
-    protected boolean yieldIfNeeded() {
-        // 当前事务已经成功提交或当前语句已经执行完时就不必再让调度器轮循检查session的状态了
-        return session.getStatus() != SessionStatus.STATEMENT_COMPLETED
-                && session.getStatus() != SessionStatus.TRANSACTION_NOT_START;
+    @Override
+    protected boolean executeInternal() {
+        session.setStatus(SessionStatus.STATEMENT_RUNNING);
+        int updateCount = statement.update();
+        setResult(updateCount);
+
+        // 返回的值为负数时，表示当前语句无法正常执行，需要等待其他事务释放锁
+        if (updateCount < 0) {
+            session.setStatus(SessionStatus.WAITING);
+        } else {
+            session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+            stop();
+        }
+        return yieldIfNeeded();
     }
 }

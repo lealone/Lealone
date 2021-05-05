@@ -8,7 +8,6 @@ package org.lealone.sql;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -28,8 +27,10 @@ import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.yieldable.DefaultYieldableLocalUpdate;
 import org.lealone.sql.yieldable.DefaultYieldableQuery;
-import org.lealone.sql.yieldable.DefaultYieldableUpdate;
+import org.lealone.sql.yieldable.DefaultYieldableReplicationUpdate;
+import org.lealone.sql.yieldable.DefaultYieldableShardingUpdate;
 import org.lealone.sql.yieldable.YieldableBase;
 import org.lealone.storage.PageKey;
 
@@ -598,7 +599,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public void replicaCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
+    public void replicaCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
         session.replicationCommit(validKey, autoCommit, retryReplicationNames);
     }
 
@@ -624,7 +625,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new DefaultYieldableUpdate(this, asyncHandler);
+        if (!local && session.isShardingMode())
+            return new DefaultYieldableShardingUpdate(this, asyncHandler);
+        else if (session.getReplicationName() != null)
+            return new DefaultYieldableReplicationUpdate(this, asyncHandler);
+        else
+            return new DefaultYieldableLocalUpdate(this, asyncHandler);
     }
 
     @Override

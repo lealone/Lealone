@@ -60,6 +60,11 @@ public interface DatabaseEventListener extends EventListener {
     int STATE_STATEMENT_PROGRESS = 7;
 
     /**
+     * This state is used when a query waiting.
+     */
+    int STATE_STATEMENT_WAITING = 8;
+
+    /**
      * This method is called just after creating the object.
      * This is done when opening the database if the listener is specified
      * in the database URL, but may be later if the listener is set at
