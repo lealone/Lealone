@@ -17,7 +17,7 @@
  */
 package org.lealone.db.lock;
 
-import java.util.TreeSet;
+import java.util.List;
 
 import org.lealone.db.DbObjectType;
 import org.lealone.db.async.AsyncHandler;
@@ -46,7 +46,17 @@ public interface DbObjectLock {
 
     boolean isLockedExclusivelyBy(ServerSession session);
 
-    default void setRetryReplicationNames(TreeSet<String> retryReplicationNames) {
+    default void setRetryReplicationNames(List<String> retryReplicationNames) {
     }
 
+    default List<String> getPreparedReplicationNames(String exclude) {
+        return null;
+    }
+
+    default void removePreparedReplicationSession(ServerSession preparedReplicationSession) {
+    }
+
+    default List<ServerSession> getPreparedReplicationSessions(ServerSession exclude) {
+        return null;
+    }
 }

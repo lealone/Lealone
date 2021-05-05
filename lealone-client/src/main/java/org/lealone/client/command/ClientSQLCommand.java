@@ -8,7 +8,6 @@ package org.lealone.client.command;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeSet;
 
 import org.lealone.client.result.ClientResult;
 import org.lealone.client.result.RowCountDeterminedClientResult;
@@ -201,7 +200,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public void replicaCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
+    public void replicaCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
         try {
             session.send(new ReplicationCommit(validKey, autoCommit, retryReplicationNames));
         } catch (Exception e) {

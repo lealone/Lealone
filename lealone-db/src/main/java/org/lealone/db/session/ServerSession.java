@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.TreeSet;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
@@ -855,6 +854,10 @@ public class ServerSession extends SessionBase {
     }
 
     public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+        // if (getReplicationName() == null) {
+        // closeTemporaryResults();
+        // closeCurrentCommand();
+        // }
         closeTemporaryResults();
         closeCurrentCommand();
         // 发生复制冲突时当前session进行重试，此时已经不需要再向客户端返回结果了，直接提交即可
@@ -869,6 +872,12 @@ public class ServerSession extends SessionBase {
             }
         } else {
             if (asyncResult != null) {
+                // if (getReplicationName() != null) {
+                // if (isAutoCommit()) {
+                // replicationPrepareCommit(asyncResult);
+                // asyncHandler.handle(asyncResult);
+                // }
+                // }
                 // 在复制模式下不能自动提交
                 if (isAutoCommit() && getReplicationName() == null) {
                     // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
@@ -1407,6 +1416,15 @@ public class ServerSession extends SessionBase {
     private ReplicationConflictType replicationConflictType;
     private StandardPrimaryIndex lastIndex;
     private Row lastRow;
+    private long startKey, endKey;
+
+    public void setStartKey(long startKey) {
+        this.startKey = startKey;
+    }
+
+    public void setEndKey(long endKey) {
+        this.endKey = endKey;
+    }
 
     public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy,
             ReplicationConflictType replicationConflictType) {
@@ -1486,6 +1504,10 @@ public class ServerSession extends SessionBase {
                 session.setYieldableCommand(null);
             }
         }
+
+        public void stop() {
+            yieldable.stop();
+        }
     }
 
     public static interface TimeoutListener {
@@ -1515,7 +1537,6 @@ public class ServerSession extends SessionBase {
             }
         case TRANSACTION_COMMITTING:
         case EXCLUSIVE_MODE:
-        case REPLICA_STATEMENT_COMPLETED:
         case STATEMENT_RUNNING:
             return null;
         }
@@ -1542,7 +1563,89 @@ public class ServerSession extends SessionBase {
         return yieldableCommand == null || getReplicationName() != null;
     }
 
-    public void replicationCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
+    public <T> void replicationPrepareCommit(AsyncResult<T> asyncResult) {
+        if (!locks.isEmpty()) {
+            // don't use the enhanced for loop to save memory
+            for (int i = 0, size = locks.size(); i < size; i++) {
+                DbObjectLock lock = locks.get(i);
+                lock.unlock(this, true, null);
+            }
+        }
+        // TODO 把ReplicationName和asyncResult写入redo log，用于恢复
+    }
+
+    public void replicationCommitNew(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
+        ackVersion = 0;
+        if (!locks.isEmpty()) {
+            for (int i = 0, size = locks.size(); i < size; i++) {
+                DbObjectLock lock = locks.get(i);
+                lock.setRetryReplicationNames(retryReplicationNames);
+                lock.removePreparedReplicationSession(this);
+            }
+
+            List<ServerSession> preparedReplicationSessions = locks.get(0).getPreparedReplicationSessions(this);
+            if (!retryReplicationNames.get(0).equals(getReplicationName()) && preparedReplicationSessions.isEmpty()) {
+                // rollback();
+            }
+
+            if (replicationConflictType == null)
+                replicationConflictType = ReplicationConflictType.NONE;
+            switch (replicationConflictType) {
+            case ROW_LOCK:
+            case DB_OBJECT_LOCK: {
+                // 行锁和数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+                if (lockedExclusivelyBy != null) {
+                    lockedExclusivelyBy.rollbackCurrentCommand(this);
+                    replicationConflictType = null;
+                    lockedExclusivelyBy = null;
+                    sessionStatus = SessionStatus.RETRYING;
+                    return;
+                }
+                break;
+            }
+            case APPEND: {
+                if (validKey != -1 && getLastRowKey() != validKey) {
+                    if (transaction != null) {
+                        transaction.replicationPrepareCommit(validKey);
+                    }
+                    if (lastRow != null) {
+                        Table table = lastIndex.getTable();
+                        Row oldRow = lastIndex.getRow(this, validKey);
+                        // 已经修正过了
+                        if (oldRow != null && oldRow.getValueList() == lastRow.getValueList()) {
+                            if (autoCommit)
+                                commit();
+                            return;
+                        }
+                        if (oldRow != null)
+                            table.removeRow(this, oldRow);
+                        table.removeRow(this, lastRow);
+
+                        if (oldRow != null) {
+                            oldRow.setKey(lastRow.getKey());
+                            table.addRow(this, oldRow);
+                        }
+                        lastRow.setKey(validKey);
+                        table.addRow(this, lastRow);
+                    }
+                }
+                break;
+            }
+            default:
+                // nothing to do
+                break;
+            }
+        }
+
+        // closeTemporaryResults();
+        // closeCurrentCommand();
+        if (autoCommit) {
+            commit();
+            yieldableCommand = null;
+        }
+    }
+
+    public void replicationCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
         ackVersion = 0;
         if (!locks.isEmpty()) {
             for (int i = 0, size = locks.size(); i < size; i++) {
@@ -1598,12 +1701,10 @@ public class ServerSession extends SessionBase {
             // nothing to do
             break;
         }
-
-        sessionStatus = SessionStatus.REPLICATION_COMPLETED;
-        if (autoCommit) {
-            commit();
-            yieldableCommand = null;
-        }
+        setStatus(SessionStatus.STATEMENT_COMPLETED);
+        setReplicationName(null);
+        yieldableCommand.stop();
+        yieldableCommand = null;
     }
 
     private void clean() {
@@ -1616,6 +1717,7 @@ public class ServerSession extends SessionBase {
         replicationConflictType = null;
     }
 
+    @SuppressWarnings("unused")
     private List<ServerSession> getUncommittedReplicationSessions() {
         if (lastIndex != null && replicationName != null)
             return lastIndex.getUncommittedReplicationSessions(this);
@@ -1628,27 +1730,46 @@ public class ServerSession extends SessionBase {
     public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
         if (replicationConflictType == null)
             replicationConflictType = ReplicationConflictType.NONE;
+        // if (replicationConflictType == ReplicationConflictType.NONE) {
+        // if (!locks.isEmpty()) {
+        // replicationConflictType = ReplicationConflictType.DB_OBJECT_LOCK;
+        // }
+        // }
         long key = -1;
         long first = -1;
         List<String> uncommittedReplicationNames = null;
         switch (replicationConflictType) {
         case ROW_LOCK: // 两种锁的的响应格式一样
         case DB_OBJECT_LOCK:
-            uncommittedReplicationNames = new ArrayList<>(1);
-            uncommittedReplicationNames.add(lockedExclusivelyBy.getReplicationName());
+            if (updateCount < 0) {
+                uncommittedReplicationNames = new ArrayList<>(1);
+                uncommittedReplicationNames.add(lockedExclusivelyBy.getReplicationName());
+            } else {
+                if (!locks.isEmpty()) {
+                    DbObjectLock lock = locks.get(0);
+                    uncommittedReplicationNames = lock.getPreparedReplicationNames(getReplicationName());
+                }
+            }
             break;
         case APPEND:
-            key = getLastRowKey();
-            List<ServerSession> sessions = getUncommittedReplicationSessions();
-            if (sessions == null || sessions.isEmpty()) {
-                first = key;
-                uncommittedReplicationNames = null;
-            } else {
-                first = sessions.get(0).getLastRowKey();
-                uncommittedReplicationNames = new ArrayList<>(sessions.size());
-                for (ServerSession s : sessions)
-                    uncommittedReplicationNames.add(s.getReplicationName());
+            // key = getLastRowKey();
+            // List<ServerSession> sessions = getUncommittedReplicationSessions();
+            // if (sessions == null || sessions.isEmpty()) {
+            // first = key;
+            // uncommittedReplicationNames = null;
+            // } else {
+            // first = sessions.get(0).getLastRowKey();
+            // uncommittedReplicationNames = new ArrayList<>(sessions.size());
+            // for (ServerSession s : sessions)
+            // uncommittedReplicationNames.add(s.getReplicationName());
+            // }
+            //
+            if (lockedExclusivelyBy != null) {
+                uncommittedReplicationNames = new ArrayList<>(1);
+                uncommittedReplicationNames.add(lockedExclusivelyBy.getReplicationName());
             }
+            first = startKey;
+            key = endKey;
             break;
         }
 

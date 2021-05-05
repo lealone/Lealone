@@ -64,6 +64,10 @@ public interface Session extends Closeable, Transaction.Participant {
 
     void setReplicationName(String replicationName);
 
+    default boolean isReplicationMode() {
+        return getReplicationName() != null;
+    }
+
     /**
      * Check if this session is in auto-commit mode.
      *

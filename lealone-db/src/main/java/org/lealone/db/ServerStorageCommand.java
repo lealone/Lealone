@@ -18,7 +18,7 @@
 package org.lealone.db;
 
 import java.nio.ByteBuffer;
-import java.util.TreeSet;
+import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncCallback;
@@ -184,7 +184,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public void replicaCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
+    public void replicaCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
         session.replicationCommit(validKey, autoCommit, retryReplicationNames);
     }
 

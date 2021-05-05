@@ -43,7 +43,7 @@ public class ReplicationTest extends DSqlTestBase {
         // new AsyncReplicationTest().runTest();
         // new ReplicationConflictTest().runTest();
         // new ReplicationAppendTest().runTest();
-        new ReplicationDdlConflictTest().runTest(); // 有bug
+        new ReplicationDdlConflictTest().runTest();
         // new ReplicationUpdateRowLockConflictTest().runTest();
         // new ReplicationDeleteRowLockConflictTest().runTest(); // 有bug
     }
@@ -51,6 +51,17 @@ public class ReplicationTest extends DSqlTestBase {
     static class ReplicationTestBase extends DSqlTestBase {
         public ReplicationTestBase() {
             super(REPLICATION_DB_NAME);
+        }
+
+        public void startThreads(Runnable... targets) throws Exception {
+            Thread[] threads = new Thread[targets.length];
+            for (int i = 0; i < targets.length; i++) {
+                threads[i] = new Thread(targets[i]);
+                threads[i].start();
+            }
+            for (int i = 0; i < targets.length; i++) {
+                threads[i].join();
+            }
         }
     }
 
@@ -114,18 +125,7 @@ public class ReplicationTest extends DSqlTestBase {
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationTest (f1 int primary key, f2 long)");
 
             // 启动两个新事务更新同一行，可以用来测试Replication冲突的场景
-            Thread t1 = new Thread(new InsertTest());
-            Thread t2 = new Thread(new UpdateTest(200));
-            Thread t3 = new Thread(new UpdateTest(300));
-            Thread t4 = new Thread(new UpdateTest(400));
-            t1.start();
-            t2.start();
-            t3.start();
-            t4.start();
-            t1.join();
-            t2.join();
-            t3.join();
-            t4.join();
+            startThreads(new InsertTest(), new UpdateTest(200), new UpdateTest(300), new UpdateTest(400));
 
             ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM ReplicationTest");
             // assertTrue(rs.next());
@@ -156,18 +156,9 @@ public class ReplicationTest extends DSqlTestBase {
 
         @Override
         protected void test() throws Exception {
-            stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationAppendTest");
+            // stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationAppendTest");
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationAppendTest (f1 int, f2 long)");
-
-            Thread t1 = new Thread(new InsertTest(1));
-            Thread t2 = new Thread(new InsertTest(2));
-            Thread t3 = new Thread(new InsertTest(3));
-            t1.start();
-            t2.start();
-            t3.start();
-            t1.join();
-            t2.join();
-            t3.join();
+            startThreads(new InsertTest(1));
         }
     }
 
@@ -182,18 +173,7 @@ public class ReplicationTest extends DSqlTestBase {
 
         @Override
         protected void test() throws Exception {
-            Thread t1 = new Thread(new DdlTest());
-            Thread t2 = new Thread(new DdlTest());
-            Thread t3 = new Thread(new DdlTest());
-            Thread t4 = new Thread(new DdlTest());
-            t1.start();
-            t2.start();
-            t3.start();
-            t4.start();
-            t1.join();
-            t2.join();
-            t3.join();
-            t4.join();
+            startThreads(new DdlTest(), new DdlTest(), new DdlTest(), new DdlTest());
         }
     }
 
@@ -217,15 +197,7 @@ public class ReplicationTest extends DSqlTestBase {
         @Override
         protected void test() throws Exception {
             init();
-            Thread t1 = new Thread(new UpdateTest(1));
-            Thread t2 = new Thread(new UpdateTest(2));
-            Thread t3 = new Thread(new UpdateTest(3));
-            t1.start();
-            t2.start();
-            t3.start();
-            t1.join();
-            t2.join();
-            t3.join();
+            startThreads(new UpdateTest(1), new UpdateTest(2), new UpdateTest(3));
         }
 
         private void init() throws Exception {
@@ -249,15 +221,7 @@ public class ReplicationTest extends DSqlTestBase {
         @Override
         protected void test() throws Exception {
             init();
-            Thread t1 = new Thread(new DeleteTest());
-            Thread t2 = new Thread(new DeleteTest());
-            Thread t3 = new Thread(new DeleteTest());
-            t1.start();
-            t2.start();
-            t3.start();
-            t1.join();
-            t2.join();
-            t3.join();
+            startThreads(new DeleteTest(), new DeleteTest(), new DeleteTest());
         }
 
         private void init() throws Exception {

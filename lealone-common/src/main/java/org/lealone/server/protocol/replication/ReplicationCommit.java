@@ -18,7 +18,8 @@
 package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.util.TreeSet;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
@@ -30,9 +31,9 @@ public class ReplicationCommit implements NoAckPacket {
 
     public final long validKey;
     public final boolean autoCommit;
-    public final TreeSet<String> retryReplicationNames;
+    public final List<String> retryReplicationNames;
 
-    public ReplicationCommit(long validKey, boolean autoCommit, TreeSet<String> retryReplicationNames) {
+    public ReplicationCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
         this.validKey = validKey;
         this.autoCommit = autoCommit;
         this.retryReplicationNames = retryReplicationNames;
@@ -60,9 +61,9 @@ public class ReplicationCommit implements NoAckPacket {
         }
     }
 
-    private static TreeSet<String> readRetryReplicationNames(NetInputStream in) throws IOException {
-        TreeSet<String> retryReplicationNames = new TreeSet<>();
+    private static List<String> readRetryReplicationNames(NetInputStream in) throws IOException {
         int size = in.readInt();
+        List<String> retryReplicationNames = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             retryReplicationNames.add(in.readString());
         }

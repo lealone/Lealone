@@ -18,7 +18,7 @@
 package org.lealone.db.lock;
 
 import java.util.ArrayList;
-import java.util.TreeSet;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -36,7 +36,9 @@ public class DbObjectLockImpl implements DbObjectLock {
     private final DbObjectType type;
     private ArrayList<AsyncHandler<AsyncResult<Boolean>>> handlers;
     private ConcurrentLinkedQueue<ServerSession> waitingSessions = new ConcurrentLinkedQueue<>();
-    private TreeSet<String> retryReplicationNames;
+    private List<String> retryReplicationNames;
+
+    private final ConcurrentLinkedQueue<ServerSession> preparedReplicationSessions = new ConcurrentLinkedQueue<>();
 
     public DbObjectLockImpl(DbObjectType type) {
         this.type = type;
@@ -93,10 +95,10 @@ public class DbObjectLockImpl implements DbObjectLock {
                 }
             }
         } else {
-            String name = retryReplicationNames.first();
+            String name = retryReplicationNames.get(0);
             if (name.equals(session.getReplicationName())) {
                 session.addLock(this);
-                retryReplicationNames.pollFirst();
+                retryReplicationNames.remove(0);
                 return true;
             } else {
                 waitingSessions.add(session);
@@ -125,6 +127,10 @@ public class DbObjectLockImpl implements DbObjectLock {
                 handlers = null;
             }
 
+            if (oldSession.getReplicationName() != null) {
+                preparedReplicationSessions.add(oldSession);
+            }
+
             if (newSession != null) {
                 newSession.addLock(this);
                 waitingSessions.remove(newSession);
@@ -136,12 +142,12 @@ public class DbObjectLockImpl implements DbObjectLock {
                         s.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
                     waitingSessions = new ConcurrentLinkedQueue<>();
                 } else {
-                    String name = retryReplicationNames.first();
+                    String name = retryReplicationNames.get(0);
                     for (ServerSession s : waitingSessions) {
                         if (name.equals(s.getReplicationName())) {
                             s.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
                             waitingSessions.remove(s);
-                            retryReplicationNames.pollFirst();
+                            retryReplicationNames.remove(0);
                             break;
                         }
                     }
@@ -161,7 +167,35 @@ public class DbObjectLockImpl implements DbObjectLock {
     }
 
     @Override
-    public void setRetryReplicationNames(TreeSet<String> retryReplicationNames) {
+    public void setRetryReplicationNames(List<String> retryReplicationNames) {
         this.retryReplicationNames = retryReplicationNames;
+    }
+
+    @Override
+    public List<String> getPreparedReplicationNames(String exclude) {
+        ArrayList<String> names = new ArrayList<>(preparedReplicationSessions.size());
+        for (ServerSession session : preparedReplicationSessions) {
+            String name = session.getReplicationName();
+            if (exclude.equals(name))
+                break;
+            names.add(name);
+        }
+        return names;
+    }
+
+    @Override
+    public void removePreparedReplicationSession(ServerSession preparedReplicationSession) {
+        preparedReplicationSessions.remove(preparedReplicationSession);
+    }
+
+    @Override
+    public List<ServerSession> getPreparedReplicationSessions(ServerSession exclude) {
+        ArrayList<ServerSession> sessions = new ArrayList<>(preparedReplicationSessions.size());
+        for (ServerSession session : preparedReplicationSessions) {
+            if (session == exclude)
+                break;
+            sessions.add(session);
+        }
+        return sessions;
     }
 }
