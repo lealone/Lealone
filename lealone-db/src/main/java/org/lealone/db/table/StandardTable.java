@@ -574,4 +574,9 @@ public class StandardTable extends Table {
     public Column[] getOldColumns() {
         return oldColumns;
     }
+
+    @Override
+    public long getAndAddKey(long delta) {
+        return getScanIndex(null).getAndAddKey(delta);
+    }
 }

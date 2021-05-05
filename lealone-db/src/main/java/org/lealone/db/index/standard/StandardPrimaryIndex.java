@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -508,6 +509,35 @@ public class StandardPrimaryIndex extends StandardIndex {
             sessions.add(session);
         }
         return sessions;
+    }
+
+    @Override
+    public long getAndAddKey(long delta) {
+        return dataMap.getAndAddKey(delta);
+    }
+
+    @Override
+    public boolean isAppendMode() {
+        return mainIndexColumn == -1;
+    }
+
+    private final AtomicReference<ServerSession> uncommittedSessionRef = new AtomicReference<>();
+
+    public ServerSession getUncommittedSession() {
+        return uncommittedSessionRef.get();
+    }
+
+    @Override
+    public ServerSession compareAndSetUncommittedSession(ServerSession expect, ServerSession uncommittedSession) {
+        while (true) {
+            ServerSession old = uncommittedSessionRef.get();
+            if (uncommittedSessionRef.compareAndSet(expect, uncommittedSession))
+                return null;
+            else {
+                if (old == uncommittedSessionRef.get())
+                    return old;
+            }
+        }
     }
 
     /**

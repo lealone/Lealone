@@ -99,6 +99,11 @@ public abstract class StorageMapBase<K, V> implements StorageMap<K, V> {
         }
     }
 
+    @Override
+    public long getAndAddKey(long delta) {
+        return maxKey.getAndAdd(delta);
+    }
+
     public long getMaxKey() {
         return maxKey.get();
     }

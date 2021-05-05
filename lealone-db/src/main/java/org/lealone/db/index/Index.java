@@ -315,4 +315,16 @@ public interface Index extends SchemaObject {
     void addBufferedRows(ServerSession session, List<String> bufferNames);
 
     Map<String, List<PageKey>> getNodeToPageKeyMap(ServerSession session, SearchRow first, SearchRow last);
+
+    default long getAndAddKey(long delta) {
+        return 0;
+    }
+
+    default boolean isAppendMode() {
+        return false;
+    }
+
+    default ServerSession compareAndSetUncommittedSession(ServerSession expect, ServerSession uncommittedSession) {
+        return null;
+    }
 }

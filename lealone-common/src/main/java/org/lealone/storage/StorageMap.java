@@ -109,6 +109,8 @@ public interface StorageMap<K, V> {
 
     void setMaxKey(K key);
 
+    long getAndAddKey(long delta);
+
     /**
      * Get the first key, or null if the map is empty.
      *

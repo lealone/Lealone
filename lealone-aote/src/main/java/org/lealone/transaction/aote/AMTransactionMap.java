@@ -442,6 +442,11 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
+    public long getAndAddKey(long delta) {
+        return map.getAndAddKey(delta);
+    }
+
+    @Override
     public long getDiskSpaceUsed() {
         return map.getDiskSpaceUsed();
     }

@@ -19,6 +19,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -28,6 +29,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.yieldable.YieldableBase;
 import org.lealone.sql.yieldable.YieldableListenableUpdateBase;
+import org.lealone.storage.replication.ReplicationConflictType;
 
 /**
  * This class represents the statement
@@ -201,6 +203,7 @@ public class Insert extends ManipulationStatement {
         int index;
         Result rows;
         YieldableBase<Result> yieldableQuery;
+        boolean isReplicationAppendMode;
 
         public YieldableInsert(Insert statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
@@ -230,6 +233,26 @@ public class Insert extends ManipulationStatement {
 
         @Override
         protected boolean executeAndListen() {
+            if (!isReplicationAppendMode && session.isReplicationMode() && table.getScanIndex(session).isAppendMode()) {
+                long startKey = table.getScanIndex(session).getAndAddKey(listSize);
+                session.setReplicationConflictType(ReplicationConflictType.APPEND);
+                session.setStartKey(startKey);
+                session.setEndKey(startKey + listSize);
+                ServerSession s = table.getScanIndex(session).compareAndSetUncommittedSession(null, session);
+                if (s != null) {
+                    session.setLockedExclusivelyBy(s, ReplicationConflictType.APPEND);
+                }
+                session.setStatus(SessionStatus.WAITING);
+                isReplicationAppendMode = true;
+                if (asyncHandler != null) {
+                    asyncHandler.handle(new AsyncResult<>(-1));
+                }
+                return true;
+            }
+
+            if (isReplicationAppendMode) {
+
+            }
             if (yieldableQuery == null) {
                 int columnLen = statement.columns.length;
                 for (; pendingOperationException == null && index < listSize; index++) {
