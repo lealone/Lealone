@@ -18,8 +18,6 @@
 package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
@@ -33,18 +31,18 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
 
     public final long key;
     public final long first;
-    public final List<String> uncommittedReplicationNames;
+    public String uncommittedReplicationName;
     public final ReplicationConflictType replicationConflictType;
     public final int ackVersion; // 复制操作有可能返回多次，这个字段表示第几次返回响应结果
     public final boolean isDDL;
     private ReplicaCommand replicaCommand;
 
-    public ReplicationUpdateAck(int updateCount, long key, long first, List<String> uncommittedReplicationNames,
+    public ReplicationUpdateAck(int updateCount, long key, long first, String uncommittedReplicationName,
             ReplicationConflictType replicationConflictType, int ackVersion, boolean isDDL) {
         super(updateCount);
         this.key = key;
         this.first = first;
-        this.uncommittedReplicationNames = uncommittedReplicationNames;
+        this.uncommittedReplicationName = uncommittedReplicationName;
         this.replicationConflictType = replicationConflictType == null ? ReplicationConflictType.NONE
                 : replicationConflictType;
         this.ackVersion = ackVersion;
@@ -69,13 +67,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
         super.encode(out, version);
         out.writeLong(key);
         out.writeLong(first);
-        if (uncommittedReplicationNames == null) {
-            out.writeInt(0);
-        } else {
-            out.writeInt(uncommittedReplicationNames.size());
-            for (String name : uncommittedReplicationNames)
-                out.writeString(name);
-        }
+        out.writeString(uncommittedReplicationName);
         out.writeInt(replicationConflictType.value);
         out.writeInt(ackVersion);
         out.writeBoolean(isDDL);
@@ -86,20 +78,8 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationUpdateAck> {
         @Override
         public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readLong(),
-                    readUncommittedReplicationNames(in), ReplicationConflictType.getType(in.readInt()), in.readInt(),
-                    in.readBoolean());
+            return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readLong(), in.readString(),
+                    ReplicationConflictType.getType(in.readInt()), in.readInt(), in.readBoolean());
         }
-    }
-
-    public static List<String> readUncommittedReplicationNames(NetInputStream in) throws IOException {
-        int size = in.readInt();
-        if (size == 0)
-            return new ArrayList<>();
-        ArrayList<String> uncommittedReplicationNames = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            uncommittedReplicationNames.add(in.readString());
-        }
-        return uncommittedReplicationNames;
     }
 }

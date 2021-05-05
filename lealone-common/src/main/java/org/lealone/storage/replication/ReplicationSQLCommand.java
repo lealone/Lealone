@@ -171,9 +171,9 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         String validReplicationName = null;
         HashMap<String, AtomicInteger> groupResults = new HashMap<>(1);
         for (ReplicationUpdateAck ack : ackResults) {
-            if (ack.uncommittedReplicationNames.isEmpty())
-                ack.uncommittedReplicationNames.add(replicationName);
-            String name = ack.uncommittedReplicationNames.get(0);
+            if (ack.uncommittedReplicationName == null)
+                ack.uncommittedReplicationName = replicationName;
+            String name = ack.uncommittedReplicationName;
             AtomicInteger counter = groupResults.get(name);
             if (counter == null) {
                 counter = new AtomicInteger();
@@ -204,7 +204,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             for (int i = 0; i < appendReplicationNames.size(); i++) {
                 String name = appendReplicationNames.get(i);
                 for (ReplicationUpdateAck ack : ackResults) {
-                    if (ack.uncommittedReplicationNames.get(0).equals(name)) {
+                    if (ack.uncommittedReplicationName.equals(name)) {
                         long first = ack.first;
                         long end = ack.key;
                         long size = end - first;
@@ -224,7 +224,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                 replicationNames.addAll(retryReplicationNames);
                 ReplicationUpdateAck ret = null;
                 for (ReplicationUpdateAck ack : ackResults) {
-                    if (ret == null && ack.uncommittedReplicationNames.get(0).equals(validReplicationName)) {
+                    if (ret == null && ack.uncommittedReplicationName.equals(validReplicationName)) {
                         ret = ack;
                     }
                     ack.getReplicaCommand().removeAsyncCallback();
@@ -233,15 +233,15 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                 return ret;
             } else {
                 for (ReplicationUpdateAck ack : ackResults) {
-                    if (ack.uncommittedReplicationNames.get(0).equals(validReplicationName)) {
+                    if (ack.uncommittedReplicationName.equals(validReplicationName)) {
                         for (int i = 0; i < appendReplicationNames.size(); i++) {
                             String name = appendReplicationNames.get(i);
-                            if (ack.uncommittedReplicationNames.get(0).equals(name)) {
+                            if (ack.uncommittedReplicationName.equals(name)) {
                                 String[] keys = name.substring(0, name.indexOf(':')).split(",");
                                 long first = Long.parseLong(keys[0]);
                                 long end = Long.parseLong(keys[1]);
                                 return new ReplicationUpdateAck(ack.updateCount, end, first,
-                                        ack.uncommittedReplicationNames, ack.replicationConflictType, ack.ackVersion,
+                                        ack.uncommittedReplicationName, ack.replicationConflictType, ack.ackVersion,
                                         ack.isDDL);
                             }
                         }
@@ -257,9 +257,9 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         String validReplicationName = null;
         HashMap<String, AtomicInteger> groupResults = new HashMap<>(1);
         for (ReplicationUpdateAck ack : ackResults) {
-            if (ack.uncommittedReplicationNames.isEmpty())
-                ack.uncommittedReplicationNames.add(replicationName);
-            String name = ack.uncommittedReplicationNames.get(0);
+            if (ack.uncommittedReplicationName == null)
+                ack.uncommittedReplicationName = replicationName;
+            String name = ack.uncommittedReplicationName;
             AtomicInteger counter = groupResults.get(name);
             if (counter == null) {
                 counter = new AtomicInteger();
@@ -284,7 +284,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             for (ReplicationUpdateAck ack : ackResults) {
                 ack.getReplicaCommand().removeAsyncCallback();
                 ack.getReplicaCommand().handleReplicaConflict(replicationNames);
-                if (ret == null && ack.uncommittedReplicationNames.get(0).equals(validReplicationName))
+                if (ret == null && ack.uncommittedReplicationName.equals(validReplicationName))
                     ret = ack;
             }
             return ret;
@@ -292,79 +292,8 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             ReplicationUpdateAck ret = null;
             for (ReplicationUpdateAck ack : ackResults) {
                 ack.getReplicaCommand().removeAsyncCallback();
-                if (ret == null && ack.uncommittedReplicationNames.get(0).equals(validReplicationName))
+                if (ret == null && ack.uncommittedReplicationName.equals(validReplicationName))
                     ret = ack;
-            }
-            return ret;
-        }
-        return null; // 继续等待
-    }
-
-    @SuppressWarnings("unused")
-    private ReplicationUpdateAck handleLockConflictNew(String replicationName, List<ReplicationUpdateAck> ackResults) {
-        int quorum = session.n / 2 + 1;
-        String validReplicationName = null;
-        HashMap<String, AtomicInteger> groupResults = new HashMap<>(1);
-        for (ReplicationUpdateAck ack : ackResults) {
-            ack.uncommittedReplicationNames.add(replicationName);
-            String name = ack.uncommittedReplicationNames.get(0);
-            AtomicInteger counter = groupResults.get(name);
-            if (counter == null) {
-                counter = new AtomicInteger();
-                groupResults.put(name, counter);
-            }
-            if (counter.incrementAndGet() >= quorum) {
-                validReplicationName = name;
-            }
-        }
-
-        TreeSet<String> retryReplicationNames = new TreeSet<>(groupResults.keySet());
-        if (validReplicationName == null) {
-            validReplicationName = retryReplicationNames.pollFirst();
-        } else {
-            retryReplicationNames.remove(validReplicationName);
-        }
-
-        ArrayList<String> replicationNames = new ArrayList<>(retryReplicationNames.size() + 1);
-        replicationNames.add(validReplicationName);
-        for (String name : retryReplicationNames)
-            replicationNames.add(name);
-
-        if (validReplicationName.equals(replicationName)) {
-            ReplicationUpdateAck ret = null;
-            for (ReplicationUpdateAck ack : ackResults) {
-                ack.getReplicaCommand().removeAsyncCallback();
-                ack.getReplicaCommand().handleReplicaConflict(replicationNames);
-                if (ret == null && ack.uncommittedReplicationNames.get(0).equals(validReplicationName))
-                    ret = ack;
-            }
-            return ret;
-        } else if (retryReplicationNames.contains(replicationName)) {
-            int index = replicationNames.indexOf(replicationName);
-            ReplicationUpdateAck ret = null;
-            for (ReplicationUpdateAck ack : ackResults) {
-                List<String> uncommittedReplicationNames = ack.uncommittedReplicationNames;
-                int min = Math.min(index, uncommittedReplicationNames.size() - 1);
-                int i = 0;
-                for (; i <= min; i++) {
-                    if (!uncommittedReplicationNames.get(i).equals(replicationNames.get(i))) {
-                        break;
-                    }
-                }
-                if (i == index + 1) {
-                    ret = ack;
-                    break;
-                }
-            }
-            if (ret != null) {
-                for (ReplicationUpdateAck ack : ackResults) {
-                    ack.getReplicaCommand().removeAsyncCallback();
-                    ack.getReplicaCommand().handleReplicaConflict(replicationNames);
-                }
-            } else {
-                for (ReplicationUpdateAck ack : ackResults) {
-                    ack.getReplicaCommand().handleReplicaConflict(replicationNames);
-                }
             }
             return ret;
         }

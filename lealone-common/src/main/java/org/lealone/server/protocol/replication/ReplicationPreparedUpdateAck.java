@@ -18,7 +18,6 @@
 package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.server.protocol.PacketDecoder;
@@ -27,9 +26,9 @@ import org.lealone.storage.replication.ReplicationConflictType;
 
 public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
 
-    public ReplicationPreparedUpdateAck(int updateCount, long key, long first, List<String> uncommittedReplicationNames,
+    public ReplicationPreparedUpdateAck(int updateCount, long key, long first, String uncommittedReplicationName,
             ReplicationConflictType replicationConflictType, int ackVersion, boolean isDDL) {
-        super(updateCount, key, first, uncommittedReplicationNames, replicationConflictType, ackVersion, isDDL);
+        super(updateCount, key, first, uncommittedReplicationName, replicationConflictType, ackVersion, isDDL);
     }
 
     @Override
@@ -42,9 +41,8 @@ public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationPreparedUpdateAck> {
         @Override
         public ReplicationPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong(), in.readLong(),
-                    readUncommittedReplicationNames(in), ReplicationConflictType.getType(in.readInt()), in.readInt(),
-                    in.readBoolean());
+            return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong(), in.readLong(), in.readString(),
+                    ReplicationConflictType.getType(in.readInt()), in.readInt(), in.readBoolean());
         }
     }
 }

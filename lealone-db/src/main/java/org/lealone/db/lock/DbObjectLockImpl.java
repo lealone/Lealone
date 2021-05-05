@@ -38,8 +38,6 @@ public class DbObjectLockImpl implements DbObjectLock {
     private ConcurrentLinkedQueue<ServerSession> waitingSessions = new ConcurrentLinkedQueue<>();
     private List<String> retryReplicationNames;
 
-    private final ConcurrentLinkedQueue<ServerSession> preparedReplicationSessions = new ConcurrentLinkedQueue<>();
-
     public DbObjectLockImpl(DbObjectType type) {
         this.type = type;
     }
@@ -127,10 +125,6 @@ public class DbObjectLockImpl implements DbObjectLock {
                 handlers = null;
             }
 
-            if (oldSession.getReplicationName() != null) {
-                preparedReplicationSessions.add(oldSession);
-            }
-
             if (newSession != null) {
                 newSession.addLock(this);
                 waitingSessions.remove(newSession);
@@ -169,33 +163,5 @@ public class DbObjectLockImpl implements DbObjectLock {
     @Override
     public void setRetryReplicationNames(List<String> retryReplicationNames) {
         this.retryReplicationNames = retryReplicationNames;
-    }
-
-    @Override
-    public List<String> getPreparedReplicationNames(String exclude) {
-        ArrayList<String> names = new ArrayList<>(preparedReplicationSessions.size());
-        for (ServerSession session : preparedReplicationSessions) {
-            String name = session.getReplicationName();
-            if (exclude.equals(name))
-                break;
-            names.add(name);
-        }
-        return names;
-    }
-
-    @Override
-    public void removePreparedReplicationSession(ServerSession preparedReplicationSession) {
-        preparedReplicationSessions.remove(preparedReplicationSession);
-    }
-
-    @Override
-    public List<ServerSession> getPreparedReplicationSessions(ServerSession exclude) {
-        ArrayList<ServerSession> sessions = new ArrayList<>(preparedReplicationSessions.size());
-        for (ServerSession session : preparedReplicationSessions) {
-            if (session == exclude)
-                break;
-            sessions.add(session);
-        }
-        return sessions;
     }
 }

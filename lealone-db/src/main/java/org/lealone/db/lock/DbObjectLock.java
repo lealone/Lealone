@@ -48,15 +48,4 @@ public interface DbObjectLock {
 
     default void setRetryReplicationNames(List<String> retryReplicationNames) {
     }
-
-    default List<String> getPreparedReplicationNames(String exclude) {
-        return null;
-    }
-
-    default void removePreparedReplicationSession(ServerSession preparedReplicationSession) {
-    }
-
-    default List<ServerSession> getPreparedReplicationSessions(ServerSession exclude) {
-        return null;
-    }
 }
