@@ -60,8 +60,9 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
             ar = results.get(0);
         }
         if (commands != null) {
+            ArrayList<String> replicationNames = new ArrayList<>(0);
             for (ReplicaCommand c : commands) {
-                c.replicaCommit(-1, true, null);
+                c.handleReplicaConflict(replicationNames);
             }
         }
         if (finalResultHandler != null) {

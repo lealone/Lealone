@@ -24,10 +24,7 @@ import org.lealone.db.Command;
 //与单个副本相关的命令
 public interface ReplicaCommand extends Command {
 
-    default void replicaCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
-    }
-
-    default void replicaRollback() {
+    default void handleReplicaConflict(List<String> retryReplicationNames) {
     }
 
     default void removeAsyncCallback() {

@@ -25,8 +25,7 @@ import org.lealone.server.protocol.dt.DTransactionQuery;
 import org.lealone.server.protocol.dt.DTransactionQueryAck;
 import org.lealone.server.protocol.dt.DTransactionUpdate;
 import org.lealone.server.protocol.dt.DTransactionUpdateAck;
-import org.lealone.server.protocol.replication.ReplicationCommit;
-import org.lealone.server.protocol.replication.ReplicationRollback;
+import org.lealone.server.protocol.replication.ReplicationHandleReplicaConflict;
 import org.lealone.server.protocol.replication.ReplicationUpdate;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.statement.StatementQuery;
@@ -200,20 +199,11 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public void replicaCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
+    public void handleReplicaConflict(List<String> retryReplicationNames) {
         try {
-            session.send(new ReplicationCommit(validKey, autoCommit, retryReplicationNames));
+            session.send(new ReplicationHandleReplicaConflict(retryReplicationNames));
         } catch (Exception e) {
-            session.getTrace().error(e, "replicationCommit");
-        }
-    }
-
-    @Override
-    public void replicaRollback() {
-        try {
-            session.send(new ReplicationRollback());
-        } catch (Exception e) {
-            session.getTrace().error(e, "replicationRollback");
+            session.getTrace().error(e, "handleReplicaConflict");
         }
     }
 

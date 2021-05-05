@@ -27,26 +27,21 @@ import org.lealone.server.protocol.NoAckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class ReplicationCommit implements NoAckPacket {
+public class ReplicationHandleReplicaConflict implements NoAckPacket {
 
-    public final long validKey;
-    public final boolean autoCommit;
     public final List<String> retryReplicationNames;
 
-    public ReplicationCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
-        this.validKey = validKey;
-        this.autoCommit = autoCommit;
+    public ReplicationHandleReplicaConflict(List<String> retryReplicationNames) {
         this.retryReplicationNames = retryReplicationNames;
     }
 
     @Override
     public PacketType getType() {
-        return PacketType.REPLICATION_COMMIT;
+        return PacketType.REPLICATION_HANDLE_REPLICA_CONFLICT;
     }
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeLong(validKey).writeBoolean(autoCommit);
         out.writeInt(retryReplicationNames.size());
         for (String name : retryReplicationNames)
             out.writeString(name);
@@ -54,10 +49,10 @@ public class ReplicationCommit implements NoAckPacket {
 
     public static final Decoder decoder = new Decoder();
 
-    private static class Decoder implements PacketDecoder<ReplicationCommit> {
+    private static class Decoder implements PacketDecoder<ReplicationHandleReplicaConflict> {
         @Override
-        public ReplicationCommit decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationCommit(in.readLong(), in.readBoolean(), readRetryReplicationNames(in));
+        public ReplicationHandleReplicaConflict decode(NetInputStream in, int version) throws IOException {
+            return new ReplicationHandleReplicaConflict(readRetryReplicationNames(in));
         }
     }
 

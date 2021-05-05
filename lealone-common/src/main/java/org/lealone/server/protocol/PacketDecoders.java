@@ -47,11 +47,10 @@ import org.lealone.server.protocol.ps.PreparedStatementQuery;
 import org.lealone.server.protocol.ps.PreparedStatementUpdate;
 import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationCheckConflictAck;
-import org.lealone.server.protocol.replication.ReplicationCommit;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
+import org.lealone.server.protocol.replication.ReplicationHandleReplicaConflict;
 import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
 import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
-import org.lealone.server.protocol.replication.ReplicationRollback;
 import org.lealone.server.protocol.replication.ReplicationUpdate;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.result.ResultChangeId;
@@ -144,11 +143,10 @@ public class PacketDecoders {
         register(PacketType.REPLICATION_UPDATE_ACK, ReplicationUpdateAck.decoder);
         register(PacketType.REPLICATION_PREPARED_UPDATE, ReplicationPreparedUpdate.decoder);
         register(PacketType.REPLICATION_PREPARED_UPDATE_ACK, ReplicationPreparedUpdateAck.decoder);
-        register(PacketType.REPLICATION_COMMIT, ReplicationCommit.decoder);
-        register(PacketType.REPLICATION_ROLLBACK, ReplicationRollback.decoder);
         register(PacketType.REPLICATION_CHECK_CONFLICT, ReplicationCheckConflict.decoder);
         register(PacketType.REPLICATION_CHECK_CONFLICT_ACK, ReplicationCheckConflictAck.decoder);
         register(PacketType.REPLICATION_HANDLE_CONFLICT, ReplicationHandleConflict.decoder);
+        register(PacketType.REPLICATION_HANDLE_REPLICA_CONFLICT, ReplicationHandleReplicaConflict.decoder);
 
         register(PacketType.DISTRIBUTED_TRANSACTION_QUERY, DTransactionQuery.decoder);
         register(PacketType.DISTRIBUTED_TRANSACTION_QUERY_ACK, DTransactionQueryAck.decoder);

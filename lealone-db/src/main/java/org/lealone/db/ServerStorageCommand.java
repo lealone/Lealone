@@ -184,12 +184,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public void replicaCommit(long validKey, boolean autoCommit, List<String> retryReplicationNames) {
-        session.replicationCommit(validKey, autoCommit, retryReplicationNames);
-    }
-
-    @Override
-    public void replicaRollback() {
-        session.rollback();
+    public void handleReplicaConflict(List<String> retryReplicationNames) {
+        session.handleReplicaConflict(retryReplicationNames);
     }
 }

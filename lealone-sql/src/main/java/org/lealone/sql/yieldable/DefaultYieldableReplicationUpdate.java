@@ -59,7 +59,7 @@ public class DefaultYieldableReplicationUpdate extends DefaultYieldableUpdate {
             if (session.getStatus() == SessionStatus.RETRYING) {
                 stop();
             } else {
-                // 此时语句还没有完成，需要等到执行session.replicationCommit后才完成
+                // 此时语句还没有完成，需要等到执行session.handleReplicaConflict后才完成
                 if (asyncHandler != null) {
                     AsyncResult<Integer> ar = asyncResult;
                     asyncResult = null; // 避免发送第二次
