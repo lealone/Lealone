@@ -78,6 +78,8 @@ public class DbObjectLockImpl implements DbObjectLock {
 
     @Override
     public boolean tryExclusiveLock(ServerSession session) {
+        if (ref.get() == session)
+            return true;
         if (retryReplicationNames == null || retryReplicationNames.isEmpty()) {
             if (ref.compareAndSet(null, session)) {
                 session.addLock(this);
@@ -128,7 +130,8 @@ public class DbObjectLockImpl implements DbObjectLock {
             if (newSession != null) {
                 newSession.addLock(this);
                 waitingSessions.remove(newSession);
-                tryExclusiveLock(oldSession);
+                addWaitingTransaction(newSession, oldSession);
+                waitingSessions.add(oldSession);
                 newSession.setStatus(SessionStatus.RETRYING);
             } else {
                 if (retryReplicationNames == null || retryReplicationNames.isEmpty()) {
@@ -139,9 +142,9 @@ public class DbObjectLockImpl implements DbObjectLock {
                     String name = retryReplicationNames.get(0);
                     for (ServerSession s : waitingSessions) {
                         if (name.equals(s.getReplicationName())) {
-                            s.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
                             waitingSessions.remove(s);
                             retryReplicationNames.remove(0);
+                            s.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
                             break;
                         }
                     }

@@ -1398,6 +1398,11 @@ public class ServerSession extends SessionBase {
     }
 
     public void setStatus(SessionStatus sessionStatus) {
+        // 在复制模式下执行带IF的DDL语句发生冲突时，只需发送一次结果即可
+        if (sessionStatus == SessionStatus.RETRYING_RETURN_RESULT && currentCommand != null && currentCommand.isIfDDL()
+                && ackVersion > 0) {
+            sessionStatus = SessionStatus.RETRYING;
+        }
         this.sessionStatus = sessionStatus;
     }
 
