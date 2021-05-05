@@ -42,9 +42,13 @@ public class ReplicationHandleReplicaConflict implements NoAckPacket {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(retryReplicationNames.size());
-        for (String name : retryReplicationNames)
-            out.writeString(name);
+        if (retryReplicationNames == null || retryReplicationNames.isEmpty()) {
+            out.writeInt(0);
+        } else {
+            out.writeInt(retryReplicationNames.size());
+            for (String name : retryReplicationNames)
+                out.writeString(name);
+        }
     }
 
     public static final Decoder decoder = new Decoder();
@@ -58,6 +62,8 @@ public class ReplicationHandleReplicaConflict implements NoAckPacket {
 
     private static List<String> readRetryReplicationNames(NetInputStream in) throws IOException {
         int size = in.readInt();
+        if (size == 0)
+            return null;
         List<String> retryReplicationNames = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             retryReplicationNames.add(in.readString());

@@ -1551,7 +1551,7 @@ public class ServerSession extends SessionBase {
 
     public void handleReplicaConflict(List<String> retryReplicationNames) {
         ackVersion = 0;
-        if (!locks.isEmpty() && !retryReplicationNames.isEmpty()) {
+        if (retryReplicationNames != null && !retryReplicationNames.isEmpty() && !locks.isEmpty()) {
             for (int i = 0, size = locks.size(); i < size; i++) {
                 DbObjectLock lock = locks.get(i);
                 lock.setRetryReplicationNames(retryReplicationNames);

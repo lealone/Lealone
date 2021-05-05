@@ -156,10 +156,9 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             return handleAppendConflict(replicationName, ackResults);
         case NONE:
         default:
-            List<String> retryReplicationNames = new ArrayList<>();
             for (ReplicationUpdateAck ack : ackResults) {
                 ack.getReplicaCommand().removeAsyncCallback();
-                ack.getReplicaCommand().handleReplicaConflict(retryReplicationNames);
+                ack.getReplicaCommand().handleReplicaConflict(null);
             }
             return ackResults.get(0);
         }
