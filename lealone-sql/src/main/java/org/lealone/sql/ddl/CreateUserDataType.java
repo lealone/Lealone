@@ -53,6 +53,11 @@ public class CreateUserDataType extends SchemaStatement {
     }
 
     @Override
+    public boolean isIfDDL() {
+        return ifNotExists;
+    }
+
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.USER_DATATYPE, session);

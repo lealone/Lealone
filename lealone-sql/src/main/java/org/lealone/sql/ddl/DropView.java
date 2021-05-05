@@ -52,6 +52,11 @@ public class DropView extends SchemaStatement {
         ifExists = b;
     }
 
+    @Override
+    public boolean isIfDDL() {
+        return ifExists;
+    }
+
     public void setDropAction(int dropAction) {
         this.dropAction = dropAction;
     }

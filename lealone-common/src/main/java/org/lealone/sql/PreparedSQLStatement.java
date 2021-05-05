@@ -68,6 +68,10 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
 
     boolean isDDL();
 
+    default boolean isIfDDL() {
+        return false;
+    }
+
     boolean isDatabaseStatement();
 
     boolean isReplicationStatement();

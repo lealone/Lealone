@@ -44,6 +44,11 @@ public class DropSchema extends DefinitionStatement {
     }
 
     @Override
+    public boolean isIfDDL() {
+        return ifExists;
+    }
+
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         Database db = session.getDatabase();

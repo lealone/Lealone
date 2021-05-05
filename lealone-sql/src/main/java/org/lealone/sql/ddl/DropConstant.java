@@ -45,6 +45,11 @@ public class DropConstant extends SchemaStatement {
     }
 
     @Override
+    public boolean isIfDDL() {
+        return ifExists;
+    }
+
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.CONSTANT, session);

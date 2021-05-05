@@ -45,6 +45,11 @@ public class DropUserDataType extends SchemaStatement {
     }
 
     @Override
+    public boolean isIfDDL() {
+        return ifExists;
+    }
+
+    @Override
     public int update() {
         session.getUser().checkAdmin();
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.USER_DATATYPE, session);

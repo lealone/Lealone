@@ -208,8 +208,8 @@ public class TcpServerConnection extends TransferConnection {
     public void sendResponse(PacketDeliveryTask task, Packet packet) {
         if (packet instanceof ReplicationUpdateAck) {
             ReplicationUpdateAck ack = (ReplicationUpdateAck) packet;
-            // 在复制模式下执行DDL语句发生冲突时，只需发送一次结果即可
-            if (ack.isDDL && ack.ackVersion > 1)
+            // 在复制模式下执行带IF的DDL语句发生冲突时，只需发送一次结果即可
+            if (ack.isIfDDL && ack.ackVersion > 1)
                 return;
         }
         ServerSession session = task.session;

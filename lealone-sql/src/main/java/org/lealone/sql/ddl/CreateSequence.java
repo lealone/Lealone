@@ -52,6 +52,11 @@ public class CreateSequence extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
+    @Override
+    public boolean isIfDDL() {
+        return ifNotExists;
+    }
+
     public void setCycle(boolean cycle) {
         this.cycle = cycle;
     }

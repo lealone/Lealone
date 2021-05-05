@@ -50,6 +50,11 @@ public class CreateDatabase extends DatabaseStatement {
     }
 
     @Override
+    public boolean isIfDDL() {
+        return ifNotExists;
+    }
+
+    @Override
     public int update() {
         checkRight(ErrorCode.CREATE_DATABASE_RIGHTS_REQUIRED);
         LealoneDatabase lealoneDB = LealoneDatabase.getInstance();

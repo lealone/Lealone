@@ -118,6 +118,11 @@ public class CreateTable extends SchemaStatement {
     }
 
     @Override
+    public boolean isIfDDL() {
+        return ifNotExists;
+    }
+
+    @Override
     public int update() {
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.TABLE_OR_VIEW, session);
         if (lock == null)

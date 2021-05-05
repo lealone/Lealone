@@ -50,6 +50,11 @@ public class CreateAggregate extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
+    @Override
+    public boolean isIfDDL() {
+        return ifNotExists;
+    }
+
     public void setForce(boolean force) {
         this.force = force;
     }

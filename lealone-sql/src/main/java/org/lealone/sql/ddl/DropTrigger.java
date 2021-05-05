@@ -47,6 +47,11 @@ public class DropTrigger extends SchemaStatement {
     }
 
     @Override
+    public boolean isIfDDL() {
+        return ifExists;
+    }
+
+    @Override
     public int update() {
         DbObjectLock lock = schema.tryExclusiveLock(DbObjectType.TRIGGER, session);
         if (lock == null)

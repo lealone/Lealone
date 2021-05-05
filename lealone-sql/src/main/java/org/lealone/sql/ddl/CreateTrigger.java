@@ -57,6 +57,11 @@ public class CreateTrigger extends SchemaStatement {
         this.ifNotExists = ifNotExists;
     }
 
+    @Override
+    public boolean isIfDDL() {
+        return ifNotExists;
+    }
+
     public void setInsteadOf(boolean insteadOf) {
         this.insteadOf = insteadOf;
     }

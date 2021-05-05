@@ -27,8 +27,8 @@ import org.lealone.storage.replication.ReplicationConflictType;
 public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
 
     public ReplicationPreparedUpdateAck(int updateCount, long key, long first, String uncommittedReplicationName,
-            ReplicationConflictType replicationConflictType, int ackVersion, boolean isDDL) {
-        super(updateCount, key, first, uncommittedReplicationName, replicationConflictType, ackVersion, isDDL);
+            ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL) {
+        super(updateCount, key, first, uncommittedReplicationName, replicationConflictType, ackVersion, isIfDDL);
     }
 
     @Override

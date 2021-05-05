@@ -1413,6 +1413,10 @@ public class ServerSession extends SessionBase {
         this.endKey = endKey;
     }
 
+    public void setLastRow(Row r) {
+        setLastIdentity(ValueLong.get(r.getKey()));
+    }
+
     public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy,
             ReplicationConflictType replicationConflictType) {
         this.lockedExclusivelyBy = lockedExclusivelyBy;
@@ -1438,10 +1442,6 @@ public class ServerSession extends SessionBase {
             return true;
         }
         return false;
-    }
-
-    public void setLastRow(Row r) {
-        setLastIdentity(ValueLong.get(r.getKey()));
     }
 
     public static class YieldableCommand {
@@ -1538,60 +1538,6 @@ public class ServerSession extends SessionBase {
         return yieldableCommand == null || getReplicationName() != null;
     }
 
-    public <T> void replicationPrepareCommit(AsyncResult<T> asyncResult) {
-        if (!locks.isEmpty()) {
-            // don't use the enhanced for loop to save memory
-            for (int i = 0, size = locks.size(); i < size; i++) {
-                DbObjectLock lock = locks.get(i);
-                lock.unlock(this, true, null);
-            }
-        }
-        // TODO 把ReplicationName和asyncResult写入redo log，用于恢复
-    }
-
-    public void handleReplicaConflict(List<String> retryReplicationNames) {
-        ackVersion = 0;
-        if (retryReplicationNames != null && !retryReplicationNames.isEmpty() && !locks.isEmpty()) {
-            for (int i = 0, size = locks.size(); i < size; i++) {
-                DbObjectLock lock = locks.get(i);
-                lock.setRetryReplicationNames(retryReplicationNames);
-            }
-        }
-
-        if (replicationConflictType == null)
-            replicationConflictType = ReplicationConflictType.NONE;
-        switch (replicationConflictType) {
-        case ROW_LOCK:
-        case DB_OBJECT_LOCK: {
-            // 行锁和数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
-            if (lockedExclusivelyBy != null) {
-                lockedExclusivelyBy.rollbackCurrentCommand(this);
-                replicationConflictType = null;
-                lockedExclusivelyBy = null;
-                sessionStatus = SessionStatus.RETRYING;
-                return;
-            }
-            break;
-        }
-        case APPEND: {
-            break;
-        }
-        default:
-            // nothing to do
-            break;
-        }
-        setStatus(SessionStatus.STATEMENT_COMPLETED);
-        setReplicationName(null);
-        yieldableCommand.stop();
-        yieldableCommand = null;
-    }
-
-    private void clean() {
-        setReplicationName(null);
-        lockedExclusivelyBy = null;
-        replicationConflictType = null;
-    }
-
     private int ackVersion;
 
     public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
@@ -1614,12 +1560,65 @@ public class ServerSession extends SessionBase {
             break;
         }
 
+        if (isAutoCommit()) {
+            // TODO 把ReplicationName写入redo log，用于恢复
+        }
+
         if (prepared)
             return new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationName,
-                    replicationConflictType, ++ackVersion, currentCommand.isDDL());
+                    replicationConflictType, ++ackVersion, currentCommand.isIfDDL());
         else
             return new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationName,
-                    replicationConflictType, ++ackVersion, currentCommand.isDDL());
+                    replicationConflictType, ++ackVersion, currentCommand.isIfDDL());
+    }
+
+    private void setRetryReplicationNames(List<String> retryReplicationNames) {
+        if (retryReplicationNames != null && !retryReplicationNames.isEmpty() && !locks.isEmpty()) {
+            for (int i = 0, size = locks.size(); i < size; i++) {
+                DbObjectLock lock = locks.get(i);
+                lock.setRetryReplicationNames(retryReplicationNames);
+            }
+        }
+    }
+
+    public void handleReplicaConflict(List<String> retryReplicationNames) {
+        ackVersion = 0;
+        setRetryReplicationNames(retryReplicationNames);
+
+        if (replicationConflictType == null)
+            replicationConflictType = ReplicationConflictType.NONE;
+        switch (replicationConflictType) {
+        case ROW_LOCK:
+        case DB_OBJECT_LOCK: {
+            // 行锁和数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+            if (lockedExclusivelyBy != null) {
+                // 重试复制名里也包含lockedExclusivelyBy
+                lockedExclusivelyBy.setRetryReplicationNames(retryReplicationNames);
+                lockedExclusivelyBy.rollbackCurrentCommand(this);
+                replicationConflictType = null;
+                lockedExclusivelyBy = null;
+                sessionStatus = SessionStatus.RETRYING;
+                return;
+            }
+            break;
+        }
+        case APPEND: {
+            break;
+        }
+        default:
+            // nothing to do
+            break;
+        }
+        setStatus(SessionStatus.STATEMENT_COMPLETED);
+        clean();
+        yieldableCommand.stop();
+        yieldableCommand = null;
+    }
+
+    private void clean() {
+        setReplicationName(null);
+        lockedExclusivelyBy = null;
+        replicationConflictType = null;
     }
 
     private byte[] lobMacSalt;

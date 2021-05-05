@@ -34,11 +34,11 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     public String uncommittedReplicationName;
     public final ReplicationConflictType replicationConflictType;
     public final int ackVersion; // 复制操作有可能返回多次，这个字段表示第几次返回响应结果
-    public final boolean isDDL;
+    public final boolean isIfDDL;
     private ReplicaCommand replicaCommand;
 
     public ReplicationUpdateAck(int updateCount, long key, long first, String uncommittedReplicationName,
-            ReplicationConflictType replicationConflictType, int ackVersion, boolean isDDL) {
+            ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL) {
         super(updateCount);
         this.key = key;
         this.first = first;
@@ -46,7 +46,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
         this.replicationConflictType = replicationConflictType == null ? ReplicationConflictType.NONE
                 : replicationConflictType;
         this.ackVersion = ackVersion;
-        this.isDDL = isDDL;
+        this.isIfDDL = isIfDDL;
     }
 
     @Override
@@ -70,7 +70,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
         out.writeString(uncommittedReplicationName);
         out.writeInt(replicationConflictType.value);
         out.writeInt(ackVersion);
-        out.writeBoolean(isDDL);
+        out.writeBoolean(isIfDDL);
     }
 
     public static final Decoder decoder = new Decoder();

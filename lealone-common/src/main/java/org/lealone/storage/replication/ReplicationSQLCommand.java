@@ -241,7 +241,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                                 long end = Long.parseLong(keys[1]);
                                 return new ReplicationUpdateAck(ack.updateCount, end, first,
                                         ack.uncommittedReplicationName, ack.replicationConflictType, ack.ackVersion,
-                                        ack.isDDL);
+                                        ack.isIfDDL);
                             }
                         }
                     }
@@ -287,7 +287,8 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                     ret = ack;
             }
             return ret;
-        } else if (retryReplicationNames.contains(replicationName) && ackResults.get(0).isDDL) { // DDL语句不需要等了，返回的结果都是一样的
+        } else if (retryReplicationNames.contains(replicationName) && ackResults.get(0).isIfDDL) {
+            // 带IF的DDL语句不需要等了，返回的结果都是一样的
             ReplicationUpdateAck ret = null;
             for (ReplicationUpdateAck ack : ackResults) {
                 ack.getReplicaCommand().removeAsyncCallback();

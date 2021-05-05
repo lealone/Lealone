@@ -34,9 +34,9 @@ public class DefaultYieldableReplicationUpdate extends DefaultYieldableUpdate {
         case TRANSACTION_NOT_START:
         case TRANSACTION_NOT_COMMIT:
         case STATEMENT_COMPLETED:
+        case RETRYING_RETURN_RESULT: // 重试返回结果后还不能立刻结束，所以也需要转到STATEMENT_RUNNING状态
             session.setStatus(SessionStatus.STATEMENT_RUNNING);
-        case RETRYING:
-        case RETRYING_RETURN_RESULT:
+        case RETRYING: // 重试不用返回结果，立即结束
             executeUpdate();
             break;
         }
