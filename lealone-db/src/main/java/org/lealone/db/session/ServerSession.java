@@ -1531,12 +1531,13 @@ public class ServerSession extends SessionBase {
             // TODO 把ReplicationName写入redo log，用于恢复
         }
 
+        boolean isIfDDL = currentCommand != null && currentCommand.isIfDDL();
         if (prepared)
             return new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationName,
-                    replicationConflictType, ++ackVersion, currentCommand.isIfDDL());
+                    replicationConflictType, ++ackVersion, isIfDDL);
         else
             return new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationName,
-                    replicationConflictType, ++ackVersion, currentCommand.isIfDDL());
+                    replicationConflictType, ++ackVersion, isIfDDL);
     }
 
     private void setRetryReplicationNames(List<String> retryReplicationNames) {
