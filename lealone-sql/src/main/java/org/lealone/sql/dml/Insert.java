@@ -232,7 +232,7 @@ public class Insert extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeAndListen() {
+        protected boolean executeUpdate() {
             if (!isReplicationAppendMode && session.isReplicationMode() && table.getScanIndex(session).isAppendMode()) {
                 long startKey = table.getScanIndex(session).getAndAddKey(listSize);
                 session.setReplicationConflictType(ReplicationConflictType.APPEND);

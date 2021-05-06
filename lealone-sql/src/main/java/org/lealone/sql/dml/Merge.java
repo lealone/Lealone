@@ -249,7 +249,7 @@ public class Merge extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeAndListen() {
+        protected boolean executeUpdate() {
             if (yieldableQuery == null) {
                 int columnLen = statement.columns.length;
                 for (; pendingOperationException == null && index < listSize; index++) {

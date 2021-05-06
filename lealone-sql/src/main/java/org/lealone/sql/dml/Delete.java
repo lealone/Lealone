@@ -164,7 +164,7 @@ public class Delete extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeAndListen() {
+        protected boolean executeUpdate() {
             if (oldRow != null) {
                 if (tableFilter.rebuildSearchRow(session, oldRow) == null)
                     hasNext = tableFilter.next();

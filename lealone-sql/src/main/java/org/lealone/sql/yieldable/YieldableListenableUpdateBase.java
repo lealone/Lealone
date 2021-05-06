@@ -41,7 +41,7 @@ public abstract class YieldableListenableUpdateBase extends YieldableUpdateBase 
     @Override
     protected boolean executeInternal() {
         if (!loopEnd) {
-            if (executeAndListen()) {
+            if (executeUpdate()) {
                 if (asyncHandler != null && session.needsHandleReplicationRowLockConflict()) {
                     asyncHandler.handle(new AsyncResult<>(-1));
                 }
@@ -60,7 +60,7 @@ public abstract class YieldableListenableUpdateBase extends YieldableUpdateBase 
         return true;
     }
 
-    protected abstract boolean executeAndListen();
+    protected abstract boolean executeUpdate();
 
     @Override
     public void beforeOperation() {

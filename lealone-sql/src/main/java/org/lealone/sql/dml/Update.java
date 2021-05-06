@@ -217,7 +217,7 @@ public class Update extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeAndListen() {
+        protected boolean executeUpdate() {
             if (oldRow != null) {
                 // 如果oldRow已经删除了那么移到下一行
                 if (tableFilter.rebuildSearchRow(session, oldRow) == null)
