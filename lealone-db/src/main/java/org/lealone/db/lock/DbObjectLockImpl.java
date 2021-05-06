@@ -97,8 +97,10 @@ public class DbObjectLockImpl implements DbObjectLock {
         } else {
             String name = retryReplicationNames.get(0);
             if (name.equals(session.getReplicationName())) {
+                ref.set(session);
                 session.addLock(this);
                 retryReplicationNames.remove(0);
+                waitingSessions.remove(session);
                 return true;
             } else {
                 waitingSessions.add(session);
@@ -144,6 +146,8 @@ public class DbObjectLockImpl implements DbObjectLock {
                         if (name.equals(s.getReplicationName())) {
                             waitingSessions.remove(s);
                             retryReplicationNames.remove(0);
+                            ref.set(s);
+                            s.addLock(this);
                             s.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
                             break;
                         }
