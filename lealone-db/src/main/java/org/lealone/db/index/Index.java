@@ -96,7 +96,7 @@ public interface Index extends SchemaObject {
         listener.await();
     }
 
-    default boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
+    default void tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
         throw DbException.getUnsupportedException("add row");
     }
 

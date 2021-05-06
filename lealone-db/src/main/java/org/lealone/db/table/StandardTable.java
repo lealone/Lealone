@@ -317,7 +317,7 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
+    public void tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
         row.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
@@ -336,7 +336,6 @@ public class StandardTable extends Table {
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        return false;
     }
 
     @Override

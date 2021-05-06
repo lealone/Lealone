@@ -111,7 +111,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public boolean tryAdd(ServerSession session, Row row, final Transaction.Listener globalListener) {
+    public void tryAdd(ServerSession session, Row row, final Transaction.Listener globalListener) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
         boolean checkDuplicateKey = true;
         if (mainIndexColumn == -1) {
@@ -138,7 +138,6 @@ public class StandardPrimaryIndex extends StandardIndex {
 
         TransactionMap<Value, VersionedValue> map = getMap(session);
         VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
-        Value key;
         if (checkDuplicateKey) {
             Transaction.Listener localListener = new Transaction.Listener() {
                 @Override
@@ -158,7 +157,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                     globalListener.operationComplete();
                 }
             };
-            key = ValueLong.get(row.getKey());
+            Value key = ValueLong.get(row.getKey());
             globalListener.beforeOperation();
             map.addIfAbsent(key, value, localListener);
         } else {
@@ -170,7 +169,6 @@ public class StandardPrimaryIndex extends StandardIndex {
                 }
             });
         }
-        return true;
     }
 
     @Override

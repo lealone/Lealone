@@ -262,7 +262,7 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
         throw newUnsupportedException();
     }
 
-    public boolean tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
+    public void tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
         throw newUnsupportedException();
     }
 

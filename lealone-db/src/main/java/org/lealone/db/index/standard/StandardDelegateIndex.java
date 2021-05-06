@@ -49,9 +49,8 @@ public class StandardDelegateIndex extends StandardIndex {
     }
 
     @Override
-    public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
+    public void tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
         // nothing to do
-        return true;
     }
 
     @Override

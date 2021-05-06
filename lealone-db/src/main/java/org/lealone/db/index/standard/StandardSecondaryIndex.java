@@ -90,7 +90,7 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     @Override
-    public boolean tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
+    public void tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
         final TransactionMap<Value, Value> map = getMap(session);
         final ValueArray array = convertToKey(row);
 
@@ -114,7 +114,6 @@ public class StandardSecondaryIndex extends StandardIndex {
         };
         globalListener.beforeOperation();
         map.addIfAbsent(array, ValueNull.INSTANCE, localListener);
-        return true;
     }
 
     @Override
