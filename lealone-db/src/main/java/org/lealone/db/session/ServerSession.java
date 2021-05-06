@@ -112,8 +112,6 @@ public class ServerSession extends SessionBase {
     private HashSet<Result> temporaryResults;
     private int queryTimeout;
     private boolean commitOrRollbackDisabled;
-    private Table waitForLock;
-    private Thread waitForLockThread;
     private int modificationId;
     private int objectId;
     private final int queryCacheSize;
@@ -138,6 +136,10 @@ public class ServerSession extends SessionBase {
     @Override
     public int getId() {
         return id;
+    }
+
+    public Database getDatabase() {
+        return database;
     }
 
     public void setDatabase(Database database) {
@@ -499,10 +501,6 @@ public class ServerSession extends SessionBase {
         if (fetchSize != -1)
             ps.setFetchSize(fetchSize);
         return ps;
-    }
-
-    public Database getDatabase() {
-        return database;
     }
 
     public void asyncCommit(Runnable asyncTask) {
@@ -1113,22 +1111,6 @@ public class ServerSession extends SessionBase {
         return list;
     }
 
-    /**
-     * Wait if the exclusive mode has been enabled for another session. This
-     * method returns as soon as the exclusive mode has been disabled.
-     */
-    public void waitIfExclusiveModeEnabled() {
-        while (true) {
-            if (!isExclusiveMode())
-                break;
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                // ignore
-            }
-        }
-    }
-
     public boolean isExclusiveMode() {
         ServerSession exclusive = database.getExclusiveSession();
         if (exclusive == null || exclusive == this) {
@@ -1188,26 +1170,6 @@ public class ServerSession extends SessionBase {
 
     public int getQueryTimeout() {
         return queryTimeout;
-    }
-
-    /**
-     * Set the table this session is waiting for, and the thread that is
-     * waiting.
-     *
-     * @param waitForLock the table
-     * @param waitForLockThread the current thread (the one that is waiting)
-     */
-    public void setWaitForLock(Table waitForLock, Thread waitForLockThread) {
-        this.waitForLock = waitForLock;
-        this.waitForLockThread = waitForLockThread;
-    }
-
-    public Table getWaitForLock() {
-        return waitForLock;
-    }
-
-    public Thread getWaitForLockThread() {
-        return waitForLockThread;
     }
 
     public int getModificationId() {
@@ -1636,10 +1598,6 @@ public class ServerSession extends SessionBase {
     @Override
     public byte[] getLobMacSalt() {
         return lobMacSalt;
-    }
-
-    public String getUserName() {
-        return user.getName();
     }
 
     @Override
