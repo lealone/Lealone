@@ -213,8 +213,12 @@ public class Scheduler extends Thread
                 }
                 last = c;
             } catch (Throwable e) {
-                SessionInfo si = sessions.get(c.getSessionId());
-                si.sendError(c.getPacketId(), e);
+                for (SessionInfo si : sessions) {
+                    if (si.getSessionId() == c.getSessionId()) {
+                        si.sendError(c.getPacketId(), e);
+                        break;
+                    }
+                }
             }
         }
     }
