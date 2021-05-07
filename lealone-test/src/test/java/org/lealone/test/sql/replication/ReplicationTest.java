@@ -17,6 +17,7 @@
  */
 package org.lealone.test.sql.replication;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
@@ -42,7 +43,8 @@ public class ReplicationTest extends DSqlTestBase {
 
         // new AsyncReplicationTest().runTest();
         // new ReplicationConflictTest().runTest();
-        new ReplicationAppendTest().runTest();
+        // new ReplicationAppendTest().runTest();
+        new ReplicationPreparedStatementTest().runTest();
         // new ReplicationDdlConflictTest().runTest();
         // new ReplicationUpdateRowLockConflictTest().runTest();
         // new ReplicationDeleteRowLockConflictTest().runTest(); // 有bug
@@ -92,6 +94,23 @@ public class ReplicationTest extends DSqlTestBase {
             }).onFailure(t -> {
                 t.printStackTrace();
             }).get();
+        }
+    }
+
+    static class ReplicationPreparedStatementTest extends ReplicationTestBase {
+        @Override
+        protected void test() throws Exception {
+            stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationPreparedStatementTest");
+            String sql = "CREATE TABLE IF NOT EXISTS ReplicationPreparedStatementTest (f1 int primary key, f2 long)";
+            stmt.executeUpdate(sql);
+
+            sql = "INSERT INTO ReplicationPreparedStatementTest(f1, f2) VALUES(?, ?)";
+            PreparedStatement ps = conn.prepareStatement(sql);
+
+            ps.setInt(1, 10);
+            ps.setLong(2, 20);
+            ps.executeUpdate();
+            ps.close();
         }
     }
 

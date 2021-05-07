@@ -1114,6 +1114,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public void close() throws SQLException {
         try {
+            setExecutingStatement(null);
             super.close();
             batchParameters = null;
             if (command != null) {

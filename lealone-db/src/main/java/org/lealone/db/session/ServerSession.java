@@ -1607,8 +1607,10 @@ public class ServerSession extends SessionBase {
         }
         setStatus(SessionStatus.STATEMENT_COMPLETED);
         clean();
-        yieldableCommand.stop();
-        yieldableCommand = null;
+        if (yieldableCommand != null) {
+            yieldableCommand.stop();
+            yieldableCommand = null;
+        }
     }
 
     private void clean() {

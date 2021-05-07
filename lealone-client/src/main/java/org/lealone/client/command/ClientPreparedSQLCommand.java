@@ -38,6 +38,7 @@ import org.lealone.server.protocol.ps.PreparedStatementPrepareReadParamsAck;
 import org.lealone.server.protocol.ps.PreparedStatementQuery;
 import org.lealone.server.protocol.ps.PreparedStatementUpdate;
 import org.lealone.server.protocol.replication.ReplicationPreparedUpdate;
+import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
 import org.lealone.storage.PageKey;
@@ -151,6 +152,22 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             session.handleException(e);
         }
         return null;
+    }
+
+    @Override
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        checkParameters();
+        prepareIfRequired();
+        int size = parameters.size();
+        Value[] values = new Value[size];
+        for (int i = 0; i < size; i++) {
+            values[i] = parameters.get(i).getValue();
+        }
+        Packet packet = new ReplicationPreparedUpdate(null, commandId, size, values, replicationName);
+        return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, commandId, ack -> {
+            ack.setReplicaCommand(ClientPreparedSQLCommand.this);
+            return ack;
+        });
     }
 
     @Override

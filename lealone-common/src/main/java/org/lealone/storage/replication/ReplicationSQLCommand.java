@@ -48,7 +48,17 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
     @Override
     public List<? extends CommandParameter> getParameters() {
-        return commands[0].getParameters();
+        int size = commands[0].getParameters().size();
+        ArrayList<ReplicationCommandParameter> list = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+            ArrayList<CommandParameter> parameters = new ArrayList<>(commands.length);
+            for (int j = 0; j < commands.length; j++) {
+                parameters.add(commands[j].getParameters().get(i));
+            }
+            ReplicationCommandParameter p = new ReplicationCommandParameter(i, parameters);
+            list.add(p);
+        }
+        return list;
     }
 
     @Override
