@@ -42,8 +42,8 @@ public class ReplicationTest extends DSqlTestBase {
 
         // new AsyncReplicationTest().runTest();
         // new ReplicationConflictTest().runTest();
-        // new ReplicationAppendTest().runTest();
-        new ReplicationDdlConflictTest().runTest();
+        new ReplicationAppendTest().runTest();
+        // new ReplicationDdlConflictTest().runTest();
         // new ReplicationUpdateRowLockConflictTest().runTest();
         // new ReplicationDeleteRowLockConflictTest().runTest(); // 有bug
     }
@@ -156,9 +156,9 @@ public class ReplicationTest extends DSqlTestBase {
 
         @Override
         protected void test() throws Exception {
-            // stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationAppendTest");
+            stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationAppendTest");
             stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationAppendTest (f1 int, f2 long)");
-            startThreads(new InsertTest(1));
+            startThreads(new InsertTest(1), new InsertTest(2));
         }
     }
 
@@ -168,6 +168,7 @@ public class ReplicationTest extends DSqlTestBase {
             @Override
             protected void test() throws Exception {
                 stmt.executeUpdate("CREATE TABLE IF NOT EXISTS DdlTest (f1 int, f2 long)");
+                // stmt.executeUpdate("CREATE TABLE DdlTest (f1 int, f2 long)");
             }
         }
 
@@ -202,9 +203,10 @@ public class ReplicationTest extends DSqlTestBase {
 
         private void init() throws Exception {
             stmt.executeUpdate("DROP TABLE IF EXISTS ReplicationUpdateRowLockConflictTest");
-            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS ReplicationUpdateRowLockConflictTest (f1 int, f2 long)");
+            String sql = "CREATE TABLE IF NOT EXISTS ReplicationUpdateRowLockConflictTest (f1 int primary key, f2 long)";
+            stmt.executeUpdate(sql);
             int f2 = key * 100;
-            String sql = "INSERT INTO ReplicationUpdateRowLockConflictTest(f1, f2) VALUES(" + key + ", " + f2 + ")";
+            sql = "INSERT INTO ReplicationUpdateRowLockConflictTest(f1, f2) VALUES(" + key + ", " + f2 + ")";
             stmt.executeUpdate(sql);
         }
     }

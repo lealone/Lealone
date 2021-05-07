@@ -234,13 +234,14 @@ public class Insert extends ManipulationStatement {
         @Override
         protected boolean executeUpdate() {
             if (!isReplicationAppendMode && session.isReplicationMode() && table.getScanIndex(session).isAppendMode()) {
-                long startKey = table.getScanIndex(session).getAndAddKey(listSize);
+                long startKey = table.getScanIndex(session).getAndAddKey(listSize) + 1;
                 session.setReplicationConflictType(ReplicationConflictType.APPEND);
                 session.setStartKey(startKey);
                 session.setEndKey(startKey + listSize);
                 ServerSession s = table.getScanIndex(session).compareAndSetUncommittedSession(null, session);
                 if (s != null) {
                     session.setLockedExclusivelyBy(s, ReplicationConflictType.APPEND);
+                    session.setAppendIndex(table.getScanIndex(session));
                 }
                 session.setStatus(SessionStatus.WAITING);
                 isReplicationAppendMode = true;
@@ -250,9 +251,6 @@ public class Insert extends ManipulationStatement {
                 return true;
             }
 
-            if (isReplicationAppendMode) {
-
-            }
             if (yieldableQuery == null) {
                 int columnLen = statement.columns.length;
                 for (; pendingOperationException == null && index < listSize; index++) {
@@ -275,6 +273,9 @@ public class Insert extends ManipulationStatement {
                         }
                     }
                     affectedRows++;
+                    if (isReplicationAppendMode) {
+                        newRow.setKey(session.getStartKey() + index);
+                    }
                     if (addRowInternal(newRow, yieldIfNeeded, true)) {
                         return true;
                     }

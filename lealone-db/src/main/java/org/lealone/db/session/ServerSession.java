@@ -1371,6 +1371,11 @@ public class ServerSession extends SessionBase {
     private ServerSession lockedExclusivelyBy;
     private ReplicationConflictType replicationConflictType;
     private long startKey, endKey;
+    private Index appendIndex;
+
+    public long getStartKey() {
+        return startKey;
+    }
 
     public void setStartKey(long startKey) {
         this.startKey = startKey;
@@ -1382,6 +1387,10 @@ public class ServerSession extends SessionBase {
 
     public void setLastRow(Row r) {
         setLastIdentity(ValueLong.get(r.getKey()));
+    }
+
+    public void setAppendIndex(Index appendIndex) {
+        this.appendIndex = appendIndex;
     }
 
     public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy,
@@ -1571,6 +1580,25 @@ public class ServerSession extends SessionBase {
             break;
         }
         case APPEND: {
+            for (int i = 0, size = retryReplicationNames.size(); i < size; i++) {
+                String name = retryReplicationNames.get(i);
+                int colonIndex = name.indexOf(':');
+                String[] keys = name.substring(0, colonIndex).split(",");
+                long first = Long.parseLong(keys[0]);
+                long end = Long.parseLong(keys[1]);
+                String replicationName = name.substring(colonIndex + 1);
+                if (replicationName.equals(getReplicationName())) {
+                    startKey = first;
+                    endKey = end;
+                    if (appendIndex != null) {
+                        appendIndex.compareAndSetUncommittedSession(lockedExclusivelyBy, null);
+                        appendIndex = null;
+                        lockedExclusivelyBy = null;
+                    }
+                    sessionStatus = SessionStatus.RETRYING;
+                    return;
+                }
+            }
             break;
         }
         default:

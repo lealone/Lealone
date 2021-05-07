@@ -192,14 +192,14 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         } else {
             retryReplicationNames.remove(validReplicationName);
         }
-        ArrayList<String> appendReplicationNames = new ArrayList<>(groupResults.size() + 1);
 
+        ArrayList<String> appendReplicationNames = new ArrayList<>(groupResults.size() + 1);
+        ArrayList<String> replicationNames = new ArrayList<>(groupResults.size() + 1);
         if (validReplicationName.equals(replicationName) || retryReplicationNames.contains(replicationName)) {
-            appendReplicationNames.add(replicationName);
+            appendReplicationNames.add(validReplicationName);
             for (String n : retryReplicationNames) {
                 appendReplicationNames.add(n);
             }
-            retryReplicationNames.clear();
             for (int i = 0; i < appendReplicationNames.size(); i++) {
                 String name = appendReplicationNames.get(i);
                 for (ReplicationUpdateAck ack : ackResults) {
@@ -207,35 +207,32 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                         long first = ack.first;
                         long end = ack.key;
                         long size = end - first;
-                        if (minKey != ack.key) {
-                            first = minKey;
-                            end = first + size;
-                            minKey = end + 1;
-                        }
-                        retryReplicationNames.add(first + "," + end + ":" + name);
+                        first = minKey;
+                        end = first + size;
+                        minKey = end;
+                        replicationNames.add(first + "," + end + ":" + name);
                         break;
                     }
                 }
             }
 
+            for (ReplicationUpdateAck ack : ackResults) {
+                ack.getReplicaCommand().removeAsyncCallback();
+                ack.getReplicaCommand().handleReplicaConflict(replicationNames);
+            }
             if (validReplicationName.equals(replicationName)) {
-                ArrayList<String> replicationNames = new ArrayList<>(retryReplicationNames.size());
-                replicationNames.addAll(retryReplicationNames);
-                ReplicationUpdateAck ret = null;
-                for (ReplicationUpdateAck ack : ackResults) {
-                    if (ret == null && ack.uncommittedReplicationName.equals(validReplicationName)) {
-                        ret = ack;
-                    }
-                    ack.getReplicaCommand().removeAsyncCallback();
-                    ack.getReplicaCommand().handleReplicaConflict(replicationNames);
-                }
-                return ret;
-            } else {
                 for (ReplicationUpdateAck ack : ackResults) {
                     if (ack.uncommittedReplicationName.equals(validReplicationName)) {
-                        for (int i = 0; i < appendReplicationNames.size(); i++) {
+                        return ack;
+                    }
+                }
+            } else {
+                for (ReplicationUpdateAck ack : ackResults) {
+                    if (ack.uncommittedReplicationName.equals(replicationName)) {
+                        for (int i = 0, size = replicationNames.size(); i < size; i++) {
                             String name = appendReplicationNames.get(i);
                             if (ack.uncommittedReplicationName.equals(name)) {
+                                name = replicationNames.get(i);
                                 String[] keys = name.substring(0, name.indexOf(':')).split(",");
                                 long first = Long.parseLong(keys[0]);
                                 long end = Long.parseLong(keys[1]);
