@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
 import org.lealone.transaction.Transaction;
 
@@ -53,6 +54,13 @@ public abstract class YieldableListenableUpdateBase extends YieldableUpdateBase 
                 throw pendingOperationException;
             if (pendingOperationCounter.get() <= 0) {
                 setResult(affectedRows);
+                if (session.getReplicationName() != null) {
+                    session.setStatus(SessionStatus.STATEMENT_RUNNING);
+                    AsyncResult<Integer> ar = asyncResult;
+                    asyncResult = null; // 避免发送第二次
+                    asyncHandler.handle(ar);
+                    return true;
+                }
                 callStop = true;
                 return false;
             }

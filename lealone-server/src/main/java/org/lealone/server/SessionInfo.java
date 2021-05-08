@@ -21,9 +21,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
-import org.lealone.db.async.AsyncTask;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.ServerSession.YieldableCommand;
+import org.lealone.server.protocol.PacketType;
 import org.lealone.sql.PreparedSQLStatement;
 
 public class SessionInfo implements ServerSession.TimeoutListener {
@@ -31,7 +31,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     private static final Logger logger = LoggerFactory.getLogger(SessionInfo.class);
 
     // taskQueue中的命令统一由scheduler调度执行
-    private final ConcurrentLinkedQueue<AsyncTask> taskQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<PacketDeliveryTask> taskQueue = new ConcurrentLinkedQueue<>();
     private final Scheduler scheduler;
     private final TcpServerConnection conn;
 
@@ -40,6 +40,8 @@ public class SessionInfo implements ServerSession.TimeoutListener {
     private final int sessionTimeout;
 
     private long lastActiveTime;
+
+    private PacketDeliveryTask conflictTask;
 
     SessionInfo(Scheduler scheduler, TcpServerConnection conn, ServerSession session, int sessionId,
             int sessionTimeout) {
@@ -64,9 +66,13 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         return sessionId;
     }
 
-    public void submitTask(AsyncTask task) {
+    public void submitTask(PacketDeliveryTask task) {
         updateLastActiveTime();
-        taskQueue.add(task);
+        if (task.packetType == PacketType.REPLICATION_HANDLE_REPLICA_CONFLICT.value) {
+            conflictTask = task;
+        } else {
+            taskQueue.add(task);
+        }
         scheduler.wakeUp();
     }
 
@@ -90,15 +96,28 @@ public class SessionInfo implements ServerSession.TimeoutListener {
         }
     }
 
+    private void runTask(PacketDeliveryTask task) {
+        try {
+            task.run();
+        } catch (Throwable e) {
+            logger.warn("Failed to run async session task: " + task + ", session id: " + sessionId, e);
+        }
+    }
+
     void runSessionTasks() {
+        // 在复制模式下，除了冲突处理命令，只有当前语句执行完了才能执行下一条命令
+        if (session.getYieldableCommand() != null) {
+            if (conflictTask != null) {
+                runTask(conflictTask);
+                conflictTask = null;
+            } else {
+                return;
+            }
+        }
         if (session.canExecuteNextCommand()) {
-            AsyncTask task = taskQueue.poll();
+            PacketDeliveryTask task = taskQueue.poll();
             while (task != null) {
-                try {
-                    task.run();
-                } catch (Throwable e) {
-                    logger.warn("Failed to run async session task: " + task + ", session id: " + sessionId, e);
-                }
+                runTask(task);
                 // 执行Update或Query包的解析任务时会通过submitYieldableCommand设置
                 if (session.getYieldableCommand() != null)
                     break;
