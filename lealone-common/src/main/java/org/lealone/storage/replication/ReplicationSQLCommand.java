@@ -167,7 +167,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         case NONE:
         default:
             for (ReplicationUpdateAck ack : ackResults) {
-                ack.getReplicaCommand().removeAsyncCallback();
+                ack.getReplicaCommand().removeAsyncCallback(ack.getPacketId());
                 ack.getReplicaCommand().handleReplicaConflict(null);
             }
             return ackResults.get(0);
@@ -227,7 +227,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             }
 
             for (ReplicationUpdateAck ack : ackResults) {
-                ack.getReplicaCommand().removeAsyncCallback();
+                ack.getReplicaCommand().removeAsyncCallback(ack.getPacketId());
                 ack.getReplicaCommand().handleReplicaConflict(replicationNames);
             }
             if (validReplicationName.equals(replicationName)) {
@@ -288,7 +288,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             replicationNames.addAll(retryReplicationNames);
             ReplicationUpdateAck ret = null;
             for (ReplicationUpdateAck ack : ackResults) {
-                ack.getReplicaCommand().removeAsyncCallback();
+                ack.getReplicaCommand().removeAsyncCallback(ack.getPacketId());
                 ack.getReplicaCommand().handleReplicaConflict(replicationNames);
                 if (ret == null && ack.uncommittedReplicationName.equals(validReplicationName))
                     ret = ack;
@@ -298,7 +298,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             // 带IF的DDL语句不需要等了，返回的结果都是一样的
             ReplicationUpdateAck ret = null;
             for (ReplicationUpdateAck ack : ackResults) {
-                ack.getReplicaCommand().removeAsyncCallback();
+                ack.getReplicaCommand().removeAsyncCallback(ack.getPacketId());
                 if (ret == null && ack.uncommittedReplicationName.equals(validReplicationName))
                     ret = ack;
             }

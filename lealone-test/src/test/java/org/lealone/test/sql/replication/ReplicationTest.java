@@ -17,11 +17,12 @@
  */
 package org.lealone.test.sql.replication;
 
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
+import org.lealone.client.jdbc.JdbcPreparedStatement;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.sql.DSqlTestBase;
@@ -47,7 +48,7 @@ public class ReplicationTest extends DSqlTestBase {
         new ReplicationPreparedStatementTest().runTest();
         // new ReplicationDdlConflictTest().runTest();
         // new ReplicationUpdateRowLockConflictTest().runTest();
-        // new ReplicationDeleteRowLockConflictTest().runTest(); // 有bug
+        // new ReplicationDeleteRowLockConflictTest().runTest();
     }
 
     static class ReplicationTestBase extends DSqlTestBase {
@@ -105,12 +106,29 @@ public class ReplicationTest extends DSqlTestBase {
             stmt.executeUpdate(sql);
 
             sql = "INSERT INTO ReplicationPreparedStatementTest(f1, f2) VALUES(?, ?)";
-            PreparedStatement ps = conn.prepareStatement(sql);
 
+            JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
             ps.setInt(1, 10);
             ps.setLong(2, 20);
             ps.executeUpdate();
             ps.close();
+
+            sql = "update ReplicationPreparedStatementTest set f2 = ? where f1 = ?";
+            ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
+            int size = 200;
+            CountDownLatch latch = new CountDownLatch(size);
+            for (int i = 0; i < size; i++) {
+                ps.setInt(1, i);
+                ps.setLong(2, i);
+                ps.executeUpdateAsync().onComplete(ar -> {
+                    try {
+                        latch.countDown();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+            latch.await();
         }
     }
 

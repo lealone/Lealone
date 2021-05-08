@@ -163,9 +163,11 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         for (int i = 0; i < size; i++) {
             values[i] = parameters.get(i).getValue();
         }
+        int packetId = session.getNextId();
         Packet packet = new ReplicationPreparedUpdate(null, commandId, size, values, replicationName);
-        return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, commandId, ack -> {
+        return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
             ack.setReplicaCommand(ClientPreparedSQLCommand.this);
+            ack.setPacketId(packetId);
             return ack;
         });
     }

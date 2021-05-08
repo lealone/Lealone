@@ -146,6 +146,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
         Packet packet = new ReplicationUpdate(null, sql, replicationName);
         return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
             ack.setReplicaCommand(ClientSQLCommand.this);
+            ack.setPacketId(packetId);
             return ack;
         });
     }
@@ -208,8 +209,8 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public void removeAsyncCallback() {
-        session.removeAsyncCallback(commandId);
+    public void removeAsyncCallback(int packetId) {
+        session.removeAsyncCallback(packetId);
     }
 
     public int[] executeBatchSQLCommands(List<String> batchCommands) {

@@ -27,6 +27,6 @@ public interface ReplicaCommand extends Command {
     default void handleReplicaConflict(List<String> retryReplicationNames) {
     }
 
-    default void removeAsyncCallback() {
+    default void removeAsyncCallback(int packetId) {
     }
 }

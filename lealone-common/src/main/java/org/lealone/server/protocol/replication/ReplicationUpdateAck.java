@@ -36,6 +36,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     public final int ackVersion; // 复制操作有可能返回多次，这个字段表示第几次返回响应结果
     public final boolean isIfDDL;
     private ReplicaCommand replicaCommand;
+    private int packetId;
 
     public ReplicationUpdateAck(int updateCount, long key, long first, String uncommittedReplicationName,
             ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL) {
@@ -60,6 +61,14 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
 
     public void setReplicaCommand(ReplicaCommand replicaCommand) {
         this.replicaCommand = replicaCommand;
+    }
+
+    public int getPacketId() {
+        return packetId;
+    }
+
+    public void setPacketId(int packetId) {
+        this.packetId = packetId;
     }
 
     @Override
