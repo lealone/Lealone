@@ -82,11 +82,8 @@ public class ValueExpression extends Expression {
 
     @Override
     public void createIndexConditions(ServerSession session, TableFilter filter) {
-        if (value.getType() == Value.BOOLEAN) {
-            boolean v = ((ValueBoolean) value).getBoolean().booleanValue();
-            if (!v) {
-                filter.addIndexCondition(IndexCondition.get(Comparison.FALSE, null, this));
-            }
+        if (value.getType() == Value.BOOLEAN && !value.getBoolean()) {
+            filter.addIndexCondition(IndexCondition.get(Comparison.FALSE, null, this));
         }
     }
 

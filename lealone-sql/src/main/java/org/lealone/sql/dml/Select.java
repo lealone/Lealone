@@ -1542,7 +1542,7 @@ public class Select extends Query {
         void run() {
             while (topTableFilter.next()) {
                 boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
-                if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
+                if (condition == null || condition.getBooleanValue(session)) {
                     if (isForUpdate) {
                         // 锁记录失败
                         if (!topTableFilter.lockRow())
@@ -1680,7 +1680,7 @@ public class Select extends Query {
         void run() {
             while (topTableFilter.next()) {
                 boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
-                if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
+                if (condition == null || condition.getBooleanValue(session)) {
                     Value key;
                     rowNumber++;
                     if (groupIndex == null) {
@@ -1760,7 +1760,7 @@ public class Select extends Query {
         void run() {
             while (topTableFilter.next()) {
                 boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
-                if (condition == null || Boolean.TRUE.equals(condition.getBooleanValue(session))) {
+                if (condition == null || condition.getBooleanValue(session)) {
                     rowNumber++;
                     Value[] keyValues = new Value[groupIndex.length];
                     // update group

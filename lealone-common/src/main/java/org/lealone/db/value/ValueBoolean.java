@@ -35,10 +35,10 @@ public class ValueBoolean extends Value {
     public static final ValueBoolean TRUE = new ValueBoolean(true);
     public static final ValueBoolean FALSE = new ValueBoolean(false);
 
-    private final Boolean value;
+    private final boolean value;
 
     private ValueBoolean(boolean value) {
-        this.value = Boolean.valueOf(value);
+        this.value = value;
     }
 
     @Override
@@ -53,23 +53,23 @@ public class ValueBoolean extends Value {
 
     @Override
     public String getString() {
-        return value.booleanValue() ? "TRUE" : "FALSE";
+        return value ? "TRUE" : "FALSE";
     }
 
     @Override
     public Value negate() {
-        return value.booleanValue() ? FALSE : TRUE;
+        return value ? FALSE : TRUE;
     }
 
     @Override
-    public Boolean getBoolean() {
+    public boolean getBoolean() {
         return value;
     }
 
     @Override
     protected int compareSecure(Value o, CompareMode mode) {
-        boolean v2 = ((ValueBoolean) o).value.booleanValue();
-        boolean v = value.booleanValue();
+        boolean v2 = ((ValueBoolean) o).value;
+        boolean v = value;
         return (v == v2) ? 0 : (v ? 1 : -1);
     }
 
@@ -80,7 +80,7 @@ public class ValueBoolean extends Value {
 
     @Override
     public int hashCode() {
-        return value.booleanValue() ? 1 : 0;
+        return value ? 1 : 0;
     }
 
     @Override
@@ -90,7 +90,7 @@ public class ValueBoolean extends Value {
 
     @Override
     public void set(PreparedStatement prep, int parameterIndex) throws SQLException {
-        prep.setBoolean(parameterIndex, value.booleanValue());
+        prep.setBoolean(parameterIndex, value);
     }
 
     /**
@@ -140,7 +140,7 @@ public class ValueBoolean extends Value {
 
         @Override
         public void writeValue(DataBuffer buff, Value v) {
-            write0(buff, v.getBoolean().booleanValue());
+            write0(buff, v.getBoolean());
         }
 
         private void write0(DataBuffer buff, boolean v) {

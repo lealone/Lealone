@@ -2888,7 +2888,7 @@ public class Parser implements SQLParser {
 
     private boolean readBooleanSetting() {
         if (currentTokenType == VALUE) {
-            boolean result = currentValue.getBoolean().booleanValue();
+            boolean result = currentValue.getBoolean();
             read();
             return result;
         }

@@ -814,7 +814,7 @@ public class Function extends Expression implements FunctionCall {
         }
         case CASEWHEN: {
             Value v;
-            if (v0 == ValueNull.INSTANCE || !v0.getBoolean().booleanValue()) {
+            if (v0 == ValueNull.INSTANCE || !v0.getBoolean()) {
                 v = getNullOrValue(session, args, values, 2);
             } else {
                 v = getNullOrValue(session, args, values, 1);

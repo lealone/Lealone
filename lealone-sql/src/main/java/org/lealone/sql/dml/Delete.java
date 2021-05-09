@@ -171,7 +171,7 @@ public class Delete extends ManipulationStatement {
             }
             while (pendingOperationException == null && hasNext) {
                 boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
-                if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
+                if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row row = tableFilter.get();
                     boolean done = false;
                     if (table.fireRow()) {

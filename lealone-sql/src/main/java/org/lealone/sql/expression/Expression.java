@@ -202,7 +202,7 @@ public abstract class Expression implements org.lealone.sql.IExpression {
      * @param session the session
      * @return the result
      */
-    public Boolean getBooleanValue(ServerSession session) {
+    public boolean getBooleanValue(ServerSession session) {
         return getValue(session).getBoolean();
     }
 

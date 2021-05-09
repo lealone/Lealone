@@ -226,7 +226,7 @@ public class Update extends ManipulationStatement {
             }
             while (pendingOperationException == null && hasNext) {
                 boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
-                if (statement.condition == null || Boolean.TRUE.equals(statement.condition.getBooleanValue(session))) {
+                if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row oldRow = tableFilter.get();
                     Row newRow = table.getTemplateRow();
                     newRow.setKey(oldRow.getKey()); // 复用原来的行号

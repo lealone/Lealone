@@ -66,8 +66,8 @@ public class ValueNull extends Value {
     }
 
     @Override
-    public Boolean getBoolean() {
-        return null;
+    public boolean getBoolean() {
+        return false;
     }
 
     @Override

@@ -292,7 +292,7 @@ public class TransferOutputStream implements NetOutputStream {
             break;
         }
         case Value.BOOLEAN:
-            writeBoolean(v.getBoolean().booleanValue());
+            writeBoolean(v.getBoolean());
             break;
         case Value.BYTE:
             writeByte(v.getByte());

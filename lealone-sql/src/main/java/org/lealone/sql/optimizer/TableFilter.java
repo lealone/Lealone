@@ -444,7 +444,7 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
         if (condition == null) {
             return true;
         }
-        return Boolean.TRUE.equals(condition.getBooleanValue(session));
+        return condition.getBooleanValue(session);
     }
 
     /**
