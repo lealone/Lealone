@@ -21,6 +21,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -44,8 +45,8 @@ import org.lealone.transaction.Transaction;
  */
 public class Update extends ManipulationStatement {
 
-    private Expression condition;
     private TableFilter tableFilter;
+    private Expression condition;
 
     /** The limit expression as specified in the LIMIT clause. */
     private Expression limitExpr;
@@ -67,10 +68,6 @@ public class Update extends ManipulationStatement {
         return true;
     }
 
-    public void setLimit(Expression limit) {
-        this.limitExpr = limit;
-    }
-
     public void setTableFilter(TableFilter tableFilter) {
         this.tableFilter = tableFilter;
     }
@@ -82,6 +79,10 @@ public class Update extends ManipulationStatement {
 
     public void setCondition(Expression condition) {
         this.condition = condition;
+    }
+
+    public void setLimit(Expression limit) {
+        this.limitExpr = limit;
     }
 
     /**
@@ -100,6 +101,15 @@ public class Update extends ManipulationStatement {
             Parameter p = (Parameter) expression;
             p.setColumn(column);
         }
+    }
+
+    @Override
+    public int getPriority() {
+        if (getCurrentRowNumber() > 0)
+            return priority;
+
+        priority = NORM_PRIORITY - 1;
+        return priority;
     }
 
     @Override
@@ -124,7 +134,6 @@ public class Update extends ManipulationStatement {
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
         tableFilter.prepare();
-        cost = item.getCost();
         tableFilter.createColumnIndexes(columnSet);
         return this;
     }
@@ -155,15 +164,6 @@ public class Update extends ManipulationStatement {
             buff.append("\nLIMIT (").append(StringUtils.unEnclose(limitExpr.getSQL())).append(')');
         }
         return buff.toString();
-    }
-
-    @Override
-    public int getPriority() {
-        if (getCurrentRowNumber() > 0)
-            return priority;
-
-        priority = NORM_PRIORITY - 1;
-        return priority;
     }
 
     @Override
@@ -256,7 +256,8 @@ public class Update extends ManipulationStatement {
                                 if (tableFilter.rebuildSearchRow(session, oldRow) == null)
                                     hasNext = tableFilter.next();
                                 continue;
-                            } else if (ret != Transaction.OPERATION_COMPLETE && pendingOperationCounter.get() > 0) {
+                            } else if (ret == Transaction.OPERATION_NEED_WAIT || pendingOperationCounter.get() > 0) {
+                                session.setStatus(SessionStatus.WAITING);
                                 this.oldRow = oldRow;
                                 return true;
                             }

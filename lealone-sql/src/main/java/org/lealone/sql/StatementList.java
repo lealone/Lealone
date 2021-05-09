@@ -29,6 +29,16 @@ public class StatementList extends StatementBase {
     }
 
     @Override
+    public int getType() {
+        return firstStatement.getType();
+    }
+
+    @Override
+    public Result getMetaData() {
+        return firstStatement.getMetaData();
+    }
+
+    @Override
     public ArrayList<Parameter> getParameters() {
         return firstStatement.getParameters();
     }
@@ -43,10 +53,8 @@ public class StatementList extends StatementBase {
     }
 
     @Override
-    public int update() {
-        int updateCount = firstStatement.update();
-        executeRemaining();
-        return updateCount;
+    public boolean isQuery() {
+        return firstStatement.isQuery();
     }
 
     @Override
@@ -57,18 +65,9 @@ public class StatementList extends StatementBase {
     }
 
     @Override
-    public boolean isQuery() {
-        return firstStatement.isQuery();
+    public int update() {
+        int updateCount = firstStatement.update();
+        executeRemaining();
+        return updateCount;
     }
-
-    @Override
-    public int getType() {
-        return firstStatement.getType();
-    }
-
-    @Override
-    public Result getMetaData() {
-        return firstStatement.getMetaData();
-    }
-
 }

@@ -31,23 +31,19 @@ public class PlanItem {
         return index;
     }
 
-    PlanItem getJoinPlan() {
-        return joinPlan;
-    }
-
-    PlanItem getNestedJoinPlan() {
-        return nestedJoinPlan;
-    }
-
     void setJoinPlan(PlanItem joinPlan) {
         this.joinPlan = joinPlan;
+    }
+
+    PlanItem getJoinPlan() {
+        return joinPlan;
     }
 
     void setNestedJoinPlan(PlanItem nestedJoinPlan) {
         this.nestedJoinPlan = nestedJoinPlan;
     }
 
-    public double getCost() {
-        return cost;
+    PlanItem getNestedJoinPlan() {
+        return nestedJoinPlan;
     }
 }

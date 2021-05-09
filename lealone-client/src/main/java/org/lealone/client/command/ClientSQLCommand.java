@@ -195,11 +195,6 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public int getId() {
-        return commandId;
-    }
-
-    @Override
     public void handleReplicaConflict(List<String> retryReplicationNames) {
         try {
             session.send(new ReplicationHandleReplicaConflict(retryReplicationNames));

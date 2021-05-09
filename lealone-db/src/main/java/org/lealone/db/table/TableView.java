@@ -99,7 +99,6 @@ public class TableView extends Table {
 
     private static IQuery compileViewQuery(ServerSession session, String sql) {
         PreparedSQLStatement p = session.prepareStatement(sql);
-        p = p.getWrappedStatement(); // 要看最原始的那条语句的类型
         if (!(p instanceof IQuery)) {
             throw DbException.getSyntaxError(sql, 0);
         }

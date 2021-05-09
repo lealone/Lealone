@@ -54,7 +54,7 @@ public abstract class YieldableListenableUpdateBase extends YieldableUpdateBase 
                 throw pendingOperationException;
             if (pendingOperationCounter.get() <= 0) {
                 setResult(affectedRows);
-                if (session.getReplicationName() != null) {
+                if (session.getReplicationName() != null && session.getStatus() != SessionStatus.RETRYING) {
                     session.setStatus(SessionStatus.STATEMENT_RUNNING);
                     AsyncResult<Integer> ar = asyncResult;
                     asyncResult = null; // 避免发送第二次

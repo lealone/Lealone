@@ -278,8 +278,7 @@ public class SQLRouter {
                         return new SortedResult(maxRows, select.getSession(), select, results);
 
                     String newSQL = select.getPlanSQL(true, true);
-                    Select newSelect = (Select) select.getSession().prepareStatement(newSQL, true)
-                            .getWrappedStatement();
+                    Select newSelect = (Select) select.getSession().prepareStatement(newSQL, true);
                     newSelect.setLocal(true);
 
                     return new MergedResult(results, newSelect, select);

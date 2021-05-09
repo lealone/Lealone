@@ -51,11 +51,4 @@ public interface Command extends AutoCloseable {
     @Override
     default void close() {
     }
-
-    default int getId() {
-        return 0;
-    }
-
-    default void setId(int id) {
-    }
 }

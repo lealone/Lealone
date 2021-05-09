@@ -122,6 +122,7 @@ public class CreateIndex extends SchemaStatement {
             indexType = IndexType.createNonUnique(hash);
         }
         IndexColumn.mapColumns(indexColumns, table);
+        boolean create = !session.getDatabase().isStarting();
         table.addIndex(session, indexName, id, indexColumns, indexType, create, comment, lock);
         return 0;
     }

@@ -32,8 +32,8 @@ import org.lealone.transaction.Transaction;
  */
 public class Delete extends ManipulationStatement {
 
-    private Expression condition;
     private TableFilter tableFilter;
+    private Expression condition;
 
     /**
      * The limit expression as specified in the LIMIT or TOP clause.
@@ -54,16 +54,30 @@ public class Delete extends ManipulationStatement {
         return true;
     }
 
-    public void setLimit(Expression limit) {
-        this.limitExpr = limit;
-    }
-
     public void setTableFilter(TableFilter tableFilter) {
         this.tableFilter = tableFilter;
     }
 
+    @Override
+    public TableFilter getTableFilter() {
+        return tableFilter;
+    }
+
     public void setCondition(Expression condition) {
         this.condition = condition;
+    }
+
+    public void setLimit(Expression limit) {
+        this.limitExpr = limit;
+    }
+
+    @Override
+    public int getPriority() {
+        if (getCurrentRowNumber() > 0)
+            return priority;
+
+        priority = NORM_PRIORITY - 1;
+        return priority;
     }
 
     @Override
@@ -77,7 +91,6 @@ public class Delete extends ManipulationStatement {
         PlanItem item = tableFilter.getBestPlanItem(session, 1);
         tableFilter.setPlanItem(item);
         tableFilter.prepare();
-        cost = item.getCost();
         return this;
     }
 
@@ -101,20 +114,6 @@ public class Delete extends ManipulationStatement {
             buff.append("\nLIMIT (").append(StringUtils.unEnclose(limitExpr.getSQL())).append(')');
         }
         return buff.toString();
-    }
-
-    @Override
-    public int getPriority() {
-        if (getCurrentRowNumber() > 0)
-            return priority;
-
-        priority = NORM_PRIORITY - 1;
-        return priority;
-    }
-
-    @Override
-    public TableFilter getTableFilter() {
-        return tableFilter;
     }
 
     @Override

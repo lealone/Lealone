@@ -156,7 +156,7 @@ public class CreateTable extends SchemaStatement {
             }
         }
         data.id = getObjectId();
-        data.create = create;
+        data.create = !session.getDatabase().isStarting();
         data.session = session;
         boolean isSessionTemporary = data.temporary && !data.globalTemporary;
         Table table = schema.createTable(data);

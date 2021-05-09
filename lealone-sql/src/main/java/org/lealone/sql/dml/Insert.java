@@ -89,6 +89,18 @@ public class Insert extends ManipulationStatement {
     }
 
     @Override
+    public int getPriority() {
+        if (rowNumber > 0)
+            return priority;
+
+        if (query != null || list.size() > 10)
+            priority = NORM_PRIORITY - 1;
+        else
+            priority = MAX_PRIORITY;
+        return priority;
+    }
+
+    @Override
     public PreparedSQLStatement prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
@@ -170,23 +182,6 @@ public class Insert extends ManipulationStatement {
             buff.append(query.getPlanSQL());
         }
         return buff.toString();
-    }
-
-    @Override
-    public double getCost() {
-        return query != null ? query.getCost() : list.size();
-    }
-
-    @Override
-    public int getPriority() {
-        if (rowNumber > 0)
-            return priority;
-
-        if (query != null || list.size() > 10)
-            priority = NORM_PRIORITY - 1;
-        else
-            priority = MAX_PRIORITY;
-        return priority;
     }
 
     @Override

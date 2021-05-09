@@ -53,11 +53,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     protected String sql;
 
     /**
-     * Whether to create a new object (for indexes).
-     */
-    protected boolean create = true;
-
-    /**
      * The list of parameters.
      */
     protected ArrayList<Parameter> parameters;
@@ -69,6 +64,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      */
     protected boolean prepareAlways;
 
+    protected int priority = NORM_PRIORITY;
+
+    private int statementId;
     private long modificationMetaId;
     private int objectId;
     private int currentRowNumber;
@@ -76,7 +74,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     private boolean canReuse;
     private boolean local = true;
     private int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
-    private int statementId;
 
     /**
      * Create a new object.
@@ -89,6 +86,39 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
+    public ServerSession getSession() {
+        return session;
+    }
+
+    /**
+     * Set the session for this statement.
+     *
+     * @param currentSession the new session
+     */
+    public void setSession(ServerSession currentSession) {
+        this.session = currentSession;
+    }
+
+    /**
+     * Get the SQL statement.
+     *
+     * @return the SQL statement
+     */
+    @Override
+    public String getSQL() {
+        return sql;
+    }
+
+    /**
+     * Set the SQL statement.
+     *
+     * @param sql the SQL statement
+     */
+    public void setSQL(String sql) {
+        this.sql = sql;
+    }
+
+    @Override
     public int getId() {
         return statementId;
     }
@@ -96,6 +126,16 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     @Override
     public void setId(int id) {
         statementId = id;
+    }
+
+    @Override
+    public int getPriority() {
+        return priority;
+    }
+
+    @Override
+    public void setPriority(int priority) {
+        this.priority = priority;
     }
 
     @Override
@@ -125,7 +165,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public abstract Result getMetaData();
+    public Result getMetaData() {
+        return null;
+    }
 
     /**
      * Get the statement type as defined in SQLStatement
@@ -170,15 +212,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     /**
-     * Set the parameter list of this statement.
-     *
-     * @param parameters the parameter list
-     */
-    public void setParameterList(ArrayList<Parameter> parameters) {
-        this.parameters = parameters;
-    }
-
-    /**
      * Get the parameter list.
      *
      * @return the parameter list
@@ -186,6 +219,15 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     @Override
     public ArrayList<Parameter> getParameters() {
         return parameters;
+    }
+
+    /**
+     * Set the parameter list of this statement.
+     *
+     * @param parameters the parameter list
+     */
+    public void setParameterList(ArrayList<Parameter> parameters) {
+        this.parameters = parameters;
     }
 
     /**
@@ -203,83 +245,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     /**
-     * Prepare this statement.
-     */
-    @Override
-    public PreparedSQLStatement prepare() {
-        // nothing to do
-        return this;
-    }
-
-    /**
-     * Check if this object is a query.
+     * Set the object id for this statement.
      *
-     * @return true if it is
+     * @param i the object id
      */
     @Override
-    public boolean isQuery() {
-        return false;
-    }
-
-    /**
-     * Execute the query.
-     *
-     * @param maxRows the maximum number of rows to return
-     * @return the result set
-     * @throws DbException if it is not a query
-     */
-    @Override
-    public Result query(int maxRows) {
-        throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
-    }
-
-    /**
-     * Execute a query and return the result.
-     * This method prepares everything and calls {@link #query(int)} finally.
-     *
-     * @param maxRows the maximum number of rows to return
-     * @param scrollable if the result set must be scrollable (ignored)
-     * @return the result set
-     */
-    @Override
-    public Result query(int maxRows, boolean scrollable) {
-        return query(maxRows);
-    }
-
-    /**
-     * Execute the statement.
-     *
-     * @return the update count
-     * @throws DbException if it is a query
-     */
-    @Override
-    public int update() {
-        throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_QUERY);
-    }
-
-    @Override
-    public int update(String replicationName) {
-        session.setReplicationName(replicationName);
-        return update();
-    }
-
-    /**
-     * Set the SQL statement.
-     *
-     * @param sql the SQL statement
-     */
-    public void setSQL(String sql) {
-        this.sql = sql;
-    }
-
-    /**
-     * Get the SQL statement.
-     *
-     * @return the SQL statement
-     */
-    @Override
-    public String getSQL() {
-        return sql;
+    public void setObjectId(int i) {
+        this.objectId = i;
     }
 
     /**
@@ -314,12 +286,60 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     /**
+     * Convert the statement to a String.
+     *
+     * @return the SQL statement
+     */
+    @Override
+    public String toString() {
+        return sql;
+    }
+
+    /**
      * Get the SQL statement with the execution plan.
      *
      * @return the execution plan
      */
     public String getPlanSQL() {
-        return null;
+        return getSQL();
+    }
+
+    public String getPlanSQL(boolean isDistributed) {
+        return getSQL();
+    }
+
+    /**
+     * Get the SQL snippet of the value list.
+     *
+     * @param values the value list
+     * @return the SQL snippet
+     */
+    protected static String getSQL(Value[] values) {
+        StatementBuilder buff = new StatementBuilder();
+        for (Value v : values) {
+            buff.appendExceptFirst(", ");
+            if (v != null) {
+                buff.append(v.getSQL());
+            }
+        }
+        return buff.toString();
+    }
+
+    /**
+     * Get the SQL snippet of the expression list.
+     *
+     * @param list the expression list
+     * @return the SQL snippet
+     */
+    protected static String getSQL(Expression[] list) {
+        StatementBuilder buff = new StatementBuilder();
+        for (Expression e : list) {
+            buff.appendExceptFirst(", ");
+            if (e != null) {
+                buff.append(e.getSQL());
+            }
+        }
+        return buff.toString();
     }
 
     /**
@@ -327,29 +347,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      *
      * @throws DbException if it was canceled
      */
-    @Override
     public void checkCanceled() {
         session.checkCanceled();
     }
 
-    /**
-     * Set the object id for this statement.
-     *
-     * @param i the object id
-     */
     @Override
-    public void setObjectId(int i) {
-        this.objectId = i;
-        this.create = false;
-    }
-
-    /**
-     * Set the session for this statement.
-     *
-     * @param currentSession the new session
-     */
-    public void setSession(ServerSession currentSession) {
-        this.session = currentSession;
+    public void cancel() {
     }
 
     /**
@@ -380,6 +383,15 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      */
     public void setPrepareAlways(boolean prepareAlways) {
         this.prepareAlways = prepareAlways;
+    }
+
+    private boolean yieldIfNeeded() {
+        Thread t = Thread.currentThread();
+        if (t instanceof SQLStatementExecutor) {
+            SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
+            return sqlStatementExecutor.yieldIfNeeded(this);
+        }
+        return false;
     }
 
     /**
@@ -417,16 +429,6 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     /**
-     * Convert the statement to a String.
-     *
-     * @return the SQL statement
-     */
-    @Override
-    public String toString() {
-        return sql;
-    }
-
-    /**
      * Set the SQL statement of the exception to the given row.
      *
      * @param e the exception
@@ -447,22 +449,11 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         return e.addSQL(buff.toString());
     }
 
-    @Override
-    public boolean isCacheable() {
-        return false;
-    }
-
-    @Override
-    public ServerSession getSession() {
-        return session;
-    }
-
     /**
      * Whether the statement is already closed (in which case it can be re-used).
      *
      * @return true if it can be re-used
      */
-
     @Override
     public boolean canReuse() {
         return canReuse;
@@ -487,66 +478,46 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         canReuse = true;
     }
 
+    /**
+     * Prepare this statement.
+     */
     @Override
-    public void cancel() {
-    }
-
-    @Override
-    public PreparedSQLStatement getWrappedStatement() {
+    public PreparedSQLStatement prepare() {
+        // nothing to do
         return this;
     }
 
     /**
-     * Get the SQL snippet of the value list.
+     * Check if this object is a query.
      *
-     * @param values the value list
-     * @return the SQL snippet
+     * @return true if it is
      */
-    protected static String getSQL(Value[] values) {
-        StatementBuilder buff = new StatementBuilder();
-        for (Value v : values) {
-            buff.appendExceptFirst(", ");
-            if (v != null) {
-                buff.append(v.getSQL());
-            }
-        }
-        return buff.toString();
+    @Override
+    public boolean isQuery() {
+        return false;
     }
 
     /**
-     * Get the SQL snippet of the expression list.
+     * Execute the query.
      *
-     * @param list the expression list
-     * @return the SQL snippet
+     * @param maxRows the maximum number of rows to return
+     * @return the result set
+     * @throws DbException if it is not a query
      */
-    protected static String getSQL(Expression[] list) {
-        StatementBuilder buff = new StatementBuilder();
-        for (Expression e : list) {
-            buff.appendExceptFirst(", ");
-            if (e != null) {
-                buff.append(e.getSQL());
-            }
-        }
-        return buff.toString();
+    @Override
+    public Result query(int maxRows) {
+        throw DbException.get(ErrorCode.METHOD_ONLY_ALLOWED_FOR_QUERY);
     }
 
-    protected double cost;
-
+    /**
+     * Execute the statement.
+     *
+     * @return the update count
+     * @throws DbException if it is a query
+     */
     @Override
-    public double getCost() {
-        return cost;
-    }
-
-    protected int priority = NORM_PRIORITY;
-
-    @Override
-    public int getPriority() {
-        return priority;
-    }
-
-    @Override
-    public void setPriority(int priority) {
-        this.priority = priority;
+    public int update() {
+        throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_QUERY);
     }
 
     @Override
@@ -584,18 +555,19 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public boolean isDDL() {
-        return false;
+    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
+            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+        return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
     }
 
     @Override
-    public boolean isDatabaseStatement() {
-        return false;
-    }
-
-    @Override
-    public boolean isReplicationStatement() {
-        return false;
+    public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+        if (!local && session.isShardingMode())
+            return new DefaultYieldableShardingUpdate(this, asyncHandler);
+        else if (session.getReplicationName() != null)
+            return new DefaultYieldableReplicationUpdate(this, asyncHandler);
+        else
+            return new DefaultYieldableLocalUpdate(this, asyncHandler);
     }
 
     @Override
@@ -612,25 +584,5 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         if (tf != null)
             return tf.getNodeToPageKeyMap(session);
         return null;
-    }
-
-    public String getPlanSQL(boolean isDistributed) {
-        return getSQL();
-    }
-
-    @Override
-    public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        if (!local && session.isShardingMode())
-            return new DefaultYieldableShardingUpdate(this, asyncHandler);
-        else if (session.getReplicationName() != null)
-            return new DefaultYieldableReplicationUpdate(this, asyncHandler);
-        else
-            return new DefaultYieldableLocalUpdate(this, asyncHandler);
-    }
-
-    @Override
-    public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler) {
-        return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
     }
 }

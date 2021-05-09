@@ -17,7 +17,6 @@
  */
 package org.lealone.sql.dml;
 
-import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
@@ -28,11 +27,6 @@ public abstract class ManipulationStatement extends StatementBase {
 
     public ManipulationStatement(ServerSession session) {
         super(session);
-    }
-
-    @Override
-    public Result getMetaData() {
-        return null;
     }
 
     static int getLimitRows(Expression limitExpr, ServerSession session) {

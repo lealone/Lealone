@@ -122,7 +122,7 @@ public class ViewIndex extends IndexBase {
                 return cachedCost.cost;
             }
         }
-        IQuery q = (IQuery) session.prepareStatement(querySQL, true).getWrappedStatement();
+        IQuery q = (IQuery) session.prepareStatement(querySQL, true);
         if (masks != null) {
             IntArray paramIndex = new IntArray();
             for (int i = 0; i < masks.length; i++) {
@@ -152,7 +152,7 @@ public class ViewIndex extends IndexBase {
                 }
             }
             String sql = q.getPlanSQL();
-            q = (IQuery) session.prepareStatement(sql, true).getWrappedStatement();
+            q = (IQuery) session.prepareStatement(sql, true);
         }
         double cost = q.getCost();
         cachedCost = new CostElement();
@@ -260,7 +260,7 @@ public class ViewIndex extends IndexBase {
     }
 
     private IQuery getQuery(ServerSession session, int[] masks) {
-        IQuery q = (IQuery) session.prepareStatement(querySQL, true).getWrappedStatement();
+        IQuery q = (IQuery) session.prepareStatement(querySQL, true);
         if (masks == null) {
             return q;
         }
@@ -337,7 +337,7 @@ public class ViewIndex extends IndexBase {
         }
 
         String sql = q.getPlanSQL();
-        q = (IQuery) session.prepareStatement(sql, true).getWrappedStatement();
+        q = (IQuery) session.prepareStatement(sql, true);
         return q;
     }
 

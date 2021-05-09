@@ -89,6 +89,15 @@ public class Merge extends ManipulationStatement {
     }
 
     @Override
+    public int getPriority() {
+        if (getCurrentRowNumber() > 0)
+            return priority;
+
+        priority = NORM_PRIORITY - 1;
+        return priority;
+    }
+
+    @Override
     public PreparedSQLStatement prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
@@ -191,20 +200,6 @@ public class Merge extends ManipulationStatement {
             buff.append(query.getPlanSQL());
         }
         return buff.toString();
-    }
-
-    @Override
-    public double getCost() {
-        return query != null ? query.getCost() : list.size();
-    }
-
-    @Override
-    public int getPriority() {
-        if (getCurrentRowNumber() > 0)
-            return priority;
-
-        priority = NORM_PRIORITY - 1;
-        return priority;
     }
 
     @Override

@@ -17,7 +17,6 @@
  */
 package org.lealone.sql.admin;
 
-import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.StatementBase;
 
@@ -25,11 +24,6 @@ public abstract class AdminStatement extends StatementBase {
 
     public AdminStatement(ServerSession session) {
         super(session);
-    }
-
-    @Override
-    public Result getMetaData() {
-        return null;
     }
 
     @Override

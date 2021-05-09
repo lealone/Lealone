@@ -6,7 +6,6 @@
  */
 package org.lealone.sql.ddl;
 
-import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.sql.StatementBase;
 
@@ -22,17 +21,7 @@ public abstract class DefinitionStatement extends StatementBase {
      */
     protected DefinitionStatement(ServerSession session) {
         super(session);
-        priority = MIN_PRIORITY;
-    }
-
-    @Override
-    public Result getMetaData() {
-        return null;
-    }
-
-    @Override
-    public int getPriority() {
-        return priority;
+        priority = MIN_PRIORITY; // DDL语句的优先级默认最小
     }
 
     @Override

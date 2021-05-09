@@ -32,60 +32,63 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
     public final static int NORM_PRIORITY = 5;
     public final static int MAX_PRIORITY = 10;
 
-    void setFetchSize(int fetchSize);
+    Session getSession();
 
-    int getFetchSize();
+    String getSQL();
 
-    void setLocal(boolean local);
+    int getId();
 
-    boolean isLocal();
-
-    void setObjectId(int i);
-
-    void checkCanceled();
-
-    boolean canReuse();
-
-    void reuse();
-
-    boolean isCacheable();
-
-    PreparedSQLStatement getWrappedStatement();
-
-    double getCost();
+    void setId(int id);
 
     int getPriority();
 
     void setPriority(int priority);
 
-    Result query(int maxRows);
+    int getFetchSize();
 
-    Result query(int maxRows, boolean scrollable);
+    void setFetchSize(int fetchSize);
 
-    int update();
+    boolean isLocal();
 
-    int update(String replicationName);
+    void setLocal(boolean local);
 
-    boolean isDDL();
+    void setObjectId(int i);
+
+    boolean canReuse();
+
+    void reuse();
+
+    default boolean isCacheable() {
+        return false;
+    }
+
+    default boolean isDDL() {
+        return false;
+    }
 
     default boolean isIfDDL() {
         return false;
     }
 
-    boolean isDatabaseStatement();
+    default boolean isDatabaseStatement() {
+        return false;
+    }
 
-    boolean isReplicationStatement();
+    default boolean isReplicationStatement() {
+        return false;
+    }
 
-    Session getSession();
+    Result query(int maxRows);
 
-    String getSQL();
-
-    Yieldable<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler);
+    int update();
 
     Yieldable<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler);
 
+    Yieldable<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler);
+
     static interface Yieldable<T> {
+
         boolean run();
 
         void stop();
@@ -95,14 +98,5 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
         int getPriority();
 
         void setPageKeys(List<PageKey> pageKeys);
-    }
-
-    default boolean yieldIfNeeded() {
-        Thread t = Thread.currentThread();
-        if (t instanceof SQLStatementExecutor) {
-            SQLStatementExecutor sqlStatementExecutor = (SQLStatementExecutor) t;
-            return sqlStatementExecutor.yieldIfNeeded(this);
-        }
-        return false;
     }
 }
