@@ -32,7 +32,8 @@ public class UpdateTest extends SqlTestBase {
         testUpdate();
         testUpdatePrimaryKey();
         testUpdateIndex();
-        // testColumnLock();
+        testRowLock();
+        testColumnLock();
     }
 
     void testUpdatePrimaryKey() {
@@ -49,7 +50,7 @@ public class UpdateTest extends SqlTestBase {
     void testUpdateIndex() {
         executeUpdate("DROP TABLE IF EXISTS testUpdateIndex");
         executeUpdate("CREATE TABLE testUpdateIndex (pk int PRIMARY KEY, f1 int, f2 int)");
-        executeUpdate("CREATE INDEX i_f1 ON testUpdateIndex(f2)");
+        executeUpdate("CREATE INDEX i_f2 ON testUpdateIndex(f2)");
         executeUpdate("INSERT INTO testUpdateIndex(pk, f1, f2) VALUES(1, 10, 100)");
         executeUpdate("INSERT INTO testUpdateIndex(pk, f1, f2) VALUES(2, 20, 200)");
         sql = "UPDATE testUpdateIndex SET f1=11 WHERE pk = 1";
@@ -91,6 +92,35 @@ public class UpdateTest extends SqlTestBase {
             assertEquals("a1", getStringValue(1));
             assertEquals("b", getStringValue(2));
             assertEquals(62, getIntValue(3, true));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    void testRowLock() {
+        try {
+            conn.setAutoCommit(false);
+            sql = "UPDATE UpdateTest SET f1 = 'a2' WHERE pk = '02'";
+            executeUpdate(sql);
+
+            Connection conn2 = null;
+            try {
+                conn2 = getConnection();
+                conn2.setAutoCommit(false);
+                Statement stmt2 = conn2.createStatement();
+                stmt2.executeUpdate("UPDATE UpdateTest SET f1 = 'a3' WHERE pk = '02'");
+                fail();
+            } catch (Exception e) {
+                if (conn2 != null)
+                    JdbcUtils.closeSilently(conn2);
+                System.err.println(e.getMessage());
+            }
+
+            conn.commit();
+            conn.setAutoCommit(true);
+
+            sql = "SELECT f1, f2, f3 FROM UpdateTest WHERE pk = '02'";
+            assertEquals("a2", getStringValue(1, true));
         } catch (Exception e) {
             e.printStackTrace();
         }

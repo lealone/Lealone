@@ -924,14 +924,28 @@ public interface TransactionalValue {
 
         @Override
         public void rollback() {
+            TransactionalValue first = ref.getRefValue();
+
             // 因为执行rollback时是按最新到最老的顺序进行的，
             // 所以当前被rollback的TransactionalValue一定是RefValue
-
-            // 执行update时先锁后更新，会有两条记录
-            // TransactionalValue first = ref.getRefValue();
             // if (this != first)
             // throw DbException.throwInternalError();
-            ref.setRefValue(this.getOldValue());
+
+            // 执行update时先锁后更新，会有两条记录
+            if (this != first) {
+                TransactionalValue last = first;
+                TransactionalValue next = first.getOldValue();
+                while (next != null) {
+                    if (next == this) {
+                        last.setOldValue(next.getOldValue());
+                        break;
+                    }
+                    last = next;
+                    next = next.getOldValue();
+                }
+            } else {
+                ref.setRefValue(this.getOldValue());
+            }
         }
     }
 }
