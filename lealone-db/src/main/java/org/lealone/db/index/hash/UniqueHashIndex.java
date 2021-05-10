@@ -7,6 +7,7 @@
 package org.lealone.db.index.hash;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
@@ -16,6 +17,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
+import org.lealone.transaction.Transaction;
 
 /**
  * An unique index based on an in-memory hash map.
@@ -38,18 +40,20 @@ public class UniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public void add(ServerSession session, Row row) {
+    public Future<Integer> add(ServerSession session, Row row) {
         Value key = row.getValue(indexColumn);
         Object old = rows.get(key);
         if (old != null) {
             throw getDuplicateKeyException();
         }
         rows.put(key, row.getKey());
+        return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
-    public void remove(ServerSession session, Row row) {
+    public Future<Integer> remove(ServerSession session, Row row) {
         rows.remove(row.getValue(indexColumn));
+        return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override

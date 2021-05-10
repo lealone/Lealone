@@ -29,7 +29,7 @@ public class DefaultYieldableReplicationUpdate extends DefaultYieldableUpdate {
     }
 
     @Override
-    protected boolean executeInternal() {
+    protected void executeInternal() {
         switch (session.getStatus()) {
         case TRANSACTION_NOT_START:
         case TRANSACTION_NOT_COMMIT:
@@ -40,7 +40,6 @@ public class DefaultYieldableReplicationUpdate extends DefaultYieldableUpdate {
             executeUpdate();
             break;
         }
-        return yieldIfNeeded();
     }
 
     private void executeUpdate() {

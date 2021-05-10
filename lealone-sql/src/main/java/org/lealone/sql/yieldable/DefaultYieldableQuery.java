@@ -21,6 +21,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.router.SQLRouter;
 
@@ -31,16 +32,14 @@ public class DefaultYieldableQuery extends YieldableQueryBase {
     public DefaultYieldableQuery(StatementBase statement, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
         super(statement, maxRows, scrollable, asyncHandler);
-        callStop = false;
     }
 
     @Override
-    protected boolean executeInternal() {
+    protected void executeInternal() {
         if (completed == null) {
             completed = false;
             SQLRouter.executeQuery(statement, maxRows, scrollable, ar -> handleResult(ar));
         }
-        return !completed;
     }
 
     private void handleResult(AsyncResult<Result> ar) {
@@ -48,7 +47,7 @@ public class DefaultYieldableQuery extends YieldableQueryBase {
             if (ar.isSucceeded()) {
                 Result result = ar.getResult();
                 setResult(result, result.getRowCount());
-                stop();
+                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             } else {
                 DbException e = DbException.convert(ar.getCause());
                 handleException(e);

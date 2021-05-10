@@ -21,6 +21,7 @@ import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -544,25 +545,26 @@ public class SelectUnion extends Query implements ISelectUnion {
         }
 
         @Override
-        protected boolean executeInternal() {
+        protected void executeInternal() {
             if (insertFromSelect) {
                 if (leftYieldableQuery != null) {
-                    if (leftYieldableQuery.run()) {
-                        return true;
+                    leftYieldableQuery.run();
+                    if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
+                        return;
                     } else {
                         leftYieldableQuery = null;
-                        return false;
+                        return;
                     }
                 }
                 if (leftYieldableQuery == null && rightYieldableQuery != null) {
-                    if (rightYieldableQuery.run()) {
-                        return true;
+                    rightYieldableQuery.run();
+                    if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
+                        return;
                     } else {
                         rightYieldableQuery = null;
-                        return false;
+                        return;
                     }
                 }
-                return false;
             }
 
             switch (unionType) {
@@ -570,23 +572,23 @@ public class SelectUnion extends Query implements ISelectUnion {
             case UNION: {
                 if (leftYieldableQuery != null) {
                     if (runLeftQuery()) {
-                        return true;
+                        return;
                     }
                 }
                 if (leftRows != null) {
                     if (addLeftRows()) {
-                        return true;
+                        return;
                     }
                 }
 
                 if (rightYieldableQuery != null) {
                     if (runRightQuery()) {
-                        return true;
+                        return;
                     }
                 }
                 if (rightRows != null) {
                     if (addRightRows()) {
-                        return true;
+                        return;
                     }
                 }
                 break;
@@ -594,18 +596,18 @@ public class SelectUnion extends Query implements ISelectUnion {
             case EXCEPT: {
                 if (leftYieldableQuery != null) {
                     if (runLeftQuery()) {
-                        return true;
+                        return;
                     }
                 }
                 if (leftRows != null) {
                     if (addLeftRows()) {
-                        return true;
+                        return;
                     }
                 }
 
                 if (rightYieldableQuery != null) {
                     if (runRightQuery()) {
-                        return true;
+                        return;
                     }
                 }
                 if (rightRows != null) {
@@ -614,7 +616,7 @@ public class SelectUnion extends Query implements ISelectUnion {
                         result.removeDistinct(convert(rightRows.currentRow(), columnCount));
                         rowNumber++;
                         if (async && yieldIfNeeded)
-                            return true;
+                            return;
                     }
                     rightRows = null;
                 }
@@ -623,7 +625,7 @@ public class SelectUnion extends Query implements ISelectUnion {
             case INTERSECT: {
                 if (leftYieldableQuery != null) {
                     if (runLeftQuery()) {
-                        return true;
+                        return;
                     }
                 }
                 if (leftRows != null) {
@@ -632,14 +634,14 @@ public class SelectUnion extends Query implements ISelectUnion {
                         temp.addRow(convert(leftRows.currentRow(), columnCount));
                         rowNumber++;
                         if (async && yieldIfNeeded)
-                            return true;
+                            return;
                     }
                     leftRows = null;
                 }
 
                 if (rightYieldableQuery != null) {
                     if (runRightQuery()) {
-                        return true;
+                        return;
                     }
                 }
                 if (rightRows != null) {
@@ -651,7 +653,7 @@ public class SelectUnion extends Query implements ISelectUnion {
                         }
                         rowNumber++;
                         if (async && yieldIfNeeded)
-                            return true;
+                            return;
                     }
                     rightRows = null;
                 }
@@ -675,15 +677,16 @@ public class SelectUnion extends Query implements ISelectUnion {
                     target.addRow(result.currentRow());
                 }
                 result.close();
-                return false;
+                return;
             }
             setResult(result, result.getRowCount());
-            return false;
+            return;
         }
 
         private boolean runLeftQuery() {
             if (leftRows == null) {
-                if (leftYieldableQuery.run()) {
+                leftYieldableQuery.run();
+                if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
                     return true;
                 } else {
                     rowNumber = 0;
@@ -696,7 +699,8 @@ public class SelectUnion extends Query implements ISelectUnion {
 
         private boolean runRightQuery() {
             if (rightRows == null) {
-                if (rightYieldableQuery.run()) {
+                rightYieldableQuery.run();
+                if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
                     return true;
                 } else {
                     rowNumber = 0;

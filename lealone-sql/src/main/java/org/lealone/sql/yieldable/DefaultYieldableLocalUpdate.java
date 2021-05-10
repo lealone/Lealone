@@ -29,7 +29,7 @@ public class DefaultYieldableLocalUpdate extends DefaultYieldableUpdate {
     }
 
     @Override
-    protected boolean executeInternal() {
+    protected void executeInternal() {
         session.setStatus(SessionStatus.STATEMENT_RUNNING);
         int updateCount = statement.update();
         setResult(updateCount);
@@ -39,8 +39,6 @@ public class DefaultYieldableLocalUpdate extends DefaultYieldableUpdate {
             session.setStatus(SessionStatus.WAITING);
         } else {
             session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-            stop();
         }
-        return yieldIfNeeded();
     }
 }

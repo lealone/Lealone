@@ -20,7 +20,6 @@ package org.lealone.transaction.aote;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.UnsafeUtils;
 import org.lealone.db.DataBuffer;
@@ -927,9 +926,11 @@ public interface TransactionalValue {
         public void rollback() {
             // 因为执行rollback时是按最新到最老的顺序进行的，
             // 所以当前被rollback的TransactionalValue一定是RefValue
-            TransactionalValue first = ref.getRefValue();
-            if (this != first)
-                throw DbException.throwInternalError();
+
+            // 执行update时先锁后更新，会有两条记录
+            // TransactionalValue first = ref.getRefValue();
+            // if (this != first)
+            // throw DbException.throwInternalError();
             ref.setRefValue(this.getOldValue());
         }
     }

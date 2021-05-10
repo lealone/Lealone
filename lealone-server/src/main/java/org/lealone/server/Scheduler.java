@@ -56,7 +56,8 @@ public class Scheduler extends Thread
 
     private final Semaphore haveWork = new Semaphore(1);
     private final long loopInterval;
-    private boolean end;
+    private volatile boolean end;
+    private volatile boolean waiting;
     private YieldableCommand nextBestCommand;
 
     public Scheduler(int id, Map<String, String> config) {
@@ -193,17 +194,12 @@ public class Scheduler extends Thread
                 runQueueTasks(normPriorityQueue);
                 c = getNextBestCommand(priority, true);
                 if (c == null) {
-                    try {
-                        haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                        haveWork.drainPermits();
-                    } catch (InterruptedException e) {
-                        handleInterruptedException(e);
-                    }
+                    doAwait();
                     break;
                 }
             }
             try {
-                c.execute();
+                c.run();
                 // 说明没有新的命令了，一直在轮循
                 if (last == c) {
                     runPageOperationTasks();
@@ -254,7 +250,8 @@ public class Scheduler extends Thread
 
     @Override
     public void wakeUp() {
-        haveWork.release(1);
+        if (waiting)
+            haveWork.release(1);
     }
 
     private void checkSessionTimeout() {
@@ -327,14 +324,21 @@ public class Scheduler extends Thread
             runPageOperationTasks();
             if (counter.get() < 1)
                 break;
-            try {
-                haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
-                haveWork.drainPermits();
-            } catch (InterruptedException e) {
-                handleInterruptedException(e);
-            }
+            doAwait();
         }
         if (e != null)
             throw e;
+    }
+
+    private void doAwait() {
+        waiting = true;
+        try {
+            haveWork.tryAcquire(loopInterval, TimeUnit.MILLISECONDS);
+            haveWork.drainPermits();
+        } catch (InterruptedException e) {
+            handleInterruptedException(e);
+        } finally {
+            waiting = false;
+        }
     }
 }

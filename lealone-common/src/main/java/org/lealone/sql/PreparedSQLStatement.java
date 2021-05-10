@@ -89,7 +89,7 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
 
     static interface Yieldable<T> {
 
-        boolean run();
+        void run();
 
         void stop();
 

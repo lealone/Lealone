@@ -26,7 +26,6 @@ public abstract class DefaultYieldableUpdate extends YieldableUpdateBase {
 
     public DefaultYieldableUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
-        callStop = false;
     }
 
     protected boolean yieldIfNeeded() {

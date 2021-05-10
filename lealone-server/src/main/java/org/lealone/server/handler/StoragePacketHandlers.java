@@ -46,7 +46,6 @@ import org.lealone.server.protocol.storage.StorageReplicatePages;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageMap;
 import org.lealone.storage.type.StorageDataType;
-import org.lealone.transaction.Transaction;
 import org.lealone.transaction.TransactionMap;
 
 class StoragePacketHandlers extends PacketHandlers {
@@ -105,25 +104,19 @@ class StoragePacketHandlers extends PacketHandlers {
             session.setReplicationName(packet.replicationName);
             TransactionMap<Object, Object> tmap = session.getTransactionMap(packet.mapName);
             if (packet.addIfAbsent) {
-                Transaction.Listener localListener = new Transaction.Listener() {
-                    @Override
-                    public void operationUndo() {
-                        ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
-                        resultByteBuffer.put((byte) 0);
-                        resultByteBuffer.flip();
-                        sendResponse(task, packet, resultByteBuffer);
-                    }
-
-                    @Override
-                    public void operationComplete() {
-                        ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
-                        resultByteBuffer.put((byte) 1);
-                        resultByteBuffer.flip();
-                        sendResponse(task, packet, resultByteBuffer);
-                    }
-                };
-                tmap.addIfAbsent(tmap.getKeyType().read(packet.key), tmap.getValueType().read(packet.value),
-                        localListener);
+                tmap.addIfAbsent(tmap.getKeyType().read(packet.key), tmap.getValueType().read(packet.value))
+                        .onSuccess(r -> {
+                            ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
+                            resultByteBuffer.put((byte) 1);
+                            resultByteBuffer.flip();
+                            sendResponse(task, packet, resultByteBuffer);
+                        }).onFailure(t -> {
+                            ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
+                            resultByteBuffer.put((byte) 0);
+                            resultByteBuffer.flip();
+                            sendResponse(task, packet, resultByteBuffer);
+                        });
+                ;
             } else {
                 StorageMap<Object, Object> map = tmap;
                 if (packet.raw) {

@@ -28,6 +28,7 @@ public enum SessionStatus {
     RETRYING_RETURN_RESULT,
     STATEMENT_RUNNING,
     STATEMENT_COMPLETED,
+
     EXCLUSIVE_MODE
 
 }

@@ -17,8 +17,6 @@
  */
 package org.lealone.test.aote;
 
-import java.util.concurrent.CountDownLatch;
-
 import org.junit.Test;
 import org.lealone.db.index.standard.ValueDataType;
 import org.lealone.db.index.standard.VersionedValue;
@@ -128,10 +126,8 @@ public class AMTransactionMapTest extends TestBase {
         Transaction t = te.beginTransaction(false);
         TransactionMap<String, String> map = t.openMap(createMapName("testTryOperations"), storage);
         map.clear();
-        MyTransactionListener listener = new MyTransactionListener();
 
-        map.addIfAbsent("1", "a", listener);
-        listener.await();
+        map.addIfAbsent("1", "a").get();
         t.commit();
         assertNotNull(map.get("1"));
 
@@ -177,12 +173,10 @@ public class AMTransactionMapTest extends TestBase {
 
         String key = "1";
 
-        MyTransactionListener listener = new MyTransactionListener(1);
         Object oldValue = map.get(key);
         ValueArray valueArray = createValueArray(0, 0, 0, 0);
         VersionedValue vv = new VersionedValue(1, valueArray);
-        map.addIfAbsent(key, vv, listener);
-        listener.await();
+        map.addIfAbsent(key, vv).get();
         t.commit();
 
         // int[] columnIndexes1 = { 0 };
@@ -251,43 +245,5 @@ public class AMTransactionMapTest extends TestBase {
         ValueArray valueArray = ValueArray.get(values);
         vv = new VersionedValue(1, valueArray);
         return vv;
-    }
-
-    private static class MyTransactionListener implements Transaction.Listener {
-
-        CountDownLatch latch;
-
-        public MyTransactionListener() {
-            this(1);
-        }
-
-        public MyTransactionListener(int count) {
-            this.latch = new CountDownLatch(count);
-        }
-
-        @Override
-        public void operationUndo() {
-            System.out.println("partialUndo");
-            if (latch != null)
-                latch.countDown();
-        }
-
-        @Override
-        public void operationComplete() {
-            System.out.println("partialComplete");
-            if (latch != null)
-                latch.countDown();
-        }
-
-        @Override
-        public void await() {
-            if (latch != null) {
-                try {
-                    latch.await();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
     }
 }

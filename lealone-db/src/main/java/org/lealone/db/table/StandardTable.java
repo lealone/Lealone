@@ -8,6 +8,7 @@ package org.lealone.db.table;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.CaseInsensitiveMap;
@@ -20,6 +21,8 @@ import org.lealone.db.DbObjectType;
 import org.lealone.db.RunMode;
 import org.lealone.db.SysProperties;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.Future;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
 import org.lealone.db.index.Index;
@@ -49,6 +52,7 @@ public class StandardTable extends Table {
 
     private final StandardPrimaryIndex primaryIndex;
     private final ArrayList<Index> indexes = Utils.newSmallArrayList();
+    private final ArrayList<Index> indexesExcludeDelegate = Utils.newSmallArrayList();
     private final StorageEngine storageEngine;
     private final Map<String, String> parameters;
     private final boolean globalTemporary;
@@ -95,6 +99,7 @@ public class StandardTable extends Table {
         }
         primaryIndex = new StandardPrimaryIndex(data.session, this);
         indexes.add(primaryIndex);
+        indexesExcludeDelegate.add(primaryIndex);
     }
 
     public String getMapName() {
@@ -278,6 +283,8 @@ public class StandardTable extends Table {
             }
         }
         indexes.add(index);
+        if (!(index instanceof StandardDelegateIndex))
+            indexesExcludeDelegate.add(index);
         setModified();
         return index;
     }
@@ -312,101 +319,88 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public void addRow(ServerSession session, Row row) {
-        tryAddRow(session, row, null);
-    }
-
-    @Override
-    public void tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
+    public Future<Integer> addRow(ServerSession session, Row row) {
         row.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         int savepointId = t.getSavepointId();
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        int size = indexesExcludeDelegate.size();
+        AtomicInteger count = new AtomicInteger(size);
         try {
             // 第一个是PrimaryIndex
-            for (int i = 0, size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                if (globalListener == null || !index.supportsAsync()) // 如果是null就用同步api
-                    index.add(session, row);
-                else
-                    index.tryAdd(session, row, globalListener);
+            for (int i = 0; i < size; i++) {
+                Index index = indexesExcludeDelegate.get(i);
+                index.add(session, row).onComplete(ar -> {
+                    if (count.decrementAndGet() == 0) {
+                        ac.setAsyncResult(ar);
+                    }
+                });
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
+        return ac;
     }
 
     @Override
-    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
-        tryUpdateRow(session, oldRow, newRow, updateColumns, null);
-    }
-
-    @Override
-    public int tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
-            Transaction.Listener globalListener) {
+    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         int savepointId = t.getSavepointId();
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        int size = indexesExcludeDelegate.size();
+        AtomicInteger count = new AtomicInteger(size);
         try {
             // 第一个是PrimaryIndex
-            for (int i = 0, size = indexes.size(); i < size; i++) {
-                Index index = indexes.get(i);
-                if (globalListener == null || !index.supportsAsync()) {
-                    index.update(session, oldRow, newRow, updateColumns);
-                } else {
-                    int ret = index.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
-                    if (ret != Transaction.OPERATION_COMPLETE)
-                        return ret;
-                }
+            for (int i = 0; i < size; i++) {
+                Index index = indexesExcludeDelegate.get(i);
+                index.update(session, oldRow, newRow, updateColumns).onComplete(ar -> {
+                    if (count.decrementAndGet() == 0) {
+                        ac.setAsyncResult(ar);
+                    }
+                });
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        return Transaction.OPERATION_COMPLETE;
+        return ac;
     }
 
     @Override
-    public void removeRow(ServerSession session, Row row) {
-        tryRemoveRow(session, row, false, null);
-    }
-
-    @Override
-    public int tryRemoveRow(ServerSession session, Row row, Transaction.Listener globalListener) {
-        return tryRemoveRow(session, row, true, globalListener);
-    }
-
-    private int tryRemoveRow(ServerSession session, Row row, boolean async, Transaction.Listener globalListener) {
+    public Future<Integer> removeRow(ServerSession session, Row row) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         int savepointId = t.getSavepointId();
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        int size = indexesExcludeDelegate.size();
+        AtomicInteger count = new AtomicInteger(size);
         try {
-            for (int i = indexes.size() - 1; i >= 0; i--) {
-                Index index = indexes.get(i);
-                if (async && index.supportsAsync()) {
-                    int ret = index.tryRemove(session, row, globalListener);
-                    if (ret != Transaction.OPERATION_COMPLETE)
-                        return ret;
-                } else {
-                    index.remove(session, row);
-                }
+            for (int i = size - 1; i >= 0; i--) {
+                Index index = indexesExcludeDelegate.get(i);
+                index.remove(session, row).onComplete(ar -> {
+                    if (count.decrementAndGet() == 0) {
+                        ac.setAsyncResult(ar);
+                    }
+                });
             }
         } catch (Throwable e) {
             t.rollbackToSavepoint(savepointId);
             throw DbException.convert(e);
         }
         analyzeIfRequired(session);
-        return Transaction.OPERATION_COMPLETE;
+        return ac;
     }
 
     @Override
-    public boolean tryLockRow(ServerSession session, Row row) {
+    public boolean tryLockRow(ServerSession session, Row row, boolean addToWaitingQueue) {
         // 只锁主索引即可
-        return primaryIndex.tryLock(session, row);
+        return primaryIndex.tryLock(session, row, addToWaitingQueue);
     }
 
     @Override

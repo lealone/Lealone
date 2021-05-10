@@ -31,10 +31,9 @@ public class DefaultYieldableShardingUpdate extends DefaultYieldableUpdate {
     }
 
     @Override
-    protected boolean executeInternal() {
+    protected void executeInternal() {
         session.setStatus(SessionStatus.STATEMENT_RUNNING);
         SQLRouter.executeUpdate(statement, ar -> handleResult(ar));
-        return yieldIfNeeded();
     }
 
     private void handleResult(AsyncResult<Integer> ar) {
@@ -45,7 +44,6 @@ public class DefaultYieldableShardingUpdate extends DefaultYieldableUpdate {
                 session.setStatus(SessionStatus.WAITING);
             } else {
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                stop();
             }
         } else {
             session.setStatus(SessionStatus.STATEMENT_COMPLETED);

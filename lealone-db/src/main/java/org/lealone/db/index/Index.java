@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -20,7 +21,6 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
-import org.lealone.transaction.Transaction;
 
 /**
  * An index. Indexes are used to speed up searching data.
@@ -80,47 +80,26 @@ public interface Index extends SchemaObject {
      */
     String getPlanSQL();
 
-    default boolean supportsAsync() {
-        return false;
-    }
-
     /**
      * Add a row to the index.
      *
      * @param session the session to use
      * @param row the row to add
      */
-    default void add(ServerSession session, Row row) {
-        Transaction.Listener listener = Transaction.getTransactionListener();
-        tryAdd(session, row, listener);
-        listener.await();
-    }
-
-    default void tryAdd(ServerSession session, Row row, Transaction.Listener globalListener) {
+    default Future<Integer> add(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("add row");
     }
 
-    default void update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
-        Transaction.Listener listener = Transaction.getTransactionListener();
-        int ret = tryUpdate(session, oldRow, newRow, updateColumns, listener);
-        if (ret == Transaction.OPERATION_COMPLETE)
-            listener.operationComplete();
-        // 不能在这里调用operationUndo
-        // else
-        // listener.operationUndo();
-        listener.await();
-    }
-
-    default int tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
-            Transaction.Listener globalListener) {
-        int ret = tryRemove(session, oldRow, globalListener);
-        if (ret == Transaction.OPERATION_COMPLETE) {
-            tryAdd(session, newRow, globalListener);
-            // 等待tryAdd完成
-            if (globalListener != null)
-                ret = Transaction.OPERATION_NEED_WAIT;
-        }
-        return ret;
+    default Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        remove(session, oldRow).onSuccess(v -> {
+            add(session, newRow).onComplete(ar -> {
+                ac.setAsyncResult(ar);
+            });
+        }).onFailure(t -> {
+            ac.setAsyncResult(t);
+        });
+        return ac;
     }
 
     /**
@@ -129,16 +108,15 @@ public interface Index extends SchemaObject {
      * @param session the session
      * @param row the row
      */
-    default void remove(ServerSession session, Row row) {
-        if (tryRemove(session, row, null) != Transaction.OPERATION_COMPLETE)
-            throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, getTable().getName());
-    }
-
-    default int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
+    default Future<Integer> remove(ServerSession session, Row row) {
         throw DbException.getUnsupportedException("remove row");
     }
 
     default boolean tryLock(ServerSession session, Row row) {
+        return tryLock(session, row, false);
+    }
+
+    default boolean tryLock(ServerSession session, Row row, boolean addToWaitingQueue) {
         return false;
     }
 

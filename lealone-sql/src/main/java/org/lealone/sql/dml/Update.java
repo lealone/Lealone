@@ -33,8 +33,7 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.yieldable.YieldableBase;
-import org.lealone.sql.yieldable.YieldableListenableUpdateBase;
-import org.lealone.transaction.Transaction;
+import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
 
 /**
  * This class represents the statement
@@ -113,6 +112,26 @@ public class Update extends ManipulationStatement {
     }
 
     @Override
+    public String getPlanSQL() {
+        StatementBuilder buff = new StatementBuilder("UPDATE ");
+        buff.append(tableFilter.getPlanSQL(false)).append("\nSET\n    ");
+        for (int i = 0, size = columns.size(); i < size; i++) {
+            Column c = columns.get(i);
+            Expression e = expressionMap.get(c);
+            buff.appendExceptFirst(",\n    ");
+            buff.append(c.getName()).append(" = ").append(e.getSQL());
+        }
+        if (condition != null) {
+            buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
+        }
+
+        if (limitExpr != null) {
+            buff.append("\nLIMIT (").append(StringUtils.unEnclose(limitExpr.getSQL())).append(')');
+        }
+        return buff.toString();
+    }
+
+    @Override
     public PreparedSQLStatement prepare() {
         int size = columns.size();
         HashSet<Column> columnSet = new HashSet<>(size + 1);
@@ -140,30 +159,8 @@ public class Update extends ManipulationStatement {
 
     @Override
     public int update() {
-        // 以同步的方式运行
         YieldableUpdate yieldable = new YieldableUpdate(this, null);
-        yieldable.run();
-        return yieldable.getResult();
-    }
-
-    @Override
-    public String getPlanSQL() {
-        StatementBuilder buff = new StatementBuilder("UPDATE ");
-        buff.append(tableFilter.getPlanSQL(false)).append("\nSET\n    ");
-        for (int i = 0, size = columns.size(); i < size; i++) {
-            Column c = columns.get(i);
-            Expression e = expressionMap.get(c);
-            buff.appendExceptFirst(",\n    ");
-            buff.append(c.getName()).append(" = ").append(e.getSQL());
-        }
-        if (condition != null) {
-            buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
-        }
-
-        if (limitExpr != null) {
-            buff.append("\nLIMIT (").append(StringUtils.unEnclose(limitExpr.getSQL())).append(')');
-        }
-        return buff.toString();
+        return syncExecute(yieldable);
     }
 
     @Override
@@ -174,7 +171,7 @@ public class Update extends ManipulationStatement {
             return new YieldableUpdate(this, asyncHandler);
     }
 
-    private static class YieldableUpdate extends YieldableListenableUpdateBase {
+    private static class YieldableUpdate extends YieldableLoopUpdateBase {
 
         final Update statement;
         final TableFilter tableFilter;
@@ -217,70 +214,83 @@ public class Update extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeUpdate() {
+        protected void executeLoopUpdate() {
             if (oldRow != null) {
                 // 如果oldRow已经删除了那么移到下一行
                 if (tableFilter.rebuildSearchRow(session, oldRow) == null)
                     hasNext = tableFilter.next();
                 oldRow = null;
             }
-            while (pendingOperationException == null && hasNext) {
-                boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
+            while (hasNext && pendingOperationException == null) {
+                boolean yieldIfNeeded = async && statement.setCurrentRowNumber(++loopCount);
+                if (yieldIfNeeded) {
+                    return;
+                }
                 if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row oldRow = tableFilter.get();
-                    Row newRow = table.getTemplateRow();
-                    newRow.setKey(oldRow.getKey()); // 复用原来的行号
-                    for (int i = 0; i < columnCount; i++) {
-                        Expression newExpr = statement.expressionMap.get(columns[i]);
-                        Value newValue;
-                        if (newExpr == null) {
-                            newValue = oldRow.getValue(i);
-                        } else if (newExpr == ValueExpression.getDefault()) {
-                            Column column = table.getColumn(i);
-                            newValue = table.getDefaultValue(session, column);
-                        } else {
-                            Column column = table.getColumn(i);
-                            newValue = column.convert(newExpr.getValue(session));
-                        }
-                        newRow.setValue(i, newValue);
+                    if (!table.tryLockRow(session, oldRow, true)) {
+                        this.oldRow = oldRow;
+                        session.setStatus(SessionStatus.WAITING);
+                        return;
                     }
+                    Row newRow = createNewRow(oldRow);
                     table.validateConvertUpdateSequence(session, newRow);
                     boolean done = false;
                     if (table.fireRow()) {
                         done = table.fireBeforeRow(session, oldRow, newRow);
                     }
                     if (!done) {
-                        if (async) {
-                            int ret = table.tryUpdateRow(session, oldRow, newRow, statement.columns, this);
-                            if (ret == Transaction.OPERATION_NEED_RETRY) {
-                                if (tableFilter.rebuildSearchRow(session, oldRow) == null)
-                                    hasNext = tableFilter.next();
-                                continue;
-                            } else if (ret == Transaction.OPERATION_NEED_WAIT || pendingOperationCounter.get() > 0) {
-                                session.setStatus(SessionStatus.WAITING);
-                                this.oldRow = oldRow;
-                                return true;
-                            }
-                        } else {
-                            table.updateRow(session, oldRow, newRow, statement.columns);
+                        pendingOperationCount.incrementAndGet();
+                        updateRow(oldRow, newRow);
+                        if (limitRows > 0 && pendingOperationCount.get() >= limitRows) {
+                            loopEnd = true;
+                            return;
                         }
-                        if (table.fireRow()) {
-                            table.fireAfterRow(session, oldRow, newRow, false);
-                        }
-                    }
-                    affectedRows++;
-                    if (limitRows > 0 && affectedRows >= limitRows) {
-                        loopEnd = true;
-                        return false;
                     }
                 }
                 hasNext = tableFilter.next();
-                if (async && yieldIfNeeded) {
-                    return true;
-                }
             }
             loopEnd = true;
-            return false;
+        }
+
+        private Row createNewRow(Row oldRow) {
+            Row newRow = table.getTemplateRow();
+            newRow.setKey(oldRow.getKey()); // 复用原来的行号
+            for (int i = 0; i < columnCount; i++) {
+                Expression newExpr = statement.expressionMap.get(columns[i]);
+                Value newValue;
+                if (newExpr == null) {
+                    newValue = oldRow.getValue(i);
+                } else if (newExpr == ValueExpression.getDefault()) {
+                    Column column = table.getColumn(i);
+                    newValue = table.getDefaultValue(session, column);
+                } else {
+                    Column column = table.getColumn(i);
+                    newValue = column.convert(newExpr.getValue(session));
+                }
+                newRow.setValue(i, newValue);
+            }
+            return newRow;
+        }
+
+        private void updateRow(Row oldRow, Row newRow) {
+            table.updateRow(session, oldRow, newRow, statement.columns).onComplete(ar -> {
+                pendingOperationCount.decrementAndGet();
+                if (ar.isSucceeded()) {
+                    if (table.fireRow()) {
+                        table.fireAfterRow(session, oldRow, newRow, false);
+                    }
+                    updateCount.incrementAndGet();
+                } else {
+                    pendingOperationException = ar.getCause();
+                }
+
+                if (isCompleted()) {
+                    setResult(updateCount.get());
+                } else if (statementExecutor != null) {
+                    statementExecutor.wakeUp();
+                }
+            });
         }
     }
 }

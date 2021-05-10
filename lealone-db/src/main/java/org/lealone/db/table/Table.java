@@ -21,6 +21,7 @@ import org.lealone.db.ProcessingMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.db.auth.Right;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.index.Index;
@@ -41,7 +42,6 @@ import org.lealone.db.value.CompareMode;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.IExpression;
-import org.lealone.transaction.Transaction;
 
 /**
  * This is the base class for most tables.
@@ -258,11 +258,7 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      * @param row the row
      * @throws DbException if a constraint was violated
      */
-    public void addRow(ServerSession session, Row row) {
-        throw newUnsupportedException();
-    }
-
-    public void tryAddRow(ServerSession session, Row row, Transaction.Listener globalListener) {
+    public Future<Integer> addRow(ServerSession session, Row row) {
         throw newUnsupportedException();
     }
 
@@ -273,12 +269,7 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      * @param oldRow the old row
      * @param newRow the new row
      */
-    public void updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
-        throw newUnsupportedException();
-    }
-
-    public int tryUpdateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
-            Transaction.Listener globalListener) {
+    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         throw newUnsupportedException();
     }
 
@@ -288,15 +279,15 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      * @param session the session
      * @param row the row
      */
-    public void removeRow(ServerSession session, Row row) {
-        throw newUnsupportedException();
-    }
-
-    public int tryRemoveRow(ServerSession session, Row row, Transaction.Listener globalListener) {
+    public Future<Integer> removeRow(ServerSession session, Row row) {
         throw newUnsupportedException();
     }
 
     public boolean tryLockRow(ServerSession session, Row row) {
+        return tryLockRow(session, row, false);
+    }
+
+    public boolean tryLockRow(ServerSession session, Row row, boolean addToWaitingQueue) {
         throw newUnsupportedException();
     }
 

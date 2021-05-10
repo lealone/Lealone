@@ -13,6 +13,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Table;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
@@ -20,8 +21,7 @@ import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.yieldable.YieldableBase;
-import org.lealone.sql.yieldable.YieldableListenableUpdateBase;
-import org.lealone.transaction.Transaction;
+import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
 
 /**
  * This class represents the statement
@@ -81,6 +81,20 @@ public class Delete extends ManipulationStatement {
     }
 
     @Override
+    public String getPlanSQL() {
+        StringBuilder buff = new StringBuilder();
+        buff.append("DELETE ");
+        buff.append("FROM ").append(tableFilter.getPlanSQL(false));
+        if (condition != null) {
+            buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
+        }
+        if (limitExpr != null) {
+            buff.append("\nLIMIT (").append(StringUtils.unEnclose(limitExpr.getSQL())).append(')');
+        }
+        return buff.toString();
+    }
+
+    @Override
     public PreparedSQLStatement prepare() {
         if (condition != null) {
             condition.mapColumns(tableFilter, 0);
@@ -96,24 +110,8 @@ public class Delete extends ManipulationStatement {
 
     @Override
     public int update() {
-        // 以同步的方式运行
         YieldableDelete yieldable = new YieldableDelete(this, null);
-        yieldable.run();
-        return yieldable.getResult();
-    }
-
-    @Override
-    public String getPlanSQL() {
-        StringBuilder buff = new StringBuilder();
-        buff.append("DELETE ");
-        buff.append("FROM ").append(tableFilter.getPlanSQL(false));
-        if (condition != null) {
-            buff.append("\nWHERE ").append(StringUtils.unEnclose(condition.getSQL()));
-        }
-        if (limitExpr != null) {
-            buff.append("\nLIMIT (").append(StringUtils.unEnclose(limitExpr.getSQL())).append(')');
-        }
-        return buff.toString();
+        return syncExecute(yieldable);
     }
 
     @Override
@@ -124,7 +122,7 @@ public class Delete extends ManipulationStatement {
             return new YieldableDelete(this, asyncHandler);
     }
 
-    private static class YieldableDelete extends YieldableListenableUpdateBase {
+    private static class YieldableDelete extends YieldableLoopUpdateBase {
 
         final Delete statement;
         final TableFilter tableFilter;
@@ -163,51 +161,60 @@ public class Delete extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeUpdate() {
+        protected void executeLoopUpdate() {
             if (oldRow != null) {
                 if (tableFilter.rebuildSearchRow(session, oldRow) == null)
                     hasNext = tableFilter.next();
                 oldRow = null;
             }
-            while (pendingOperationException == null && hasNext) {
-                boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows + 1);
+            while (hasNext && pendingOperationException == null) {
+                boolean yieldIfNeeded = async && statement.setCurrentRowNumber(++loopCount);
+                if (yieldIfNeeded) {
+                    return;
+                }
                 if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row row = tableFilter.get();
+                    if (!table.tryLockRow(session, oldRow, true)) {
+                        this.oldRow = row;
+                        session.setStatus(SessionStatus.WAITING);
+                        return;
+                    }
                     boolean done = false;
                     if (table.fireRow()) {
                         done = table.fireBeforeRow(session, row, null);
                     }
                     if (!done) {
-                        if (async) {
-                            int ret = table.tryRemoveRow(session, row, this);
-                            if (ret == Transaction.OPERATION_NEED_RETRY) {
-                                if (tableFilter.rebuildSearchRow(session, row) == null)
-                                    hasNext = tableFilter.next();
-                                continue;
-                            } else if (ret != Transaction.OPERATION_COMPLETE) {
-                                oldRow = row;
-                                return true;
-                            }
-                        } else {
-                            table.removeRow(session, row);
+                        pendingOperationCount.incrementAndGet();
+                        removeRow(row);
+                        if (limitRows > 0 && pendingOperationCount.get() >= limitRows) {
+                            loopEnd = true;
+                            return;
                         }
-                        if (table.fireRow()) {
-                            table.fireAfterRow(session, row, null, false);
-                        }
-                    }
-                    affectedRows++;
-                    if (limitRows > 0 && affectedRows >= limitRows) {
-                        loopEnd = true;
-                        return false;
                     }
                 }
                 hasNext = tableFilter.next();
-                if (async && yieldIfNeeded) {
-                    return true;
-                }
             }
             loopEnd = true;
-            return false;
+        }
+
+        private void removeRow(Row row) {
+            table.removeRow(session, row).onComplete(ar -> {
+                pendingOperationCount.decrementAndGet();
+                if (ar.isSucceeded()) {
+                    if (table.fireRow()) {
+                        table.fireAfterRow(session, row, null, false);
+                    }
+                    updateCount.incrementAndGet();
+                } else {
+                    pendingOperationException = ar.getCause();
+                }
+
+                if (isCompleted()) {
+                    setResult(updateCount.get());
+                } else if (statementExecutor != null) {
+                    statementExecutor.wakeUp();
+                }
+            });
         }
     }
 }

@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
+import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
@@ -169,7 +170,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         V retValue = getUnwrapValue(key, oldTransactionalValue);
         // insert
         if (oldTransactionalValue == null) {
-            addIfAbsent(key, value, listener);
+            addIfAbsent(key, value).onSuccess(r -> listener.operationComplete())
+                    .onFailure(t -> listener.operationUndo());
         } else {
             if (tryUpdateOrRemove(key, value, null, oldTransactionalValue) == Transaction.OPERATION_COMPLETE)
                 listener.operationComplete();
@@ -679,7 +681,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override // 比put方法更高效，不需要返回值，所以也不需要事先调用get
-    public void addIfAbsent(K key, V value, Transaction.Listener listener) {
+    public Future<Integer> addIfAbsent(K key, V value) {
         DataUtils.checkNotNull(value, "value");
         transaction.checkNotClosed();
         TransactionalValue ref = TransactionalValue.createRef();
@@ -688,6 +690,8 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         ref.setRefValue(newValue);
         String mapName = getName();
         final UndoLogRecord r = transaction.undoLog.add(mapName, key, null, newValue);
+
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
         AsyncHandler<AsyncResult<TransactionalValue>> handler = (ar) -> {
             if (ar.isSucceeded()) {
                 TransactionalValue old = ar.getResult();
@@ -697,28 +701,28 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     if (old.getValue() == null) {// || old.getValue() == ValueNull.INSTANCE) { //唯一索引加上这个条件会出错
                                                  // 辅助索引的值是ValueNull.INSTANCE
                         if (tryUpdate(key, value, old) == Transaction.OPERATION_COMPLETE) {
-                            listener.operationComplete();
+                            ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                             afterAddComplete();
                         } else {
-                            listener.operationUndo();
+                            ac.setAsyncResult((Throwable) null);
                         }
                     } else {
                         // 不能用undoLog.undo()，因为它不是线程安全的，
                         // 在undoLog.undo()中执行removeLast()在逻辑上也是不对的，
                         // 因为这里的异步回调函数可能是在不同线程中执行的，顺序也没有保证。
-                        listener.operationUndo();
+                        ac.setAsyncResult((Throwable) null);
                     }
                 } else {
-                    listener.operationComplete();
+                    ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
                     afterAddComplete();
                 }
             } else {
                 r.setUndone(true);
-                listener.operationUndo();
+                ac.setAsyncResult(ar.getCause());
             }
         };
         map.putIfAbsent(key, ref, handler);
-
+        return ac;
     }
 
     protected void afterAddComplete() {
@@ -726,21 +730,15 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void append(V value, Transaction.Listener listener, AsyncHandler<AsyncResult<K>> topHandler) {
+    public K append(V value, AsyncHandler<AsyncResult<K>> handler) {
         TransactionalValue ref = TransactionalValue.createRef(null);
         TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, null, map.getValueType(),
                 null, ref);
         ref.setRefValue(newValue);
-        AsyncHandler<AsyncResult<K>> handler = (ar) -> {
-            if (ar.isSucceeded()) {
-                listener.operationComplete();
-            } else {
-                listener.operationUndo();
-            }
-        };
         K key = map.append(ref, handler);
         transaction.logAppend((StorageMap<Object, TransactionalValue>) map, key, newValue);
-        topHandler.handle(new AsyncResult<>(key));
+        handler.handle(new AsyncResult<>(key));
+        return key;
     }
 
     @Override
@@ -810,13 +808,16 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public boolean tryLock(K key, Object oldTransactionalValue) {
+    public boolean tryLock(K key, Object oldTransactionalValue, boolean addToWaitingQueue) {
         DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
         transaction.checkNotClosed();
         TransactionalValue ref = (TransactionalValue) oldTransactionalValue;
-        if (ref.isLocked(transaction.transactionId, null))
+        if (ref.isLocked(transaction.transactionId, null)) {
+            if (addToWaitingQueue && addWaitingTransaction(key, ref) == Transaction.OPERATION_NEED_RETRY) {
+                return tryLock(key, oldTransactionalValue, addToWaitingQueue);
+            }
             return false;
-
+        }
         TransactionalValue refValue = ref.getRefValue();
         TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(), refValue,
                 map.getValueType(), null, ref);
@@ -825,6 +826,9 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             return true;
         } else {
             transaction.undoLog.undo();
+            if (addToWaitingQueue && addWaitingTransaction(key, ref) == Transaction.OPERATION_NEED_RETRY) {
+                return tryLock(key, oldTransactionalValue, addToWaitingQueue);
+            }
             return false;
         }
     }

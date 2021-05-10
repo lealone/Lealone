@@ -18,6 +18,8 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
 import org.lealone.db.api.ErrorCode;
+import org.lealone.db.async.AsyncCallback;
+import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
@@ -111,7 +113,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public void tryAdd(ServerSession session, Row row, final Transaction.Listener globalListener) {
+    public Future<Integer> add(ServerSession session, Row row) {
         // 由系统自动增加rowKey并且应用没有指定rowKey时用append来实现(不需要检测rowKey是否重复)，其他的用addIfAbsent实现
         boolean checkDuplicateKey = true;
         if (mainIndexColumn == -1) {
@@ -136,44 +138,37 @@ public class StandardPrimaryIndex extends StandardIndex {
             }
         }
 
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
         TransactionMap<Value, VersionedValue> map = getMap(session);
         VersionedValue value = new VersionedValue(row.getVersion(), ValueArray.get(row.getValueList()));
         if (checkDuplicateKey) {
-            Transaction.Listener localListener = new Transaction.Listener() {
-                @Override
-                public void operationUndo() {
+            Value key = ValueLong.get(row.getKey());
+            map.addIfAbsent(key, value).onComplete(ar -> {
+                if (ar.isFailed()) {
                     String sql = "PRIMARY KEY ON " + table.getSQL();
                     if (mainIndexColumn >= 0 && mainIndexColumn < indexColumns.length) {
                         sql += "(" + indexColumns[mainIndexColumn].getSQL() + ")";
                     }
                     DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
                     e.setSource(StandardPrimaryIndex.this);
-                    globalListener.setException(e);
-                    globalListener.operationUndo();
+                } else {
+                    ac.setAsyncResult(ar);
                 }
-
-                @Override
-                public void operationComplete() {
-                    globalListener.operationComplete();
-                }
-            };
-            Value key = ValueLong.get(row.getKey());
-            globalListener.beforeOperation();
-            map.addIfAbsent(key, value, localListener);
+            });
         } else {
-            globalListener.beforeOperation();
-            map.append(value, globalListener, ar -> {
+            map.append(value, ar -> {
                 if (ar.isSucceeded()) {
                     row.setKey(ar.getResult().getLong());
                     session.setLastRow(row);
                 }
+                ac.setAsyncResult(Transaction.OPERATION_COMPLETE);
             });
         }
+        return ac;
     }
 
     @Override
-    public int tryUpdate(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
-            Transaction.Listener globalListener) {
+    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
         if (mainIndexColumn != -1) {
             Column c = columns[mainIndexColumn];
             if (updateColumns.contains(c)) {
@@ -181,9 +176,9 @@ public class StandardPrimaryIndex extends StandardIndex {
                 Value newKey = newRow.getValue(mainIndexColumn);
                 // 修改了主键字段并且新值与旧值不同时才会册除原有的并增加新的，因为这种场景下性能慢一些
                 if (!oldKey.equals(newKey)) {
-                    return super.tryUpdate(session, oldRow, newRow, updateColumns, globalListener);
+                    return super.update(session, oldRow, newRow, updateColumns);
                 } else if (updateColumns.size() == 1) { // 新值与旧值相同，并且只更新主键时什么都不用做
-                    return Transaction.OPERATION_COMPLETE;
+                    return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
                 }
             }
         }
@@ -195,7 +190,8 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(oldRow.getRawValue(), columnIndexes))
-            return map.addWaitingTransaction(ValueLong.get(oldRow.getKey()), oldRow.getRawValue(), globalListener);
+            return Future.succeededFuture(
+                    map.addWaitingTransaction(ValueLong.get(oldRow.getKey()), oldRow.getRawValue(), null));
 
         if (table.containsLargeObject()) {
             for (int i = 0, len = newRow.getColumnCount(); i < len; i++) {
@@ -219,17 +215,17 @@ public class StandardPrimaryIndex extends StandardIndex {
         Value key = ValueLong.get(newRow.getKey());
         int ret = map.tryUpdate(key, newValue, columnIndexes, oldRow.getRawValue());
         session.setLastRow(newRow);
-        return ret;
+        return Future.succeededFuture(ret);
     }
 
     @Override
-    public int tryRemove(ServerSession session, Row row, Transaction.Listener globalListener) {
+    public Future<Integer> remove(ServerSession session, Row row) {
         Value key = ValueLong.get(row.getKey());
         Object oldTransactionalValue = row.getRawValue();
         TransactionMap<Value, VersionedValue> map = getMap(session);
 
         if (map.isLocked(oldTransactionalValue, null))
-            return map.addWaitingTransaction(key, oldTransactionalValue, globalListener);
+            return Future.succeededFuture(map.addWaitingTransaction(key, oldTransactionalValue, null));
 
         if (table.containsLargeObject()) {
             for (int i = 0, len = row.getColumnCount(); i < len; i++) {
@@ -239,16 +235,16 @@ public class StandardPrimaryIndex extends StandardIndex {
                 }
             }
         }
-        return map.tryRemove(key, oldTransactionalValue);
+        return Future.succeededFuture(map.tryRemove(key, oldTransactionalValue));
     }
 
     @Override
-    public boolean tryLock(ServerSession session, Row row) {
+    public boolean tryLock(ServerSession session, Row row, boolean addToWaitingQueue) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (map.isLocked(row.getRawValue(), null))
             return false;
 
-        return map.tryLock(ValueLong.get(row.getKey()), row.getRawValue());
+        return map.tryLock(ValueLong.get(row.getKey()), row.getRawValue(), addToWaitingQueue);
     }
 
     @Override

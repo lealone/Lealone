@@ -34,6 +34,7 @@ import org.lealone.db.result.ResultTarget;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.util.ValueHashMap;
@@ -1366,23 +1367,27 @@ public class Select extends Query {
         }
 
         @Override
-        protected boolean executeInternal() {
+        protected void executeInternal() {
             if (resultCache.useCache) {
                 resultCache.lastResult.reset();
                 setResult(resultCache.lastResult, resultCache.lastResult.getRowCount());
-                return false;
+                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                return;
             }
             if (query()) {
-                return true;
+                return;
             }
-            if (statement.queryOperator.target != null)
-                return false;
+            if (statement.queryOperator.target != null) {
+                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                return;
+            }
             if (statement.queryOperator.localResult != null) {
                 setResult(statement.queryOperator.localResult, statement.queryOperator.localResult.getRowCount());
                 resultCache.lastResult = statement.queryOperator.localResult;
-                return false;
+                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                return;
             }
-            return true;
+            return;
         }
 
         private boolean query() {

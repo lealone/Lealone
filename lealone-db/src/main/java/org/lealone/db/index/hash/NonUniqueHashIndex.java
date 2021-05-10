@@ -10,6 +10,7 @@ import java.util.ArrayList;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.Utils;
+import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
@@ -19,6 +20,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
+import org.lealone.transaction.Transaction;
 
 /**
  * A non-unique index based on an in-memory hash map.
@@ -43,7 +45,7 @@ public class NonUniqueHashIndex extends HashIndex {
     }
 
     @Override
-    public void add(ServerSession session, Row row) {
+    public Future<Integer> add(ServerSession session, Row row) {
         Value key = row.getValue(indexColumn);
         ArrayList<Long> positions = rows.get(key);
         if (positions == null) {
@@ -52,10 +54,11 @@ public class NonUniqueHashIndex extends HashIndex {
         }
         positions.add(row.getKey());
         rowCount++;
+        return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
-    public void remove(ServerSession session, Row row) {
+    public Future<Integer> remove(ServerSession session, Row row) {
         if (rowCount == 1) {
             // last row in table
             reset();
@@ -70,6 +73,7 @@ public class NonUniqueHashIndex extends HashIndex {
             }
             rowCount--;
         }
+        return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override

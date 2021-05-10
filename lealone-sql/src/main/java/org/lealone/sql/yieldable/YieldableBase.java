@@ -31,6 +31,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement.Yieldable;
 import org.lealone.sql.StatementBase;
@@ -40,13 +41,6 @@ import org.lealone.storage.PageKey;
 
 public abstract class YieldableBase<T> implements Yieldable<T> {
 
-    public static enum State {
-        start,
-        execute,
-        stop,
-        stopped;
-    }
-
     protected StatementBase statement;
     protected final ServerSession session;
     protected final Trace trace;
@@ -55,9 +49,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected AsyncResult<T> asyncResult;
     protected T result;
     protected long startTimeNanos;
-    protected boolean callStop = true;
-
-    private YieldableBase.State state = State.start;
+    protected boolean started;
 
     public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
         this.statement = statement;
@@ -75,7 +67,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected void stopInternal() {
     }
 
-    protected abstract boolean executeInternal();
+    protected abstract void executeInternal();
 
     protected void setResult(T result, int rowCount) {
         this.result = result;
@@ -108,24 +100,18 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     @Override
-    public final boolean run() {
-        switch (state) {
-        case start:
+    public final void run() {
+        if (!started) {
             if (start()) {
-                return true;
+                session.setStatus(SessionStatus.STATEMENT_RUNNING);
+                return;
             }
-            state = State.execute;
-        case execute:
-            if (execute()) {
-                return true;
-            }
-            state = State.stop;
-        case stop:
-            if (callStop) {
-                stop();
-            }
+            started = true;
         }
-        return false;
+        execute();
+        if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
+            stop();
+        }
     }
 
     private boolean start() {
@@ -167,25 +153,22 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
     }
 
-    private boolean execute() {
+    private void execute() {
         try {
             session.getDatabase().checkPowerOff();
-            return executeInternal();
+            executeInternal();
         } catch (DbException e) {
             // 并发异常，直接重试
             if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
-                return true;
+                return;
             }
             handleException(e);
-            return false;
         } catch (Throwable e) {
             handleException(DbException.convert(e));
-            return false;
         }
     }
 
     protected void handleException(DbException e) {
-        callStop = false;
         e = e.addSQL(statement.getSQL());
         SQLException s = e.getSQLException();
         Database database = session.getDatabase();
@@ -230,6 +213,5 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
                 trace.info("slow query: {0} ms, sql: {1}", timeMillis, statement.getSQL());
             }
         }
-        state = State.stopped;
     }
 }

@@ -65,24 +65,18 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
         TransactionMap<Object, Object> tmap = session.getTransactionMap(mapName);
         AsyncCallback<Object> ac = new AsyncCallback<>();
         if (addIfAbsent) {
-            Transaction.Listener localListener = new Transaction.Listener() {
-                @Override
-                public void operationUndo() {
-                    ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
-                    resultByteBuffer.put((byte) 0);
-                    resultByteBuffer.flip();
-                    ac.setAsyncResult(resultByteBuffer);
-                }
-
-                @Override
-                public void operationComplete() {
-                    ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
-                    resultByteBuffer.put((byte) 1);
-                    resultByteBuffer.flip();
-                    ac.setAsyncResult(resultByteBuffer);
-                }
-            };
-            tmap.addIfAbsent(tmap.getKeyType().read(key), tmap.getValueType().read(value), localListener);
+            tmap.addIfAbsent(tmap.getKeyType().read(key), tmap.getValueType().read(value)).onSuccess(r -> {
+                ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
+                resultByteBuffer.put((byte) 1);
+                resultByteBuffer.flip();
+                ac.setAsyncResult(resultByteBuffer);
+            }).onFailure(t -> {
+                ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
+                resultByteBuffer.put((byte) 0);
+                resultByteBuffer.flip();
+                ac.setAsyncResult(resultByteBuffer);
+            });
+            ;
         } else {
             StorageMap<Object, Object> map = tmap;
             if (raw) {

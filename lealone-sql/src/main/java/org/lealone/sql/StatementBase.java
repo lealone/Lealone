@@ -22,6 +22,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.expression.Expression;
@@ -520,17 +521,33 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_QUERY);
     }
 
+    // 以同步的方式运行
+    protected <K> K syncExecute(YieldableBase<K> yieldable) {
+        while (true) {
+            yieldable.run();
+            if (session.getStatus() != SessionStatus.STATEMENT_COMPLETED
+                    || session.getStatus() != SessionStatus.TRANSACTION_NOT_START) {
+                break;
+            }
+            while (session.getStatus() == SessionStatus.WAITING) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+        return yieldable.getResult();
+    }
+
     @Override
     public Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         TableFilter tf = getTableFilter();
         if (tf != null)
             tf.setPageKeys(pageKeys);
 
-        // 以同步的方式运行
         YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
         yieldable.setPageKeys(pageKeys);
-        yieldable.run();
-        return Future.succeededFuture(yieldable.getResult());
+        return Future.succeededFuture(syncExecute(yieldable));
     }
 
     @Override
@@ -539,11 +556,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         if (tf != null)
             tf.setPageKeys(pageKeys);
 
-        // 以同步的方式运行
         YieldableBase<Integer> yieldable = createYieldableUpdate(null);
         yieldable.setPageKeys(pageKeys);
-        yieldable.run();
-        return Future.succeededFuture(yieldable.getResult());
+        return Future.succeededFuture(syncExecute(yieldable));
     }
 
     @Override

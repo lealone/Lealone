@@ -19,6 +19,7 @@ import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -29,7 +30,7 @@ import org.lealone.sql.StatementBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.yieldable.YieldableBase;
-import org.lealone.sql.yieldable.YieldableListenableUpdateBase;
+import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
 
 /**
  * This class represents the statement
@@ -98,6 +99,50 @@ public class Merge extends ManipulationStatement {
     }
 
     @Override
+    public String getPlanSQL() {
+        StatementBuilder buff = new StatementBuilder("MERGE INTO ");
+        buff.append(table.getSQL()).append('(');
+        for (Column c : columns) {
+            buff.appendExceptFirst(", ");
+            buff.append(c.getSQL());
+        }
+        buff.append(')');
+        if (keys != null) {
+            buff.append(" KEY(");
+            buff.resetCount();
+            for (Column c : keys) {
+                buff.appendExceptFirst(", ");
+                buff.append(c.getSQL());
+            }
+            buff.append(')');
+        }
+        buff.append('\n');
+        if (list.size() > 0) {
+            buff.append(" VALUES ");
+            int row = 0;
+            for (Expression[] expr : list) {
+                if (row++ > 0) {
+                    buff.append(", ");
+                }
+                buff.append('(');
+                buff.resetCount();
+                for (Expression e : expr) {
+                    buff.appendExceptFirst(", ");
+                    if (e == null) {
+                        buff.append("DEFAULT");
+                    } else {
+                        buff.append(e.getSQL());
+                    }
+                }
+                buff.append(')');
+            }
+        } else {
+            buff.append(query.getPlanSQL());
+        }
+        return buff.toString();
+    }
+
+    @Override
     public PreparedSQLStatement prepare() {
         if (columns == null) {
             if (list.size() > 0 && list.get(0).length == 0) {
@@ -152,54 +197,8 @@ public class Merge extends ManipulationStatement {
 
     @Override
     public int update() {
-        // 以同步的方式运行
         YieldableMerge yieldable = new YieldableMerge(this, null);
-        yieldable.run();
-        return yieldable.getResult();
-    }
-
-    @Override
-    public String getPlanSQL() {
-        StatementBuilder buff = new StatementBuilder("MERGE INTO ");
-        buff.append(table.getSQL()).append('(');
-        for (Column c : columns) {
-            buff.appendExceptFirst(", ");
-            buff.append(c.getSQL());
-        }
-        buff.append(')');
-        if (keys != null) {
-            buff.append(" KEY(");
-            buff.resetCount();
-            for (Column c : keys) {
-                buff.appendExceptFirst(", ");
-                buff.append(c.getSQL());
-            }
-            buff.append(')');
-        }
-        buff.append('\n');
-        if (list.size() > 0) {
-            buff.append(" VALUES ");
-            int row = 0;
-            for (Expression[] expr : list) {
-                if (row++ > 0) {
-                    buff.append(", ");
-                }
-                buff.append('(');
-                buff.resetCount();
-                for (Expression e : expr) {
-                    buff.appendExceptFirst(", ");
-                    if (e == null) {
-                        buff.append("DEFAULT");
-                    } else {
-                        buff.append(e.getSQL());
-                    }
-                }
-                buff.append(')');
-            }
-        } else {
-            buff.append(query.getPlanSQL());
-        }
-        return buff.toString();
+        return syncExecute(yieldable);
     }
 
     @Override
@@ -207,7 +206,7 @@ public class Merge extends ManipulationStatement {
         return new YieldableMerge(this, asyncHandler);
     }
 
-    private static class YieldableMerge extends YieldableListenableUpdateBase {
+    private static class YieldableMerge extends YieldableLoopUpdateBase {
 
         final Merge statement;
         final Table table;
@@ -244,7 +243,7 @@ public class Merge extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeUpdate() {
+        protected void executeLoopUpdate() {
             if (yieldableQuery == null) {
                 int columnLen = statement.columns.length;
                 for (; pendingOperationException == null && index < listSize; index++) {
@@ -268,15 +267,13 @@ public class Merge extends ManipulationStatement {
                     }
                     affectedRows++;
                     if (merge(newRow, yieldIfNeeded)) {
-                        return true;
+                        return;
                     }
                 }
             } else {
                 if (rows == null) {
-                    if (yieldableQuery.run())
-                        return true;
-                    else
-                        rows = yieldableQuery.getResult();
+                    yieldableQuery.run();
+                    rows = yieldableQuery.getResult();
                 }
                 while (pendingOperationException == null && rows.next()) {
                     affectedRows++;
@@ -294,14 +291,13 @@ public class Merge extends ManipulationStatement {
                         }
                     }
                     if (merge(newRow, yieldIfNeeded)) {
-                        return true;
+                        return;
                     }
                 }
                 rows.close();
                 table.fire(session, Trigger.UPDATE | Trigger.INSERT, false);
             }
             loopEnd = true;
-            return false;
         }
 
         private boolean merge(Row row, boolean yieldIfNeeded) {
@@ -364,16 +360,27 @@ public class Merge extends ManipulationStatement {
             boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
             if (!done) {
                 // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
-                if (!table.trySharedLock(session))
+                if (!table.trySharedLock(session)) {
+                    session.setStatus(SessionStatus.WAITING);
                     return true;
-                if (async)
-                    table.tryAddRow(session, newRow, this);
-                else
-                    table.addRow(session, newRow);
-                table.fireAfterRow(session, null, newRow, false);
-            }
-            if (async && yieldIfNeeded) {
-                return true;
+                }
+                pendingOperationCount.incrementAndGet();
+
+                table.addRow(session, newRow).onComplete(ar -> {
+                    pendingOperationCount.decrementAndGet();
+                    if (ar.isSucceeded()) {
+                        table.fireAfterRow(session, null, newRow, false);
+                        updateCount.incrementAndGet();
+                    } else {
+                        pendingOperationException = ar.getCause();
+                    }
+
+                    if (isCompleted()) {
+                        setResult(updateCount.get());
+                    } else if (statementExecutor != null) {
+                        statementExecutor.wakeUp();
+                    }
+                });
             }
             return false;
         }

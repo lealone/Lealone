@@ -762,7 +762,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         if (id > 0 && isMetaReady() && !obj.isTemporary()) {
             checkWritingAllowed();
             Row r = MetaRecord.getRow(meta, obj);
-            meta.tryAddRow(session, r, null);
+            meta.addRow(session, r);
         }
     }
 
@@ -791,7 +791,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
             checkWritingAllowed();
             Row row = findMeta(session, id);
             if (row != null)
-                meta.tryRemoveRow(session, row, null);
+                meta.removeRow(session, row);
         }
     }
 
@@ -812,7 +812,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
                 Column sqlColumn = meta.getColumn(2);
                 List<Column> updateColumns = new ArrayList<>(1);
                 updateColumns.add(sqlColumn);
-                meta.tryUpdateRow(session, oldRow, newRow, updateColumns, null);
+                meta.updateRow(session, oldRow, newRow, updateColumns);
             }
         }
     }

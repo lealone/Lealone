@@ -22,8 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import org.lealone.db.async.Future;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.StorageMap;
 
@@ -88,9 +87,7 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
      */
     public Iterator<K> keyIterator(K from, boolean includeUncommitted);
 
-    public void addIfAbsent(K key, V value, Transaction.Listener listener);
-
-    public void append(V value, Transaction.Listener listener, AsyncHandler<AsyncResult<K>> handler);
+    public Future<Integer> addIfAbsent(K key, V value);
 
     public default int tryUpdate(K key, V newValue) {
         Object oldTransactionalValue = getTransactionalValue(key);
@@ -120,7 +117,11 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
         return tryLock(key, oldTransactionalValue);
     }
 
-    public boolean tryLock(K key, Object oldTransactionalValue);
+    public default boolean tryLock(K key, Object oldTransactionalValue) {
+        return tryLock(key, oldTransactionalValue, false);
+    }
+
+    public boolean tryLock(K key, Object oldTransactionalValue, boolean addToWaitingQueue);
 
     public boolean isLocked(Object oldTransactionalValue, int[] columnIndexes);
 

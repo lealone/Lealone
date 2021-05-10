@@ -28,7 +28,7 @@ import org.lealone.sql.SQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.yieldable.YieldableBase;
-import org.lealone.sql.yieldable.YieldableListenableUpdateBase;
+import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
 import org.lealone.storage.replication.ReplicationConflictType;
 
 /**
@@ -101,50 +101,6 @@ public class Insert extends ManipulationStatement {
     }
 
     @Override
-    public PreparedSQLStatement prepare() {
-        if (columns == null) {
-            if (list.size() > 0 && list.get(0).length == 0) {
-                // special case where table is used as a sequence
-                columns = new Column[0];
-            } else {
-                columns = table.getColumns();
-            }
-        }
-        if (list.size() > 0) {
-            for (Expression[] expr : list) {
-                if (expr.length != columns.length) {
-                    throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
-                }
-                for (int i = 0, len = expr.length; i < len; i++) {
-                    Expression e = expr[i];
-                    if (e != null) {
-                        e = e.optimize(session);
-                        if (e instanceof Parameter) {
-                            Parameter p = (Parameter) e;
-                            p.setColumn(columns[i]);
-                        }
-                        expr[i] = e;
-                    }
-                }
-            }
-        } else {
-            query.prepare();
-            if (query.getColumnCount() != columns.length) {
-                throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
-            }
-        }
-        return this;
-    }
-
-    @Override
-    public int update() {
-        // 以同步的方式运行
-        YieldableInsert yieldable = new YieldableInsert(this, null);
-        yieldable.run();
-        return yieldable.getResult();
-    }
-
-    @Override
     public String getPlanSQL() {
         StatementBuilder buff = new StatementBuilder("INSERT INTO ");
         buff.append(table.getSQL()).append('(');
@@ -185,11 +141,53 @@ public class Insert extends ManipulationStatement {
     }
 
     @Override
+    public PreparedSQLStatement prepare() {
+        if (columns == null) {
+            if (list.size() > 0 && list.get(0).length == 0) {
+                // special case where table is used as a sequence
+                columns = new Column[0];
+            } else {
+                columns = table.getColumns();
+            }
+        }
+        if (list.size() > 0) {
+            for (Expression[] expr : list) {
+                if (expr.length != columns.length) {
+                    throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
+                }
+                for (int i = 0, len = expr.length; i < len; i++) {
+                    Expression e = expr[i];
+                    if (e != null) {
+                        e = e.optimize(session);
+                        if (e instanceof Parameter) {
+                            Parameter p = (Parameter) e;
+                            p.setColumn(columns[i]);
+                        }
+                        expr[i] = e;
+                    }
+                }
+            }
+        } else {
+            query.prepare();
+            if (query.getColumnCount() != columns.length) {
+                throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
+            }
+        }
+        return this;
+    }
+
+    @Override
+    public int update() {
+        YieldableInsert yieldable = new YieldableInsert(this, null);
+        return syncExecute(yieldable);
+    }
+
+    @Override
     public YieldableInsert createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         return new YieldableInsert(this, asyncHandler);
     }
 
-    private static class YieldableInsert extends YieldableListenableUpdateBase implements ResultTarget {
+    private static class YieldableInsert extends YieldableLoopUpdateBase implements ResultTarget {
 
         final Insert statement;
         final Table table;
@@ -227,7 +225,7 @@ public class Insert extends ManipulationStatement {
         }
 
         @Override
-        protected boolean executeUpdate() {
+        protected void executeLoopUpdate() {
             if (!isReplicationAppendMode && session.isReplicationMode() && table.getScanIndex(session).isAppendMode()) {
                 long startKey = table.getScanIndex(session).getAndAddKey(listSize) + 1;
                 session.setReplicationConflictType(ReplicationConflictType.APPEND);
@@ -243,15 +241,16 @@ public class Insert extends ManipulationStatement {
                 if (asyncHandler != null) {
                     asyncHandler.handle(new AsyncResult<>(-1));
                 }
-                return true;
+                return;
             }
 
             if (yieldableQuery == null) {
                 int columnLen = statement.columns.length;
-                for (; pendingOperationException == null && index < listSize; index++) {
+                while (index < listSize && pendingOperationException == null) {
                     Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
                     Expression[] expr = statement.list.get(index);
-                    boolean yieldIfNeeded = statement.setCurrentRowNumber(index + 1);
+                    boolean yieldIfNeeded = async && statement.setCurrentRowNumber(index + 1);
+                    index++;
                     for (int i = 0; i < columnLen; i++) {
                         Column c = statement.columns[i];
                         int index = c.getColumnId(); // 从0开始
@@ -272,31 +271,27 @@ public class Insert extends ManipulationStatement {
                         newRow.setKey(session.getStartKey() + index);
                     }
                     if (addRowInternal(newRow, yieldIfNeeded, true)) {
-                        return true;
+                        return;
                     }
                 }
+                loopEnd = true;
             } else {
                 if (statement.insertFromSelect) {
-                    if (yieldableQuery.run())
-                        return true;
+                    yieldableQuery.run();
                 } else {
                     if (rows == null) {
-                        if (yieldableQuery.run())
-                            return true;
-                        else
-                            rows = yieldableQuery.getResult();
+                        yieldableQuery.run();
+                        rows = yieldableQuery.getResult();
                     }
-                    while (pendingOperationException == null && rows.next()) {
+                    while (rows.next()) {
                         Value[] values = rows.currentRow();
                         if (addRow(values)) {
-                            return true;
+                            return;
                         }
                     }
                     rows.close();
                 }
             }
-            loopEnd = true;
-            return false;
         }
 
         private boolean addRowInternal(Row newRow, boolean yieldIfNeeded, boolean trySharedLock) {
@@ -304,16 +299,27 @@ public class Insert extends ManipulationStatement {
             boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
             if (!done) {
                 // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
-                if (trySharedLock && !table.trySharedLock(session))
+                if (trySharedLock && !table.trySharedLock(session)) {
+                    session.setStatus(SessionStatus.WAITING);
                     return true;
-                if (async)
-                    table.tryAddRow(session, newRow, this);
-                else
-                    table.addRow(session, newRow);
-                table.fireAfterRow(session, null, newRow, false);
-            }
-            if (async && yieldIfNeeded) {
-                return true;
+                }
+                pendingOperationCount.incrementAndGet();
+
+                table.addRow(session, newRow).onComplete(ar -> {
+                    pendingOperationCount.decrementAndGet();
+                    if (ar.isSucceeded()) {
+                        table.fireAfterRow(session, null, newRow, false);
+                        updateCount.incrementAndGet();
+                    } else {
+                        pendingOperationException = ar.getCause();
+                    }
+
+                    if (isCompleted()) {
+                        setResult(updateCount.get());
+                    } else if (statementExecutor != null) {
+                        statementExecutor.wakeUp();
+                    }
+                });
             }
             return false;
         }

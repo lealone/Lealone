@@ -1424,14 +1424,11 @@ public class ServerSession extends SessionBase {
 
         private final int packetId;
         private final PreparedSQLStatement.Yieldable<?> yieldable;
-        private final ServerSession session;
         private final int sessionId;
 
-        public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable, ServerSession session,
-                int sessionId) {
+        public YieldableCommand(int packetId, PreparedSQLStatement.Yieldable<?> yieldable, int sessionId) {
             this.packetId = packetId;
             this.yieldable = yieldable;
-            this.session = session;
             this.sessionId = sessionId;
         }
 
@@ -1447,13 +1444,8 @@ public class ServerSession extends SessionBase {
             return yieldable.getPriority();
         }
 
-        public void execute() {
-            // 同一session中的语句是按顺序一条一条执行的，
-            // 如时返回false，说明当前语句执行完成了，切换到下一条；
-            // 如果返回true，说明因为某些原因导致主动让出CPU，需要等待获得重新执行的机会。
-            if (!yieldable.run()) {
-                session.setYieldableCommand(null);
-            }
+        public void run() {
+            yieldable.run();
         }
 
         public void stop() {

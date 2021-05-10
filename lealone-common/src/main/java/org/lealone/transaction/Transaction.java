@@ -234,7 +234,8 @@ public interface Transaction {
             // 避免重复调用
             if (transaction.getStatus() == STATUS_WAITING) {
                 transaction.setStatus(STATUS_OPEN);
-                listener.wakeUp();
+                if (listener != null)
+                    listener.wakeUp();
             }
         }
 
