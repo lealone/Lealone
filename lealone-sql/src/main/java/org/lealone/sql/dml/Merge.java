@@ -246,7 +246,7 @@ public class Merge extends ManipulationStatement {
         protected void executeLoopUpdate() {
             if (yieldableQuery == null) {
                 int columnLen = statement.columns.length;
-                for (; pendingOperationException == null && index < listSize; index++) {
+                for (; pendingException == null && index < listSize; index++) {
                     Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
                     Expression[] expr = statement.list.get(index);
                     boolean yieldIfNeeded = statement.setCurrentRowNumber(index + 1);
@@ -265,7 +265,6 @@ public class Merge extends ManipulationStatement {
                             }
                         }
                     }
-                    affectedRows++;
                     if (merge(newRow, yieldIfNeeded)) {
                         return;
                     }
@@ -275,11 +274,10 @@ public class Merge extends ManipulationStatement {
                     yieldableQuery.run();
                     rows = yieldableQuery.getResult();
                 }
-                while (pendingOperationException == null && rows.next()) {
-                    affectedRows++;
+                while (pendingException == null && rows.next()) {
                     Value[] r = rows.currentRow();
                     Row newRow = table.getTemplateRow();
-                    boolean yieldIfNeeded = statement.setCurrentRowNumber(affectedRows);
+                    boolean yieldIfNeeded = statement.setCurrentRowNumber(updateCount.get() + 1);
                     for (int j = 0; j < statement.columns.length; j++) {
                         Column c = statement.columns[j];
                         int index = c.getColumnId();
@@ -287,7 +285,7 @@ public class Merge extends ManipulationStatement {
                             Value v = c.convert(r[j]);
                             newRow.setValue(index, v);
                         } catch (DbException ex) {
-                            throw statement.setRow(ex, affectedRows, getSQL(r));
+                            throw statement.setRow(ex, updateCount.get() + 1, getSQL(r));
                         }
                     }
                     if (merge(newRow, yieldIfNeeded)) {
@@ -372,7 +370,7 @@ public class Merge extends ManipulationStatement {
                         table.fireAfterRow(session, null, newRow, false);
                         updateCount.incrementAndGet();
                     } else {
-                        pendingOperationException = ar.getCause();
+                        setPendingException(ar.getCause());
                     }
 
                     if (isCompleted()) {

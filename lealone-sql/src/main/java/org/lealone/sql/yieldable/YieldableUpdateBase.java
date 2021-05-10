@@ -23,14 +23,11 @@ import org.lealone.sql.StatementBase;
 
 public abstract class YieldableUpdateBase extends YieldableBase<Integer> {
 
-    protected int affectedRows;
-
     public YieldableUpdateBase(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
     }
 
     protected void setResult(Integer result) {
-        affectedRows = result;
-        super.setResult(result, affectedRows);
+        super.setResult(result, result);
     }
 }

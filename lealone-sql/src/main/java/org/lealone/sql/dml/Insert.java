@@ -246,7 +246,7 @@ public class Insert extends ManipulationStatement {
 
             if (yieldableQuery == null) {
                 int columnLen = statement.columns.length;
-                while (index < listSize && pendingOperationException == null) {
+                while (index < listSize && pendingException == null) {
                     Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
                     Expression[] expr = statement.list.get(index);
                     boolean yieldIfNeeded = async && statement.setCurrentRowNumber(index + 1);
@@ -266,7 +266,6 @@ public class Insert extends ManipulationStatement {
                             }
                         }
                     }
-                    affectedRows++;
                     if (isReplicationAppendMode) {
                         newRow.setKey(session.getStartKey() + index);
                     }
@@ -311,7 +310,7 @@ public class Insert extends ManipulationStatement {
                         table.fireAfterRow(session, null, newRow, false);
                         updateCount.incrementAndGet();
                     } else {
-                        pendingOperationException = ar.getCause();
+                        setPendingException(ar.getCause());
                     }
 
                     if (isCompleted()) {
@@ -328,7 +327,7 @@ public class Insert extends ManipulationStatement {
         @Override
         public boolean addRow(Value[] values) {
             Row newRow = table.getTemplateRow();
-            boolean yieldIfNeeded = statement.setCurrentRowNumber(++affectedRows);
+            boolean yieldIfNeeded = statement.setCurrentRowNumber(updateCount.get() + 1);
             for (int j = 0, len = statement.columns.length; j < len; j++) {
                 Column c = statement.columns[j];
                 int index = c.getColumnId();
@@ -336,7 +335,7 @@ public class Insert extends ManipulationStatement {
                     Value v = c.convert(values[j]);
                     newRow.setValue(index, v);
                 } catch (DbException ex) {
-                    throw statement.setRow(ex, affectedRows, getSQL(values));
+                    throw statement.setRow(ex, updateCount.get() + 1, getSQL(values));
                 }
             }
             if (addRowInternal(newRow, yieldIfNeeded, false)) {
@@ -347,7 +346,7 @@ public class Insert extends ManipulationStatement {
 
         @Override
         public int getRowCount() {
-            return affectedRows;
+            return updateCount.get();
         }
     }
 }

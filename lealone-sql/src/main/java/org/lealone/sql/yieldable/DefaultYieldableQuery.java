@@ -17,7 +17,6 @@
  */
 package org.lealone.sql.yieldable;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
@@ -49,8 +48,7 @@ public class DefaultYieldableQuery extends YieldableQueryBase {
                 setResult(result, result.getRowCount());
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             } else {
-                DbException e = DbException.convert(ar.getCause());
-                handleException(e);
+                setPendingException(ar.getCause());
             }
         } finally {
             completed = true;

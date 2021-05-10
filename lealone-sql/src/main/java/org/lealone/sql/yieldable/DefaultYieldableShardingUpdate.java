@@ -17,14 +17,13 @@
  */
 package org.lealone.sql.yieldable;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.router.SQLRouter;
 
-public class DefaultYieldableShardingUpdate extends DefaultYieldableUpdate {
+public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
 
     public DefaultYieldableShardingUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
@@ -46,9 +45,7 @@ public class DefaultYieldableShardingUpdate extends DefaultYieldableUpdate {
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             }
         } else {
-            session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-            DbException e = DbException.convert(ar.getCause());
-            handleException(e);
+            setPendingException(ar.getCause());
         }
     }
 }

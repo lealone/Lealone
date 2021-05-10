@@ -167,7 +167,7 @@ public class Delete extends ManipulationStatement {
                     hasNext = tableFilter.next();
                 oldRow = null;
             }
-            while (hasNext && pendingOperationException == null) {
+            while (hasNext && pendingException == null) {
                 boolean yieldIfNeeded = async && statement.setCurrentRowNumber(++loopCount);
                 if (yieldIfNeeded) {
                     return;
@@ -206,7 +206,7 @@ public class Delete extends ManipulationStatement {
                     }
                     updateCount.incrementAndGet();
                 } else {
-                    pendingOperationException = ar.getCause();
+                    setPendingException(ar.getCause());
                 }
 
                 if (isCompleted()) {

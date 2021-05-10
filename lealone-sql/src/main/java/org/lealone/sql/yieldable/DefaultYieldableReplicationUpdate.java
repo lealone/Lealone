@@ -22,7 +22,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
 
-public class DefaultYieldableReplicationUpdate extends DefaultYieldableUpdate {
+public class DefaultYieldableReplicationUpdate extends YieldableUpdateBase {
 
     public DefaultYieldableReplicationUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);

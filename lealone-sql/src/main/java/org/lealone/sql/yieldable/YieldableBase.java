@@ -51,6 +51,8 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected long startTimeNanos;
     protected boolean started;
 
+    protected volatile Throwable pendingException;
+
     public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
         this.statement = statement;
         this.session = statement.getSession();
@@ -108,8 +110,12 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
             }
             started = true;
         }
+
         execute();
-        if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
+
+        if (pendingException != null) {
+            handleException(DbException.convert(pendingException));
+        } else if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
             stop();
         }
     }
@@ -168,7 +174,12 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         }
     }
 
-    protected void handleException(DbException e) {
+    protected void setPendingException(Throwable pendingException) {
+        if (this.pendingException == null)
+            this.pendingException = pendingException;
+    }
+
+    private void handleException(DbException e) {
         e = e.addSQL(statement.getSQL());
         SQLException s = e.getSQLException();
         Database database = session.getDatabase();

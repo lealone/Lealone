@@ -19,7 +19,6 @@ package org.lealone.sql.yieldable;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.lealone.common.exceptions.DbException;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
@@ -31,7 +30,6 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
     protected int loopCount;
     protected volatile boolean loopEnd;
     protected final AtomicInteger updateCount = new AtomicInteger();
-    protected volatile Throwable pendingOperationException;
     protected final AtomicInteger pendingOperationCount = new AtomicInteger();
     protected final SQLStatementExecutor statementExecutor;
 
@@ -57,9 +55,6 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
                 return;
             }
         }
-        if (pendingOperationException != null)
-            throw DbException.convert(pendingOperationException);
-
         if (isCompleted()) {
             setResult(updateCount.get());
             if (session.getReplicationName() != null && session.getStatus() != SessionStatus.RETRYING) {
@@ -75,7 +70,7 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
     protected abstract void executeLoopUpdate();
 
     protected boolean isCompleted() {
-        if (pendingOperationException != null || loopEnd && pendingOperationCount.get() <= 0) {
+        if (loopEnd && pendingOperationCount.get() <= 0) {
             session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             return true;
         }
