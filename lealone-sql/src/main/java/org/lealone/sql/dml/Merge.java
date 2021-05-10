@@ -363,21 +363,11 @@ public class Merge extends ManipulationStatement {
                     return true;
                 }
                 pendingOperationCount.incrementAndGet();
-
                 table.addRow(session, newRow).onComplete(ar -> {
-                    pendingOperationCount.decrementAndGet();
                     if (ar.isSucceeded()) {
                         table.fireAfterRow(session, null, newRow, false);
-                        updateCount.incrementAndGet();
-                    } else {
-                        setPendingException(ar.getCause());
                     }
-
-                    if (isCompleted()) {
-                        setResult(updateCount.get());
-                    } else if (statementExecutor != null) {
-                        statementExecutor.wakeUp();
-                    }
+                    onComplete(ar);
                 });
             }
             return false;

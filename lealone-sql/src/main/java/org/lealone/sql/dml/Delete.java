@@ -186,7 +186,7 @@ public class Delete extends ManipulationStatement {
                     if (!done) {
                         pendingOperationCount.incrementAndGet();
                         removeRow(row);
-                        if (limitRows > 0 && pendingOperationCount.get() >= limitRows) {
+                        if (limitRows > 0 && updateCount.get() >= limitRows) {
                             loopEnd = true;
                             return;
                         }
@@ -199,21 +199,10 @@ public class Delete extends ManipulationStatement {
 
         private void removeRow(Row row) {
             table.removeRow(session, row).onComplete(ar -> {
-                pendingOperationCount.decrementAndGet();
-                if (ar.isSucceeded()) {
-                    if (table.fireRow()) {
-                        table.fireAfterRow(session, row, null, false);
-                    }
-                    updateCount.incrementAndGet();
-                } else {
-                    setPendingException(ar.getCause());
+                if (ar.isSucceeded() && table.fireRow()) {
+                    table.fireAfterRow(session, row, null, false);
                 }
-
-                if (isCompleted()) {
-                    setResult(updateCount.get());
-                } else if (statementExecutor != null) {
-                    statementExecutor.wakeUp();
-                }
+                onComplete(ar);
             });
         }
     }

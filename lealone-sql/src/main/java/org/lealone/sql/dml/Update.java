@@ -242,7 +242,7 @@ public class Update extends ManipulationStatement {
                     if (!done) {
                         pendingOperationCount.incrementAndGet();
                         updateRow(oldRow, newRow);
-                        if (limitRows > 0 && pendingOperationCount.get() >= limitRows) {
+                        if (limitRows > 0 && updateCount.get() >= limitRows) {
                             loopEnd = true;
                             return;
                         }
@@ -275,21 +275,10 @@ public class Update extends ManipulationStatement {
 
         private void updateRow(Row oldRow, Row newRow) {
             table.updateRow(session, oldRow, newRow, statement.columns).onComplete(ar -> {
-                pendingOperationCount.decrementAndGet();
-                if (ar.isSucceeded()) {
-                    if (table.fireRow()) {
-                        table.fireAfterRow(session, oldRow, newRow, false);
-                    }
-                    updateCount.incrementAndGet();
-                } else {
-                    setPendingException(ar.getCause());
+                if (ar.isSucceeded() && table.fireRow()) {
+                    table.fireAfterRow(session, oldRow, newRow, false);
                 }
-
-                if (isCompleted()) {
-                    setResult(updateCount.get());
-                } else if (statementExecutor != null) {
-                    statementExecutor.wakeUp();
-                }
+                onComplete(ar);
             });
         }
     }

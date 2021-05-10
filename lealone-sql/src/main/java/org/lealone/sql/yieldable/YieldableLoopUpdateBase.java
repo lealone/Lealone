@@ -77,4 +77,18 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
         return false;
     }
 
+    protected void onComplete(AsyncResult<Integer> ar) {
+        pendingOperationCount.decrementAndGet();
+        if (ar.isSucceeded()) {
+            updateCount.incrementAndGet();
+        } else {
+            setPendingException(ar.getCause());
+        }
+
+        if (isCompleted()) {
+            setResult(updateCount.get());
+        } else if (statementExecutor != null) {
+            statementExecutor.wakeUp();
+        }
+    }
 }
