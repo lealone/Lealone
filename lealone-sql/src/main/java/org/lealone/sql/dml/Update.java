@@ -243,14 +243,14 @@ public class Update extends ManipulationStatement {
                         pendingOperationCount.incrementAndGet();
                         updateRow(oldRow, newRow);
                         if (limitRows > 0 && updateCount.get() >= limitRows) {
-                            loopEnd = true;
+                            onLoopEnd();
                             return;
                         }
                     }
                 }
                 hasNext = tableFilter.next();
             }
-            loopEnd = true;
+            onLoopEnd();
         }
 
         private Row createNewRow(Row oldRow) {

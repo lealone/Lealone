@@ -273,7 +273,7 @@ public class Insert extends ManipulationStatement {
                         return;
                     }
                 }
-                loopEnd = true;
+                onLoopEnd();
             } else {
                 if (statement.insertFromSelect) {
                     yieldableQuery.run();

@@ -174,7 +174,7 @@ public class Delete extends ManipulationStatement {
                 }
                 if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row row = tableFilter.get();
-                    if (!table.tryLockRow(session, oldRow, true)) {
+                    if (!table.tryLockRow(session, row, true)) {
                         this.oldRow = row;
                         session.setStatus(SessionStatus.WAITING);
                         return;
@@ -187,14 +187,14 @@ public class Delete extends ManipulationStatement {
                         pendingOperationCount.incrementAndGet();
                         removeRow(row);
                         if (limitRows > 0 && updateCount.get() >= limitRows) {
-                            loopEnd = true;
+                            onLoopEnd();
                             return;
                         }
                     }
                 }
                 hasNext = tableFilter.next();
             }
-            loopEnd = true;
+            onLoopEnd();
         }
 
         private void removeRow(Row row) {

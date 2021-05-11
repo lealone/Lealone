@@ -63,6 +63,17 @@ public class UpdateTest extends SqlTestBase {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        // 测试执行SQL的调度器跟执行页面操作的调度器之间的协作
+        for (int i = 100; i < 300; i++) {
+            executeUpdate("INSERT INTO testUpdateIndex(pk, f1, f2) VALUES(" + i + ", 10, 100)");
+        }
+        sql = "SELECT count(*) FROM testUpdateIndex WHERE pk >= 100";
+        try {
+            assertEquals(200, getIntValue(1, true));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     void testInsert() {

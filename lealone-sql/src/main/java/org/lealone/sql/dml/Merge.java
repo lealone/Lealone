@@ -295,7 +295,7 @@ public class Merge extends ManipulationStatement {
                 rows.close();
                 table.fire(session, Trigger.UPDATE | Trigger.INSERT, false);
             }
-            loopEnd = true;
+            onLoopEnd();
         }
 
         private boolean merge(Row row, boolean yieldIfNeeded) {

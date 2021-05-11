@@ -27,8 +27,8 @@ import org.lealone.sql.StatementBase;
 
 public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
 
+    private volatile boolean loopEnd;
     protected int loopCount;
-    protected volatile boolean loopEnd;
     protected final AtomicInteger updateCount = new AtomicInteger();
     protected final AtomicInteger pendingOperationCount = new AtomicInteger();
     protected final SQLStatementExecutor statementExecutor;
@@ -69,12 +69,19 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
 
     protected abstract void executeLoopUpdate();
 
-    protected boolean isCompleted() {
+    private boolean isCompleted() {
         if (loopEnd && pendingOperationCount.get() <= 0) {
             session.setStatus(SessionStatus.STATEMENT_COMPLETED);
             return true;
         }
         return false;
+    }
+
+    protected void onLoopEnd() {
+        // 循环已经结束了，但是异步更新可能没有完成，所以先把状态改成STATEMENT_RUNNING，避免调度器空转
+        session.setStatus(SessionStatus.STATEMENT_RUNNING);
+        loopEnd = true;
+        // isCompleted(); //在executeInternal()已经调用了
     }
 
     protected void onComplete(AsyncResult<Integer> ar) {
@@ -87,7 +94,9 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
 
         if (isCompleted()) {
             setResult(updateCount.get());
-        } else if (statementExecutor != null) {
+        }
+        // 唤醒调度器
+        if (statementExecutor != null) {
             statementExecutor.wakeUp();
         }
     }
