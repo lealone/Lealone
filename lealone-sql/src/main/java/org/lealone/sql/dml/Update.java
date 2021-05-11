@@ -228,7 +228,7 @@ public class Update extends ManipulationStatement {
                 }
                 if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row oldRow = tableFilter.get();
-                    if (!table.tryLockRow(session, oldRow, true)) {
+                    if (!table.tryLockRow(session, oldRow, true, statement.columns)) {
                         this.oldRow = oldRow;
                         session.setStatus(SessionStatus.WAITING);
                         return;

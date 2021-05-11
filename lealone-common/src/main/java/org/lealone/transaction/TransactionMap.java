@@ -118,10 +118,10 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
     }
 
     public default boolean tryLock(K key, Object oldTransactionalValue) {
-        return tryLock(key, oldTransactionalValue, false);
+        return tryLock(key, oldTransactionalValue, false, null);
     }
 
-    public boolean tryLock(K key, Object oldTransactionalValue, boolean addToWaitingQueue);
+    public boolean tryLock(K key, Object oldTransactionalValue, boolean addToWaitingQueue, int[] columnIndexes);
 
     public boolean isLocked(Object oldTransactionalValue, int[] columnIndexes);
 

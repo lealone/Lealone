@@ -284,10 +284,10 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
     }
 
     public boolean tryLockRow(ServerSession session, Row row) {
-        return tryLockRow(session, row, false);
+        return tryLockRow(session, row, false, null);
     }
 
-    public boolean tryLockRow(ServerSession session, Row row, boolean addToWaitingQueue) {
+    public boolean tryLockRow(ServerSession session, Row row, boolean addToWaitingQueue, List<Column> lockColumns) {
         throw newUnsupportedException();
     }
 

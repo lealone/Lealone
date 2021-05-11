@@ -113,10 +113,10 @@ public interface Index extends SchemaObject {
     }
 
     default boolean tryLock(ServerSession session, Row row) {
-        return tryLock(session, row, false);
+        return tryLock(session, row, false, null);
     }
 
-    default boolean tryLock(ServerSession session, Row row, boolean addToWaitingQueue) {
+    default boolean tryLock(ServerSession session, Row row, boolean addToWaitingQueue, List<Column> lockColumns) {
         return false;
     }
 

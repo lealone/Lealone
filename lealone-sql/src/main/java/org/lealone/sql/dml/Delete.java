@@ -174,7 +174,7 @@ public class Delete extends ManipulationStatement {
                 }
                 if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row row = tableFilter.get();
-                    if (!table.tryLockRow(session, row, true)) {
+                    if (!table.tryLockRow(session, row, true, null)) {
                         this.oldRow = row;
                         session.setStatus(SessionStatus.WAITING);
                         return;

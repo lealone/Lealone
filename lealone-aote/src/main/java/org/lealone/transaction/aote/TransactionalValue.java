@@ -54,6 +54,8 @@ public interface TransactionalValue {
 
     public boolean isLocked(long tid, int[] columnIndexes);
 
+    public long getLockOwnerTid(long tid, int[] columnIndexes);
+
     public String getHostAndPort();
 
     public String getGlobalReplicationName();
@@ -213,6 +215,11 @@ public interface TransactionalValue {
         }
 
         @Override
+        public long getLockOwnerTid(long tid, int[] columnIndexes) {
+            return tv.getLockOwnerTid(tid, columnIndexes);
+        }
+
+        @Override
         public String getHostAndPort() {
             return tv.getHostAndPort();
         }
@@ -330,6 +337,11 @@ public interface TransactionalValue {
         @Override
         public boolean isLocked(long tid, int[] columnIndexes) {
             return false;
+        }
+
+        @Override
+        public long getLockOwnerTid(long tid, int[] columnIndexes) {
+            return -1;
         }
 
         @Override
@@ -456,6 +468,20 @@ public interface TransactionalValue {
         @Override
         public long getTid() {
             return transaction.transactionId;
+        }
+
+        @Override
+        public boolean isLocked(long tid, int[] columnIndexes) {
+            // 列锁的场景，oldValue可能是未提交的，所以要进一步判断
+            return oldValue != null && oldValue.isLocked(tid, columnIndexes);
+        }
+
+        @Override
+        public long getLockOwnerTid(long tid, int[] columnIndexes) {
+            if (oldValue == null)
+                return -1;
+            else
+                return oldValue.getLockOwnerTid(tid, columnIndexes);
         }
 
         @Override
@@ -628,6 +654,34 @@ public interface TransactionalValue {
         @Override
         public long getTid() {
             return tid;
+        }
+
+        @Override
+        public long getLockOwnerTid(long tid, int[] columnIndexes) {
+            // 1. 当前事务
+            // ----------------------------
+            if (this.tid == tid) {
+                if (oldValue == null)
+                    return -1;
+                else
+                    return oldValue.getLockOwnerTid(tid, columnIndexes); // 递归检查是否存在锁冲突
+            }
+
+            // 2. 不是当前事务
+            // ----------------------------
+            // 之前的事务已经加了行锁或之前的事务没加行锁，但是当前事务想要进行行锁时，都要拒绝当前事务的锁请求
+            if (rowLock || columnIndexes == null)
+                return this.tid;
+            // 如果当前事务跟之前的事务存在冲突的列锁，那么拒绝当前事务的锁请求
+            for (int i : columnIndexes) {
+                if (lockedColumns.get(i))
+                    return this.tid;
+            }
+            // 递归检查是否存在锁冲突
+            if (oldValue != null && oldValue.isLocked(tid, columnIndexes)) {
+                return this.tid;
+            }
+            return -1;
         }
 
         @Override
@@ -893,6 +947,11 @@ public interface TransactionalValue {
         @Override
         public boolean isLocked(long tid, int[] columnIndexes) {
             return getTid() != tid;
+        }
+
+        @Override
+        public long getLockOwnerTid(long tid, int[] columnIndexes) {
+            return getTid();
         }
 
         @Override

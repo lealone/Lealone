@@ -807,27 +807,45 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             return t.addWaitingTransaction(key, transaction, listener);
     }
 
+    private int addWaitingTransaction(Object key, TransactionalValue oldTransactionalValue, int[] columnIndexes) {
+        Object object = Thread.currentThread();
+        if (object instanceof Transaction.Listener) {
+            long tid = oldTransactionalValue.getLockOwnerTid(transaction.transactionId, columnIndexes);
+            AMTransaction t = transaction.transactionEngine.getTransaction(tid);
+            // 有可能在这一步事务提交了
+            if (t == null)
+                return Transaction.OPERATION_NEED_RETRY;
+            else
+                return t.addWaitingTransaction(key, transaction, (Transaction.Listener) object);
+        } else {
+            return Transaction.OPERATION_NEED_WAIT;
+            // throw DataUtils.newIllegalStateException(DataUtils.ERROR_TRANSACTION_LOCKED, "Entry is locked");
+        }
+    }
+
     @Override
-    public boolean tryLock(K key, Object oldTransactionalValue, boolean addToWaitingQueue) {
+    public boolean tryLock(K key, Object oldTransactionalValue, boolean addToWaitingQueue, int[] columnIndexes) {
         DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
         transaction.checkNotClosed();
         TransactionalValue ref = (TransactionalValue) oldTransactionalValue;
-        if (ref.isLocked(transaction.transactionId, null)) {
-            if (addToWaitingQueue && addWaitingTransaction(key, ref) == Transaction.OPERATION_NEED_RETRY) {
-                return tryLock(key, oldTransactionalValue, addToWaitingQueue);
+        if (ref.isLocked(transaction.transactionId, columnIndexes)) {
+            if (addToWaitingQueue
+                    && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
+                return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
             }
             return false;
         }
         TransactionalValue refValue = ref.getRefValue();
         TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(), refValue,
-                map.getValueType(), null, ref);
+                map.getValueType(), columnIndexes, ref);
         transaction.undoLog.add(getName(), key, refValue, newValue, true);
         if (ref.compareAndSet(refValue, newValue)) {
             return true;
         } else {
             transaction.undoLog.undo();
-            if (addToWaitingQueue && addWaitingTransaction(key, ref) == Transaction.OPERATION_NEED_RETRY) {
-                return tryLock(key, oldTransactionalValue, addToWaitingQueue);
+            if (addToWaitingQueue
+                    && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
+                return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
             }
             return false;
         }

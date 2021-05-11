@@ -239,12 +239,20 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public boolean tryLock(ServerSession session, Row row, boolean addToWaitingQueue) {
+    public boolean tryLock(ServerSession session, Row row, boolean addToWaitingQueue, List<Column> lockColumns) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
         if (!addToWaitingQueue && map.isLocked(row.getRawValue(), null))
             return false;
 
-        return map.tryLock(ValueLong.get(row.getKey()), row.getRawValue(), addToWaitingQueue);
+        int[] columnIndexes = null;
+        if (lockColumns != null) {
+            int size = lockColumns.size();
+            columnIndexes = new int[size];
+            for (int i = 0; i < size; i++) {
+                columnIndexes[i] = lockColumns.get(i).getColumnId();
+            }
+        }
+        return map.tryLock(ValueLong.get(row.getKey()), row.getRawValue(), addToWaitingQueue, columnIndexes);
     }
 
     @Override

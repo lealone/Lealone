@@ -121,15 +121,11 @@ public class UpdateTest extends SqlTestBase {
                 conn2 = getConnection();
                 conn2.setAutoCommit(false);
                 Statement stmt2 = conn2.createStatement();
-                stmt2.executeUpdate("SET LOCK_TIMEOUT = 500");
+                stmt2.executeUpdate("SET LOCK_TIMEOUT = 300");
                 stmt2.executeUpdate("UPDATE UpdateTest SET f1 = 'a3' WHERE pk = '02'");
                 fail();
             } catch (Exception e) {
-                assertTrue(e.getCause() instanceof SQLException);
-                assertEquals(ErrorCode.LOCK_TIMEOUT_1, ((SQLException) e.getCause()).getErrorCode());
-                if (conn2 != null)
-                    JdbcUtils.closeSilently(conn2);
-                System.out.println(e.getMessage());
+                assertLockTimeout(conn2, e);
             }
 
             conn.commit();
@@ -146,28 +142,21 @@ public class UpdateTest extends SqlTestBase {
         try {
             conn.setAutoCommit(false);
             sql = "UPDATE UpdateTest SET f1 = 'a2' WHERE pk = '02'";
-
-            Thread t1 = new Thread(() -> {
-                assertEquals(1, executeUpdate(sql));
-            });
-            t1.start();
+            assertEquals(1, executeUpdate(sql));
 
             // 因为支持列锁，所以两个事务更新同一行的不同字段不会产生冲突
-            Thread t2 = new Thread(() -> {
-                try {
-                    Connection conn2 = getConnection();
-                    conn2.setAutoCommit(false);
-                    Statement stmt2 = conn2.createStatement();
-                    String sql2 = "UPDATE UpdateTest SET f2 = 'c' WHERE pk = '02'";
-                    stmt2.executeUpdate(sql2);
-                    conn2.commit();
-                    stmt2.close();
-                    conn2.close();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            });
-            t2.start();
+            try {
+                Connection conn2 = getConnection();
+                conn2.setAutoCommit(false);
+                Statement stmt2 = conn2.createStatement();
+                String sql2 = "UPDATE UpdateTest SET f2 = 'c' WHERE pk = '02'";
+                stmt2.executeUpdate(sql2);
+                conn2.commit();
+                stmt2.close();
+                conn2.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
             // 第三个事务不能进行，因为第一个事务锁住f1字段了
             Connection conn3 = null;
@@ -175,13 +164,12 @@ public class UpdateTest extends SqlTestBase {
                 conn3 = getConnection();
                 conn3.setAutoCommit(false);
                 Statement stmt3 = conn3.createStatement();
+                stmt3.executeUpdate("SET LOCK_TIMEOUT = 300");
                 String sql3 = "UPDATE UpdateTest SET f1 = 'a3' WHERE pk = '02'";
                 stmt3.executeUpdate(sql3);
                 fail();
             } catch (Exception e) {
-                if (conn3 != null)
-                    JdbcUtils.closeSilently(conn3);
-                System.err.println(e.getMessage());
+                assertLockTimeout(conn3, e);
             }
 
             Connection conn4 = getConnection();
@@ -199,8 +187,6 @@ public class UpdateTest extends SqlTestBase {
             conn.commit();
             conn.setAutoCommit(true);
 
-            t1.join();
-            t2.join();
             sql = "SELECT f1, f2, f3 FROM UpdateTest WHERE pk = '02'";
             assertEquals("a2", getStringValue(1));
             assertEquals("c", getStringValue(2));
@@ -208,5 +194,13 @@ public class UpdateTest extends SqlTestBase {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    static void assertLockTimeout(Connection conn, Exception e) {
+        assertTrue(e.getCause() instanceof SQLException);
+        assertEquals(ErrorCode.LOCK_TIMEOUT_1, ((SQLException) e.getCause()).getErrorCode());
+        if (conn != null)
+            JdbcUtils.closeSilently(conn);
+        System.out.println(e.getMessage());
     }
 }

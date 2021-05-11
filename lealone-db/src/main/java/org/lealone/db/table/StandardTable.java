@@ -398,9 +398,9 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public boolean tryLockRow(ServerSession session, Row row, boolean addToWaitingQueue) {
+    public boolean tryLockRow(ServerSession session, Row row, boolean addToWaitingQueue, List<Column> lockColumns) {
         // 只锁主索引即可
-        return primaryIndex.tryLock(session, row, addToWaitingQueue);
+        return primaryIndex.tryLock(session, row, addToWaitingQueue, lockColumns);
     }
 
     @Override
