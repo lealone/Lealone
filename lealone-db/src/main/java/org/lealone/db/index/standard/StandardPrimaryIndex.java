@@ -241,7 +241,7 @@ public class StandardPrimaryIndex extends StandardIndex {
     @Override
     public boolean tryLock(ServerSession session, Row row, boolean addToWaitingQueue) {
         TransactionMap<Value, VersionedValue> map = getMap(session);
-        if (map.isLocked(row.getRawValue(), null))
+        if (!addToWaitingQueue && map.isLocked(row.getRawValue(), null))
             return false;
 
         return map.tryLock(ValueLong.get(row.getKey()), row.getRawValue(), addToWaitingQueue);

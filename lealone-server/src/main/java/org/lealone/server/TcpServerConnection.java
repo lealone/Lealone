@@ -170,7 +170,7 @@ public class TcpServerConnection extends TransferConnection {
             ServerSession s = si.getSession();
             // 执行SHUTDOWN IMMEDIATELY时会模拟PowerOff，此时不必再执行后续操作
             if (!s.getDatabase().isPowerOff()) {
-                s.prepareStatement("ROLLBACK", -1).executeUpdate();
+                s.rollback();
                 s.close();
             }
         } catch (Exception e) {

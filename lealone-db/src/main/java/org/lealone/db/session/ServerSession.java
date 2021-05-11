@@ -880,6 +880,10 @@ public class ServerSession extends SessionBase {
                 }
             }
         }
+        // 可经执行下一条命令了
+        if (getReplicationName() == null) {
+            setYieldableCommand(null);
+        }
     }
 
     public void rollbackCurrentCommand() {
@@ -1495,6 +1499,7 @@ public class ServerSession extends SessionBase {
                 t.rollback();
                 if (timeoutListener != null)
                     timeoutListener.onTimeout(yieldableCommand, e);
+                transaction = null;
                 yieldableCommand = null; // 移除当前命令
             }
         }

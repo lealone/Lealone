@@ -18,10 +18,12 @@
 package org.lealone.test.sql.dml;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.junit.Test;
 import org.lealone.common.util.JdbcUtils;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.test.sql.SqlTestBase;
 
 public class UpdateTest extends SqlTestBase {
@@ -119,12 +121,15 @@ public class UpdateTest extends SqlTestBase {
                 conn2 = getConnection();
                 conn2.setAutoCommit(false);
                 Statement stmt2 = conn2.createStatement();
+                stmt2.executeUpdate("SET LOCK_TIMEOUT = 500");
                 stmt2.executeUpdate("UPDATE UpdateTest SET f1 = 'a3' WHERE pk = '02'");
                 fail();
             } catch (Exception e) {
+                assertTrue(e.getCause() instanceof SQLException);
+                assertEquals(ErrorCode.LOCK_TIMEOUT_1, ((SQLException) e.getCause()).getErrorCode());
                 if (conn2 != null)
                     JdbcUtils.closeSilently(conn2);
-                System.err.println(e.getMessage());
+                System.out.println(e.getMessage());
             }
 
             conn.commit();
