@@ -222,8 +222,7 @@ public class Update extends ManipulationStatement {
                 oldRow = null;
             }
             while (hasNext && pendingException == null) {
-                boolean yieldIfNeeded = async && statement.setCurrentRowNumber(++loopCount);
-                if (yieldIfNeeded) {
+                if (yieldIfNeeded(++loopCount)) {
                     return;
                 }
                 if (statement.condition == null || statement.condition.getBooleanValue(session)) {

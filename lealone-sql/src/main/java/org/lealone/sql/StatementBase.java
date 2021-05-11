@@ -400,7 +400,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      *
      * @param rowNumber the row number
      */
-    protected boolean setCurrentRowNumber(int rowNumber) {
+    public boolean setCurrentRowNumber(int rowNumber) {
         boolean yieldIfNeeded = false;
         if ((++rowScanCount & 127) == 0) {
             checkCanceled();

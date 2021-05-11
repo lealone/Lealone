@@ -277,7 +277,7 @@ public class Merge extends ManipulationStatement {
                 while (pendingException == null && rows.next()) {
                     Value[] r = rows.currentRow();
                     Row newRow = table.getTemplateRow();
-                    boolean yieldIfNeeded = statement.setCurrentRowNumber(updateCount.get() + 1);
+                    boolean yieldIfNeeded = yieldIfNeeded(updateCount.get() + 1);
                     for (int j = 0; j < statement.columns.length; j++) {
                         Column c = statement.columns[j];
                         int index = c.getColumnId();

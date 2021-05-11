@@ -226,52 +226,21 @@ public class Insert extends ManipulationStatement {
 
         @Override
         protected void executeLoopUpdate() {
+            // 在复制模式下append记录时，先获得一个rowId区间，然后需要在客户端做rowId区间冲突检测，最后再返回正确的rowId区间
             if (!isReplicationAppendMode && session.isReplicationMode() && table.getScanIndex(session).isAppendMode()) {
-                long startKey = table.getScanIndex(session).getAndAddKey(listSize) + 1;
-                session.setReplicationConflictType(ReplicationConflictType.APPEND);
-                session.setStartKey(startKey);
-                session.setEndKey(startKey + listSize);
-                ServerSession s = table.getScanIndex(session).compareAndSetUncommittedSession(null, session);
-                if (s != null) {
-                    session.setLockedExclusivelyBy(s, ReplicationConflictType.APPEND);
-                    session.setAppendIndex(table.getScanIndex(session));
-                }
-                session.setStatus(SessionStatus.WAITING);
-                isReplicationAppendMode = true;
-                if (asyncHandler != null) {
-                    asyncHandler.handle(new AsyncResult<>(-1));
-                }
+                handleReplicationAppend();
                 return;
             }
-
             if (yieldableQuery == null) {
-                int columnLen = statement.columns.length;
-                while (index < listSize && pendingException == null) {
-                    Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
-                    Expression[] expr = statement.list.get(index);
-                    boolean yieldIfNeeded = async && statement.setCurrentRowNumber(index + 1);
-                    index++;
-                    for (int i = 0; i < columnLen; i++) {
-                        Column c = statement.columns[i];
-                        int index = c.getColumnId(); // 从0开始
-                        Expression e = expr[i];
-                        if (e != null) {
-                            // e can be null (DEFAULT)
-                            e = e.optimize(session);
-                            try {
-                                Value v = c.convert(e.getValue(session));
-                                newRow.setValue(index, v);
-                            } catch (DbException ex) {
-                                throw statement.setRow(ex, index, getSQL(expr));
-                            }
-                        }
-                    }
-                    if (isReplicationAppendMode) {
-                        newRow.setKey(session.getStartKey() + index);
-                    }
-                    if (addRowInternal(newRow, yieldIfNeeded, true)) {
+                while (pendingException == null && index < listSize) {
+                    Row newRow = createNewRow();
+                    if (addRowInternal(newRow, true)) {
                         return;
                     }
+                    if (yieldIfNeeded(index + 1)) {
+                        return;
+                    }
+                    index++;
                 }
                 onLoopEnd();
             } else {
@@ -282,18 +251,61 @@ public class Insert extends ManipulationStatement {
                         yieldableQuery.run();
                         rows = yieldableQuery.getResult();
                     }
-                    while (rows.next()) {
+                    while (pendingException == null && rows.next()) {
                         Value[] values = rows.currentRow();
                         if (addRow(values)) {
                             return;
                         }
                     }
                     rows.close();
+                    onLoopEnd();
                 }
             }
         }
 
-        private boolean addRowInternal(Row newRow, boolean yieldIfNeeded, boolean trySharedLock) {
+        private void handleReplicationAppend() {
+            long startKey = table.getScanIndex(session).getAndAddKey(listSize) + 1;
+            session.setReplicationConflictType(ReplicationConflictType.APPEND);
+            session.setStartKey(startKey);
+            session.setEndKey(startKey + listSize);
+            ServerSession s = table.getScanIndex(session).compareAndSetUncommittedSession(null, session);
+            if (s != null) {
+                session.setLockedExclusivelyBy(s, ReplicationConflictType.APPEND);
+                session.setAppendIndex(table.getScanIndex(session));
+            }
+            session.setStatus(SessionStatus.WAITING);
+            isReplicationAppendMode = true;
+            if (asyncHandler != null) {
+                asyncHandler.handle(new AsyncResult<>(-1));
+            }
+        }
+
+        private Row createNewRow() {
+            Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
+            Expression[] expr = statement.list.get(index);
+            int columnLen = statement.columns.length;
+            for (int i = 0; i < columnLen; i++) {
+                Column c = statement.columns[i];
+                int index = c.getColumnId(); // 从0开始
+                Expression e = expr[i];
+                if (e != null) {
+                    // e can be null (DEFAULT)
+                    e = e.optimize(session);
+                    try {
+                        Value v = c.convert(e.getValue(session));
+                        newRow.setValue(index, v);
+                    } catch (DbException ex) {
+                        throw statement.setRow(ex, this.index + 1, getSQL(expr));
+                    }
+                }
+            }
+            if (isReplicationAppendMode) {
+                newRow.setKey(session.getStartKey() + index);
+            }
+            return newRow;
+        }
+
+        private boolean addRowInternal(Row newRow, boolean trySharedLock) {
             table.validateConvertUpdateSequence(session, newRow);
             boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
             if (!done) {
@@ -317,7 +329,9 @@ public class Insert extends ManipulationStatement {
         @Override
         public boolean addRow(Value[] values) {
             Row newRow = table.getTemplateRow();
-            boolean yieldIfNeeded = statement.setCurrentRowNumber(updateCount.get() + 1);
+            if (yieldIfNeeded(updateCount.get() + 1)) {
+                return true;
+            }
             for (int j = 0, len = statement.columns.length; j < len; j++) {
                 Column c = statement.columns[j];
                 int index = c.getColumnId();
@@ -328,7 +342,7 @@ public class Insert extends ManipulationStatement {
                     throw statement.setRow(ex, updateCount.get() + 1, getSQL(values));
                 }
             }
-            if (addRowInternal(newRow, yieldIfNeeded, false)) {
+            if (addRowInternal(newRow, false)) {
                 return true;
             }
             return false;
