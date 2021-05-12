@@ -437,7 +437,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
      * @param values the values of the row
      * @return the exception
      */
-    protected DbException setRow(DbException e, int rowId, String values) {
+    public DbException setRow(DbException e, int rowId, String values) {
         StringBuilder buff = new StringBuilder();
         if (sql != null) {
             buff.append(sql);

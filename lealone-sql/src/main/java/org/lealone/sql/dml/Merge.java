@@ -16,20 +16,15 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.auth.Right;
 import org.lealone.db.index.Index;
-import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Column;
-import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
-import org.lealone.sql.yieldable.YieldableBase;
-import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
 
 /**
  * This class represents the statement
@@ -38,13 +33,9 @@ import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
  * @author H2 Group
  * @author zhh
  */
-public class Merge extends ManipulationStatement {
+public class Merge extends InsertBase {
 
-    private Table table;
-    private Column[] columns;
     private Column[] keys;
-    private final ArrayList<Expression[]> list = new ArrayList<>();
-    private Query query;
     private StatementBase update;
 
     public Merge(ServerSession session) {
@@ -56,45 +47,8 @@ public class Merge extends ManipulationStatement {
         return SQLStatement.MERGE;
     }
 
-    @Override
-    public boolean isCacheable() {
-        return true;
-    }
-
-    @Override
-    public void setLocal(boolean local) {
-        super.setLocal(local);
-        if (query != null)
-            query.setLocal(local);
-    }
-
-    public void setTable(Table table) {
-        this.table = table;
-    }
-
-    public void setColumns(Column[] columns) {
-        this.columns = columns;
-    }
-
     public void setKeys(Column[] keys) {
         this.keys = keys;
-    }
-
-    public void setQuery(Query query) {
-        this.query = query;
-    }
-
-    public void addRow(Expression[] expr) {
-        list.add(expr);
-    }
-
-    @Override
-    public int getPriority() {
-        if (getCurrentRowNumber() > 0)
-            return priority;
-
-        priority = NORM_PRIORITY - 1;
-        return priority;
     }
 
     @Override
@@ -116,65 +70,24 @@ public class Merge extends ManipulationStatement {
             buff.append(')');
         }
         buff.append('\n');
-        if (list.size() > 0) {
-            buff.append(" VALUES ");
-            int row = 0;
-            for (Expression[] expr : list) {
-                if (row++ > 0) {
-                    buff.append(", ");
-                }
-                buff.append('(');
-                buff.resetCount();
-                for (Expression e : expr) {
-                    buff.appendExceptFirst(", ");
-                    if (e == null) {
-                        buff.append("DEFAULT");
-                    } else {
-                        buff.append(e.getSQL());
-                    }
-                }
-                buff.append(')');
-            }
-        } else {
-            buff.append(query.getPlanSQL());
-        }
+        getValuesPlanSQL(buff);
         return buff.toString();
     }
 
     @Override
     public PreparedSQLStatement prepare() {
-        if (columns == null) {
-            if (list.size() > 0 && list.get(0).length == 0) {
-                // special case where table is used as a sequence
-                columns = new Column[0];
-            } else {
-                columns = table.getColumns();
-            }
-        }
-        if (list.size() > 0) {
-            for (Expression[] expr : list) {
-                if (expr.length != columns.length) {
-                    throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
-                }
-                for (int i = 0; i < expr.length; i++) {
-                    Expression e = expr[i];
-                    if (e != null) {
-                        expr[i] = e.optimize(session);
-                    }
-                }
-            }
-        } else {
-            query.prepare();
-            if (query.getColumnCount() != columns.length) {
-                throw DbException.get(ErrorCode.COLUMN_COUNT_DOES_NOT_MATCH);
-            }
-        }
+        super.prepare();
         if (keys == null) {
-            Index idx = table.getPrimaryKey();
+            Index idx = table.findPrimaryKey();
             if (idx == null) {
                 throw DbException.get(ErrorCode.CONSTRAINT_NOT_FOUND_1, "PRIMARY KEY");
             }
             keys = idx.getColumns();
+        }
+        // 允许: INSERT INTO MergeTest VALUES()
+        // 但是不允许: MERGE INTO MergeTest KEY(id) VALUES()
+        if (list.size() > 0 && list.get(0).length == 0) {
+            throw DbException.get(ErrorCode.COLUMN_CONTAINS_NULL_VALUES_1, keys[0].getSQL());
         }
         StatementBuilder buff = new StatementBuilder("UPDATE ");
         buff.append(table.getSQL()).append(" SET ");
@@ -190,7 +103,6 @@ public class Merge extends ManipulationStatement {
         }
         String sql = buff.toString();
         update = (StatementBase) session.prepareStatement(sql);
-
         return this;
     }
 
@@ -205,21 +117,13 @@ public class Merge extends ManipulationStatement {
         return new YieldableMerge(this, asyncHandler);
     }
 
-    private static class YieldableMerge extends YieldableLoopUpdateBase {
+    private static class YieldableMerge extends YieldableInsertBase {
 
-        final Merge statement;
-        final Table table;
-        final int listSize;
-
-        int index;
-        Result rows;
-        YieldableBase<Result> yieldableQuery;
+        final Merge mergeStatement;
 
         public YieldableMerge(Merge statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
-            this.statement = statement;
-            table = statement.table;
-            listSize = statement.list.size();
+            this.mergeStatement = statement;
         }
 
         @Override
@@ -244,30 +148,13 @@ public class Merge extends ManipulationStatement {
         @Override
         protected void executeLoopUpdate() {
             if (yieldableQuery == null) {
-                int columnLen = statement.columns.length;
-                for (; pendingException == null && index < listSize; index++) {
-                    Row newRow = table.getTemplateRow(); // newRow的长度是全表字段的个数，会>=columns的长度
-                    Expression[] expr = statement.list.get(index);
-                    boolean yieldIfNeeded = statement.setCurrentRowNumber(index + 1);
-                    for (int i = 0; i < columnLen; i++) {
-                        Column c = statement.columns[i];
-                        int index = c.getColumnId(); // 从0开始
-                        Expression e = expr[i];
-                        if (e != null) {
-                            // e can be null (DEFAULT)
-                            e = e.optimize(session);
-                            try {
-                                Value v = c.convert(e.getValue(session));
-                                newRow.setValue(index, v);
-                            } catch (DbException ex) {
-                                throw statement.setRow(ex, index, getSQL(expr));
-                            }
-                        }
-                    }
-                    if (merge(newRow, yieldIfNeeded)) {
+                while (pendingException == null && index < listSize) {
+                    merge(createNewRow());
+                    if (yieldIfNeeded(++index)) {
                         return;
                     }
                 }
+                onLoopEnd();
             } else {
                 if (rows == null) {
                     yieldableQuery.run();
@@ -277,30 +164,18 @@ public class Merge extends ManipulationStatement {
                     rows = yieldableQuery.getResult();
                 }
                 while (pendingException == null && rows.next()) {
-                    Value[] r = rows.currentRow();
-                    Row newRow = table.getTemplateRow();
-                    boolean yieldIfNeeded = yieldIfNeeded(updateCount.get() + 1);
-                    for (int j = 0; j < statement.columns.length; j++) {
-                        Column c = statement.columns[j];
-                        int index = c.getColumnId();
-                        try {
-                            Value v = c.convert(r[j]);
-                            newRow.setValue(index, v);
-                        } catch (DbException ex) {
-                            throw statement.setRow(ex, updateCount.get() + 1, getSQL(r));
-                        }
-                    }
-                    if (merge(newRow, yieldIfNeeded)) {
+                    merge(createNewRow(rows.currentRow()));
+                    if (yieldIfNeeded(++index)) {
                         return;
                     }
                 }
                 rows.close();
+                onLoopEnd();
             }
-            onLoopEnd();
         }
 
-        private boolean merge(Row row, boolean yieldIfNeeded) {
-            ArrayList<Parameter> k = statement.update.getParameters();
+        private void merge(Row row) {
+            ArrayList<Parameter> k = mergeStatement.update.getParameters();
             for (int i = 0; i < statement.columns.length; i++) {
                 Column col = statement.columns[i];
                 Value v = row.getValue(col.getColumnId());
@@ -309,8 +184,8 @@ public class Merge extends ManipulationStatement {
                 Parameter p = k.get(i);
                 p.setValue(v);
             }
-            for (int i = 0; i < statement.keys.length; i++) {
-                Column col = statement.keys[i];
+            for (int i = 0; i < mergeStatement.keys.length; i++) {
+                Column col = mergeStatement.keys[i];
                 Value v = row.getValue(col.getColumnId());
                 if (v == null) {
                     throw DbException.get(ErrorCode.COLUMN_CONTAINS_NULL_VALUES_1, col.getSQL());
@@ -319,8 +194,10 @@ public class Merge extends ManipulationStatement {
                 p.setValue(v);
             }
             // 先更新，如果没有记录被更新，说明是一条新的记录，接着再插入
-            int count = statement.update.update();
-            if (count == 0) {
+            int count = mergeStatement.update.update();
+            if (count > 0) {
+                updateCount.addAndGet(count);
+            } else if (count == 0) {
                 try {
                     addRowInternal(row);
                 } catch (DbException e) {
@@ -331,9 +208,9 @@ public class Merge extends ManipulationStatement {
                             // verify the index columns match the key
                             Column[] indexColumns = index.getColumns();
                             boolean indexMatchesKeys = false;
-                            if (indexColumns.length <= statement.keys.length) {
+                            if (indexColumns.length <= mergeStatement.keys.length) {
                                 for (int i = 0; i < indexColumns.length; i++) {
-                                    if (indexColumns[i] != statement.keys[i]) {
+                                    if (indexColumns[i] != mergeStatement.keys[i]) {
                                         indexMatchesKeys = false;
                                         break;
                                     }
@@ -348,21 +225,6 @@ public class Merge extends ManipulationStatement {
                 }
             } else if (count != 1) {
                 throw DbException.get(ErrorCode.DUPLICATE_KEY_1, table.getSQL());
-            }
-            return false;
-        }
-
-        private void addRowInternal(Row newRow) {
-            table.validateConvertUpdateSequence(session, newRow);
-            boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
-            if (!done) {
-                pendingOperationCount.incrementAndGet();
-                table.addRow(session, newRow).onComplete(ar -> {
-                    if (ar.isSucceeded()) {
-                        table.fireAfterRow(session, null, newRow, false);
-                    }
-                    onComplete(ar);
-                });
             }
         }
     }

@@ -18,7 +18,6 @@
 package org.lealone.test.sql.dml;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Statement;
 
 import org.junit.Test;
@@ -197,8 +196,7 @@ public class UpdateTest extends SqlTestBase {
     }
 
     static void assertLockTimeout(Connection conn, Exception e) {
-        assertTrue(e.getCause() instanceof SQLException);
-        assertEquals(ErrorCode.LOCK_TIMEOUT_1, ((SQLException) e.getCause()).getErrorCode());
+        assertErrorCode(e, ErrorCode.LOCK_TIMEOUT_1);
         if (conn != null)
             JdbcUtils.closeSilently(conn);
         System.out.println(e.getMessage());

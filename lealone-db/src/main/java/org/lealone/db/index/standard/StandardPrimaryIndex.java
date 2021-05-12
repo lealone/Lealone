@@ -151,6 +151,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                     }
                     DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
                     e.setSource(StandardPrimaryIndex.this);
+                    ac.setAsyncResult(e);
                 } else {
                     ac.setAsyncResult(ar);
                 }
