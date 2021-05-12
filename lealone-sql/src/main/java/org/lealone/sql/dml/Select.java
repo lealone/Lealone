@@ -1235,12 +1235,6 @@ public class Select extends Query {
         resultCache.noCache = true;
     }
 
-    @Override
-    public Result query(int maxRows, ResultTarget target) {
-        fireBeforeSelectTriggers();
-        return resultCache.getResult(maxRows, target, false);
-    }
-
     private LocalResult queryWithoutCache(int maxRows, ResultTarget target, boolean async) {
         // 按JDBC规范的要求，当调用java.sql.Statement.setMaxRows时，
         // 如果maxRows是0，表示不限制行数，相当于没有调用过setMaxRows一样，
@@ -1334,6 +1328,12 @@ public class Select extends Query {
     }
 
     @Override
+    public Result query(int maxRows, ResultTarget target) {
+        YieldableSelect yieldable = new YieldableSelect(this, maxRows, false, null, target);
+        return syncExecute(yieldable);
+    }
+
+    @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
         if (!isLocal() && getSession().isShardingMode())
@@ -1357,7 +1357,7 @@ public class Select extends Query {
         @Override
         protected boolean startInternal() {
             fireBeforeSelectTriggers();
-            resultCache.getResult(maxRows, target, true);
+            resultCache.getResult(maxRows, target, async);
             return false;
         }
 

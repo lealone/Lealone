@@ -160,13 +160,6 @@ public class SelectUnion extends Query implements ISelectUnion {
         return this;
     }
 
-    @Override
-    public Result query(int maxRows, ResultTarget target) {
-        YieldableSelectUnion yieldable = new YieldableSelectUnion(this, maxRows, false, null, target);
-        yieldable.run();
-        return yieldable.getResult();
-    }
-
     private Value[] convert(Value[] values, int columnCount) {
         Value[] newValues;
         if (columnCount == values.length) {
@@ -317,6 +310,12 @@ public class SelectUnion extends Query implements ISelectUnion {
     @Override
     public int getPriority() {
         return Math.min(left.getPriority(), left.getPriority());
+    }
+
+    @Override
+    public Result query(int maxRows, ResultTarget target) {
+        YieldableSelectUnion yieldable = new YieldableSelectUnion(this, maxRows, false, null, target);
+        return syncExecute(yieldable);
     }
 
     @Override
