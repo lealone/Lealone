@@ -196,9 +196,9 @@ public class Update extends ManipulationStatement {
         protected boolean startInternal() {
             if (!table.trySharedLock(session))
                 return true;
+            session.getUser().checkRight(table, Right.UPDATE);
             tableFilter.startQuery(session);
             tableFilter.reset();
-            session.getUser().checkRight(table, Right.UPDATE);
             table.fire(session, Trigger.UPDATE, true);
             statement.setCurrentRowNumber(0);
             if (limitRows == 0)

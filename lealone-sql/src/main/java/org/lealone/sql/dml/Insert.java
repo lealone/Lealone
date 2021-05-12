@@ -207,9 +207,9 @@ public class Insert extends ManipulationStatement {
 
         @Override
         protected boolean startInternal() {
-            session.getUser().checkRight(table, Right.INSERT);
-            if (statement.query != null && !table.trySharedLock(session))
+            if (!table.trySharedLock(session))
                 return true;
+            session.getUser().checkRight(table, Right.INSERT);
             table.fire(session, Trigger.INSERT, true);
             statement.setCurrentRowNumber(0);
             if (statement.query != null) {
@@ -233,10 +233,7 @@ public class Insert extends ManipulationStatement {
             }
             if (yieldableQuery == null) {
                 while (pendingException == null && index < listSize) {
-                    Row newRow = createNewRow();
-                    if (addRowInternal(newRow, true)) {
-                        return;
-                    }
+                    addRowInternal(createNewRow());
                     if (yieldIfNeeded(index + 1)) {
                         return;
                     }
@@ -311,15 +308,10 @@ public class Insert extends ManipulationStatement {
             return newRow;
         }
 
-        private boolean addRowInternal(Row newRow, boolean trySharedLock) {
+        private void addRowInternal(Row newRow) {
             table.validateConvertUpdateSequence(session, newRow);
             boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
             if (!done) {
-                // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
-                if (trySharedLock && !table.trySharedLock(session)) {
-                    session.setStatus(SessionStatus.WAITING);
-                    return true;
-                }
                 pendingOperationCount.incrementAndGet();
                 table.addRow(session, newRow).onComplete(ar -> {
                     if (ar.isSucceeded()) {
@@ -328,7 +320,6 @@ public class Insert extends ManipulationStatement {
                     onComplete(ar);
                 });
             }
-            return false;
         }
 
         // 以下实现ResultTarget接口，可以在执行查询时，边查边增加新记录
@@ -348,9 +339,7 @@ public class Insert extends ManipulationStatement {
                     throw statement.setRow(ex, updateCount.get() + 1, getSQL(values));
                 }
             }
-            if (addRowInternal(newRow, false)) {
-                return true;
-            }
+            addRowInternal(newRow);
             return false;
         }
 

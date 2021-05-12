@@ -19,7 +19,6 @@ import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
@@ -225,21 +224,21 @@ public class Merge extends ManipulationStatement {
 
         @Override
         protected boolean startInternal() {
+            if (!table.trySharedLock(session))
+                return true;
             session.getUser().checkRight(table, Right.INSERT);
             session.getUser().checkRight(table, Right.UPDATE);
+            table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
             statement.setCurrentRowNumber(0);
             if (statement.query != null) {
-                if (!table.trySharedLock(session))
-                    return true;
                 yieldableQuery = statement.query.createYieldableQuery(0, false, null, null);
-                table.fire(session, Trigger.UPDATE | Trigger.INSERT, true);
             }
             return false;
         }
 
         @Override
         protected void stopInternal() {
-            // do nothing
+            table.fire(session, Trigger.UPDATE | Trigger.INSERT, false);
         }
 
         @Override
@@ -296,7 +295,6 @@ public class Merge extends ManipulationStatement {
                     }
                 }
                 rows.close();
-                table.fire(session, Trigger.UPDATE | Trigger.INSERT, false);
             }
             onLoopEnd();
         }
@@ -324,9 +322,7 @@ public class Merge extends ManipulationStatement {
             int count = statement.update.update();
             if (count == 0) {
                 try {
-                    if (addRowInternal(row, yieldIfNeeded)) {
-                        return true;
-                    }
+                    addRowInternal(row);
                 } catch (DbException e) {
                     if (e.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
                         // possibly a concurrent merge or insert
@@ -356,15 +352,10 @@ public class Merge extends ManipulationStatement {
             return false;
         }
 
-        private boolean addRowInternal(Row newRow, boolean yieldIfNeeded) {
+        private void addRowInternal(Row newRow) {
             table.validateConvertUpdateSequence(session, newRow);
             boolean done = table.fireBeforeRow(session, null, newRow); // INSTEAD OF触发器会返回true
             if (!done) {
-                // 直到事务commit或rollback时才解琐，见ServerSession.unlockAll()
-                if (!table.trySharedLock(session)) {
-                    session.setStatus(SessionStatus.WAITING);
-                    return true;
-                }
                 pendingOperationCount.incrementAndGet();
                 table.addRow(session, newRow).onComplete(ar -> {
                     if (ar.isSucceeded()) {
@@ -373,7 +364,6 @@ public class Merge extends ManipulationStatement {
                     onComplete(ar);
                 });
             }
-            return false;
         }
     }
 }

@@ -143,9 +143,9 @@ public class Delete extends ManipulationStatement {
         protected boolean startInternal() {
             if (!table.trySharedLock(session))
                 return true;
+            session.getUser().checkRight(table, Right.DELETE);
             tableFilter.startQuery(session);
             tableFilter.reset();
-            session.getUser().checkRight(table, Right.DELETE);
             table.fire(session, Trigger.DELETE, true);
             statement.setCurrentRowNumber(0);
             if (limitRows == 0)
