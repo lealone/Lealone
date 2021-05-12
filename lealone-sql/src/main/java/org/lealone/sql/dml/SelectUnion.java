@@ -167,129 +167,6 @@ public class SelectUnion extends Query implements ISelectUnion {
         return yieldable.getResult();
     }
 
-    @Deprecated
-    public LocalResult queryOld(int maxRows, ResultTarget target) {
-        fireBeforeSelectTriggers();
-        // union doesn't always know the parameter list of the left and right queries
-        if (maxRows != 0) {
-            // maxRows is set (maxRows 0 means no limit)
-            int l;
-            if (limitExpr == null) {
-                l = -1;
-            } else {
-                Value v = limitExpr.getValue(session);
-                l = v == ValueNull.INSTANCE ? -1 : v.getInt();
-            }
-            if (l < 0) {
-                // for limitExpr, 0 means no rows, and -1 means no limit
-                l = maxRows;
-            } else {
-                l = Math.min(l, maxRows);
-            }
-            limitExpr = ValueExpression.get(ValueInt.get(l));
-        }
-        if (session.getDatabase().getSettings().optimizeInsertFromSelect) {
-            if (unionType == UNION_ALL && target != null) {
-                if (sort == null && !distinct && maxRows == 0 && offsetExpr == null && limitExpr == null) {
-                    left.query(0, target);
-                    right.query(0, target);
-                    return null;
-                }
-            }
-        }
-        int columnCount = left.getColumnCount();
-        LocalResult result = new LocalResult(session, expressionArray, columnCount);
-        if (sort != null) {
-            result.setSortOrder(sort);
-        }
-        if (distinct) {
-            left.setDistinct(true);
-            right.setDistinct(true);
-            result.setDistinct();
-        }
-        if (randomAccessResult) {
-            result.setRandomAccess();
-        }
-        switch (unionType) {
-        case UNION:
-        case EXCEPT:
-            left.setDistinct(true);
-            right.setDistinct(true);
-            result.setDistinct();
-            break;
-        case UNION_ALL:
-            break;
-        case INTERSECT:
-            left.setDistinct(true);
-            right.setDistinct(true);
-            break;
-        default:
-            DbException.throwInternalError("type=" + unionType);
-        }
-        Result l = left.query(0);
-        Result r = right.query(0);
-        l.reset();
-        r.reset();
-        switch (unionType) {
-        case UNION_ALL:
-        case UNION: {
-            while (l.next()) {
-                result.addRow(convert(l.currentRow(), columnCount));
-            }
-            while (r.next()) {
-                result.addRow(convert(r.currentRow(), columnCount));
-            }
-            break;
-        }
-        case EXCEPT: {
-            while (l.next()) {
-                result.addRow(convert(l.currentRow(), columnCount));
-            }
-            while (r.next()) {
-                result.removeDistinct(convert(r.currentRow(), columnCount));
-            }
-            break;
-        }
-        case INTERSECT: {
-            LocalResult temp = new LocalResult(session, expressionArray, columnCount);
-            temp.setDistinct();
-            temp.setRandomAccess();
-            while (l.next()) {
-                temp.addRow(convert(l.currentRow(), columnCount));
-            }
-            while (r.next()) {
-                Value[] values = convert(r.currentRow(), columnCount);
-                if (temp.containsDistinct(values)) {
-                    result.addRow(values);
-                }
-            }
-            break;
-        }
-        default:
-            DbException.throwInternalError("type=" + unionType);
-        }
-        if (offsetExpr != null) {
-            result.setOffset(offsetExpr.getValue(session).getInt());
-        }
-        if (limitExpr != null) {
-            Value v = limitExpr.getValue(session);
-            if (v != ValueNull.INSTANCE) {
-                result.setLimit(v.getInt());
-            }
-        }
-        l.close();
-        r.close();
-        result.done();
-        if (target != null) {
-            while (result.next()) {
-                target.addRow(result.currentRow());
-            }
-            result.close();
-            return null;
-        }
-        return result;
-    }
-
     private Value[] convert(Value[] values, int columnCount) {
         Value[] newValues;
         if (columnCount == values.length) {
@@ -464,6 +341,7 @@ public class SelectUnion extends Query implements ISelectUnion {
         Result rightRows;
         LocalResult temp;
         int rowNumber;
+        boolean done;
 
         public YieldableSelectUnion(SelectUnion statement, int maxRows, boolean scrollable,
                 AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
@@ -549,20 +427,14 @@ public class SelectUnion extends Query implements ISelectUnion {
             if (insertFromSelect) {
                 if (leftYieldableQuery != null) {
                     leftYieldableQuery.run();
-                    if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
-                        return;
-                    } else {
+                    if (leftYieldableQuery.isStopped()) {
                         leftYieldableQuery = null;
-                        return;
                     }
                 }
                 if (leftYieldableQuery == null && rightYieldableQuery != null) {
                     rightYieldableQuery.run();
-                    if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
-                        return;
-                    } else {
+                    if (rightYieldableQuery.isStopped()) {
                         rightYieldableQuery = null;
-                        return;
                     }
                 }
             }
@@ -570,90 +442,69 @@ public class SelectUnion extends Query implements ISelectUnion {
             switch (unionType) {
             case UNION_ALL:
             case UNION: {
-                if (leftYieldableQuery != null) {
-                    if (runLeftQuery()) {
-                        return;
-                    }
+                if (leftYieldableQuery != null && runLeftQuery()) {
+                    return;
                 }
-                if (leftRows != null) {
-                    if (addLeftRows()) {
-                        return;
-                    }
+                if (leftRows != null && addLeftRows()) {
+                    return;
                 }
 
-                if (rightYieldableQuery != null) {
-                    if (runRightQuery()) {
-                        return;
-                    }
+                if (rightYieldableQuery != null && runRightQuery()) {
+                    return;
                 }
-                if (rightRows != null) {
-                    if (addRightRows()) {
-                        return;
-                    }
+                if (rightRows != null && addRightRows()) {
+                    return;
                 }
                 break;
             }
             case EXCEPT: {
-                if (leftYieldableQuery != null) {
-                    if (runLeftQuery()) {
-                        return;
-                    }
+                if (leftYieldableQuery != null && runLeftQuery()) {
+                    return;
                 }
-                if (leftRows != null) {
-                    if (addLeftRows()) {
-                        return;
-                    }
+                if (leftRows != null && addLeftRows()) {
+                    return;
                 }
 
-                if (rightYieldableQuery != null) {
-                    if (runRightQuery()) {
-                        return;
-                    }
+                if (rightYieldableQuery != null && runRightQuery()) {
+                    return;
                 }
                 if (rightRows != null) {
                     while (rightRows.next()) {
-                        boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
                         result.removeDistinct(convert(rightRows.currentRow(), columnCount));
-                        rowNumber++;
-                        if (async && yieldIfNeeded)
+                        if (yieldIfNeeded(++rowNumber)) {
                             return;
+                        }
                     }
                     rightRows = null;
                 }
                 break;
             }
             case INTERSECT: {
-                if (leftYieldableQuery != null) {
-                    if (runLeftQuery()) {
-                        return;
-                    }
+                if (leftYieldableQuery != null && runLeftQuery()) {
+                    return;
                 }
                 if (leftRows != null) {
                     while (leftRows.next()) {
-                        boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
                         temp.addRow(convert(leftRows.currentRow(), columnCount));
-                        rowNumber++;
-                        if (async && yieldIfNeeded)
+                        if (yieldIfNeeded(++rowNumber)) {
                             return;
+                        }
                     }
                     leftRows = null;
                 }
 
-                if (rightYieldableQuery != null) {
-                    if (runRightQuery()) {
-                        return;
-                    }
+                if (rightYieldableQuery != null && runRightQuery()) {
+                    return;
                 }
                 if (rightRows != null) {
                     while (rightRows.next()) {
-                        boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
                         Value[] values = convert(rightRows.currentRow(), columnCount);
                         if (temp.containsDistinct(values)) {
                             result.addRow(values);
                         }
-                        rowNumber++;
-                        if (async && yieldIfNeeded)
+                        if (yieldIfNeeded(++rowNumber)) {
                             return;
+                        }
                     }
                     rightRows = null;
                 }
@@ -662,62 +513,66 @@ public class SelectUnion extends Query implements ISelectUnion {
             default:
                 DbException.throwInternalError("type=" + unionType);
             }
-            if (offsetExpr != null) {
-                result.setOffset(offsetExpr.getValue(session).getInt());
-            }
-            if (limitExpr != null) {
-                Value v = limitExpr.getValue(session);
-                if (v != ValueNull.INSTANCE) {
-                    result.setLimit(v.getInt());
+            if (!done) {
+                if (offsetExpr != null) {
+                    result.setOffset(offsetExpr.getValue(session).getInt());
                 }
+                if (limitExpr != null) {
+                    Value v = limitExpr.getValue(session);
+                    if (v != ValueNull.INSTANCE) {
+                        result.setLimit(v.getInt());
+                    }
+                }
+                rowNumber = 0;
+                result.done();
+                done = true;
             }
-            result.done();
-            if (target != null) {
+            if (target == null) {
+                setResult(result, result.getRowCount());
+            } else {
                 while (result.next()) {
                     target.addRow(result.currentRow());
+                    if (yieldIfNeeded(++rowNumber)) {
+                        return;
+                    }
                 }
                 result.close();
-                return;
             }
-            setResult(result, result.getRowCount());
-            return;
+            session.setStatus(SessionStatus.STATEMENT_COMPLETED);
         }
 
         private boolean runLeftQuery() {
             if (leftRows == null) {
                 leftYieldableQuery.run();
-                if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
-                    return true;
-                } else {
+                if (leftYieldableQuery.isStopped()) {
                     rowNumber = 0;
                     leftRows = leftYieldableQuery.getResult();
                     leftYieldableQuery = null;
+                    return false;
                 }
             }
-            return false;
+            return true;
         }
 
         private boolean runRightQuery() {
             if (rightRows == null) {
                 rightYieldableQuery.run();
-                if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
-                    return true;
-                } else {
+                if (rightYieldableQuery.isStopped()) {
                     rowNumber = 0;
                     rightRows = rightYieldableQuery.getResult();
                     rightYieldableQuery = null;
+                    return false;
                 }
             }
-            return false;
+            return true;
         }
 
         private boolean addLeftRows() {
             while (leftRows.next()) {
-                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
                 result.addRow(convert(leftRows.currentRow(), columnCount));
-                rowNumber++;
-                if (async && yieldIfNeeded)
+                if (yieldIfNeeded(++rowNumber)) {
                     return true;
+                }
             }
             leftRows = null;
             return false;
@@ -725,11 +580,10 @@ public class SelectUnion extends Query implements ISelectUnion {
 
         private boolean addRightRows() {
             while (rightRows.next()) {
-                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
                 result.addRow(convert(rightRows.currentRow(), columnCount));
-                rowNumber++;
-                if (async && yieldIfNeeded)
+                if (yieldIfNeeded(++rowNumber)) {
                     return true;
+                }
             }
             rightRows = null;
             return false;

@@ -100,8 +100,4 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
             statementExecutor.wakeUp();
         }
     }
-
-    protected boolean yieldIfNeeded(int rowNumber) {
-        return async && statement.setCurrentRowNumber(rowNumber);
-    }
 }

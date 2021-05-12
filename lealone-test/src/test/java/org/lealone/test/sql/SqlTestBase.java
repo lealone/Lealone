@@ -268,6 +268,10 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
     }
 
     public void executeQuery() {
+        executeQuery(sql);
+    }
+
+    public void executeQuery(String sql) {
         try {
             rs = stmt.executeQuery(sql);
             rs.next();
@@ -315,6 +319,15 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
     public void executeUpdateThanAssertErrorCode(String sql, int errorCode) {
         try {
             executeUpdate(sql);
+            fail(sql);
+        } catch (Exception e) {
+            assertErrorCode(e, errorCode);
+        }
+    }
+
+    public void executeQueryThanAssertErrorCode(String sql, int errorCode) {
+        try {
+            executeQuery(sql);
             fail(sql);
         } catch (Exception e) {
             assertErrorCode(e, errorCode);

@@ -232,4 +232,8 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     public boolean isStopped() {
         return stopped;
     }
+
+    protected boolean yieldIfNeeded(int rowNumber) {
+        return async && statement.setCurrentRowNumber(rowNumber);
+    }
 }
