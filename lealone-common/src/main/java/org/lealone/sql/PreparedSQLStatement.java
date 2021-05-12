@@ -93,6 +93,8 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
 
         void stop();
 
+        boolean isStopped();
+
         T getResult();
 
         int getPriority();

@@ -272,6 +272,9 @@ public class Merge extends ManipulationStatement {
             } else {
                 if (rows == null) {
                     yieldableQuery.run();
+                    if (!yieldableQuery.isStopped()) {
+                        return;
+                    }
                     rows = yieldableQuery.getResult();
                 }
                 while (pendingException == null && rows.next()) {

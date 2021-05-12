@@ -52,6 +52,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected boolean started;
 
     protected volatile Throwable pendingException;
+    protected volatile boolean stopped;
 
     public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
         this.statement = statement;
@@ -214,6 +215,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
 
     @Override
     public void stop() {
+        stopped = true;
         stopInternal();
         session.stopCurrentCommand(asyncHandler, asyncResult);
 
@@ -224,5 +226,10 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
                 trace.info("slow query: {0} ms, sql: {1}", timeMillis, statement.getSQL());
             }
         }
+    }
+
+    @Override
+    public boolean isStopped() {
+        return stopped;
     }
 }
