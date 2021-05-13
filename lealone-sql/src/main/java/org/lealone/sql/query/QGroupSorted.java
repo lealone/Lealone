@@ -90,10 +90,10 @@ class QGroupSorted extends QOperator {
             Expression expr = select.expressions.get(i);
             row[i] = expr.getValue(session);
         }
-        if (select.isHavingNullOrFalse(row)) {
+        if (QGroup.isHavingNullOrFalse(row, select.havingIndex)) {
             return;
         }
-        row = select.keepOnlyDistinct(row, columnCount);
+        row = QGroup.keepOnlyDistinct(row, columnCount, select.distinctColumnCount);
         result.addRow(row);
     }
 }

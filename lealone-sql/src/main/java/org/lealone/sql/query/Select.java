@@ -70,16 +70,16 @@ public class Select extends Query {
     TableFilter topTableFilter;
     private final ArrayList<TableFilter> filters = Utils.newSmallArrayList();
     private final ArrayList<TableFilter> topFilters = Utils.newSmallArrayList();
-    private Expression having;
-    Expression condition;
-    int visibleColumnCount;
-    private int distinctColumnCount;
     private ArrayList<Expression> group;
+    private Expression having;
     int[] groupIndex;
     boolean[] groupByExpression;
+    int havingIndex;
     HashMap<Expression, Object> currentGroup;
     int currentGroupRowId;
-    int havingIndex;
+    Expression condition;
+    int visibleColumnCount;
+    int distinctColumnCount;
     boolean isGroupQuery;
     boolean isGroupSortedQuery;
     boolean isForUpdateMvcc;
@@ -690,29 +690,6 @@ public class Select extends Query {
             }
         }
         return true;
-    }
-
-    boolean isHavingNullOrFalse(Value[] row) {
-        if (havingIndex >= 0) {
-            Value v = row[havingIndex];
-            if (v == ValueNull.INSTANCE) {
-                return true;
-            }
-            if (!Boolean.TRUE.equals(v.getBoolean())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    Value[] keepOnlyDistinct(Value[] row, int columnCount) {
-        if (columnCount == distinctColumnCount) {
-            return row;
-        }
-        // remove columns so that 'distinct' can filter duplicate rows
-        Value[] r2 = new Value[distinctColumnCount];
-        System.arraycopy(row, 0, r2, 0, distinctColumnCount);
-        return r2;
     }
 
     public Result queryGroupMerge() {

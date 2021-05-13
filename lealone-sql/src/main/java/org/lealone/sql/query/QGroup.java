@@ -23,6 +23,7 @@ import java.util.HashMap;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
+import org.lealone.db.value.ValueNull;
 import org.lealone.sql.expression.Expression;
 
 // 除了QuickAggregateQuery和GroupSortedQuery外，其他场景的聚合函数、group by、having都在这里处理
@@ -105,12 +106,32 @@ class QGroup extends QOperator {
                 Expression expr = select.expressions.get(j);
                 row[j] = expr.getValue(session);
             }
-            if (select.isHavingNullOrFalse(row)) {
+            if (isHavingNullOrFalse(row, select.havingIndex)) {
                 continue;
             }
-            row = select.keepOnlyDistinct(row, columnCount);
+            row = keepOnlyDistinct(row, columnCount, select.distinctColumnCount);
             result.addRow(row);
         }
         loopEnd = true;
+    }
+
+    static boolean isHavingNullOrFalse(Value[] row, int havingIndex) {
+        if (havingIndex >= 0) {
+            Value v = row[havingIndex];
+            if (v == ValueNull.INSTANCE)
+                return true;
+            return !v.getBoolean();
+        }
+        return false;
+    }
+
+    static Value[] keepOnlyDistinct(Value[] row, int columnCount, int distinctColumnCount) {
+        if (columnCount == distinctColumnCount) {
+            return row;
+        }
+        // remove columns so that 'distinct' can filter duplicate rows
+        Value[] r2 = new Value[distinctColumnCount];
+        System.arraycopy(row, 0, r2, 0, distinctColumnCount);
+        return r2;
     }
 }
