@@ -29,8 +29,8 @@ import org.lealone.sql.expression.Expression;
 // groupIndex和groupByExpression为null的时候，表示没有group by
 class QGroup extends QOperator {
 
-    ValueHashMap<HashMap<Expression, Object>> groups;
-    ValueArray defaultGroup;
+    private ValueHashMap<HashMap<Expression, Object>> groups;
+    private ValueArray defaultGroup;
 
     QGroup(Select select) {
         super(select);
@@ -47,10 +47,10 @@ class QGroup extends QOperator {
     @Override
     void run() {
         while (select.topTableFilter.next()) {
-            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
+            ++loopCount;
             if (select.condition == null || select.condition.getBooleanValue(session)) {
                 Value key;
-                rowNumber++;
+                rowCount++;
                 if (select.groupIndex == null) {
                     key = defaultGroup;
                 } else {
@@ -79,12 +79,12 @@ class QGroup extends QOperator {
                         expr.updateAggregate(session);
                     }
                 }
-                if (async && yieldIfNeeded)
-                    return;
-                if (sampleSize > 0 && rowNumber >= sampleSize) {
+                if (sampleSize > 0 && rowCount >= sampleSize) {
                     break;
                 }
             }
+            if (yieldIfNeeded(loopCount))
+                return;
         }
         if (select.groupIndex == null && groups.size() == 0) {
             groups.put(defaultGroup, new HashMap<Expression, Object>());

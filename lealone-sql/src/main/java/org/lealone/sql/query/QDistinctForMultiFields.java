@@ -22,12 +22,13 @@ import org.lealone.db.index.Index;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.value.Value;
 
+//多字段distinct
 class QDistinctForMultiFields extends QOperator {
 
-    Index index;
-    int[] columnIds;
-    int size;
-    Cursor cursor;
+    private Index index;
+    private int[] columnIds;
+    private int size;
+    private Cursor cursor;
 
     QDistinctForMultiFields(Select select) {
         super(select);
@@ -45,22 +46,19 @@ class QDistinctForMultiFields extends QOperator {
     @Override
     void run() {
         while (cursor.next()) {
-            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
+            ++loopCount;
             SearchRow found = cursor.getSearchRow();
             Value[] row = new Value[size];
             for (int i = 0; i < size; i++) {
                 row[i] = found.getValue(columnIds[i]);
             }
             result.addRow(row);
-            rowNumber++;
-            if (async && yieldIfNeeded)
+            rowCount++;
+            if (canBreakLoop()) {
+                break;
+            }
+            if (yieldIfNeeded(loopCount))
                 return;
-            if ((select.sort == null || select.sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
-                break;
-            }
-            if (sampleSize > 0 && rowNumber >= sampleSize) {
-                break;
-            }
         }
         loopEnd = true;
     }

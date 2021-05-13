@@ -21,6 +21,7 @@ import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.ResultTarget;
 import org.lealone.db.session.ServerSession;
 
+// 由子类实现具体的查询操作
 abstract class QOperator {
 
     protected final Select select;
@@ -32,14 +33,32 @@ abstract class QOperator {
     LocalResult localResult;
     int maxRows; // 实际返回的最大行数
     long limitRows; // 有可能超过maxRows
-    int rowNumber;
     int sampleSize;
+    int rowCount; // 满足条件的记录数
+    int loopCount; // 循环次数，有可能大于rowCount
     boolean loopEnd;
-    boolean async;
+
+    YieldableSelect yieldableSelect;
 
     QOperator(Select select) {
         this.select = select;
         session = select.getSession();
+    }
+
+    boolean yieldIfNeeded(int rowNumber) {
+        return yieldableSelect.yieldIfNeeded(rowNumber);
+    }
+
+    boolean canBreakLoop() {
+        // 不需要排序时，如果超过行数限制了可以退出循环
+        if ((select.sort == null || select.sortUsingIndex) && limitRows > 0 && rowCount >= limitRows) {
+            return true;
+        }
+        // 超过采样数也可以退出循环
+        if (sampleSize > 0 && rowCount >= sampleSize) {
+            return true;
+        }
+        return false;
     }
 
     void start() {
@@ -59,7 +78,7 @@ abstract class QOperator {
                 limitRows = Long.MAX_VALUE;
             }
         }
-        rowNumber = 0;
+        rowCount = 0;
         select.setCurrentRowNumber(0);
         sampleSize = select.getSampleSizeValue(session);
     }

@@ -20,6 +20,7 @@ package org.lealone.sql.query;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 
+// 对min、max、count三个聚合函数的特殊优化
 class QQuick extends QOperator {
 
     QQuick(Select select) {
@@ -39,6 +40,7 @@ class QQuick extends QOperator {
             row[i] = expr.getValue(session);
         }
         result.addRow(row);
+        rowCount = 1;
         loopEnd = true;
     }
 }

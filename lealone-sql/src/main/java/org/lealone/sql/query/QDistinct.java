@@ -25,9 +25,9 @@ import org.lealone.db.value.Value;
 // 单字段distinct
 class QDistinct extends QOperator {
 
-    Index index;
-    int columnIndex;
-    Cursor cursor;
+    private Index index;
+    private int columnIndex;
+    private Cursor cursor;
 
     QDistinct(Select select) {
         super(select);
@@ -44,20 +44,17 @@ class QDistinct extends QOperator {
     @Override
     void run() {
         while (cursor.next()) {
-            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
+            ++loopCount;
             SearchRow found = cursor.getSearchRow();
             Value value = found.getValue(columnIndex);
             Value[] row = { value };
             result.addRow(row);
-            rowNumber++;
-            if (async && yieldIfNeeded)
+            rowCount++;
+            if (canBreakLoop()) {
+                break;
+            }
+            if (yieldIfNeeded(loopCount))
                 return;
-            if ((select.sort == null || select.sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
-                break;
-            }
-            if (sampleSize > 0 && rowNumber >= sampleSize) {
-                break;
-            }
         }
         loopEnd = true;
     }

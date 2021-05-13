@@ -20,6 +20,7 @@ package org.lealone.sql.query;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 
+//最普通的查询
 class QFlat extends QOperator {
 
     QFlat(Select select) {
@@ -29,12 +30,11 @@ class QFlat extends QOperator {
     @Override
     void run() {
         while (select.topTableFilter.next()) {
-            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
+            ++loopCount;
             if (select.condition == null || select.condition.getBooleanValue(session)) {
-                if (select.isForUpdate) {
+                if (select.isForUpdate && !select.topTableFilter.lockRow()) {
                     // 锁记录失败
-                    if (!select.topTableFilter.lockRow())
-                        return;
+                    return;
                 }
                 Value[] row = new Value[columnCount];
                 for (int i = 0; i < columnCount; i++) {
@@ -42,17 +42,13 @@ class QFlat extends QOperator {
                     row[i] = expr.getValue(session);
                 }
                 result.addRow(row);
-                rowNumber++;
-                if (async && yieldIfNeeded)
-                    return;
-                if ((select.sort == null || select.sortUsingIndex) && limitRows > 0
-                        && result.getRowCount() >= limitRows) {
-                    break;
-                }
-                if (sampleSize > 0 && rowNumber >= sampleSize) {
+                rowCount++;
+                if (canBreakLoop()) {
                     break;
                 }
             }
+            if (yieldIfNeeded(loopCount))
+                return;
         }
         loopEnd = true;
     }

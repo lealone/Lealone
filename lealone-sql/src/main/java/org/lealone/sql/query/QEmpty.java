@@ -17,17 +17,11 @@
  */
 package org.lealone.sql.query;
 
-import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultTarget;
+// 比如 limit子名为0时
+class QEmpty extends QOperator {
 
-// 直接基于缓存中的结果集
-class QCache extends QOperator {
-
-    QCache(Select select, LocalResult result, ResultTarget target) {
+    QEmpty(Select select) {
         super(select);
-        this.result = result;
-        this.target = target;
-        localResult = result;
     }
 
     @Override

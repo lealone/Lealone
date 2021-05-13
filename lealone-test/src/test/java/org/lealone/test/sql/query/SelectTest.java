@@ -123,6 +123,11 @@ public class SelectTest extends SqlTestBase {
         assertTrue(rs.next());
         assertFalse(rs.next());
         rs.close();
+
+        sql = "SELECT * FROM SelectTest LIMIT 0";
+        rs = stmt.executeQuery(sql);
+        assertFalse(rs.next());
+        rs.close();
     }
 
     private void testAlias() throws Exception {

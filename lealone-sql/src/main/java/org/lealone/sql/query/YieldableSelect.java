@@ -44,13 +44,14 @@ class YieldableSelect extends YieldableQueryBase {
     @Override
     protected boolean startInternal() {
         select.fireBeforeSelectTriggers();
-        LocalResult result = select.resultCache.getResult(maxRows);
+        LocalResult result = select.resultCache.getResult(maxRows); // 不直接用limitRows
         int limitRows = getLimitRows(maxRows);
         if (result == null)
-            queryOperator = createQueryOperator(limitRows, target, async);
+            queryOperator = createQueryOperator(limitRows, target);
         else
             queryOperator = new QCache(select, result, target);
         queryOperator.maxRows = limitRows;
+        queryOperator.yieldableSelect = this;
         queryOperator.start();
         return false;
     }
@@ -94,8 +95,7 @@ class YieldableSelect extends YieldableQueryBase {
         return limitRows;
     }
 
-    private QOperator createQueryOperator(int limitRows, ResultTarget target, boolean async) {
-        int columnCount = select.expressions.size();
+    private QOperator createQueryOperator(int limitRows, ResultTarget target) {
         LocalResult result = null;
         if (target == null || !session.getDatabase().getSettings().optimizeInsertFromSelect) {
             result = createLocalResult(result);
@@ -151,13 +151,15 @@ class YieldableSelect extends YieldableQueryBase {
             } else {
                 queryOperator = new QFlat(select);
             }
+        } else {
+            queryOperator = new QEmpty(select);
+            result = createLocalResult(result);
         }
-        queryOperator.columnCount = columnCount;
+        queryOperator.columnCount = select.expressions.size();
         queryOperator.maxRows = limitRows;
         queryOperator.target = target;
         queryOperator.result = to;
         queryOperator.localResult = result;
-        queryOperator.async = async;
         return queryOperator;
     }
 

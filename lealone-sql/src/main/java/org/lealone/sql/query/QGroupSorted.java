@@ -26,7 +26,7 @@ import org.lealone.sql.expression.Expression;
 
 class QGroupSorted extends QOperator {
 
-    Value[] previousKeyValues;
+    private Value[] previousKeyValues;
 
     QGroupSorted(Select select) {
         super(select);
@@ -41,9 +41,9 @@ class QGroupSorted extends QOperator {
     @Override
     void run() {
         while (select.topTableFilter.next()) {
-            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
+            ++loopCount;
             if (select.condition == null || select.condition.getBooleanValue(session)) {
-                rowNumber++;
+                rowCount++;
                 Value[] keyValues = new Value[select.groupIndex.length];
                 // update group
                 for (int i = 0; i < select.groupIndex.length; i++) {
@@ -68,7 +68,7 @@ class QGroupSorted extends QOperator {
                         expr.updateAggregate(session);
                     }
                 }
-                if (async && yieldIfNeeded)
+                if (yieldIfNeeded(loopCount))
                     return;
             }
         }
@@ -80,15 +80,15 @@ class QGroupSorted extends QOperator {
 
     private void addGroupSortedRow(Value[] keyValues, int columnCount, ResultTarget result) {
         Value[] row = new Value[columnCount];
-        for (int j = 0; j < select.groupIndex.length; j++) {
-            row[select.groupIndex[j]] = keyValues[j];
+        for (int i = 0; i < select.groupIndex.length; i++) {
+            row[select.groupIndex[i]] = keyValues[i];
         }
-        for (int j = 0; j < columnCount; j++) {
-            if (select.groupByExpression[j]) {
+        for (int i = 0; i < columnCount; i++) {
+            if (select.groupByExpression[i]) {
                 continue;
             }
-            Expression expr = select.expressions.get(j);
-            row[j] = expr.getValue(session);
+            Expression expr = select.expressions.get(i);
+            row[i] = expr.getValue(session);
         }
         if (select.isHavingNullOrFalse(row)) {
             return;
