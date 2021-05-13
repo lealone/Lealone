@@ -4,7 +4,7 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.dml;
+package org.lealone.sql.query;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -24,6 +24,7 @@ import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
+import org.lealone.sql.dml.ManipulationStatement;
 import org.lealone.sql.expression.Alias;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;

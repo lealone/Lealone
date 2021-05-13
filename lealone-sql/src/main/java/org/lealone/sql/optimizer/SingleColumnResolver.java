@@ -10,9 +10,9 @@ import org.lealone.db.session.Session;
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
 import org.lealone.sql.IExpression;
-import org.lealone.sql.dml.Select;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.query.Select;
 
 /**
  * The single column resolver is like a table with exactly one row.

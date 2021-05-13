@@ -25,7 +25,7 @@ import org.lealone.db.result.Result;
 import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
-import org.lealone.sql.dml.Query;
+import org.lealone.sql.query.Query;
 
 public class SubqueryResult extends DelegatedResult {
     protected ValueHashMap<Value[]> distinctRows;

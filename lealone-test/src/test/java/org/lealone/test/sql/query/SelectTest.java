@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.sql.dml;
+package org.lealone.test.sql.query;
 
 import java.sql.ResultSet;
 

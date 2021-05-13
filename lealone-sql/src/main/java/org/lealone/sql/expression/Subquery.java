@@ -15,9 +15,9 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.dml.Query;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.Query;
 
 /**
  * A query returning a single value.

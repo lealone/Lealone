@@ -31,10 +31,10 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.IExpression;
-import org.lealone.sql.dml.Select;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.condition.Comparison;
+import org.lealone.sql.query.Select;
 import org.lealone.storage.PageKey;
 
 /**

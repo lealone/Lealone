@@ -24,7 +24,7 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.table.Table;
-import org.lealone.sql.dml.Select;
+import org.lealone.sql.query.Select;
 
 public class MergedResult extends DelegatedResult {
     public MergedResult(List<Result> results, Select newSelect, Select oldSelect) {

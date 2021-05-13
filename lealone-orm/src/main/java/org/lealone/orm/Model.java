@@ -40,7 +40,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.orm.property.PBaseNumber;
 import org.lealone.sql.dml.Delete;
 import org.lealone.sql.dml.Insert;
-import org.lealone.sql.dml.Select;
 import org.lealone.sql.dml.Update;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -49,6 +48,7 @@ import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.expression.Wildcard;
 import org.lealone.sql.expression.aggregate.Aggregate;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.Select;
 import org.lealone.transaction.Transaction;
 
 import com.fasterxml.jackson.core.JsonGenerator;

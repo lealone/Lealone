@@ -123,10 +123,7 @@ import org.lealone.sql.dml.GenScript;
 import org.lealone.sql.dml.Insert;
 import org.lealone.sql.dml.Merge;
 import org.lealone.sql.dml.NoOperation;
-import org.lealone.sql.dml.Query;
 import org.lealone.sql.dml.RunScript;
-import org.lealone.sql.dml.Select;
-import org.lealone.sql.dml.SelectUnion;
 import org.lealone.sql.dml.SetDatabase;
 import org.lealone.sql.dml.SetSession;
 import org.lealone.sql.dml.SetStatement;
@@ -162,6 +159,9 @@ import org.lealone.sql.expression.function.TableFunction;
 import org.lealone.sql.optimizer.SingleColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.optimizer.TableFilter.TableFilterVisitor;
+import org.lealone.sql.query.Query;
+import org.lealone.sql.query.Select;
+import org.lealone.sql.query.SelectUnion;
 
 /**
  * The parser is used to convert a SQL statement string to an command object.

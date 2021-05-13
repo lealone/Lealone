@@ -11,11 +11,11 @@ import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
-import org.lealone.sql.dml.Query;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.Query;
 
 /**
  * An 'exists' condition as in WHERE EXISTS(SELECT ...)

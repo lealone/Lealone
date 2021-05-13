@@ -4,10 +4,9 @@
  * (http://h2database.com/html/license.html).
  * Initial Developer: H2 Group
  */
-package org.lealone.sql.dml;
+package org.lealone.sql.query;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 
@@ -23,7 +22,6 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.api.Trigger;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
-import org.lealone.db.index.Cursor;
 import org.lealone.db.index.Index;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexConditionType;
@@ -31,19 +29,14 @@ import org.lealone.db.index.IndexType;
 import org.lealone.db.result.LocalResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.ResultTarget;
-import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
 import org.lealone.db.session.ServerSession;
-import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
-import org.lealone.db.util.ValueHashMap;
 import org.lealone.db.value.Value;
-import org.lealone.db.value.ValueArray;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.expression.Calculator;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
@@ -56,7 +49,6 @@ import org.lealone.sql.optimizer.Optimizer;
 import org.lealone.sql.optimizer.TableFilter;
 import org.lealone.sql.yieldable.DefaultYieldableQuery;
 import org.lealone.sql.yieldable.YieldableBase;
-import org.lealone.sql.yieldable.YieldableQueryBase;
 
 /**
  * This class represents a simple SELECT statement.
@@ -75,26 +67,30 @@ import org.lealone.sql.yieldable.YieldableQueryBase;
  */
 public class Select extends Query {
 
-    private TableFilter topTableFilter;
+    TableFilter topTableFilter;
     private final ArrayList<TableFilter> filters = Utils.newSmallArrayList();
     private final ArrayList<TableFilter> topFilters = Utils.newSmallArrayList();
     private Expression having;
-    private Expression condition;
-    private int visibleColumnCount, distinctColumnCount;
+    Expression condition;
+    int visibleColumnCount;
+    private int distinctColumnCount;
     private ArrayList<Expression> group;
-    private int[] groupIndex;
-    private boolean[] groupByExpression;
-    private HashMap<Expression, Object> currentGroup;
-    private int currentGroupRowId;
-    private int havingIndex;
-    private boolean isGroupQuery, isGroupSortedQuery;
-    private boolean isForUpdateMvcc;
+    int[] groupIndex;
+    boolean[] groupByExpression;
+    HashMap<Expression, Object> currentGroup;
+    int currentGroupRowId;
+    int havingIndex;
+    boolean isGroupQuery;
+    boolean isGroupSortedQuery;
+    boolean isForUpdateMvcc;
     private double cost;
-    private boolean isQuickAggregateQuery, isDistinctQuery, isDistinctQueryForMultiFields;
-    private boolean sortUsingIndex;
+    boolean isQuickAggregateQuery;
+    boolean isDistinctQuery;
+    boolean isDistinctQueryForMultiFields;
+    boolean sortUsingIndex;
 
-    private final ResultCache resultCache = new ResultCache();
-    private QueryOperator queryOperator;
+    final QueryResultCache resultCache = new QueryResultCache(this);
+    QOperator queryOperator;
 
     public Select(ServerSession session) {
         super(session);
@@ -697,26 +693,7 @@ public class Select extends Query {
         return true;
     }
 
-    private void addGroupSortedRow(Value[] keyValues, int columnCount, ResultTarget result) {
-        Value[] row = new Value[columnCount];
-        for (int j = 0; j < groupIndex.length; j++) {
-            row[groupIndex[j]] = keyValues[j];
-        }
-        for (int j = 0; j < columnCount; j++) {
-            if (groupByExpression[j]) {
-                continue;
-            }
-            Expression expr = expressions.get(j);
-            row[j] = expr.getValue(session);
-        }
-        if (isHavingNullOrFalse(row)) {
-            return;
-        }
-        row = keepOnlyDistinct(row, columnCount);
-        result.addRow(row);
-    }
-
-    private boolean isHavingNullOrFalse(Value[] row) {
+    boolean isHavingNullOrFalse(Value[] row) {
         if (havingIndex >= 0) {
             Value v = row[havingIndex];
             if (v == ValueNull.INSTANCE) {
@@ -729,7 +706,7 @@ public class Select extends Query {
         return false;
     }
 
-    private Value[] keepOnlyDistinct(Value[] row, int columnCount) {
+    Value[] keepOnlyDistinct(Value[] row, int columnCount) {
         if (columnCount == distinctColumnCount) {
             return row;
         }
@@ -740,99 +717,11 @@ public class Select extends Query {
     }
 
     public Result queryGroupMerge() {
-        int columnCount = expressions.size();
-        LocalResult result = new LocalResult(session, expressionArray, columnCount);
-        ValueHashMap<HashMap<Expression, Object>> groups = ValueHashMap.newInstance();
-        int rowNumber = 0;
-        setCurrentRowNumber(0);
-        ValueArray defaultGroup = ValueArray.get(new Value[0]);
-        topTableFilter.reset();
-        int sampleSize = getSampleSizeValue(session);
-        while (topTableFilter.next()) {
-            setCurrentRowNumber(rowNumber + 1);
-            Value key;
-            rowNumber++;
-            if (groupIndex == null) {
-                key = defaultGroup;
-            } else {
-                Value[] keyValues = new Value[groupIndex.length];
-                // update group
-                for (int i = 0; i < groupIndex.length; i++) {
-                    int idx = groupIndex[i];
-                    keyValues[i] = topTableFilter.getValue(idx);
-                }
-                key = ValueArray.get(keyValues);
-            }
-            HashMap<Expression, Object> values = groups.get(key);
-            if (values == null) {
-                values = new HashMap<Expression, Object>();
-                groups.put(key, values);
-            }
-            currentGroup = values;
-            currentGroupRowId++;
-            for (int i = 0; i < columnCount; i++) {
-                if (groupByExpression == null || !groupByExpression[i]) {
-                    Expression expr = expressions.get(i);
-                    expr.mergeAggregate(session, topTableFilter.getValue(i));
-                }
-            }
-            if (sampleSize > 0 && rowNumber >= sampleSize) {
-                break;
-            }
-        }
-        if (groupIndex == null && groups.size() == 0) {
-            groups.put(defaultGroup, new HashMap<Expression, Object>());
-        }
-        ArrayList<Value> keys = groups.keys();
-        for (Value v : keys) {
-            ValueArray key = (ValueArray) v;
-            currentGroup = groups.get(key);
-            Value[] keyValues = key.getList();
-            Value[] row = new Value[columnCount];
-            for (int j = 0; groupIndex != null && j < groupIndex.length; j++) {
-                row[groupIndex[j]] = keyValues[j];
-            }
-            for (int j = 0; j < columnCount; j++) {
-                if (groupByExpression != null && groupByExpression[j]) {
-                    continue;
-                }
-                Expression expr = expressions.get(j);
-                row[j] = expr.getMergedValue(session);
-            }
-            result.addRow(row);
-        }
-
-        return result;
+        return new QMerge(this).queryGroupMerge();
     }
 
     public Result calculate(Result result, Select select) {
-        int size = expressions.size();
-        if (havingIndex >= 0)
-            size--;
-        if (size == select.expressions.size())
-            return result;
-
-        int columnCount = visibleColumnCount;
-        LocalResult lr = new LocalResult(session, expressionArray, columnCount);
-
-        Calculator calculator;
-        int index = 0;
-        while (result.next()) {
-            calculator = new Calculator(result.currentRow());
-            for (int i = 0; i < columnCount; i++) {
-                Expression expr = expressions.get(i);
-                index = calculator.getIndex();
-                expr.calculate(calculator);
-                if (calculator.getIndex() == index) {
-                    calculator.addResultValue(calculator.getValue(index));
-                    calculator.addIndex();
-                }
-            }
-
-            lr.addRow(calculator.getResult().toArray(new Value[0]));
-        }
-
-        return lr;
+        return new QMerge(this).calculate(result, select);
     }
 
     @Override
@@ -1235,101 +1124,9 @@ public class Select extends Query {
         resultCache.noCache = true;
     }
 
-    private LocalResult queryWithoutCache(int maxRows, ResultTarget target, boolean async) {
-        // 按JDBC规范的要求，当调用java.sql.Statement.setMaxRows时，
-        // 如果maxRows是0，表示不限制行数，相当于没有调用过setMaxRows一样，
-        // 如果小余0，已经在客户端抛了无效参数异常，所以这里统一处理: 当limitRows小于0时表示不限制行数。
-        int limitRows = maxRows == 0 ? -1 : maxRows;
-        if (limitExpr != null) {
-            // 如果在select语句中又指定了limit子句，那么用它覆盖maxRows
-            // 注意limit 0表示不取任何记录，跟maxRows为0时刚好相反
-            Value v = limitExpr.getValue(session);
-            int l = v == ValueNull.INSTANCE ? -1 : v.getInt();
-            if (limitRows < 0) {
-                limitRows = l;
-            } else if (l >= 0) {
-                limitRows = Math.min(l, limitRows);
-            }
-        }
-        int columnCount = expressions.size();
-        LocalResult result = null;
-        if (target == null || !session.getDatabase().getSettings().optimizeInsertFromSelect) {
-            result = createLocalResult(result);
-        }
-        if (sort != null && (!sortUsingIndex || distinct)) {
-            result = createLocalResult(result);
-            result.setSortOrder(sort);
-        }
-        if (distinct && (!isDistinctQuery && !isDistinctQueryForMultiFields)) {
-            result = createLocalResult(result);
-            result.setDistinct();
-        }
-        if (randomAccessResult) {
-            result = createLocalResult(result);
-            // result.setRandomAccess(); //见H2的Mainly MVStore improvements的提交记录
-        }
-        if (isGroupQuery && !isGroupSortedQuery) {
-            result = createLocalResult(result);
-        }
-        if (limitRows >= 0 || offsetExpr != null) {
-            result = createLocalResult(result);
-        }
-        topTableFilter.startQuery(session);
-        topTableFilter.reset();
-        boolean exclusive = isForUpdate && !isForUpdateMvcc;
-        if (isForUpdateMvcc) {
-            if (isGroupQuery) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && GROUP");
-            } else if (distinct) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && DISTINCT");
-            } else if (isQuickAggregateQuery) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && AGGREGATE");
-            } else if (topTableFilter.getJoin() != null) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && JOIN");
-            }
-        }
-        topTableFilter.lock(session, exclusive);
-        ResultTarget to = result != null ? result : target;
-        if (limitRows != 0) {
-            if (isQuickAggregateQuery) {
-                queryOperator = new QueryQuick();
-            } else if (isGroupQuery) {
-                if (isGroupSortedQuery) {
-                    queryOperator = new QueryGroupSorted();
-                } else {
-                    queryOperator = new QueryGroup();
-                    to = result;
-                }
-            } else if (isDistinctQuery) {
-                queryOperator = new QueryDistinct();
-            } else if (isDistinctQueryForMultiFields) {
-                queryOperator = new QueryDistinctForMultiFields();
-            } else {
-                queryOperator = new QueryFlat();
-            }
-        }
-        queryOperator.columnCount = columnCount;
-        queryOperator.maxRows = limitRows;
-        queryOperator.target = target;
-        queryOperator.result = to;
-        queryOperator.localResult = result;
-        queryOperator.async = async;
-        queryOperator.start();
-        if (!async) {
-            queryOperator.run();
-            queryOperator.stop();
-            return queryOperator.localResult;
-        }
-        return null;
-    }
-
-    private LocalResult createLocalResult(LocalResult old) {
-        return old != null ? old : new LocalResult(session, expressionArray, visibleColumnCount);
-    }
-
     @Override
     public Result query(int maxRows, ResultTarget target) {
-        YieldableSelect yieldable = new YieldableSelect(this, maxRows, false, null, target);
+        YieldableSelect yieldable = new YieldableSelect(this, this, maxRows, false, null, target);
         return syncExecute(yieldable);
     }
 
@@ -1339,466 +1136,6 @@ public class Select extends Query {
         if (!isLocal() && getSession().isShardingMode())
             return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
         else
-            return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
-    }
-
-    private class YieldableSelect extends YieldableQueryBase {
-
-        private final Select statement;
-        private final ResultTarget target;
-
-        public YieldableSelect(Select statement, int maxRows, boolean scrollable,
-                AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
-            super(statement, maxRows, scrollable, asyncHandler);
-            this.statement = statement;
-            this.target = target;
-        }
-
-        @Override
-        protected boolean startInternal() {
-            fireBeforeSelectTriggers();
-            resultCache.getResult(maxRows, target, async);
-            return false;
-        }
-
-        @Override
-        protected void stopInternal() {
-            statement.queryOperator.stop();
-        }
-
-        @Override
-        protected void executeInternal() {
-            if (resultCache.useCache) {
-                resultCache.lastResult.reset();
-                setResult(resultCache.lastResult, resultCache.lastResult.getRowCount());
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                return;
-            }
-            if (query()) {
-                return;
-            }
-            if (statement.queryOperator.target != null) {
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                return;
-            }
-            if (statement.queryOperator.localResult != null) {
-                setResult(statement.queryOperator.localResult, statement.queryOperator.localResult.getRowCount());
-                resultCache.lastResult = statement.queryOperator.localResult;
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-                return;
-            }
-            return;
-        }
-
-        private boolean query() {
-            statement.queryOperator.run();
-            if (statement.queryOperator.loopEnd)
-                return false;
-            return true;
-        }
-    }
-
-    private class ResultCache {
-        private boolean noCache, useCache;
-        private int lastLimit;
-        private long lastEvaluated;
-        protected LocalResult lastResult;
-        private Value[] lastParameters;
-        private boolean cacheableChecked;
-
-        private Value[] getParameterValues() {
-            ArrayList<Parameter> list = getParameters();
-            if (list == null) {
-                list = new ArrayList<>();
-            }
-            int size = list.size();
-            Value[] params = new Value[size];
-            for (int i = 0; i < size; i++) {
-                Value v = list.get(i).getValue();
-                params[i] = v;
-            }
-            return params;
-        }
-
-        private void closeLastResult() {
-            if (lastResult != null) {
-                lastResult.close();
-            }
-        }
-
-        private LocalResult getResult(int limit, ResultTarget target, boolean async) {
-            if (noCache || !session.getDatabase().getOptimizeReuseResults()) {
-                useCache = false;
-                return queryWithoutCache(limit, target, async);
-            } else {
-                Value[] params = getParameterValues();
-                long now = session.getDatabase().getModificationDataId();
-                if (isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)) {
-                    if (lastResult != null && !lastResult.isClosed() && limit == lastLimit) {
-                        if (sameResultAsLast(session, params, lastParameters, lastEvaluated)) {
-                            lastResult = lastResult.createShallowCopy(session);
-                            if (lastResult != null) {
-                                lastResult.reset();
-                                useCache = true;
-                                return lastResult;
-                            }
-                        } else {
-                            useCache = false;
-                        }
-                    }
-                }
-                lastParameters = params;
-                closeLastResult();
-                LocalResult r = queryWithoutCache(limit, target, async);
-                if (!async) {
-                    lastResult = r;
-                }
-                this.lastEvaluated = now;
-                lastLimit = limit;
-                return r;
-            }
-        }
-
-        private boolean sameResultAsLast(ServerSession s, Value[] params, Value[] lastParams, long lastEval) {
-            if (!cacheableChecked) {
-                long max = getMaxDataModificationId();
-                noCache = max == Long.MAX_VALUE;
-                cacheableChecked = true;
-            }
-            if (noCache) {
-                return false;
-            }
-            Database db = s.getDatabase();
-            for (int i = 0; i < params.length; i++) {
-                Value a = lastParams[i], b = params[i];
-                if (a.getType() != b.getType() || !db.areEqual(a, b)) {
-                    return false;
-                }
-            }
-            if (!isEverything(ExpressionVisitor.DETERMINISTIC_VISITOR)
-                    || !isEverything(ExpressionVisitor.INDEPENDENT_VISITOR)) {
-                return false;
-            }
-            if (db.getModificationDataId() > lastEval && getMaxDataModificationId() > lastEval) {
-                return false;
-            }
-            return true;
-        }
-    }
-
-    private abstract class QueryOperator {
-        int columnCount;
-        ResultTarget target;
-        ResultTarget result;
-        LocalResult localResult;
-        int maxRows; // 实际返回的最大行数
-        long limitRows; // 有可能超过maxRows
-        int rowNumber;
-        int sampleSize;
-        boolean loopEnd;
-        boolean async;
-
-        void start() {
-            limitRows = maxRows;
-            // 并不会按offset先跳过前面的行数，而是limitRows加上offset，读够limitRows+offset行，然后再从result中跳
-            // 因为可能需要排序，offset是相对于最后的结果来说的，而不是排序前的结果
-            // limitRows must be long, otherwise we get an int overflow
-            // if limitRows is at or near Integer.MAX_VALUE
-            // limitRows is never 0 here
-            if (limitRows > 0 && offsetExpr != null) {
-                int offset = offsetExpr.getValue(session).getInt();
-                if (offset > 0) {
-                    limitRows += offset;
-                }
-                if (limitRows < 0) {
-                    // Overflow
-                    limitRows = Long.MAX_VALUE;
-                }
-            }
-            rowNumber = 0;
-            setCurrentRowNumber(0);
-            sampleSize = getSampleSizeValue(session);
-        }
-
-        void run() {
-        }
-
-        void stop() {
-            if (offsetExpr != null) {
-                localResult.setOffset(offsetExpr.getValue(session).getInt());
-            }
-            if (maxRows >= 0) {
-                localResult.setLimit(maxRows);
-            }
-            if (localResult != null) {
-                localResult.done();
-                if (target != null) {
-                    while (localResult.next()) {
-                        target.addRow(localResult.currentRow());
-                    }
-                    localResult.close();
-                }
-            }
-        }
-    }
-
-    private class QueryFlat extends QueryOperator {
-        @Override
-        void run() {
-            while (topTableFilter.next()) {
-                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
-                if (condition == null || condition.getBooleanValue(session)) {
-                    if (isForUpdate) {
-                        // 锁记录失败
-                        if (!topTableFilter.lockRow())
-                            return;
-                    }
-                    Value[] row = new Value[columnCount];
-                    for (int i = 0; i < columnCount; i++) {
-                        Expression expr = expressions.get(i);
-                        row[i] = expr.getValue(session);
-                    }
-                    result.addRow(row);
-                    rowNumber++;
-                    if (async && yieldIfNeeded)
-                        return;
-                    if ((sort == null || sortUsingIndex) && limitRows > 0 && result.getRowCount() >= limitRows) {
-                        break;
-                    }
-                    if (sampleSize > 0 && rowNumber >= sampleSize) {
-                        break;
-                    }
-                }
-            }
-            loopEnd = true;
-        }
-    }
-
-    // 单字段distinct
-    private class QueryDistinct extends QueryOperator {
-        Index index;
-        int columnIndex;
-        Cursor cursor;
-
-        @Override
-        void start() {
-            super.start();
-            index = topTableFilter.getIndex();
-            columnIndex = index.getColumns()[0].getColumnId();
-            cursor = index.findDistinct(session, null, null);
-        }
-
-        @Override
-        void run() {
-            while (cursor.next()) {
-                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
-                SearchRow found = cursor.getSearchRow();
-                Value value = found.getValue(columnIndex);
-                Value[] row = { value };
-                result.addRow(row);
-                rowNumber++;
-                if (async && yieldIfNeeded)
-                    return;
-                if ((sort == null || sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
-                    break;
-                }
-                if (sampleSize > 0 && rowNumber >= sampleSize) {
-                    break;
-                }
-            }
-            loopEnd = true;
-        }
-    }
-
-    private class QueryDistinctForMultiFields extends QueryOperator {
-        Index index;
-        int[] columnIds;
-        int size;
-        Cursor cursor;
-
-        @Override
-        void start() {
-            super.start();
-            index = topTableFilter.getIndex();
-            columnIds = index.getColumnIds();
-            size = columnIds.length;
-            cursor = index.findDistinct(session, null, null);
-        }
-
-        @Override
-        void run() {
-            while (cursor.next()) {
-                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
-                SearchRow found = cursor.getSearchRow();
-                Value[] row = new Value[size];
-                for (int i = 0; i < size; i++) {
-                    row[i] = found.getValue(columnIds[i]);
-                }
-                result.addRow(row);
-                rowNumber++;
-                if (async && yieldIfNeeded)
-                    return;
-                if ((sort == null || sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
-                    break;
-                }
-                if (sampleSize > 0 && rowNumber >= sampleSize) {
-                    break;
-                }
-            }
-            loopEnd = true;
-        }
-    }
-
-    private class QueryQuick extends QueryOperator {
-        @Override
-        void start() {
-            // 什么都不需要做
-        }
-
-        @Override
-        void run() {
-            Value[] row = new Value[columnCount];
-            for (int i = 0; i < columnCount; i++) {
-                Expression expr = expressions.get(i);
-                row[i] = expr.getValue(session);
-            }
-            result.addRow(row);
-            loopEnd = true;
-        }
-    }
-
-    // 除了QuickAggregateQuery和GroupSortedQuery外，其他场景的聚合函数、group by、having都在这里处理
-    // groupIndex和groupByExpression为null的时候，表示没有group by
-    private class QueryGroup extends QueryOperator {
-        ValueHashMap<HashMap<Expression, Object>> groups;
-        ValueArray defaultGroup;
-
-        @Override
-        void start() {
-            super.start();
-            groups = ValueHashMap.newInstance();
-            currentGroup = null;
-            defaultGroup = ValueArray.get(new Value[0]);
-        }
-
-        @Override
-        void run() {
-            while (topTableFilter.next()) {
-                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
-                if (condition == null || condition.getBooleanValue(session)) {
-                    Value key;
-                    rowNumber++;
-                    if (groupIndex == null) {
-                        key = defaultGroup;
-                    } else {
-                        // 避免在ExpressionColumn.getValue中取到旧值
-                        // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
-                        currentGroup = null;
-                        Value[] keyValues = new Value[groupIndex.length];
-                        // update group
-                        for (int i = 0; i < groupIndex.length; i++) {
-                            int idx = groupIndex[i];
-                            Expression expr = expressions.get(idx);
-                            keyValues[i] = expr.getValue(session);
-                        }
-                        key = ValueArray.get(keyValues);
-                    }
-                    HashMap<Expression, Object> values = groups.get(key);
-                    if (values == null) {
-                        values = new HashMap<Expression, Object>();
-                        groups.put(key, values);
-                    }
-                    currentGroup = values;
-                    currentGroupRowId++;
-                    for (int i = 0; i < columnCount; i++) {
-                        if (groupByExpression == null || !groupByExpression[i]) {
-                            Expression expr = expressions.get(i);
-                            expr.updateAggregate(session);
-                        }
-                    }
-                    if (async && yieldIfNeeded)
-                        return;
-                    if (sampleSize > 0 && rowNumber >= sampleSize) {
-                        break;
-                    }
-                }
-            }
-            if (groupIndex == null && groups.size() == 0) {
-                groups.put(defaultGroup, new HashMap<Expression, Object>());
-            }
-            ArrayList<Value> keys = groups.keys();
-            for (Value v : keys) {
-                ValueArray key = (ValueArray) v;
-                currentGroup = groups.get(key);
-                Value[] keyValues = key.getList();
-                Value[] row = new Value[columnCount];
-                for (int j = 0; groupIndex != null && j < groupIndex.length; j++) {
-                    row[groupIndex[j]] = keyValues[j];
-                }
-                for (int j = 0; j < columnCount; j++) {
-                    if (groupByExpression != null && groupByExpression[j]) {
-                        continue;
-                    }
-                    Expression expr = expressions.get(j);
-                    row[j] = expr.getValue(session);
-                }
-                if (isHavingNullOrFalse(row)) {
-                    continue;
-                }
-                row = keepOnlyDistinct(row, columnCount);
-                result.addRow(row);
-            }
-            loopEnd = true;
-        }
-    }
-
-    private class QueryGroupSorted extends QueryOperator {
-        Value[] previousKeyValues;
-
-        @Override
-        void start() {
-            super.start();
-            currentGroup = null;
-        }
-
-        @Override
-        void run() {
-            while (topTableFilter.next()) {
-                boolean yieldIfNeeded = setCurrentRowNumber(rowNumber + 1);
-                if (condition == null || condition.getBooleanValue(session)) {
-                    rowNumber++;
-                    Value[] keyValues = new Value[groupIndex.length];
-                    // update group
-                    for (int i = 0; i < groupIndex.length; i++) {
-                        int idx = groupIndex[i];
-                        Expression expr = expressions.get(idx);
-                        keyValues[i] = expr.getValue(session);
-                    }
-
-                    if (previousKeyValues == null) {
-                        previousKeyValues = keyValues;
-                        currentGroup = new HashMap<>();
-                    } else if (!Arrays.equals(previousKeyValues, keyValues)) {
-                        addGroupSortedRow(previousKeyValues, columnCount, result);
-                        previousKeyValues = keyValues;
-                        currentGroup = new HashMap<>();
-                    }
-                    currentGroupRowId++;
-
-                    for (int i = 0; i < columnCount; i++) {
-                        if (!groupByExpression[i]) {
-                            Expression expr = expressions.get(i);
-                            expr.updateAggregate(session);
-                        }
-                    }
-                    if (async && yieldIfNeeded)
-                        return;
-                }
-            }
-            if (previousKeyValues != null) {
-                addGroupSortedRow(previousKeyValues, columnCount, result);
-            }
-            loopEnd = true;
-        }
+            return new YieldableSelect(this, this, maxRows, scrollable, asyncHandler, target);
     }
 }

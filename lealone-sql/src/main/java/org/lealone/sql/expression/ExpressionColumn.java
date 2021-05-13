@@ -20,11 +20,11 @@ import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.sql.Parser;
-import org.lealone.sql.dml.Select;
 import org.lealone.sql.expression.condition.Comparison;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.Select;
 
 /**
  * A expression that represents a column of a table or view.

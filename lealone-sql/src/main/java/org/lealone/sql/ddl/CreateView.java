@@ -20,8 +20,8 @@ import org.lealone.db.table.Table;
 import org.lealone.db.table.TableType;
 import org.lealone.db.table.TableView;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.dml.Query;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.query.Query;
 
 /**
  * This class represents the statement

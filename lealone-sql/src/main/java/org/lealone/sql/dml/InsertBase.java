@@ -34,6 +34,7 @@ import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
+import org.lealone.sql.query.Query;
 import org.lealone.sql.yieldable.YieldableBase;
 import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
 import org.lealone.storage.replication.ReplicationConflictType;

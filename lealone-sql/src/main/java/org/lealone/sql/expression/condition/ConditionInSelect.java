@@ -14,7 +14,6 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueBoolean;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.dml.Query;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
@@ -22,6 +21,7 @@ import org.lealone.sql.expression.SubqueryResult;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.IndexCondition;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.Query;
 
 /**
  * An 'in' condition with a subquery, as in WHERE ID IN(SELECT ...)

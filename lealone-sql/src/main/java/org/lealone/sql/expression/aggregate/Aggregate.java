@@ -30,7 +30,6 @@ import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
-import org.lealone.sql.dml.Select;
 import org.lealone.sql.expression.Calculator;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -38,6 +37,7 @@ import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.SelectOrderBy;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.Select;
 
 /**
  * Implements the integrated aggregate functions, such as COUNT, MAX, SUM.

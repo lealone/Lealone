@@ -31,9 +31,9 @@ import org.lealone.db.value.DataType;
 import org.lealone.db.value.Value;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.dml.Insert;
-import org.lealone.sql.dml.Query;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.Query;
 
 /**
  * This class represents the statement

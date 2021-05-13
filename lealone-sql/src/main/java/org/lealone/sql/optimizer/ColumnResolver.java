@@ -8,9 +8,9 @@ package org.lealone.sql.optimizer;
 
 import org.lealone.db.table.Column;
 import org.lealone.db.value.Value;
-import org.lealone.sql.dml.Select;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
+import org.lealone.sql.query.Select;
 
 /**
  * A column resolver is list of column (for example, a table) that can map a

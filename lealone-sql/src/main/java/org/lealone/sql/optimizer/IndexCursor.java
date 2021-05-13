@@ -23,8 +23,8 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.dml.Select;
 import org.lealone.sql.expression.condition.Comparison;
+import org.lealone.sql.query.Select;
 import org.lealone.storage.IterationParameters;
 import org.lealone.storage.PageKey;
 
