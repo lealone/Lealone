@@ -17,11 +17,11 @@ import org.lealone.db.session.SessionStatus;
 import org.lealone.db.table.Table;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
+import org.lealone.sql.executor.YieldableBase;
+import org.lealone.sql.executor.YieldableLoopUpdateBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.sql.yieldable.YieldableBase;
-import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
 
 /**
  * This class represents the statement

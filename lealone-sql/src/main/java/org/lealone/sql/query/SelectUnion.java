@@ -27,14 +27,14 @@ import org.lealone.db.value.Value;
 import org.lealone.sql.ISelectUnion;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
+import org.lealone.sql.executor.DefaultYieldableQuery;
+import org.lealone.sql.executor.YieldableBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
-import org.lealone.sql.yieldable.DefaultYieldableQuery;
-import org.lealone.sql.yieldable.YieldableBase;
 
 /**
  * Represents a union SELECT statement.

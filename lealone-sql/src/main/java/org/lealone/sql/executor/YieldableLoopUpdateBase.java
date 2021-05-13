@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.yieldable;
+package org.lealone.sql.executor;
 
 import java.util.concurrent.atomic.AtomicInteger;
 

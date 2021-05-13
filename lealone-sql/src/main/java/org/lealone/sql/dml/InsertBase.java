@@ -32,11 +32,11 @@ import org.lealone.db.table.Column;
 import org.lealone.db.table.Table;
 import org.lealone.db.value.Value;
 import org.lealone.sql.PreparedSQLStatement;
+import org.lealone.sql.executor.YieldableBase;
+import org.lealone.sql.executor.YieldableLoopUpdateBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.query.Query;
-import org.lealone.sql.yieldable.YieldableBase;
-import org.lealone.sql.yieldable.YieldableLoopUpdateBase;
 import org.lealone.storage.replication.ReplicationConflictType;
 
 public abstract class InsertBase extends ManipulationStatement {

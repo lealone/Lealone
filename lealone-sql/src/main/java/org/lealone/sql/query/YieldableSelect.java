@@ -26,7 +26,7 @@ import org.lealone.db.result.ResultTarget;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
-import org.lealone.sql.yieldable.YieldableQueryBase;
+import org.lealone.sql.executor.YieldableQueryBase;
 
 class YieldableSelect extends YieldableQueryBase {
 

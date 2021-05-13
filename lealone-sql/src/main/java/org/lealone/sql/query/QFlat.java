@@ -20,7 +20,7 @@ package org.lealone.sql.query;
 import org.lealone.db.value.Value;
 import org.lealone.sql.expression.Expression;
 
-//最普通的查询
+// 最普通的查询
 class QFlat extends QOperator {
 
     QFlat(Select select) {

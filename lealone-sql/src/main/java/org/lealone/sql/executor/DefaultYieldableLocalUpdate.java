@@ -15,37 +15,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.yieldable;
+package org.lealone.sql.executor;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.router.SQLRouter;
 
-public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
+public class DefaultYieldableLocalUpdate extends YieldableUpdateBase {
 
-    public DefaultYieldableShardingUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public DefaultYieldableLocalUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
     }
 
     @Override
     protected void executeInternal() {
         session.setStatus(SessionStatus.STATEMENT_RUNNING);
-        SQLRouter.executeUpdate(statement, ar -> handleResult(ar));
-    }
+        int updateCount = statement.update();
+        setResult(updateCount);
 
-    private void handleResult(AsyncResult<Integer> ar) {
-        if (ar.isSucceeded()) {
-            setResult(ar.getResult());
-            // 返回的值为负数时，表示当前语句无法正常执行，需要等待其他事务释放锁
-            if (ar.getResult() < 0) {
-                session.setStatus(SessionStatus.WAITING);
-            } else {
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-            }
+        // 返回的值为负数时，表示当前语句无法正常执行，需要等待其他事务释放锁
+        if (updateCount < 0) {
+            session.setStatus(SessionStatus.WAITING);
         } else {
-            setPendingException(ar.getCause());
+            session.setStatus(SessionStatus.STATEMENT_COMPLETED);
         }
     }
 }
