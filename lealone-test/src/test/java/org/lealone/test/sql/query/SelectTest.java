@@ -31,6 +31,7 @@ public class SelectTest extends SqlTestBase {
         testAggregate();
         testForUpdate();
         testResultCache();
+        testCreateFromSelect();
     }
 
     void testInsert() throws Exception {
@@ -179,5 +180,12 @@ public class SelectTest extends SqlTestBase {
         sql = "SELECT * FROM SelectTest";
         count = printResultSet();
         assertEquals(14, count);
+    }
+
+    void testCreateFromSelect() throws Exception {
+        sql = "CREATE TABLE IF NOT EXISTS SelectTest2 AS SELECT * FROM SelectTest";
+        executeUpdate(sql);
+        sql = "SELECT count(*) FROM SelectTest2";
+        assertEquals(12, getIntValue(1, true));
     }
 }

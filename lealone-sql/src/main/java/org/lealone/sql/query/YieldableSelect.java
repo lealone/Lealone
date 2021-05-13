@@ -43,15 +43,24 @@ class YieldableSelect extends YieldableQueryBase {
 
     @Override
     protected boolean startInternal() {
+        boolean exclusive = select.isForUpdate && !select.isForUpdateMvcc;
+        select.topTableFilter.lock(session, exclusive);
+        select.topTableFilter.startQuery(session);
+        select.topTableFilter.reset();
+        if (select.isForUpdateMvcc) {
+            if (select.isGroupQuery) {
+                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && GROUP");
+            } else if (select.distinct) {
+                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && DISTINCT");
+            } else if (select.isQuickAggregateQuery) {
+                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && AGGREGATE");
+            } else if (select.topTableFilter.getJoin() != null) {
+                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && JOIN");
+            }
+        }
+
         select.fireBeforeSelectTriggers();
-        LocalResult result = select.resultCache.getResult(maxRows); // 不直接用limitRows
-        int limitRows = getLimitRows(maxRows);
-        if (result == null)
-            queryOperator = createQueryOperator(limitRows, target);
-        else
-            queryOperator = new QCache(select, result, target);
-        queryOperator.maxRows = limitRows;
-        queryOperator.yieldableSelect = this;
+        queryOperator = createQueryOperator();
         queryOperator.start();
         return false;
     }
@@ -64,16 +73,59 @@ class YieldableSelect extends YieldableQueryBase {
     @Override
     protected void executeInternal() {
         queryOperator.run();
-        if (!queryOperator.loopEnd)
-            return;
-        // 查询结果已经增加到target了
-        if (target != null) {
-            session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-        } else if (queryOperator.localResult != null) {
-            setResult(queryOperator.localResult, queryOperator.localResult.getRowCount());
-            select.resultCache.setResult(queryOperator.localResult);
-            session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+        if (queryOperator.loopEnd) {
+            // 查询结果已经增加到target了
+            if (target != null) {
+                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+            } else if (queryOperator.localResult != null) {
+                setResult(queryOperator.localResult, queryOperator.localResult.getRowCount());
+                select.resultCache.setResult(queryOperator.localResult);
+                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+            }
         }
+    }
+
+    private QOperator createQueryOperator() {
+        LocalResult result;
+        ResultTarget to;
+        QOperator queryOperator;
+        int limitRows = getLimitRows(maxRows);
+        LocalResult cachedResult = select.resultCache.getResult(maxRows); // 不直接用limitRows
+        if (cachedResult != null) {
+            result = cachedResult;
+            to = cachedResult;
+            queryOperator = new QCache(select, cachedResult);
+        } else {
+            result = createLocalResultIfNeeded(limitRows);
+            to = result != null ? result : target;
+            if (limitRows != 0) {
+                if (select.isQuickAggregateQuery) {
+                    queryOperator = new QQuick(select);
+                } else if (select.isGroupQuery) {
+                    if (select.isGroupSortedQuery) {
+                        queryOperator = new QGroupSorted(select);
+                    } else {
+                        queryOperator = new QGroup(select);
+                        to = result;
+                    }
+                } else if (select.isDistinctQuery) {
+                    queryOperator = new QDistinct(select);
+                } else if (select.isDistinctQueryForMultiFields) {
+                    queryOperator = new QDistinctForMultiFields(select);
+                } else {
+                    queryOperator = new QFlat(select);
+                }
+            } else {
+                queryOperator = new QEmpty(select);
+            }
+        }
+        queryOperator.columnCount = select.expressions.size();
+        queryOperator.maxRows = limitRows;
+        queryOperator.target = target;
+        queryOperator.result = to;
+        queryOperator.localResult = result;
+        queryOperator.yieldableSelect = this;
+        return queryOperator;
     }
 
     private int getLimitRows(int maxRows) {
@@ -95,7 +147,7 @@ class YieldableSelect extends YieldableQueryBase {
         return limitRows;
     }
 
-    private QOperator createQueryOperator(int limitRows, ResultTarget target) {
+    private LocalResult createLocalResultIfNeeded(int limitRows) {
         LocalResult result = null;
         if (target == null || !session.getDatabase().getSettings().optimizeInsertFromSelect) {
             result = createLocalResult(result);
@@ -118,49 +170,7 @@ class YieldableSelect extends YieldableQueryBase {
         if (limitRows >= 0 || select.offsetExpr != null) {
             result = createLocalResult(result);
         }
-        select.topTableFilter.startQuery(session);
-        select.topTableFilter.reset();
-        boolean exclusive = select.isForUpdate && !select.isForUpdateMvcc;
-        if (select.isForUpdateMvcc) {
-            if (select.isGroupQuery) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && GROUP");
-            } else if (select.distinct) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && DISTINCT");
-            } else if (select.isQuickAggregateQuery) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && AGGREGATE");
-            } else if (select.topTableFilter.getJoin() != null) {
-                throw DbException.getUnsupportedException("MVCC=TRUE && FOR UPDATE && JOIN");
-            }
-        }
-        select.topTableFilter.lock(session, exclusive);
-        ResultTarget to = result != null ? result : target;
-        if (limitRows != 0) {
-            if (select.isQuickAggregateQuery) {
-                queryOperator = new QQuick(select);
-            } else if (select.isGroupQuery) {
-                if (select.isGroupSortedQuery) {
-                    queryOperator = new QGroupSorted(select);
-                } else {
-                    queryOperator = new QGroup(select);
-                    to = result;
-                }
-            } else if (select.isDistinctQuery) {
-                queryOperator = new QDistinct(select);
-            } else if (select.isDistinctQueryForMultiFields) {
-                queryOperator = new QDistinctForMultiFields(select);
-            } else {
-                queryOperator = new QFlat(select);
-            }
-        } else {
-            queryOperator = new QEmpty(select);
-            result = createLocalResult(result);
-        }
-        queryOperator.columnCount = select.expressions.size();
-        queryOperator.maxRows = limitRows;
-        queryOperator.target = target;
-        queryOperator.result = to;
-        queryOperator.localResult = result;
-        return queryOperator;
+        return result;
     }
 
     private LocalResult createLocalResult(LocalResult old) {

@@ -18,15 +18,13 @@
 package org.lealone.sql.query;
 
 import org.lealone.db.result.LocalResult;
-import org.lealone.db.result.ResultTarget;
 
 // 直接基于缓存中的结果集
 class QCache extends QOperator {
 
-    QCache(Select select, LocalResult result, ResultTarget target) {
+    QCache(Select select, LocalResult result) {
         super(select);
         this.result = result;
-        this.target = target;
         localResult = result;
     }
 
