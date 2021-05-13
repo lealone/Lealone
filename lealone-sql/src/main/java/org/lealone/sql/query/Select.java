@@ -83,14 +83,13 @@ public class Select extends Query {
     boolean isGroupQuery;
     boolean isGroupSortedQuery;
     boolean isForUpdateMvcc;
-    private double cost;
     boolean isQuickAggregateQuery;
     boolean isDistinctQuery;
     boolean isDistinctQueryForMultiFields;
     boolean sortUsingIndex;
+    private double cost;
 
     final QueryResultCache resultCache = new QueryResultCache(this);
-    QOperator queryOperator;
 
     public Select(ServerSession session) {
         super(session);
@@ -720,8 +719,8 @@ public class Select extends Query {
         return new QMerge(this).queryGroupMerge();
     }
 
-    public Result calculate(Result result, Select select) {
-        return new QMerge(this).calculate(result, select);
+    public Result calculate(Result result, Select newSelect) {
+        return new QMerge(this).calculate(result, newSelect);
     }
 
     @Override
@@ -1121,12 +1120,12 @@ public class Select extends Query {
 
     @Override
     public void disableCache() {
-        resultCache.noCache = true;
+        resultCache.disable();
     }
 
     @Override
     public Result query(int maxRows, ResultTarget target) {
-        YieldableSelect yieldable = new YieldableSelect(this, this, maxRows, false, null, target);
+        YieldableSelect yieldable = new YieldableSelect(this, maxRows, false, null, target);
         return syncExecute(yieldable);
     }
 
@@ -1136,6 +1135,6 @@ public class Select extends Query {
         if (!isLocal() && getSession().isShardingMode())
             return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
         else
-            return new YieldableSelect(this, this, maxRows, scrollable, asyncHandler, target);
+            return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
     }
 }

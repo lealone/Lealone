@@ -28,24 +28,24 @@ class QFlat extends QOperator {
 
     @Override
     void run() {
-        while (this.select.topTableFilter.next()) {
-            boolean yieldIfNeeded = this.select.setCurrentRowNumber(rowNumber + 1);
-            if (this.select.condition == null || this.select.condition.getBooleanValue(session)) {
-                if (this.select.isForUpdate) {
+        while (select.topTableFilter.next()) {
+            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
+            if (select.condition == null || select.condition.getBooleanValue(session)) {
+                if (select.isForUpdate) {
                     // 锁记录失败
-                    if (!this.select.topTableFilter.lockRow())
+                    if (!select.topTableFilter.lockRow())
                         return;
                 }
                 Value[] row = new Value[columnCount];
                 for (int i = 0; i < columnCount; i++) {
-                    Expression expr = this.select.expressions.get(i);
+                    Expression expr = select.expressions.get(i);
                     row[i] = expr.getValue(session);
                 }
                 result.addRow(row);
                 rowNumber++;
                 if (async && yieldIfNeeded)
                     return;
-                if ((this.select.sort == null || this.select.sortUsingIndex) && limitRows > 0
+                if ((select.sort == null || select.sortUsingIndex) && limitRows > 0
                         && result.getRowCount() >= limitRows) {
                     break;
                 }

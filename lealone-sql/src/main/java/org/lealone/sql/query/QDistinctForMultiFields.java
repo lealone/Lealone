@@ -36,7 +36,7 @@ class QDistinctForMultiFields extends QOperator {
     @Override
     void start() {
         super.start();
-        index = this.select.topTableFilter.getIndex();
+        index = select.topTableFilter.getIndex();
         columnIds = index.getColumnIds();
         size = columnIds.length;
         cursor = index.findDistinct(session, null, null);
@@ -45,7 +45,7 @@ class QDistinctForMultiFields extends QOperator {
     @Override
     void run() {
         while (cursor.next()) {
-            boolean yieldIfNeeded = this.select.setCurrentRowNumber(rowNumber + 1);
+            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
             SearchRow found = cursor.getSearchRow();
             Value[] row = new Value[size];
             for (int i = 0; i < size; i++) {
@@ -55,7 +55,7 @@ class QDistinctForMultiFields extends QOperator {
             rowNumber++;
             if (async && yieldIfNeeded)
                 return;
-            if ((this.select.sort == null || this.select.sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
+            if ((select.sort == null || select.sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
                 break;
             }
             if (sampleSize > 0 && rowNumber >= sampleSize) {

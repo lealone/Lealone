@@ -24,7 +24,7 @@ import org.lealone.db.session.ServerSession;
 abstract class QOperator {
 
     protected final Select select;
-    protected ServerSession session;
+    protected final ServerSession session;
 
     int columnCount;
     ResultTarget target;
@@ -49,8 +49,8 @@ abstract class QOperator {
         // limitRows must be long, otherwise we get an int overflow
         // if limitRows is at or near Integer.MAX_VALUE
         // limitRows is never 0 here
-        if (limitRows > 0 && this.select.offsetExpr != null) {
-            int offset = this.select.offsetExpr.getValue(session).getInt();
+        if (limitRows > 0 && select.offsetExpr != null) {
+            int offset = select.offsetExpr.getValue(session).getInt();
             if (offset > 0) {
                 limitRows += offset;
             }
@@ -60,16 +60,16 @@ abstract class QOperator {
             }
         }
         rowNumber = 0;
-        this.select.setCurrentRowNumber(0);
-        sampleSize = this.select.getSampleSizeValue(session);
+        select.setCurrentRowNumber(0);
+        sampleSize = select.getSampleSizeValue(session);
     }
 
     void run() {
     }
 
     void stop() {
-        if (this.select.offsetExpr != null) {
-            localResult.setOffset(this.select.offsetExpr.getValue(session).getInt());
+        if (select.offsetExpr != null) {
+            localResult.setOffset(select.offsetExpr.getValue(session).getInt());
         }
         if (maxRows >= 0) {
             localResult.setLimit(maxRows);

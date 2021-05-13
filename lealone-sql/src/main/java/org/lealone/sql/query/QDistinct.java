@@ -36,7 +36,7 @@ class QDistinct extends QOperator {
     @Override
     void start() {
         super.start();
-        index = this.select.topTableFilter.getIndex();
+        index = select.topTableFilter.getIndex();
         columnIndex = index.getColumns()[0].getColumnId();
         cursor = index.findDistinct(session, null, null);
     }
@@ -44,7 +44,7 @@ class QDistinct extends QOperator {
     @Override
     void run() {
         while (cursor.next()) {
-            boolean yieldIfNeeded = this.select.setCurrentRowNumber(rowNumber + 1);
+            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
             SearchRow found = cursor.getSearchRow();
             Value value = found.getValue(columnIndex);
             Value[] row = { value };
@@ -52,7 +52,7 @@ class QDistinct extends QOperator {
             rowNumber++;
             if (async && yieldIfNeeded)
                 return;
-            if ((this.select.sort == null || this.select.sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
+            if ((select.sort == null || select.sortUsingIndex) && limitRows > 0 && rowNumber >= limitRows) {
                 break;
             }
             if (sampleSize > 0 && rowNumber >= sampleSize) {

@@ -155,23 +155,6 @@ public class SelectUnion extends Query implements ISelectUnion {
         return this;
     }
 
-    Value[] convert(Value[] values, int columnCount) {
-        Value[] newValues;
-        if (columnCount == values.length) {
-            // re-use the array if possible
-            newValues = values;
-        } else {
-            // create a new array if needed,
-            // for the value hash set
-            newValues = new Value[columnCount];
-        }
-        for (int i = 0; i < columnCount; i++) {
-            Expression e = expressions.get(i);
-            newValues[i] = values[i].convertTo(e.getType());
-        }
-        return newValues;
-    }
-
     @Override
     public double getCost() {
         return left.getCost() + right.getCost();
@@ -309,7 +292,7 @@ public class SelectUnion extends Query implements ISelectUnion {
 
     @Override
     public Result query(int maxRows, ResultTarget target) {
-        YieldableSelectUnion yieldable = new YieldableSelectUnion(this, this, maxRows, false, null, target);
+        YieldableSelectUnion yieldable = new YieldableSelectUnion(this, maxRows, false, null, target);
         return syncExecute(yieldable);
     }
 
@@ -319,6 +302,6 @@ public class SelectUnion extends Query implements ISelectUnion {
         if (!isLocal() && getSession().isShardingMode())
             return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
         else
-            return new YieldableSelectUnion(this, this, maxRows, scrollable, asyncHandler, target);
+            return new YieldableSelectUnion(this, maxRows, scrollable, asyncHandler, target);
     }
 }

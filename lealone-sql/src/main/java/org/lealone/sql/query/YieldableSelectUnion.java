@@ -37,28 +37,28 @@ class YieldableSelectUnion extends YieldableQueryBase {
     private final SelectUnion selectUnion;
     private final ResultTarget target;
 
-    Expression limitExpr;
-    boolean insertFromSelect;
-    YieldableBase<Result> leftYieldableQuery;
-    YieldableBase<Result> rightYieldableQuery;
-    int columnCount;
-    LocalResult result;
-    Result leftRows;
-    Result rightRows;
-    LocalResult temp;
-    int rowNumber;
-    boolean done;
+    private Expression limitExpr;
+    private boolean insertFromSelect;
+    private YieldableBase<Result> leftYieldableQuery;
+    private YieldableBase<Result> rightYieldableQuery;
+    private int columnCount;
+    private LocalResult result;
+    private Result leftRows;
+    private Result rightRows;
+    private LocalResult temp;
+    private int rowNumber;
+    private boolean done;
 
-    public YieldableSelectUnion(SelectUnion selectUnion, SelectUnion statement, int maxRows, boolean scrollable,
+    public YieldableSelectUnion(SelectUnion selectUnion, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
-        super(statement, maxRows, scrollable, asyncHandler);
+        super(selectUnion, maxRows, scrollable, asyncHandler);
         this.selectUnion = selectUnion;
         this.target = target;
     }
 
     @Override
     protected boolean startInternal() {
-        this.selectUnion.fireBeforeSelectTriggers();
+        selectUnion.fireBeforeSelectTriggers();
         // union doesn't always know the parameter list of the left and right queries
         if (maxRows != 0) {
             // maxRows is set (maxRows 0 means no limit)
@@ -79,50 +79,50 @@ class YieldableSelectUnion extends YieldableQueryBase {
         }
 
         if (session.getDatabase().getSettings().optimizeInsertFromSelect) {
-            if (this.selectUnion.unionType == SelectUnion.UNION_ALL && target != null) {
-                if (this.selectUnion.sort == null && !this.selectUnion.distinct && maxRows == 0
-                        && this.selectUnion.offsetExpr == null && limitExpr == null) {
+            if (selectUnion.unionType == SelectUnion.UNION_ALL && target != null) {
+                if (selectUnion.sort == null && !selectUnion.distinct && maxRows == 0 && selectUnion.offsetExpr == null
+                        && limitExpr == null) {
                     insertFromSelect = true;
-                    leftYieldableQuery = this.selectUnion.left.createYieldableQuery(0, false, null, target);
-                    rightYieldableQuery = this.selectUnion.right.createYieldableQuery(0, false, null, target);
+                    leftYieldableQuery = selectUnion.left.createYieldableQuery(0, false, null, target);
+                    rightYieldableQuery = selectUnion.right.createYieldableQuery(0, false, null, target);
                     return false;
                 }
             }
         }
-        columnCount = this.selectUnion.left.getColumnCount();
-        result = new LocalResult(session, this.selectUnion.expressionArray, columnCount);
-        if (this.selectUnion.sort != null) {
-            result.setSortOrder(this.selectUnion.sort);
+        columnCount = selectUnion.left.getColumnCount();
+        result = new LocalResult(session, selectUnion.expressionArray, columnCount);
+        if (selectUnion.sort != null) {
+            result.setSortOrder(selectUnion.sort);
         }
-        if (this.selectUnion.distinct) {
-            this.selectUnion.left.setDistinct(true);
-            this.selectUnion.right.setDistinct(true);
+        if (selectUnion.distinct) {
+            selectUnion.left.setDistinct(true);
+            selectUnion.right.setDistinct(true);
             result.setDistinct();
         }
-        if (this.selectUnion.randomAccessResult) {
+        if (selectUnion.randomAccessResult) {
             result.setRandomAccess();
         }
-        switch (this.selectUnion.unionType) {
+        switch (selectUnion.unionType) {
         case SelectUnion.UNION:
         case SelectUnion.EXCEPT:
-            this.selectUnion.left.setDistinct(true);
-            this.selectUnion.right.setDistinct(true);
+            selectUnion.left.setDistinct(true);
+            selectUnion.right.setDistinct(true);
             result.setDistinct();
             break;
         case SelectUnion.UNION_ALL:
             break;
         case SelectUnion.INTERSECT:
-            this.selectUnion.left.setDistinct(true);
-            this.selectUnion.right.setDistinct(true);
-            temp = new LocalResult(session, this.selectUnion.expressionArray, columnCount);
+            selectUnion.left.setDistinct(true);
+            selectUnion.right.setDistinct(true);
+            temp = new LocalResult(session, selectUnion.expressionArray, columnCount);
             temp.setDistinct();
             temp.setRandomAccess();
             break;
         default:
-            DbException.throwInternalError("type=" + this.selectUnion.unionType);
+            DbException.throwInternalError("type=" + selectUnion.unionType);
         }
-        leftYieldableQuery = this.selectUnion.left.createYieldableQuery(0, false, null, null);
-        rightYieldableQuery = this.selectUnion.right.createYieldableQuery(0, false, null, null);
+        leftYieldableQuery = selectUnion.left.createYieldableQuery(0, false, null, null);
+        rightYieldableQuery = selectUnion.right.createYieldableQuery(0, false, null, null);
         return false;
     }
 
@@ -147,7 +147,7 @@ class YieldableSelectUnion extends YieldableQueryBase {
             }
         }
 
-        switch (this.selectUnion.unionType) {
+        switch (selectUnion.unionType) {
         case SelectUnion.UNION_ALL:
         case SelectUnion.UNION: {
             if (leftYieldableQuery != null && runLeftQuery()) {
@@ -178,7 +178,7 @@ class YieldableSelectUnion extends YieldableQueryBase {
             }
             if (rightRows != null) {
                 while (rightRows.next()) {
-                    result.removeDistinct(this.selectUnion.convert(rightRows.currentRow(), columnCount));
+                    result.removeDistinct(convert(rightRows.currentRow(), columnCount));
                     if (yieldIfNeeded(++rowNumber)) {
                         return;
                     }
@@ -193,7 +193,7 @@ class YieldableSelectUnion extends YieldableQueryBase {
             }
             if (leftRows != null) {
                 while (leftRows.next()) {
-                    temp.addRow(this.selectUnion.convert(leftRows.currentRow(), columnCount));
+                    temp.addRow(convert(leftRows.currentRow(), columnCount));
                     if (yieldIfNeeded(++rowNumber)) {
                         return;
                     }
@@ -206,7 +206,7 @@ class YieldableSelectUnion extends YieldableQueryBase {
             }
             if (rightRows != null) {
                 while (rightRows.next()) {
-                    Value[] values = this.selectUnion.convert(rightRows.currentRow(), columnCount);
+                    Value[] values = convert(rightRows.currentRow(), columnCount);
                     if (temp.containsDistinct(values)) {
                         result.addRow(values);
                     }
@@ -219,11 +219,11 @@ class YieldableSelectUnion extends YieldableQueryBase {
             break;
         }
         default:
-            DbException.throwInternalError("type=" + this.selectUnion.unionType);
+            DbException.throwInternalError("type=" + selectUnion.unionType);
         }
         if (!done) {
-            if (this.selectUnion.offsetExpr != null) {
-                result.setOffset(this.selectUnion.offsetExpr.getValue(session).getInt());
+            if (selectUnion.offsetExpr != null) {
+                result.setOffset(selectUnion.offsetExpr.getValue(session).getInt());
             }
             if (limitExpr != null) {
                 Value v = limitExpr.getValue(session);
@@ -277,7 +277,7 @@ class YieldableSelectUnion extends YieldableQueryBase {
 
     private boolean addLeftRows() {
         while (leftRows.next()) {
-            result.addRow(this.selectUnion.convert(leftRows.currentRow(), columnCount));
+            result.addRow(convert(leftRows.currentRow(), columnCount));
             if (yieldIfNeeded(++rowNumber)) {
                 return true;
             }
@@ -288,12 +288,29 @@ class YieldableSelectUnion extends YieldableQueryBase {
 
     private boolean addRightRows() {
         while (rightRows.next()) {
-            result.addRow(this.selectUnion.convert(rightRows.currentRow(), columnCount));
+            result.addRow(convert(rightRows.currentRow(), columnCount));
             if (yieldIfNeeded(++rowNumber)) {
                 return true;
             }
         }
         rightRows = null;
         return false;
+    }
+
+    private Value[] convert(Value[] values, int columnCount) {
+        Value[] newValues;
+        if (columnCount == values.length) {
+            // re-use the array if possible
+            newValues = values;
+        } else {
+            // create a new array if needed,
+            // for the value hash set
+            newValues = new Value[columnCount];
+        }
+        for (int i = 0; i < columnCount; i++) {
+            Expression e = selectUnion.expressions.get(i);
+            newValues[i] = values[i].convertTo(e.getType());
+        }
+        return newValues;
     }
 }

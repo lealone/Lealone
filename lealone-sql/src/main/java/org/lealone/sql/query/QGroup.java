@@ -40,28 +40,28 @@ class QGroup extends QOperator {
     void start() {
         super.start();
         groups = ValueHashMap.newInstance();
-        this.select.currentGroup = null;
+        select.currentGroup = null;
         defaultGroup = ValueArray.get(new Value[0]);
     }
 
     @Override
     void run() {
-        while (this.select.topTableFilter.next()) {
-            boolean yieldIfNeeded = this.select.setCurrentRowNumber(rowNumber + 1);
-            if (this.select.condition == null || this.select.condition.getBooleanValue(session)) {
+        while (select.topTableFilter.next()) {
+            boolean yieldIfNeeded = select.setCurrentRowNumber(rowNumber + 1);
+            if (select.condition == null || select.condition.getBooleanValue(session)) {
                 Value key;
                 rowNumber++;
-                if (this.select.groupIndex == null) {
+                if (select.groupIndex == null) {
                     key = defaultGroup;
                 } else {
                     // 避免在ExpressionColumn.getValue中取到旧值
                     // 例如SELECT id/3 AS A, COUNT(*) FROM mytable GROUP BY A HAVING A>=0
-                    this.select.currentGroup = null;
-                    Value[] keyValues = new Value[this.select.groupIndex.length];
+                    select.currentGroup = null;
+                    Value[] keyValues = new Value[select.groupIndex.length];
                     // update group
-                    for (int i = 0; i < this.select.groupIndex.length; i++) {
-                        int idx = this.select.groupIndex[i];
-                        Expression expr = this.select.expressions.get(idx);
+                    for (int i = 0; i < select.groupIndex.length; i++) {
+                        int idx = select.groupIndex[i];
+                        Expression expr = select.expressions.get(idx);
                         keyValues[i] = expr.getValue(session);
                     }
                     key = ValueArray.get(keyValues);
@@ -71,11 +71,11 @@ class QGroup extends QOperator {
                     values = new HashMap<Expression, Object>();
                     groups.put(key, values);
                 }
-                this.select.currentGroup = values;
-                this.select.currentGroupRowId++;
+                select.currentGroup = values;
+                select.currentGroupRowId++;
                 for (int i = 0; i < columnCount; i++) {
-                    if (this.select.groupByExpression == null || !this.select.groupByExpression[i]) {
-                        Expression expr = this.select.expressions.get(i);
+                    if (select.groupByExpression == null || !select.groupByExpression[i]) {
+                        Expression expr = select.expressions.get(i);
                         expr.updateAggregate(session);
                     }
                 }
@@ -86,29 +86,29 @@ class QGroup extends QOperator {
                 }
             }
         }
-        if (this.select.groupIndex == null && groups.size() == 0) {
+        if (select.groupIndex == null && groups.size() == 0) {
             groups.put(defaultGroup, new HashMap<Expression, Object>());
         }
         ArrayList<Value> keys = groups.keys();
         for (Value v : keys) {
             ValueArray key = (ValueArray) v;
-            this.select.currentGroup = groups.get(key);
+            select.currentGroup = groups.get(key);
             Value[] keyValues = key.getList();
             Value[] row = new Value[columnCount];
-            for (int j = 0; this.select.groupIndex != null && j < this.select.groupIndex.length; j++) {
-                row[this.select.groupIndex[j]] = keyValues[j];
+            for (int j = 0; select.groupIndex != null && j < select.groupIndex.length; j++) {
+                row[select.groupIndex[j]] = keyValues[j];
             }
             for (int j = 0; j < columnCount; j++) {
-                if (this.select.groupByExpression != null && this.select.groupByExpression[j]) {
+                if (select.groupByExpression != null && select.groupByExpression[j]) {
                     continue;
                 }
-                Expression expr = this.select.expressions.get(j);
+                Expression expr = select.expressions.get(j);
                 row[j] = expr.getValue(session);
             }
-            if (this.select.isHavingNullOrFalse(row)) {
+            if (select.isHavingNullOrFalse(row)) {
                 continue;
             }
-            row = this.select.keepOnlyDistinct(row, columnCount);
+            row = select.keepOnlyDistinct(row, columnCount);
             result.addRow(row);
         }
         loopEnd = true;

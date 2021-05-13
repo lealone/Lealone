@@ -17,28 +17,20 @@
  */
 package org.lealone.sql.query;
 
-import org.lealone.db.value.Value;
-import org.lealone.sql.expression.Expression;
+import org.lealone.db.result.LocalResult;
+import org.lealone.db.result.ResultTarget;
 
-class QQuick extends QOperator {
+class QCache extends QOperator {
 
-    QQuick(Select select) {
+    QCache(Select select, LocalResult result, ResultTarget target) {
         super(select);
-    }
-
-    @Override
-    void start() {
-        // 什么都不需要做
+        this.result = result;
+        this.target = target;
+        localResult = result;
     }
 
     @Override
     void run() {
-        Value[] row = new Value[columnCount];
-        for (int i = 0; i < columnCount; i++) {
-            Expression expr = select.expressions.get(i);
-            row[i] = expr.getValue(session);
-        }
-        result.addRow(row);
         loopEnd = true;
     }
 }
