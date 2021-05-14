@@ -31,7 +31,7 @@ import org.lealone.storage.fs.FileStorageOutputStream;
 import org.lealone.storage.fs.FileUtils;
 
 /**
- * This class is the base for RunScript and Script.
+ * This class is the base for RunScript and GenScript.
  */
 abstract class ScriptBase extends ManipulationStatement implements DataHandler {
 

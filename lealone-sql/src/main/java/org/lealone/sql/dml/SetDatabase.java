@@ -52,7 +52,6 @@ public class SetDatabase extends SetStatement {
         session.getUser().checkAdmin();
         String name = setting.name();
         switch (setting) {
-        // 以下是database级的类型
         case ALLOW_LITERALS: {
             int value = getIntValue();
             if (value < 0 || value > 2) {

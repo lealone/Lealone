@@ -22,8 +22,10 @@ import java.util.Map;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.Constants;
 import org.lealone.db.schema.Sequence;
+import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.db.value.Value;
+import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.SequenceValue;
 import org.lealone.sql.expression.ValueExpression;
@@ -37,7 +39,7 @@ public class LealoneSQLEngine implements SQLEngine {
 
     @Override
     public SQLParser createParser(Session session) {
-        return new Parser((org.lealone.db.session.ServerSession) session);
+        return new Parser((ServerSession) session);
     }
 
     @Override
@@ -71,12 +73,10 @@ public class LealoneSQLEngine implements SQLEngine {
 
     @Override
     public IExpression createConditionAndOr(boolean and, IExpression left, IExpression right) {
-        return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR,
-                (org.lealone.sql.expression.Expression) left, (org.lealone.sql.expression.Expression) right);
+        return new ConditionAndOr(and ? ConditionAndOr.AND : ConditionAndOr.OR, (Expression) left, (Expression) right);
     }
 
     @Override
     public void close() {
     }
-
 }
