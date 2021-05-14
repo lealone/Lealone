@@ -42,8 +42,8 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
     static void register() {
         register(PacketType.PREPARED_STATEMENT_PREPARE, new Prepare());
         register(PacketType.PREPARED_STATEMENT_PREPARE_READ_PARAMS, new PrepareReadParams());
-        register(PacketType.PREPARED_STATEMENT_QUERY, new Query());
-        register(PacketType.PREPARED_STATEMENT_UPDATE, new Update());
+        register(PacketType.PREPARED_STATEMENT_QUERY, new PreparedQuery());
+        register(PacketType.PREPARED_STATEMENT_UPDATE, new PreparedUpdate());
         register(PacketType.PREPARED_STATEMENT_GET_META_DATA, new GetMetaData());
         register(PacketType.PREPARED_STATEMENT_CLOSE, new Close());
     }
@@ -72,14 +72,14 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
         }
     }
 
-    private static class Query extends PreparedQueryPacketHandler<PreparedStatementQuery> {
+    private static class PreparedQuery extends PreparedQueryPacketHandler<PreparedStatementQuery> {
         @Override
         public Packet handle(PacketDeliveryTask task, PreparedStatementQuery packet) {
             return handlePacket(task, packet);
         }
     }
 
-    private static class Update extends PreparedUpdatePacketHandler<PreparedStatementUpdate> {
+    private static class PreparedUpdate extends PreparedUpdatePacketHandler<PreparedStatementUpdate> {
         @Override
         public Packet handle(PacketDeliveryTask task, PreparedStatementUpdate packet) {
             return handlePacket(task, packet);

@@ -33,13 +33,11 @@ public class PreparedStatementUpdate implements Packet {
 
     public final List<PageKey> pageKeys;
     public final int commandId;
-    public final int size;
     public final Value[] parameters;
 
-    public PreparedStatementUpdate(List<PageKey> pageKeys, int commandId, int size, Value[] parameters) {
+    public PreparedStatementUpdate(List<PageKey> pageKeys, int commandId, Value[] parameters) {
         this.pageKeys = pageKeys;
         this.commandId = commandId;
-        this.size = size;
         this.parameters = parameters;
     }
 
@@ -65,6 +63,7 @@ public class PreparedStatementUpdate implements Packet {
                 out.writePageKey(pk);
             }
         }
+        int size = parameters.length;
         out.writeInt(commandId);
         out.writeInt(size);
         for (int i = 0; i < size; i++) {
@@ -83,7 +82,7 @@ public class PreparedStatementUpdate implements Packet {
             Value[] parameters = new Value[size];
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
-            return new PreparedStatementUpdate(pageKeys, commandId, size, parameters);
+            return new PreparedStatementUpdate(pageKeys, commandId, parameters);
         }
     }
 }

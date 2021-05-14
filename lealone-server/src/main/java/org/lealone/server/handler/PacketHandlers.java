@@ -21,6 +21,7 @@ import java.util.List;
 
 import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
+import org.lealone.db.value.Value;
 import org.lealone.server.PacketDeliveryTask;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
@@ -87,10 +88,7 @@ public class PacketHandlers {
     static abstract class UpdatePacketHandler<P extends StatementUpdate> extends UpdateBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet) {
-            // 客户端的非Prepared语句不需要缓存
-            PreparedSQLStatement stmt = task.session.prepareStatement(packet.sql, -1);
-            // 非Prepared语句执行一次就结束，所以可以用packetId当唯一标识，一般用来执行客户端发起的取消操作
-            stmt.setId(task.packetId);
+            PreparedSQLStatement stmt = prepareStatement(task, packet.sql, -1);
             createYieldableUpdate(task, stmt, packet.pageKeys);
             return null;
         }
@@ -99,12 +97,7 @@ public class PacketHandlers {
     static abstract class PreparedUpdatePacketHandler<P extends PreparedStatementUpdate> extends UpdateBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet) {
-            PreparedSQLStatement stmt = (PreparedSQLStatement) task.conn.getCache(packet.commandId);
-            List<? extends CommandParameter> params = stmt.getParameters();
-            for (int i = 0; i < packet.size; i++) {
-                CommandParameter p = params.get(i);
-                p.setValue(packet.parameters[i]);
-            }
+            PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId, packet.parameters);
             createYieldableUpdate(task, stmt, packet.pageKeys);
             return null;
         }
@@ -148,9 +141,7 @@ public class PacketHandlers {
     static abstract class QueryPacketHandler<P extends StatementQuery> extends QueryBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet) {
-            // 客户端的非Prepared语句不需要缓存
-            PreparedSQLStatement stmt = task.session.prepareStatement(packet.sql, packet.fetchSize);
-            stmt.setId(task.packetId);
+            PreparedSQLStatement stmt = prepareStatement(task, packet.sql, packet.fetchSize);
             createYieldableQuery(task, stmt, packet);
             return null;
         }
@@ -159,14 +150,28 @@ public class PacketHandlers {
     static abstract class PreparedQueryPacketHandler<P extends PreparedStatementQuery> extends QueryBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet) {
-            PreparedSQLStatement stmt = (PreparedSQLStatement) task.conn.getCache(packet.commandId);
-            List<? extends CommandParameter> params = stmt.getParameters();
-            for (int i = 0; i < packet.size; i++) {
-                CommandParameter p = params.get(i);
-                p.setValue(packet.parameters[i]);
-            }
+            PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId, packet.parameters);
             createYieldableQuery(task, stmt, packet);
             return null;
         }
+    }
+
+    private static PreparedSQLStatement prepareStatement(PacketDeliveryTask task, String sql, int fetchSize) {
+        PreparedSQLStatement stmt = task.session.prepareStatement(sql, fetchSize);
+        // 客户端的非Prepared语句不需要缓存，非Prepared语句执行一次就结束
+        // 所以可以用packetId当唯一标识，一般用来执行客户端发起的取消操作
+        stmt.setId(task.packetId);
+        return stmt;
+    }
+
+    private static PreparedSQLStatement getPreparedSQLStatementFromCache(PacketDeliveryTask task, int commandId,
+            Value[] parameters) {
+        PreparedSQLStatement stmt = (PreparedSQLStatement) task.conn.getCache(commandId);
+        List<? extends CommandParameter> params = stmt.getParameters();
+        for (int i = 0, size = parameters.length; i < size; i++) {
+            CommandParameter p = params.get(i);
+            p.setValue(parameters[i]);
+        }
+        return stmt;
     }
 }

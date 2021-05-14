@@ -32,14 +32,12 @@ import org.lealone.storage.PageKey;
 public class PreparedStatementQuery extends QueryPacket {
 
     public final int commandId;
-    public final int size;
     public final Value[] parameters;
 
     public PreparedStatementQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize, boolean scrollable,
-            int commandId, int size, Value[] parameters) {
+            int commandId, Value[] parameters) {
         super(pageKeys, resultId, maxRows, fetchSize, scrollable);
         this.commandId = commandId;
-        this.size = size;
         this.parameters = parameters;
     }
 
@@ -57,6 +55,7 @@ public class PreparedStatementQuery extends QueryPacket {
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
         out.writeInt(commandId);
+        int size = parameters.length;
         out.writeInt(size);
         for (int i = 0; i < size; i++) {
             out.writeValue(parameters[i]);
@@ -78,7 +77,7 @@ public class PreparedStatementQuery extends QueryPacket {
             Value[] parameters = new Value[size];
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
-            return new PreparedStatementQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId, size,
+            return new PreparedStatementQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId,
                     parameters);
         }
     }

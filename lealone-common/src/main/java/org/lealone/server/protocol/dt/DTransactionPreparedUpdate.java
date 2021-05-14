@@ -31,8 +31,8 @@ import org.lealone.storage.PageKey;
 
 public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
 
-    public DTransactionPreparedUpdate(List<PageKey> pageKeys, int commandId, int size, Value[] parameters) {
-        super(pageKeys, commandId, size, parameters);
+    public DTransactionPreparedUpdate(List<PageKey> pageKeys, int commandId, Value[] parameters) {
+        super(pageKeys, commandId, parameters);
     }
 
     @Override
@@ -61,7 +61,7 @@ public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
             Value[] parameters = new Value[size];
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
-            return new DTransactionPreparedUpdate(pageKeys, commandId, size, parameters);
+            return new DTransactionPreparedUpdate(pageKeys, commandId, parameters);
         }
     }
 }

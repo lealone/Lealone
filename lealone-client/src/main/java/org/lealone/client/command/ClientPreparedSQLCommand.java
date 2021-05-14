@@ -135,15 +135,14 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             }
             Packet packet;
             if (isDistributed()) {
-                packet = new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId, size,
+                packet = new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId,
                         values);
                 return session.<Result, DTransactionQueryAck> send(packet, ack -> {
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                     return getQueryResult(ack, fetch, resultId);
                 });
             } else {
-                packet = new PreparedStatementQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId, size,
-                        values);
+                packet = new PreparedStatementQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId, values);
                 return session.<Result, StatementQueryAck> send(packet, ack -> {
                     return getQueryResult(ack, fetch, resultId);
                 });
@@ -164,7 +163,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
             values[i] = parameters.get(i).getValue();
         }
         int packetId = session.getNextId();
-        Packet packet = new ReplicationPreparedUpdate(null, commandId, size, values, replicationName);
+        Packet packet = new ReplicationPreparedUpdate(null, commandId, values, replicationName);
         return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
             ack.setReplicaCommand(ClientPreparedSQLCommand.this);
             ack.setPacketId(packetId);
@@ -183,16 +182,16 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         }
         Packet packet;
         if (isDistributed()) {
-            packet = new DTransactionPreparedUpdate(pageKeys, commandId, size, values);
+            packet = new DTransactionPreparedUpdate(pageKeys, commandId, values);
             return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
                 session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                 return ack.updateCount;
             });
         } else {
             if (replicationName != null)
-                packet = new ReplicationPreparedUpdate(pageKeys, commandId, size, values, replicationName);
+                packet = new ReplicationPreparedUpdate(pageKeys, commandId, values, replicationName);
             else
-                packet = new PreparedStatementUpdate(pageKeys, commandId, size, values);
+                packet = new PreparedStatementUpdate(pageKeys, commandId, values);
             return session.<Integer, StatementUpdateAck> send(packet, ack -> {
                 return ack.updateCount;
             });

@@ -33,9 +33,9 @@ public class ReplicationPreparedUpdate extends PreparedStatementUpdate {
 
     public final String replicationName;
 
-    public ReplicationPreparedUpdate(List<PageKey> pageKeys, int commandId, int size, Value[] parameters,
+    public ReplicationPreparedUpdate(List<PageKey> pageKeys, int commandId, Value[] parameters,
             String replicationName) {
-        super(pageKeys, commandId, size, parameters);
+        super(pageKeys, commandId, parameters);
         this.replicationName = replicationName;
     }
 
@@ -67,7 +67,7 @@ public class ReplicationPreparedUpdate extends PreparedStatementUpdate {
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
             String replicationName = in.readString();
-            return new ReplicationPreparedUpdate(pageKeys, commandId, size, parameters, replicationName);
+            return new ReplicationPreparedUpdate(pageKeys, commandId, parameters, replicationName);
         }
     }
 }

@@ -31,8 +31,8 @@ import org.lealone.storage.PageKey;
 public class DTransactionPreparedQuery extends PreparedStatementQuery {
 
     public DTransactionPreparedQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize,
-            boolean scrollable, int commandId, int size, Value[] parameters) {
-        super(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId, size, parameters);
+            boolean scrollable, int commandId, Value[] parameters) {
+        super(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId, parameters);
     }
 
     @Override
@@ -60,8 +60,8 @@ public class DTransactionPreparedQuery extends PreparedStatementQuery {
             Value[] parameters = new Value[size];
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
-            return new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetchSize, scrollable,
-                    commandId, size, parameters);
+            return new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId,
+                    parameters);
         }
     }
 }
