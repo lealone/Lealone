@@ -173,11 +173,13 @@ public class Delete extends ManipulationStatement {
                 }
                 if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row row = tableFilter.get();
+                    int savepointId = session.getTransaction().getSavepointId();
                     if (!table.tryLockRow(session, row, true, null)) {
                         this.oldRow = row;
                         session.setStatus(SessionStatus.WAITING);
                         return;
                     }
+                    session.setCurrentLockedRow(row, savepointId);
                     boolean done = false;
                     if (table.fireRow()) {
                         done = table.fireBeforeRow(session, row, null);
@@ -203,6 +205,13 @@ public class Delete extends ManipulationStatement {
                 }
                 onComplete(ar);
             });
+        }
+
+        @Override
+        public void back() {
+            oldRow = session.getCurrentLockedRow();
+            loopEnd = false;
+            hasNext = true;
         }
     }
 }

@@ -68,6 +68,13 @@ public interface Session extends Closeable, Transaction.Participant {
         return getReplicationName() != null;
     }
 
+    public default SessionStatus getStatus() {
+        return SessionStatus.TRANSACTION_NOT_START;
+    }
+
+    public default void setStatus(SessionStatus sessionStatus) {
+    }
+
     /**
      * Check if this session is in auto-commit mode.
      *

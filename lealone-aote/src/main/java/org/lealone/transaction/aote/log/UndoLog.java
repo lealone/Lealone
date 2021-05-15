@@ -19,6 +19,7 @@ package org.lealone.transaction.aote.log;
 
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
+import java.util.List;
 
 import org.lealone.db.DataBuffer;
 import org.lealone.transaction.aote.AMTransactionEngine;
@@ -76,11 +77,20 @@ public class UndoLog {
         }
     }
 
-    public void rollbackTo(AMTransactionEngine transactionEngine, long toLogId) {
+    public void rollbackTo(AMTransactionEngine transactionEngine, int toLogId) {
         while (logId > toLogId) {
             UndoLogRecord r = undoLogRecords.removeLast();
             r.rollback(transactionEngine);
             --logId;
+        }
+    }
+
+    public void setRetryReplicationNames(List<String> retryReplicationNames, int toLogId) {
+        int index = logId - 1;
+        for (UndoLogRecord r : undoLogRecords) {
+            if (index-- < toLogId)
+                break;
+            r.setRetryReplicationNames(retryReplicationNames);
         }
     }
 

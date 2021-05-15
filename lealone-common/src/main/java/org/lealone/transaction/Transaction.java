@@ -18,11 +18,13 @@
 package org.lealone.transaction;
 
 import java.sql.Connection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.Session;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.storage.Storage;
 import org.lealone.storage.type.StorageDataType;
 
@@ -146,6 +148,8 @@ public interface Transaction {
 
     Transaction getLockedBy();
 
+    void setRetryReplicationNames(List<String> retryReplicationNames, int savepointId);
+
     interface Participant {
         void addSavepoint(String name);
 
@@ -234,6 +238,7 @@ public interface Transaction {
             // 避免重复调用
             if (transaction.getStatus() == STATUS_WAITING) {
                 transaction.setStatus(STATUS_OPEN);
+                transaction.getSession().setStatus(SessionStatus.RETRYING_RETURN_RESULT);
                 if (listener != null)
                     listener.wakeUp();
             }

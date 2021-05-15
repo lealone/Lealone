@@ -133,6 +133,7 @@ public class TcpServerConnection extends TransferConnection {
             // sessions这个字段并没有考虑放到调度器中，这样做的话光有sessionId作为key是不够的，
             // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
             // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
+            session.setTransactionListener(scheduler);
             SessionInfo si = new SessionInfo(scheduler, this, session, sessionId, tcpServer.getSessionTimeout());
             sessions.put(sessionId, si);
         }

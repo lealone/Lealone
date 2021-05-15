@@ -227,11 +227,13 @@ public class Update extends ManipulationStatement {
                 }
                 if (statement.condition == null || statement.condition.getBooleanValue(session)) {
                     Row oldRow = tableFilter.get();
+                    int savepointId = session.getTransaction().getSavepointId();
                     if (!table.tryLockRow(session, oldRow, true, statement.columns)) {
                         this.oldRow = oldRow;
                         session.setStatus(SessionStatus.WAITING);
                         return;
                     }
+                    session.setCurrentLockedRow(oldRow, savepointId);
                     Row newRow = createNewRow(oldRow);
                     table.validateConvertUpdateSequence(session, newRow);
                     boolean done = false;
@@ -279,6 +281,13 @@ public class Update extends ManipulationStatement {
                 }
                 onComplete(ar);
             });
+        }
+
+        @Override
+        public void back() {
+            oldRow = session.getCurrentLockedRow();
+            loopEnd = false;
+            hasNext = true;
         }
     }
 }

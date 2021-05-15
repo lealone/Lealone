@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -345,6 +346,11 @@ public class AMTransaction implements Transaction {
     }
 
     @Override
+    public void setRetryReplicationNames(List<String> retryReplicationNames, int savepointId) {
+        undoLog.setRetryReplicationNames(retryReplicationNames, savepointId);
+    }
+
+    @Override
     public void wakeUpWaitingTransaction(Transaction transaction) {
         wakeUpWaitingTransaction((AMTransaction) transaction);
     }
@@ -479,7 +485,7 @@ public class AMTransaction implements Transaction {
         rollbackTo(savepointId);
     }
 
-    private void rollbackTo(long toLogId) {
+    private void rollbackTo(int toLogId) {
         undoLog.rollbackTo(transactionEngine, toLogId);
     }
 

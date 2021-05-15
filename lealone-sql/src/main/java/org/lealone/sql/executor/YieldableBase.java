@@ -233,6 +233,11 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         return stopped;
     }
 
+    @Override
+    public void back() {
+        // do nothing
+    }
+
     public boolean yieldIfNeeded(int rowNumber) {
         return async && statement.setCurrentRowNumber(rowNumber);
     }

@@ -27,7 +27,7 @@ import org.lealone.sql.StatementBase;
 
 public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
 
-    private volatile boolean loopEnd;
+    protected volatile boolean loopEnd;
     protected int loopCount;
     protected final AtomicInteger updateCount = new AtomicInteger();
     protected final AtomicInteger pendingOperationCount = new AtomicInteger();
@@ -46,6 +46,7 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
 
     @Override
     protected void executeInternal() {
+        SessionStatus oldStatus = session.getStatus();
         if (!loopEnd) {
             executeLoopUpdate();
             if (session.getStatus() == SessionStatus.WAITING) {
@@ -57,12 +58,15 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
         }
         if (isCompleted()) {
             setResult(updateCount.get());
-            if (session.getReplicationName() != null && session.getStatus() != SessionStatus.RETRYING) {
-                session.setStatus(SessionStatus.STATEMENT_RUNNING);
-                AsyncResult<Integer> ar = asyncResult;
+            if (session.getReplicationName() != null) {
+                if (oldStatus != SessionStatus.RETRYING) {
+                    session.setStatus(SessionStatus.STATEMENT_RUNNING);
+                    AsyncResult<Integer> ar = asyncResult;
+                    asyncHandler.handle(ar);
+                } else {
+                    session.setReplicationName(null);
+                }
                 asyncResult = null; // 避免发送第二次
-                asyncHandler.handle(ar);
-                return;
             }
         }
     }

@@ -19,6 +19,7 @@ package org.lealone.transaction.aote;
 
 import java.nio.ByteBuffer;
 import java.util.BitSet;
+import java.util.List;
 
 import org.lealone.common.util.DataUtils;
 import org.lealone.common.util.UnsafeUtils;
@@ -39,6 +40,8 @@ public interface TransactionalValue {
     public TransactionalValue getOldValue();
 
     public void setOldValue(TransactionalValue oldValue);
+
+    public TransactionalValue getRef();
 
     public TransactionalValue getRefValue();
 
@@ -63,6 +66,13 @@ public interface TransactionalValue {
     public boolean isReplicated();
 
     public void setReplicated(boolean replicated);
+
+    public default List<String> getRetryReplicationNames() {
+        return null;
+    }
+
+    public default void setRetryReplicationNames(List<String> retryReplicationNames) {
+    }
 
     public void incrementVersion();
 
@@ -157,6 +167,7 @@ public interface TransactionalValue {
         private static final long valueOffset = UnsafeUtils.objectFieldOffset(TransactionalValueRef.class, "tv");
 
         private volatile TransactionalValue tv;
+        private List<String> retryReplicationNames;
 
         TransactionalValueRef(TransactionalValue transactionalValue) {
             tv = transactionalValue;
@@ -187,6 +198,11 @@ public interface TransactionalValue {
         @Override
         public boolean compareAndSet(TransactionalValue expect, TransactionalValue update) {
             return UnsafeUtils.compareAndSwapObject(this, valueOffset, expect, update);
+        }
+
+        @Override
+        public TransactionalValue getRef() {
+            return this;
         }
 
         @Override
@@ -237,6 +253,16 @@ public interface TransactionalValue {
         @Override
         public void setReplicated(boolean replicated) {
             tv.setReplicated(replicated);
+        }
+
+        @Override
+        public List<String> getRetryReplicationNames() {
+            return retryReplicationNames;
+        }
+
+        @Override
+        public void setRetryReplicationNames(List<String> retryReplicationNames) {
+            this.retryReplicationNames = retryReplicationNames;
         }
 
         @Override
@@ -311,6 +337,11 @@ public interface TransactionalValue {
         @Override
         public boolean compareAndSet(TransactionalValue expect, TransactionalValue update) {
             return true;
+        }
+
+        @Override
+        public TransactionalValue getRef() {
+            return null;
         }
 
         @Override
@@ -581,6 +612,7 @@ public interface TransactionalValue {
         private boolean rowLock;
         private BitSet lockedColumns;
         private int[] columnIndexes;
+        private List<String> retryReplicationNames;
 
         TransactionalValue ref;
 
@@ -649,6 +681,11 @@ public interface TransactionalValue {
         @Override
         public void setOldValue(TransactionalValue oldValue) {
             this.oldValue = oldValue;
+        }
+
+        @Override
+        public TransactionalValue getRef() {
+            return ref;
         }
 
         @Override
@@ -735,6 +772,16 @@ public interface TransactionalValue {
         @Override
         public void setReplicated(boolean replicated) {
             this.replicated = replicated;
+        }
+
+        @Override
+        public List<String> getRetryReplicationNames() {
+            return retryReplicationNames;
+        }
+
+        @Override
+        public void setRetryReplicationNames(List<String> retryReplicationNames) {
+            this.retryReplicationNames = retryReplicationNames;
         }
 
         @Override

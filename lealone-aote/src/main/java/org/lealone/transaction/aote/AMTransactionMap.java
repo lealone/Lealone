@@ -828,6 +828,31 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
         DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
         transaction.checkNotClosed();
         TransactionalValue ref = (TransactionalValue) oldTransactionalValue;
+        List<String> retryReplicationNames = ref.getRetryReplicationNames();
+        if (retryReplicationNames != null && !retryReplicationNames.isEmpty()) {
+            String name = retryReplicationNames.get(0);
+            if (name.equals(transaction.getSession().getReplicationName())) {
+                TransactionalValue refValue = ref.getRefValue();
+                TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, refValue.getValue(),
+                        refValue, map.getValueType(), columnIndexes, ref);
+                transaction.undoLog.add(getName(), key, refValue, newValue, true);
+                if (ref.compareAndSet(refValue, newValue)) {
+                    retryReplicationNames.remove(0);
+                    return true;
+                } else {
+                    if (addToWaitingQueue
+                            && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
+                        return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
+                    }
+                }
+            } else {
+                if (addToWaitingQueue
+                        && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {
+                    return tryLock(key, oldTransactionalValue, addToWaitingQueue, columnIndexes);
+                }
+                return false;
+            }
+        }
         if (ref.isLocked(transaction.transactionId, columnIndexes)) {
             if (addToWaitingQueue
                     && addWaitingTransaction(key, ref, columnIndexes) == Transaction.OPERATION_NEED_RETRY) {

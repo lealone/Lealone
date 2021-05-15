@@ -94,6 +94,16 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public SessionStatus getStatus() {
+        return session.getStatus();
+    }
+
+    @Override
+    public void setStatus(SessionStatus sessionStatus) {
+        session.setStatus(sessionStatus);
+    }
+
+    @Override
     public boolean isAutoCommit() {
         return session.isAutoCommit();
     }

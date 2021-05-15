@@ -1357,12 +1357,14 @@ public class ServerSession extends SessionBase {
 
     private SessionStatus sessionStatus = SessionStatus.TRANSACTION_NOT_START;
 
+    @Override
     public SessionStatus getStatus() {
         if (isExclusiveMode())
             return SessionStatus.EXCLUSIVE_MODE;
         return sessionStatus;
     }
 
+    @Override
     public void setStatus(SessionStatus sessionStatus) {
         // 在复制模式下执行带IF的DDL语句发生冲突时，只需发送一次结果即可
         if (sessionStatus == SessionStatus.RETRYING_RETURN_RESULT && currentCommand != null && currentCommand.isIfDDL()
@@ -1376,6 +1378,18 @@ public class ServerSession extends SessionBase {
     private ReplicationConflictType replicationConflictType;
     private long startKey, endKey;
     private Index appendIndex;
+
+    private Row currentLockedRow;
+    private int currentLockedRowSavepointId;
+
+    public Row getCurrentLockedRow() {
+        return currentLockedRow;
+    }
+
+    public void setCurrentLockedRow(Row currentLockedRow, int savepointId) {
+        this.currentLockedRow = currentLockedRow;
+        currentLockedRowSavepointId = savepointId;
+    }
 
     public long getStartKey() {
         return startKey;
@@ -1512,6 +1526,15 @@ public class ServerSession extends SessionBase {
     }
 
     private int ackVersion;
+    private Transaction.Listener transactionListener;
+
+    public Transaction.Listener getTransactionListener() {
+        return transactionListener;
+    }
+
+    public void setTransactionListener(Transaction.Listener transactionListener) {
+        this.transactionListener = transactionListener;
+    }
 
     public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
         if (replicationConflictType == null)
@@ -1547,12 +1570,26 @@ public class ServerSession extends SessionBase {
     }
 
     private void setRetryReplicationNames(List<String> retryReplicationNames) {
-        if (retryReplicationNames != null && !retryReplicationNames.isEmpty() && !locks.isEmpty()) {
-            for (int i = 0, size = locks.size(); i < size; i++) {
-                DbObjectLock lock = locks.get(i);
-                lock.setRetryReplicationNames(retryReplicationNames);
+        // if (!isAutoCommit())
+        // return;
+        if (retryReplicationNames != null && !retryReplicationNames.isEmpty()) {
+            if (!locks.isEmpty()) {
+                for (int i = 0, size = locks.size(); i < size; i++) {
+                    DbObjectLock lock = locks.get(i);
+                    lock.setRetryReplicationNames(retryReplicationNames);
+                }
             }
+            transaction.setRetryReplicationNames(retryReplicationNames, currentLockedRowSavepointId);
         }
+    }
+
+    private void replicaRollback(List<String> retryReplicationNames, Transaction owner) {
+        getTransaction().setRetryReplicationNames(retryReplicationNames, currentLockedRowSavepointId);
+        rollbackTo(currentLockedRowSavepointId);
+        owner.addWaitingTransaction(ValueLong.get(getCurrentLockedRow().getKey()), getTransaction(),
+                getTransactionListener());
+        yieldableCommand.yieldable.back();
+        setStatus(SessionStatus.WAITING);
     }
 
     public void handleReplicaConflict(List<String> retryReplicationNames) {
@@ -1562,9 +1599,16 @@ public class ServerSession extends SessionBase {
         if (replicationConflictType == null)
             replicationConflictType = ReplicationConflictType.NONE;
         switch (replicationConflictType) {
-        case ROW_LOCK:
+        case ROW_LOCK: { // 行锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+            retryReplicationNames.add(0, getReplicationName());
+            lockedExclusivelyBy.replicaRollback(retryReplicationNames, transaction);
+            lockedExclusivelyBy = null;
+            replicationConflictType = null;
+            sessionStatus = SessionStatus.RETRYING;
+            return;
+        }
         case DB_OBJECT_LOCK: {
-            // 行锁和数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
+            // 数据库对象锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
             if (lockedExclusivelyBy != null) {
                 // 重试复制名里也包含lockedExclusivelyBy
                 lockedExclusivelyBy.setRetryReplicationNames(retryReplicationNames);
