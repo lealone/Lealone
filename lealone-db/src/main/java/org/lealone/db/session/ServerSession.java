@@ -1527,6 +1527,7 @@ public class ServerSession extends SessionBase {
 
     private int ackVersion;
     private Transaction.Listener transactionListener;
+    private boolean isFinalResult;
 
     public Transaction.Listener getTransactionListener() {
         return transactionListener;
@@ -1534,6 +1535,15 @@ public class ServerSession extends SessionBase {
 
     public void setTransactionListener(Transaction.Listener transactionListener) {
         this.transactionListener = transactionListener;
+    }
+
+    public boolean isFinalResult() {
+        return isFinalResult;
+    }
+
+    @Override
+    public void setFinalResult(boolean isFinalResult) {
+        this.isFinalResult = isFinalResult;
     }
 
     public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
@@ -1555,18 +1565,19 @@ public class ServerSession extends SessionBase {
             key = endKey;
             break;
         }
+        Packet ack;
+        boolean isIfDDL = currentCommand != null && currentCommand.isIfDDL();
+        if (prepared)
+            ack = new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationName,
+                    replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
+        else
+            ack = new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationName, replicationConflictType,
+                    ++ackVersion, isIfDDL, isFinalResult);
 
         if (isAutoCommit()) {
             // TODO 把ReplicationName写入redo log，用于恢复
         }
-
-        boolean isIfDDL = currentCommand != null && currentCommand.isIfDDL();
-        if (prepared)
-            return new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationName,
-                    replicationConflictType, ++ackVersion, isIfDDL);
-        else
-            return new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationName,
-                    replicationConflictType, ++ackVersion, isIfDDL);
+        return ack;
     }
 
     private void setRetryReplicationNames(List<String> retryReplicationNames) {
@@ -1658,6 +1669,7 @@ public class ServerSession extends SessionBase {
         setReplicationName(null);
         lockedExclusivelyBy = null;
         replicationConflictType = null;
+        isFinalResult = false;
     }
 
     private byte[] lobMacSalt;

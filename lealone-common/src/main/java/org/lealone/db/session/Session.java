@@ -75,6 +75,9 @@ public interface Session extends Closeable, Transaction.Participant {
     public default void setStatus(SessionStatus sessionStatus) {
     }
 
+    public default void setFinalResult(boolean isFinalResult) {
+    }
+
     /**
      * Check if this session is in auto-commit mode.
      *

@@ -837,6 +837,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                         refValue, map.getValueType(), columnIndexes, ref);
                 transaction.undoLog.add(getName(), key, refValue, newValue, true);
                 if (ref.compareAndSet(refValue, newValue)) {
+                    transaction.getSession().setFinalResult(true);
                     retryReplicationNames.remove(0);
                     return true;
                 } else {

@@ -82,7 +82,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
     private void executeQuery(int maxRows, boolean scrollable, int tries, HashSet<ReplicaSQLCommand> seen,
             AsyncCallback<Result> ac) {
         AsyncHandler<AsyncResult<Result>> handler = ar -> {
-            if (ar.isFailed() && tries < session.maxTries) {
+            if (ar.isFailed() && tries < session.maxTries && tries < session.r) {
                 executeQuery(maxRows, scrollable, tries + 1, seen, ac);
             } else {
                 ac.setAsyncResult(ar);
@@ -90,12 +90,10 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
         };
         ReadResponseHandler<Result> readResponseHandler = new ReadResponseHandler<>(session, handler);
 
-        // 随机选择R个节点并行读，如果读不到再试其他节点
-        for (int i = 0; i < session.r; i++) {
-            ReplicaSQLCommand c = getRandomNode(seen);
-            if (c != null)
-                c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
-        }
+        // 随机选择1个节点，如果读不到再试其他节点
+        ReplicaSQLCommand c = getRandomNode(seen);
+        if (c != null)
+            c.executeQuery(maxRows, scrollable).onComplete(readResponseHandler);
     }
 
     @Override
@@ -119,7 +117,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                     ac.setAsyncResult(new AsyncResult<>(ar.getResult().updateCount));
             }
         };
-        // commands参数设为null，在handleReplicationConflict中处理提交或回滚
+        // commands参数设为null，在handleReplicationConflict中处理提交
         WriteResponseHandler<ReplicationUpdateAck> writeResponseHandler = new WriteResponseHandler<>(session, null,
                 finalResultHandler, replicationResultHandler);
 
@@ -147,6 +145,17 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
     private ReplicationUpdateAck handleReplicationConflict(String replicationName,
             List<ReplicationUpdateAck> ackResults) {
+        // 如果存在isFinalResult为true的响应结果就可以结束等待了
+        ReplicationUpdateAck ret = null;
+        for (ReplicationUpdateAck ack : ackResults) {
+            if (ack.isFinalResult) {
+                ret = ack;
+                ack.getReplicaCommand().removeAsyncCallback(ack.getPacketId());
+            }
+        }
+        if (ret != null)
+            return ret;
+
         ackResults = getLastAckResults(ackResults);
         if (ackResults == null)
             return null;
@@ -248,7 +257,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                                 long end = Long.parseLong(keys[1]);
                                 return new ReplicationUpdateAck(ack.updateCount, end, first,
                                         ack.uncommittedReplicationName, ack.replicationConflictType, ack.ackVersion,
-                                        ack.isIfDDL);
+                                        ack.isIfDDL, ack.isFinalResult);
                             }
                         }
                     }

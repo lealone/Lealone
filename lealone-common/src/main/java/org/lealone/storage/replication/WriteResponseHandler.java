@@ -31,6 +31,7 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
 
     private final ReplicaCommand[] commands;
     private final ReplicationResultHandler<T> replicationResultHandler;
+    private volatile boolean end;
 
     WriteResponseHandler(ReplicationSession session, ReplicaCommand[] commands,
             AsyncHandler<AsyncResult<T>> finalResultHandler) {
@@ -53,8 +54,6 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
         AsyncResult<T> ar = null;
         if (replicationResultHandler != null) {
             T ret = replicationResultHandler.handleResults(getResults());
-            // if (ret == null)
-            // reset(); // 复制发生成冲突后，当前事务返回的值无效，需要重置准备处理下一次的返回结果
             ar = new AsyncResult<>(ret);
         } else {
             ar = results.get(0);
@@ -64,8 +63,10 @@ class WriteResponseHandler<T> extends ReplicationHandler<T> {
                 c.handleReplicaConflict(null);
             }
         }
-        if (finalResultHandler != null) {
-            finalResultHandler.handle(ar);
+        if (!end) {
+            end = ar != null && ar.getResult() != null;
+            if (finalResultHandler != null)
+                finalResultHandler.handle(ar);
         }
     }
 

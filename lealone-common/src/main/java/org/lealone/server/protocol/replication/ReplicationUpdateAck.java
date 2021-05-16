@@ -35,11 +35,12 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     public final ReplicationConflictType replicationConflictType;
     public final int ackVersion; // 复制操作有可能返回多次，这个字段表示第几次返回响应结果
     public final boolean isIfDDL;
+    public final boolean isFinalResult;
     private ReplicaCommand replicaCommand;
     private int packetId;
 
     public ReplicationUpdateAck(int updateCount, long key, long first, String uncommittedReplicationName,
-            ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL) {
+            ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL, boolean isFinalResult) {
         super(updateCount);
         this.key = key;
         this.first = first;
@@ -48,6 +49,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
                 : replicationConflictType;
         this.ackVersion = ackVersion;
         this.isIfDDL = isIfDDL;
+        this.isFinalResult = isFinalResult;
     }
 
     @Override
@@ -80,6 +82,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
         out.writeInt(replicationConflictType.value);
         out.writeInt(ackVersion);
         out.writeBoolean(isIfDDL);
+        out.writeBoolean(isFinalResult);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -88,7 +91,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
         @Override
         public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
             return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readLong(), in.readString(),
-                    ReplicationConflictType.getType(in.readInt()), in.readInt(), in.readBoolean());
+                    ReplicationConflictType.getType(in.readInt()), in.readInt(), in.readBoolean(), in.readBoolean());
         }
     }
 }

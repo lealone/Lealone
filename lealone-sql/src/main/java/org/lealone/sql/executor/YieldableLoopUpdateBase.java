@@ -67,6 +67,10 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
                     session.setReplicationName(null);
                 }
                 asyncResult = null; // 避免发送第二次
+                if (session.isFinalResult() && session.isAutoCommit()) {
+                    session.setReplicationName(null);
+                    session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                }
             }
         }
     }

@@ -104,6 +104,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public void setFinalResult(boolean isFinalResult) {
+        session.setFinalResult(isFinalResult);
+    }
+
+    @Override
     public boolean isAutoCommit() {
         return session.isAutoCommit();
     }

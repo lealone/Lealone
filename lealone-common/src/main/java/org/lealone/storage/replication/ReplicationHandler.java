@@ -17,7 +17,7 @@
  */
 package org.lealone.storage.replication;
 
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.ArrayList;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
@@ -28,11 +28,9 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
     private final int totalBlockFor;
 
     protected final AsyncHandler<AsyncResult<T>> finalResultHandler;
-    protected final CopyOnWriteArrayList<AsyncResult<T>> results = new CopyOnWriteArrayList<>();
+    protected final ArrayList<AsyncResult<T>> results = new ArrayList<>();
 
-    private final CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
-
-    // private volatile boolean successful;
+    private final ArrayList<Throwable> exceptions = new ArrayList<>();
     private volatile boolean failed;
 
     public ReplicationHandler(int totalNodes, int totalBlockFor, AsyncHandler<AsyncResult<T>> finalResultHandler) {
@@ -54,13 +52,7 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
 
     private synchronized void handleResult(AsyncResult<T> result) {
         results.add(result);
-        // if (!successful && results.size() >= totalBlockFor) {
-        // successful = true;
-        // onSuccess();
-        // }
-
         if (results.size() >= totalBlockFor) {
-            // successful = true;
             onSuccess();
         }
     }
@@ -75,12 +67,5 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
                 finalResultHandler.handle(ar);
             }
         }
-    }
-
-    synchronized void reset() {
-        results.clear();
-        exceptions.clear();
-        // successful = false;
-        failed = false;
     }
 }
