@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -510,12 +511,11 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     private final DbObjectLock dbObjectLock = new DbObjectLockImpl(DbObjectType.INDEX);
-    private Map<String, Long> replicationNameToStartKeyMap;
+    private final ConcurrentHashMap<String, Long> replicationNameToStartKeyMap = new ConcurrentHashMap<>();
 
     @Override
     public boolean tryExclusiveAppendLock(ServerSession session) {
-        if (replicationNameToStartKeyMap != null
-                && replicationNameToStartKeyMap.containsKey(session.getReplicationName())) {
+        if (replicationNameToStartKeyMap.containsKey(session.getReplicationName())) {
             return true;
         }
         return dbObjectLock.tryExclusiveLock(session);
@@ -528,12 +528,13 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public void setReplicationNameToStartKeyMap(Map<String, Long> replicationNameToStartKeyMap) {
-        this.replicationNameToStartKeyMap = replicationNameToStartKeyMap;
+        this.replicationNameToStartKeyMap.putAll(replicationNameToStartKeyMap);
     }
 
     @Override
     public void removeReplicationName(String replicationName) {
-        replicationNameToStartKeyMap.remove(replicationName);
+        if (replicationName != null)
+            replicationNameToStartKeyMap.remove(replicationName);
     }
 
     @Override
@@ -543,8 +544,6 @@ public class StandardPrimaryIndex extends StandardIndex {
 
     @Override
     public long getStartKey(String replicationName) {
-        if (replicationNameToStartKeyMap == null)
-            return -1;
         Long startKey = replicationNameToStartKeyMap.get(replicationName);
         if (startKey != null)
             return startKey.longValue();

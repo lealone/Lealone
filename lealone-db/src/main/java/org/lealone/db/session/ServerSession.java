@@ -1369,9 +1369,8 @@ public class ServerSession extends SessionBase {
         if (sessionStatus == SessionStatus.RETRYING_RETURN_RESULT) {
             // 在复制模式下对无主键的表执行insert时，会当成append处理，
             // 如果客户端至少抢到了一个append锁，只需发送一次结果即可
-            if (replicationConflictType == ReplicationConflictType.APPEND
-                    && appendIndex.containsReplicationName(getReplicationName())) {
-                sessionStatus = SessionStatus.RETRYING;
+            if (appendReplicationName != null && replicationConflictType == ReplicationConflictType.APPEND) {
+                return;
             }
             // 在复制模式下执行带IF的DDL语句发生冲突时，只需发送一次结果即可
             if (currentCommand != null && currentCommand.isIfDDL() && ackVersion > 0) {
@@ -1554,6 +1553,9 @@ public class ServerSession extends SessionBase {
             uncommittedReplicationName = lockedExclusivelyBy.getReplicationName();
             break;
         case APPEND:
+            if (startKey >= 0) {
+                lockedExclusivelyBy = null;
+            }
             if (lockedExclusivelyBy != null) {
                 uncommittedReplicationName = lockedExclusivelyBy.getReplicationName();
             }
@@ -1647,17 +1649,17 @@ public class ServerSession extends SessionBase {
                 String replicationName = name.substring(colonIndex + 1);
                 replicationNameToStartKeyMap.put(replicationName, first);
             }
-            sessionStatus = SessionStatus.RETRYING;
             long maxKey = minKey + delta;
             appendIndex.setMaxKey(maxKey);
             appendIndex.setReplicationNameToStartKeyMap(replicationNameToStartKeyMap);
-            ServerSession session = lockedExclusivelyBy != null ? lockedExclusivelyBy : this;
             appendReplicationName = getReplicationName(); // 用于最后从ReplicationNameToStartKeyMap中删除
-            appendIndex.unlockAppend(session);
+            appendIndex.unlockAppend(this);
             if (lockedExclusivelyBy != null) {
-                lockedExclusivelyBy.setStatus(SessionStatus.RETRYING);
+                appendIndex.unlockAppend(lockedExclusivelyBy);
+                lockedExclusivelyBy.setStatus(SessionStatus.RETRYING_RETURN_RESULT);
                 lockedExclusivelyBy = null;
             }
+            sessionStatus = SessionStatus.RETRYING;
             return;
         }
         default:

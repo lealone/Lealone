@@ -91,6 +91,7 @@ public class Insert extends InsertBase {
             if (!isReplicationAppendMode && session.isReplicationMode() && table.getScanIndex(session).isAppendMode()) {
                 startKey = table.getScanIndex(session).getStartKey(session.getReplicationName());
                 if (startKey != -1) {
+                    session.setFinalResult(true);
                     isReplicationAppendMode = true;
                 } else {
                     // 在复制模式下append记录时，先获得一个rowId区间，然后需要在客户端做rowId区间冲突检测，最后再返回正确的rowId区间
