@@ -298,11 +298,31 @@ public interface Index extends SchemaObject {
         return 0;
     }
 
+    default void setMaxKey(long maxKey) {
+    }
+
     default boolean isAppendMode() {
         return false;
     }
 
-    default ServerSession compareAndSetUncommittedSession(ServerSession expect, ServerSession uncommittedSession) {
-        return null;
+    default boolean tryExclusiveAppendLock(ServerSession session) {
+        return true;
+    }
+
+    default void unlockAppend(ServerSession session) {
+    }
+
+    default void setReplicationNameToStartKeyMap(Map<String, Long> replicationNameToStartKeyMap) {
+    }
+
+    default void removeReplicationName(String replicationName) {
+    }
+
+    default boolean containsReplicationName(String replicationName) {
+        return false;
+    }
+
+    default long getStartKey(String replicationName) {
+        return -1;
     }
 }

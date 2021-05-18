@@ -29,7 +29,6 @@ import org.lealone.storage.replication.ReplicationConflictType;
 
 public class ReplicationUpdateAck extends StatementUpdateAck {
 
-    public final long key;
     public final long first;
     public String uncommittedReplicationName;
     public final ReplicationConflictType replicationConflictType;
@@ -39,10 +38,9 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     private ReplicaCommand replicaCommand;
     private int packetId;
 
-    public ReplicationUpdateAck(int updateCount, long key, long first, String uncommittedReplicationName,
+    public ReplicationUpdateAck(int updateCount, long first, String uncommittedReplicationName,
             ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL, boolean isFinalResult) {
         super(updateCount);
-        this.key = key;
         this.first = first;
         this.uncommittedReplicationName = uncommittedReplicationName;
         this.replicationConflictType = replicationConflictType == null ? ReplicationConflictType.NONE
@@ -76,7 +74,6 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
-        out.writeLong(key);
         out.writeLong(first);
         out.writeString(uncommittedReplicationName);
         out.writeInt(replicationConflictType.value);
@@ -90,7 +87,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationUpdateAck> {
         @Override
         public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readLong(), in.readString(),
+            return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readString(),
                     ReplicationConflictType.getType(in.readInt()), in.readInt(), in.readBoolean(), in.readBoolean());
         }
     }

@@ -88,11 +88,17 @@ public class Insert extends InsertBase {
 
         @Override
         protected void executeLoopUpdate() {
-            // 在复制模式下append记录时，先获得一个rowId区间，然后需要在客户端做rowId区间冲突检测，最后再返回正确的rowId区间
             if (!isReplicationAppendMode && session.isReplicationMode() && table.getScanIndex(session).isAppendMode()) {
-                handleReplicationAppend();
-                return;
+                startKey = table.getScanIndex(session).getStartKey(session.getReplicationName());
+                if (startKey != -1) {
+                    isReplicationAppendMode = true;
+                } else {
+                    // 在复制模式下append记录时，先获得一个rowId区间，然后需要在客户端做rowId区间冲突检测，最后再返回正确的rowId区间
+                    handleReplicationAppend();
+                    return;
+                }
             }
+
             if (yieldableQuery == null) {
                 while (pendingException == null && index < listSize) {
                     addRowInternal(createNewRow());

@@ -22,6 +22,7 @@ import org.lealone.sql.executor.YieldableLoopUpdateBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.storage.replication.ReplicationConflictType;
 
 /**
  * This class represents the statement
@@ -176,6 +177,7 @@ public class Delete extends ManipulationStatement {
                     int savepointId = session.getTransaction().getSavepointId();
                     if (!table.tryLockRow(session, row, true, null)) {
                         this.oldRow = row;
+                        session.setReplicationConflictType(ReplicationConflictType.ROW_LOCK);
                         session.setStatus(SessionStatus.WAITING);
                         return;
                     }

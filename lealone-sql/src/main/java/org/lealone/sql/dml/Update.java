@@ -34,6 +34,7 @@ import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.expression.ValueExpression;
 import org.lealone.sql.optimizer.PlanItem;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.storage.replication.ReplicationConflictType;
 
 /**
  * This class represents the statement
@@ -230,6 +231,7 @@ public class Update extends ManipulationStatement {
                     int savepointId = session.getTransaction().getSavepointId();
                     if (!table.tryLockRow(session, oldRow, true, statement.columns)) {
                         this.oldRow = oldRow;
+                        session.setReplicationConflictType(ReplicationConflictType.ROW_LOCK);
                         session.setStatus(SessionStatus.WAITING);
                         return;
                     }

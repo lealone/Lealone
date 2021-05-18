@@ -50,7 +50,7 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
         if (!loopEnd) {
             executeLoopUpdate();
             if (session.getStatus() == SessionStatus.WAITING) {
-                if (asyncHandler != null && session.needsHandleReplicationRowLockConflict()) {
+                if (asyncHandler != null && session.needsHandleReplicationConflict()) {
                     asyncHandler.handle(new AsyncResult<>(-1));
                 }
                 return;

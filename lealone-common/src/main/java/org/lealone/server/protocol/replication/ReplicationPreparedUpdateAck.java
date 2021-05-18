@@ -26,9 +26,9 @@ import org.lealone.storage.replication.ReplicationConflictType;
 
 public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
 
-    public ReplicationPreparedUpdateAck(int updateCount, long key, long first, String uncommittedReplicationName,
+    public ReplicationPreparedUpdateAck(int updateCount, long first, String uncommittedReplicationName,
             ReplicationConflictType replicationConflictType, int ackVersion, boolean isIfDDL, boolean isFinalResult) {
-        super(updateCount, key, first, uncommittedReplicationName, replicationConflictType, ackVersion, isIfDDL,
+        super(updateCount, first, uncommittedReplicationName, replicationConflictType, ackVersion, isIfDDL,
                 isFinalResult);
     }
 
@@ -42,7 +42,7 @@ public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationPreparedUpdateAck> {
         @Override
         public ReplicationPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong(), in.readLong(), in.readString(),
+            return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong(), in.readString(),
                     ReplicationConflictType.getType(in.readInt()), in.readInt(), in.readBoolean(), in.readBoolean());
         }
     }

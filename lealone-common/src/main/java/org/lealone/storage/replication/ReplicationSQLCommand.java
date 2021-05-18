@@ -200,7 +200,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             if (counter.incrementAndGet() >= quorum) {
                 validReplicationName = name;
             }
-            if (ack.first < minKey) {
+            if (ack.first >= 0 && ack.first < minKey) {
                 minKey = ack.first;
             }
         }
@@ -212,9 +212,9 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
             retryReplicationNames.remove(validReplicationName);
         }
 
-        ArrayList<String> appendReplicationNames = new ArrayList<>(groupResults.size() + 1);
-        ArrayList<String> replicationNames = new ArrayList<>(groupResults.size() + 1);
         if (validReplicationName.equals(replicationName) || retryReplicationNames.contains(replicationName)) {
+            ArrayList<String> appendReplicationNames = new ArrayList<>(groupResults.size() + 1);
+            ArrayList<String> replicationNames = new ArrayList<>(groupResults.size() + 1);
             appendReplicationNames.add(validReplicationName);
             for (String n : retryReplicationNames) {
                 appendReplicationNames.add(n);
@@ -223,13 +223,9 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                 String name = appendReplicationNames.get(i);
                 for (ReplicationUpdateAck ack : ackResults) {
                     if (ack.uncommittedReplicationName.equals(name)) {
-                        long first = ack.first;
-                        long end = ack.key;
-                        long size = end - first;
-                        first = minKey;
-                        end = first + size;
-                        minKey = end;
-                        replicationNames.add(first + "," + end + ":" + name);
+                        long first = minKey;
+                        minKey = first + ack.updateCount;
+                        replicationNames.add(first + "," + ack.updateCount + ":" + name);
                         break;
                     }
                 }
@@ -237,9 +233,11 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
 
             for (ReplicationUpdateAck ack : ackResults) {
                 ack.getReplicaCommand().removeAsyncCallback(ack.getPacketId());
-                ack.getReplicaCommand().handleReplicaConflict(replicationNames);
             }
             if (validReplicationName.equals(replicationName)) {
+                for (ReplicationUpdateAck ack : ackResults) {
+                    ack.getReplicaCommand().handleReplicaConflict(replicationNames);
+                }
                 for (ReplicationUpdateAck ack : ackResults) {
                     if (ack.uncommittedReplicationName.equals(validReplicationName)) {
                         return ack;
@@ -254,10 +252,8 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
                                 name = replicationNames.get(i);
                                 String[] keys = name.substring(0, name.indexOf(':')).split(",");
                                 long first = Long.parseLong(keys[0]);
-                                long end = Long.parseLong(keys[1]);
-                                return new ReplicationUpdateAck(ack.updateCount, end, first,
-                                        ack.uncommittedReplicationName, ack.replicationConflictType, ack.ackVersion,
-                                        ack.isIfDDL, ack.isFinalResult);
+                                return new ReplicationUpdateAck(ack.updateCount, first, ack.uncommittedReplicationName,
+                                        ack.replicationConflictType, ack.ackVersion, ack.isIfDDL, ack.isFinalResult);
                             }
                         }
                     }

@@ -24,6 +24,7 @@ import org.lealone.common.util.StatementBuilder;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.index.Index;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.Row;
 import org.lealone.db.session.ServerSession;
@@ -169,6 +170,7 @@ public abstract class InsertBase extends ManipulationStatement {
         Result rows;
         YieldableBase<Result> yieldableQuery;
         boolean isReplicationAppendMode;
+        long startKey = -1;
 
         public YieldableInsertBase(InsertBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
             super(statement, asyncHandler);
@@ -178,20 +180,17 @@ public abstract class InsertBase extends ManipulationStatement {
         }
 
         protected void handleReplicationAppend() {
-            long startKey = table.getScanIndex(session).getAndAddKey(listSize) + 1;
+            Index index = table.getScanIndex(session);
+            if (index.tryExclusiveAppendLock(session)) {
+                long startKey = index.getAndAddKey(listSize) + 1;
+                session.setStartKey(startKey);
+            } else {
+                session.setStartKey(-1);
+            }
+            session.setAppendCount(listSize);
+            session.setAppendIndex(index);
             session.setReplicationConflictType(ReplicationConflictType.APPEND);
-            session.setStartKey(startKey);
-            session.setEndKey(startKey + listSize);
-            ServerSession s = table.getScanIndex(session).compareAndSetUncommittedSession(null, session);
-            if (s != null) {
-                session.setLockedExclusivelyBy(s, ReplicationConflictType.APPEND);
-                session.setAppendIndex(table.getScanIndex(session));
-            }
             session.setStatus(SessionStatus.WAITING);
-            isReplicationAppendMode = true;
-            if (asyncHandler != null) {
-                asyncHandler.handle(new AsyncResult<>(-1));
-            }
         }
 
         protected Row createNewRow() {
@@ -214,7 +213,7 @@ public abstract class InsertBase extends ManipulationStatement {
                 }
             }
             if (isReplicationAppendMode) {
-                newRow.setKey(session.getStartKey() + index);
+                newRow.setKey(startKey + index);
             }
             return newRow;
         }
@@ -232,7 +231,7 @@ public abstract class InsertBase extends ManipulationStatement {
                 }
             }
             if (isReplicationAppendMode) {
-                newRow.setKey(session.getStartKey() + index);
+                newRow.setKey(startKey + index);
             }
             return newRow;
         }

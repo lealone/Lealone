@@ -21,6 +21,7 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
+import org.lealone.storage.replication.ReplicationConflictType;
 
 public class DefaultYieldableReplicationUpdate extends YieldableUpdateBase {
 
@@ -49,8 +50,9 @@ public class DefaultYieldableReplicationUpdate extends YieldableUpdateBase {
         // 返回的值为负数时，表示当前语句无法正常执行，需要等待其他事务释放锁
         if (updateCount < 0) {
             session.setStatus(SessionStatus.WAITING);
+            session.setReplicationConflictType(ReplicationConflictType.DB_OBJECT_LOCK);
             // 在复制模式下执行时，可以把结果返回给客户端做冲突检测
-            if (asyncHandler != null && session.needsHandleReplicationDbObjectLockConflict()) {
+            if (asyncHandler != null && session.needsHandleReplicationConflict()) {
                 asyncHandler.handle(asyncResult);
             }
         } else {

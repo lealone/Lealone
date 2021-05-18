@@ -1366,18 +1366,27 @@ public class ServerSession extends SessionBase {
 
     @Override
     public void setStatus(SessionStatus sessionStatus) {
-        // 在复制模式下执行带IF的DDL语句发生冲突时，只需发送一次结果即可
-        if (sessionStatus == SessionStatus.RETRYING_RETURN_RESULT && currentCommand != null && currentCommand.isIfDDL()
-                && ackVersion > 0) {
-            sessionStatus = SessionStatus.RETRYING;
+        if (sessionStatus == SessionStatus.RETRYING_RETURN_RESULT) {
+            // 在复制模式下对无主键的表执行insert时，会当成append处理，
+            // 如果客户端至少抢到了一个append锁，只需发送一次结果即可
+            if (replicationConflictType == ReplicationConflictType.APPEND
+                    && appendIndex.containsReplicationName(getReplicationName())) {
+                sessionStatus = SessionStatus.RETRYING;
+            }
+            // 在复制模式下执行带IF的DDL语句发生冲突时，只需发送一次结果即可
+            if (currentCommand != null && currentCommand.isIfDDL() && ackVersion > 0) {
+                sessionStatus = SessionStatus.RETRYING;
+            }
         }
         this.sessionStatus = sessionStatus;
     }
 
     private ServerSession lockedExclusivelyBy;
     private ReplicationConflictType replicationConflictType;
-    private long startKey, endKey;
+    private long startKey;
+    private int appendCount;
     private Index appendIndex;
+    private String appendReplicationName;
 
     private Row currentLockedRow;
     private int currentLockedRowSavepointId;
@@ -1391,48 +1400,34 @@ public class ServerSession extends SessionBase {
         currentLockedRowSavepointId = savepointId;
     }
 
-    public long getStartKey() {
-        return startKey;
-    }
-
     public void setStartKey(long startKey) {
         this.startKey = startKey;
     }
 
-    public void setEndKey(long endKey) {
-        this.endKey = endKey;
-    }
-
-    public void setLastRow(Row r) {
-        setLastIdentity(ValueLong.get(r.getKey()));
+    public void setAppendCount(int appendCount) {
+        this.appendCount = appendCount;
     }
 
     public void setAppendIndex(Index appendIndex) {
         this.appendIndex = appendIndex;
     }
 
-    public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy,
-            ReplicationConflictType replicationConflictType) {
+    public void setLastRow(Row r) {
+        setLastIdentity(ValueLong.get(r.getKey()));
+    }
+
+    public void setLockedExclusivelyBy(ServerSession lockedExclusivelyBy) {
         this.lockedExclusivelyBy = lockedExclusivelyBy;
-        setReplicationConflictType(replicationConflictType);
     }
 
     public void setReplicationConflictType(ReplicationConflictType replicationConflictType) {
         this.replicationConflictType = replicationConflictType;
     }
 
-    public boolean needsHandleReplicationRowLockConflict() {
-        return needsHandleReplicationLockConflict(ReplicationConflictType.ROW_LOCK);
-    }
-
-    public boolean needsHandleReplicationDbObjectLockConflict() {
-        return needsHandleReplicationLockConflict(ReplicationConflictType.DB_OBJECT_LOCK);
-    }
-
-    private boolean needsHandleReplicationLockConflict(ReplicationConflictType type) {
-        if (getReplicationName() != null && getTransaction().getLockedBy() != null) {
-            sessionStatus = SessionStatus.WAITING;
-            setLockedExclusivelyBy((ServerSession) getTransaction().getLockedBy().getSession(), type);
+    public boolean needsHandleReplicationConflict() {
+        if (lockedExclusivelyBy == null && getTransaction().getLockedBy() != null)
+            lockedExclusivelyBy = (ServerSession) getTransaction().getLockedBy().getSession();
+        if (getReplicationName() != null && replicationConflictType != ReplicationConflictType.NONE) {
             return true;
         }
         return false;
@@ -1520,6 +1515,8 @@ public class ServerSession extends SessionBase {
     }
 
     public boolean canExecuteNextCommand() {
+        if (sessionStatus == SessionStatus.RETRYING || sessionStatus == SessionStatus.RETRYING_RETURN_RESULT)
+            return false;
         // 在同一session中，只有前面一条SQL执行完后才可以执行下一条
         // 如果是复制模式，那就可以执行下一个任务(比如异步提交)
         return yieldableCommand == null || getReplicationName() != null;
@@ -1549,7 +1546,6 @@ public class ServerSession extends SessionBase {
     public Packet createReplicationUpdateAckPacket(int updateCount, boolean prepared) {
         if (replicationConflictType == null)
             replicationConflictType = ReplicationConflictType.NONE;
-        long key = -1;
         long first = -1;
         String uncommittedReplicationName = null;
         switch (replicationConflictType) {
@@ -1562,16 +1558,16 @@ public class ServerSession extends SessionBase {
                 uncommittedReplicationName = lockedExclusivelyBy.getReplicationName();
             }
             first = startKey;
-            key = endKey;
+            updateCount = appendCount;
             break;
         }
         Packet ack;
         boolean isIfDDL = currentCommand != null && currentCommand.isIfDDL();
         if (prepared)
-            ack = new ReplicationPreparedUpdateAck(updateCount, key, first, uncommittedReplicationName,
+            ack = new ReplicationPreparedUpdateAck(updateCount, first, uncommittedReplicationName,
                     replicationConflictType, ++ackVersion, isIfDDL, isFinalResult);
         else
-            ack = new ReplicationUpdateAck(updateCount, key, first, uncommittedReplicationName, replicationConflictType,
+            ack = new ReplicationUpdateAck(updateCount, first, uncommittedReplicationName, replicationConflictType,
                     ++ackVersion, isIfDDL, isFinalResult);
 
         if (isAutoCommit()) {
@@ -1605,10 +1601,13 @@ public class ServerSession extends SessionBase {
 
     public void handleReplicaConflict(List<String> retryReplicationNames) {
         ackVersion = 0;
-        setRetryReplicationNames(retryReplicationNames);
-
-        if (replicationConflictType == null)
+        if (replicationConflictType == null) {
             replicationConflictType = ReplicationConflictType.NONE;
+        }
+        if (replicationConflictType == ReplicationConflictType.ROW_LOCK
+                || replicationConflictType == ReplicationConflictType.DB_OBJECT_LOCK) {
+            setRetryReplicationNames(retryReplicationNames);
+        }
         switch (replicationConflictType) {
         case ROW_LOCK: { // 行锁发生冲突， 撤销lockedExclusivelyBy拥有的锁
             retryReplicationNames.add(0, getReplicationName());
@@ -1632,26 +1631,34 @@ public class ServerSession extends SessionBase {
             break;
         }
         case APPEND: {
-            for (int i = 0, size = retryReplicationNames.size(); i < size; i++) {
+            int size = retryReplicationNames.size();
+            HashMap<String, Long> replicationNameToStartKeyMap = new HashMap<>(size);
+            long minKey = Long.MAX_VALUE;
+            long delta = 0;
+            for (int i = 0; i < size; i++) {
                 String name = retryReplicationNames.get(i);
                 int colonIndex = name.indexOf(':');
                 String[] keys = name.substring(0, colonIndex).split(",");
                 long first = Long.parseLong(keys[0]);
-                long end = Long.parseLong(keys[1]);
+                int appendCount = Integer.parseInt(keys[1]);
+                delta += appendCount;
+                if (first < minKey)
+                    minKey = first;
                 String replicationName = name.substring(colonIndex + 1);
-                if (replicationName.equals(getReplicationName())) {
-                    startKey = first;
-                    endKey = end;
-                    if (appendIndex != null) {
-                        appendIndex.compareAndSetUncommittedSession(lockedExclusivelyBy, null);
-                        appendIndex = null;
-                        lockedExclusivelyBy = null;
-                    }
-                    sessionStatus = SessionStatus.RETRYING;
-                    return;
-                }
+                replicationNameToStartKeyMap.put(replicationName, first);
             }
-            break;
+            sessionStatus = SessionStatus.RETRYING;
+            long maxKey = minKey + delta;
+            appendIndex.setMaxKey(maxKey);
+            appendIndex.setReplicationNameToStartKeyMap(replicationNameToStartKeyMap);
+            ServerSession session = lockedExclusivelyBy != null ? lockedExclusivelyBy : this;
+            appendReplicationName = getReplicationName(); // 用于最后从ReplicationNameToStartKeyMap中删除
+            appendIndex.unlockAppend(session);
+            if (lockedExclusivelyBy != null) {
+                lockedExclusivelyBy.setStatus(SessionStatus.RETRYING);
+                lockedExclusivelyBy = null;
+            }
+            return;
         }
         default:
             // nothing to do
@@ -1666,6 +1673,11 @@ public class ServerSession extends SessionBase {
     }
 
     private void clean() {
+        if (appendIndex != null) {
+            appendIndex.removeReplicationName(appendReplicationName);
+            appendIndex = null;
+            appendReplicationName = null;
+        }
         setReplicationName(null);
         lockedExclusivelyBy = null;
         replicationConflictType = null;

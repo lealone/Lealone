@@ -12,17 +12,19 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.Constants;
+import org.lealone.db.DbObjectType;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.Future;
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexColumn;
 import org.lealone.db.index.IndexType;
+import org.lealone.db.lock.DbObjectLock;
+import org.lealone.db.lock.DbObjectLockImpl;
 import org.lealone.db.result.Row;
 import org.lealone.db.result.SearchRow;
 import org.lealone.db.result.SortOrder;
@@ -498,27 +500,56 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
+    public void setMaxKey(long maxKey) {
+        dataMap.setMaxKey(ValueLong.get(maxKey));
+    }
+
+    @Override
     public boolean isAppendMode() {
         return mainIndexColumn == -1;
     }
 
-    private final AtomicReference<ServerSession> uncommittedSessionRef = new AtomicReference<>();
+    private final DbObjectLock dbObjectLock = new DbObjectLockImpl(DbObjectType.INDEX);
+    private Map<String, Long> replicationNameToStartKeyMap;
 
-    public ServerSession getUncommittedSession() {
-        return uncommittedSessionRef.get();
+    @Override
+    public boolean tryExclusiveAppendLock(ServerSession session) {
+        if (replicationNameToStartKeyMap != null
+                && replicationNameToStartKeyMap.containsKey(session.getReplicationName())) {
+            return true;
+        }
+        return dbObjectLock.tryExclusiveLock(session);
     }
 
     @Override
-    public ServerSession compareAndSetUncommittedSession(ServerSession expect, ServerSession uncommittedSession) {
-        while (true) {
-            ServerSession old = uncommittedSessionRef.get();
-            if (uncommittedSessionRef.compareAndSet(expect, uncommittedSession))
-                return null;
-            else {
-                if (old == uncommittedSessionRef.get())
-                    return old;
-            }
-        }
+    public void unlockAppend(ServerSession session) {
+        dbObjectLock.unlock(session);
+    }
+
+    @Override
+    public void setReplicationNameToStartKeyMap(Map<String, Long> replicationNameToStartKeyMap) {
+        this.replicationNameToStartKeyMap = replicationNameToStartKeyMap;
+    }
+
+    @Override
+    public void removeReplicationName(String replicationName) {
+        replicationNameToStartKeyMap.remove(replicationName);
+    }
+
+    @Override
+    public boolean containsReplicationName(String replicationName) {
+        return replicationNameToStartKeyMap.containsKey(replicationName);
+    }
+
+    @Override
+    public long getStartKey(String replicationName) {
+        if (replicationNameToStartKeyMap == null)
+            return -1;
+        Long startKey = replicationNameToStartKeyMap.get(replicationName);
+        if (startKey != null)
+            return startKey.longValue();
+        else
+            return -1;
     }
 
     /**
