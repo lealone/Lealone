@@ -76,7 +76,8 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
     }
 
     @Override
-    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue,
+            boolean isLockedBySelf) {
         long tid = oldTransactionalValue.getTid();
         if (tid != 0 && tid != transaction.transactionId && tid % 2 == 1) {
             boolean isValid = transaction.transactionEngine.validateTransaction(tid, transaction);
@@ -86,7 +87,7 @@ public class AOTransactionMap<K, V> extends AMTransactionMap<K, V> {
                 return Transaction.OPERATION_NEED_WAIT;
             }
         }
-        int ret = super.tryUpdateOrRemove(key, value, columnIndexes, oldTransactionalValue);
+        int ret = super.tryUpdateOrRemove(key, value, columnIndexes, oldTransactionalValue, isLockedBySelf);
         if (ret == Transaction.OPERATION_COMPLETE) {
             oldTransactionalValue.incrementVersion();
             if (transaction.globalReplicationName != null)

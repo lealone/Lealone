@@ -91,6 +91,11 @@ public interface Index extends SchemaObject {
     }
 
     default Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        return update(session, oldRow, newRow, updateColumns, false);
+    }
+
+    default Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            boolean isLockedBySelf) {
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         remove(session, oldRow).onSuccess(v -> {
             add(session, newRow).onComplete(ar -> {
@@ -109,6 +114,10 @@ public interface Index extends SchemaObject {
      * @param row the row
      */
     default Future<Integer> remove(ServerSession session, Row row) {
+        return remove(session, row, false);
+    }
+
+    default Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         throw DbException.getUnsupportedException("remove row");
     }
 

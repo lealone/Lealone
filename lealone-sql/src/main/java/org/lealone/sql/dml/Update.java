@@ -277,7 +277,7 @@ public class Update extends ManipulationStatement {
         }
 
         private void updateRow(Row oldRow, Row newRow) {
-            table.updateRow(session, oldRow, newRow, statement.columns).onComplete(ar -> {
+            table.updateRow(session, oldRow, newRow, statement.columns, true).onComplete(ar -> {
                 if (ar.isSucceeded() && table.fireRow()) {
                     table.fireAfterRow(session, oldRow, newRow, false);
                 }

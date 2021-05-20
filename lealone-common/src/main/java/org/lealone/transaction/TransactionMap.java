@@ -103,14 +103,22 @@ public interface TransactionMap<K, V> extends StorageMap<K, V> {
         return tryUpdate(key, newValue, columnIndexes, oldTransactionalValue);
     }
 
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue);
+    public default int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue) {
+        return tryUpdate(key, newValue, columnIndexes, oldTransactionalValue, false);
+    }
+
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue, boolean isLockedBySelf);
 
     public default int tryRemove(K key) {
         Object oldTransactionalValue = getTransactionalValue(key);
         return tryRemove(key, oldTransactionalValue);
     }
 
-    public int tryRemove(K key, Object oldTransactionalValue);
+    public default int tryRemove(K key, Object oldTransactionalValue) {
+        return tryRemove(key, oldTransactionalValue, false);
+    }
+
+    public int tryRemove(K key, Object oldTransactionalValue, boolean isLockedBySelf);
 
     public default boolean tryLock(K key) {
         Object oldTransactionalValue = getTransactionalValue(key);

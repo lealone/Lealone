@@ -101,7 +101,7 @@ public class StandardSecondaryIndex extends StandardIndex {
             if (ar.isFailed()) {
                 // 违反了唯一性，
                 // 或者byte/short/int/long类型的primary key + 约束字段构成的索引
-                // 因为StandardPrimaryIndex和StandardSecondaryIndex的tryAdd是异步并行执行的，
+                // 因为StandardPrimaryIndex和StandardSecondaryIndex的add是异步并行执行的，
                 // 有可能先跑StandardSecondaryIndex先，所以可能得到相同的索引key，
                 // 这时StandardPrimaryIndex和StandardSecondaryIndex都会检测到重复key的异常。
                 DbException e = getDuplicateKeyException(array.toString());
@@ -114,26 +114,27 @@ public class StandardSecondaryIndex extends StandardIndex {
     }
 
     @Override
-    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            boolean isLockedBySelf) {
         // 只有索引字段被更新时才更新索引
         for (Column c : columns) {
             if (updateColumns.contains(c)) {
-                return super.update(session, oldRow, newRow, updateColumns);
+                return super.update(session, oldRow, newRow, updateColumns, isLockedBySelf);
             }
         }
         return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row) {
+    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         TransactionMap<Value, Value> map = getMap(session);
         ValueArray array = convertToKey(row);
         Object oldTransactionalValue = map.getTransactionalValue(array);
-        if (map.isLocked(oldTransactionalValue, null))
+        if (!isLockedBySelf && map.isLocked(oldTransactionalValue, null))
             return Future.succeededFuture(
                     map.addWaitingTransaction(ValueLong.get(row.getKey()), oldTransactionalValue, null));
         else
-            return Future.succeededFuture(map.tryRemove(array, oldTransactionalValue));
+            return Future.succeededFuture(map.tryRemove(array, oldTransactionalValue, isLockedBySelf));
     }
 
     @Override

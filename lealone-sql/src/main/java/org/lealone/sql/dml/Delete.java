@@ -201,7 +201,7 @@ public class Delete extends ManipulationStatement {
         }
 
         private void removeRow(Row row) {
-            table.removeRow(session, row).onComplete(ar -> {
+            table.removeRow(session, row, true).onComplete(ar -> {
                 if (ar.isSucceeded() && table.fireRow()) {
                     table.fireAfterRow(session, row, null, false);
                 }

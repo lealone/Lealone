@@ -346,7 +346,8 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            boolean isLockedBySelf) {
         newRow.setVersion(getVersion());
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
@@ -358,7 +359,7 @@ public class StandardTable extends Table {
             // 第一个是PrimaryIndex
             for (int i = 0; i < size; i++) {
                 Index index = indexesExcludeDelegate.get(i);
-                index.update(session, oldRow, newRow, updateColumns).onComplete(ar -> {
+                index.update(session, oldRow, newRow, updateColumns, isLockedBySelf).onComplete(ar -> {
                     if (count.decrementAndGet() == 0) {
                         ac.setAsyncResult(ar);
                     }
@@ -373,7 +374,7 @@ public class StandardTable extends Table {
     }
 
     @Override
-    public Future<Integer> removeRow(ServerSession session, Row row) {
+    public Future<Integer> removeRow(ServerSession session, Row row, boolean isLockedBySelf) {
         lastModificationId = database.getNextModificationDataId();
         Transaction t = session.getTransaction();
         int savepointId = t.getSavepointId();
@@ -383,7 +384,7 @@ public class StandardTable extends Table {
         try {
             for (int i = size - 1; i >= 0; i--) {
                 Index index = indexesExcludeDelegate.get(i);
-                index.remove(session, row).onComplete(ar -> {
+                index.remove(session, row, isLockedBySelf).onComplete(ar -> {
                     if (count.decrementAndGet() == 0) {
                         ac.setAsyncResult(ar);
                     }

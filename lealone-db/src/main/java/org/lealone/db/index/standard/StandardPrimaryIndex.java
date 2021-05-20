@@ -172,7 +172,8 @@ public class StandardPrimaryIndex extends StandardIndex {
     }
 
     @Override
-    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+    public Future<Integer> update(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            boolean isLockedBySelf) {
         if (mainIndexColumn != -1) {
             Column c = columns[mainIndexColumn];
             if (updateColumns.contains(c)) {
@@ -180,7 +181,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 Value newKey = newRow.getValue(mainIndexColumn);
                 // 修改了主键字段并且新值与旧值不同时才会册除原有的并增加新的，因为这种场景下性能慢一些
                 if (!oldKey.equals(newKey)) {
-                    return super.update(session, oldRow, newRow, updateColumns);
+                    return super.update(session, oldRow, newRow, updateColumns, isLockedBySelf);
                 } else if (updateColumns.size() == 1) { // 新值与旧值相同，并且只更新主键时什么都不用做
                     return Future.succeededFuture(Transaction.OPERATION_COMPLETE);
                 }
@@ -193,7 +194,7 @@ public class StandardPrimaryIndex extends StandardIndex {
             columnIndexes[i] = updateColumns.get(i).getColumnId();
         }
         TransactionMap<Value, VersionedValue> map = getMap(session);
-        if (map.isLocked(oldRow.getRawValue(), columnIndexes))
+        if (!isLockedBySelf && map.isLocked(oldRow.getRawValue(), columnIndexes))
             return Future.succeededFuture(
                     map.addWaitingTransaction(ValueLong.get(oldRow.getKey()), oldRow.getRawValue(), null));
 
@@ -217,18 +218,18 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
         VersionedValue newValue = new VersionedValue(newRow.getVersion(), ValueArray.get(newRow.getValueList()));
         Value key = ValueLong.get(newRow.getKey());
-        int ret = map.tryUpdate(key, newValue, columnIndexes, oldRow.getRawValue());
+        int ret = map.tryUpdate(key, newValue, columnIndexes, oldRow.getRawValue(), isLockedBySelf);
         session.setLastRow(newRow);
         return Future.succeededFuture(ret);
     }
 
     @Override
-    public Future<Integer> remove(ServerSession session, Row row) {
+    public Future<Integer> remove(ServerSession session, Row row, boolean isLockedBySelf) {
         Value key = ValueLong.get(row.getKey());
         Object oldTransactionalValue = row.getRawValue();
         TransactionMap<Value, VersionedValue> map = getMap(session);
 
-        if (map.isLocked(oldTransactionalValue, null))
+        if (!isLockedBySelf && map.isLocked(oldTransactionalValue, null))
             return Future.succeededFuture(map.addWaitingTransaction(key, oldTransactionalValue, null));
 
         if (table.containsLargeObject()) {
@@ -239,7 +240,7 @@ public class StandardPrimaryIndex extends StandardIndex {
                 }
             }
         }
-        return Future.succeededFuture(map.tryRemove(key, oldTransactionalValue));
+        return Future.succeededFuture(map.tryRemove(key, oldTransactionalValue, isLockedBySelf));
     }
 
     @Override

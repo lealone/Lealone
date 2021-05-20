@@ -270,6 +270,11 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      * @param newRow the new row
      */
     public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns) {
+        return updateRow(session, oldRow, newRow, updateColumns, false);
+    }
+
+    public Future<Integer> updateRow(ServerSession session, Row oldRow, Row newRow, List<Column> updateColumns,
+            boolean isLockedBySelf) {
         throw newUnsupportedException();
     }
 
@@ -280,6 +285,10 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
      * @param row the row
      */
     public Future<Integer> removeRow(ServerSession session, Row row) {
+        return removeRow(session, row, false);
+    }
+
+    public Future<Integer> removeRow(ServerSession session, Row row, boolean isLockedBySelf) {
         throw newUnsupportedException();
     }
 

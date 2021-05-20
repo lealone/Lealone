@@ -173,7 +173,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
             addIfAbsent(key, value).onSuccess(r -> listener.operationComplete())
                     .onFailure(t -> listener.operationUndo());
         } else {
-            if (tryUpdateOrRemove(key, value, null, oldTransactionalValue) == Transaction.OPERATION_COMPLETE)
+            if (tryUpdateOrRemove(key, value, null, oldTransactionalValue, false) == Transaction.OPERATION_COMPLETE)
                 listener.operationComplete();
             else
                 listener.operationUndo();
@@ -742,26 +742,36 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
     }
 
     @Override
-    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue) {
+    public int tryUpdate(K key, V newValue, int[] columnIndexes, Object oldTransactionalValue, boolean isLockedBySelf) {
         DataUtils.checkNotNull(newValue, "newValue");
-        return tryUpdateOrRemove(key, newValue, columnIndexes, (TransactionalValue) oldTransactionalValue);
+        return tryUpdateOrRemove(key, newValue, columnIndexes, (TransactionalValue) oldTransactionalValue,
+                isLockedBySelf);
     }
 
     @Override
-    public int tryRemove(K key, Object oldTransactionalValue) {
-        return tryUpdateOrRemove(key, null, null, (TransactionalValue) oldTransactionalValue);
+    public int tryRemove(K key, Object oldTransactionalValue, boolean isLockedBySelf) {
+        return tryUpdateOrRemove(key, null, null, (TransactionalValue) oldTransactionalValue, isLockedBySelf);
     }
 
     // 在SQL层对应update或delete语句，用于支持行锁和列锁。
     // 如果当前行(或列)已经被其他事务锁住了那么返回一个非Transaction.OPERATION_COMPLETE值表示更新或删除失败了，
     // 当前事务要让出当前线程。
     // 当value为null时代表delete，否则代表update。
-    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue) {
+    protected int tryUpdateOrRemove(K key, V value, int[] columnIndexes, TransactionalValue oldTransactionalValue,
+            boolean isLockedBySelf) {
         DataUtils.checkNotNull(oldTransactionalValue, "oldTransactionalValue");
         transaction.checkNotClosed();
         String mapName = getName();
         // 进入循环前先取出原来的值
         TransactionalValue refValue = oldTransactionalValue.getRefValue();
+        if (isLockedBySelf) {
+            TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
+                    map.getValueType(), columnIndexes, oldTransactionalValue);
+            transaction.undoLog.add(mapName, key, refValue, newValue);
+            if (!oldTransactionalValue.compareAndSet(refValue, newValue))
+                throw DbException.throwInternalError();
+            return Transaction.OPERATION_COMPLETE;
+        }
         // 不同事务更新不同字段时，在循环里重试是可以的
         while (!oldTransactionalValue.isLocked(transaction.transactionId, columnIndexes)) {
             TransactionalValue newValue = TransactionalValue.createUncommitted(transaction, value, refValue,
