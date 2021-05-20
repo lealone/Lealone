@@ -57,7 +57,7 @@ public class LZFInputStream extends InputStream {
             try {
                 decompress.expand(inBuffer, 0, len, buffer, 0, size);
             } catch (ArrayIndexOutOfBoundsException e) {
-                DbException.convertToIOException(e);
+                throw DbException.convertToIOException(e);
             }
             this.bufferLength = size;
         }
@@ -83,6 +83,7 @@ public class LZFInputStream extends InputStream {
         return x;
     }
 
+    @Override
     public int read() throws IOException {
         fillBuffer();
         if (pos >= bufferLength) {
@@ -91,10 +92,12 @@ public class LZFInputStream extends InputStream {
         return buffer[pos++] & 255;
     }
 
+    @Override
     public int read(byte[] b) throws IOException {
         return read(b, 0, b.length);
     }
 
+    @Override
     public int read(byte[] b, int off, int len) throws IOException {
         if (len == 0) {
             return 0;
@@ -124,6 +127,7 @@ public class LZFInputStream extends InputStream {
         return max;
     }
 
+    @Override
     public void close() throws IOException {
         in.close();
     }
