@@ -183,6 +183,8 @@ public class SelectTest extends SqlTestBase {
     }
 
     void testCreateFromSelect() throws Exception {
+        createTable("SelectTest");
+        testInsert();
         sql = "CREATE TABLE IF NOT EXISTS SelectTest2 AS SELECT * FROM SelectTest";
         executeUpdate(sql);
         sql = "SELECT count(*) FROM SelectTest2";

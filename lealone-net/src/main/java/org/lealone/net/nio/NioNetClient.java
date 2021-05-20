@@ -104,23 +104,29 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
             return;
 
         ClientAttachment attachment = (ClientAttachment) att;
-        AsyncConnection conn;
-        channel.finishConnect();
-        nioEventLoopAdapter.addSocketChannel(channel);
-        NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
-        if (attachment.connectionManager != null) {
-            conn = attachment.connectionManager.createConnection(writableChannel, false);
-        } else {
-            conn = new TcpClientConnection(writableChannel, this);
+        try {
+            AsyncConnection conn;
+            channel.finishConnect();
+            nioEventLoopAdapter.addSocketChannel(channel);
+            NioWritableChannel writableChannel = new NioWritableChannel(channel, this);
+            if (attachment.connectionManager != null) {
+                conn = attachment.connectionManager.createConnection(writableChannel, false);
+            } else {
+                conn = new TcpClientConnection(writableChannel, this);
+            }
+            conn.setInetSocketAddress(attachment.inetSocketAddress);
+            AsyncConnection conn2 = addConnection(attachment.inetSocketAddress, conn);
+            attachment.conn = conn2;
+            if (attachment.ac != null) {
+                attachment.ac.setAsyncResult(conn2);
+            }
+            if (conn2 == conn)
+                channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
+        } catch (Exception e) {
+            if (attachment.ac != null) {
+                attachment.ac.setAsyncResult(e);
+            }
         }
-        conn.setInetSocketAddress(attachment.inetSocketAddress);
-        AsyncConnection conn2 = addConnection(attachment.inetSocketAddress, conn);
-        attachment.conn = conn2;
-        if (attachment.ac != null) {
-            attachment.ac.setAsyncResult(conn2);
-        }
-        if (conn2 == conn)
-            channel.register(nioEventLoopAdapter.getSelector(), SelectionKey.OP_READ, attachment);
     }
 
     private static class ClientAttachment extends NioNetServer.Attachment {
