@@ -31,7 +31,7 @@
 
     <properties>
         <netty.version>4.1.60.Final</netty.version>
-        <vertx.version>4.0.0</vertx.version>
+        <vertx.version>4.0.3</vertx.version>
     </properties>
 
     <dependencies>
