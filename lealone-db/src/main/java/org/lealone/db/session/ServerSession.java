@@ -851,6 +851,10 @@ public class ServerSession extends SessionBase {
     }
 
     public <T> void stopCurrentCommand(AsyncHandler<AsyncResult<T>> asyncHandler, AsyncResult<T> asyncResult) {
+        if (lastReplicationName != null && isAutoCommit()) {
+            getTransaction().replicaCommit(lastReplicationName);
+            lastReplicationName = null;
+        }
         closeTemporaryResults();
         closeCurrentCommand();
         // 发生复制冲突时当前session进行重试，此时已经不需要再向客户端返回结果了，直接提交即可
@@ -1524,6 +1528,13 @@ public class ServerSession extends SessionBase {
     private int ackVersion;
     private Transaction.Listener transactionListener;
     private boolean isFinalResult;
+    private String lastReplicationName;
+
+    @Override
+    public void setReplicationName(String replicationName) {
+        super.setReplicationName(replicationName);
+        this.lastReplicationName = replicationName;
+    }
 
     public Transaction.Listener getTransactionListener() {
         return transactionListener;
@@ -1553,7 +1564,7 @@ public class ServerSession extends SessionBase {
             uncommittedReplicationName = lockedExclusivelyBy.getReplicationName();
             break;
         case APPEND:
-            if (startKey >= 0) {
+            if (startKey >= 0) { // 第一次返回-1，第二次重试成功后需要把第一次的lockedExclusivelyBy变为null
                 lockedExclusivelyBy = null;
             }
             if (lockedExclusivelyBy != null) {
@@ -1573,7 +1584,9 @@ public class ServerSession extends SessionBase {
                     ++ackVersion, isIfDDL, isFinalResult);
 
         if (isAutoCommit()) {
-            // TODO 把ReplicationName写入redo log，用于恢复
+            // 写入一条redo log，用于恢复
+            getTransaction().replicaPrepareCommit(currentCommand.getSQL(), updateCount, first,
+                    uncommittedReplicationName, getReplicationName(), replicationConflictType);
         }
         return ack;
     }

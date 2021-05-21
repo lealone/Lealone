@@ -26,6 +26,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.storage.Storage;
+import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.storage.type.StorageDataType;
 
 public interface Transaction {
@@ -149,6 +150,11 @@ public interface Transaction {
     Transaction getLockedBy();
 
     void setRetryReplicationNames(List<String> retryReplicationNames, int savepointId);
+
+    void replicaPrepareCommit(String sql, int updateCount, long first, String uncommittedReplicationName,
+            String currentReplicationName, ReplicationConflictType replicationConflictType);
+
+    void replicaCommit(String currentReplicationName);
 
     interface Participant {
         void addSavepoint(String name);

@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +33,8 @@ import org.lealone.storage.fs.FileUtils;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.aote.TransactionalValue;
 import org.lealone.transaction.aote.TransactionalValueType;
+import org.lealone.transaction.aote.log.RedoLogRecord.ReplicaCommitRedoLogRecord;
+import org.lealone.transaction.aote.log.RedoLogRecord.ReplicaPrepareCommitRedoLogRecord;
 
 /**
  * A redo log
@@ -88,12 +91,20 @@ public class RedoLog {
         if (ids.isEmpty()) {
             currentChunk = new RedoLogChunk(0, config);
         } else {
+            LinkedHashMap<String, ReplicaPrepareCommitRedoLogRecord> replicaPrepareCommitMap = new LinkedHashMap<>();
             int lastId = ids.get(ids.size() - 1);
             for (int id : ids) {
                 RedoLogChunk chunk = null;
                 try {
                     chunk = new RedoLogChunk(id, config);
                     for (RedoLogRecord r : chunk.getAndResetRedoLogRecords()) {
+                        if (r instanceof ReplicaPrepareCommitRedoLogRecord) {
+                            ReplicaPrepareCommitRedoLogRecord rpc = (ReplicaPrepareCommitRedoLogRecord) r;
+                            replicaPrepareCommitMap.put(rpc.getCurrentReplicationName(), rpc);
+                        } else if (r instanceof ReplicaCommitRedoLogRecord) {
+                            ReplicaCommitRedoLogRecord rc = (ReplicaCommitRedoLogRecord) r;
+                            replicaPrepareCommitMap.remove(rc.getCurrentReplicationName());
+                        }
                         lastTransactionId = r.initPendingRedoLog(pendingRedoLog, lastTransactionId);
                     }
                 } finally {
@@ -105,8 +116,16 @@ public class RedoLog {
                         chunk.close();
                 }
             }
+            redoReplicaPrepareCommit(replicaPrepareCommitMap);
         }
         return lastTransactionId;
+    }
+
+    private void redoReplicaPrepareCommit(
+            LinkedHashMap<String, ReplicaPrepareCommitRedoLogRecord> replicaPrepareCommitMap) {
+        for (ReplicaPrepareCommitRedoLogRecord r : replicaPrepareCommitMap.values()) {
+            r.redo();
+        }
     }
 
     // 第一次打开底层存储的map时调用这个方法，重新执行一次上次已经成功并且在检查点之后的事务操作

@@ -32,6 +32,7 @@ import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.Session;
 import org.lealone.storage.Storage;
 import org.lealone.storage.StorageMap;
+import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.storage.type.ObjectDataType;
 import org.lealone.storage.type.StorageDataType;
 import org.lealone.transaction.Transaction;
@@ -348,6 +349,20 @@ public class AMTransaction implements Transaction {
     @Override
     public void setRetryReplicationNames(List<String> retryReplicationNames, int savepointId) {
         undoLog.setRetryReplicationNames(retryReplicationNames, savepointId);
+    }
+
+    @Override
+    public void replicaPrepareCommit(String sql, int updateCount, long first, String uncommittedReplicationName,
+            String currentReplicationName, ReplicationConflictType replicationConflictType) {
+        RedoLogRecord r = RedoLogRecord.createReplicaPrepareCommitRedoLogRecord(sql, updateCount, first,
+                uncommittedReplicationName, currentReplicationName, replicationConflictType);
+        logSyncService.addAndMaybeWaitForSync(r);
+    }
+
+    @Override
+    public void replicaCommit(String currentReplicationName) {
+        RedoLogRecord r = RedoLogRecord.createReplicaCommitRedoLogRecord(currentReplicationName);
+        logSyncService.addRedoLogRecord(r); // 不需要等待
     }
 
     @Override

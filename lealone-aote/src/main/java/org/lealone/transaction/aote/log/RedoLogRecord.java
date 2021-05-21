@@ -26,6 +26,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
 import org.lealone.db.DataBuffer;
 import org.lealone.db.value.ValueString;
+import org.lealone.storage.replication.ReplicationConflictType;
 import org.lealone.transaction.aote.AMTransactionEngine;
 
 public abstract class RedoLogRecord {
@@ -36,6 +37,8 @@ public abstract class RedoLogRecord {
     private static byte TYPE_DROPPED_MAP_REDO_LOG_RECORD = 1;
     private static byte TYPE_LOCAL_TRANSACTION_REDO_LOG_RECORD = 2;
     private static byte TYPE_DISTRIBUTED_TRANSACTION_REDO_LOG_RECORD = 3;
+    private static byte TYPE_REPLICA_PREPARE_COMMIT_REDO_LOG_RECORD = 4;
+    private static byte TYPE_REPLICA_COMMIT_REDO_LOG_RECORD = 5;
 
     private volatile boolean synced;
 
@@ -65,6 +68,10 @@ public abstract class RedoLogRecord {
             return LocalTransactionRedoLogRecord.read(buff);
         } else if (type == TYPE_DISTRIBUTED_TRANSACTION_REDO_LOG_RECORD) {
             return DistributedTransactionRedoLogRecord.read(buff);
+        } else if (type == TYPE_REPLICA_PREPARE_COMMIT_REDO_LOG_RECORD) {
+            return ReplicaPrepareCommitRedoLogRecord.read(buff);
+        } else if (type == TYPE_REPLICA_COMMIT_REDO_LOG_RECORD) {
+            return ReplicaCommitRedoLogRecord.read(buff);
         } else {
             throw DbException.throwInternalError("unknow type: " + type);
         }
@@ -93,6 +100,17 @@ public abstract class RedoLogRecord {
     public static LazyTransactionRedoLogRecord createLazyTransactionRedoLogRecord(AMTransactionEngine transactionEngine,
             long transactionId, UndoLog undoLog) {
         return new LazyTransactionRedoLogRecord(transactionEngine, transactionId, undoLog);
+    }
+
+    public static ReplicaPrepareCommitRedoLogRecord createReplicaPrepareCommitRedoLogRecord(String sql, int updateCount,
+            long first, String uncommittedReplicationName, String currentReplicationName,
+            ReplicationConflictType replicationConflictType) {
+        return new ReplicaPrepareCommitRedoLogRecord(sql, updateCount, first, uncommittedReplicationName,
+                currentReplicationName, replicationConflictType);
+    }
+
+    public static ReplicaCommitRedoLogRecord createReplicaCommitRedoLogRecord(String currentReplicationName) {
+        return new ReplicaCommitRedoLogRecord(currentReplicationName);
     }
 
     static class Checkpoint extends RedoLogRecord {
@@ -299,6 +317,91 @@ public abstract class RedoLogRecord {
         @Override
         long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
             throw DbException.throwInternalError();
+        }
+    }
+
+    static class ReplicaPrepareCommitRedoLogRecord extends RedoLogRecord {
+
+        private final String sql;
+        private final int updateCount;
+        private final long first;
+        private final String uncommittedReplicationName;
+        private final String currentReplicationName;
+        private final ReplicationConflictType replicationConflictType;
+
+        ReplicaPrepareCommitRedoLogRecord(String sql, int updateCount, long first, String uncommittedReplicationName,
+                String currentReplicationName, ReplicationConflictType replicationConflictType) {
+            this.sql = sql;
+            this.updateCount = updateCount;
+            this.first = first;
+            this.uncommittedReplicationName = uncommittedReplicationName;
+            this.currentReplicationName = currentReplicationName;
+            this.replicationConflictType = replicationConflictType;
+        }
+
+        public String getCurrentReplicationName() {
+            return currentReplicationName;
+        }
+
+        @Override
+        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+            return lastTransactionId;
+        }
+
+        @Override
+        public void write(DataBuffer buff) {
+            buff.put(TYPE_REPLICA_PREPARE_COMMIT_REDO_LOG_RECORD);
+            ValueString.type.write(buff, sql);
+            buff.putVarInt(updateCount);
+            buff.putVarLong(first);
+            ValueString.type.write(buff, uncommittedReplicationName);
+            ValueString.type.write(buff, currentReplicationName);
+            buff.putVarInt(replicationConflictType.value);
+        }
+
+        public static RedoLogRecord read(ByteBuffer buff) {
+            String sql = ValueString.type.read(buff);
+            int updateCount = DataUtils.readVarInt(buff);
+            long first = DataUtils.readVarLong(buff);
+            String uncommittedReplicationName = ValueString.type.read(buff);
+            String currentReplicationName = ValueString.type.read(buff);
+            ReplicationConflictType replicationConflictType = ReplicationConflictType
+                    .getType(DataUtils.readVarInt(buff));
+            return new ReplicaPrepareCommitRedoLogRecord(sql, updateCount, first, uncommittedReplicationName,
+                    currentReplicationName, replicationConflictType);
+        }
+
+        public void redo() {
+            // TODO
+        }
+    }
+
+    static class ReplicaCommitRedoLogRecord extends RedoLogRecord {
+
+        private final String currentReplicationName;
+
+        ReplicaCommitRedoLogRecord(String currentReplicationName) {
+            this.currentReplicationName = currentReplicationName;
+        }
+
+        public String getCurrentReplicationName() {
+            return currentReplicationName;
+        }
+
+        @Override
+        public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
+            return lastTransactionId;
+        }
+
+        @Override
+        public void write(DataBuffer buff) {
+            buff.put(TYPE_REPLICA_COMMIT_REDO_LOG_RECORD);
+            ValueString.type.write(buff, currentReplicationName);
+        }
+
+        public static RedoLogRecord read(ByteBuffer buff) {
+            String currentReplicationName = ValueString.type.read(buff);
+            return new ReplicaCommitRedoLogRecord(currentReplicationName);
         }
     }
 }
