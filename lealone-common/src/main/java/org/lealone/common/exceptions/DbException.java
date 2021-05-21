@@ -35,8 +35,6 @@ public class DbException extends RuntimeException {
 
     private static final Properties MESSAGES = new Properties();
 
-    private Object source;
-
     static {
         try {
             InputStream messages = Utils.getResourceAsStream(Constants.RESOURCES_DIR + "_messages_en.prop");
@@ -352,14 +350,6 @@ public class DbException extends RuntimeException {
             }
         }
         return new IOException(e.toString(), e);
-    }
-
-    public Object getSource() {
-        return source;
-    }
-
-    public void setSource(Object source) {
-        this.source = source;
     }
 
     /**

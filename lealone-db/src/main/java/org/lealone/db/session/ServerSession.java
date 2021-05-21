@@ -1533,7 +1533,8 @@ public class ServerSession extends SessionBase {
     @Override
     public void setReplicationName(String replicationName) {
         super.setReplicationName(replicationName);
-        this.lastReplicationName = replicationName;
+        if (replicationName != null)
+            this.lastReplicationName = replicationName;
     }
 
     public Transaction.Listener getTransactionListener() {

@@ -165,10 +165,6 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
             session.getDatabase().checkPowerOff();
             executeInternal();
         } catch (DbException e) {
-            // 并发异常，直接重试
-            if (e.getErrorCode() == ErrorCode.CONCURRENT_UPDATE_1) {
-                return;
-            }
             handleException(e);
         } catch (Throwable e) {
             handleException(DbException.convert(e));

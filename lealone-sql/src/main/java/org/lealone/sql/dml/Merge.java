@@ -198,31 +198,7 @@ public class Merge extends InsertBase {
             if (count > 0) {
                 updateCount.addAndGet(count);
             } else if (count == 0) {
-                try {
-                    addRowInternal(row);
-                } catch (DbException e) {
-                    if (e.getErrorCode() == ErrorCode.DUPLICATE_KEY_1) {
-                        // possibly a concurrent merge or insert
-                        Index index = (Index) e.getSource();
-                        if (index != null) {
-                            // verify the index columns match the key
-                            Column[] indexColumns = index.getColumns();
-                            boolean indexMatchesKeys = false;
-                            if (indexColumns.length <= mergeStatement.keys.length) {
-                                for (int i = 0; i < indexColumns.length; i++) {
-                                    if (indexColumns[i] != mergeStatement.keys[i]) {
-                                        indexMatchesKeys = false;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (indexMatchesKeys) {
-                                throw DbException.get(ErrorCode.CONCURRENT_UPDATE_1, table.getName());
-                            }
-                        }
-                    }
-                    throw e;
-                }
+                addRowInternal(row);
             } else if (count != 1) {
                 throw DbException.get(ErrorCode.DUPLICATE_KEY_1, table.getSQL());
             }

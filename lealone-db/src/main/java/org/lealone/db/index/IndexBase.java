@@ -134,9 +134,7 @@ public abstract class IndexBase extends SchemaObjectBase implements Index {
         if (key != null) {
             sql += " VALUES " + key;
         }
-        DbException e = DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
-        e.setSource(this);
-        return e;
+        return DbException.get(ErrorCode.DUPLICATE_KEY_1, sql);
     }
 
     @Override
