@@ -59,12 +59,12 @@ public abstract class TransferConnection extends AsyncConnection {
     protected static DbException parseError(TransferInputStream in) {
         Throwable t;
         try {
-            String sqlstate = in.readString();
+            String sqlState = in.readString();
             String message = in.readString();
             String sql = in.readString();
             int errorCode = in.readInt();
             String stackTrace = in.readString();
-            JdbcSQLException s = new JdbcSQLException(message, sql, sqlstate, errorCode, null, stackTrace);
+            JdbcSQLException s = new JdbcSQLException(message, sql, sqlState, errorCode, null, stackTrace);
             t = s;
             if (errorCode == ErrorCode.CONNECTION_BROKEN_1) {
                 IOException e = new IOException(s.toString());
@@ -79,7 +79,6 @@ public abstract class TransferConnection extends AsyncConnection {
 
     public void sendError(Session session, int packetId, Throwable t) {
         try {
-            TransferOutputStream out = createTransferOutputStream(session);
             SQLException e = DbException.convert(t).getSQLException();
             StringWriter writer = new StringWriter();
             e.printStackTrace(new PrintWriter(writer));
@@ -94,11 +93,7 @@ public abstract class TransferConnection extends AsyncConnection {
                 message = e.getMessage();
                 sql = null;
             }
-
-            // if (isServer) {
-            // message = "[Server] " + message;
-            // }
-
+            TransferOutputStream out = createTransferOutputStream(session);
             out.writeResponseHeader(packetId, Session.STATUS_ERROR);
             out.writeString(e.getSQLState()).writeString(message).writeString(sql).writeInt(e.getErrorCode())
                     .writeString(trace).flush();

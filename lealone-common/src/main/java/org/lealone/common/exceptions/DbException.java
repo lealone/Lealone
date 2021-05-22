@@ -328,9 +328,9 @@ public class DbException extends RuntimeException {
      * @return the SQLException object
      */
     private static JdbcSQLException getJdbcSQLException(int errorCode, Throwable cause, String... params) {
-        String sqlstate = ErrorCode.getState(errorCode);
-        String message = translate(sqlstate, params);
-        return new JdbcSQLException(message, null, sqlstate, errorCode, cause, null);
+        String sqlState = ErrorCode.getState(errorCode);
+        String message = translate(sqlState, params);
+        return new JdbcSQLException(message, null, sqlState, errorCode, cause, null);
     }
 
     /**
@@ -366,10 +366,9 @@ public class DbException extends RuntimeException {
 
     public static Throwable getRootCause(Throwable cause) {
         Throwable root = cause;
-        while (true) {
-            if (root.getCause() == null)
-                break;
-            root = root.getCause();
+        while (cause != null) {
+            root = cause;
+            cause = cause.getCause();
         }
         return root;
     }

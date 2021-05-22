@@ -17,12 +17,12 @@ import org.lealone.db.Constants;
  */
 public class JdbcSQLException extends SQLException {
 
-    /**
-     * If the SQL statement contains this text, then it is never added to the
-     * SQL exception. Hiding the SQL statement may be important if it contains a
-     * passwords, such as a CREATE LINKED TABLE statement.
-     */
-    public static final String HIDE_SQL = "--hide--";
+    // /**
+    // * If the SQL statement contains this text, then it is never added to the
+    // * SQL exception. Hiding the SQL statement may be important if it contains a
+    // * passwords, such as a CREATE LINKED TABLE statement.
+    // */
+    // public static final String HIDE_SQL = "--hide--";
 
     private static final long serialVersionUID = 1L;
     private final String originalMessage;
@@ -43,13 +43,12 @@ public class JdbcSQLException extends SQLException {
      */
     public JdbcSQLException(String message, String sql, String state, int errorCode, Throwable cause,
             String stackTrace) {
-        super(message, state, errorCode);
+        super(message, state, errorCode, cause);
         this.originalMessage = message;
-        setSQL(sql);
         this.cause = cause;
         this.stackTrace = stackTrace;
+        setSQL(sql, false);
         buildMessage();
-        initCause(cause);
     }
 
     /**
@@ -67,6 +66,63 @@ public class JdbcSQLException extends SQLException {
      */
     public String getOriginalMessage() {
         return originalMessage;
+    }
+
+    /**
+     * INTERNAL
+     */
+    public Throwable getOriginalCause() {
+        return cause;
+    }
+
+    /**
+     * Returns the SQL statement.
+     * SQL statements that contain '--hide--' are not listed.
+     *
+     * @return the SQL statement
+     */
+    public String getSQL() {
+        return sql;
+    }
+
+    /**
+     * INTERNAL
+     */
+    public void setSQL(String sql) {
+        setSQL(sql, true);
+    }
+
+    private void setSQL(String sql, boolean build) {
+        // if (sql != null && sql.contains(HIDE_SQL)) {
+        // sql = "-";
+        // }
+        this.sql = sql;
+        if (build) {
+            buildMessage();
+        }
+    }
+
+    private void buildMessage() {
+        StringBuilder buff = new StringBuilder(originalMessage == null ? "- " : originalMessage);
+        if (sql != null) {
+            buff.append("; SQL statement:\n").append(sql);
+        }
+        buff.append(" [").append(getErrorCode()).append('-').append(Constants.BUILD_ID).append(']');
+        message = buff.toString();
+    }
+
+    /**
+     * Returns the class name, the message, and in the server mode, the stack
+     * trace of the server
+     *
+     * @return the string representation
+     */
+    @Override
+    public String toString() {
+        if (stackTrace == null) {
+            return super.toString();
+        }
+        return stackTrace;
     }
 
     /**
@@ -124,56 +180,4 @@ public class JdbcSQLException extends SQLException {
             }
         }
     }
-
-    /**
-     * INTERNAL
-     */
-    public Throwable getOriginalCause() {
-        return cause;
-    }
-
-    /**
-     * Returns the SQL statement.
-     * SQL statements that contain '--hide--' are not listed.
-     *
-     * @return the SQL statement
-     */
-    public String getSQL() {
-        return sql;
-    }
-
-    /**
-     * INTERNAL
-     */
-    public void setSQL(String sql) {
-        if (sql != null && sql.contains(HIDE_SQL)) {
-            sql = "-";
-        }
-        this.sql = sql;
-        buildMessage();
-    }
-
-    private void buildMessage() {
-        StringBuilder buff = new StringBuilder(originalMessage == null ? "- " : originalMessage);
-        if (sql != null) {
-            buff.append("; SQL statement:\n").append(sql);
-        }
-        buff.append(" [").append(getErrorCode()).append('-').append(Constants.BUILD_ID).append(']');
-        message = buff.toString();
-    }
-
-    /**
-     * Returns the class name, the message, and in the server mode, the stack
-     * trace of the server
-     *
-     * @return the string representation
-     */
-    @Override
-    public String toString() {
-        if (stackTrace == null) {
-            return super.toString();
-        }
-        return stackTrace;
-    }
-
 }

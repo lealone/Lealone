@@ -97,8 +97,16 @@ public class TcpServerConnection extends TransferConnection {
     }
 
     private void readInitPacket(TransferInputStream in, int packetId, int sessionId, Scheduler scheduler) {
+        SessionInit packet;
         try {
-            SessionInit packet = SessionInit.decoder.decode(in, 0);
+            packet = SessionInit.decoder.decode(in, 0);
+        } catch (Throwable e) {
+            logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId, e);
+            sendError(null, packetId, e);
+            return;
+        }
+
+        try {
             ConnectionInfo ci = packet.ci;
             String baseDir = tcpServer.getBaseDir();
             if (baseDir == null) {
@@ -117,7 +125,7 @@ public class TcpServerConnection extends TransferConnection {
             if (si != null) {
                 closeSession(si);
             }
-            logger.error("Failed to readInitPacket, packetId: " + packetId + ", sessionId: " + sessionId, e);
+            logger.error("Failed to create session, sessionId: " + sessionId, e);
             sendError(null, packetId, e);
         }
     }
