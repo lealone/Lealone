@@ -46,7 +46,6 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected final Trace trace;
     protected final AsyncHandler<AsyncResult<T>> asyncHandler;
     protected AsyncResult<T> asyncResult;
-    protected T result;
     protected long startTimeNanos;
     protected boolean started;
 
@@ -77,8 +76,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     protected void setResult(T result, int rowCount) {
-        this.result = result;
-        if (asyncHandler != null && result != null) {
+        if (result != null) {
             asyncResult = new AsyncResult<>(result);
         }
         if (rowCount < 0) {
@@ -91,7 +89,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
 
     @Override
     public T getResult() {
-        return result;
+        return asyncResult != null ? asyncResult.getResult() : null;
     }
 
     @Override

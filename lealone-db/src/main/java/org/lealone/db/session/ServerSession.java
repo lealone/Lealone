@@ -868,7 +868,7 @@ public class ServerSession extends SessionBase {
                     commit();
             }
         } else {
-            if (asyncResult != null) {
+            if (asyncResult != null && asyncHandler != null) {
                 // 在复制模式下不能自动提交
                 if (isAutoCommit() && getReplicationName() == null) {
                     // 不阻塞当前线程，异步提交事务，等到事务日志写成功后再给客户端返回语句的执行结果
