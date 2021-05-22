@@ -71,6 +71,11 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
 
     protected abstract void executeInternal();
 
+    protected void setPendingException(Throwable pendingException) {
+        if (this.pendingException == null)
+            this.pendingException = pendingException;
+    }
+
     protected void setResult(T result, int rowCount) {
         this.result = result;
         if (asyncHandler != null && result != null) {
@@ -103,18 +108,24 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
 
     @Override
     public final void run() {
-        if (!started) {
-            if (start()) {
-                session.setStatus(SessionStatus.STATEMENT_RUNNING);
-                return;
+        try {
+            if (!started) {
+                if (start()) {
+                    session.setStatus(SessionStatus.STATEMENT_RUNNING);
+                    return;
+                }
+                started = true;
             }
-            started = true;
+
+            session.getDatabase().checkPowerOff();
+            executeInternal();
+        } catch (Throwable t) {
+            handleException(t);
+            return;
         }
 
-        execute();
-
         if (pendingException != null) {
-            handleException(DbException.convert(pendingException));
+            handleException(pendingException);
         } else if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED) {
             stop();
         }
@@ -159,32 +170,12 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         session.getDatabase().setProgress(state, statement.getSQL(), 0, 0);
     }
 
-    private void execute() {
-        try {
-            session.getDatabase().checkPowerOff();
-            executeInternal();
-        } catch (DbException e) {
-            handleException(e);
-        } catch (Throwable e) {
-            handleException(DbException.convert(e));
-        }
-    }
-
-    protected void setPendingException(Throwable pendingException) {
-        if (this.pendingException == null)
-            this.pendingException = pendingException;
-    }
-
-    private void handleException(DbException e) {
-        e = e.addSQL(statement.getSQL());
+    private void handleException(Throwable t) {
+        DbException e = DbException.convert(t).addSQL(statement.getSQL());
         SQLException s = e.getSQLException();
         Database database = session.getDatabase();
         database.exceptionThrown(s, statement.getSQL());
         if (s.getErrorCode() == ErrorCode.OUT_OF_MEMORY) {
-            // there is a serious problem:
-            // the transaction may be applied partially
-            // in this case we need to panic:
-            // close the database
             database.shutdownImmediately();
             throw e;
         }
@@ -197,8 +188,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
             }
         }
         if (asyncHandler != null) {
-            asyncResult = new AsyncResult<>();
-            asyncResult.setCause(e);
+            asyncResult = new AsyncResult<>(e);
             asyncHandler.handle(asyncResult);
             asyncResult = null; // 不需要再回调了
             stop();
