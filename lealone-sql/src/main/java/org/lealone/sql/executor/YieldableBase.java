@@ -118,8 +118,7 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
             session.getDatabase().checkPowerOff();
             executeInternal();
         } catch (Throwable t) {
-            handleException(t);
-            return;
+            pendingException = t;
         }
 
         if (pendingException != null) {
@@ -130,8 +129,9 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     }
 
     private boolean start() {
-        if (session.isExclusiveMode())
+        if (session.isExclusiveMode() && session.getDatabase().addWaitingSession(session)) {
             return true;
+        }
         if (session.getDatabase().getQueryStatistics() || trace.isInfoEnabled()) {
             startTimeNanos = System.nanoTime();
         }

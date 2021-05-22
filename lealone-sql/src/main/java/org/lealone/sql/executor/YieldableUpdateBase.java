@@ -27,7 +27,7 @@ public abstract class YieldableUpdateBase extends YieldableBase<Integer> {
         super(statement, asyncHandler);
     }
 
-    protected void setResult(Integer result) {
-        super.setResult(result, result);
+    protected void setResult(int updateCount) {
+        super.setResult(Integer.valueOf(updateCount), updateCount);
     }
 }

@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -54,6 +55,7 @@ import org.lealone.db.schema.Sequence;
 import org.lealone.db.schema.TriggerObject;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
+import org.lealone.db.session.SessionStatus;
 import org.lealone.db.session.SystemSession;
 import org.lealone.db.table.Column;
 import org.lealone.db.table.CreateTableData;
@@ -151,6 +153,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
     }
 
     private final Set<ServerSession> userSessions = Collections.synchronizedSet(new HashSet<>());
+    private LinkedList<ServerSession> waitingSessions;
     private ServerSession exclusiveSession;
     private SystemSession systemSession;
     private User systemUser;
@@ -1105,7 +1108,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
         if (session != null) {
             if (exclusiveSession == session) {
-                exclusiveSession = null;
+                setExclusiveSession(null, false);
             }
             userSessions.remove(session);
             if (session != systemSession && session.getTrace().isInfoEnabled()) {
@@ -1800,11 +1803,27 @@ public class Database implements DataHandler, DbObject, IDatabase {
      * @param session the session
      * @param closeOthers whether other sessions are closed
      */
-    public void setExclusiveSession(ServerSession session, boolean closeOthers) {
+    public synchronized void setExclusiveSession(ServerSession session, boolean closeOthers) {
         this.exclusiveSession = session;
         if (closeOthers) {
             closeAllSessionsException(session);
         }
+        if (session == null && waitingSessions != null) {
+            for (ServerSession s : waitingSessions) {
+                s.setStatus(SessionStatus.TRANSACTION_NOT_COMMIT);
+                s.getTransactionListener().wakeUp();
+            }
+            waitingSessions = null;
+        }
+    }
+
+    public synchronized boolean addWaitingSession(ServerSession session) {
+        if (exclusiveSession == null)
+            return false;
+        if (waitingSessions == null)
+            waitingSessions = new LinkedList<>();
+        waitingSessions.add(session);
+        return true;
     }
 
     @Override
