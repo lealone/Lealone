@@ -42,13 +42,19 @@ public class ReplicationTest extends DSqlTestBase {
                 + " RUN MODE replication PARAMETERS (replication_factor: 3)";
         stmt.executeUpdate(sql);
 
-        // new AsyncReplicationTest().runTest();
-        // new ReplicationConflictTest().runTest();
-        // new ReplicationAppendTest().runTest();
+        new AsyncReplicationTest().runTest();
+        new ReplicationConflictTest().runTest();
+        new ReplicationAppendTest().runTest();
         new ReplicationPreparedStatementTest().runTest();
-        // new ReplicationDdlConflictTest().runTest();
-        // new ReplicationUpdateRowLockConflictTest().runTest();
-        // new ReplicationDeleteRowLockConflictTest().runTest();
+        new ReplicationDdlConflictTest().runTest();
+        new ReplicationUpdateRowLockConflictTest().runTest();
+        new ReplicationDeleteRowLockConflictTest().runTest();
+
+        // for (int i = 0; i < 100; i++) {
+        // new ReplicationAppendTest().runTest();
+        // // Thread.sleep(500);
+        // System.out.println(i);
+        // }
     }
 
     static class ReplicationTestBase extends DSqlTestBase {

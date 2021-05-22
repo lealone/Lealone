@@ -26,7 +26,7 @@ import java.sql.Statement;
 import org.junit.After;
 import org.junit.Before;
 
-//一个标记类，标识它的子类是进行单元测试的
+//标识它的子类是进行单元测试的
 public class UnitTestBase extends TestBase implements org.lealone.test.TestBase.SqlExecutor {
 
     public UnitTestBase() {

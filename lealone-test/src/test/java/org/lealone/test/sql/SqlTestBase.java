@@ -63,7 +63,7 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
     }
 
     protected boolean autoStartTcpServer() {
-        return true;
+        return false;
     }
 
     private static boolean tcpServerStarted = false;

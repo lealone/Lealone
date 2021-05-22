@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.test.misc.lock;
+package org.lealone.test.sql.lock;
 
 import java.sql.Connection;
 import java.sql.Statement;
