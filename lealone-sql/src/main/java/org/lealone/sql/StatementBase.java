@@ -523,6 +523,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     // 以同步的方式运行
     protected <K> K syncExecute(YieldableBase<K> yieldable) {
+        yieldable.disableYield();
         while (!yieldable.isStopped()) {
             yieldable.run();
             while (session.getStatus() == SessionStatus.WAITING) {

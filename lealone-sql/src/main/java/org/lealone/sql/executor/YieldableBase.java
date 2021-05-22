@@ -45,7 +45,6 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
     protected final ServerSession session;
     protected final Trace trace;
     protected final AsyncHandler<AsyncResult<T>> asyncHandler;
-    protected final boolean async;
     protected AsyncResult<T> asyncResult;
     protected T result;
     protected long startTimeNanos;
@@ -53,13 +52,13 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
 
     protected volatile Throwable pendingException;
     protected volatile boolean stopped;
+    protected volatile boolean yieldEnabled = true;
 
     public YieldableBase(StatementBase statement, AsyncHandler<AsyncResult<T>> asyncHandler) {
         this.statement = statement;
         this.session = statement.getSession();
         this.trace = session.getTrace(TraceModuleType.COMMAND);
         this.asyncHandler = asyncHandler;
-        this.async = asyncHandler != null;
     }
 
     // 子类通常只需要实现以下三个方法
@@ -234,7 +233,12 @@ public abstract class YieldableBase<T> implements Yieldable<T> {
         // do nothing
     }
 
+    public void disableYield() {
+        yieldEnabled = false;
+    }
+
     public boolean yieldIfNeeded(int rowNumber) {
-        return async && statement.setCurrentRowNumber(rowNumber);
+        // 需要先设置行号
+        return statement.setCurrentRowNumber(rowNumber) && yieldEnabled;
     }
 }
