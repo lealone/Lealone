@@ -64,4 +64,7 @@ public abstract class AsyncConnection {
             throw new RuntimeException("Connection[" + inetSocketAddress.getHostName() + "] is closed");
         }
     }
+
+    public void handleException(Exception e) {
+    }
 }

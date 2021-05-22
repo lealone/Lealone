@@ -190,16 +190,17 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
         if (channel == null) {
             return;
         }
-        // try {
-        // InetSocketAddress inetSocketAddress = (InetSocketAddress) channel.getRemoteAddress();
-        // removeConnection(inetSocketAddress);
-        // } catch (Exception e1) {
-        // }
         nioEventLoopAdapter.closeChannel(channel);
     }
 
     @Override
     public void handleException(AsyncConnection conn, SocketChannel channel, Exception e) {
+        conn.handleException(e);
+        try {
+            InetSocketAddress inetSocketAddress = (InetSocketAddress) channel.getRemoteAddress();
+            removeConnection(inetSocketAddress);
+        } catch (Exception e1) {
+        }
         closeChannel(channel);
     }
 }

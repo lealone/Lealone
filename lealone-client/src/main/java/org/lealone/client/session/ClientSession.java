@@ -120,6 +120,13 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
+    public void checkClosed() {
+        if (tcpConnection.isClosed() || isClosed()) {
+            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, tcpConnection.getPendingException(), "session closed");
+        }
+    }
+
+    @Override
     public void cancel() {
         // this method is called when closing the connection
         // the statement that is currently running is not canceled in this case

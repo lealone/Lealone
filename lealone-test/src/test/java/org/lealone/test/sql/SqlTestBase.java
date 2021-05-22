@@ -105,7 +105,7 @@ public class SqlTestBase extends TestBase implements org.lealone.test.TestBase.S
                     }
                 }
             }
-            e.printStackTrace();
+            throw DbException.convert(e);
         }
     }
 

@@ -216,7 +216,7 @@ public class NioEventLoopAdapter implements NioEventLoop {
 
     @Override
     public void closeChannel(SocketChannel channel) {
-        if (channel == null) {
+        if (channel == null || !channels.containsKey(channel)) {
             return;
         }
         for (SelectionKey key : selector.keys()) {

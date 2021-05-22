@@ -40,6 +40,8 @@ public class TcpClientConnection extends TransferConnection {
     private final AtomicInteger nextId = new AtomicInteger(0);
     // private final NetClient netClient;
 
+    private Throwable pendingException;
+
     public TcpClientConnection(WritableChannel writableChannel, NetClient netClient) {
         super(writableChannel, false);
         // this.netClient = netClient;
@@ -66,8 +68,13 @@ public class TcpClientConnection extends TransferConnection {
     public void close() {
         // 如果还有回调未处理需要设置异常，避免等待回调结果的线程一直死等
         if (!callbackMap.isEmpty()) {
-            DbException e = DbException.get(ErrorCode.CONNECTION_BROKEN_1,
-                    "unexpected status " + Session.STATUS_CLOSED);
+            DbException e;
+            if (pendingException != null) {
+                e = DbException.convert(pendingException);
+                pendingException = null;
+            } else {
+                e = DbException.get(ErrorCode.CONNECTION_BROKEN_1, "unexpected status " + Session.STATUS_CLOSED);
+            }
             for (AsyncCallback<?> callback : callbackMap.values()) {
                 callback.setDbException(e, true);
             }
@@ -135,5 +142,14 @@ public class TcpClientConnection extends TransferConnection {
             ac.run(in);
         if (newTargetNodes != null)
             session.runModeChanged(newTargetNodes);
+    }
+
+    @Override
+    public void handleException(Exception e) {
+        pendingException = e;
+    }
+
+    public Throwable getPendingException() {
+        return pendingException;
     }
 }
