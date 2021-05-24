@@ -41,8 +41,6 @@
 
 * 支持索引、视图、Join、子查询、触发器、自定义函数、Order By、Group By、聚合
 
-* 从[H2数据库](http://www.h2database.com/html/main.html)借鉴了大量成熟的代码和思想
-
 
 
 ### Lealone 文档
@@ -68,7 +66,7 @@
 
 ### Lealone OLAP 查询引擎
 
-* 采用 MPP 架构、支持 SQL 编译和向量化支持
+* 采用 MPP 架构、支持 SQL 编译和向量化执行
 
 * [更多细节...](https://github.com/lealone/Bats)
 
@@ -94,7 +92,15 @@
   Lealone是lea + lone的组合，反过来念更有意思哦。:)
 
 
+### Lealone 历史
+
+* 2012年从[H2数据库](http://www.h2database.com/html/main.html)的代码开始
+
+* 为了支持 lealone-p2p 集群改编了 [Cassandra](https://cassandra.apache.org/) 的一些代码
+
+* [Lealone 的过去现在将来](https://github.com/codefollower/My-Blog/issues/16)
+
+
 ### Lealone License
 
 * [License](https://github.com/lealone/Lealone/blob/master/LICENSE.md)
-
