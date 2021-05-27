@@ -38,7 +38,7 @@ class SessionPacketHandlers extends PacketHandlers {
     private static class CancelStatement implements PacketHandler<SessionCancelStatement> {
         @Override
         public Packet handle(TcpServerConnection conn, ServerSession session, SessionCancelStatement packet) {
-            PreparedSQLStatement command = (PreparedSQLStatement) conn.removeCache(packet.statementId, false);
+            PreparedSQLStatement command = (PreparedSQLStatement) conn.removeCache(packet.statementId, true);
             if (command != null) {
                 command.cancel();
                 command.close();

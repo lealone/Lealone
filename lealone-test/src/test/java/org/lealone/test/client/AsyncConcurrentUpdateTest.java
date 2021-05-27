@@ -19,6 +19,7 @@ package org.lealone.test.client;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
@@ -61,7 +62,7 @@ public class AsyncConcurrentUpdateTest extends SqlTestBase {
             deleteThreads[i].join();
             queryThreads[i].join();
         }
-        JdbcStatementTest.close(stmt, conn);
+        close(stmt, conn);
     }
 
     static class UpdateThread extends Thread {
@@ -86,7 +87,7 @@ public class AsyncConcurrentUpdateTest extends SqlTestBase {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                JdbcStatementTest.close(stmt, conn);
+                close(stmt, conn);
             }
         }
     }
@@ -113,7 +114,7 @@ public class AsyncConcurrentUpdateTest extends SqlTestBase {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                JdbcStatementTest.close(stmt, conn);
+                close(stmt, conn);
             }
         }
     }
@@ -138,8 +139,21 @@ public class AsyncConcurrentUpdateTest extends SqlTestBase {
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
-                JdbcStatementTest.close(stmt, conn);
+                close(stmt, conn);
             }
+        }
+    }
+
+    static void close(JdbcStatement stmt, Connection conn) {
+        try {
+            stmt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        try {
+            conn.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 }

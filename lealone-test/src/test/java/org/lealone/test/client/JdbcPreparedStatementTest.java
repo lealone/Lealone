@@ -17,7 +17,6 @@
  */
 package org.lealone.test.client;
 
-import java.sql.Connection;
 import java.sql.ParameterMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -27,24 +26,21 @@ import java.util.concurrent.CountDownLatch;
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcPreparedStatement;
 import org.lealone.client.jdbc.JdbcResultSet;
-import org.lealone.client.jdbc.JdbcStatement;
-import org.lealone.db.LealoneDatabase;
 import org.lealone.db.SysProperties;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcPreparedStatementTest extends TestBase {
+public class JdbcPreparedStatementTest extends SqlTestBase {
+
     @Test
     public void run() throws Exception {
-        Connection conn = getConnection(LealoneDatabase.NAME);
-        testMetaData(conn);
-        testFetchSize(conn);
-        testBatch(conn);
-        testAsync(conn);
-        conn.close();
+        testMetaData();
+        testFetchSize();
+        testBatch();
+        testAsync();
     }
 
-    void testMetaData(Connection conn) throws Exception {
-        createTable(conn);
+    void testMetaData() throws Exception {
+        createTable();
         String sql = "INSERT INTO test(f1, f2) VALUES(?, ?)";
         JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
         ResultSetMetaData md = ps.getMetaData();
@@ -90,8 +86,8 @@ public class JdbcPreparedStatementTest extends TestBase {
         latch2.await();
     }
 
-    void testFetchSize(Connection conn) throws Exception {
-        createTable(conn);
+    void testFetchSize() throws Exception {
+        createTable();
         String sql = "INSERT INTO test(f1, f2) VALUES(?, ?)";
         JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
         int count = 200;
@@ -125,8 +121,8 @@ public class JdbcPreparedStatementTest extends TestBase {
         ps.close();
     }
 
-    void testBatch(Connection conn) throws Exception {
-        createTable(conn);
+    void testBatch() throws Exception {
+        createTable();
         String sql = "INSERT INTO test(f1, f2) VALUES(?, ?)";
         JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
         ps.setInt(1, 1000);
@@ -141,8 +137,8 @@ public class JdbcPreparedStatementTest extends TestBase {
         assertEquals(1, updateCounts[1]);
     }
 
-    void testAsync(Connection conn) throws Exception {
-        createTable(conn);
+    void testAsync() throws Exception {
+        createTable();
 
         String sql = "INSERT INTO test(f1, f2) VALUES(?, ?)";
         JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
@@ -183,10 +179,8 @@ public class JdbcPreparedStatementTest extends TestBase {
         });
     }
 
-    private void createTable(Connection conn) throws Exception {
-        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
-        stmt.executeUpdate("DROP TABLE IF EXISTS test");
-        stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
-        stmt.close();
+    private void createTable() throws Exception {
+        executeUpdate("DROP TABLE IF EXISTS test");
+        executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int primary key, f2 long)");
     }
 }

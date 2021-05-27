@@ -17,44 +17,69 @@
  */
 package org.lealone.test.client;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.common.trace.TraceSystem;
-import org.lealone.db.LealoneDatabase;
-import org.lealone.test.TestBase;
+import org.lealone.test.sql.SqlTestBase;
 
-public class JdbcStatementTest extends TestBase {
+public class JdbcStatementTest extends SqlTestBase {
+
+    public JdbcStatementTest() {
+        enableTrace(TraceSystem.DEBUG);
+    }
+
     @Test
     public void run() throws Exception {
-        enableTrace(TraceSystem.DEBUG);
-        Connection conn = getConnection(LealoneDatabase.NAME);
-        Statement stmt = conn.createStatement();
+        testExecute();
+        testExecuteQuery();
+        testExecuteUpdate();
+        testBatch();
+        testAsync();
+        testCancel();
+    }
 
+    void testExecute() throws Exception {
         stmt.execute("/* test */DROP TABLE IF EXISTS test");
         stmt.execute("CREATE TABLE IF NOT EXISTS test (f1 int, f2 long)");
-        stmt.executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)");
+        boolean ret = stmt.execute("INSERT INTO test(f1, f2) VALUES(1, 2)");
+        assertFalse(ret);
+        assertEquals(1, stmt.getUpdateCount());
+        ret = stmt.execute("SELECT f1, f2 FROM test");
+        assertTrue(ret);
+        assertNotNull(stmt.getResultSet());
+    }
 
+    void testExecuteQuery() throws Exception {
+        createTable();
+        executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)");
         ResultSet rs = stmt.executeQuery("SELECT f1, f2 FROM test");
         assertTrue(rs.next());
         assertEquals(1, rs.getInt(1));
         assertEquals(2, rs.getLong(2));
-
-        stmt.executeUpdate("DELETE FROM test WHERE f1 = 1");
-
-        testBatch(stmt);
-
-        testAsync();
-
-        stmt.close();
-        conn.close();
     }
 
-    void testBatch(Statement stmt) throws SQLException {
+    void testExecuteUpdate() throws Exception {
+        createTable();
+        executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)");
+        executeUpdate("DELETE FROM test WHERE f1 = 1");
+    }
+
+    void testCancel() throws Exception {
+        createTable();
+        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
+        CountDownLatch latch = new CountDownLatch(1);
+        stmt.executeQueryAsync("SELECT f1, f2 FROM test").onComplete(ar -> {
+            latch.countDown();
+        });
+        stmt.cancel();
+        latch.await();
+    }
+
+    void testBatch() throws SQLException {
         stmt.addBatch("INSERT INTO test(f1, f2) VALUES(1000, 2000)");
         stmt.addBatch("INSERT INTO test(f1, f2) VALUES(8000, 9000)");
         int[] updateCounts = stmt.executeBatch();
@@ -64,7 +89,6 @@ public class JdbcStatementTest extends TestBase {
     }
 
     void testAsync() throws Exception {
-        Connection conn = new TestBase().getConnection(LealoneDatabase.NAME);
         JdbcStatement stmt = (JdbcStatement) conn.createStatement();
         // stmt.executeUpdate("DROP TABLE IF EXISTS test");
 
@@ -84,11 +108,11 @@ public class JdbcStatementTest extends TestBase {
             e.printStackTrace();
         }).get();
 
+        CountDownLatch latch = new CountDownLatch(1);
         stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(2, 2)").onComplete(res -> {
             if (res.isSucceeded()) {
                 System.out.println("updateCount: " + res.getResult());
             } else {
-                close(stmt, conn);
                 res.getCause().printStackTrace();
                 return;
             }
@@ -101,32 +125,23 @@ public class JdbcStatementTest extends TestBase {
                             while (rs.next()) {
                                 System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
                             }
-                            close(stmt, conn);
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                     } else {
-                        close(stmt, conn);
                         res2.getCause().printStackTrace();
-                        return;
                     }
+                    latch.countDown();
                 });
             } catch (Exception e) {
                 e.printStackTrace();
             }
         });
+        latch.await();
     }
 
-    static void close(JdbcStatement stmt, Connection conn) {
-        try {
-            stmt.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        try {
-            conn.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+    private void createTable() {
+        executeUpdate("DROP TABLE IF EXISTS test");
+        executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int, f2 long)");
     }
 }
