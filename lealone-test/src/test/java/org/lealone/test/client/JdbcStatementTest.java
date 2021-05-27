@@ -17,9 +17,12 @@
  */
 package org.lealone.test.client;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
@@ -33,12 +36,111 @@ public class JdbcStatementTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
+        testException();
         testExecute();
         testExecuteQuery();
         testExecuteUpdate();
         testBatch();
         testAsync();
         testCancel();
+    }
+
+    void testException() throws Exception {
+        testSyncExecuteUpdateException();
+        testAsyncExecuteUpdateException();
+
+        testSyncExecuteQueryException();
+        testAsyncExecuteQueryException();
+    }
+
+    void testSyncExecuteUpdateException() throws Exception {
+        try {
+            // 语法错误，，抛异常
+            stmt.executeUpdate("CREATE TABLE4444 test (f1 int)");
+            fail();
+        } catch (SQLException e) {
+        }
+
+        Connection conn = getConnection();
+        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
+        conn.close();
+        try {
+            // 连接已经关闭，抛异常
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int, f2 long)");
+            fail();
+        } catch (SQLException e) {
+        }
+    }
+
+    void testAsyncExecuteUpdateException() throws Exception {
+        // 语法错误，，抛异常
+        testAsyncExecuteUpdateException((JdbcStatement) stmt, "CREATE TABLE4444 test (f1 int)");
+
+        Connection conn = getConnection();
+        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
+        conn.close();
+        // 连接已经关闭，抛异常
+        testAsyncExecuteUpdateException(stmt, "CREATE TABLE IF NOT EXISTS test (f1 int, f2 long)");
+    }
+
+    private void testAsyncExecuteUpdateException(JdbcStatement stmt, String sql) {
+        AtomicReference<Throwable> ref = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        stmt.executeUpdateAsync(sql).onFailure(t -> {
+            ref.set(t);
+            latch.countDown();
+        });
+        try {
+            latch.await(3000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        assertTrue(ref.get() instanceof SQLException);
+    }
+
+    void testSyncExecuteQueryException() throws Exception {
+        try {
+            // 语法错误，，抛异常
+            stmt.executeQuery("Select * FROM4444 test");
+            fail();
+        } catch (SQLException e) {
+        }
+
+        Connection conn = getConnection();
+        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
+        conn.close();
+        try {
+            // 连接已经关闭，抛异常
+            stmt.executeQuery("Select * FROM test");
+            fail();
+        } catch (SQLException e) {
+        }
+    }
+
+    void testAsyncExecuteQueryException() throws Exception {
+        // 语法错误，，抛异常
+        testAsyncExecuteQueryException((JdbcStatement) stmt, "Select * FROM4444 test");
+
+        Connection conn = getConnection();
+        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
+        conn.close();
+        // 连接已经关闭，抛异常
+        testAsyncExecuteQueryException(stmt, "Select * FROM test");
+    }
+
+    private void testAsyncExecuteQueryException(JdbcStatement stmt, String sql) {
+        AtomicReference<Throwable> ref = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        stmt.executeQueryAsync(sql).onFailure(t -> {
+            ref.set(t);
+            latch.countDown();
+        });
+        try {
+            latch.await(3000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        assertTrue(ref.get() instanceof SQLException);
     }
 
     void testExecute() throws Exception {

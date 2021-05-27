@@ -251,7 +251,7 @@ public class DbException extends RuntimeException {
      * @param e the root cause
      * @return the SQL exception object
      */
-    public static SQLException toSQLException(Exception e) {
+    public static SQLException toSQLException(Throwable e) {
         if (e instanceof SQLException) {
             return (SQLException) e;
         }
