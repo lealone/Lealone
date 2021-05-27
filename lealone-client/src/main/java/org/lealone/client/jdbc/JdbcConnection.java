@@ -143,8 +143,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 debugCodeAssign(TraceObjectType.STATEMENT, id, "createStatement()");
             }
             checkClosed();
-            return new JdbcStatement(this, id, ResultSet.TYPE_FORWARD_ONLY, Constants.DEFAULT_RESULT_SET_CONCURRENCY,
-                    false);
+            return new JdbcStatement(this, id, ResultSet.TYPE_FORWARD_ONLY, Constants.DEFAULT_RESULT_SET_CONCURRENCY);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -170,7 +169,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             }
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             checkClosed();
-            return new JdbcStatement(this, id, resultSetType, resultSetConcurrency, false);
+            return new JdbcStatement(this, id, resultSetType, resultSetConcurrency);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -199,7 +198,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             checkHoldability(resultSetHoldability);
             checkClosed();
-            return new JdbcStatement(this, id, resultSetType, resultSetConcurrency, false);
+            return new JdbcStatement(this, id, resultSetType, resultSetConcurrency);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -222,7 +221,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             checkClosed();
             sql = translateSQL(sql);
             return new JdbcPreparedStatement(this, sql, id, ResultSet.TYPE_FORWARD_ONLY,
-                    Constants.DEFAULT_RESULT_SET_CONCURRENCY, false);
+                    Constants.DEFAULT_RESULT_SET_CONCURRENCY);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -579,7 +578,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             checkClosed();
             sql = translateSQL(sql);
-            return new JdbcPreparedStatement(this, sql, id, resultSetType, resultSetConcurrency, false);
+            return new JdbcPreparedStatement(this, sql, id, resultSetType, resultSetConcurrency);
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -987,7 +986,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             checkHoldability(resultSetHoldability);
             checkClosed();
             sql = translateSQL(sql);
-            return new JdbcPreparedStatement(this, sql, id, resultSetType, resultSetConcurrency, false);
+            return new JdbcPreparedStatement(this, sql, id, resultSetType, resultSetConcurrency);
         } catch (Exception e) {
             throw logAndConvert(e);
         }

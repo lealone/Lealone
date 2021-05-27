@@ -47,6 +47,17 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
     }
 
     @Override
+    public int getFetchSize() {
+        return commands[0].getFetchSize();
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        for (ReplicaSQLCommand c : commands)
+            c.setFetchSize(fetchSize);
+    }
+
+    @Override
     public List<? extends CommandParameter> getParameters() {
         int size = commands[0].getParameters().size();
         ArrayList<ReplicationCommandParameter> list = new ArrayList<>(size);

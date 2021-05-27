@@ -27,6 +27,10 @@ import org.lealone.storage.PageKey;
 
 public interface SQLCommand extends Command {
 
+    int getFetchSize();
+
+    void setFetchSize(int fetchSize);
+
     /**
      * Get the parameters (if any).
      *

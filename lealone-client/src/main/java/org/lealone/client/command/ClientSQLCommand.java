@@ -47,7 +47,7 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     // 通过设为null来判断是否关闭了当前命令，所以没有加上final
     protected ClientSession session;
     protected final String sql;
-    protected final int fetchSize;
+    protected int fetchSize;
     protected int commandId;
     protected boolean isQuery;
 
@@ -60,6 +60,16 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     @Override
     public int getType() {
         return CLIENT_SQL_COMMAND;
+    }
+
+    @Override
+    public int getFetchSize() {
+        return fetchSize;
+    }
+
+    @Override
+    public void setFetchSize(int fetchSize) {
+        this.fetchSize = fetchSize;
     }
 
     @Override

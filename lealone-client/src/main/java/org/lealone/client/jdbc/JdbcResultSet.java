@@ -29,6 +29,7 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.lealone.client.result.ClientResult;
 import org.lealone.client.result.UpdatableRow;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.TraceObjectType;
@@ -3639,5 +3640,18 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
 
     public void setCommand(Command command) {
         this.command = command;
+    }
+
+    // 结果集实际的总行数
+    public int getRowCount() {
+        return result.getRowCount();
+    }
+
+    // 结果集当前已经返回的行数
+    public int getCurrentRowCount() {
+        if (result instanceof ClientResult) {
+            return ((ClientResult) result).getCurrentRowCount();
+        }
+        return -1;
     }
 }

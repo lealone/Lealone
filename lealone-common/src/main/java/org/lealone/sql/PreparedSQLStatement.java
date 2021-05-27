@@ -44,10 +44,6 @@ public interface PreparedSQLStatement extends SQLStatement, ReplicaSQLCommand {
 
     void setPriority(int priority);
 
-    int getFetchSize();
-
-    void setFetchSize(int fetchSize);
-
     boolean isLocal();
 
     void setLocal(boolean local);

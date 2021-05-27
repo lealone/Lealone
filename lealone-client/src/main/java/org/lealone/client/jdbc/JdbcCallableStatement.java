@@ -47,7 +47,7 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
     private HashMap<String, Integer> namedParameters;
 
     JdbcCallableStatement(JdbcConnection conn, String sql, int id, int resultSetType, int resultSetConcurrency) {
-        super(conn, sql, id, resultSetType, resultSetConcurrency, false);
+        super(conn, sql, id, resultSetType, resultSetConcurrency);
         trace = conn.getTrace(TraceObjectType.CALLABLE_STATEMENT, id);
     }
 

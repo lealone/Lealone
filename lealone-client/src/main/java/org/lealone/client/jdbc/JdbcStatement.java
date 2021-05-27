@@ -37,26 +37,28 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
 
     protected JdbcConnection conn;
     protected final Session session;
+    protected final int resultSetType;
+    protected final int resultSetConcurrency;
+    protected final boolean closedByResultSet;
     protected JdbcResultSet resultSet;
     protected int maxRows;
     protected int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
     protected int updateCount;
-    protected final int resultSetType;
-    protected final int resultSetConcurrency;
-    protected final boolean closedByResultSet;
     private Command executingCommand;
-    private int lastExecutedCommandType;
     private ArrayList<String> batchCommands;
     private boolean escapeProcessing = true;
 
-    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency,
-            boolean closeWithResultSet) {
+    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency) {
+        this(conn, id, resultSetType, resultSetConcurrency, false);
+    }
+
+    JdbcStatement(JdbcConnection conn, int id, int resultSetType, int resultSetConcurrency, boolean closedByResultSet) {
         this.conn = conn;
         this.session = conn.getSession();
-        this.trace = conn.getTrace(TraceObjectType.STATEMENT, id);
         this.resultSetType = resultSetType;
         this.resultSetConcurrency = resultSetConcurrency;
-        this.closedByResultSet = closeWithResultSet;
+        this.closedByResultSet = closedByResultSet;
+        this.trace = conn.getTrace(TraceObjectType.STATEMENT, id);
     }
 
     /**
@@ -988,10 +990,8 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     protected void closeOldResultSet() throws SQLException {
         try {
-            if (!closedByResultSet) {
-                if (resultSet != null) {
-                    resultSet.closeInternal();
-                }
+            if (!closedByResultSet && resultSet != null) {
+                resultSet.closeInternal();
             }
         } finally {
             resultSet = null;
@@ -1010,17 +1010,8 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             conn.setExecutingStatement(null);
         } else {
             conn.setExecutingStatement(this);
-            lastExecutedCommandType = c.getType();
         }
         executingCommand = c;
-    }
-
-    /**
-     * INTERNAL.
-     * Get the command type of the last executed command.
-     */
-    public int getLastExecutedCommandType() {
-        return lastExecutedCommandType;
     }
 
     /**

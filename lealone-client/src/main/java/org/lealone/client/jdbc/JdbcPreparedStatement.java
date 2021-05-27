@@ -69,12 +69,21 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     private ArrayList<Value[]> batchParameters;
     private HashMap<String, Integer> cachedColumnLabelMap;
 
+    JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType, int resultSetConcurrency) {
+        this(conn, sql, id, resultSetType, resultSetConcurrency, false);
+    }
+
     JdbcPreparedStatement(JdbcConnection conn, String sql, int id, int resultSetType, int resultSetConcurrency,
-            boolean closeWithResultSet) {
-        super(conn, id, resultSetType, resultSetConcurrency, closeWithResultSet);
+            boolean closedByResultSet) {
+        super(conn, id, resultSetType, resultSetConcurrency, closedByResultSet);
         trace = conn.getTrace(TraceObjectType.PREPARED_STATEMENT, id);
         command = conn.prepareSQLCommand(sql, fetchSize);
-        setExecutingStatement(command);
+    }
+
+    @Override
+    public void setFetchSize(int rows) throws SQLException {
+        super.setFetchSize(rows);
+        command.setFetchSize(rows);
     }
 
     /**

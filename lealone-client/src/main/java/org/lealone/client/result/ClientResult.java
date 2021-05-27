@@ -149,6 +149,10 @@ public abstract class ClientResult implements Result {
         return rowCount;
     }
 
+    public int getCurrentRowCount() {
+        return result.size();
+    }
+
     protected void sendClose() {
         if (session == null) {
             return;
