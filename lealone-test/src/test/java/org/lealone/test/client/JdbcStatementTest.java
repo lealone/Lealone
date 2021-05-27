@@ -43,6 +43,8 @@ public class JdbcStatementTest extends SqlTestBase {
         testBatch();
         testAsync();
         testCancel();
+        testQueryTimeout();
+        testGeneratedKeys();
     }
 
     void testException() throws Exception {
@@ -165,8 +167,7 @@ public class JdbcStatementTest extends SqlTestBase {
 
     void testExecuteUpdate() throws Exception {
         createTable();
-        executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)");
-        executeUpdate("DELETE FROM test WHERE f1 = 1");
+        assertEquals(1, executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)"));
     }
 
     void testCancel() throws Exception {
@@ -191,7 +192,6 @@ public class JdbcStatementTest extends SqlTestBase {
 
     void testAsync() throws Exception {
         JdbcStatement stmt = (JdbcStatement) conn.createStatement();
-        // stmt.executeUpdate("DROP TABLE IF EXISTS test");
 
         stmt.executeUpdateAsync("DROP TABLE IF EXISTS test").onSuccess(updateCount -> {
             System.out.println("updateCount: " + updateCount);
@@ -244,5 +244,35 @@ public class JdbcStatementTest extends SqlTestBase {
     private void createTable() {
         executeUpdate("DROP TABLE IF EXISTS test");
         executeUpdate("CREATE TABLE IF NOT EXISTS test (f1 int, f2 long)");
+    }
+
+    void testQueryTimeout() throws Exception {
+        try {
+            stmt.setQueryTimeout(-1);
+            fail();
+        } catch (SQLException e) {
+        }
+        int seconds = stmt.getQueryTimeout();
+        seconds = 2;
+        stmt.setQueryTimeout(seconds);
+        assertEquals(seconds, stmt.getQueryTimeout());
+    }
+
+    void testGeneratedKeys() throws Exception {
+        executeUpdate("DROP TABLE IF EXISTS testGeneratedKeys");
+        executeUpdate("CREATE TABLE IF NOT EXISTS testGeneratedKeys (f1 int auto_increment, f2 long)");
+        executeUpdate("INSERT INTO testGeneratedKeys(f2) VALUES(9000)");
+
+        ResultSet rs = stmt.getGeneratedKeys();
+        assertTrue(rs.next());
+        assertEquals(1, rs.getInt(1));
+        rs.close();
+
+        executeUpdate("INSERT INTO testGeneratedKeys(f2) VALUES(9001)");
+        executeUpdate("INSERT INTO testGeneratedKeys(f2) VALUES(9002)");
+        rs = stmt.getGeneratedKeys();
+        assertTrue(rs.next());
+        assertEquals(3, rs.getInt(1));
+        rs.close();
     }
 }

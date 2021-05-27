@@ -130,15 +130,15 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         closeOldResultSet();
         setExecutingStatement(command);
         boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-        boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
         AsyncCallback<ResultSet> ac = new AsyncCallback<>();
         command.executeQuery(maxRows, scrollable).onComplete(ar -> {
             setExecutingStatement(null);
             if (ar.isSucceeded()) {
                 Result r = ar.getResult();
+                boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                 JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id, closedByResultSet,
                         scrollable, updatable, cachedColumnLabelMap);
-                resultSet.setCommand(command);
+                // resultSet.setCommand(command); //不能这样做，command是被重用的
                 ac.setAsyncResult(resultSet);
             } else {
                 // 转换成SQLException
@@ -496,26 +496,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     }
 
     /**
-     * Closes this statement.
-     * All result sets that where created by this statement
-     * become invalid after calling this method.
-     */
-    @Override
-    public void close() throws SQLException {
-        try {
-            setExecutingStatement(null);
-            super.close();
-            batchParameters = null;
-            if (command != null) {
-                command.close();
-                command = null;
-            }
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
      * Clears all parameters.
      *
      * @throws SQLException if this object is closed or invalid
@@ -530,6 +510,26 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
                 CommandParameter param = parameters.get(i);
                 // can only delete old temp files if they are not in the batch
                 param.setValue(null, batchParameters == null);
+            }
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Closes this statement.
+     * All result sets that where created by this statement
+     * become invalid after calling this method.
+     */
+    @Override
+    public void close() throws SQLException {
+        try {
+            setExecutingStatement(null);
+            super.close();
+            batchParameters = null;
+            if (command != null) {
+                command.close();
+                command = null;
             }
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -589,7 +589,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setString(" + parameterIndex + ", " + quote(x) + ");");
             }
-            Value v = x == null ? (Value) ValueNull.INSTANCE : ValueString.get(x);
+            Value v = x == null ? ValueNull.INSTANCE : ValueString.get(x);
             setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -609,7 +609,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setBigDecimal(" + parameterIndex + ", " + quoteBigDecimal(x) + ");");
             }
-            Value v = x == null ? (Value) ValueNull.INSTANCE : ValueDecimal.get(x);
+            Value v = x == null ? ValueNull.INSTANCE : ValueDecimal.get(x);
             setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -629,7 +629,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setDate(" + parameterIndex + ", " + quoteDate(x) + ");");
             }
-            Value v = x == null ? (Value) ValueNull.INSTANCE : ValueDate.get(x);
+            Value v = x == null ? ValueNull.INSTANCE : ValueDate.get(x);
             setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -649,7 +649,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setTime(" + parameterIndex + ", " + quoteTime(x) + ");");
             }
-            Value v = x == null ? (Value) ValueNull.INSTANCE : ValueTime.get(x);
+            Value v = x == null ? ValueNull.INSTANCE : ValueTime.get(x);
             setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -669,7 +669,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setTimestamp(" + parameterIndex + ", " + quoteTimestamp(x) + ");");
             }
-            Value v = x == null ? (Value) ValueNull.INSTANCE : ValueTimestamp.get(x);
+            Value v = x == null ? ValueNull.INSTANCE : ValueTimestamp.get(x);
             setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -1118,7 +1118,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setBytes(" + parameterIndex + ", " + quoteBytes(x) + ");");
             }
-            Value v = x == null ? (Value) ValueNull.INSTANCE : ValueBytes.get(x);
+            Value v = x == null ? ValueNull.INSTANCE : ValueBytes.get(x);
             setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);
@@ -1376,7 +1376,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             if (isDebugEnabled()) {
                 debugCode("setNString(" + parameterIndex + ", " + quote(x) + ");");
             }
-            Value v = x == null ? (Value) ValueNull.INSTANCE : ValueString.get(x);
+            Value v = x == null ? ValueNull.INSTANCE : ValueString.get(x);
             setParameter(parameterIndex, v);
         } catch (Exception e) {
             throw logAndConvert(e);

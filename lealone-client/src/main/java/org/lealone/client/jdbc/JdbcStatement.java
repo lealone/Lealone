@@ -98,21 +98,20 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         SQLCommand command = conn.createSQLCommand(sql, fetchSize);
         setExecutingStatement(command);
         boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-        boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
         AsyncCallback<ResultSet> ac = new AsyncCallback<>();
         command.executeQuery(maxRows, scrollable).onComplete(ar -> {
             setExecutingStatement(null);
             if (ar.isSucceeded()) {
                 Result r = ar.getResult();
+                boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
                 JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcStatement.this, r, id, closedByResultSet,
                         scrollable, updatable);
-                resultSet.setCommand(command);
+                resultSet.setCommand(command); // 关闭结果集时再关闭
                 ac.setAsyncResult(resultSet);
             } else {
                 // 转换成SQLException
                 ac.setAsyncResult(DbException.toSQLException(ar.getCause()));
             }
-            // command.close(); //关闭结果集时再关闭
         });
         return ac;
     }
@@ -419,6 +418,96 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     /**
+     * Adds a statement to the batch.
+     *
+     * @param sql the SQL statement
+     */
+    @Override
+    public void addBatch(String sql) throws SQLException {
+        try {
+            debugCodeCall("addBatch", sql);
+            checkClosed();
+            sql = JdbcConnection.translateSQL(sql, escapeProcessing);
+            if (batchCommands == null) {
+                batchCommands = Utils.newSmallArrayList();
+            }
+            batchCommands.add(sql);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Clears the batch.
+     */
+    @Override
+    public void clearBatch() throws SQLException {
+        try {
+            debugCodeCall("clearBatch");
+            checkClosed();
+            batchCommands = null;
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Executes the batch.
+     * If one of the batched statements fails, this database will continue.
+     *
+     * @return the array of update counts
+     */
+    @Override
+    public int[] executeBatch() throws SQLException {
+        try {
+            debugCodeCall("executeBatch");
+            checkClosed();
+            if (batchCommands == null || batchCommands.isEmpty())
+                return new int[0];
+
+            ConnectionInfo ci = session.getConnectionInfo();
+            if (ci != null && ci.isRemote()) {
+                ClientSQLCommand command = (ClientSQLCommand) session.createSQLCommand(null, -1);
+                setExecutingStatement(command);
+                try {
+                    return command.executeBatchSQLCommands(batchCommands);
+                } finally {
+                    batchCommands = null;
+                    setExecutingStatement(null);
+                }
+            } else {
+                int size = batchCommands.size();
+                int[] result = new int[size];
+                boolean error = false;
+                SQLException next = null;
+                for (int i = 0; i < size; i++) {
+                    String sql = batchCommands.get(i);
+                    try {
+                        result[i] = executeUpdateInternal(sql).get();
+                    } catch (Exception re) {
+                        SQLException e = logAndConvert(re);
+                        if (next == null) {
+                            next = e;
+                        } else {
+                            e.setNextException(next);
+                            next = e;
+                        }
+                        result[i] = Statement.EXECUTE_FAILED;
+                        error = true;
+                    }
+                }
+                batchCommands = null;
+                if (error) {
+                    throw new JdbcBatchUpdateException(next, result);
+                }
+                return result;
+            }
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
      * Closes this statement.
      * All result sets that where created by this statement
      * become invalid after calling this method.
@@ -642,6 +731,22 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     /**
+     * Gets the result set holdability.
+     *
+     * @return the holdability
+     */
+    @Override
+    public int getResultSetHoldability() throws SQLException {
+        try {
+            debugCodeCall("getResultSetHoldability");
+            checkClosed();
+            return ResultSet.HOLD_CURSORS_OVER_COMMIT;
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
      * Gets the result set type.
      *
      * @return the type
@@ -788,96 +893,6 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     }
 
     /**
-     * Adds a statement to the batch.
-     *
-     * @param sql the SQL statement
-     */
-    @Override
-    public void addBatch(String sql) throws SQLException {
-        try {
-            debugCodeCall("addBatch", sql);
-            checkClosed();
-            sql = JdbcConnection.translateSQL(sql, escapeProcessing);
-            if (batchCommands == null) {
-                batchCommands = Utils.newSmallArrayList();
-            }
-            batchCommands.add(sql);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Clears the batch.
-     */
-    @Override
-    public void clearBatch() throws SQLException {
-        try {
-            debugCodeCall("clearBatch");
-            checkClosed();
-            batchCommands = null;
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Executes the batch.
-     * If one of the batched statements fails, this database will continue.
-     *
-     * @return the array of update counts
-     */
-    @Override
-    public int[] executeBatch() throws SQLException {
-        try {
-            debugCodeCall("executeBatch");
-            checkClosed();
-            if (batchCommands == null || batchCommands.isEmpty())
-                return new int[0];
-
-            ConnectionInfo ci = session.getConnectionInfo();
-            if (ci != null && ci.isRemote()) {
-                ClientSQLCommand command = (ClientSQLCommand) session.createSQLCommand(null, -1);
-                setExecutingStatement(command);
-                try {
-                    return command.executeBatchSQLCommands(batchCommands);
-                } finally {
-                    batchCommands = null;
-                    setExecutingStatement(null);
-                }
-            } else {
-                int size = batchCommands.size();
-                int[] result = new int[size];
-                boolean error = false;
-                SQLException next = null;
-                for (int i = 0; i < size; i++) {
-                    String sql = batchCommands.get(i);
-                    try {
-                        result[i] = executeUpdateInternal(sql).get();
-                    } catch (Exception re) {
-                        SQLException e = logAndConvert(re);
-                        if (next == null) {
-                            next = e;
-                        } else {
-                            e.setNextException(next);
-                            next = e;
-                        }
-                        result[i] = Statement.EXECUTE_FAILED;
-                        error = true;
-                    }
-                }
-                batchCommands = null;
-                if (error) {
-                    throw new JdbcBatchUpdateException(next, result);
-                }
-                return result;
-            }
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
      * Return a result set that contains the last generated auto-increment key
      * for this connection, if there was one. If no key was generated by the
      * last modification statement, then an empty result set is returned.
@@ -947,22 +962,6 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
                 throw DbException.getInvalidValueException("current", current);
             }
             return false;
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Gets the result set holdability.
-     *
-     * @return the holdability
-     */
-    @Override
-    public int getResultSetHoldability() throws SQLException {
-        try {
-            debugCodeCall("getResultSetHoldability");
-            checkClosed();
-            return ResultSet.HOLD_CURSORS_OVER_COMMIT;
         } catch (Exception e) {
             throw logAndConvert(e);
         }

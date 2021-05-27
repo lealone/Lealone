@@ -1606,5 +1606,4 @@ public class JdbcCallableStatement extends JdbcPreparedStatement implements Call
     public <T> T getObject(String parameterName, Class<T> type) throws SQLException {
         throw unsupported("getObject(String, Class<T>)");
     }
-
 }

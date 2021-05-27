@@ -286,7 +286,8 @@ public class JdbcPreparedStatementTest extends SqlTestBase {
         while (rs.next()) {
             System.out.println("f1=" + rs.getInt(1) + " f2=" + rs.getLong(2));
         }
-
+        rs.close();
+        CountDownLatch latch2 = new CountDownLatch(1);
         JdbcPreparedStatement ps2 = ps;
         ps2.setLong(1, 2);
         ps2.executeQueryAsync().onComplete(res -> {
@@ -296,11 +297,13 @@ public class JdbcPreparedStatementTest extends SqlTestBase {
                     System.out.println("f1=" + rs2.getInt(1) + " f2=" + rs2.getLong(2));
                 }
                 ps2.close();
-                conn.close();
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                latch2.countDown();
             }
         });
+        latch2.await();
     }
 
     private void createTable() throws Exception {
