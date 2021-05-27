@@ -140,7 +140,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("Statement", TraceObjectType.STATEMENT, id, "createStatement()");
+                debugCodeAssign(TraceObjectType.STATEMENT, id, "createStatement()");
             }
             checkClosed();
             return new JdbcStatement(this, id, ResultSet.TYPE_FORWARD_ONLY, Constants.DEFAULT_RESULT_SET_CONCURRENCY,
@@ -165,7 +165,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("Statement", TraceObjectType.STATEMENT, id,
+                debugCodeAssign(TraceObjectType.STATEMENT, id,
                         "createStatement(" + resultSetType + ", " + resultSetConcurrency + ")");
             }
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
@@ -193,7 +193,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("Statement", TraceObjectType.STATEMENT, id, "createStatement(" + resultSetType + ", "
+                debugCodeAssign(TraceObjectType.STATEMENT, id, "createStatement(" + resultSetType + ", "
                         + resultSetConcurrency + ", " + resultSetHoldability + ")");
             }
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
@@ -217,8 +217,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.PREPARED_STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("PreparedStatement", TraceObjectType.PREPARED_STATEMENT, id,
-                        "prepareStatement(" + quote(sql) + ")");
+                debugCodeAssign(TraceObjectType.PREPARED_STATEMENT, id, "prepareStatement(" + quote(sql) + ")");
             }
             checkClosed();
             sql = translateSQL(sql);
@@ -240,8 +239,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.PREPARED_STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("PreparedStatement", TraceObjectType.PREPARED_STATEMENT, id,
-                        "prepareStatement(" + quote(sql) + ")");
+                debugCodeAssign(TraceObjectType.PREPARED_STATEMENT, id, "prepareStatement(" + quote(sql) + ")");
             }
             checkClosed();
             sql = translateSQL(sql);
@@ -263,7 +261,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.DATABASE_META_DATA);
             if (isDebugEnabled()) {
-                debugCodeAssign("DatabaseMetaData", TraceObjectType.DATABASE_META_DATA, id, "getMetaData()");
+                debugCodeAssign(TraceObjectType.DATABASE_META_DATA, id, "getMetaData()");
             }
             checkClosed();
             return new JdbcDatabaseMetaData(this, trace, id);
@@ -575,7 +573,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.PREPARED_STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("PreparedStatement", TraceObjectType.PREPARED_STATEMENT, id,
+                debugCodeAssign(TraceObjectType.PREPARED_STATEMENT, id,
                         "prepareStatement(" + quote(sql) + ", " + resultSetType + ", " + resultSetConcurrency + ")");
             }
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
@@ -803,8 +801,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.CALLABLE_STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("CallableStatement", TraceObjectType.CALLABLE_STATEMENT, id,
-                        "prepareCall(" + quote(sql) + ")");
+                debugCodeAssign(TraceObjectType.CALLABLE_STATEMENT, id, "prepareCall(" + quote(sql) + ")");
             }
             checkClosed();
             sql = translateSQL(sql);
@@ -832,7 +829,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.CALLABLE_STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("CallableStatement", TraceObjectType.CALLABLE_STATEMENT, id,
+                debugCodeAssign(TraceObjectType.CALLABLE_STATEMENT, id,
                         "prepareCall(" + quote(sql) + ", " + resultSetType + ", " + resultSetConcurrency + ")");
             }
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
@@ -863,8 +860,8 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.CALLABLE_STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("CallableStatement", TraceObjectType.CALLABLE_STATEMENT, id, "prepareCall(" + quote(sql)
-                        + ", " + resultSetType + ", " + resultSetConcurrency + ", " + resultSetHoldability + ")");
+                debugCodeAssign(TraceObjectType.CALLABLE_STATEMENT, id, "prepareCall(" + quote(sql) + ", "
+                        + resultSetType + ", " + resultSetConcurrency + ", " + resultSetHoldability + ")");
             }
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             checkHoldability(resultSetHoldability);
@@ -886,7 +883,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.SAVEPOINT);
             if (isDebugEnabled()) {
-                debugCodeAssign("Savepoint", TraceObjectType.SAVEPOINT, id, "setSavepoint()");
+                debugCodeAssign(TraceObjectType.SAVEPOINT, id, "setSavepoint()");
             }
             checkClosed();
             SQLCommand set = prepareSQLCommand("SAVEPOINT " + JdbcSavepoint.getName(null, savepointId),
@@ -911,7 +908,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.SAVEPOINT);
             if (isDebugEnabled()) {
-                debugCodeAssign("Savepoint", TraceObjectType.SAVEPOINT, id, "setSavepoint(" + quote(name) + ")");
+                debugCodeAssign(TraceObjectType.SAVEPOINT, id, "setSavepoint(" + quote(name) + ")");
             }
             checkClosed();
             SQLCommand set = prepareSQLCommand("SAVEPOINT " + JdbcSavepoint.getName(name, 0), Integer.MAX_VALUE);
@@ -983,9 +980,8 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             int id = getNextTraceId(TraceObjectType.PREPARED_STATEMENT);
             if (isDebugEnabled()) {
-                debugCodeAssign("PreparedStatement", TraceObjectType.PREPARED_STATEMENT, id,
-                        "prepareStatement(" + quote(sql) + ", " + resultSetType + ", " + resultSetConcurrency + ", "
-                                + resultSetHoldability + ")");
+                debugCodeAssign(TraceObjectType.PREPARED_STATEMENT, id, "prepareStatement(" + quote(sql) + ", "
+                        + resultSetType + ", " + resultSetConcurrency + ", " + resultSetHoldability + ")");
             }
             checkTypeConcurrency(resultSetType, resultSetConcurrency);
             checkHoldability(resultSetHoldability);
@@ -1383,7 +1379,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     public Clob createClob() throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.CLOB);
-            debugCodeAssign("Clob", TraceObjectType.CLOB, id, "createClob()");
+            debugCodeAssign(TraceObjectType.CLOB, id, "createClob()");
             checkClosed();
             Value v = session.getDataHandler().getLobStorage()
                     .createClob(new InputStreamReader(new ByteArrayInputStream(Utils.EMPTY_BYTES)), 0);
@@ -1402,7 +1398,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     public Blob createBlob() throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.BLOB);
-            debugCodeAssign("Blob", TraceObjectType.BLOB, id, "createClob()");
+            debugCodeAssign(TraceObjectType.BLOB, id, "createClob()");
             checkClosed();
             Value v = session.getDataHandler().getLobStorage().createBlob(new ByteArrayInputStream(Utils.EMPTY_BYTES),
                     0);
@@ -1452,7 +1448,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.ARRAY);
-            debugCodeAssign("Array", TraceObjectType.ARRAY, id, "createArrayOf()");
+            debugCodeAssign(TraceObjectType.ARRAY, id, "createArrayOf()");
             checkClosed();
             Value value = DataType.convertToValue(session, elements, Value.ARRAY);
             return new JdbcArray(this, value, id);

@@ -17,6 +17,8 @@
  */
 package org.lealone.common.trace;
 
+import org.lealone.common.util.CamelCaseHelper;
+
 public enum TraceObjectType {
 
     /**
@@ -85,12 +87,18 @@ public enum TraceObjectType {
     DATA_SOURCE("ds");
 
     private final String shortName;
+    private final String className;
 
     TraceObjectType(String shortName) {
         this.shortName = shortName;
+        className = CamelCaseHelper.toClassNameFromUnderscore(name());
     }
 
     public String getShortName() {
         return shortName;
+    }
+
+    public String getClassName() {
+        return className;
     }
 }

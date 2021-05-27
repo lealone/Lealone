@@ -24,12 +24,14 @@ import java.sql.Statement;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
+import org.lealone.common.trace.TraceSystem;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.TestBase;
 
 public class JdbcStatementTest extends TestBase {
     @Test
     public void run() throws Exception {
+        enableTrace(TraceSystem.DEBUG);
         Connection conn = getConnection(LealoneDatabase.NAME);
         Statement stmt = conn.createStatement();
 

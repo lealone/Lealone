@@ -768,7 +768,14 @@ public class ConnectionInfo implements Cloneable {
     }
 
     public void initTraceProperty() {
-        traceEnabled = getProperty(ConnectionSetting.TRACE_ENABLED, false);
+        String v = getProperty(ConnectionSetting.TRACE_ENABLED);
+        if (v != null) {
+            traceEnabled = Boolean.parseBoolean(v);
+            if (!traceEnabled)
+                return;
+        }
+        traceEnabled = getProperty(DbSetting.TRACE_LEVEL_FILE.getName()) != null
+                || getProperty(DbSetting.TRACE_LEVEL_SYSTEM_OUT.getName()) != null;
     }
 
     public boolean isServiceConnection() {

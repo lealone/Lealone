@@ -108,8 +108,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         try {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id,
-                        sync ? "executeQuery()" : "executeQueryAsync()");
+                debugCodeAssign(TraceObjectType.RESULT_SET, id, sync ? "executeQuery()" : "executeQueryAsync()");
             }
             checkClosed();
             boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
@@ -1082,7 +1081,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             }
             int id = getNextTraceId(TraceObjectType.RESULT_SET_META_DATA);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSetMetaData", TraceObjectType.RESULT_SET_META_DATA, id, "getMetaData()");
+                debugCodeAssign(TraceObjectType.RESULT_SET_META_DATA, id, "getMetaData()");
             }
             String catalog = conn.getCatalog();
             JdbcResultSetMetaData meta = new JdbcResultSetMetaData(conn, catalog, this, null, result, id);
@@ -1321,7 +1320,7 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         try {
             int id = getNextTraceId(TraceObjectType.PARAMETER_META_DATA);
             if (isDebugEnabled()) {
-                debugCodeAssign("ParameterMetaData", TraceObjectType.PARAMETER_META_DATA, id, "getParameterMetaData()");
+                debugCodeAssign(TraceObjectType.PARAMETER_META_DATA, id, "getParameterMetaData()");
             }
             checkClosed();
             JdbcParameterMetaData meta = new JdbcParameterMetaData(this, command, id);

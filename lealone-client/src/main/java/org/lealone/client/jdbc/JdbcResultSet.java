@@ -135,7 +135,7 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
         try {
             int id = getNextTraceId(TraceObjectType.RESULT_SET_META_DATA);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSetMetaData", TraceObjectType.RESULT_SET_META_DATA, id, "getMetaData()");
+                debugCodeAssign(TraceObjectType.RESULT_SET_META_DATA, id, "getMetaData()");
             }
             checkClosed();
             String catalog = conn.getCatalog();
@@ -989,7 +989,7 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     public Blob getBlob(int columnIndex) throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.BLOB);
-            debugCodeAssign("Blob", TraceObjectType.BLOB, id, "getBlob(" + columnIndex + ")");
+            debugCodeAssign(TraceObjectType.BLOB, id, "getBlob(" + columnIndex + ")");
             Value v = get(columnIndex);
             return v == ValueNull.INSTANCE ? null : new JdbcBlob(conn, v, id);
         } catch (Exception e) {
@@ -1009,7 +1009,7 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     public Blob getBlob(String columnLabel) throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.BLOB);
-            debugCodeAssign("Blob", TraceObjectType.BLOB, id, "getBlob(" + quote(columnLabel) + ")");
+            debugCodeAssign(TraceObjectType.BLOB, id, "getBlob(" + quote(columnLabel) + ")");
             Value v = get(columnLabel);
             return v == ValueNull.INSTANCE ? null : new JdbcBlob(conn, v, id);
         } catch (Exception e) {
@@ -1101,7 +1101,7 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     public Clob getClob(int columnIndex) throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.CLOB);
-            debugCodeAssign("Clob", TraceObjectType.CLOB, id, "getClob(" + columnIndex + ")");
+            debugCodeAssign(TraceObjectType.CLOB, id, "getClob(" + columnIndex + ")");
             Value v = get(columnIndex);
             return v == ValueNull.INSTANCE ? null : new JdbcClob(conn, v, id);
         } catch (Exception e) {
@@ -1121,7 +1121,7 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     public Clob getClob(String columnLabel) throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.CLOB);
-            debugCodeAssign("Clob", TraceObjectType.CLOB, id, "getClob(" + quote(columnLabel) + ")");
+            debugCodeAssign(TraceObjectType.CLOB, id, "getClob(" + quote(columnLabel) + ")");
             Value v = get(columnLabel);
             return v == ValueNull.INSTANCE ? null : new JdbcClob(conn, v, id);
         } catch (Exception e) {
@@ -1141,7 +1141,7 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     public Array getArray(int columnIndex) throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.ARRAY);
-            debugCodeAssign("Clob", TraceObjectType.ARRAY, id, "getArray(" + columnIndex + ")");
+            debugCodeAssign(TraceObjectType.ARRAY, id, "getArray(" + columnIndex + ")");
             Value v = get(columnIndex);
             return v == ValueNull.INSTANCE ? null : new JdbcArray(conn, v, id);
         } catch (Exception e) {
@@ -1161,7 +1161,7 @@ public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     public Array getArray(String columnLabel) throws SQLException {
         try {
             int id = getNextTraceId(TraceObjectType.ARRAY);
-            debugCodeAssign("Clob", TraceObjectType.ARRAY, id, "getArray(" + quote(columnLabel) + ")");
+            debugCodeAssign(TraceObjectType.ARRAY, id, "getArray(" + quote(columnLabel) + ")");
             Value v = get(columnLabel);
             return v == ValueNull.INSTANCE ? null : new JdbcArray(conn, v, id);
         } catch (Exception e) {

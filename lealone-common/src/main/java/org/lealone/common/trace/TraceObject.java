@@ -87,9 +87,16 @@ public class TraceObject {
      */
     protected void debugCodeAssign(String className, TraceObjectType newType, int newId, String value) {
         if (trace.isDebugEnabled()) {
+            if (className == null) {
+                className = newType.getClassName();
+            }
             trace.debugCode(className + " " + newType.getShortName() + newId + " = " + getTraceObjectName() + "."
                     + value + ";");
         }
+    }
+
+    protected void debugCodeAssign(TraceObjectType newType, int newId, String value) {
+        debugCodeAssign(null, newType, newId, value);
     }
 
     /**

@@ -30,7 +30,6 @@ public class CamelCaseHelper {
      * Convert and return the string to underscore from camel case.
      */
     public static String toUnderscoreFromCamel(String camelCase, boolean digitsCompressed, boolean forceUpperCase) {
-
         int lastUpper = -1;
         StringBuilder sb = new StringBuilder(camelCase.length() + 4);
         for (int i = 0; i < camelCase.length(); i++) {
@@ -72,7 +71,6 @@ public class CamelCaseHelper {
      * @return the string
      */
     public static String toCamelFromUnderscore(String underscore) {
-
         String[] vals = underscore.split("_");
         if (vals.length == 1) {
             return isUpperCase(underscore) ? underscore.toLowerCase() : underscore;
@@ -100,5 +98,30 @@ public class CamelCaseHelper {
             }
         }
         return true;
+    }
+
+    public static String toClassNameFromUnderscore(String underscore) {
+        StringBuilder result = new StringBuilder();
+        String[] vals = underscore.split("_");
+        for (int i = 0; i < vals.length; i++) {
+            toClassName(result, vals[i]);
+        }
+        return result.toString();
+    }
+
+    private static void toClassName(StringBuilder buff, String str) {
+        for (int i = 0, len = str.length(); i < len; i++) {
+            char c = str.charAt(i);
+            if (i == 0) {
+                if (Character.isLowerCase(c)) {
+                    c = Character.toUpperCase(c);
+                }
+            } else {
+                if (Character.isUpperCase(c)) {
+                    c = Character.toLowerCase(c);
+                }
+            }
+            buff.append(c);
+        }
     }
 }

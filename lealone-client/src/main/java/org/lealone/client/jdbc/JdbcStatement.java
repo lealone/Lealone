@@ -80,7 +80,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         try {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id,
+                debugCodeAssign(TraceObjectType.RESULT_SET, id,
                         "executeQuery" + (sync ? "" : "Async") + "(" + quote(sql) + ")");
             }
             checkClosed();
@@ -312,7 +312,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             checkClosed();
             if (resultSet != null) {
                 int id = resultSet.getTraceId();
-                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id, "getResultSet()");
+                debugCodeAssign(TraceObjectType.RESULT_SET, id, "getResultSet()");
             } else {
                 debugCodeCall("getResultSet");
             }
@@ -814,7 +814,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         try {
             int id = getNextTraceId(TraceObjectType.RESULT_SET);
             if (isDebugEnabled()) {
-                debugCodeAssign("ResultSet", TraceObjectType.RESULT_SET, id, "getGeneratedKeys()");
+                debugCodeAssign(TraceObjectType.RESULT_SET, id, "getGeneratedKeys()");
             }
             checkClosed();
             return conn.getGeneratedKeys(this, id);
