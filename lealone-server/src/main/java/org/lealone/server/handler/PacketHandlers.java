@@ -121,7 +121,7 @@ public class PacketHandlers {
         }
 
         protected void sendResult(PacketDeliveryTask task, QueryPacket packet, Result result) {
-            task.conn.addCache(packet.resultId, result);
+            task.session.addCache(packet.resultId, result);
             try {
                 int rowCount = result.getRowCount();
                 int fetch = packet.fetchSize;
@@ -166,7 +166,7 @@ public class PacketHandlers {
 
     private static PreparedSQLStatement getPreparedSQLStatementFromCache(PacketDeliveryTask task, int commandId,
             Value[] parameters) {
-        PreparedSQLStatement stmt = (PreparedSQLStatement) task.conn.getCache(commandId);
+        PreparedSQLStatement stmt = (PreparedSQLStatement) task.session.getCache(commandId);
         List<? extends CommandParameter> params = stmt.getParameters();
         for (int i = 0, size = parameters.length; i < size; i++) {
             CommandParameter p = params.get(i);

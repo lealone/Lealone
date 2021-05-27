@@ -984,13 +984,6 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      * @param c the command
      */
     protected void setExecutingStatement(Command c) {
-        if (conn != null) {
-            if (c == null) {
-                conn.setExecutingStatement(null);
-            } else {
-                conn.setExecutingStatement(this);
-            }
-        }
         executingCommand = c;
     }
 

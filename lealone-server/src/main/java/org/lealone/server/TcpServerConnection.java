@@ -33,7 +33,6 @@ import org.lealone.net.TransferConnection;
 import org.lealone.net.TransferInputStream;
 import org.lealone.net.TransferOutputStream;
 import org.lealone.net.WritableChannel;
-import org.lealone.server.handler.LobPacketHandlers.LobCache;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.session.SessionInit;
@@ -55,24 +54,10 @@ public class TcpServerConnection extends TransferConnection {
     // 然后由调度器根据优先级从多个队列中依次取出执行。
     private final ConcurrentHashMap<Integer, SessionInfo> sessions = new ConcurrentHashMap<>();
     private final TcpServer tcpServer;
-    private final ExpiringMap<Integer, AutoCloseable> cache; // 缓存PreparedStatement和结果集
-    private LobCache lobCache; // 大多数情况下都不使用lob，所以延迟初始化
 
     public TcpServerConnection(TcpServer tcpServer, WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
         this.tcpServer = tcpServer;
-        cache = new ExpiringMap<>(ScheduleService.getScheduler(), tcpServer.getSessionTimeout(),
-                new Function<Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>>, Void>() {
-                    @Override
-                    public Void apply(Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>> pair) {
-                        try {
-                            pair.right.value.close();
-                        } catch (Exception e) {
-                            logger.warn(e.getMessage());
-                        }
-                        return null;
-                    }
-                });
     }
 
     // 这个方法是由网络事件循环线程执行的
@@ -142,6 +127,18 @@ public class TcpServerConnection extends TransferConnection {
             // 还需要当前连接做限定，因为每个连接可以接入多个客户端session，不同连接中的sessionId是可以相同的，
             // 把sessions这个字段放在连接实例中可以减少并发访问的冲突。
             session.setTransactionListener(scheduler);
+            session.setCache(new ExpiringMap<>(ScheduleService.getScheduler(), tcpServer.getSessionTimeout(),
+                    new Function<Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>>, Void>() {
+                        @Override
+                        public Void apply(Pair<Integer, ExpiringMap.CacheableObject<AutoCloseable>> pair) {
+                            try {
+                                pair.right.value.close();
+                            } catch (Exception e) {
+                                logger.warn(e.getMessage());
+                            }
+                            return null;
+                        }
+                    }));
             SessionInfo si = new SessionInfo(scheduler, this, session, sessionId, tcpServer.getSessionTimeout());
             sessions.put(sessionId, si);
         }
@@ -197,8 +194,6 @@ public class TcpServerConnection extends TransferConnection {
             closeSession(si);
         }
         sessions.clear();
-        cache.close();
-        lobCache = null;
     }
 
     private static int getStatus(Session session) {
@@ -226,24 +221,5 @@ public class TcpServerConnection extends TransferConnection {
         } catch (Exception e) {
             sendError(session, task.packetId, e);
         }
-    }
-
-    public void addCache(Integer k, AutoCloseable v) {
-        cache.put(k, v);
-    }
-
-    public AutoCloseable getCache(Integer k) {
-        return cache.get(k);
-    }
-
-    public AutoCloseable removeCache(Integer k, boolean ifAvailable) {
-        return cache.remove(k, ifAvailable);
-    }
-
-    public LobCache getLobCache() {
-        if (lobCache == null) {
-            lobCache = new LobCache();
-        }
-        return lobCache;
     }
 }

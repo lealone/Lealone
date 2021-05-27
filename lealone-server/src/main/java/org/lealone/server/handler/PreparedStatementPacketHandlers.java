@@ -23,7 +23,6 @@ import org.lealone.db.CommandParameter;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
 import org.lealone.server.PacketDeliveryTask;
-import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.ps.PreparedStatementClose;
@@ -50,10 +49,10 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
 
     private static class Prepare implements PacketHandler<PreparedStatementPrepare> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, PreparedStatementPrepare packet) {
+        public Packet handle(ServerSession session, PreparedStatementPrepare packet) {
             PreparedSQLStatement command = session.prepareStatement(packet.sql, -1);
             command.setId(packet.commandId);
-            conn.addCache(packet.commandId, command);
+            session.addCache(packet.commandId, command);
             boolean isQuery = command.isQuery();
             return new PreparedStatementPrepareAck(isQuery);
         }
@@ -61,11 +60,10 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
 
     private static class PrepareReadParams implements PacketHandler<PreparedStatementPrepareReadParams> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session,
-                PreparedStatementPrepareReadParams packet) {
+        public Packet handle(ServerSession session, PreparedStatementPrepareReadParams packet) {
             PreparedSQLStatement command = session.prepareStatement(packet.sql, -1);
             command.setId(packet.commandId);
-            conn.addCache(packet.commandId, command);
+            session.addCache(packet.commandId, command);
             boolean isQuery = command.isQuery();
             List<? extends CommandParameter> params = command.getParameters();
             return new PreparedStatementPrepareReadParamsAck(isQuery, params);
@@ -88,8 +86,8 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
 
     private static class GetMetaData implements PacketHandler<PreparedStatementGetMetaData> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, PreparedStatementGetMetaData packet) {
-            PreparedSQLStatement command = (PreparedSQLStatement) conn.getCache(packet.commandId);
+        public Packet handle(ServerSession session, PreparedStatementGetMetaData packet) {
+            PreparedSQLStatement command = (PreparedSQLStatement) session.getCache(packet.commandId);
             Result result = command.getMetaData();
             return new PreparedStatementGetMetaDataAck(result);
         }
@@ -97,8 +95,8 @@ class PreparedStatementPacketHandlers extends PacketHandlers {
 
     private static class Close implements PacketHandler<PreparedStatementClose> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, PreparedStatementClose packet) {
-            PreparedSQLStatement command = (PreparedSQLStatement) conn.removeCache(packet.commandId, true);
+        public Packet handle(ServerSession session, PreparedStatementClose packet) {
+            PreparedSQLStatement command = (PreparedSQLStatement) session.removeCache(packet.commandId, true);
             if (command != null) {
                 command.close();
             }

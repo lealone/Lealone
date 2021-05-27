@@ -26,12 +26,10 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.IOUtils;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.Constants;
-import org.lealone.db.SysProperties;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueLob;
 import org.lealone.net.TransferOutputStream;
-import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.lob.LobRead;
@@ -44,24 +42,15 @@ public class LobPacketHandlers extends PacketHandlers {
         register(PacketType.LOB_READ, new Read());
     }
 
-    public static class LobCache {
-        final SmallLRUCache<Long, CachedInputStream> lobs;
-
-        public LobCache() {
-            lobs = SmallLRUCache.newInstance(
-                    Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
-        }
-    }
-
     private static class Read implements PacketHandler<LobRead> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, LobRead packet) {
+        public Packet handle(ServerSession session, LobRead packet) {
             long lobId = packet.lobId;
             byte[] hmac = packet.hmac;
             long offset = packet.offset;
             int length = packet.length;
-            SmallLRUCache<Long, CachedInputStream> lobs = conn.getLobCache().lobs;
-            CachedInputStream cachedInputStream = lobs.get(lobId);
+            SmallLRUCache<Long, InputStream> lobs = session.getLobCache();
+            CachedInputStream cachedInputStream = (CachedInputStream) lobs.get(lobId);
             if (cachedInputStream == null) {
                 cachedInputStream = new CachedInputStream(null);
                 lobs.put(lobId, cachedInputStream);

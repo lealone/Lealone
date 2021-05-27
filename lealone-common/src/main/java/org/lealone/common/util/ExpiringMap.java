@@ -100,6 +100,15 @@ public class ExpiringMap<K, V> {
     }
 
     public void close() {
+        for (CacheableObject<V> c : cache.values()) {
+            if (c.value instanceof AutoCloseable) {
+                try {
+                    ((AutoCloseable) c.value).close();
+                } catch (Throwable t) {
+                    // ignore
+                }
+            }
+        }
         cache.clear();
         asyncTaskHandler.removePeriodicTask(task);
     }

@@ -19,7 +19,6 @@ package org.lealone.server.handler;
 
 import org.lealone.db.session.ServerSession;
 import org.lealone.server.PacketDeliveryTask;
-import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;
 
 public interface PacketHandler<P extends Packet> {
@@ -28,11 +27,7 @@ public interface PacketHandler<P extends Packet> {
         return null;
     }
 
-    default Packet handle(TcpServerConnection conn, ServerSession session, P packet) {
-        return handle(session, packet);
-    }
-
     default Packet handle(PacketDeliveryTask task, P packet) {
-        return handle(task.conn, task.session, packet);
+        return handle(task.session, packet);
     }
 }

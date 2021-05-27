@@ -23,13 +23,12 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
-import org.lealone.common.trace.TraceSystem;
 import org.lealone.test.sql.SqlTestBase;
 
 public class JdbcStatementTest extends SqlTestBase {
 
     public JdbcStatementTest() {
-        enableTrace(TraceSystem.DEBUG);
+        // enableTrace(TraceSystem.DEBUG);
     }
 
     @Test

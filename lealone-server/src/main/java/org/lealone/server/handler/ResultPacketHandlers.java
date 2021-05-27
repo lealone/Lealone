@@ -19,7 +19,6 @@ package org.lealone.server.handler;
 
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
-import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.result.ResultChangeId;
@@ -39,25 +38,25 @@ class ResultPacketHandlers extends PacketHandlers {
 
     private static class FetchRows implements PacketHandler<ResultFetchRows> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, ResultFetchRows packet) {
-            Result result = (Result) conn.getCache(packet.resultId);
+        public Packet handle(ServerSession session, ResultFetchRows packet) {
+            Result result = (Result) session.getCache(packet.resultId);
             return new ResultFetchRowsAck(result, packet.count);
         }
     }
 
     private static class ChangeId implements PacketHandler<ResultChangeId> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, ResultChangeId packet) {
-            AutoCloseable obj = conn.removeCache(packet.oldId, false);
-            conn.addCache(packet.newId, obj);
+        public Packet handle(ServerSession session, ResultChangeId packet) {
+            AutoCloseable obj = session.removeCache(packet.oldId, false);
+            session.addCache(packet.newId, obj);
             return null;
         }
     }
 
     private static class Reset implements PacketHandler<ResultReset> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, ResultReset packet) {
-            Result result = (Result) conn.getCache(packet.resultId);
+        public Packet handle(ServerSession session, ResultReset packet) {
+            Result result = (Result) session.getCache(packet.resultId);
             result.reset();
             return null;
         }
@@ -65,8 +64,8 @@ class ResultPacketHandlers extends PacketHandlers {
 
     private static class Close implements PacketHandler<ResultClose> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, ResultClose packet) {
-            Result result = (Result) conn.removeCache(packet.resultId, true);
+        public Packet handle(ServerSession session, ResultClose packet) {
+            Result result = (Result) session.removeCache(packet.resultId, true);
             if (result != null) {
                 result.close();
             }

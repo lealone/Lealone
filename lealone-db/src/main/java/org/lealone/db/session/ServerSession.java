@@ -6,6 +6,7 @@
  */
 package org.lealone.db.session;
 
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.sql.Connection;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.Random;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceSystem;
+import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.SmallLRUCache;
 import org.lealone.db.Command;
 import org.lealone.db.ConnectionInfo;
@@ -700,6 +702,7 @@ public class ServerSession extends SessionBase {
         if (!closed) {
             try {
                 database.checkPowerOff();
+                closeAllCache();
                 cleanTempTables(true);
                 database.removeSession(this);
             } finally {
@@ -1758,5 +1761,49 @@ public class ServerSession extends SessionBase {
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
         throw DbException.throwInternalError();
+    }
+
+    private ExpiringMap<Integer, AutoCloseable> cache; // 缓存PreparedStatement和结果集
+    private SmallLRUCache<Long, InputStream> lobCache; // 大多数情况下都不使用lob，所以延迟初始化
+
+    private void closeAllCache() {
+        if (cache != null) {
+            cache.close();
+            cache = null;
+        }
+        if (lobCache != null) {
+            for (InputStream in : lobCache.values()) {
+                try {
+                    in.close();
+                } catch (Throwable t) {
+                    // ignore
+                }
+            }
+            lobCache = null;
+        }
+    }
+
+    public void setCache(ExpiringMap<Integer, AutoCloseable> cache) {
+        this.cache = cache;
+    }
+
+    public void addCache(Integer k, AutoCloseable v) {
+        cache.put(k, v);
+    }
+
+    public AutoCloseable getCache(Integer k) {
+        return cache.get(k);
+    }
+
+    public AutoCloseable removeCache(Integer k, boolean ifAvailable) {
+        return cache.remove(k, ifAvailable);
+    }
+
+    public SmallLRUCache<Long, InputStream> getLobCache() {
+        if (lobCache == null) {
+            lobCache = SmallLRUCache.newInstance(
+                    Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
+        }
+        return lobCache;
     }
 }

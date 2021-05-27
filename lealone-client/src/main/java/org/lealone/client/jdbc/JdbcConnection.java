@@ -78,7 +78,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private int queryTimeoutCache = -1;
     private int savepointId;
     private String catalog;
-    private Statement executingStatement;
 
     public JdbcConnection(String url, Properties info) throws SQLException {
         this(new ConnectionInfo(url, info));
@@ -290,13 +289,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 return;
             }
             session.cancel();
-            if (executingStatement != null) {
-                try {
-                    executingStatement.cancel();
-                } catch (NullPointerException e) {
-                    // ignore
-                }
-            }
             synchronized (session) {
                 try {
                     if (!session.isClosed()) {
@@ -1349,13 +1341,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private void rollbackInternal() {
         rollback = prepareSQLCommand("ROLLBACK", rollback);
         rollback.executeUpdate();
-    }
-
-    /**
-     * INTERNAL
-     */
-    public void setExecutingStatement(Statement stat) {
-        executingStatement = stat;
     }
 
     /**

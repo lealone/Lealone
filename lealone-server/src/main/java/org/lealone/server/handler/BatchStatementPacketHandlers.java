@@ -23,7 +23,6 @@ import java.util.List;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
-import org.lealone.server.TcpServerConnection;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.batch.BatchStatementPreparedUpdate;
@@ -58,10 +57,10 @@ class BatchStatementPacketHandlers extends PacketHandlers {
 
     private static class PreparedUpdate implements PacketHandler<BatchStatementPreparedUpdate> {
         @Override
-        public Packet handle(TcpServerConnection conn, ServerSession session, BatchStatementPreparedUpdate packet) {
+        public Packet handle(ServerSession session, BatchStatementPreparedUpdate packet) {
             int commandId = packet.commandId;
             int size = packet.size;
-            PreparedSQLStatement command = (PreparedSQLStatement) conn.getCache(commandId);
+            PreparedSQLStatement command = (PreparedSQLStatement) session.getCache(commandId);
             List<? extends CommandParameter> params = command.getParameters();
             int[] results = new int[size];
             for (int i = 0; i < size; i++) {
