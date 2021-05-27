@@ -33,7 +33,6 @@ import java.util.concurrent.Executor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
-import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.Utils;
 import org.lealone.db.ConnectionInfo;
@@ -63,7 +62,7 @@ import org.lealone.sql.SQLCommand;
  * @author H2 Group
  * @author zhh
  */
-public class JdbcConnection extends TraceObject implements Connection {
+public class JdbcConnection extends JdbcWrapper implements Connection {
 
     private final CompareMode compareMode = CompareMode.getInstance(null, 0, false);
     private final String url;
@@ -1529,28 +1528,6 @@ public class JdbcConnection extends TraceObject implements Connection {
     @Override
     public String getClientInfo(String name) throws SQLException {
         throw unsupported("clientInfo");
-    }
-
-    /**
-     * [Not supported] Return an object of this class if possible.
-     *
-     * @param iface the class
-     */
-    // ## Java 1.6 ##
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw unsupported("unwrap");
-    }
-
-    /**
-     * [Not supported] Checks if unwrap can return an object of this class.
-     *
-     * @param iface the class
-     */
-    // ## Java 1.6 ##
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        throw unsupported("isWrapperFor");
     }
 
     /**

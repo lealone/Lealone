@@ -14,7 +14,6 @@ import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 
 import org.lealone.common.trace.Trace;
-import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.StatementBuilder;
 import org.lealone.common.util.StringUtils;
@@ -24,7 +23,7 @@ import org.lealone.db.SysProperties;
 /**
  * Represents the meta data for a database.
  */
-public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaData {
+public class JdbcDatabaseMetaData extends JdbcWrapper implements DatabaseMetaData {
 
     private final JdbcConnection conn;
     private String mode;
@@ -2839,24 +2838,6 @@ public class JdbcDatabaseMetaData extends TraceObject implements DatabaseMetaDat
     @Override
     public ResultSet getClientInfoProperties() throws SQLException {
         throw unsupported("clientInfoProperties");
-    }
-
-    /**
-     * [Not supported] Return an object of this class if possible.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw unsupported("unwrap");
-    }
-
-    /**
-     * [Not supported] Checks if unwrap can return an object of this class.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        throw unsupported("isWrapperFor");
     }
 
     /**

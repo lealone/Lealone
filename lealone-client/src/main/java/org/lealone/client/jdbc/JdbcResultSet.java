@@ -31,7 +31,6 @@ import java.util.Map;
 
 import org.lealone.client.result.UpdatableRow;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.DateTimeUtils;
 import org.lealone.common.util.IOUtils;
@@ -75,7 +74,7 @@ import org.lealone.db.value.ValueTimestamp;
  * but not own inserts and deletes.
  * </p>
  */
-public class JdbcResultSet extends TraceObject implements ResultSet {
+public class JdbcResultSet extends JdbcWrapper implements ResultSet {
     private final boolean closeStatement;
     private final boolean scrollable;
     private final boolean updatable;
@@ -3571,24 +3570,6 @@ public class JdbcResultSet extends TraceObject implements ResultSet {
         } catch (Exception e) {
             throw logAndConvert(e);
         }
-    }
-
-    /**
-     * [Not supported] Return an object of this class if possible.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw unsupported("unwrap");
-    }
-
-    /**
-     * [Not supported] Checks if unwrap can return an object of this class.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        throw unsupported("isWrapperFor");
     }
 
     /**

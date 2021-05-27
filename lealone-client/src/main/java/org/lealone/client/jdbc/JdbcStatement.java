@@ -15,7 +15,6 @@ import java.util.ArrayList;
 
 import org.lealone.client.command.ClientSQLCommand;
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.Utils;
 import org.lealone.db.Command;
@@ -34,7 +33,7 @@ import org.lealone.sql.SQLCommand;
  * @author H2 Group
  * @author zhh
  */
-public class JdbcStatement extends TraceObject implements Statement {
+public class JdbcStatement extends JdbcWrapper implements Statement {
 
     protected JdbcConnection conn;
     protected final Session session;
@@ -1022,24 +1021,6 @@ public class JdbcStatement extends TraceObject implements Statement {
      */
     public int getLastExecutedCommandType() {
         return lastExecutedCommandType;
-    }
-
-    /**
-     * [Not supported] Return an object of this class if possible.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw unsupported("unwrap");
-    }
-
-    /**
-     * [Not supported] Checks if unwrap can return an object of this class.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        throw unsupported("isWrapperFor");
     }
 
     /**

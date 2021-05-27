@@ -11,7 +11,6 @@ import java.sql.SQLException;
 import java.util.List;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.CommandParameter;
@@ -22,7 +21,7 @@ import org.lealone.sql.SQLCommand;
 /**
  * Information about the parameters of a prepared statement.
  */
-public class JdbcParameterMetaData extends TraceObject implements ParameterMetaData {
+public class JdbcParameterMetaData extends JdbcWrapper implements ParameterMetaData {
 
     private final JdbcPreparedStatement prep;
     private final List<? extends CommandParameter> parameters;
@@ -216,24 +215,6 @@ public class JdbcParameterMetaData extends TraceObject implements ParameterMetaD
 
     private void checkClosed() {
         prep.checkClosed();
-    }
-
-    /**
-     * [Not supported] Return an object of this class if possible.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw unsupported("unwrap");
-    }
-
-    /**
-     * [Not supported] Checks if unwrap can return an object of this class.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        throw unsupported("isWrapperFor");
     }
 
     /**

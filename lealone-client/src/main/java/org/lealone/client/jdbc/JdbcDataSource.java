@@ -20,7 +20,6 @@ import javax.naming.Referenceable;
 import javax.naming.StringRefAddr;
 import javax.sql.DataSource;
 
-import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.StringUtils;
 
@@ -57,7 +56,7 @@ import org.lealone.common.util.StringUtils;
  * In this example the user name and password are serialized as
  * well; this may be a security problem in some cases.
  */
-public class JdbcDataSource extends TraceObject implements DataSource, Serializable, Referenceable {
+public class JdbcDataSource extends JdbcWrapper implements DataSource, Serializable, Referenceable {
 
     private static final long serialVersionUID = 1288136338451857771L;
 
@@ -302,28 +301,6 @@ public class JdbcDataSource extends TraceObject implements DataSource, Serializa
         ref.add(new StringRefAddr("loginTimeout", String.valueOf(loginTimeout)));
         ref.add(new StringRefAddr("description", description));
         return ref;
-    }
-
-    /**
-     * [Not supported] Return an object of this class if possible.
-     *
-     * @param iface the class
-     */
-    // ## Java 1.6 ##
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw unsupported("unwrap");
-    }
-
-    /**
-     * [Not supported] Checks if unwrap can return an object of this class.
-     *
-     * @param iface the class
-     */
-    // ## Java 1.6 ##
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        throw unsupported("isWrapperFor");
     }
 
     /**

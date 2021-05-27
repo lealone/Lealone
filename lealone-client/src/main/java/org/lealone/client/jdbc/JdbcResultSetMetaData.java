@@ -10,7 +10,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 import org.lealone.common.exceptions.DbException;
-import org.lealone.common.trace.TraceObject;
 import org.lealone.common.trace.TraceObjectType;
 import org.lealone.common.util.MathUtils;
 import org.lealone.db.result.Result;
@@ -19,7 +18,7 @@ import org.lealone.db.value.DataType;
 /**
  * Represents the meta data for a ResultSet.
  */
-public class JdbcResultSetMetaData extends TraceObject implements ResultSetMetaData {
+public class JdbcResultSetMetaData extends JdbcWrapper implements ResultSetMetaData {
 
     private final String catalog;
     private final JdbcPreparedStatement prep;
@@ -450,24 +449,6 @@ public class JdbcResultSetMetaData extends TraceObject implements ResultSetMetaD
         if (columnIndex < 1 || columnIndex > columnCount) {
             throw DbException.getInvalidValueException("columnIndex", columnIndex);
         }
-    }
-
-    /**
-     * [Not supported] Return an object of this class if possible.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        throw unsupported("unwrap");
-    }
-
-    /**
-     * [Not supported] Checks if unwrap can return an object of this class.
-     */
-    // ## Java 1.6 ##
-    @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        throw unsupported("isWrapperFor");
     }
 
     /**
