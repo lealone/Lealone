@@ -17,11 +17,14 @@
  */
 package org.lealone.test.client;
 
+import java.sql.Connection;
 import java.sql.ParameterMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcPreparedStatement;
@@ -31,12 +34,133 @@ import org.lealone.test.sql.SqlTestBase;
 
 public class JdbcPreparedStatementTest extends SqlTestBase {
 
+    private JdbcPreparedStatement ps;
+
     @Test
     public void run() throws Exception {
+        testException();
         testMetaData();
         testFetchSize();
         testBatch();
         testAsync();
+    }
+
+    void testException() throws Exception {
+        createTable();
+        executeUpdate("INSERT INTO test(f1, f2) VALUES(1, 2)");
+
+        testSyncExecuteUpdateException();
+        testAsyncExecuteUpdateException();
+
+        testSyncExecuteQueryException();
+        testAsyncExecuteQueryException();
+    }
+
+    private JdbcPreparedStatement prepareStatement(String sql) throws Exception {
+        return prepareStatement(conn, sql);
+    }
+
+    private JdbcPreparedStatement prepareStatement(Connection conn, String sql) throws Exception {
+        return (JdbcPreparedStatement) conn.prepareStatement(sql);
+    }
+
+    void testSyncExecuteUpdateException() throws Exception {
+        try {
+            ps = prepareStatement("INSERT INTO test(f1, f2) VALUES(1, 2)");
+            // 主键重复，抛异常
+            ps.executeUpdate();
+            fail();
+        } catch (SQLException e) {
+        }
+
+        Connection conn = getConnection();
+        ps = prepareStatement(conn, "INSERT INTO test(f1, f2) VALUES(2, 3)");
+        conn.close();
+        try {
+            // 连接已经关闭，抛异常
+            ps.executeUpdate();
+            fail();
+        } catch (SQLException e) {
+        }
+    }
+
+    void testAsyncExecuteUpdateException() throws Exception {
+        // 主键重复，抛异常
+        testAsyncExecuteUpdateException(conn, "INSERT INTO test(f1, f2) VALUES(1, 2)", false);
+
+        Connection conn = getConnection();
+        // 连接已经关闭，抛异常
+        testAsyncExecuteUpdateException(conn, "INSERT INTO test(f1, f2) VALUES(2, 3)", true);
+    }
+
+    private void testAsyncExecuteUpdateException(Connection conn, String sql, boolean closeConnection)
+            throws Exception {
+        JdbcPreparedStatement ps = prepareStatement(conn, sql);
+        if (closeConnection)
+            conn.close();
+        AtomicReference<Throwable> ref = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        ps.executeUpdateAsync().onFailure(t -> {
+            ref.set(t);
+            latch.countDown();
+        });
+        try {
+            latch.await(3000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        assertTrue(ref.get() instanceof SQLException);
+    }
+
+    void testSyncExecuteQueryException() throws Exception {
+        try {
+            // 主键参数不合法，抛异常
+            ps = prepareStatement("Select * From test Where f1=?");
+            ps.setString(1, "abc");
+            ps.executeQuery();
+            fail();
+        } catch (SQLException e) {
+        }
+
+        Connection conn = getConnection();
+        JdbcPreparedStatement ps = prepareStatement(conn, "Select * FROM test");
+        conn.close();
+        try {
+            // 连接已经关闭，抛异常
+            ps.executeQuery();
+            fail();
+        } catch (SQLException e) {
+        }
+    }
+
+    void testAsyncExecuteQueryException() throws Exception {
+        // 主键参数不合法，抛异常
+        testAsyncExecuteQueryException(conn, "Select * From test Where f1=?", false);
+
+        Connection conn = getConnection();
+        // 连接已经关闭，抛异常
+        testAsyncExecuteQueryException(conn, "Select * FROM test", true);
+    }
+
+    private void testAsyncExecuteQueryException(Connection conn, String sql, boolean closeConnection) throws Exception {
+        JdbcPreparedStatement ps = prepareStatement(conn, sql);
+        if (closeConnection) {
+            conn.close();
+        } else {
+            ps.setString(1, "abc");
+        }
+        AtomicReference<Throwable> ref = new AtomicReference<>();
+        CountDownLatch latch = new CountDownLatch(1);
+        ps.executeQueryAsync().onFailure(t -> {
+            ref.set(t);
+            latch.countDown();
+        });
+        try {
+            latch.await(3000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        assertTrue(ref.get() instanceof SQLException);
     }
 
     void testMetaData() throws Exception {

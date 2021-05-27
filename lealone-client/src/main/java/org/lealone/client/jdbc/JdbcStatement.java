@@ -354,11 +354,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
             SQLCommand command = conn.prepareSQLCommand(sql, fetchSize);
             setExecutingStatement(command);
             if (command.isQuery()) {
-                boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-                boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                Result result = command.executeQuery(maxRows, scrollable).get();
-                int id = getNextTraceId(TraceObjectType.RESULT_SET);
-                resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
+                resultSet = executeQuerySQLCommand(command);
                 resultSet.setCommand(command);
                 // 不能立即调用command.close()，当结果集还没获取完时还需要用command获取下一批记录
                 return true;
@@ -372,6 +368,14 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
         } finally {
             setExecutingStatement(null);
         }
+    }
+
+    JdbcResultSet executeQuerySQLCommand(SQLCommand command) {
+        boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+        boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+        Result result = command.executeQuery(maxRows, scrollable).get();
+        int id = getNextTraceId(TraceObjectType.RESULT_SET);
+        return new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
     }
 
     /**

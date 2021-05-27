@@ -106,40 +106,61 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      */
     @Override
     public ResultSet executeQuery() throws SQLException {
-        return executeQueryInternal(true).get();
+        try {
+            return executeQueryInternal(true).get();
+        } catch (Exception e) {
+            throw logAndConvert(e); // 抛出SQLException
+        }
     }
 
     public Future<ResultSet> executeQueryAsync() {
-        return executeQueryInternal(false);
+        try {
+            return executeQueryInternal(false);
+        } catch (Exception e) {
+            return Future.failedFuture(logAndConvert(e)); // 返回失败Future
+        }
     }
 
-    private Future<ResultSet> executeQueryInternal(boolean sync) {
-        try {
-            int id = getNextTraceId(TraceObjectType.RESULT_SET);
-            if (isDebugEnabled()) {
-                debugCodeAssign(TraceObjectType.RESULT_SET, id, sync ? "executeQuery()" : "executeQueryAsync()");
+    private Future<ResultSet> executeQueryInternal(boolean sync) throws SQLException {
+        int id = getNextTraceId(TraceObjectType.RESULT_SET);
+        if (isDebugEnabled()) {
+            debugCodeAssign(TraceObjectType.RESULT_SET, id, sync ? "executeQuery()" : "executeQueryAsync()");
+        }
+        checkClosed();
+        closeOldResultSet();
+        setExecutingStatement(command);
+        boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
+        boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
+        AsyncCallback<ResultSet> ac = new AsyncCallback<>();
+        command.executeQuery(maxRows, scrollable).onComplete(ar -> {
+            setExecutingStatement(null);
+            if (ar.isSucceeded()) {
+                Result r = ar.getResult();
+                JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id, closedByResultSet,
+                        scrollable, updatable, cachedColumnLabelMap);
+                resultSet.setCommand(command);
+                ac.setAsyncResult(resultSet);
+            } else {
+                // 转换成SQLException
+                ac.setAsyncResult(DbException.toSQLException(ar.getCause()));
             }
-            checkClosed();
-            closeOldResultSet();
-            setExecutingStatement(command);
-            boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-            boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-            AsyncCallback<ResultSet> ac = new AsyncCallback<>();
-            command.executeQuery(maxRows, scrollable).onComplete(ar -> {
-                setExecutingStatement(null);
-                if (ar.isSucceeded()) {
-                    Result r = ar.getResult();
-                    JdbcResultSet resultSet = new JdbcResultSet(conn, JdbcPreparedStatement.this, r, id,
-                            closedByResultSet, scrollable, updatable, cachedColumnLabelMap);
-                    resultSet.setCommand(command);
-                    ac.setAsyncResult(resultSet);
-                } else {
-                    ac.setAsyncResult(ar.getCause());
-                }
-            });
-            return ac;
+        });
+        return ac;
+    }
+
+    /**
+     * Calling this method is not legal on a PreparedStatement.
+     *
+     * @param sql ignored
+     * @throws SQLException Unsupported Feature
+     */
+    @Override
+    public ResultSet executeQuery(String sql) throws SQLException {
+        try {
+            debugCodeCall("executeQuery", sql);
+            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
         } catch (Exception e) {
-            return Future.failedFuture(logAndConvert(e));
+            throw logAndConvert(e);
         }
     }
 
@@ -162,121 +183,37 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
     @Override
     public int executeUpdate() throws SQLException {
         debugCodeCall("executeUpdate");
-        return executeUpdateInternal().get();
+        try {
+            return executeUpdateInternal().get();
+        } catch (Exception e) {
+            throw logAndConvert(e); // 抛出SQLException
+        }
     }
 
     public Future<Integer> executeUpdateAsync() {
         debugCodeCall("executeUpdateAsync");
-        return executeUpdateInternal();
+        try {
+            return executeUpdateInternal();
+        } catch (Exception e) {
+            return Future.failedFuture(logAndConvert(e)); // 返回失败Future
+        }
     }
 
-    private Future<Integer> executeUpdateInternal() {
-        try {
-            checkClosed();
-            closeOldResultSet();
-            setExecutingStatement(command);
-            AsyncCallback<Integer> ac = new AsyncCallback<>();
-            command.executeUpdate().onComplete(ar -> {
-                setExecutingStatement(null);
+    private Future<Integer> executeUpdateInternal() throws SQLException {
+        checkClosed();
+        closeOldResultSet();
+        setExecutingStatement(command);
+        AsyncCallback<Integer> ac = new AsyncCallback<>();
+        command.executeUpdate().onComplete(ar -> {
+            setExecutingStatement(null);
+            if (ar.isFailed()) {
+                // 转换成SQLException
+                ac.setAsyncResult(DbException.toSQLException(ar.getCause()));
+            } else {
                 ac.setAsyncResult(ar);
-            });
-            return ac;
-        } catch (Exception e) {
-            return Future.failedFuture(logAndConvert(e));
-        }
-    }
-
-    /**
-     * Executes an arbitrary statement. If another result set exists for this
-     * statement, this will be closed (even if this statement fails). If auto
-     * commit is on, and the statement is not a select, this statement will be
-     * committed.
-     *
-     * @return true if a result set is available, false if not
-     * @throws SQLException if this object is closed or invalid
-     */
-    @Override
-    public boolean execute() throws SQLException {
-        try {
-            int id = getNextTraceId(TraceObjectType.RESULT_SET);
-            if (isDebugEnabled()) {
-                debugCodeCall("execute");
             }
-            checkClosed();
-            boolean returnsResultSet;
-            closeOldResultSet();
-            try {
-                setExecutingStatement(command);
-                if (command.isQuery()) {
-                    returnsResultSet = true;
-                    boolean scrollable = resultSetType != ResultSet.TYPE_FORWARD_ONLY;
-                    boolean updatable = resultSetConcurrency == ResultSet.CONCUR_UPDATABLE;
-                    Result result = command.executeQuery(maxRows, scrollable).get();
-                    resultSet = new JdbcResultSet(conn, this, result, id, closedByResultSet, scrollable, updatable);
-                } else {
-                    returnsResultSet = false;
-                    updateCount = command.executeUpdate().get();
-                }
-            } finally {
-                setExecutingStatement(null);
-            }
-            return returnsResultSet;
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Clears all parameters.
-     *
-     * @throws SQLException if this object is closed or invalid
-     */
-    @Override
-    public void clearParameters() throws SQLException {
-        try {
-            debugCodeCall("clearParameters");
-            checkClosed();
-            List<? extends CommandParameter> parameters = command.getParameters();
-            for (int i = 0, size = parameters.size(); i < size; i++) {
-                CommandParameter param = parameters.get(i);
-                // can only delete old temp files if they are not in the batch
-                param.setValue(null, batchParameters == null);
-            }
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Calling this method is not legal on a PreparedStatement.
-     *
-     * @param sql ignored
-     * @throws SQLException Unsupported Feature
-     */
-    @Override
-    public ResultSet executeQuery(String sql) throws SQLException {
-        try {
-            debugCodeCall("executeQuery", sql);
-            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Calling this method is not legal on a PreparedStatement.
-     *
-     * @param sql ignored
-     * @throws SQLException Unsupported Feature
-     */
-    @Override
-    public void addBatch(String sql) throws SQLException {
-        try {
-            debugCodeCall("addBatch", sql);
-            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
+        });
+        return ac;
     }
 
     /**
@@ -299,6 +236,89 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
      * Calling this method is not legal on a PreparedStatement.
      *
      * @param sql ignored
+     * @param autoGeneratedKeys ignored
+     * @throws SQLException Unsupported Feature
+     */
+    @Override
+    public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
+        try {
+            debugCode("executeUpdate(" + quote(sql) + ", " + autoGeneratedKeys + ");");
+            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Calling this method is not legal on a PreparedStatement.
+     *
+     * @param sql ignored
+     * @param columnIndexes ignored
+     * @throws SQLException Unsupported Feature
+     */
+    @Override
+    public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
+        try {
+            debugCode("executeUpdate(" + quote(sql) + ", " + quoteIntArray(columnIndexes) + ");");
+            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Calling this method is not legal on a PreparedStatement.
+     *
+     * @param sql ignored
+     * @param columnNames ignored
+     * @throws SQLException Unsupported Feature
+     */
+    @Override
+    public int executeUpdate(String sql, String[] columnNames) throws SQLException {
+        try {
+            debugCode("executeUpdate(" + quote(sql) + ", " + quoteArray(columnNames) + ");");
+            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Executes an arbitrary statement. If another result set exists for this
+     * statement, this will be closed (even if this statement fails). If auto
+     * commit is on, and the statement is not a select, this statement will be
+     * committed.
+     *
+     * @return true if a result set is available, false if not
+     * @throws SQLException if this object is closed or invalid
+     */
+    @Override
+    public boolean execute() throws SQLException {
+        try {
+            if (isDebugEnabled()) {
+                debugCodeCall("execute");
+            }
+            checkClosed();
+            closeOldResultSet();
+            setExecutingStatement(command);
+            if (command.isQuery()) {
+                resultSet = executeQuerySQLCommand(command);
+                return true;
+            } else {
+                updateCount = command.executeUpdate().get();
+                return false;
+            }
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        } finally {
+            setExecutingStatement(null);
+        }
+    }
+
+    /**
+     * Calling this method is not legal on a PreparedStatement.
+     *
+     * @param sql ignored
      * @throws SQLException Unsupported Feature
      */
     @Override
@@ -306,6 +326,211 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
         try {
             debugCodeCall("execute", sql);
             throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Calling this method is not legal on a PreparedStatement.
+     *
+     * @param sql ignored
+     * @param autoGeneratedKeys ignored
+     * @throws SQLException Unsupported Feature
+     */
+    @Override
+    public boolean execute(String sql, int autoGeneratedKeys) throws SQLException {
+        try {
+            debugCode("execute(" + quote(sql) + ", " + autoGeneratedKeys + ");");
+            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Calling this method is not legal on a PreparedStatement.
+     *
+     * @param sql ignored
+     * @param columnIndexes ignored
+     * @throws SQLException Unsupported Feature
+     */
+    @Override
+    public boolean execute(String sql, int[] columnIndexes) throws SQLException {
+        try {
+            debugCode("execute(" + quote(sql) + ", " + quoteIntArray(columnIndexes) + ");");
+            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Calling this method is not legal on a PreparedStatement.
+     *
+     * @param sql ignored
+     * @param columnNames ignored
+     * @throws SQLException Unsupported Feature
+     */
+    @Override
+    public boolean execute(String sql, String[] columnNames) throws SQLException {
+        try {
+            debugCode("execute(" + quote(sql) + ", " + quoteArray(columnNames) + ");");
+            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Executes the batch.
+     * If one of the batched statements fails, this database will continue.
+     *
+     * @return the array of update counts
+     */
+    @Override
+    public int[] executeBatch() throws SQLException {
+        try {
+            debugCodeCall("executeBatch");
+            checkClosed();
+            if (batchParameters == null || batchParameters.isEmpty())
+                return new int[0];
+
+            if (command instanceof ClientPreparedSQLCommand) {
+                ArrayList<Value[]> parameters = batchParameters;
+                batchParameters = null;
+                return ((ClientPreparedSQLCommand) command).executeBatchPreparedSQLCommands(parameters);
+            } else {
+                int size = batchParameters.size();
+                int[] result = new int[size];
+                boolean error = false;
+                SQLException next = null;
+
+                for (int i = 0; i < size; i++) {
+                    Value[] set = batchParameters.get(i);
+                    List<? extends CommandParameter> parameters = command.getParameters();
+                    for (int j = 0; j < set.length; j++) {
+                        Value value = set[j];
+                        CommandParameter param = parameters.get(j);
+                        param.setValue(value, false);
+                    }
+                    try {
+                        result[i] = executeUpdateInternal().get();
+                    } catch (Exception re) {
+                        SQLException e = logAndConvert(re);
+                        if (next == null) {
+                            next = e;
+                        } else {
+                            e.setNextException(next);
+                            next = e;
+                        }
+                        result[i] = Statement.EXECUTE_FAILED;
+                        error = true;
+                    }
+                }
+                batchParameters = null;
+                if (error) {
+                    JdbcBatchUpdateException e = new JdbcBatchUpdateException(next, result);
+                    throw e;
+                }
+                return result;
+            }
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Adds the current settings to the batch.
+     */
+    @Override
+    public void addBatch() throws SQLException {
+        try {
+            debugCodeCall("addBatch");
+            checkClosed();
+            List<? extends CommandParameter> parameters = command.getParameters();
+            int size = parameters.size();
+            Value[] set = new Value[size];
+            for (int i = 0; i < size; i++) {
+                CommandParameter param = parameters.get(i);
+                Value value = param.getValue();
+                set[i] = value;
+            }
+            if (batchParameters == null) {
+                batchParameters = Utils.newSmallArrayList();
+            }
+            batchParameters.add(set);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Calling this method is not legal on a PreparedStatement.
+     *
+     * @param sql ignored
+     * @throws SQLException Unsupported Feature
+     */
+    @Override
+    public void addBatch(String sql) throws SQLException {
+        try {
+            debugCodeCall("addBatch", sql);
+            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Clears the batch.
+     */
+    @Override
+    public void clearBatch() throws SQLException {
+        try {
+            debugCodeCall("clearBatch");
+            checkClosed();
+            batchParameters = null;
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Closes this statement.
+     * All result sets that where created by this statement
+     * become invalid after calling this method.
+     */
+    @Override
+    public void close() throws SQLException {
+        try {
+            setExecutingStatement(null);
+            super.close();
+            batchParameters = null;
+            if (command != null) {
+                command.close();
+                command = null;
+            }
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Clears all parameters.
+     *
+     * @throws SQLException if this object is closed or invalid
+     */
+    @Override
+    public void clearParameters() throws SQLException {
+        try {
+            debugCodeCall("clearParameters");
+            checkClosed();
+            List<? extends CommandParameter> parameters = command.getParameters();
+            for (int i = 0, size = parameters.size(); i < size; i++) {
+                CommandParameter param = parameters.get(i);
+                // can only delete old temp files if they are not in the batch
+                param.setValue(null, batchParameters == null);
+            }
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -1090,225 +1315,6 @@ public class JdbcPreparedStatement extends JdbcStatement implements PreparedStat
             String catalog = conn.getCatalog();
             JdbcResultSetMetaData meta = new JdbcResultSetMetaData(conn, catalog, this, null, result, id);
             return meta;
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Clears the batch.
-     */
-    @Override
-    public void clearBatch() throws SQLException {
-        try {
-            debugCodeCall("clearBatch");
-            checkClosed();
-            batchParameters = null;
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Closes this statement.
-     * All result sets that where created by this statement
-     * become invalid after calling this method.
-     */
-    @Override
-    public void close() throws SQLException {
-        try {
-            setExecutingStatement(null);
-            super.close();
-            batchParameters = null;
-            if (command != null) {
-                command.close();
-                command = null;
-            }
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Executes the batch.
-     * If one of the batched statements fails, this database will continue.
-     *
-     * @return the array of update counts
-     */
-    @Override
-    public int[] executeBatch() throws SQLException {
-        try {
-            debugCodeCall("executeBatch");
-            checkClosed();
-            if (batchParameters == null || batchParameters.isEmpty())
-                return new int[0];
-
-            if (command instanceof ClientPreparedSQLCommand) {
-                ArrayList<Value[]> parameters = batchParameters;
-                batchParameters = null;
-                return ((ClientPreparedSQLCommand) command).executeBatchPreparedSQLCommands(parameters);
-            } else {
-                int size = batchParameters.size();
-                int[] result = new int[size];
-                boolean error = false;
-                SQLException next = null;
-
-                for (int i = 0; i < size; i++) {
-                    Value[] set = batchParameters.get(i);
-                    List<? extends CommandParameter> parameters = command.getParameters();
-                    for (int j = 0; j < set.length; j++) {
-                        Value value = set[j];
-                        CommandParameter param = parameters.get(j);
-                        param.setValue(value, false);
-                    }
-                    try {
-                        result[i] = executeUpdateInternal().get();
-                    } catch (Exception re) {
-                        SQLException e = logAndConvert(re);
-                        if (next == null) {
-                            next = e;
-                        } else {
-                            e.setNextException(next);
-                            next = e;
-                        }
-                        result[i] = Statement.EXECUTE_FAILED;
-                        error = true;
-                    }
-                }
-                batchParameters = null;
-                if (error) {
-                    JdbcBatchUpdateException e = new JdbcBatchUpdateException(next, result);
-                    throw e;
-                }
-                return result;
-            }
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Adds the current settings to the batch.
-     */
-    @Override
-    public void addBatch() throws SQLException {
-        try {
-            debugCodeCall("addBatch");
-            checkClosed();
-            List<? extends CommandParameter> parameters = command.getParameters();
-            int size = parameters.size();
-            Value[] set = new Value[size];
-            for (int i = 0; i < size; i++) {
-                CommandParameter param = parameters.get(i);
-                Value value = param.getValue();
-                set[i] = value;
-            }
-            if (batchParameters == null) {
-                batchParameters = Utils.newSmallArrayList();
-            }
-            batchParameters.add(set);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Calling this method is not legal on a PreparedStatement.
-     *
-     * @param sql ignored
-     * @param autoGeneratedKeys ignored
-     * @throws SQLException Unsupported Feature
-     */
-    @Override
-    public int executeUpdate(String sql, int autoGeneratedKeys) throws SQLException {
-        try {
-            debugCode("executeUpdate(" + quote(sql) + ", " + autoGeneratedKeys + ");");
-            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Calling this method is not legal on a PreparedStatement.
-     *
-     * @param sql ignored
-     * @param columnIndexes ignored
-     * @throws SQLException Unsupported Feature
-     */
-    @Override
-    public int executeUpdate(String sql, int[] columnIndexes) throws SQLException {
-        try {
-            debugCode("executeUpdate(" + quote(sql) + ", " + quoteIntArray(columnIndexes) + ");");
-            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Calling this method is not legal on a PreparedStatement.
-     *
-     * @param sql ignored
-     * @param columnNames ignored
-     * @throws SQLException Unsupported Feature
-     */
-    @Override
-    public int executeUpdate(String sql, String[] columnNames) throws SQLException {
-        try {
-            debugCode("executeUpdate(" + quote(sql) + ", " + quoteArray(columnNames) + ");");
-            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Calling this method is not legal on a PreparedStatement.
-     *
-     * @param sql ignored
-     * @param autoGeneratedKeys ignored
-     * @throws SQLException Unsupported Feature
-     */
-    @Override
-    public boolean execute(String sql, int autoGeneratedKeys) throws SQLException {
-        try {
-            debugCode("execute(" + quote(sql) + ", " + autoGeneratedKeys + ");");
-            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Calling this method is not legal on a PreparedStatement.
-     *
-     * @param sql ignored
-     * @param columnIndexes ignored
-     * @throws SQLException Unsupported Feature
-     */
-    @Override
-    public boolean execute(String sql, int[] columnIndexes) throws SQLException {
-        try {
-            debugCode("execute(" + quote(sql) + ", " + quoteIntArray(columnIndexes) + ");");
-            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Calling this method is not legal on a PreparedStatement.
-     *
-     * @param sql ignored
-     * @param columnNames ignored
-     * @throws SQLException Unsupported Feature
-     */
-    @Override
-    public boolean execute(String sql, String[] columnNames) throws SQLException {
-        try {
-            debugCode("execute(" + quote(sql) + ", " + quoteArray(columnNames) + ");");
-            throw DbException.get(ErrorCode.METHOD_NOT_ALLOWED_FOR_PREPARED_STATEMENT);
         } catch (Exception e) {
             throw logAndConvert(e);
         }

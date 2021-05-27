@@ -55,7 +55,7 @@ public class JdbcStatementTest extends SqlTestBase {
 
     void testSyncExecuteUpdateException() throws Exception {
         try {
-            // 语法错误，，抛异常
+            // 语法错误，抛异常
             stmt.executeUpdate("CREATE TABLE4444 test (f1 int)");
             fail();
         } catch (SQLException e) {
@@ -118,7 +118,7 @@ public class JdbcStatementTest extends SqlTestBase {
     }
 
     void testAsyncExecuteQueryException() throws Exception {
-        // 语法错误，，抛异常
+        // 语法错误，抛异常
         testAsyncExecuteQueryException((JdbcStatement) stmt, "Select * FROM4444 test");
 
         Connection conn = getConnection();
