@@ -33,6 +33,10 @@ public class StatementUpdateAck implements AckPacket {
         this.updateCount = updateCount;
     }
 
+    public StatementUpdateAck(NetInputStream in, int version) throws IOException {
+        updateCount = in.readInt();
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.STATEMENT_UPDATE_ACK;
@@ -48,7 +52,7 @@ public class StatementUpdateAck implements AckPacket {
     private static class Decoder implements PacketDecoder<StatementUpdateAck> {
         @Override
         public StatementUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new StatementUpdateAck(in.readInt());
+            return new StatementUpdateAck(in, version);
         }
     }
 }

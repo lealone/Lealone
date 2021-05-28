@@ -34,6 +34,11 @@ public class StatementQuery extends QueryPacket {
         this.sql = sql;
     }
 
+    public StatementQuery(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        sql = in.readString();
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.STATEMENT_QUERY;
@@ -55,12 +60,7 @@ public class StatementQuery extends QueryPacket {
     private static class Decoder implements PacketDecoder<StatementQuery> {
         @Override
         public StatementQuery decode(NetInputStream in, int version) throws IOException {
-            int resultId = in.readInt();
-            int maxRows = in.readInt();
-            int fetchSize = in.readInt();
-            boolean scrollable = in.readBoolean();
-            String sql = in.readString();
-            return new StatementQuery(resultId, maxRows, fetchSize, scrollable, sql);
+            return new StatementQuery(in, version);
         }
     }
 }

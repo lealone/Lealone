@@ -30,15 +30,14 @@ public class DTransactionQueryAck extends StatementQueryAck {
 
     public final String localTransactionNames;
 
-    public DTransactionQueryAck(NetInputStream in, int rowCount, int columnCount, int fetchSize,
-            String localTransactionNames) {
-        super(in, rowCount, columnCount, fetchSize);
-        this.localTransactionNames = localTransactionNames;
-    }
-
     public DTransactionQueryAck(Result result, int rowCount, int fetchSize, String localTransactionNames) {
         super(result, rowCount, fetchSize);
         this.localTransactionNames = localTransactionNames;
+    }
+
+    public DTransactionQueryAck(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        localTransactionNames = in.readString();
     }
 
     @Override
@@ -57,11 +56,7 @@ public class DTransactionQueryAck extends StatementQueryAck {
     private static class Decoder implements PacketDecoder<DTransactionQueryAck> {
         @Override
         public DTransactionQueryAck decode(NetInputStream in, int version) throws IOException {
-            int rowCount = in.readInt();
-            int columnCount = in.readInt();
-            int fetchSize = in.readInt();
-            String localTransactionNames = in.readString();
-            return new DTransactionQueryAck(in, rowCount, columnCount, fetchSize, localTransactionNames);
+            return new DTransactionQueryAck(in, version);
         }
     }
 }

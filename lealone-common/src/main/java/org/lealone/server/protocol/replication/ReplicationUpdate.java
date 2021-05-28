@@ -34,6 +34,11 @@ public class ReplicationUpdate extends StatementUpdate {
         this.replicationName = replicationName;
     }
 
+    public ReplicationUpdate(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        replicationName = in.readString();
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.REPLICATION_UPDATE;
@@ -55,9 +60,7 @@ public class ReplicationUpdate extends StatementUpdate {
     private static class Decoder implements PacketDecoder<ReplicationUpdate> {
         @Override
         public ReplicationUpdate decode(NetInputStream in, int version) throws IOException {
-            String sql = in.readString();
-            String replicationName = in.readString();
-            return new ReplicationUpdate(sql, replicationName);
+            return new ReplicationUpdate(in, version);
         }
     }
 }

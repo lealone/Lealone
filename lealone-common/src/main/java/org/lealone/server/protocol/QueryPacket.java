@@ -19,6 +19,7 @@ package org.lealone.server.protocol;
 
 import java.io.IOException;
 
+import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
 
 public abstract class QueryPacket implements Packet {
@@ -33,6 +34,13 @@ public abstract class QueryPacket implements Packet {
         this.maxRows = maxRows;
         this.fetchSize = fetchSize;
         this.scrollable = scrollable;
+    }
+
+    public QueryPacket(NetInputStream in, int version) throws IOException {
+        resultId = in.readInt();
+        maxRows = in.readInt();
+        fetchSize = in.readInt();
+        scrollable = in.readBoolean();
     }
 
     @Override

@@ -44,11 +44,11 @@ public class StatementQueryAck implements AckPacket {
         in = null;
     }
 
-    public StatementQueryAck(NetInputStream in, int rowCount, int columnCount, int fetchSize) {
+    public StatementQueryAck(NetInputStream in, int version) throws IOException {
         result = null;
-        this.rowCount = rowCount;
-        this.columnCount = columnCount;
-        this.fetchSize = fetchSize;
+        rowCount = in.readInt();
+        columnCount = in.readInt();
+        fetchSize = in.readInt();
         this.in = in;
     }
 
@@ -73,10 +73,7 @@ public class StatementQueryAck implements AckPacket {
     private static class Decoder implements PacketDecoder<StatementQueryAck> {
         @Override
         public StatementQueryAck decode(NetInputStream in, int version) throws IOException {
-            int rowCount = in.readInt();
-            int columnCount = in.readInt();
-            int fetchSize = in.readInt();
-            return new StatementQueryAck(in, rowCount, columnCount, fetchSize);
+            return new StatementQueryAck(in, version);
         }
     }
 }

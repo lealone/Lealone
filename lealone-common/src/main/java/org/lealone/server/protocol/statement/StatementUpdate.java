@@ -33,6 +33,10 @@ public class StatementUpdate implements Packet {
         this.sql = sql;
     }
 
+    public StatementUpdate(NetInputStream in, int version) throws IOException {
+        sql = in.readString();
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.STATEMENT_UPDATE;
@@ -53,8 +57,7 @@ public class StatementUpdate implements Packet {
     private static class Decoder implements PacketDecoder<StatementUpdate> {
         @Override
         public StatementUpdate decode(NetInputStream in, int version) throws IOException {
-            String sql = in.readString();
-            return new StatementUpdate(sql);
+            return new StatementUpdate(in, version);
         }
     }
 }

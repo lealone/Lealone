@@ -50,6 +50,16 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
         this.isFinalResult = isFinalResult;
     }
 
+    public ReplicationUpdateAck(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        first = in.readLong();
+        uncommittedReplicationName = in.readString();
+        replicationConflictType = ReplicationConflictType.getType(in.readInt());
+        ackVersion = in.readInt();
+        isIfDDL = in.readBoolean();
+        isFinalResult = in.readBoolean();
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.REPLICATION_UPDATE_ACK;
@@ -87,8 +97,7 @@ public class ReplicationUpdateAck extends StatementUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationUpdateAck> {
         @Override
         public ReplicationUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationUpdateAck(in.readInt(), in.readLong(), in.readString(),
-                    ReplicationConflictType.getType(in.readInt()), in.readInt(), in.readBoolean(), in.readBoolean());
+            return new ReplicationUpdateAck(in, version);
         }
     }
 }

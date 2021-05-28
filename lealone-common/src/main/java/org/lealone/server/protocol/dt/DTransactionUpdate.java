@@ -37,6 +37,11 @@ public class DTransactionUpdate extends StatementUpdate {
         this.pageKeys = pageKeys;
     }
 
+    public DTransactionUpdate(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        pageKeys = readPageKeys(in);
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.DISTRIBUTED_TRANSACTION_UPDATE;
@@ -58,9 +63,7 @@ public class DTransactionUpdate extends StatementUpdate {
     private static class Decoder implements PacketDecoder<DTransactionUpdate> {
         @Override
         public DTransactionUpdate decode(NetInputStream in, int version) throws IOException {
-            String sql = in.readString();
-            List<PageKey> pageKeys = readPageKeys(in);
-            return new DTransactionUpdate(pageKeys, sql);
+            return new DTransactionUpdate(in, version);
         }
     }
 

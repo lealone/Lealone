@@ -37,6 +37,11 @@ public class DTransactionQuery extends StatementQuery {
         this.pageKeys = pageKeys;
     }
 
+    public DTransactionQuery(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        pageKeys = DTransactionUpdate.readPageKeys(in);
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.DISTRIBUTED_TRANSACTION_QUERY;
@@ -58,13 +63,7 @@ public class DTransactionQuery extends StatementQuery {
     private static class Decoder implements PacketDecoder<DTransactionQuery> {
         @Override
         public DTransactionQuery decode(NetInputStream in, int version) throws IOException {
-            int resultId = in.readInt();
-            int maxRows = in.readInt();
-            int fetchSize = in.readInt();
-            boolean scrollable = in.readBoolean();
-            String sql = in.readString();
-            List<PageKey> pageKeys = DTransactionUpdate.readPageKeys(in);
-            return new DTransactionQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, sql);
+            return new DTransactionQuery(in, version);
         }
     }
 }

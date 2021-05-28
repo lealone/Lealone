@@ -37,6 +37,11 @@ public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
         this.pageKeys = pageKeys;
     }
 
+    public DTransactionPreparedUpdate(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        pageKeys = DTransactionUpdate.readPageKeys(in);
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_UPDATE;
@@ -58,13 +63,7 @@ public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
     private static class Decoder implements PacketDecoder<DTransactionPreparedUpdate> {
         @Override
         public DTransactionPreparedUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = DTransactionUpdate.readPageKeys(in);
-            int commandId = in.readInt();
-            int size = in.readInt();
-            Value[] parameters = new Value[size];
-            for (int i = 0; i < size; i++)
-                parameters[i] = in.readValue();
-            return new DTransactionPreparedUpdate(pageKeys, commandId, parameters);
+            return new DTransactionPreparedUpdate(in, version);
         }
     }
 }

@@ -26,14 +26,12 @@ import org.lealone.server.protocol.PacketType;
 
 public class DTransactionPreparedQueryAck extends DTransactionQueryAck {
 
-    public DTransactionPreparedQueryAck(NetInputStream in, int rowCount, int columnCount, int fetchSize,
-            String localTransactionNames) {
-        super(in, rowCount, columnCount, fetchSize, localTransactionNames);
+    public DTransactionPreparedQueryAck(Result result, int rowCount, int fetchSize, String localTransactionNames) {
+        super(result, rowCount, fetchSize, localTransactionNames);
     }
 
-    public DTransactionPreparedQueryAck(Result result, int rowCount, int fetchSize,
-            String localTransactionNames) {
-        super(result, rowCount, fetchSize, localTransactionNames);
+    public DTransactionPreparedQueryAck(NetInputStream in, int version) throws IOException {
+        super(in, version);
     }
 
     @Override
@@ -46,12 +44,7 @@ public class DTransactionPreparedQueryAck extends DTransactionQueryAck {
     private static class Decoder implements PacketDecoder<DTransactionPreparedQueryAck> {
         @Override
         public DTransactionPreparedQueryAck decode(NetInputStream in, int version) throws IOException {
-            int rowCount = in.readInt();
-            int columnCount = in.readInt();
-            int fetchSize = in.readInt();
-            String localTransactionNames = in.readString();
-            return new DTransactionPreparedQueryAck(in, rowCount, columnCount, fetchSize,
-                    localTransactionNames);
+            return new DTransactionPreparedQueryAck(in, version);
         }
     }
 }

@@ -35,6 +35,11 @@ public class ReplicationPreparedUpdate extends PreparedStatementUpdate {
         this.replicationName = replicationName;
     }
 
+    public ReplicationPreparedUpdate(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        replicationName = in.readString();
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.REPLICATION_PREPARED_UPDATE;
@@ -56,13 +61,7 @@ public class ReplicationPreparedUpdate extends PreparedStatementUpdate {
     private static class Decoder implements PacketDecoder<ReplicationPreparedUpdate> {
         @Override
         public ReplicationPreparedUpdate decode(NetInputStream in, int version) throws IOException {
-            int commandId = in.readInt();
-            int size = in.readInt();
-            Value[] parameters = new Value[size];
-            for (int i = 0; i < size; i++)
-                parameters[i] = in.readValue();
-            String replicationName = in.readString();
-            return new ReplicationPreparedUpdate(commandId, parameters, replicationName);
+            return new ReplicationPreparedUpdate(in, version);
         }
     }
 }

@@ -36,6 +36,14 @@ public class PreparedStatementUpdate implements Packet {
         this.parameters = parameters;
     }
 
+    public PreparedStatementUpdate(NetInputStream in, int version) throws IOException {
+        commandId = in.readInt();
+        int size = in.readInt();
+        parameters = new Value[size];
+        for (int i = 0; i < size; i++)
+            parameters[i] = in.readValue();
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.PREPARED_STATEMENT_UPDATE;
@@ -61,12 +69,7 @@ public class PreparedStatementUpdate implements Packet {
     private static class Decoder implements PacketDecoder<PreparedStatementUpdate> {
         @Override
         public PreparedStatementUpdate decode(NetInputStream in, int version) throws IOException {
-            int commandId = in.readInt();
-            int size = in.readInt();
-            Value[] parameters = new Value[size];
-            for (int i = 0; i < size; i++)
-                parameters[i] = in.readValue();
-            return new PreparedStatementUpdate(commandId, parameters);
+            return new PreparedStatementUpdate(in, version);
         }
     }
 }

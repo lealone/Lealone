@@ -32,6 +32,10 @@ public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
                 isFinalResult);
     }
 
+    public ReplicationPreparedUpdateAck(NetInputStream in, int version) throws IOException {
+        super(in, version);
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.REPLICATION_PREPARED_UPDATE_ACK;
@@ -42,8 +46,7 @@ public class ReplicationPreparedUpdateAck extends ReplicationUpdateAck {
     private static class Decoder implements PacketDecoder<ReplicationPreparedUpdateAck> {
         @Override
         public ReplicationPreparedUpdateAck decode(NetInputStream in, int version) throws IOException {
-            return new ReplicationPreparedUpdateAck(in.readInt(), in.readLong(), in.readString(),
-                    ReplicationConflictType.getType(in.readInt()), in.readInt(), in.readBoolean(), in.readBoolean());
+            return new ReplicationPreparedUpdateAck(in, version);
         }
     }
 }

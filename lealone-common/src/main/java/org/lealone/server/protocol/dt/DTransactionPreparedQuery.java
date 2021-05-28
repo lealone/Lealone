@@ -38,6 +38,11 @@ public class DTransactionPreparedQuery extends PreparedStatementQuery {
         this.pageKeys = pageKeys;
     }
 
+    public DTransactionPreparedQuery(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        pageKeys = DTransactionUpdate.readPageKeys(in);
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.DISTRIBUTED_TRANSACTION_PREPARED_QUERY;
@@ -59,18 +64,7 @@ public class DTransactionPreparedQuery extends PreparedStatementQuery {
     private static class Decoder implements PacketDecoder<DTransactionPreparedQuery> {
         @Override
         public DTransactionPreparedQuery decode(NetInputStream in, int version) throws IOException {
-            int resultId = in.readInt();
-            int maxRows = in.readInt();
-            int fetchSize = in.readInt();
-            boolean scrollable = in.readBoolean();
-            int commandId = in.readInt();
-            int size = in.readInt();
-            Value[] parameters = new Value[size];
-            for (int i = 0; i < size; i++)
-                parameters[i] = in.readValue();
-            List<PageKey> pageKeys = DTransactionUpdate.readPageKeys(in);
-            return new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId,
-                    parameters);
+            return new DTransactionPreparedQuery(in, version);
         }
     }
 }

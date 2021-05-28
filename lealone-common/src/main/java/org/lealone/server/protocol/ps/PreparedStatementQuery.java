@@ -38,6 +38,15 @@ public class PreparedStatementQuery extends QueryPacket {
         this.parameters = parameters;
     }
 
+    public PreparedStatementQuery(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        commandId = in.readInt();
+        int size = in.readInt();
+        parameters = new Value[size];
+        for (int i = 0; i < size; i++)
+            parameters[i] = in.readValue();
+    }
+
     @Override
     public PacketType getType() {
         return PacketType.PREPARED_STATEMENT_QUERY;
@@ -64,16 +73,7 @@ public class PreparedStatementQuery extends QueryPacket {
     private static class Decoder implements PacketDecoder<PreparedStatementQuery> {
         @Override
         public PreparedStatementQuery decode(NetInputStream in, int version) throws IOException {
-            int resultId = in.readInt();
-            int maxRows = in.readInt();
-            int fetchSize = in.readInt();
-            boolean scrollable = in.readBoolean();
-            int commandId = in.readInt();
-            int size = in.readInt();
-            Value[] parameters = new Value[size];
-            for (int i = 0; i < size; i++)
-                parameters[i] = in.readValue();
-            return new PreparedStatementQuery(resultId, maxRows, fetchSize, scrollable, commandId, parameters);
+            return new PreparedStatementQuery(in, version);
         }
     }
 }
