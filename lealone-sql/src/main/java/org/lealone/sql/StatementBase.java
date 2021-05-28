@@ -41,7 +41,7 @@ import org.lealone.storage.PageKey;
  * @author H2 Group
  * @author zhh
  */
-public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLStatement {
+public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLStatement, DistributedSQLCommand {
 
     /**
      * The session.
@@ -537,7 +537,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    public Future<Result> executeQuery(int maxRows, boolean scrollable) {
+        YieldableBase<Result> yieldable = createYieldableQuery(maxRows, scrollable, null);
+        return Future.succeededFuture(syncExecute(yieldable));
+    }
+
+    @Override
+    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         TableFilter tf = getTableFilter();
         if (tf != null)
             tf.setPageKeys(pageKeys);
@@ -548,7 +554,13 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     }
 
     @Override
-    public Future<Integer> executeUpdate(List<PageKey> pageKeys) {
+    public Future<Integer> executeUpdate() {
+        YieldableBase<Integer> yieldable = createYieldableUpdate(null);
+        return Future.succeededFuture(syncExecute(yieldable));
+    }
+
+    @Override
+    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys) {
         TableFilter tf = getTableFilter();
         if (tf != null)
             tf.setPageKeys(pageKeys);
@@ -560,7 +572,7 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
-        Future<Integer> f = executeUpdate(null);
+        Future<Integer> f = executeUpdate();
         ReplicationUpdateAck ack = (ReplicationUpdateAck) session.createReplicationUpdateAckPacket(f.get(), false);
         ack.setReplicaCommand(this);
         return Future.succeededFuture(ack);

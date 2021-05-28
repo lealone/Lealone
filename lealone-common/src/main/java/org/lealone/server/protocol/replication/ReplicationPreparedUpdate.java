@@ -18,7 +18,6 @@
 package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
@@ -26,16 +25,13 @@ import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.ps.PreparedStatementUpdate;
-import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.storage.PageKey;
 
 public class ReplicationPreparedUpdate extends PreparedStatementUpdate {
 
     public final String replicationName;
 
-    public ReplicationPreparedUpdate(List<PageKey> pageKeys, int commandId, Value[] parameters,
-            String replicationName) {
-        super(pageKeys, commandId, parameters);
+    public ReplicationPreparedUpdate(int commandId, Value[] parameters, String replicationName) {
+        super(commandId, parameters);
         this.replicationName = replicationName;
     }
 
@@ -60,14 +56,13 @@ public class ReplicationPreparedUpdate extends PreparedStatementUpdate {
     private static class Decoder implements PacketDecoder<ReplicationPreparedUpdate> {
         @Override
         public ReplicationPreparedUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
             int commandId = in.readInt();
             int size = in.readInt();
             Value[] parameters = new Value[size];
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
             String replicationName = in.readString();
-            return new ReplicationPreparedUpdate(pageKeys, commandId, parameters, replicationName);
+            return new ReplicationPreparedUpdate(commandId, parameters, replicationName);
         }
     }
 }

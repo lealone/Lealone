@@ -18,7 +18,6 @@
 package org.lealone.server.protocol.ps;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
@@ -26,17 +25,15 @@ import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.QueryPacket;
-import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.storage.PageKey;
 
 public class PreparedStatementQuery extends QueryPacket {
 
     public final int commandId;
     public final Value[] parameters;
 
-    public PreparedStatementQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize, boolean scrollable,
-            int commandId, Value[] parameters) {
-        super(pageKeys, resultId, maxRows, fetchSize, scrollable);
+    public PreparedStatementQuery(int resultId, int maxRows, int fetchSize, boolean scrollable, int commandId,
+            Value[] parameters) {
+        super(resultId, maxRows, fetchSize, scrollable);
         this.commandId = commandId;
         this.parameters = parameters;
     }
@@ -67,7 +64,6 @@ public class PreparedStatementQuery extends QueryPacket {
     private static class Decoder implements PacketDecoder<PreparedStatementQuery> {
         @Override
         public PreparedStatementQuery decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
             int resultId = in.readInt();
             int maxRows = in.readInt();
             int fetchSize = in.readInt();
@@ -77,8 +73,7 @@ public class PreparedStatementQuery extends QueryPacket {
             Value[] parameters = new Value[size];
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
-            return new PreparedStatementQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, commandId,
-                    parameters);
+            return new PreparedStatementQuery(resultId, maxRows, fetchSize, scrollable, commandId, parameters);
         }
     }
 }

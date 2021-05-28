@@ -23,7 +23,6 @@ import org.lealone.db.Command;
 import org.lealone.db.CommandParameter;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
-import org.lealone.storage.PageKey;
 
 public interface SQLCommand extends Command {
 
@@ -59,7 +58,7 @@ public interface SQLCommand extends Command {
      * @return the result
      */
     default Future<Result> executeQuery(int maxRows) {
-        return executeQuery(maxRows, false, null);
+        return executeQuery(maxRows, false);
     }
 
     /**
@@ -69,20 +68,13 @@ public interface SQLCommand extends Command {
      * @param scrollable if the result set must be scrollable
      * @return the result
      */
-    default Future<Result> executeQuery(int maxRows, boolean scrollable) {
-        return executeQuery(maxRows, scrollable, null);
-    }
-
-    Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys);
+    Future<Result> executeQuery(int maxRows, boolean scrollable);
 
     /**
      * Execute the update command
      *
      * @return the update count
      */
-    default Future<Integer> executeUpdate() {
-        return executeUpdate(null);
-    }
+    Future<Integer> executeUpdate();
 
-    Future<Integer> executeUpdate(List<PageKey> pageKeys);
 }

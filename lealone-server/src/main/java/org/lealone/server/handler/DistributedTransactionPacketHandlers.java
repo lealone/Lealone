@@ -57,7 +57,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
             ServerSession session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
-            return handlePacket(task, packet);
+            return handlePacket(task, packet, packet.pageKeys);
         }
 
         @Override
@@ -73,7 +73,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
             final ServerSession session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
-            return handlePacket(task, packet);
+            return handlePacket(task, packet, packet.pageKeys);
         }
 
         @Override
@@ -89,7 +89,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
             final ServerSession session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
-            return handlePacket(task, packet);
+            return handlePacket(task, packet, packet.pageKeys);
         }
 
         @Override
@@ -104,7 +104,7 @@ class DistributedTransactionPacketHandlers extends PacketHandlers {
             final ServerSession session = task.session;
             session.setAutoCommit(false);
             session.setRoot(false);
-            return handlePacket(task, packet);
+            return handlePacket(task, packet, packet.pageKeys);
         }
 
         @Override

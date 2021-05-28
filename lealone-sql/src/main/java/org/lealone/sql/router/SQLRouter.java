@@ -40,6 +40,7 @@ import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManager;
 import org.lealone.net.NetNodeManagerHolder;
+import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
@@ -183,7 +184,7 @@ public class SQLRouter {
         String sql = statement.getPlanSQL(true);
         ServerSession currentSession = statement.getSession();
         Session[] sessions = new Session[size];
-        SQLCommand[] commands = new SQLCommand[size];
+        DistributedSQLCommand[] commands = new DistributedSQLCommand[size];
         ArrayList<Callable<Integer>> callables = new ArrayList<>(size);
         int i = 0;
         for (Entry<String, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
@@ -191,10 +192,10 @@ public class SQLRouter {
             List<PageKey> pageKeys = e.getValue();
             sessions[i] = currentSession.getNestedSession(hostId,
                     !NetNode.getLocalTcpNode().equals(NetNode.createTCP(hostId)));
-            commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
-            SQLCommand c = commands[i];
+            commands[i] = sessions[i].createDistributedSQLCommand(sql, Integer.MAX_VALUE);
+            DistributedSQLCommand c = commands[i];
             callables.add(() -> {
-                return c.executeUpdate(pageKeys).get();
+                return c.executeDistributedUpdate(pageKeys).get();
             });
             i++;
         }
@@ -243,7 +244,7 @@ public class SQLRouter {
             ServerSession currentSession = statement.getSession();
             String sql = statement.getPlanSQL(true);
             Session[] sessions = new Session[size];
-            SQLCommand[] commands = new SQLCommand[size];
+            DistributedSQLCommand[] commands = new DistributedSQLCommand[size];
             ArrayList<Callable<Result>> callables = new ArrayList<>(size);
             int i = 0;
             for (Entry<String, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
@@ -251,10 +252,10 @@ public class SQLRouter {
                 List<PageKey> pageKeys = e.getValue();
                 sessions[i] = currentSession.getNestedSession(hostId,
                         !NetNode.getLocalTcpNode().equals(NetNode.createTCP(hostId)));
-                commands[i] = sessions[i].createSQLCommand(sql, Integer.MAX_VALUE);
-                SQLCommand c = commands[i];
+                commands[i] = sessions[i].createDistributedSQLCommand(sql, Integer.MAX_VALUE);
+                DistributedSQLCommand c = commands[i];
                 callables.add(() -> {
-                    return c.executeQuery(maxRows, scrollable, pageKeys).get();
+                    return c.executeDistributedQuery(maxRows, scrollable, pageKeys).get();
                 });
                 i++;
             }

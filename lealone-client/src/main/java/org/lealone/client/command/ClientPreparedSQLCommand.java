@@ -115,55 +115,47 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
     }
 
     @Override
-    protected Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
-        isQuery = true;
-        checkParameters();
-        prepareIfRequired();
-        int fetch;
-        if (scrollable) {
-            fetch = Integer.MAX_VALUE;
+    protected Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys, int fetch, int resultId) {
+        if (isDistributed()) {
+            Packet packet = new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId,
+                    getValues());
+            return session.<Result, DTransactionQueryAck> send(packet, ack -> {
+                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return getQueryResult(ack, fetch, resultId);
+            });
         } else {
-            fetch = fetchSize;
+            Packet packet = new PreparedStatementQuery(resultId, maxRows, fetch, scrollable, commandId, getValues());
+            return session.<Result, StatementQueryAck> send(packet, ack -> {
+                return getQueryResult(ack, fetch, resultId);
+            });
         }
-        try {
-            int resultId = session.getNextId();
+    }
 
-            int size = parameters.size();
-            Value[] values = new Value[size];
-            for (int i = 0; i < size; i++) {
-                values[i] = parameters.get(i).getValue();
-            }
-            Packet packet;
-            if (isDistributed()) {
-                packet = new DTransactionPreparedQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId,
-                        values);
-                return session.<Result, DTransactionQueryAck> send(packet, ack -> {
-                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                    return getQueryResult(ack, fetch, resultId);
-                });
-            } else {
-                packet = new PreparedStatementQuery(pageKeys, resultId, maxRows, fetch, scrollable, commandId, values);
-                return session.<Result, StatementQueryAck> send(packet, ack -> {
-                    return getQueryResult(ack, fetch, resultId);
-                });
-            }
-        } catch (Exception e) {
-            session.handleException(e);
+    @Override
+    public Future<Integer> executeUpdate() {
+        Packet packet = new PreparedStatementUpdate(commandId, getValues());
+        return session.<Integer, StatementUpdateAck> send(packet, ack -> {
+            return ack.updateCount;
+        });
+    }
+
+    @Override
+    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys) {
+        if (isDistributed()) {
+            Packet packet = new DTransactionPreparedUpdate(pageKeys, commandId, getValues());
+            return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
+                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return ack.updateCount;
+            });
+        } else {
+            return executeUpdate();
         }
-        return null;
     }
 
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
-        checkParameters();
-        prepareIfRequired();
-        int size = parameters.size();
-        Value[] values = new Value[size];
-        for (int i = 0; i < size; i++) {
-            values[i] = parameters.get(i).getValue();
-        }
         int packetId = session.getNextId();
-        Packet packet = new ReplicationPreparedUpdate(null, commandId, values, replicationName);
+        Packet packet = new ReplicationPreparedUpdate(commandId, getValues(), replicationName);
         return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
             ack.setReplicaCommand(ClientPreparedSQLCommand.this);
             ack.setPacketId(packetId);
@@ -171,8 +163,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         });
     }
 
-    @Override
-    protected Future<Integer> update(String replicationName, List<PageKey> pageKeys) {
+    private Value[] getValues() {
         checkParameters();
         prepareIfRequired();
         int size = parameters.size();
@@ -180,22 +171,7 @@ public class ClientPreparedSQLCommand extends ClientSQLCommand {
         for (int i = 0; i < size; i++) {
             values[i] = parameters.get(i).getValue();
         }
-        Packet packet;
-        if (isDistributed()) {
-            packet = new DTransactionPreparedUpdate(pageKeys, commandId, values);
-            return session.<Integer, DTransactionUpdateAck> send(packet, ack -> {
-                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                return ack.updateCount;
-            });
-        } else {
-            if (replicationName != null)
-                packet = new ReplicationPreparedUpdate(pageKeys, commandId, values, replicationName);
-            else
-                packet = new PreparedStatementUpdate(pageKeys, commandId, values);
-            return session.<Integer, StatementUpdateAck> send(packet, ack -> {
-                return ack.updateCount;
-            });
-        }
+        return values;
     }
 
     private void checkParameters() {

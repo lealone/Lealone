@@ -45,6 +45,7 @@ import org.lealone.server.protocol.lob.LobReadAck;
 import org.lealone.server.protocol.session.SessionCancelStatement;
 import org.lealone.server.protocol.session.SessionClose;
 import org.lealone.server.protocol.session.SessionSetAutoCommit;
+import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.LobStorage;
 import org.lealone.storage.StorageCommand;
@@ -173,6 +174,12 @@ public class ClientSession extends SessionBase implements DataHandler {
 
     @Override
     public SQLCommand createSQLCommand(String sql, int fetchSize) {
+        checkClosed();
+        return new ClientSQLCommand(this, sql, fetchSize);
+    }
+
+    @Override
+    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
         checkClosed();
         return new ClientSQLCommand(this, sql, fetchSize);
     }

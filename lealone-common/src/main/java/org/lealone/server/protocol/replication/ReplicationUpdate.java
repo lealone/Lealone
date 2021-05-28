@@ -18,21 +18,19 @@
 package org.lealone.server.protocol.replication;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.storage.PageKey;
 
 public class ReplicationUpdate extends StatementUpdate {
 
     public final String replicationName;
 
-    public ReplicationUpdate(List<PageKey> pageKeys, String sql, String replicationName) {
-        super(pageKeys, sql);
+    public ReplicationUpdate(String sql, String replicationName) {
+        super(sql);
         this.replicationName = replicationName;
     }
 
@@ -57,10 +55,9 @@ public class ReplicationUpdate extends StatementUpdate {
     private static class Decoder implements PacketDecoder<ReplicationUpdate> {
         @Override
         public ReplicationUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
             String sql = in.readString();
             String replicationName = in.readString();
-            return new ReplicationUpdate(pageKeys, sql, replicationName);
+            return new ReplicationUpdate(sql, replicationName);
         }
     }
 }

@@ -55,6 +55,7 @@ import org.lealone.server.protocol.replication.ReplicationCheckConflict;
 import org.lealone.server.protocol.replication.ReplicationHandleConflict;
 import org.lealone.server.protocol.replication.ReplicationPreparedUpdateAck;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
+import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.ParsedSQLStatement;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLCommand;
@@ -435,6 +436,11 @@ public class ServerSession extends SessionBase {
     @Override
     public synchronized SQLCommand createSQLCommand(String sql, int fetchSize) {
         return prepareStatement(sql, fetchSize);
+    }
+
+    @Override
+    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
+        return (DistributedSQLCommand) prepareStatement(sql, fetchSize);
     }
 
     @Override

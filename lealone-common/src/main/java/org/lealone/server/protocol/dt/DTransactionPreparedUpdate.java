@@ -26,13 +26,15 @@ import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.ps.PreparedStatementUpdate;
-import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.storage.PageKey;
 
 public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
 
+    public final List<PageKey> pageKeys;
+
     public DTransactionPreparedUpdate(List<PageKey> pageKeys, int commandId, Value[] parameters) {
-        super(pageKeys, commandId, parameters);
+        super(commandId, parameters);
+        this.pageKeys = pageKeys;
     }
 
     @Override
@@ -48,6 +50,7 @@ public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
         super.encode(out, version);
+        DTransactionUpdate.writePageKeys(out, pageKeys);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -55,7 +58,7 @@ public class DTransactionPreparedUpdate extends PreparedStatementUpdate {
     private static class Decoder implements PacketDecoder<DTransactionPreparedUpdate> {
         @Override
         public DTransactionPreparedUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
+            List<PageKey> pageKeys = DTransactionUpdate.readPageKeys(in);
             int commandId = in.readInt();
             int size = in.readInt();
             Value[] parameters = new Value[size];

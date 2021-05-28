@@ -19,6 +19,7 @@ import org.lealone.db.async.Future;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
+import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.replication.ReplicaSQLCommand;
@@ -42,6 +43,8 @@ public interface Session extends Closeable, Transaction.Participant {
     int getId();
 
     SQLCommand createSQLCommand(String sql, int fetchSize);
+
+    DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize);
 
     ReplicaSQLCommand createReplicaSQLCommand(String sql, int fetchSize);
 

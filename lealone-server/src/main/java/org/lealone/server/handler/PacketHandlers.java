@@ -88,8 +88,12 @@ public class PacketHandlers {
     static abstract class UpdatePacketHandler<P extends StatementUpdate> extends UpdateBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet) {
+            return handlePacket(task, packet, null);
+        }
+
+        protected Packet handlePacket(PacketDeliveryTask task, StatementUpdate packet, List<PageKey> pageKeys) {
             PreparedSQLStatement stmt = prepareStatement(task, packet.sql, -1);
-            createYieldableUpdate(task, stmt, packet.pageKeys);
+            createYieldableUpdate(task, stmt, pageKeys);
             return null;
         }
     }
@@ -97,15 +101,20 @@ public class PacketHandlers {
     static abstract class PreparedUpdatePacketHandler<P extends PreparedStatementUpdate> extends UpdateBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet) {
+            return handlePacket(task, packet, null);
+        }
+
+        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementUpdate packet, List<PageKey> pageKeys) {
             PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId, packet.parameters);
-            createYieldableUpdate(task, stmt, packet.pageKeys);
+            createYieldableUpdate(task, stmt, pageKeys);
             return null;
         }
     }
 
     private static abstract class QueryBase<P extends QueryPacket> implements PacketHandler<P> {
 
-        protected void createYieldableQuery(PacketDeliveryTask task, PreparedSQLStatement stmt, QueryPacket packet) {
+        protected void createYieldableQuery(PacketDeliveryTask task, PreparedSQLStatement stmt, QueryPacket packet,
+                List<PageKey> pageKeys) {
 
             PreparedSQLStatement.Yieldable<?> yieldable = stmt.createYieldableQuery(packet.maxRows, packet.scrollable,
                     ar -> {
@@ -116,7 +125,7 @@ public class PacketHandlers {
                             task.conn.sendError(task.session, task.packetId, ar.getCause());
                         }
                     });
-            yieldable.setPageKeys(packet.pageKeys);
+            yieldable.setPageKeys(pageKeys);
             task.si.submitYieldableCommand(task.packetId, yieldable);
         }
 
@@ -141,8 +150,12 @@ public class PacketHandlers {
     static abstract class QueryPacketHandler<P extends StatementQuery> extends QueryBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet) {
+            return handlePacket(task, packet, null);
+        }
+
+        protected Packet handlePacket(PacketDeliveryTask task, StatementQuery packet, List<PageKey> pageKeys) {
             PreparedSQLStatement stmt = prepareStatement(task, packet.sql, packet.fetchSize);
-            createYieldableQuery(task, stmt, packet);
+            createYieldableQuery(task, stmt, packet, pageKeys);
             return null;
         }
     }
@@ -150,8 +163,12 @@ public class PacketHandlers {
     static abstract class PreparedQueryPacketHandler<P extends PreparedStatementQuery> extends QueryBase<P> {
 
         protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet) {
+            return handlePacket(task, packet, null);
+        }
+
+        protected Packet handlePacket(PacketDeliveryTask task, PreparedStatementQuery packet, List<PageKey> pageKeys) {
             PreparedSQLStatement stmt = getPreparedSQLStatementFromCache(task, packet.commandId, packet.parameters);
-            createYieldableQuery(task, stmt, packet);
+            createYieldableQuery(task, stmt, packet, pageKeys);
             return null;
         }
     }

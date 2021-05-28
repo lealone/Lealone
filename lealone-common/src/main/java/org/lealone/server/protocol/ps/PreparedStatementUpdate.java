@@ -18,7 +18,6 @@
 package org.lealone.server.protocol.ps;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.db.value.Value;
 import org.lealone.net.NetInputStream;
@@ -26,17 +25,13 @@ import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
-import org.lealone.server.protocol.statement.StatementUpdate;
-import org.lealone.storage.PageKey;
 
 public class PreparedStatementUpdate implements Packet {
 
-    public final List<PageKey> pageKeys;
     public final int commandId;
     public final Value[] parameters;
 
-    public PreparedStatementUpdate(List<PageKey> pageKeys, int commandId, Value[] parameters) {
-        this.pageKeys = pageKeys;
+    public PreparedStatementUpdate(int commandId, Value[] parameters) {
         this.commandId = commandId;
         this.parameters = parameters;
     }
@@ -53,16 +48,6 @@ public class PreparedStatementUpdate implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        if (pageKeys == null) {
-            out.writeInt(0);
-        } else {
-            int size = pageKeys.size();
-            out.writeInt(size);
-            for (int i = 0; i < size; i++) {
-                PageKey pk = pageKeys.get(i);
-                out.writePageKey(pk);
-            }
-        }
         int size = parameters.length;
         out.writeInt(commandId);
         out.writeInt(size);
@@ -76,13 +61,12 @@ public class PreparedStatementUpdate implements Packet {
     private static class Decoder implements PacketDecoder<PreparedStatementUpdate> {
         @Override
         public PreparedStatementUpdate decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
             int commandId = in.readInt();
             int size = in.readInt();
             Value[] parameters = new Value[size];
             for (int i = 0; i < size; i++)
                 parameters[i] = in.readValue();
-            return new PreparedStatementUpdate(pageKeys, commandId, parameters);
+            return new PreparedStatementUpdate(commandId, parameters);
         }
     }
 }

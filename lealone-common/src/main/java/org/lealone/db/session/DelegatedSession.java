@@ -27,6 +27,7 @@ import org.lealone.db.async.Future;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
+import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLCommand;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.replication.ReplicaSQLCommand;
@@ -56,6 +57,11 @@ public class DelegatedSession implements Session {
     @Override
     public SQLCommand createSQLCommand(String sql, int fetchSize) {
         return session.createSQLCommand(sql, fetchSize);
+    }
+
+    @Override
+    public DistributedSQLCommand createDistributedSQLCommand(String sql, int fetchSize) {
+        return session.createDistributedSQLCommand(sql, fetchSize);
     }
 
     @Override

@@ -32,7 +32,6 @@ import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.WriteResponseHandler.ReplicationResultHandler;
 
 class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implements SQLCommand {
@@ -83,7 +82,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
     }
 
     @Override
-    public Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    public Future<Result> executeQuery(int maxRows, boolean scrollable) {
         AsyncCallback<Result> ac = new AsyncCallback<>();
         HashSet<ReplicaSQLCommand> seen = new HashSet<>();
         executeQuery(maxRows, scrollable, 1, seen, ac);
@@ -108,7 +107,7 @@ class ReplicationSQLCommand extends ReplicationCommand<ReplicaSQLCommand> implem
     }
 
     @Override
-    public Future<Integer> executeUpdate(List<PageKey> pageKeys) {
+    public Future<Integer> executeUpdate() {
         AsyncCallback<Integer> ac = new AsyncCallback<>();
         executeUpdate(1, ac);
         return ac;

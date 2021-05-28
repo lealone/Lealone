@@ -15,28 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.server.protocol;
+package org.lealone.sql;
 
-import java.io.IOException;
+import java.util.List;
 
-import org.lealone.net.NetOutputStream;
+import org.lealone.db.async.Future;
+import org.lealone.db.result.Result;
+import org.lealone.storage.PageKey;
 
-public abstract class QueryPacket implements Packet {
+public interface DistributedSQLCommand extends SQLCommand {
 
-    public final int resultId;
-    public final int maxRows;
-    public final int fetchSize;
-    public final boolean scrollable;
+    Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys);
 
-    public QueryPacket(int resultId, int maxRows, int fetchSize, boolean scrollable) {
-        this.resultId = resultId;
-        this.maxRows = maxRows;
-        this.fetchSize = fetchSize;
-        this.scrollable = scrollable;
-    }
+    Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys);
 
-    @Override
-    public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeInt(resultId).writeInt(maxRows).writeInt(fetchSize).writeBoolean(scrollable);
-    }
 }

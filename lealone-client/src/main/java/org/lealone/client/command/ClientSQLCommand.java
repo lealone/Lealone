@@ -32,6 +32,7 @@ import org.lealone.server.protocol.statement.StatementQuery;
 import org.lealone.server.protocol.statement.StatementQueryAck;
 import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.server.protocol.statement.StatementUpdateAck;
+import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaSQLCommand;
 
@@ -42,7 +43,7 @@ import org.lealone.storage.replication.ReplicaSQLCommand;
  * @author H2 Group
  * @author zhh
  */
-public class ClientSQLCommand implements ReplicaSQLCommand {
+public class ClientSQLCommand implements ReplicaSQLCommand, DistributedSQLCommand {
 
     // 通过设为null来判断是否关闭了当前命令，所以没有加上final
     protected ClientSession session;
@@ -88,11 +89,16 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public Future<Result> executeQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    public Future<Result> executeQuery(int maxRows, boolean scrollable) {
+        return query(maxRows, scrollable, null);
+    }
+
+    @Override
+    public Future<Result> executeDistributedQuery(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         return query(maxRows, scrollable, pageKeys);
     }
 
-    protected Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+    private Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         isQuery = true;
         int fetch;
         if (scrollable) {
@@ -100,27 +106,25 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
         } else {
             fetch = fetchSize;
         }
-        try {
-            int packetId = session.getNextId();
-            commandId = packetId;
-            int resultId = session.getNextId();
-            Packet packet;
-            if (isDistributed()) {
-                packet = new DTransactionQuery(pageKeys, resultId, maxRows, fetch, scrollable, sql);
-                return session.<Result, DTransactionQueryAck> send(packet, packetId, ack -> {
-                    session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
-                    return getQueryResult(ack, fetch, resultId);
-                });
-            } else {
-                packet = new StatementQuery(pageKeys, resultId, maxRows, fetch, scrollable, sql);
-                return session.<Result, StatementQueryAck> send(packet, packetId, ack -> {
-                    return getQueryResult(ack, fetch, resultId);
-                });
-            }
-        } catch (Exception e) {
-            session.handleException(e);
+        int resultId = session.getNextId();
+        return query(maxRows, scrollable, pageKeys, fetch, resultId);
+
+    }
+
+    protected Future<Result> query(int maxRows, boolean scrollable, List<PageKey> pageKeys, int fetch, int resultId) {
+        int packetId = commandId = session.getNextId();
+        if (isDistributed()) {
+            Packet packet = new DTransactionQuery(pageKeys, resultId, maxRows, fetch, scrollable, sql);
+            return session.<Result, DTransactionQueryAck> send(packet, packetId, ack -> {
+                session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
+                return getQueryResult(ack, fetch, resultId);
+            });
+        } else {
+            Packet packet = new StatementQuery(resultId, maxRows, fetch, scrollable, sql);
+            return session.<Result, StatementQueryAck> send(packet, packetId, ack -> {
+                return getQueryResult(ack, fetch, resultId);
+            });
         }
-        return null;
     }
 
     protected ClientResult getQueryResult(StatementQueryAck ack, int fetch, int resultId) {
@@ -145,45 +149,37 @@ public class ClientSQLCommand implements ReplicaSQLCommand {
     }
 
     @Override
-    public Future<Integer> executeUpdate(List<PageKey> pageKeys) {
-        return update(null, pageKeys);
-    }
-
-    @Override
-    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
-        int packetId = session.getNextId();
-        commandId = packetId;
-        Packet packet = new ReplicationUpdate(null, sql, replicationName);
-        return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
-            ack.setReplicaCommand(ClientSQLCommand.this);
-            ack.setPacketId(packetId);
-            return ack;
+    public Future<Integer> executeUpdate() {
+        int packetId = commandId = session.getNextId();
+        Packet packet = new StatementUpdate(sql);
+        return session.<Integer, StatementUpdateAck> send(packet, packetId, ack -> {
+            return ack.updateCount;
         });
     }
 
-    protected Future<Integer> update(String replicationName, List<PageKey> pageKeys) {
-        int packetId = session.getNextId();
-        commandId = packetId;
-        Packet packet;
+    @Override
+    public Future<Integer> executeDistributedUpdate(List<PageKey> pageKeys) {
         if (isDistributed()) {
-            packet = new DTransactionUpdate(pageKeys, sql);
+            int packetId = commandId = session.getNextId();
+            Packet packet = new DTransactionUpdate(pageKeys, sql);
             return session.<Integer, DTransactionUpdateAck> send(packet, packetId, ack -> {
                 session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
                 return ack.updateCount;
             });
         } else {
-            if (replicationName != null) {
-                packet = new ReplicationUpdate(pageKeys, sql, replicationName);
-                return session.<Integer, ReplicationUpdateAck> send(packet, packetId, ack -> {
-                    return ack.updateCount;
-                });
-            } else {
-                packet = new StatementUpdate(pageKeys, sql);
-                return session.<Integer, StatementUpdateAck> send(packet, packetId, ack -> {
-                    return ack.updateCount;
-                });
-            }
+            return executeUpdate();
         }
+    }
+
+    @Override
+    public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
+        int packetId = commandId = session.getNextId();
+        Packet packet = new ReplicationUpdate(sql, replicationName);
+        return session.<ReplicationUpdateAck, ReplicationUpdateAck> send(packet, packetId, ack -> {
+            ack.setReplicaCommand(ClientSQLCommand.this);
+            ack.setPacketId(packetId);
+            return ack;
+        });
     }
 
     @Override

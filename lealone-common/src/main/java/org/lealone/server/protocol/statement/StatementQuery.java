@@ -18,22 +18,19 @@
 package org.lealone.server.protocol.statement;
 
 import java.io.IOException;
-import java.util.List;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.QueryPacket;
-import org.lealone.storage.PageKey;
 
 public class StatementQuery extends QueryPacket {
 
     public final String sql;
 
-    public StatementQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize, boolean scrollable,
-            String sql) {
-        super(pageKeys, resultId, maxRows, fetchSize, scrollable);
+    public StatementQuery(int resultId, int maxRows, int fetchSize, boolean scrollable, String sql) {
+        super(resultId, maxRows, fetchSize, scrollable);
         this.sql = sql;
     }
 
@@ -58,13 +55,12 @@ public class StatementQuery extends QueryPacket {
     private static class Decoder implements PacketDecoder<StatementQuery> {
         @Override
         public StatementQuery decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
             int resultId = in.readInt();
             int maxRows = in.readInt();
             int fetchSize = in.readInt();
             boolean scrollable = in.readBoolean();
             String sql = in.readString();
-            return new StatementQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, sql);
+            return new StatementQuery(resultId, maxRows, fetchSize, scrollable, sql);
         }
     }
 }

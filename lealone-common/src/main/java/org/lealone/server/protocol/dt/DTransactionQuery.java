@@ -21,17 +21,20 @@ import java.io.IOException;
 import java.util.List;
 
 import org.lealone.net.NetInputStream;
+import org.lealone.net.NetOutputStream;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 import org.lealone.server.protocol.statement.StatementQuery;
-import org.lealone.server.protocol.statement.StatementUpdate;
 import org.lealone.storage.PageKey;
 
 public class DTransactionQuery extends StatementQuery {
 
-    public DTransactionQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize,
-            boolean scrollable, String sql) {
-        super(pageKeys, resultId, maxRows, fetchSize, scrollable, sql);
+    public final List<PageKey> pageKeys;
+
+    public DTransactionQuery(List<PageKey> pageKeys, int resultId, int maxRows, int fetchSize, boolean scrollable,
+            String sql) {
+        super(resultId, maxRows, fetchSize, scrollable, sql);
+        this.pageKeys = pageKeys;
     }
 
     @Override
@@ -44,17 +47,23 @@ public class DTransactionQuery extends StatementQuery {
         return PacketType.DISTRIBUTED_TRANSACTION_QUERY_ACK;
     }
 
+    @Override
+    public void encode(NetOutputStream out, int version) throws IOException {
+        super.encode(out, version);
+        DTransactionUpdate.writePageKeys(out, pageKeys);
+    }
+
     public static final Decoder decoder = new Decoder();
 
     private static class Decoder implements PacketDecoder<DTransactionQuery> {
         @Override
         public DTransactionQuery decode(NetInputStream in, int version) throws IOException {
-            List<PageKey> pageKeys = StatementUpdate.readPageKeys(in);
             int resultId = in.readInt();
             int maxRows = in.readInt();
             int fetchSize = in.readInt();
             boolean scrollable = in.readBoolean();
             String sql = in.readString();
+            List<PageKey> pageKeys = DTransactionUpdate.readPageKeys(in);
             return new DTransactionQuery(pageKeys, resultId, maxRows, fetchSize, scrollable, sql);
         }
     }
