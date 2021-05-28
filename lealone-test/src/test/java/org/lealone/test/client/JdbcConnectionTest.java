@@ -34,6 +34,7 @@ public class JdbcConnectionTest extends SqlTestBase {
     public void run() throws Exception {
         testTransactionIsolationLevel();
         testNetworkTimeout();
+        testSetAndGetSchema();
 
         int count = 1;
         count = 1;
@@ -70,6 +71,16 @@ public class JdbcConnectionTest extends SqlTestBase {
             fail();
         } catch (SQLException e) {
         }
+    }
+
+    void testSetAndGetSchema() throws Exception {
+        executeUpdate("DROP SCHEMA IF EXISTS testSetAndGetSchema");
+        executeUpdate("CREATE SCHEMA IF NOT EXISTS testSetAndGetSchema AUTHORIZATION root");
+        String schemaName = conn.getSchema().toUpperCase();
+        assertEquals(Constants.SCHEMA_MAIN, schemaName.toUpperCase());
+        conn.setSchema("testSetAndGetSchema");
+        assertEquals("testSetAndGetSchema".toUpperCase(), conn.getSchema().toUpperCase());
+        conn.setSchema(Constants.SCHEMA_MAIN);
     }
 
     public void run2() throws Exception {

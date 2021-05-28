@@ -34,6 +34,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.trace.Trace;
 import org.lealone.common.trace.TraceModuleType;
 import org.lealone.common.trace.TraceObjectType;
+import org.lealone.common.util.JdbcUtils;
 import org.lealone.common.util.Utils;
 import org.lealone.db.ConnectionInfo;
 import org.lealone.db.Constants;
@@ -1568,13 +1569,37 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     // ## Java 1.7 ##
     @Override
     public void setSchema(String schema) throws SQLException {
-        throw unsupported("setSchema(String)");
+        Statement stmt = null;
+        try {
+            debugCodeCall("setSchema", schema);
+            checkClosed();
+            stmt = createStatement();
+            stmt.executeUpdate("USE " + schema);
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        } finally {
+            JdbcUtils.closeSilently(stmt);
+        }
     }
 
     // ## Java 1.7 ##
     @Override
     public String getSchema() throws SQLException {
-        throw unsupported("getSchema()");
+        Statement stmt = null;
+        try {
+            debugCodeCall("getSchema");
+            checkClosed();
+            stmt = createStatement();
+            ResultSet rs = stmt.executeQuery("CALL SCHEMA()");
+            rs.next();
+            String currentSchemaName = rs.getString(1);
+            rs.close();
+            return currentSchemaName;
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        } finally {
+            JdbcUtils.closeSilently(stmt);
+        }
     }
 
     // ## Java 1.7 ##
