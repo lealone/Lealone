@@ -388,6 +388,11 @@ public class ClientSession extends SessionBase implements DataHandler {
     }
 
     @Override
+    public void setNetworkTimeout(int milliseconds) {
+        ci.setNetworkTimeout(milliseconds);
+    }
+
+    @Override
     public int getNetworkTimeout() {
         return ci.getNetworkTimeout();
     }

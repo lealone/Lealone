@@ -169,6 +169,8 @@ public interface Session extends Closeable, Transaction.Participant {
 
     String getURL();
 
+    void setNetworkTimeout(int milliseconds);
+
     int getNetworkTimeout();
 
     ConnectionInfo getConnectionInfo();

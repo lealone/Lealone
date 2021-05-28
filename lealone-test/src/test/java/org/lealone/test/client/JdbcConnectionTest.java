@@ -24,6 +24,7 @@ import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
 import org.lealone.client.jdbc.JdbcStatement;
+import org.lealone.db.Constants;
 import org.lealone.db.LealoneDatabase;
 import org.lealone.test.sql.SqlTestBase;
 
@@ -32,6 +33,7 @@ public class JdbcConnectionTest extends SqlTestBase {
     @Test
     public void run() throws Exception {
         testTransactionIsolationLevel();
+        testNetworkTimeout();
 
         int count = 1;
         count = 1;
@@ -52,6 +54,19 @@ public class JdbcConnectionTest extends SqlTestBase {
 
         try {
             conn.setTransactionIsolation(-1);
+            fail();
+        } catch (SQLException e) {
+        }
+    }
+
+    void testNetworkTimeout() throws Exception {
+        int milliseconds = conn.getNetworkTimeout();
+        assertEquals(Constants.DEFAULT_NETWORK_TIMEOUT, milliseconds);
+        conn.setNetworkTimeout(null, 3000);
+        assertEquals(3000, conn.getNetworkTimeout());
+        conn.setNetworkTimeout(null, milliseconds);
+        try {
+            conn.setNetworkTimeout(null, -1);
             fail();
         } catch (SQLException e) {
         }

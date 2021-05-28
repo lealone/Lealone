@@ -1717,6 +1717,12 @@ public class ServerSession extends SessionBase {
     }
 
     @Override
+    public void setNetworkTimeout(int milliseconds) {
+        if (connectionInfo != null)
+            connectionInfo.setNetworkTimeout(milliseconds);
+    }
+
+    @Override
     public int getNetworkTimeout() {
         return connectionInfo != null ? connectionInfo.getNetworkTimeout() : -1;
     }

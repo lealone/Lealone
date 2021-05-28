@@ -229,6 +229,11 @@ public class DelegatedSession implements Session {
     }
 
     @Override
+    public void setNetworkTimeout(int milliseconds) {
+        session.setNetworkTimeout(milliseconds);
+    }
+
+    @Override
     public int getNetworkTimeout() {
         return session.getNetworkTimeout();
     }

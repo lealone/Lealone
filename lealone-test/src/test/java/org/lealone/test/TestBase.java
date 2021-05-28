@@ -30,7 +30,6 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.ConsoleLogDelegateFactory;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.trace.TraceSystem;
-import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
@@ -232,7 +231,8 @@ public class TestBase extends Assert {
             addConnectionParameter("user", DEFAULT_USER);
             addConnectionParameter("password", DEFAULT_PASSWORD);
         }
-        addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
+        // addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT.name(),
+        // String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
 
         StringBuilder url = new StringBuilder(100);
 

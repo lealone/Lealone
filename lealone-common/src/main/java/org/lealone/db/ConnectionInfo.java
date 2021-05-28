@@ -33,7 +33,6 @@ import org.lealone.storage.fs.FileUtils;
 public class ConnectionInfo implements Cloneable {
 
     private static final HashSet<String> KNOWN_SETTINGS = new HashSet<>();
-    private static final int DEFAULT_NETWORK_TIMEOUT = 5000; // 默认5秒无响应就超时
 
     static {
         for (DbSetting setting : DbSetting.values()) {
@@ -80,7 +79,7 @@ public class ConnectionInfo implements Cloneable {
     private Boolean persistent; // 首次调用isPersistent()时才初始化
 
     private String netFactoryName = Constants.DEFAULT_NET_FACTORY_NAME;
-    private int networkTimeout = DEFAULT_NETWORK_TIMEOUT;
+    private int networkTimeout = Constants.DEFAULT_NETWORK_TIMEOUT;
     private boolean traceEnabled;
 
     private boolean isServiceConnection;
@@ -139,7 +138,7 @@ public class ConnectionInfo implements Cloneable {
             }
         }
         netFactoryName = removeProperty(ConnectionSetting.NET_FACTORY_NAME, Constants.DEFAULT_NET_FACTORY_NAME);
-        networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT, DEFAULT_NETWORK_TIMEOUT);
+        networkTimeout = removeProperty(ConnectionSetting.NETWORK_TIMEOUT, Constants.DEFAULT_NETWORK_TIMEOUT);
         initTraceProperty();
     }
 
@@ -753,6 +752,10 @@ public class ConnectionInfo implements Cloneable {
 
     public String getNetFactoryName() {
         return netFactoryName;
+    }
+
+    public void setNetworkTimeout(int milliseconds) {
+        networkTimeout = milliseconds;
     }
 
     public int getNetworkTimeout() {
