@@ -17,6 +17,8 @@
  */
 package org.lealone.test.sql.dml;
 
+import java.sql.Connection;
+
 import org.junit.Test;
 import org.lealone.db.DbSetting;
 import org.lealone.db.session.SessionSetting;
@@ -53,6 +55,8 @@ public class SetTest extends SqlTestBase {
         executeUpdate("SET SCHEMA_SEARCH_PATH public,SetTestSchema");
 
         executeUpdate("SET THROTTLE 10");
+
+        executeUpdate("SET TRANSACTION_ISOLATION_LEVEL " + Connection.TRANSACTION_SERIALIZABLE);
 
         executeUpdate("SET @v1 1");
         executeUpdate("SET @v2 TO 2");
@@ -124,7 +128,6 @@ public class SetTest extends SqlTestBase {
         executeUpdate("SET EXCLUSIVE 0");
         executeUpdate("SET IGNORECASE true");
 
-        executeUpdate("SET LOCK_MODE 0");
         executeUpdate("SET MAX_LENGTH_INPLACE_LOB 100");
         executeUpdate("SET MAX_MEMORY_ROWS 100");
         executeUpdate("SET MAX_MEMORY_UNDO 100");

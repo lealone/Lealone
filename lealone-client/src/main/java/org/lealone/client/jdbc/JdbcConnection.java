@@ -71,7 +71,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     private Session session;
     private SQLCommand commit, rollback;
     private SQLCommand getReadOnly, getGeneratedKeys;
-    private SQLCommand setLockMode, getLockMode;
+    private SQLCommand setTIL, getTIL; // set/get transaction isolation level
     private SQLCommand setQueryTimeout, getQueryTimeout;
 
     private int holdability = ResultSet.HOLD_CURSORS_OVER_COMMIT;
@@ -312,8 +312,8 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         rollback = closeAndSetNull(rollback);
         getReadOnly = closeAndSetNull(getReadOnly);
         getGeneratedKeys = closeAndSetNull(getGeneratedKeys);
-        getLockMode = closeAndSetNull(getLockMode);
-        setLockMode = closeAndSetNull(setLockMode);
+        getTIL = closeAndSetNull(getTIL);
+        setTIL = closeAndSetNull(setTIL);
         getQueryTimeout = closeAndSetNull(getQueryTimeout);
         setQueryTimeout = closeAndSetNull(setQueryTimeout);
     }
@@ -579,23 +579,12 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
     /**
      * Changes the current transaction isolation level. Calling this method will
      * commit an open transaction, even if the new level is the same as the old
-     * one, except if the level is not supported. Internally, this method calls
-     * SET LOCK_MODE. The following isolation levels are supported:
-     * <ul>
-     * <li> Connection.TRANSACTION_READ_UNCOMMITTED = SET LOCK_MODE 0: no
-     * locking (should only be used for testing). </li>
-     * <li>Connection.TRANSACTION_SERIALIZABLE = SET LOCK_MODE 1: table level
-     * locking. </li>
-     * <li>Connection.TRANSACTION_READ_COMMITTED = SET LOCK_MODE 3: table
-     * level locking, but read locks are released immediately (default). </li>
-     * </ul>
-     * This setting is not persistent. Please note that using
-     * TRANSACTION_READ_UNCOMMITTED while at the same time using multiple
-     * connections may result in inconsistent transactions.
+     * one, except if the level is not supported.
      *
      * @param level the new transaction isolation level:
      *            Connection.TRANSACTION_READ_UNCOMMITTED,
-     *            Connection.TRANSACTION_READ_COMMITTED, or
+     *            Connection.TRANSACTION_READ_COMMITTED,
+     *            Connection.TRANSACTION_REPEATABLE_READ, or
      *            Connection.TRANSACTION_SERIALIZABLE
      * @throws SQLException if the connection is closed or the isolation level
      *             is not supported
@@ -605,25 +594,41 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
         try {
             debugCodeCall("setTransactionIsolation", level);
             checkClosed();
-            int lockMode;
             switch (level) {
             case Connection.TRANSACTION_READ_UNCOMMITTED:
-                lockMode = Constants.LOCK_MODE_OFF;
-                break;
             case Connection.TRANSACTION_READ_COMMITTED:
-                lockMode = Constants.LOCK_MODE_READ_COMMITTED;
-                break;
             case Connection.TRANSACTION_REPEATABLE_READ:
             case Connection.TRANSACTION_SERIALIZABLE:
-                lockMode = Constants.LOCK_MODE_TABLE;
                 break;
             default:
                 throw DbException.getInvalidValueException("level", level);
             }
             commit();
-            setLockMode = prepareSQLCommand("SET LOCK_MODE ?", setLockMode);
-            setLockMode.getParameters().get(0).setValue(ValueInt.get(lockMode), false);
-            setLockMode.executeUpdate();
+            setTIL = prepareSQLCommand("SET TRANSACTION_ISOLATION_LEVEL ?", setTIL);
+            setTIL.getParameters().get(0).setValue(ValueInt.get(level), false);
+            setTIL.executeUpdate();
+        } catch (Exception e) {
+            throw logAndConvert(e);
+        }
+    }
+
+    /**
+     * Returns the current transaction isolation level.
+     *
+     * @return the isolation level.
+     * @throws SQLException if the connection is closed
+     */
+    @Override
+    public int getTransactionIsolation() throws SQLException {
+        try {
+            debugCodeCall("getTransactionIsolation");
+            checkClosed();
+            getTIL = prepareSQLCommand("CALL TRANSACTION_ISOLATION_LEVEL()", getTIL);
+            Result result = getTIL.executeQuery(0, false).get();
+            result.next();
+            int transactionIsolationLevel = result.currentRow()[0].getInt();
+            result.close();
+            return transactionIsolationLevel;
         } catch (Exception e) {
             throw logAndConvert(e);
         }
@@ -667,43 +672,6 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
                 queryTimeoutCache = queryTimeout;
             }
             return queryTimeoutCache;
-        } catch (Exception e) {
-            throw logAndConvert(e);
-        }
-    }
-
-    /**
-     * Returns the current transaction isolation level.
-     *
-     * @return the isolation level.
-     * @throws SQLException if the connection is closed
-     */
-    @Override
-    public int getTransactionIsolation() throws SQLException {
-        try {
-            debugCodeCall("getTransactionIsolation");
-            checkClosed();
-            getLockMode = prepareSQLCommand("CALL LOCK_MODE()", getLockMode);
-            Result result = getLockMode.executeQuery(0, false).get();
-            result.next();
-            int lockMode = result.currentRow()[0].getInt();
-            result.close();
-            int transactionIsolationLevel;
-            switch (lockMode) {
-            case Constants.LOCK_MODE_OFF:
-                transactionIsolationLevel = Connection.TRANSACTION_READ_UNCOMMITTED;
-                break;
-            case Constants.LOCK_MODE_READ_COMMITTED:
-                transactionIsolationLevel = Connection.TRANSACTION_READ_COMMITTED;
-                break;
-            case Constants.LOCK_MODE_TABLE:
-            case Constants.LOCK_MODE_TABLE_GC:
-                transactionIsolationLevel = Connection.TRANSACTION_SERIALIZABLE;
-                break;
-            default:
-                throw DbException.throwInternalError("lockMode:" + lockMode);
-            }
-            return transactionIsolationLevel;
         } catch (Exception e) {
             throw logAndConvert(e);
         }

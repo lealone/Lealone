@@ -19,6 +19,7 @@ package org.lealone.test.client;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
@@ -30,13 +31,29 @@ public class JdbcConnectionTest extends SqlTestBase {
 
     @Test
     public void run() throws Exception {
-        int count = 50;
+        testTransactionIsolationLevel();
+
+        int count = 1;
         count = 1;
         for (int i = 0; i < count; i++) {
             long t1 = System.currentTimeMillis();
             run2();
             long t2 = System.currentTimeMillis();
             System.out.println("loop: " + (i + 1) + ", time: " + (t2 - t1) + " ms");
+        }
+    }
+
+    void testTransactionIsolationLevel() throws Exception {
+        int til = conn.getTransactionIsolation();
+        assertEquals(Connection.TRANSACTION_READ_COMMITTED, til); // 默认是读已提交级别
+        conn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
+        assertEquals(Connection.TRANSACTION_SERIALIZABLE, conn.getTransactionIsolation());
+        conn.setTransactionIsolation(til);
+
+        try {
+            conn.setTransactionIsolation(-1);
+            fail();
+        } catch (SQLException e) {
         }
     }
 

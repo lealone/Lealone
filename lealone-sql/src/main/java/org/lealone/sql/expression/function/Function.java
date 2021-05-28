@@ -103,9 +103,10 @@ public class Function extends Expression implements FunctionCall {
 
     public static final int IFNULL = 200, CASEWHEN = 201, CONVERT = 202, CAST = 203, COALESCE = 204, NULLIF = 205,
             CASE = 206, NEXTVAL = 207, CURRVAL = 208, ARRAY_GET = 209, CSVREAD = 210, CSVWRITE = 211, MEMORY_FREE = 212,
-            MEMORY_USED = 213, LOCK_MODE = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217, LINK_SCHEMA = 218,
-            GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, TABLE = 223, TABLE_DISTINCT = 224,
-            FILE_READ = 225, TRANSACTION_ID = 226, TRUNCATE_VALUE = 227, NVL2 = 228, DECODE = 229, ARRAY_CONTAINS = 230;
+            MEMORY_USED = 213, TRANSACTION_ISOLATION_LEVEL = 214, SCHEMA = 215, SESSION_ID = 216, ARRAY_LENGTH = 217,
+            LINK_SCHEMA = 218, GREATEST = 219, LEAST = 220, CANCEL_SESSION = 221, SET = 222, TABLE = 223,
+            TABLE_DISTINCT = 224, FILE_READ = 225, TRANSACTION_ID = 226, TRUNCATE_VALUE = 227, NVL2 = 228, DECODE = 229,
+            ARRAY_CONTAINS = 230;
 
     /**
      * This is called LEALONE_VERSION() and not VERSION(), because we return a fake value
@@ -349,7 +350,7 @@ public class Function extends Expression implements FunctionCall {
         addFunction("CSVWRITE", CSVWRITE, VAR_ARGS, Value.INT, false, false, false);
         addFunctionNotDeterministic("MEMORY_FREE", MEMORY_FREE, 0, Value.INT);
         addFunctionNotDeterministic("MEMORY_USED", MEMORY_USED, 0, Value.INT);
-        addFunctionNotDeterministic("LOCK_MODE", LOCK_MODE, 0, Value.INT);
+        addFunctionNotDeterministic("TRANSACTION_ISOLATION_LEVEL", TRANSACTION_ISOLATION_LEVEL, 0, Value.INT);
         addFunctionNotDeterministic("SCHEMA", SCHEMA, 0, Value.STRING);
         addFunctionNotDeterministic("SESSION_ID", SESSION_ID, 0, Value.INT);
         addFunction("ARRAY_LENGTH", ARRAY_LENGTH, 1, Value.INT);
@@ -796,8 +797,8 @@ public class Function extends Expression implements FunctionCall {
             session.getUser().checkAdmin();
             result = ValueInt.get(Utils.getMemoryUsed());
             break;
-        case LOCK_MODE:
-            result = ValueInt.get(database.getLockMode());
+        case TRANSACTION_ISOLATION_LEVEL:
+            result = ValueInt.get(session.getTransactionIsolationLevel());
             break;
         case SCHEMA:
             result = ValueString.get(session.getCurrentSchemaName());

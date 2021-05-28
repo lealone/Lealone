@@ -1253,6 +1253,7 @@ public class ServerSession extends SessionBase {
         Transaction transaction = database.getTransactionEngine().beginTransaction(autoCommit, getRunMode());
         transaction.setSession(this);
         transaction.setGlobalReplicationName(replicationName);
+        transaction.setIsolationLevel(transactionIsolationLevel);
 
         // TODO p != null && !p.isLocal()是否需要？
         if (isRoot && !autoCommit && isShardingMode && p != null && !p.isLocal())
@@ -1805,5 +1806,24 @@ public class ServerSession extends SessionBase {
                     Math.max(SysProperties.SERVER_CACHED_OBJECTS, SysProperties.SERVER_RESULT_SET_FETCH_SIZE * 5));
         }
         return lobCache;
+    }
+
+    private int transactionIsolationLevel = Connection.TRANSACTION_READ_COMMITTED; // 默认是读已提交级别
+
+    public int getTransactionIsolationLevel() {
+        return transactionIsolationLevel;
+    }
+
+    public void setTransactionIsolationLevel(int transactionIsolationLevel) {
+        switch (transactionIsolationLevel) {
+        case Connection.TRANSACTION_READ_COMMITTED:
+        case Connection.TRANSACTION_REPEATABLE_READ:
+        case Connection.TRANSACTION_SERIALIZABLE:
+        case Connection.TRANSACTION_READ_UNCOMMITTED:
+            break;
+        default:
+            throw DbException.getInvalidValueException("transaction isolation level", transactionIsolationLevel);
+        }
+        this.transactionIsolationLevel = transactionIsolationLevel;
     }
 }

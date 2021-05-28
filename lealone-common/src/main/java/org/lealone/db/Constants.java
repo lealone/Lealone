@@ -83,35 +83,6 @@ public class Constants {
     public static final int TCP_PROTOCOL_VERSION_CURRENT = TCP_PROTOCOL_VERSION_1;
 
     /**
-     * The lock mode that means no locking is used at all.
-     */
-    public static final int LOCK_MODE_OFF = 0;
-
-    /**
-     * The lock mode that means table level locking is used for reads and
-     * writes.
-     */
-    public static final int LOCK_MODE_TABLE = 1;
-
-    /**
-     * The lock mode that means table level locking is used for reads and
-     * writes. If a table is locked, System.gc is called to close forgotten
-     * connections.
-     */
-    public static final int LOCK_MODE_TABLE_GC = 2;
-
-    /**
-     * The lock mode that means read locks are acquired, but they are released
-     * immediately after the statement is executed.
-     */
-    public static final int LOCK_MODE_READ_COMMITTED = 3;
-
-    /**
-     * The default value for the LOCK_MODE setting.
-     */
-    public static final int DEFAULT_LOCK_MODE = LOCK_MODE_READ_COMMITTED;
-
-    /**
      * The number of milliseconds after which to check for a deadlock if locking
      * is not successful.
      */

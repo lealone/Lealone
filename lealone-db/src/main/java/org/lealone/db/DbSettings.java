@@ -331,7 +331,6 @@ public class DbSettings extends SettingsBase {
     public final int defaultLockTimeout = get(DbSetting.DEFAULT_LOCK_TIMEOUT, Constants.INITIAL_LOCK_TIMEOUT);
     public final int defaultTableType = get(DbSetting.DEFAULT_TABLE_TYPE, Table.TYPE_CACHED);
     public final boolean ignoreCase = get(DbSetting.IGNORECASE, false);
-    public final int lockMode = get(DbSetting.LOCK_MODE, Constants.DEFAULT_LOCK_MODE);
 
     public final int maxLengthInplaceLob = get(DbSetting.MAX_LENGTH_INPLACE_LOB,
             SysProperties.LOB_IN_DATABASE ? Constants.DEFAULT_MAX_LENGTH_INPLACE_LOB2

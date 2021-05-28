@@ -59,6 +59,9 @@ public class SetSession extends SetStatement {
         case THROTTLE:
             session.setThrottle(getAndValidateIntValue());
             break;
+        case TRANSACTION_ISOLATION_LEVEL:
+            session.setTransactionIsolationLevel(getIntValue());
+            break;
         default:
             DbException.throwInternalError("unknown setting type: " + setting);
         }

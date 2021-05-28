@@ -13,7 +13,6 @@ import org.lealone.common.compress.Compressor;
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.MathUtils;
 import org.lealone.common.util.Utils;
-import org.lealone.db.Constants;
 import org.lealone.db.Database;
 import org.lealone.db.DbSetting;
 import org.lealone.db.Mode;
@@ -167,20 +166,6 @@ public class SetDatabase extends SetStatement {
         case IGNORECASE: {
             int value = getIntValue();
             setDbSetting(value == 1);
-            break;
-        }
-        case LOCK_MODE: {
-            int value = getIntValue();
-            switch (value) {
-            case Constants.LOCK_MODE_OFF:
-            case Constants.LOCK_MODE_READ_COMMITTED:
-            case Constants.LOCK_MODE_TABLE:
-            case Constants.LOCK_MODE_TABLE_GC:
-                break;
-            default:
-                throw DbException.getInvalidValueException("lock mode", value);
-            }
-            setDbSetting(value);
             break;
         }
         case MAX_LENGTH_INPLACE_LOB: {

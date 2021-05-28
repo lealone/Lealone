@@ -29,7 +29,8 @@ public enum SessionSetting {
     SCHEMA,
     SCHEMA_SEARCH_PATH,
     VARIABLE,
-    THROTTLE;
+    THROTTLE,
+    TRANSACTION_ISOLATION_LEVEL;
 
     public String getName() {
         if (this == VARIABLE)

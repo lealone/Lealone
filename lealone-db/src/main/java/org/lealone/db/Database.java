@@ -1661,10 +1661,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return dbSettings.maxOperationMemory;
     }
 
-    public int getLockMode() {
-        return dbSettings.lockMode;
-    }
-
     public synchronized void setCloseDelay(int value) {
         this.closeDelay = value;
     }
