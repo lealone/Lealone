@@ -22,9 +22,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
+import org.lealone.client.jdbc.JdbcResultSet;
 import org.lealone.client.jdbc.JdbcStatement;
 import org.lealone.test.sql.SqlTestBase;
 
@@ -42,6 +44,7 @@ public class JdbcStatementTest extends SqlTestBase {
         testExecuteUpdate();
         testBatch();
         testAsync();
+        testAsync2();
         testCancel();
         testQueryTimeout();
         testGeneratedKeys();
@@ -239,6 +242,41 @@ public class JdbcStatementTest extends SqlTestBase {
             }
         });
         latch.await();
+    }
+
+    // 测试连续的两个异步操作会不会按正常的先后顺序被后端执行
+    void testAsync2() throws Exception {
+        createTable();
+
+        CountDownLatch latch = new CountDownLatch(2);
+        JdbcStatement stmt = (JdbcStatement) conn.createStatement();
+        stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(10, 20)").onComplete(res -> {
+            latch.countDown();
+        });
+        stmt.executeUpdateAsync("INSERT INTO test(f1, f2) VALUES(100, 200)").onComplete(res -> {
+            latch.countDown();
+        });
+        latch.await();
+        stmt.close();
+
+        AtomicInteger count = new AtomicInteger();
+        CountDownLatch latch2 = new CountDownLatch(2);
+        stmt = (JdbcStatement) conn.createStatement();
+        stmt.executeQueryAsync("SELECT * FROM test WHERE f1 = 10").onComplete(ar -> {
+            JdbcResultSet rs = (JdbcResultSet) ar.getResult();
+            int rowCount = rs.getRowCount();
+            count.addAndGet(rowCount);
+            latch2.countDown();
+        });
+        stmt.executeQueryAsync("SELECT * FROM test WHERE f1 = 100").onComplete(ar -> {
+            JdbcResultSet rs = (JdbcResultSet) ar.getResult();
+            int rowCount = rs.getRowCount();
+            count.addAndGet(rowCount);
+            latch2.countDown();
+        });
+        latch2.await();
+        stmt.close();
+        assertEquals(2, count.get());
     }
 
     private void createTable() {

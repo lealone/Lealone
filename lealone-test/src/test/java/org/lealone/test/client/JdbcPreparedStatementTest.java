@@ -24,6 +24,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Test;
@@ -43,6 +44,7 @@ public class JdbcPreparedStatementTest extends SqlTestBase {
         testFetchSize();
         testBatch();
         testAsync();
+        testAsync2();
     }
 
     void testException() throws Exception {
@@ -206,7 +208,6 @@ public class JdbcPreparedStatementTest extends SqlTestBase {
             }
             latch2.countDown();
         });
-        // ps.executeQueryAsync(null);
         latch2.await();
     }
 
@@ -304,6 +305,48 @@ public class JdbcPreparedStatementTest extends SqlTestBase {
             }
         });
         latch2.await();
+    }
+
+    // 测试连续的两个异步操作会不会按正常的先后顺序被后端执行
+    void testAsync2() throws Exception {
+        createTable();
+
+        CountDownLatch latch = new CountDownLatch(2);
+        String sql = "INSERT INTO test(f1, f2) VALUES(?, ?)";
+        JdbcPreparedStatement ps = (JdbcPreparedStatement) conn.prepareStatement(sql);
+        ps.setInt(1, 10);
+        ps.setLong(2, 20);
+        ps.executeUpdateAsync().onComplete(res -> {
+            latch.countDown();
+        });
+        ps.setInt(1, 100);
+        ps.setLong(2, 200);
+        ps.executeUpdateAsync().onComplete(res -> {
+            latch.countDown();
+        });
+        latch.await();
+        ps.close();
+
+        AtomicInteger count = new AtomicInteger();
+        CountDownLatch latch2 = new CountDownLatch(2);
+        ps = (JdbcPreparedStatement) conn.prepareStatement("SELECT * FROM test WHERE f1 = ?");
+        ps.setInt(1, 10);
+        ps.executeQueryAsync().onComplete(ar -> {
+            JdbcResultSet rs = (JdbcResultSet) ar.getResult();
+            int rowCount = rs.getRowCount();
+            count.addAndGet(rowCount);
+            latch2.countDown();
+        });
+        ps.setInt(1, 100);
+        ps.executeQueryAsync().onComplete(ar -> {
+            JdbcResultSet rs = (JdbcResultSet) ar.getResult();
+            int rowCount = rs.getRowCount();
+            count.addAndGet(rowCount);
+            latch2.countDown();
+        });
+        latch2.await();
+        ps.close();
+        assertEquals(2, count.get());
     }
 
     private void createTable() throws Exception {
