@@ -152,4 +152,11 @@ public class TcpClientConnection extends TransferConnection {
     public Throwable getPendingException() {
         return pendingException;
     }
+
+    @Override
+    public void checkTimeout(long currentTime) {
+        for (AsyncCallback<?> ac : callbackMap.values()) {
+            ac.checkTimeout(currentTime);
+        }
+    }
 }

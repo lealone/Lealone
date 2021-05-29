@@ -1934,6 +1934,8 @@ public class ErrorCode {
 
     public static final int DATABASE_IS_CLOSING = 90146;
 
+    public static final int NETWORK_TIMEOUT_1 = 90147;
+
     // next are 90056, 90110, 90122, 90143
 
     private ErrorCode() {

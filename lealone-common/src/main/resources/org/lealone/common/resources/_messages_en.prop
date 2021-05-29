@@ -171,6 +171,7 @@
 90144=Cannot drop lealone database
 90145=Service {0} not found
 90146=The database is closing
+90147=Network timeout: {0}
 HY000=General error: {0}
 HY004=Unknown data type: {0}
 HYC00=Feature not supported: {0}

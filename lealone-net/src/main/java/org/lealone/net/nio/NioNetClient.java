@@ -63,9 +63,15 @@ public class NioNetClient extends NetClientBase implements NioEventLoop {
     }
 
     private void run() {
+        long lastTime = System.currentTimeMillis();
         for (;;) {
             try {
                 nioEventLoopAdapter.select();
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastTime > 1000) {
+                    lastTime = currentTime;
+                    checkTimeout(currentTime);
+                }
                 if (isClosed())
                     break;
                 Set<SelectionKey> keys = nioEventLoopAdapter.getSelector().selectedKeys();

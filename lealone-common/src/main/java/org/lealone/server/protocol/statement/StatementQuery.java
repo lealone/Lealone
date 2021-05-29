@@ -55,6 +55,11 @@ public class StatementQuery extends QueryPacket {
         out.writeString(sql);
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[" + sql + "]";
+    }
+
     public static final Decoder decoder = new Decoder();
 
     private static class Decoder implements PacketDecoder<StatementQuery> {

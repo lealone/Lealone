@@ -22,7 +22,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.lealone.common.exceptions.DbException;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.net.NetInputStream;
+import org.lealone.server.protocol.Packet;
 
 public class AsyncCallback<T> implements Future<T> {
 
@@ -64,7 +66,7 @@ public class AsyncCallback<T> implements Future<T> {
 
                 // 如果没有执行过run，抛出合适的异常
                 if (!runEnd) {
-                    throw new RuntimeException("time out");
+                    handleTimeout();
                 }
             } catch (InterruptedException e) {
                 throw DbException.convert(e);
@@ -99,7 +101,8 @@ public class AsyncCallback<T> implements Future<T> {
 
     @Override
     public T get() {
-        return await(-1);
+        long timeoutMillis = networkTimeout > 0 ? networkTimeout : -1;
+        return await(timeoutMillis);
     }
 
     @Override
@@ -163,5 +166,44 @@ public class AsyncCallback<T> implements Future<T> {
             if (latch != null)
                 latch.countDown();
         }
+    }
+
+    private Packet packet;
+    private long startTime;
+    private int networkTimeout;
+
+    public void setPacket(Packet packet) {
+        this.packet = packet;
+    }
+
+    public long getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(long startTime) {
+        this.startTime = startTime;
+    }
+
+    public int getNetworkTimeout() {
+        return networkTimeout;
+    }
+
+    public void setNetworkTimeout(int networkTimeout) {
+        this.networkTimeout = networkTimeout;
+    }
+
+    public void checkTimeout(long currentTime) {
+        if (networkTimeout <= 0 || startTime <= 0 || startTime + networkTimeout > currentTime)
+            return;
+        handleTimeout();
+    }
+
+    private void handleTimeout() {
+        String msg = "ack timeout, request start time: " + new java.sql.Timestamp(startTime) //
+                + ", network timeout: " + networkTimeout + "ms" //
+                + ", request packet: " + packet;
+        DbException e = DbException.get(ErrorCode.NETWORK_TIMEOUT_1, msg);
+        setAsyncResult(e);
+        networkTimeout = 0;
     }
 }

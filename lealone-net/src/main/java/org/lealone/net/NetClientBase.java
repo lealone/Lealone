@@ -126,4 +126,10 @@ public abstract class NetClientBase implements NetClient {
             throw new RuntimeException("NetClient is closed");
         }
     }
+
+    public void checkTimeout(long currentTime) {
+        for (AsyncConnection conn : asyncConnections.values()) {
+            conn.checkTimeout(currentTime);
+        }
+    }
 }

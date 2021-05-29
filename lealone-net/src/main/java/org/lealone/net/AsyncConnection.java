@@ -67,4 +67,7 @@ public abstract class AsyncConnection {
 
     public void handleException(Exception e) {
     }
+
+    public void checkTimeout(long currentTime) {
+    }
 }

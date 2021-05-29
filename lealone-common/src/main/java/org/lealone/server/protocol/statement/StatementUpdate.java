@@ -52,6 +52,11 @@ public class StatementUpdate implements Packet {
         out.writeString(sql);
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[" + sql + "]";
+    }
+
     public static final Decoder decoder = new Decoder();
 
     private static class Decoder implements PacketDecoder<StatementUpdate> {

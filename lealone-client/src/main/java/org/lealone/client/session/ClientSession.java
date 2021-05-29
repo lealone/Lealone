@@ -115,11 +115,6 @@ public class ClientSession extends SessionBase implements DataHandler {
         return tcpConnection.getInetSocketAddress();
     }
 
-    public TransferOutputStream newOut() {
-        checkClosed();
-        return tcpConnection.createTransferOutputStream(this);
-    }
-
     @Override
     public void checkClosed() {
         if (tcpConnection.isClosed()) {
@@ -457,14 +452,21 @@ public class ClientSession extends SessionBase implements DataHandler {
             }
         };
         if (packet.getAckType() != PacketType.VOID) {
+            ac.setPacket(packet);
+            ac.setStartTime(System.currentTimeMillis());
+            ac.setNetworkTimeout(getNetworkTimeout());
             tcpConnection.addAsyncCallback(packetId, ac);
         }
         try {
-            TransferOutputStream out = newOut();
+            checkClosed();
+            TransferOutputStream out = tcpConnection.createTransferOutputStream(this);
             out.writeRequestHeader(packetId, packet.getType());
             packet.encode(out, getProtocolVersion());
             out.flush();
         } catch (Throwable e) {
+            if (packet.getAckType() != PacketType.VOID) {
+                removeAsyncCallback(packetId);
+            }
             ac.setAsyncResult(e);
         }
         return ac;
