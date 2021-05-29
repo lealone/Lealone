@@ -153,16 +153,39 @@
             </plugins>
         </pluginManagement>
     </build>
-	<!--
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub OWNER Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/lealone/Lealone</url>
-        </repository>
-    </distributionManagement>
-	-->
+
     <profiles>
+        <!-- 只构建数据库，不包含web、orm模块以及log4j2依赖 -->
+        <profile>
+            <id>database</id>
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.lealone</groupId>
+                        <artifactId>lealone-main</artifactId>
+                        <version>${project.version}</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-web</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.lealone</groupId>
+                                <artifactId>lealone-orm</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.apache.logging.log4j</groupId>
+                                <artifactId>log4j-api</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.apache.logging.log4j</groupId>
+                                <artifactId>log4j-core</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                </dependencies>
+            </dependencyManagement>
+        </profile>
         <profile>
             <id>release</id>
             <build>
