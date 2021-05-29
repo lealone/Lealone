@@ -62,10 +62,17 @@ public class StatementQueryAck implements AckPacket {
         out.writeInt(rowCount);
         out.writeInt(columnCount);
         out.writeInt(fetchSize);
+        encodeExt(out, version);
         for (int i = 0; i < columnCount; i++) {
             PreparedStatementGetMetaDataAck.writeColumn(out, result, i);
         }
         ResultFetchRowsAck.writeRow(out, result, fetchSize);
+    }
+
+    // ----------------------------------------------------------------
+    // 因为查询结果集是lazy解码的，所以子类的字段需要提前编码和解码
+    // ----------------------------------------------------------------
+    public void encodeExt(NetOutputStream out, int version) throws IOException {
     }
 
     public static final Decoder decoder = new Decoder();

@@ -46,8 +46,7 @@ public class DTransactionQueryAck extends StatementQueryAck {
     }
 
     @Override
-    public void encode(NetOutputStream out, int version) throws IOException {
-        super.encode(out, version);
+    public void encodeExt(NetOutputStream out, int version) throws IOException {
         out.writeString(localTransactionNames);
     }
 

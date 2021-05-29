@@ -122,9 +122,16 @@ public class ClientSession extends SessionBase implements DataHandler {
 
     @Override
     public void checkClosed() {
-        if (tcpConnection.isClosed() || isClosed()) {
-            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, tcpConnection.getPendingException(), "session closed");
+        if (tcpConnection.isClosed()) {
+            throw getConnectionBrokenException("tcp connection closed");
         }
+        if (isClosed()) {
+            throw getConnectionBrokenException("session closed");
+        }
+    }
+
+    private DbException getConnectionBrokenException(String msg) {
+        return DbException.get(ErrorCode.CONNECTION_BROKEN_1, tcpConnection.getPendingException(), msg);
     }
 
     @Override
