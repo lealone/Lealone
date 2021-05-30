@@ -463,6 +463,7 @@ public class TransferOutputStream implements NetOutputStream {
             buffer.appendInt(0);
         }
 
+        // 按java.io.DataInputStream.readInt()的格式写
         private void writePacketLength() {
             int v = buffer.length() - 4;
             buffer.setByte(0, (byte) ((v >>> 24) & 0xFF));

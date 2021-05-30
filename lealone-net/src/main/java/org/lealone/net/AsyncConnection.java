@@ -19,6 +19,9 @@ package org.lealone.net;
 
 import java.net.InetSocketAddress;
 
+import org.lealone.common.exceptions.DbException;
+import org.lealone.db.api.ErrorCode;
+
 /**
  * An async connection.
  */
@@ -61,7 +64,8 @@ public abstract class AsyncConnection {
 
     public void checkClosed() {
         if (closed) {
-            throw new RuntimeException("Connection[" + inetSocketAddress.getHostName() + "] is closed");
+            String msg = "Connection[" + inetSocketAddress.getHostName() + "] is closed";
+            throw DbException.get(ErrorCode.CONNECTION_BROKEN_1, msg);
         }
     }
 

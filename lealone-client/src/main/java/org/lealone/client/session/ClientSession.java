@@ -118,7 +118,8 @@ public class ClientSession extends SessionBase implements DataHandler {
     @Override
     public void checkClosed() {
         if (tcpConnection.isClosed()) {
-            throw getConnectionBrokenException("tcp connection closed");
+            String msg = tcpConnection.getInetSocketAddress().getHostName() + " tcp connection closed";
+            throw getConnectionBrokenException(msg);
         }
         if (isClosed()) {
             throw getConnectionBrokenException("session closed");
