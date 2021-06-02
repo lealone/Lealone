@@ -19,30 +19,29 @@ package org.lealone.storage.replication;
 
 import java.util.ArrayList;
 
+import org.lealone.common.exceptions.DbException;
+import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 
 abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
 
-    private final int totalNodes;
-    private final int totalBlockFor;
-
     protected final AsyncHandler<AsyncResult<T>> finalResultHandler;
     protected final ArrayList<AsyncResult<T>> results = new ArrayList<>();
-
     private final ArrayList<Throwable> exceptions = new ArrayList<>();
-    private volatile boolean failed;
+    private final int ackNodes; // 需要收到响应的节点数
+    private int ackCount; // 已收到响应数
 
-    public ReplicationHandler(int totalNodes, int totalBlockFor, AsyncHandler<AsyncResult<T>> finalResultHandler) {
-        this.totalNodes = totalNodes;
-        this.totalBlockFor = totalBlockFor;
+    public ReplicationHandler(int ackNodes, AsyncHandler<AsyncResult<T>> finalResultHandler) {
+        this.ackNodes = ackNodes;
         this.finalResultHandler = finalResultHandler;
     }
 
     abstract void onSuccess();
 
     @Override
-    public void handle(AsyncResult<T> ar) {
+    public synchronized void handle(AsyncResult<T> ar) {
+        ackCount++;
         if (ar.isSucceeded()) {
             handleResult(ar);
         } else {
@@ -50,22 +49,23 @@ abstract class ReplicationHandler<T> implements AsyncHandler<AsyncResult<T>> {
         }
     }
 
-    private synchronized void handleResult(AsyncResult<T> result) {
+    private void handleResult(AsyncResult<T> result) {
         results.add(result);
-        if (results.size() >= totalBlockFor) {
+        if (ackCount >= ackNodes) {
             onSuccess();
         }
     }
 
-    private synchronized void handleException(Throwable t) {
+    private void handleException(Throwable t) {
+        int errorCode = DbException.convert(t).getErrorCode();
+        if (errorCode == ErrorCode.CONNECTION_BROKEN_1 || errorCode == ErrorCode.NETWORK_TIMEOUT_1) {
+            // TODO
+        }
         exceptions.add(t);
-        if (!failed && totalBlockFor + exceptions.size() >= totalNodes) {
-            failed = true;
-            if (finalResultHandler != null) {
-                AsyncResult<T> ar = new AsyncResult<>();
-                ar.setCause(exceptions.get(0));
-                finalResultHandler.handle(ar);
-            }
+        if (ackCount >= ackNodes && finalResultHandler != null) {
+            AsyncResult<T> ar = new AsyncResult<>();
+            ar.setCause(exceptions.get(0));
+            finalResultHandler.handle(ar);
         }
     }
 }

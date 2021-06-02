@@ -23,7 +23,7 @@ import org.lealone.db.async.AsyncResult;
 class ReadResponseHandler<T> extends ReplicationHandler<T> {
 
     ReadResponseHandler(ReplicationSession session, AsyncHandler<AsyncResult<T>> finalResultHandler) {
-        super(session.n, session.r, finalResultHandler);
+        super(session.r, finalResultHandler);
     }
 
     @Override
