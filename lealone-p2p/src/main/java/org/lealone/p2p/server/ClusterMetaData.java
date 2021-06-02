@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
@@ -35,6 +36,7 @@ public class ClusterMetaData {
 
     private static final Logger logger = LoggerFactory.getLogger(ClusterMetaData.class);
     private static final String NODES_TABLE = "nodes";
+    private static final ConcurrentHashMap<NetNode, NetNode> preferredIpMap = new ConcurrentHashMap<>();
 
     private static Statement stmt;
 
@@ -156,22 +158,31 @@ public class ClusterMetaData {
         return map;
     }
 
-    public static synchronized NetNode getPreferredIP(NetNode ep) {
-        String sql = "SELECT preferred_ip FROM %s WHERE id='%s'";
-        try {
-            ResultSet rs = stmt.executeQuery(String.format(sql, NODES_TABLE, ep.getHostAndPort()));
-            if (rs.next()) {
-                String preferredIp = rs.getString(1);
-                if (preferredIp != null)
-                    return NetNode.getByName(preferredIp);
-            }
-        } catch (Exception e) {
-            handleException(e);
+    public static NetNode getPreferredIP(NetNode ep) {
+        NetNode preferredIp = preferredIpMap.get(ep);
+        if (preferredIp != null) {
+            return preferredIp;
         }
-        return ep;
+        preferredIp = ep;
+        synchronized (ClusterMetaData.class) {
+            String sql = "SELECT preferred_ip FROM %s WHERE id='%s'";
+            try {
+                ResultSet rs = stmt.executeQuery(String.format(sql, NODES_TABLE, ep.getHostAndPort()));
+                if (rs.next()) {
+                    String preferredIpStr = rs.getString(1);
+                    if (preferredIpStr != null)
+                        preferredIp = NetNode.getByName(preferredIpStr);
+                }
+            } catch (Exception e) {
+                handleException(e);
+            }
+        }
+        preferredIpMap.put(ep, preferredIp);
+        return preferredIp;
     }
 
-    public static synchronized void updatePreferredIP(NetNode ep, NetNode preferred_ip) {
-        updatePeerInfo(ep, "preferred_ip", preferred_ip.getHostAndPort());
+    public static synchronized void updatePreferredIP(NetNode ep, NetNode preferredIp) {
+        updatePeerInfo(ep, "preferred_ip", preferredIp.getHostAndPort());
+        preferredIpMap.put(ep, preferredIp);
     }
 }

@@ -322,6 +322,8 @@ public class P2pServer extends DelegatedProtocolServer implements INodeStateChan
             return;
 
         NodeState epState = Gossiper.instance.getNodeState(node);
+        if (epState == null)
+            return;
         for (Map.Entry<ApplicationState, VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
             updatePeerInfo(node, entry.getKey(), entry.getValue());
         }
