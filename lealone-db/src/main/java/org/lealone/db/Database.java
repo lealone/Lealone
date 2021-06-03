@@ -1983,7 +1983,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return storage;
     }
 
-    private String getStoragePath() {
+    public String getStoragePath() {
         if (storagePath != null)
             return storagePath;
         String baseDir = SysProperties.getBaseDir();

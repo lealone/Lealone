@@ -779,7 +779,7 @@ public class ServerSession extends SessionBase {
             return new TraceSystem().getTrace(traceModuleName);
         }
         if (connectionInfo != null) {
-            initTraceSystem(connectionInfo);
+            initTraceSystem(connectionInfo, database.getStoragePath());
         } else {
             traceSystem = database.getTraceSystem();
         }

@@ -26,7 +26,6 @@ import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.util.ExpiringMap;
 import org.lealone.common.util.Pair;
 import org.lealone.db.ConnectionInfo;
-import org.lealone.db.SysProperties;
 import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.net.TransferConnection;
@@ -92,17 +91,7 @@ public class TcpServerConnection extends TransferConnection {
         }
 
         try {
-            ConnectionInfo ci = packet.ci;
-            String baseDir = tcpServer.getBaseDir();
-            if (baseDir == null) {
-                baseDir = SysProperties.getBaseDirSilently();
-            }
-            // 强制使用服务器端的基目录
-            if (baseDir != null) {
-                ci.setBaseDir(baseDir);
-            }
-
-            ServerSession session = createSession(ci, sessionId, scheduler);
+            ServerSession session = createSession(packet.ci, sessionId, scheduler);
             session.setProtocolVersion(packet.clientVersion);
             sendSessionInitAck(packet, packetId, session);
         } catch (Throwable e) {

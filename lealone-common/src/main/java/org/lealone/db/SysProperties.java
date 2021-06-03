@@ -92,7 +92,7 @@ public class SysProperties {
      * System property <code>client.trace.directory</code> (default: trace.db/).<br />
      * Directory where the trace files of the JDBC client are stored (only for client / server).
      */
-    public static final String CLIENT_TRACE_DIRECTORY = getProperty("client.trace.directory", "trace.db/");
+    public static final String CLIENT_TRACE_DIRECTORY = getProperty("client.trace.directory", "trace.db");
 
     /**
      * System property <code>collator.cache.size</code> (default: 32000).<br />

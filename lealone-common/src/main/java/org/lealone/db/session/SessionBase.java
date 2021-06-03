@@ -182,21 +182,25 @@ public abstract class SessionBase implements Session {
     }
 
     protected void initTraceSystem(ConnectionInfo ci) {
+        String filePrefix = getFilePrefix(SysProperties.CLIENT_TRACE_DIRECTORY, ci.getDatabaseName());
+        initTraceSystem(ci, filePrefix);
+    }
+
+    protected void initTraceSystem(ConnectionInfo ci, String filePrefix) {
         if (traceSystem != null || ci.isTraceDisabled())
             return;
         traceSystem = new TraceSystem();
         String traceLevelFile = ci.getProperty(DbSetting.TRACE_LEVEL_FILE.getName(), null);
         if (traceLevelFile != null) {
             int level = Integer.parseInt(traceLevelFile);
-            String prefix = getFilePrefix(SysProperties.CLIENT_TRACE_DIRECTORY, ci.getDatabaseName());
             try {
                 traceSystem.setLevelFile(level);
                 if (level > 0) {
-                    String file = FileUtils.createTempFile(prefix, Constants.SUFFIX_TRACE_FILE, false, false);
+                    String file = FileUtils.createTempFile(filePrefix, Constants.SUFFIX_TRACE_FILE, false, false);
                     traceSystem.setFileName(file);
                 }
             } catch (IOException e) {
-                throw DbException.convertIOException(e, prefix);
+                throw DbException.convertIOException(e, filePrefix);
             }
         }
         String traceLevelSystemOut = ci.getProperty(DbSetting.TRACE_LEVEL_SYSTEM_OUT.getName(), null);
