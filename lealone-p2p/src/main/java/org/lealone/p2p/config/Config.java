@@ -65,7 +65,7 @@ public class Config {
         public Integer dynamic_snitch_reset_interval_in_ms = 600000;
         public Double dynamic_snitch_badness_threshold = 0.1;
 
-        public volatile Long request_timeout_in_ms = 10000L;
+        public volatile Integer request_timeout_in_ms = 10000; // 默认10秒
         public volatile Double phi_convict_threshold = 8.0;
         public boolean cross_node_timeout = false;
 

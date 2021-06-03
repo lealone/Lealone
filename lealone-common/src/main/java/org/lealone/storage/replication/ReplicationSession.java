@@ -44,7 +44,6 @@ public class ReplicationSession extends DelegatedSession {
     int w; // 写成功的最少节点个数
 
     int maxTries = 5;
-    long rpcTimeoutMillis;
 
     public ReplicationSession(Session[] sessions) {
         this(sessions, null);
@@ -53,7 +52,6 @@ public class ReplicationSession extends DelegatedSession {
     public ReplicationSession(Session[] sessions, List<String> initReplicationNodes) {
         super(sessions[0]);
         this.sessions = sessions;
-        this.rpcTimeoutMillis = sessions[0].getNetworkTimeout();
 
         String replicationNodes = null;
         if (initReplicationNodes != null) {
@@ -91,8 +89,10 @@ public class ReplicationSession extends DelegatedSession {
         this.maxTries = maxTries;
     }
 
-    public void setRpcTimeout(long rpcTimeoutMillis) {
-        this.rpcTimeoutMillis = rpcTimeoutMillis;
+    public void setRpcTimeout(int rpcTimeoutMillis) {
+        for (Session s : sessions) {
+            s.setNetworkTimeout(rpcTimeoutMillis);
+        }
     }
 
     public ConsistencyLevel getConsistencyLevel() {

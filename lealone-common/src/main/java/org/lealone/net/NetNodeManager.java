@@ -30,7 +30,7 @@ public interface NetNodeManager {
 
     String[] assignNodes(IDatabase db);
 
-    default long getRpcTimeout() {
+    default int getRpcTimeout() {
         return 0;
     }
 

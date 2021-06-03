@@ -271,7 +271,7 @@ public class ConfigDescriptor {
         return config.cluster_config.cluster_name;
     }
 
-    public static long getRpcTimeout() {
+    public static int getRpcTimeout() {
         return config.cluster_config.request_timeout_in_ms;
     }
 

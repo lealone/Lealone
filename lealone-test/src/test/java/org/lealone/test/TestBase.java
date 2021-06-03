@@ -30,6 +30,7 @@ import org.lealone.common.exceptions.DbException;
 import org.lealone.common.logging.ConsoleLogDelegateFactory;
 import org.lealone.common.logging.LoggerFactory;
 import org.lealone.common.trace.TraceSystem;
+import org.lealone.db.ConnectionSetting;
 import org.lealone.db.Constants;
 import org.lealone.db.SysProperties;
 import org.lealone.p2p.config.Config;
@@ -62,7 +63,7 @@ public class TestBase extends Assert {
     public static final String DEFAULT_DB_NAME = TEST;
     public static final String DEFAULT_USER = "root";
     public static final String DEFAULT_PASSWORD = "";
-    public static final int NETWORK_TIMEOUT_MILLISECONDS = -1; // 小于0表示没有时间限制，方便在eclipse中调试代码
+    public static final int NETWORK_TIMEOUT_MILLISECONDS = 1000 * 1000; // 方便在eclipse中调试代码
 
     public static TransactionEngine te;
 
@@ -231,8 +232,7 @@ public class TestBase extends Assert {
             addConnectionParameter("user", DEFAULT_USER);
             addConnectionParameter("password", DEFAULT_PASSWORD);
         }
-        // addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT.name(),
-        // String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
+        addConnectionParameter(ConnectionSetting.NETWORK_TIMEOUT.name(), String.valueOf(NETWORK_TIMEOUT_MILLISECONDS));
 
         StringBuilder url = new StringBuilder(100);
 

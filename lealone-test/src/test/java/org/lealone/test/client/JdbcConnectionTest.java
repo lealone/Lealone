@@ -62,7 +62,7 @@ public class JdbcConnectionTest extends SqlTestBase {
 
     void testNetworkTimeout() throws Exception {
         int milliseconds = conn.getNetworkTimeout();
-        assertEquals(Constants.DEFAULT_NETWORK_TIMEOUT, milliseconds);
+        assertEquals(NETWORK_TIMEOUT_MILLISECONDS, milliseconds);
         conn.setNetworkTimeout(null, 3000);
         assertEquals(3000, conn.getNetworkTimeout());
         conn.setNetworkTimeout(null, milliseconds);

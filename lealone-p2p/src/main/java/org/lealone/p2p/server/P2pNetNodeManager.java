@@ -99,7 +99,7 @@ public class P2pNetNodeManager implements NetNodeManager {
     }
 
     @Override
-    public long getRpcTimeout() {
+    public int getRpcTimeout() {
         return ConfigDescriptor.getRpcTimeout();
     }
 
