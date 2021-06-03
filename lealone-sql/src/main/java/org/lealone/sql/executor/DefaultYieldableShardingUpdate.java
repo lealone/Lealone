@@ -31,6 +31,9 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
 
     @Override
     protected void executeInternal() {
+        // 调用handleResult的线程把session状态设置成STATEMENT_COMPLETED后，调度线程立马转到这里，不需要重复执行了
+        if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED)
+            return;
         session.setStatus(SessionStatus.STATEMENT_RUNNING);
         SQLRouter.executeUpdate(statement, ar -> handleResult(ar));
     }
@@ -43,6 +46,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
                 session.setStatus(SessionStatus.WAITING);
             } else {
                 session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+                session.getTransactionListener().wakeUp(); // 及时唤醒
             }
         } else {
             setPendingException(ar.getCause());
