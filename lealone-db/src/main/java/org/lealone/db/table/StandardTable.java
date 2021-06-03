@@ -143,7 +143,6 @@ public class StandardTable extends Table {
             buff.append(column.getCreateSQL());
         }
         buff.append("\n)");
-        buff.append("\nPROCESSING MODE ").append(getProcessingMode().name());
         String storageEngineName = storageEngine.getName();
         if (storageEngineName != null) {
             String d = getDatabase().getSettings().defaultStorageEngine;

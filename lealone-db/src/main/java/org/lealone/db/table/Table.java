@@ -17,7 +17,6 @@ import org.lealone.common.util.Utils;
 import org.lealone.db.Constants;
 import org.lealone.db.DbObject;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.ProcessingMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
@@ -94,7 +93,6 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
     private int version = -1;
     private String packageName;
     private String codePath;
-    private ProcessingMode processingMode = ProcessingMode.OLTP;
 
     private final DbObjectLock dbObjectLock = new DbObjectLockImpl(DbObjectType.TABLE_OR_VIEW);
 
@@ -1120,14 +1118,6 @@ public abstract class Table extends SchemaObjectBase implements DbObjectLock {
 
     public void setCodePath(String codePath) {
         this.codePath = codePath;
-    }
-
-    public void setProcessingMode(ProcessingMode mode) {
-        processingMode = mode;
-    }
-
-    public ProcessingMode getProcessingMode() {
-        return processingMode;
     }
 
     public boolean containsLargeObject() {

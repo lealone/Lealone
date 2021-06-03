@@ -15,7 +15,6 @@ import org.lealone.common.util.CamelCaseHelper;
 import org.lealone.common.util.CaseInsensitiveMap;
 import org.lealone.db.Database;
 import org.lealone.db.DbObjectType;
-import org.lealone.db.ProcessingMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.constraint.Constraint;
 import org.lealone.db.constraint.ConstraintReferential;
@@ -56,7 +55,6 @@ public class CreateTable extends SchemaStatement {
     private String packageName;
     private boolean genCode;
     private String codePath;
-    private ProcessingMode processingMode;
 
     public CreateTable(ServerSession session, Schema schema) {
         super(session, schema);
@@ -174,7 +172,6 @@ public class CreateTable extends SchemaStatement {
         table.setComment(comment);
         table.setPackageName(packageName);
         table.setCodePath(codePath);
-        table.setProcessingMode(processingMode);
         if (isSessionTemporary) {
             if (onCommitDrop) {
                 table.setOnCommitDrop(true);
@@ -304,10 +301,6 @@ public class CreateTable extends SchemaStatement {
 
     public void setComment(String comment) {
         this.comment = comment;
-    }
-
-    public void setProcessingMode(ProcessingMode mode) {
-        processingMode = mode;
     }
 
     public void setStorageEngineName(String storageEngineName) {
