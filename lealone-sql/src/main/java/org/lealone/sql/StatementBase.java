@@ -22,6 +22,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
@@ -526,6 +527,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         yieldable.disableYield();
         while (!yieldable.isStopped()) {
             yieldable.run();
+            if (session.getReplicationName() != null && session.getStatus() == SessionStatus.STATEMENT_RUNNING) {
+                break;
+            }
             while (session.getStatus() == SessionStatus.WAITING) {
                 try {
                     Thread.sleep(100);
@@ -572,8 +576,12 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
 
     @Override
     public Future<ReplicationUpdateAck> executeReplicaUpdate(String replicationName) {
-        Future<Integer> f = executeUpdate();
-        ReplicationUpdateAck ack = (ReplicationUpdateAck) session.createReplicationUpdateAckPacket(f.get(), false);
+        session.setReplicationName(replicationName);
+        YieldableBase<Integer> yieldable = createYieldableUpdate(null);
+        YieldableCommand c = new YieldableCommand(-1, yieldable, -1);
+        session.setYieldableCommand(c);
+        Integer updateCount = syncExecute(yieldable);
+        ReplicationUpdateAck ack = (ReplicationUpdateAck) session.createReplicationUpdateAckPacket(updateCount, false);
         ack.setReplicaCommand(this);
         return Future.succeededFuture(ack);
     }
