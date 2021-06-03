@@ -99,6 +99,7 @@ public class ServerSession extends SessionBase {
     private long lastThrottle;
     private PreparedSQLStatement currentCommand;
     private int currentCommandSavepointId;
+    private int currentCommandLockIndex; // 执行当前命令过程中会占用各种锁，记下在locks中的开始位置
     private boolean allowLiterals;
     private String currentSchemaName;
     private String[] schemaSearchPath;
@@ -848,6 +849,7 @@ public class ServerSession extends SessionBase {
                 cancelAt = now + queryTimeout;
             }
             currentCommandSavepointId = getTransaction(statement).getSavepointId();
+            currentCommandLockIndex = locks.size();
         }
     }
 
@@ -901,6 +903,13 @@ public class ServerSession extends SessionBase {
 
     public void rollbackCurrentCommand() {
         rollbackTo(currentCommandSavepointId);
+        if (!locks.isEmpty()) {
+            for (int i = currentCommandLockIndex, size = locks.size(); i < size; i++) {
+                DbObjectLock lock = locks.get(i);
+                lock.unlock(this, false, null);
+            }
+            locks.clear();
+        }
     }
 
     private void rollbackCurrentCommand(ServerSession newLockOwner) {
