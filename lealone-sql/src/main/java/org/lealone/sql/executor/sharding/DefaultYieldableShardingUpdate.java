@@ -15,12 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor;
+package org.lealone.sql.executor.sharding;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
+import org.lealone.sql.executor.YieldableUpdateBase;
 
 public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
 

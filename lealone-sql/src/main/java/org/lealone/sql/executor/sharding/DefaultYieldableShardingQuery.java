@@ -15,14 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor;
+package org.lealone.sql.executor.sharding;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.query.ShardingQueryExecutor;
+import org.lealone.sql.executor.YieldableQueryBase;
 
 public class DefaultYieldableShardingQuery extends YieldableQueryBase {
 
@@ -49,4 +49,5 @@ public class DefaultYieldableShardingQuery extends YieldableQueryBase {
         session.setStatus(SessionStatus.STATEMENT_COMPLETED);
         session.getTransactionListener().wakeUp(); // 及时唤醒
     }
+
 }

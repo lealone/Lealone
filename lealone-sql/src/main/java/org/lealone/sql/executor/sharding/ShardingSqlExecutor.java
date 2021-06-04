@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor;
+package org.lealone.sql.executor.sharding;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
 import org.lealone.sql.StatementBase;
 
-public class ShardingSqlExecutor {
+public abstract class ShardingSqlExecutor {
 
     protected static final ExecutorService executorService = new DebuggableThreadPoolExecutor("ShardingSqlExecutor", 1,
             Runtime.getRuntime().availableProcessors(), 6000, TimeUnit.MILLISECONDS);

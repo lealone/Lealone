@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.query;
+package org.lealone.sql.executor.sharding;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,10 +35,10 @@ import org.lealone.net.NetNode;
 import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.executor.ShardingSqlExecutor;
-import org.lealone.sql.query.result.MergedResult;
-import org.lealone.sql.query.result.SerializedResult;
-import org.lealone.sql.query.result.SortedResult;
+import org.lealone.sql.executor.sharding.result.MergedResult;
+import org.lealone.sql.executor.sharding.result.SerializedResult;
+import org.lealone.sql.executor.sharding.result.SortedResult;
+import org.lealone.sql.query.Select;
 import org.lealone.storage.PageKey;
 
 public class ShardingQueryExecutor extends ShardingSqlExecutor {

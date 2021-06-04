@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.query.result;
+package org.lealone.sql.executor.sharding.result;
 
 import java.util.List;
 import java.util.concurrent.Callable;
