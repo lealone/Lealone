@@ -19,33 +19,30 @@ package org.lealone.sql.executor;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
+import org.lealone.db.result.Result;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
 import org.lealone.sql.router.SQLRouter;
 
-public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
+public class DefaultYieldableShardingQuery extends YieldableQueryBase {
 
-    public DefaultYieldableShardingUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        super(statement, asyncHandler);
+    public DefaultYieldableShardingQuery(StatementBase statement, int maxRows, boolean scrollable,
+            AsyncHandler<AsyncResult<Result>> asyncHandler) {
+        super(statement, maxRows, scrollable, asyncHandler);
     }
 
     @Override
     protected void executeInternal() {
-        // 调用handleResult的线程把session状态设置成STATEMENT_COMPLETED后，调度线程立马转到这里，不需要重复执行了
         if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED)
             return;
         session.setStatus(SessionStatus.STATEMENT_RUNNING);
-        SQLRouter.executeDistributedUpdate(statement, ar -> handleResult(ar));
+        SQLRouter.executeDistributedQuery(statement, maxRows, scrollable, ar -> handleResult(ar));
     }
 
-    private void handleResult(AsyncResult<Integer> ar) {
+    private void handleResult(AsyncResult<Result> ar) {
         if (ar.isSucceeded()) {
-            setResult(ar.getResult());
-            // 返回的值为负数时，表示当前语句无法正常执行，需要等待其他事务释放锁
-            if (ar.getResult() < 0) {
-                session.setStatus(SessionStatus.WAITING);
-                return;
-            }
+            Result result = ar.getResult();
+            setResult(result, result.getRowCount());
         } else {
             setPendingException(ar.getCause());
         }

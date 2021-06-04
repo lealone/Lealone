@@ -92,25 +92,22 @@ public class SQLRouter {
         c.executeUpdate().onComplete(asyncHandler);
     }
 
-    public static void executeUpdate(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
+    public static void executeDistributedUpdate(StatementBase statement,
+            AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         int updateCount = 0;
         // CREATE/ALTER/DROP DATABASE语句在执行update时才知道涉及哪些节点
         if (statement.isDatabaseStatement()) {
             updateCount = statement.update();
-        } else if (statement.isDDL() && !statement.isLocal()) {
+        } else if (statement.isDDL()) {
             executeDistributedDefinitionStatement(statement, asyncHandler);
             return;
-        } else if (statement.isLocal()) {
-            updateCount = statement.update();
-        } else if (statement.getSession().isShardingMode()) {
-            updateCount = maybeExecuteDistributedUpdate(statement);
         } else {
-            updateCount = statement.update();
+            updateCount = executeDistributedUpdate(statement);
         }
         asyncHandler.handle(new AsyncResult<>(updateCount));
     }
 
-    private static int maybeExecuteDistributedUpdate(StatementBase statement) {
+    private static int executeDistributedUpdate(StatementBase statement) {
         int type = statement.getType();
         switch (type) {
         case SQLStatement.DELETE:
@@ -119,7 +116,7 @@ public class SQLRouter {
             Map<String, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
             int size = nodeToPageKeyMap.size();
             if (size > 0) {
-                updateCount = maybeExecuteDistributedUpdate(statement, nodeToPageKeyMap, size > 1);
+                updateCount = executeDistributedUpdate(statement, nodeToPageKeyMap, size > 1);
             }
             return updateCount;
         }
@@ -128,8 +125,8 @@ public class SQLRouter {
         }
     }
 
-    private static int maybeExecuteDistributedUpdate(StatementBase statement,
-            Map<String, List<PageKey>> nodeToPageKeyMap, boolean isBatch) {
+    private static int executeDistributedUpdate(StatementBase statement, Map<String, List<PageKey>> nodeToPageKeyMap,
+            boolean isBatch) {
         beginTransaction(statement);
 
         boolean isTopTransaction = false;
@@ -158,7 +155,7 @@ public class SQLRouter {
             // :
             // }
 
-            int updateCount = maybeExecuteDistributedUpdate(statement, nodeToPageKeyMap);
+            int updateCount = executeDistributedUpdate(statement, nodeToPageKeyMap);
             if (isTopTransaction)
                 session.asyncCommit(null);
             return updateCount;
@@ -177,8 +174,7 @@ public class SQLRouter {
         }
     }
 
-    private static int maybeExecuteDistributedUpdate(StatementBase statement,
-            Map<String, List<PageKey>> nodeToPageKeyMap) {
+    private static int executeDistributedUpdate(StatementBase statement, Map<String, List<PageKey>> nodeToPageKeyMap) {
         int updateCount = 0;
         int size = nodeToPageKeyMap.size();
         String sql = statement.getPlanSQL(true);
@@ -217,21 +213,14 @@ public class SQLRouter {
         return updateCount;
     }
 
-    public static void executeQuery(StatementBase statement, int maxRows, boolean scrollable,
+    public static void executeDistributedQuery(StatementBase statement, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
-        Result result;
-        if (statement.isLocal()) {
-            result = statement.query(maxRows);
-        } else if (statement.getSession().isShardingMode()) {
-            beginTransaction(statement);
-            result = maybeExecuteDistributedQuery(statement, maxRows, scrollable);
-        } else {
-            result = statement.query(maxRows);
-        }
+        beginTransaction(statement);
+        Result result = executeDistributedQuery(statement, maxRows, scrollable);
         asyncHandler.handle(new AsyncResult<>(result));
     }
 
-    private static Result maybeExecuteDistributedQuery(StatementBase statement, int maxRows, boolean scrollable) {
+    private static Result executeDistributedQuery(StatementBase statement, int maxRows, boolean scrollable) {
         int type = statement.getType();
         switch (type) {
         case SQLStatement.SELECT: {

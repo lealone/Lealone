@@ -22,36 +22,19 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.router.SQLRouter;
 
-public class DefaultYieldableQuery extends YieldableQueryBase {
+public class DefaultYieldableLocalQuery extends YieldableQueryBase {
 
-    private Boolean completed;
-
-    public DefaultYieldableQuery(StatementBase statement, int maxRows, boolean scrollable,
+    public DefaultYieldableLocalQuery(StatementBase statement, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
         super(statement, maxRows, scrollable, asyncHandler);
     }
 
     @Override
     protected void executeInternal() {
-        if (completed == null) {
-            completed = false;
-            SQLRouter.executeQuery(statement, maxRows, scrollable, ar -> handleResult(ar));
-        }
-    }
-
-    private void handleResult(AsyncResult<Result> ar) {
-        try {
-            if (ar.isSucceeded()) {
-                Result result = ar.getResult();
-                setResult(result, result.getRowCount());
-                session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-            } else {
-                setPendingException(ar.getCause());
-            }
-        } finally {
-            completed = true;
-        }
+        session.setStatus(SessionStatus.STATEMENT_RUNNING);
+        Result result = statement.query(maxRows);
+        setResult(result, result.getRowCount());
+        session.setStatus(SessionStatus.STATEMENT_COMPLETED);
     }
 }

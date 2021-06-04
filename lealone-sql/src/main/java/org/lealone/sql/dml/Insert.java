@@ -59,7 +59,7 @@ public class Insert extends InsertBase {
 
     @Override
     public YieldableInsert createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        return new YieldableInsert(this, asyncHandler);
+        return new YieldableInsert(this, asyncHandler); // 统一处理单机模式、复制模式、sharding模式
     }
 
     private static class YieldableInsert extends YieldableInsertBase implements ResultTarget {

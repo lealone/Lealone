@@ -26,9 +26,10 @@ import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
+import org.lealone.sql.executor.DefaultYieldableLocalQuery;
 import org.lealone.sql.executor.DefaultYieldableLocalUpdate;
-import org.lealone.sql.executor.DefaultYieldableQuery;
 import org.lealone.sql.executor.DefaultYieldableReplicationUpdate;
+import org.lealone.sql.executor.DefaultYieldableShardingQuery;
 import org.lealone.sql.executor.DefaultYieldableShardingUpdate;
 import org.lealone.sql.executor.YieldableBase;
 import org.lealone.sql.expression.Expression;
@@ -589,12 +590,16 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
-        return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
+        // 查询语句的单机模式和复制模式一样
+        if (isShardingMode())
+            return new DefaultYieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
+        else
+            return new DefaultYieldableLocalQuery(this, maxRows, scrollable, asyncHandler);
     }
 
     @Override
     public YieldableBase<Integer> createYieldableUpdate(AsyncHandler<AsyncResult<Integer>> asyncHandler) {
-        if (!local && session.isShardingMode())
+        if (isShardingMode())
             return new DefaultYieldableShardingUpdate(this, asyncHandler);
         else if (session.getReplicationName() != null)
             return new DefaultYieldableReplicationUpdate(this, asyncHandler);
@@ -616,5 +621,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
         if (tf != null)
             return tf.getNodeToPageKeyMap(session);
         return null;
+    }
+
+    protected boolean isShardingMode() {
+        return !isLocal() && getSession().isShardingMode();
     }
 }

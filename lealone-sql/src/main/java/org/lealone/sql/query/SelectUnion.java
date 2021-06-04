@@ -27,7 +27,7 @@ import org.lealone.db.value.Value;
 import org.lealone.sql.ISelectUnion;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
-import org.lealone.sql.executor.DefaultYieldableQuery;
+import org.lealone.sql.executor.DefaultYieldableShardingQuery;
 import org.lealone.sql.executor.YieldableBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
@@ -299,8 +299,9 @@ public class SelectUnion extends Query implements ISelectUnion {
     @Override
     public YieldableBase<Result> createYieldableQuery(int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
-        if (!isLocal() && getSession().isShardingMode())
-            return new DefaultYieldableQuery(this, maxRows, scrollable, asyncHandler);
+        // 查询语句的单机模式和复制模式一样
+        if (isShardingMode())
+            return new DefaultYieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
         else
             return new YieldableSelectUnion(this, maxRows, scrollable, asyncHandler, target);
     }
