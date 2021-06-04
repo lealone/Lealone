@@ -48,6 +48,7 @@ import org.lealone.db.value.ValueLong;
 import org.lealone.db.value.ValueNull;
 import org.lealone.db.value.ValueString;
 import org.lealone.net.NetNode;
+import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.AckPacketHandler;
 import org.lealone.server.protocol.Packet;
@@ -1293,6 +1294,8 @@ public class ServerSession extends SessionBase {
                 transaction.addParticipant(s);
             nestedSessionCache.put(url, s);
         }
+        // 集群内部节点之间通信用服务器端配置的超时时间
+        s.setNetworkTimeout(NetNodeManagerHolder.get().getRpcTimeout());
         return s;
     }
 

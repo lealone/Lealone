@@ -22,7 +22,7 @@ import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.router.SQLRouter;
+import org.lealone.sql.query.ShardingQueryExecutor;
 
 public class DefaultYieldableShardingQuery extends YieldableQueryBase {
 
@@ -36,7 +36,7 @@ public class DefaultYieldableShardingQuery extends YieldableQueryBase {
         if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED)
             return;
         session.setStatus(SessionStatus.STATEMENT_RUNNING);
-        SQLRouter.executeDistributedQuery(statement, maxRows, scrollable, ar -> handleResult(ar));
+        ShardingQueryExecutor.executeDistributedQuery(statement, maxRows, scrollable, ar -> handleResult(ar));
     }
 
     private void handleResult(AsyncResult<Result> ar) {

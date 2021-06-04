@@ -21,7 +21,6 @@ import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.router.SQLRouter;
 
 public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
 
@@ -35,7 +34,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
         if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED)
             return;
         session.setStatus(SessionStatus.STATEMENT_RUNNING);
-        SQLRouter.executeDistributedUpdate(statement, ar -> handleResult(ar));
+        ShardingUpdateExecutor.executeDistributedUpdate(statement, ar -> handleResult(ar));
     }
 
     private void handleResult(AsyncResult<Integer> ar) {
