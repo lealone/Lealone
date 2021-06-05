@@ -28,13 +28,13 @@ import org.lealone.sql.ISelectUnion;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.executor.YieldableBase;
-import org.lealone.sql.executor.sharding.DefaultYieldableShardingQuery;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.sharding.YieldableShardingQuery;
 
 /**
  * Represents a union SELECT statement.
@@ -301,7 +301,7 @@ public class SelectUnion extends Query implements ISelectUnion {
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
         // 查询语句的单机模式和复制模式一样
         if (isShardingMode())
-            return new DefaultYieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
+            return new YieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
         else
             return new YieldableSelectUnion(this, maxRows, scrollable, asyncHandler, target);
     }

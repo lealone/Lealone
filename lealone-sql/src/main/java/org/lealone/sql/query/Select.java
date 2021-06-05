@@ -38,7 +38,6 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.PreparedSQLStatement;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.executor.YieldableBase;
-import org.lealone.sql.executor.sharding.DefaultYieldableShardingQuery;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ExpressionColumn;
 import org.lealone.sql.expression.ExpressionVisitor;
@@ -49,6 +48,7 @@ import org.lealone.sql.expression.condition.ConditionAndOr;
 import org.lealone.sql.optimizer.ColumnResolver;
 import org.lealone.sql.optimizer.Optimizer;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.sharding.YieldableShardingQuery;
 
 /**
  * This class represents a simple SELECT statement.
@@ -1111,7 +1111,7 @@ public class Select extends Query {
             AsyncHandler<AsyncResult<Result>> asyncHandler, ResultTarget target) {
         // 查询语句的单机模式和复制模式一样
         if (isShardingMode())
-            return new DefaultYieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
+            return new YieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
         else
             return new YieldableSelect(this, maxRows, scrollable, asyncHandler, target);
     }

@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor.sharding.result;
+package org.lealone.sql.query.sharding.result;
 
 import org.lealone.db.index.Cursor;
 import org.lealone.db.index.IndexBase;

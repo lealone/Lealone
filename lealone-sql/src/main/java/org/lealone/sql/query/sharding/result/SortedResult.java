@@ -15,14 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor.sharding.result;
+package org.lealone.sql.query.sharding.result;
 
 import java.util.List;
 
 import org.lealone.db.result.DelegatedResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.result.SortOrder;
-import org.lealone.db.session.ServerSession;
 import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.query.Select;
@@ -39,7 +38,7 @@ public class SortedResult extends DelegatedResult {
 
     private int rowNumber;
 
-    public SortedResult(int maxRows, ServerSession session, Select select, List<Result> results) {
+    public SortedResult(Select select, List<Result> results, int maxRows) {
         this.sort = select.getSortOrder();
         this.results = results.toArray(new Result[results.size()]);
         this.result = this.results[0];
@@ -48,7 +47,7 @@ public class SortedResult extends DelegatedResult {
 
         int limitRows = maxRows == 0 ? -1 : maxRows;
         if (select.getLimit() != null) {
-            Value v = select.getLimit().getValue(session);
+            Value v = select.getLimit().getValue(select.getSession());
             int l = v == ValueNull.INSTANCE ? -1 : v.getInt();
             if (limitRows < 0) {
                 limitRows = l;
@@ -59,7 +58,7 @@ public class SortedResult extends DelegatedResult {
 
         int offset;
         if (select.getOffset() != null) {
-            offset = select.getOffset().getValue(session).getInt();
+            offset = select.getOffset().getValue(select.getSession()).getInt();
         } else {
             offset = 0;
         }

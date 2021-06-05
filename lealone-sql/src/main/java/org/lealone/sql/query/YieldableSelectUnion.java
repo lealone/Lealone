@@ -28,7 +28,6 @@ import org.lealone.db.value.Value;
 import org.lealone.db.value.ValueInt;
 import org.lealone.db.value.ValueNull;
 import org.lealone.sql.executor.YieldableBase;
-import org.lealone.sql.executor.YieldableQueryBase;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.ValueExpression;
 

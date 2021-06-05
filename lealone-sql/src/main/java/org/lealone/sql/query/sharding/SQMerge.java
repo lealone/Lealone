@@ -15,22 +15,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor;
+package org.lealone.sql.query.sharding;
 
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
-import org.lealone.sql.StatementBase;
+import org.lealone.sql.query.Select;
+import org.lealone.sql.query.sharding.result.MergedResult;
 
-public abstract class YieldableQueryBase extends YieldableBase<Result> {
+public class SQMerge extends SQOperator {
 
-    protected final int maxRows;
-    protected final boolean scrollable;
+    private final Select oldSelect;
+    private final Select newSelect;
 
-    public YieldableQueryBase(StatementBase statement, int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler) {
-        super(statement, asyncHandler);
-        this.maxRows = maxRows;
-        this.scrollable = scrollable;
+    public SQMerge(SQCommand[] commands, int maxRows, Select oldSelect) {
+        super(commands, maxRows);
+        this.oldSelect = oldSelect;
+        String newSQL = oldSelect.getPlanSQL(true, true);
+        newSelect = (Select) oldSelect.getSession().prepareStatement(newSQL, true);
+        newSelect.setLocal(true);
+    }
+
+    @Override
+    protected Result createFinalResult() {
+        return new MergedResult(results, newSelect, oldSelect);
     }
 }

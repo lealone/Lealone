@@ -15,39 +15,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor.sharding;
+package org.lealone.sql.query;
 
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.sql.StatementBase;
-import org.lealone.sql.executor.YieldableQueryBase;
 
-public class DefaultYieldableShardingQuery extends YieldableQueryBase {
+public class YieldableLocalQuery extends YieldableQueryBase {
 
-    public DefaultYieldableShardingQuery(StatementBase statement, int maxRows, boolean scrollable,
+    public YieldableLocalQuery(StatementBase statement, int maxRows, boolean scrollable,
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
         super(statement, maxRows, scrollable, asyncHandler);
     }
 
     @Override
     protected void executeInternal() {
-        if (session.getStatus() == SessionStatus.STATEMENT_COMPLETED)
-            return;
         session.setStatus(SessionStatus.STATEMENT_RUNNING);
-        ShardingQueryExecutor.executeDistributedQuery(statement, maxRows, scrollable, ar -> handleResult(ar));
-    }
-
-    private void handleResult(AsyncResult<Result> ar) {
-        if (ar.isSucceeded()) {
-            Result result = ar.getResult();
-            setResult(result, result.getRowCount());
-        } else {
-            setPendingException(ar.getCause());
-        }
+        Result result = statement.query(maxRows);
+        setResult(result, result.getRowCount());
         session.setStatus(SessionStatus.STATEMENT_COMPLETED);
-        session.getTransactionListener().wakeUp(); // 及时唤醒
     }
-
 }

@@ -15,20 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor.sharding;
+package org.lealone.sql.query.sharding;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
+import org.lealone.db.result.Result;
+import org.lealone.sql.query.Select;
+import org.lealone.sql.query.sharding.result.SortedResult;
 
-import org.lealone.common.concurrent.DebuggableThreadPoolExecutor;
-import org.lealone.sql.StatementBase;
+public class SQSort extends SQOperator {
 
-public abstract class ShardingSqlExecutor {
+    private final Select select;
 
-    protected static final ExecutorService executorService = new DebuggableThreadPoolExecutor("ShardingSqlExecutor", 1,
-            Runtime.getRuntime().availableProcessors(), 6000, TimeUnit.MILLISECONDS);
+    public SQSort(SQCommand[] commands, int maxRows, Select select) {
+        super(commands, maxRows);
+        this.select = select;
+    }
 
-    protected static void beginTransaction(StatementBase statement) {
-        statement.getSession().getTransaction(statement);
+    @Override
+    protected Result createFinalResult() {
+        return new SortedResult(select, results, maxRows);
     }
 }

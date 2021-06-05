@@ -15,26 +15,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.lealone.sql.executor;
+package org.lealone.sql.query.sharding;
 
-import org.lealone.db.async.AsyncHandler;
-import org.lealone.db.async.AsyncResult;
+import java.util.List;
+
+import org.lealone.db.async.Future;
 import org.lealone.db.result.Result;
-import org.lealone.db.session.SessionStatus;
-import org.lealone.sql.StatementBase;
+import org.lealone.sql.DistributedSQLCommand;
+import org.lealone.storage.PageKey;
 
-public class DefaultYieldableLocalQuery extends YieldableQueryBase {
+//Sharding Query Command
+public class SQCommand {
 
-    public DefaultYieldableLocalQuery(StatementBase statement, int maxRows, boolean scrollable,
-            AsyncHandler<AsyncResult<Result>> asyncHandler) {
-        super(statement, maxRows, scrollable, asyncHandler);
+    DistributedSQLCommand command;
+    int maxRows;
+    boolean scrollable;
+    List<PageKey> pageKeys;
+
+    public SQCommand(DistributedSQLCommand command, int maxRows, boolean scrollable, List<PageKey> pageKeys) {
+        this.command = command;
+        this.maxRows = maxRows;
+        this.scrollable = scrollable;
+        this.pageKeys = pageKeys;
     }
 
-    @Override
-    protected void executeInternal() {
-        session.setStatus(SessionStatus.STATEMENT_RUNNING);
-        Result result = statement.query(maxRows);
-        setResult(result, result.getRowCount());
-        session.setStatus(SessionStatus.STATEMENT_COMPLETED);
+    public Future<Result> executeDistributedQuery() {
+        return command.executeDistributedQuery(maxRows, scrollable, pageKeys);
     }
 }

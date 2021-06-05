@@ -26,15 +26,15 @@ import org.lealone.db.session.ServerSession.YieldableCommand;
 import org.lealone.db.session.SessionStatus;
 import org.lealone.db.value.Value;
 import org.lealone.server.protocol.replication.ReplicationUpdateAck;
-import org.lealone.sql.executor.DefaultYieldableLocalQuery;
 import org.lealone.sql.executor.DefaultYieldableLocalUpdate;
 import org.lealone.sql.executor.DefaultYieldableReplicationUpdate;
+import org.lealone.sql.executor.DefaultYieldableShardingUpdate;
 import org.lealone.sql.executor.YieldableBase;
-import org.lealone.sql.executor.sharding.DefaultYieldableShardingQuery;
-import org.lealone.sql.executor.sharding.DefaultYieldableShardingUpdate;
 import org.lealone.sql.expression.Expression;
 import org.lealone.sql.expression.Parameter;
 import org.lealone.sql.optimizer.TableFilter;
+import org.lealone.sql.query.YieldableLocalQuery;
+import org.lealone.sql.query.sharding.YieldableShardingQuery;
 import org.lealone.storage.PageKey;
 
 /**
@@ -592,9 +592,9 @@ public abstract class StatementBase implements PreparedSQLStatement, ParsedSQLSt
             AsyncHandler<AsyncResult<Result>> asyncHandler) {
         // 查询语句的单机模式和复制模式一样
         if (isShardingMode())
-            return new DefaultYieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
+            return new YieldableShardingQuery(this, maxRows, scrollable, asyncHandler);
         else
-            return new DefaultYieldableLocalQuery(this, maxRows, scrollable, asyncHandler);
+            return new YieldableLocalQuery(this, maxRows, scrollable, asyncHandler);
     }
 
     @Override
