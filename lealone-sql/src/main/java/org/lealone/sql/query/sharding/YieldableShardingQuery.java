@@ -24,10 +24,8 @@ import java.util.Map.Entry;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.result.Result;
-import org.lealone.db.session.ServerSession;
 import org.lealone.db.session.Session;
 import org.lealone.db.session.SessionStatus;
-import org.lealone.net.NetNode;
 import org.lealone.sql.DistributedSQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
@@ -95,17 +93,15 @@ public class YieldableShardingQuery extends YieldableQueryBase {
     }
 
     private SQCommand[] createCommands(Map<String, List<PageKey>> nodeToPageKeyMap) {
-        ServerSession currentSession = statement.getSession();
         String sql = statement.getPlanSQL(true);
         SQCommand[] commands = new SQCommand[nodeToPageKeyMap.size()];
         int i = 0;
         for (Entry<String, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
             String hostId = e.getKey();
             List<PageKey> pageKeys = e.getValue();
-            Session s = currentSession.getNestedSession(hostId, !NetNode.isLocalTcpNode(hostId));
+            Session s = session.getNestedSession(hostId);
             DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
-            commands[i] = new SQCommand(c, maxRows, scrollable, pageKeys);
-            i++;
+            commands[i++] = new SQCommand(c, maxRows, scrollable, pageKeys);
         }
         return commands;
     }

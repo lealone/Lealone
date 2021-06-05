@@ -1283,6 +1283,10 @@ public class ServerSession extends SessionBase {
     // 参与本次事务的其他Session
     private final Map<String, Session> nestedSessionCache = new HashMap<>();
 
+    public Session getNestedSession(String hostAndPort) {
+        return getNestedSession(hostAndPort, !NetNode.isLocalTcpNode(hostAndPort));
+    }
+
     // 得到的嵌套session会参与当前事务
     public Session getNestedSession(String hostAndPort, boolean remote) {
         // 不能直接把hostAndPort当成key，因为每个Session是对应到具体数据库的，所以URL中要包含数据库名
