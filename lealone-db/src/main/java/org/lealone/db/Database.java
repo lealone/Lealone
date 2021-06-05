@@ -2252,13 +2252,12 @@ public class Database implements DataHandler, DbObject, IDatabase {
     public static ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
             Boolean remote, List<String> initReplicationNodes) {
         ServerSession serverSession = (ServerSession) session;
-        NetNode localNode = NetNode.getLocalP2pNode();
         int size = replicationNodes.size();
         Session[] sessions = new Session[size];
         int i = 0;
-        for (NetNode e : replicationNodes) {
-            String id = getNetNodeManager().getHostId(e);
-            boolean isRemote = remote != null ? remote.booleanValue() : !localNode.equals(e);
+        for (NetNode n : replicationNodes) {
+            String id = getNetNodeManager().getHostId(n);
+            boolean isRemote = remote != null ? remote.booleanValue() : !NetNode.isLocalP2pNode(n);
             sessions[i++] = serverSession.getNestedSession(id, isRemote);
         }
         ReplicationSession rs = new ReplicationSession(sessions, initReplicationNodes);

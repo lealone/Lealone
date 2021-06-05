@@ -197,8 +197,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
             }
             String hostId = e.getKey();
             List<PageKey> pageKeys = e.getValue();
-            Session session = currentSession.getNestedSession(hostId,
-                    !NetNode.getLocalTcpNode().equals(NetNode.createTCP(hostId)));
+            Session session = currentSession.getNestedSession(hostId, !NetNode.isLocalTcpNode(hostId));
             DistributedSQLCommand c = session.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
             c.executeDistributedUpdate(pageKeys).onComplete(ar -> {
                 if (ar.isSucceeded()) {

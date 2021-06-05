@@ -206,7 +206,7 @@ public class AlterDatabase extends DatabaseStatement {
         String operationNode = db.getParameters().get("_operationNode_");
         if (operationNode != null) {
             NetNode node = db.getNode(operationNode);
-            if (node.equals(NetNode.getLocalP2pNode())) {
+            if (NetNode.isLocalP2pNode(node)) {
                 return true;
             }
         }

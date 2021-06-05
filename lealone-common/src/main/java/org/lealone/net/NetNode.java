@@ -201,4 +201,16 @@ public class NetNode implements Comparable<NetNode> {
         int port = in.readInt();
         return new NetNode(InetAddress.getByAddress(bytes), port);
     }
+
+    public static boolean isLocalTcpNode(String hostId) {
+        return isLocalTcpNode(NetNode.createTCP(hostId));
+    }
+
+    public static boolean isLocalTcpNode(NetNode n) {
+        return NetNode.getLocalTcpNode().equals(n);
+    }
+
+    public static boolean isLocalP2pNode(NetNode n) {
+        return NetNode.getLocalP2pNode().equals(n);
+    }
 }

@@ -139,9 +139,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     }
 
     private boolean containsLocalNode(String[] replicationNodes) {
-        NetNode local = NetNode.getLocalTcpNode();
         for (String e : replicationNodes) {
-            if (local.equals(NetNode.createTCP(e)))
+            if (NetNode.isLocalTcpNode(e))
                 return true;
         }
         return false;

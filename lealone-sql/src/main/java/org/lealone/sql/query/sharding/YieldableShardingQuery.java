@@ -77,7 +77,7 @@ public class YieldableShardingQuery extends YieldableQueryBase {
             if (size <= 0) {
                 return new SQEmpty();
             }
-            SQCommand[] commands = createCommands(nodeToPageKeyMap, size);
+            SQCommand[] commands = createCommands(nodeToPageKeyMap);
             Select select = (Select) statement;
             if (select.isGroupQuery()) {
                 return new SQMerge(commands, maxRows, select);
@@ -94,18 +94,16 @@ public class YieldableShardingQuery extends YieldableQueryBase {
         }
     }
 
-    private SQCommand[] createCommands(Map<String, List<PageKey>> nodeToPageKeyMap, int size) {
+    private SQCommand[] createCommands(Map<String, List<PageKey>> nodeToPageKeyMap) {
         ServerSession currentSession = statement.getSession();
         String sql = statement.getPlanSQL(true);
-        Session[] sessions = new Session[size];
-        SQCommand[] commands = new SQCommand[size];
+        SQCommand[] commands = new SQCommand[nodeToPageKeyMap.size()];
         int i = 0;
         for (Entry<String, List<PageKey>> e : nodeToPageKeyMap.entrySet()) {
             String hostId = e.getKey();
             List<PageKey> pageKeys = e.getValue();
-            sessions[i] = currentSession.getNestedSession(hostId,
-                    !NetNode.getLocalTcpNode().equals(NetNode.createTCP(hostId)));
-            DistributedSQLCommand c = sessions[i].createDistributedSQLCommand(sql, Integer.MAX_VALUE);
+            Session s = currentSession.getNestedSession(hostId, !NetNode.isLocalTcpNode(hostId));
+            DistributedSQLCommand c = s.createDistributedSQLCommand(sql, Integer.MAX_VALUE);
             commands[i] = new SQCommand(c, maxRows, scrollable, pageKeys);
             i++;
         }
