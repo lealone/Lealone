@@ -19,6 +19,7 @@ package org.lealone.sql.query.sharding;
 
 import org.lealone.db.result.LocalResult;
 
+//返回一个空结果
 public class SQEmpty extends SQOperator {
 
     public SQEmpty() {

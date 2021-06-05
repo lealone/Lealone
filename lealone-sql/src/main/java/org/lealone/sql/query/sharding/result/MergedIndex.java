@@ -29,6 +29,7 @@ import org.lealone.db.session.ServerSession;
 import org.lealone.db.table.Table;
 
 public class MergedIndex extends IndexBase {
+
     private final Result result;
 
     public MergedIndex(Result result, Table table, int id, IndexType indexType, IndexColumn[] columns) {

@@ -27,12 +27,13 @@ import org.lealone.db.table.Table;
 import org.lealone.sql.query.Select;
 
 public class MergedResult extends DelegatedResult {
+
     public MergedResult(List<Result> results, Select newSelect, Select oldSelect) {
         // 1. 结果集串行化，为合并做准备
         SerializedResult serializedResult = new SerializedResult(results, oldSelect.getLimitRows());
         Table table = newSelect.getTopTableFilter().getTable();
-        newSelect.getTopTableFilter().setIndex(new MergedIndex(serializedResult, table, -1,
-                IndexType.createScan(), IndexColumn.wrap(table.getColumns())));
+        newSelect.getTopTableFilter().setIndex(new MergedIndex(serializedResult, table, -1, IndexType.createScan(),
+                IndexColumn.wrap(table.getColumns())));
 
         // 2. 把多个结果集合并
         Result mergedResult = newSelect.queryGroupMerge();

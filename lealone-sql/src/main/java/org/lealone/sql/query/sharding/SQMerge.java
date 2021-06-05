@@ -21,6 +21,8 @@ import org.lealone.db.result.Result;
 import org.lealone.sql.query.Select;
 import org.lealone.sql.query.sharding.result.MergedResult;
 
+//表示在sharding场景下，包含聚合、分组的查询语句，
+//多个节点返回的结果会再次进行聚合、分组合并后再返回给客户端
 public class SQMerge extends SQOperator {
 
     private final Select oldSelect;

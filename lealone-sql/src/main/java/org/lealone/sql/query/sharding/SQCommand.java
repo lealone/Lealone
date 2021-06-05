@@ -27,10 +27,10 @@ import org.lealone.storage.PageKey;
 //Sharding Query Command
 public class SQCommand {
 
-    DistributedSQLCommand command;
-    int maxRows;
-    boolean scrollable;
-    List<PageKey> pageKeys;
+    private final DistributedSQLCommand command;
+    private final int maxRows;
+    private final boolean scrollable;
+    private final List<PageKey> pageKeys;
 
     public SQCommand(DistributedSQLCommand command, int maxRows, boolean scrollable, List<PageKey> pageKeys) {
         this.command = command;

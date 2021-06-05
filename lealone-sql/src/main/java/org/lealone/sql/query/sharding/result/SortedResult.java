@@ -27,15 +27,15 @@ import org.lealone.db.value.ValueNull;
 import org.lealone.sql.query.Select;
 
 public class SortedResult extends DelegatedResult {
+
     private static final Value[] END = new Value[0];
     private final SortOrder sort;
     private final Result[] results;
     private final int limit;
     private final int size;
-    private int rowCount = -1;
-    private Value[] currentRow;
     private final Value[][] currentRows;
-
+    private Value[] currentRow;
+    private int rowCount = -1;
     private int rowNumber;
 
     public SortedResult(Select select, List<Result> results, int maxRows) {

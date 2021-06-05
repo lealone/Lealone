@@ -19,6 +19,7 @@ package org.lealone.sql.query.sharding;
 
 import org.lealone.sql.StatementBase;
 
+//直接查当前结点
 public class SQDirect extends SQOperator {
 
     private final StatementBase statement;
