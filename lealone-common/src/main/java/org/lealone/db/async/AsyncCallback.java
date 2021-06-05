@@ -112,25 +112,31 @@ public class AsyncCallback<T> implements Future<T> {
 
     @Override
     public Future<T> onSuccess(AsyncHandler<T> handler) {
-        successHandler = handler;
+        // asyncResult为null时才给successHandler赋值，避免setAsyncResult重复调用handler.handle
         if (asyncResult != null && asyncResult.isSucceeded())
             handler.handle(asyncResult.getResult());
+        else
+            successHandler = handler;
         return this;
     }
 
     @Override
     public Future<T> onFailure(AsyncHandler<Throwable> handler) {
-        failureHandler = handler;
+        // asyncResult为null时才给failureHandler赋值，避免setAsyncResult重复调用handler.handle
         if (asyncResult != null && asyncResult.isFailed())
             handler.handle(asyncResult.getCause());
+        else
+            failureHandler = handler;
         return this;
     }
 
     @Override
     public Future<T> onComplete(AsyncHandler<AsyncResult<T>> handler) {
-        completeHandler = handler;
+        // asyncResult为null时才给completeHandler赋值，避免setAsyncResult重复调用handler.handle
         if (asyncResult != null)
             handler.handle(asyncResult);
+        else
+            completeHandler = handler;
         return this;
     }
 
