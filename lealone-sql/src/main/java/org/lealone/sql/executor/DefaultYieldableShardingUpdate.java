@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
@@ -185,6 +186,8 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
 
     private void executeDistributedUpdate(Map<String, List<PageKey>> nodeToPageKeyMap, boolean isTopTransaction,
             boolean isNestedTransaction) {
+        // 确保只调用一次wakeUp
+        AtomicBoolean wakeUp = new AtomicBoolean(false);
         String sql = statement.getPlanSQL(true);
         ServerSession currentSession = statement.getSession();
         AtomicInteger size = new AtomicInteger(nodeToPageKeyMap.size());
@@ -209,7 +212,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
                     pendingException = ar.getCause();
                     rollback(isTopTransaction, isNestedTransaction);
                 }
-                if (end) {
+                if (end && wakeUp.compareAndSet(false, true)) {
                     onComplete();
                 }
             });
