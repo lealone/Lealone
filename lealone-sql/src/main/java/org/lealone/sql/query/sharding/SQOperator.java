@@ -33,9 +33,9 @@ public class SQOperator {
     protected final AtomicInteger resultCount;
 
     protected Result result;
-    protected boolean end;
     protected ServerSession session;
 
+    protected volatile boolean end;
     protected volatile Throwable pendingException;
 
     public SQOperator(SQCommand[] commands, int maxRows) {
