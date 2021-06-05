@@ -17,7 +17,6 @@
  */
 package org.lealone.p2p.config;
 
-import java.beans.IntrospectionException;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -127,7 +126,7 @@ public class YamlConfigLoader implements ConfigLoader {
 
     protected void addTypeDescription(Constructor configConstructor) {
         TypeDescription mapPropertyTypeDesc = new TypeDescription(MapPropertyTypeDef.class);
-        mapPropertyTypeDesc.putMapPropertyType("parameters", String.class, String.class);
+        mapPropertyTypeDesc.addPropertyParameters("parameters", String.class, String.class);
         configConstructor.addTypeDescription(mapPropertyTypeDesc);
     }
 
@@ -139,7 +138,7 @@ public class YamlConfigLoader implements ConfigLoader {
         }
 
         @Override
-        public Property getProperty(Class<? extends Object> type, String name) throws IntrospectionException {
+        public Property getProperty(Class<? extends Object> type, String name) {
             Property result = super.getProperty(type, name);
             if (result instanceof MissingProperty) {
                 missingProperties.add(result.getName());
