@@ -71,8 +71,11 @@ public class YieldableShardingQuery extends YieldableQueryBase {
         switch (statement.getType()) {
         case SQLStatement.SELECT: {
             Map<String, List<PageKey>> nodeToPageKeyMap = statement.getNodeToPageKeyMap();
-            int size = nodeToPageKeyMap.size();
-            if (size <= 0) {
+            // 不支持sharding的表，例如information_schema中预先定义的表
+            if (nodeToPageKeyMap == null) {
+                return new SQDirect(statement, maxRows);
+            }
+            if (nodeToPageKeyMap.size() <= 0) {
                 return new SQEmpty();
             }
             SQCommand[] commands = createCommands(nodeToPageKeyMap);
