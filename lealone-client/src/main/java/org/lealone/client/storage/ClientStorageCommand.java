@@ -18,10 +18,12 @@
 package org.lealone.client.storage;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.lealone.client.session.ClientSession;
 import org.lealone.db.async.Future;
 import org.lealone.db.value.ValueLong;
+import org.lealone.server.protocol.replication.ReplicationHandleReplicaConflict;
 import org.lealone.server.protocol.storage.StorageAppend;
 import org.lealone.server.protocol.storage.StorageAppendAck;
 import org.lealone.server.protocol.storage.StorageGet;
@@ -215,5 +217,14 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
             session.handleException(e);
         }
         return null;
+    }
+
+    @Override
+    public void handleReplicaConflict(List<String> retryReplicationNames) {
+        try {
+            session.send(new ReplicationHandleReplicaConflict(retryReplicationNames));
+        } catch (Exception e) {
+            session.getTrace().error(e, "handleReplicaConflict");
+        }
     }
 }

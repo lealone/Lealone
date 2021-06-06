@@ -1642,6 +1642,10 @@ public class ServerSession extends SessionBase {
     }
 
     public void handleReplicaConflict(List<String> retryReplicationNames) {
+        if (isStorageReplicationMode()) {
+            commit();
+            return;
+        }
         ackVersion = 0;
         if (replicationConflictType == null) {
             replicationConflictType = ReplicationConflictType.NONE;
@@ -1721,6 +1725,7 @@ public class ServerSession extends SessionBase {
             appendReplicationName = null;
         }
         setReplicationName(null);
+        setStorageReplicationMode(false);
         lockedExclusivelyBy = null;
         replicationConflictType = null;
         isFinalResult = false;
@@ -1853,5 +1858,15 @@ public class ServerSession extends SessionBase {
             throw DbException.getInvalidValueException("transaction isolation level", transactionIsolationLevel);
         }
         this.transactionIsolationLevel = transactionIsolationLevel;
+    }
+
+    private boolean isStorageReplicationMode;
+
+    public boolean isStorageReplicationMode() {
+        return isStorageReplicationMode;
+    }
+
+    public void setStorageReplicationMode(boolean isStorageReplicationMode) {
+        this.isStorageReplicationMode = isStorageReplicationMode;
     }
 }

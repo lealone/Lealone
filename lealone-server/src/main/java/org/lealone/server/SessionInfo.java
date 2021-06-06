@@ -106,7 +106,7 @@ public class SessionInfo implements ServerSession.TimeoutListener {
 
     void runSessionTasks() {
         // 在复制模式下，除了冲突处理命令，只有当前语句执行完了才能执行下一条命令
-        if (session.getYieldableCommand() != null) {
+        if (session.getYieldableCommand() != null || session.isStorageReplicationMode()) {
             if (conflictTask != null) {
                 runTask(conflictTask);
                 conflictTask = null;

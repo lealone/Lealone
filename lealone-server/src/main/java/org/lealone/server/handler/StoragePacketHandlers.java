@@ -102,6 +102,8 @@ class StoragePacketHandlers extends PacketHandlers {
                 session.setRoot(false);
             }
             session.setReplicationName(packet.replicationName);
+            session.setStorageReplicationMode(true);
+
             TransactionMap<Object, Object> tmap = session.getTransactionMap(packet.mapName);
             if (packet.addIfAbsent) {
                 tmap.addIfAbsent(tmap.getKeyType().read(packet.key), tmap.getValueType().read(packet.value))
@@ -165,6 +167,7 @@ class StoragePacketHandlers extends PacketHandlers {
                 session.setRoot(false);
             }
             session.setReplicationName(packet.replicationName);
+            session.setStorageReplicationMode(true);
 
             StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             Object v = map.getValueType().read(packet.value);
@@ -187,6 +190,7 @@ class StoragePacketHandlers extends PacketHandlers {
                 session.setRoot(false);
             }
             session.setReplicationName(packet.replicationName);
+            session.setStorageReplicationMode(true);
 
             StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             StorageDataType valueType = map.getValueType();
@@ -212,6 +216,7 @@ class StoragePacketHandlers extends PacketHandlers {
                 session.setRoot(false);
             }
             session.setReplicationName(packet.replicationName);
+            session.setStorageReplicationMode(true);
 
             StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             Object key = map.getKeyType().read(packet.key);
