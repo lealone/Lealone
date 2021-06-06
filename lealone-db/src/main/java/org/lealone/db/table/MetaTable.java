@@ -289,7 +289,7 @@ public class MetaTable extends Table {
         }
         case DATABASES:
             setObjectName("DATABASES");
-            cols = createColumns("DATABASE_NAME", "RUN_MODE", "NODES");
+            cols = createColumns("ID", "DATABASE_NAME", "RUN_MODE", "NODES");
             break;
         default:
             throw DbException.throwInternalError("type=" + type);
@@ -609,9 +609,21 @@ public class MetaTable extends Table {
             add(rows, "info.VERSION_MINOR", "" + Constants.VERSION_MINOR);
             add(rows, "info.VERSION", "" + Constants.getFullVersion());
             if (admin) {
-                String[] settings = { "java.runtime.version", "java.vm.name", "java.vendor", "os.name", "os.arch",
-                        "os.version", "sun.os.patch.level", "file.separator", "path.separator", "line.separator",
-                        "user.country", "user.language", "user.variant", "file.encoding" };
+                String[] settings = {
+                        "java.runtime.version",
+                        "java.vm.name",
+                        "java.vendor",
+                        "os.name",
+                        "os.arch",
+                        "os.version",
+                        "sun.os.patch.level",
+                        "file.separator",
+                        "path.separator",
+                        "line.separator",
+                        "user.country",
+                        "user.language",
+                        "user.variant",
+                        "file.encoding" };
                 for (String s : settings) {
                     add(rows, "property." + s, Utils.getProperty(s, ""));
                 }
@@ -1371,6 +1383,8 @@ public class MetaTable extends Table {
             }
             for (Database database : databases) {
                 add(rows,
+                        // ID
+                        database.getId() + "",
                         // DATABASE_NAME
                         database.getShortName(),
                         // RUN_MODE
