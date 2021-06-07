@@ -44,7 +44,7 @@ public class ClientSessionFactory implements SessionFactory {
     @Override
     public Future<Session> createSession(ConnectionInfo ci, boolean allowRedirect) {
         if (!ci.isRemote()) {
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
         AsyncCallback<Session> ac = new AsyncCallback<>();
         createSession(ci, allowRedirect, ac);
@@ -186,7 +186,7 @@ public class ClientSessionFactory implements SessionFactory {
                     break;
                 }
                 default:
-                    topAc.setAsyncResult(DbException.throwInternalError());
+                    topAc.setAsyncResult(DbException.getInternalError());
                 }
             } else {
                 parent.setSession(clientSession);
