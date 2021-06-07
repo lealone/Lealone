@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Copyright Lealone Database Group.
-# Licensed under the Server Side Public License, v 1. 
+# Licensed under the Server Side Public License, v 1.
 # Initial Developer: zhh
 
 if [ "x$LEALONE_HOME" = "x" ]; then

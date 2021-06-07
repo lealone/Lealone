@@ -1,19 +1,7 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Copyright Lealone Database Group.
+ * Licensed under the Server Side Public License, v 1.
+ * Initial Developer: zhh
  */
 package org.lealone.test.sql.sharding;
 
@@ -34,10 +22,10 @@ public class ShardingTest extends DSqlTestBase {
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
         sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
-        stmt.executeUpdate(sql);
+        // stmt.executeUpdate(sql);
 
-        new DeleteTest(dbName).runTest();
-        new UpdateTest(dbName).runTest();
+        // new DeleteTest(dbName).runTest();
+        // new UpdateTest(dbName).runTest();
         new SelectTest(dbName).runTest();
 
         // new TwoTablesTest(dbName).runTest();
@@ -110,14 +98,17 @@ public class ShardingTest extends DSqlTestBase {
         }
 
         void testSelect() {
-            sql = "select * from " + name + " where f1 < 10";
-            printResultSet();
-            sql = "select count(*) from " + name + " where f1 < 10";
-            printResultSet();
+            // sql = "select * from " + name + " where f1 < 10";
+            // printResultSet();
+            // sql = "select count(*) from " + name + " where f1 < 10";
+            // printResultSet();
+            //
+            // sql = "select count(*) from " + name;
+            // printResultSet();
+            // sql = "select * from " + name + " where f1 = 3";
+            // printResultSet();
 
-            sql = "select count(*) from " + name;
-            printResultSet();
-            sql = "select * from " + name + " where f1 = 3";
+            sql = "select * from " + name + " where f1 > 40 order by f1 desc";
             printResultSet();
         }
     }
