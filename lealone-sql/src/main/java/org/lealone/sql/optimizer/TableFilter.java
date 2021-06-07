@@ -545,7 +545,7 @@ public class TableFilter implements ColumnResolver, IExpression.Evaluator {
         }
         if (nested && session.getDatabase().getSettings().nestedJoins) {
             if (nestedJoin != null) {
-                throw DbException.throwInternalError();
+                throw DbException.getInternalError();
             }
             nestedJoin = filter;
             filter.joinOuter = outer;

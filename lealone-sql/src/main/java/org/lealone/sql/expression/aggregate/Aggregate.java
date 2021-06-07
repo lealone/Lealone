@@ -741,7 +741,7 @@ public class Aggregate extends Expression {
             text = "BIT_OR";
             break;
         default:
-            throw DbException.throwInternalError("type=" + type);
+            throw DbException.getInternalError("type=" + type);
         }
         if (distinct) {
             return text + "(DISTINCT " + on.getSQL(isDistributed) + ")";

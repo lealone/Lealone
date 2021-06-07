@@ -156,7 +156,7 @@ public abstract class Constraint extends SchemaObjectBase implements Comparable<
         } else if (REFERENTIAL.equals(constraintType)) {
             return 3;
         } else {
-            throw DbException.throwInternalError("type: " + constraintType);
+            throw DbException.getInternalError("type: " + constraintType);
         }
     }
 

@@ -133,7 +133,7 @@ public class ConditionInConstantSet extends Condition {
         case ExpressionVisitor.GET_COLUMNS:
             return true;
         default:
-            throw DbException.throwInternalError("type=" + visitor.getType());
+            throw DbException.getInternalError("type=" + visitor.getType());
         }
     }
 

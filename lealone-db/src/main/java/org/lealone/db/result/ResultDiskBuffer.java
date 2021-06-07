@@ -285,17 +285,17 @@ class ResultDiskBuffer implements ResultExternal {
 
     @Override
     public int removeRow(Value[] values) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
     public boolean contains(Value[] values) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
     public int addRow(Value[] values) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
 }

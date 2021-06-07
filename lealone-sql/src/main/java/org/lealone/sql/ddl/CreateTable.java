@@ -580,7 +580,7 @@ public class CreateTable extends SchemaStatement {
             name = "Uuid";
             break;
         case Value.NULL:
-            throw DbException.throwInternalError("type = null");
+            throw DbException.getInternalError("type = null");
         default:
             name = DataType.getTypeClassName(type);
             int pos = name.lastIndexOf('.');
@@ -599,7 +599,7 @@ public class CreateTable extends SchemaStatement {
     // importSet.add(UUID.class.getName());
     // return UUID.class.getSimpleName();
     // case Value.NULL:
-    // throw DbException.throwInternalError("type = null");
+    // throw DbException.getInternalError("type = null");
     // default:
     // String name = DataType.getTypeClassName(type);
     // if (!name.startsWith("java.lang.")) {

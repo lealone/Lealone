@@ -38,7 +38,7 @@ public class StandardDelegateIndex extends StandardIndex {
                 IndexColumn.wrap(new Column[] { table.getColumn(mainIndex.getMainIndexColumn()) }));
         this.mainIndex = mainIndex;
         if (id < 0) {
-            throw DbException.throwInternalError("" + name);
+            throw DbException.getInternalError("" + name);
         }
     }
 
@@ -116,12 +116,12 @@ public class StandardDelegateIndex extends StandardIndex {
 
     @Override
     public void addRowsToBuffer(ServerSession session, List<Row> rows, String bufferName) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
     public void addBufferedRows(ServerSession session, List<String> bufferNames) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override

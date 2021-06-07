@@ -302,7 +302,7 @@ public abstract class Value implements Comparable<Value> {
         case RESULT_SET:
             return 51;
         default:
-            throw DbException.throwInternalError("type:" + type);
+            throw DbException.getInternalError("type:" + type);
         }
     }
 
@@ -855,7 +855,7 @@ public abstract class Value implements Comparable<Value> {
             case UUID:
                 return ValueUuid.get(s);
             default:
-                throw DbException.throwInternalError("type=" + targetType);
+                throw DbException.getInternalError("type=" + targetType);
             }
         } catch (NumberFormatException e) {
             throw DbException.get(ErrorCode.DATA_CONVERSION_ERROR_1, e, getString());

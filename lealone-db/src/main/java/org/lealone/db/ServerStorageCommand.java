@@ -162,7 +162,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     @Override
     public void removeLeafPage(String mapName, PageKey pageKey) {
         // 当前节点删除自己的 leaf page时不应该再触发自己再按 page key删一次
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override

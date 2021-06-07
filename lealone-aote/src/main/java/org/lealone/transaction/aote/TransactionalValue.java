@@ -1023,7 +1023,7 @@ public interface TransactionalValue {
             // 因为执行rollback时是按最新到最老的顺序进行的，
             // 所以当前被rollback的TransactionalValue一定是RefValue
             // if (this != first)
-            // throw DbException.throwInternalError();
+            // throw DbException.getInternalError();
 
             // 执行update时先锁后更新，会有两条记录
             if (this != first) {

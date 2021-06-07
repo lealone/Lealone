@@ -55,7 +55,7 @@ public class ConditionAndOr extends Condition {
             sql = left.getSQL(isDistributed) + "\n    OR " + right.getSQL(isDistributed);
             break;
         default:
-            throw DbException.throwInternalError("andOrType=" + andOrType);
+            throw DbException.getInternalError("andOrType=" + andOrType);
         }
         return "(" + sql + ")";
     }
@@ -122,7 +122,7 @@ public class ConditionAndOr extends Condition {
             return ValueBoolean.get(false);
         }
         default:
-            throw DbException.throwInternalError("type=" + andOrType);
+            throw DbException.getInternalError("type=" + andOrType);
         }
     }
 

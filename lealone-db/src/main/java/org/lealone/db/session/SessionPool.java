@@ -48,7 +48,7 @@ public class SessionPool {
         ConnectionInfo oldCi = originalSession.getConnectionInfo();
         // 未来新加的代码如果忘记设置这个字段，出问题时方便查找原因
         if (oldCi == null) {
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
 
         ConnectionInfo ci = new ConnectionInfo(url, oldCi.getProperties());

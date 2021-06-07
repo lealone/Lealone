@@ -78,11 +78,11 @@ public class NonUniqueHashIndex extends HashIndex {
     @Override
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         if (first == null || last == null) {
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
         if (first != last) {
             if (compareKeys(first, last) != 0) {
-                throw DbException.throwInternalError();
+                throw DbException.getInternalError();
             }
         }
         ArrayList<Long> positions = rows.get(first.getValue(indexColumn));

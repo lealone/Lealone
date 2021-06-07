@@ -237,6 +237,6 @@ abstract class ScriptBase extends ManipulationStatement implements DataHandler {
 
     @Override
     public int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 }

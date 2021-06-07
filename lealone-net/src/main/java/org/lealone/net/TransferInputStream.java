@@ -79,7 +79,7 @@ public class TransferInputStream implements NetInputStream {
                 in.close();
             } catch (IOException e) {
                 // 最终只是回收NetBuffer，不应该发生异常
-                throw DbException.throwInternalError();
+                throw DbException.getInternalError();
             }
             in = null;
         }

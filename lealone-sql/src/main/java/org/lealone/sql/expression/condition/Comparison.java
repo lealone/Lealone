@@ -162,7 +162,7 @@ public class Comparison extends Condition {
         case NOT_EQUAL_NULL_SAFE:
             return "IS NOT";
         default:
-            throw DbException.throwInternalError("compareType=" + compareType);
+            throw DbException.getInternalError("compareType=" + compareType);
         }
     }
 
@@ -227,7 +227,7 @@ public class Comparison extends Condition {
                 result = !(l == ValueNull.INSTANCE);
                 break;
             default:
-                throw DbException.throwInternalError("type=" + compareType);
+                throw DbException.getInternalError("type=" + compareType);
             }
             return ValueBoolean.get(result);
         }
@@ -284,7 +284,7 @@ public class Comparison extends Condition {
             result = database.compare(l, r) < 0;
             break;
         default:
-            throw DbException.throwInternalError("type=" + compareType);
+            throw DbException.getInternalError("type=" + compareType);
         }
         return result;
     }
@@ -305,7 +305,7 @@ public class Comparison extends Condition {
         case SMALLER:
             return BIGGER;
         default:
-            throw DbException.throwInternalError("type=" + compareType);
+            throw DbException.getInternalError("type=" + compareType);
         }
     }
 
@@ -332,7 +332,7 @@ public class Comparison extends Condition {
         case IS_NOT_NULL:
             return IS_NULL;
         default:
-            throw DbException.throwInternalError("type=" + compareType);
+            throw DbException.getInternalError("type=" + compareType);
         }
     }
 
@@ -407,7 +407,7 @@ public class Comparison extends Condition {
             addIndex = true;
             break;
         default:
-            throw DbException.throwInternalError("type=" + compareType);
+            throw DbException.getInternalError("type=" + compareType);
         }
         if (addIndex) {
             if (l != null) {

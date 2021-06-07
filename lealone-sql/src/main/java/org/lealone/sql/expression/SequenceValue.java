@@ -96,7 +96,7 @@ public class SequenceValue extends Expression {
             visitor.addDependency(sequence);
             return true;
         default:
-            throw DbException.throwInternalError("type=" + visitor.getType());
+            throw DbException.getInternalError("type=" + visitor.getType());
         }
     }
 

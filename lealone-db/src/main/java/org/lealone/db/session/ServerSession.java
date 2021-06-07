@@ -1787,13 +1787,13 @@ public class ServerSession extends SessionBase {
 
     @Override
     public <R, P extends AckPacket> Future<R> send(Packet packet, AckPacketHandler<R, P> ackPacketHandler) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
     public <R, P extends AckPacket> Future<R> send(Packet packet, int packetId,
             AckPacketHandler<R, P> ackPacketHandler) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     private ExpiringMap<Integer, AutoCloseable> cache; // 缓存PreparedStatement和结果集

@@ -101,7 +101,7 @@ public class Operation extends Expression {
         case MODULUS:
             return "%";
         default:
-            throw DbException.throwInternalError("opType=" + opType);
+            throw DbException.getInternalError("opType=" + opType);
         }
     }
 
@@ -164,7 +164,7 @@ public class Operation extends Expression {
             }
             return l.modulus(r);
         default:
-            throw DbException.throwInternalError("type=" + opType);
+            throw DbException.getInternalError("type=" + opType);
         }
     }
 

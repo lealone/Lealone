@@ -141,7 +141,7 @@ public class ValueNull extends Value {
 
     @Override
     protected int compareSecure(Value v, CompareMode mode) {
-        throw DbException.throwInternalError("compare null");
+        throw DbException.getInternalError("compare null");
     }
 
     @Override

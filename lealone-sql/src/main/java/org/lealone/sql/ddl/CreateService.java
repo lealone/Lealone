@@ -995,7 +995,7 @@ public class CreateService extends SchemaStatement {
         case "FLOAT":
             return "getFloat";
         case "NULL":
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         case "UNKNOWN": // anything
         case "OBJECT":
             return "getObject";
@@ -1006,7 +1006,7 @@ public class CreateService extends SchemaStatement {
         case "ARRAY":
             return "getArray";
         case "RESULT_SET":
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
         return "getObject";
     }
@@ -1045,7 +1045,7 @@ public class CreateService extends SchemaStatement {
         case "FLOAT":
             return "setFloat";
         case "NULL":
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         case "UNKNOWN": // anything
         case "OBJECT":
             return "setObject";
@@ -1056,7 +1056,7 @@ public class CreateService extends SchemaStatement {
         case "ARRAY":
             return "setArray";
         case "RESULT_SET":
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
         return "setObject";
     }

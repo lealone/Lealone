@@ -514,7 +514,7 @@ public class DataType {
                 return ValueResultSet.get(rs);
             }
             default:
-                throw DbException.throwInternalError("type=" + type);
+                throw DbException.getInternalError("type=" + type);
             }
             return v;
         } catch (SQLException e) {
@@ -591,7 +591,7 @@ public class DataType {
         case Value.RESULT_SET:
             return ResultSet.class.getName();
         default:
-            throw DbException.throwInternalError("type=" + type);
+            throw DbException.getInternalError("type=" + type);
         }
     }
 
@@ -979,6 +979,6 @@ public class DataType {
         } else if (clazz == Double.TYPE) {
             return Double.valueOf(0);
         }
-        throw DbException.throwInternalError("primitive=" + clazz.toString());
+        throw DbException.getInternalError("primitive=" + clazz.toString());
     }
 }

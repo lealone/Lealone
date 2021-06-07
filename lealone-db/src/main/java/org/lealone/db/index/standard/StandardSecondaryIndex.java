@@ -77,7 +77,7 @@ public class StandardSecondaryIndex extends StandardIndex {
         TransactionMap<Value, Value> map = session.getTransaction().openMap(mapName, keyType, valueType, storage,
                 table.getParameters());
         if (!keyType.equals(map.getKeyType())) {
-            throw DbException.throwInternalError("Incompatible key type");
+            throw DbException.getInternalError("Incompatible key type");
         }
         return map;
     }

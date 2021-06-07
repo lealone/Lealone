@@ -1209,7 +1209,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
         BTreePage p = root;
         Object k = pageKey.key;
         if (p.isLeaf()) {
-            throw DbException.throwInternalError("readPage: pageKey=" + pageKey);
+            throw DbException.getInternalError("readPage: pageKey=" + pageKey);
         }
         BTreePage parent = p;
         int index = 0;
@@ -1358,7 +1358,7 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
             }
         } else { // 当keyCount=0时也是合法的，比如node page只删到剩一个leaf page时
             if (getChildPageCount(p) != 1) {
-                throw DbException.throwInternalError();
+                throw DbException.getInternalError();
             }
             Object k = p.getChildPageReference(0).pageKey.key;
             getPageKey(map, random, pageKeys, p, 0, k);

@@ -34,12 +34,12 @@ public class Wildcard extends Expression {
 
     @Override
     public Value getValue(ServerSession session) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
     public int getType() {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
@@ -59,17 +59,17 @@ public class Wildcard extends Expression {
 
     @Override
     public int getScale() {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
     public long getPrecision() {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
     public int getDisplaySize() {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
@@ -97,12 +97,12 @@ public class Wildcard extends Expression {
 
     @Override
     public boolean isEverything(ExpressionVisitor visitor) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
     public int getCost() {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
 }

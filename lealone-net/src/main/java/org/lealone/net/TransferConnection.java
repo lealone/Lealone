@@ -33,15 +33,15 @@ public abstract class TransferConnection extends AsyncConnection {
     }
 
     protected void handleRequest(TransferInputStream in, int packetId, int packetType) throws IOException {
-        throw DbException.throwInternalError("handleRequest");
+        throw DbException.getInternalError("handleRequest");
     }
 
     protected void handleResponse(TransferInputStream in, int packetId, int status) throws IOException {
-        throw DbException.throwInternalError("handleResponse");
+        throw DbException.getInternalError("handleResponse");
     }
 
     protected void addAsyncCallback(int packetId, AsyncCallback<?> ac) {
-        throw DbException.throwInternalError("addAsyncCallback");
+        throw DbException.getInternalError("addAsyncCallback");
     }
 
     protected static DbException parseError(TransferInputStream in) {

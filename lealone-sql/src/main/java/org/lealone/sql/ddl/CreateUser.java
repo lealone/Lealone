@@ -101,7 +101,7 @@ public class CreateUser extends DefinitionStatement implements AuthStatement {
         } else if (password != null) {
             setPassword(user, session, password);
         } else {
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
         db.addDatabaseObject(session, user, lock);
         return 0;

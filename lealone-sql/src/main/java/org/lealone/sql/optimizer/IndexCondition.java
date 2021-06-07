@@ -227,7 +227,7 @@ public class IndexCondition {
         case Comparison.SMALLER:
             return IndexConditionType.END;
         default:
-            throw DbException.throwInternalError("type=" + compareType);
+            throw DbException.getInternalError("type=" + compareType);
         }
     }
 

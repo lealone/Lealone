@@ -59,7 +59,7 @@ public class UniqueHashIndex extends HashIndex {
     public Cursor find(ServerSession session, SearchRow first, SearchRow last) {
         if (first == null || last == null) {
             // TODO hash index: should additionally check if values are the same
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
         Row result;
         Long pos = rows.get(first.getValue(indexColumn));

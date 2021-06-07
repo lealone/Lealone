@@ -1335,7 +1335,7 @@ public class Function extends Expression implements FunctionCall {
             }
             break;
         default:
-            throw DbException.throwInternalError("type=" + info.type);
+            throw DbException.getInternalError("type=" + info.type);
         }
         return result;
     }
@@ -1499,7 +1499,7 @@ public class Function extends Expression implements FunctionCall {
             case Calendar.HOUR_OF_DAY:
                 return t2 / hour - t1 / hour;
             default:
-                throw DbException.throwInternalError("field:" + field);
+                throw DbException.getInternalError("field:" + field);
             }
         }
         case Calendar.DATE:
@@ -2258,7 +2258,7 @@ public class Function extends Expression implements FunctionCall {
         case ExpressionVisitor.GET_COLUMNS:
             return true;
         default:
-            throw DbException.throwInternalError("type=" + visitor.getType());
+            throw DbException.getInternalError("type=" + visitor.getType());
         }
     }
 

@@ -1058,7 +1058,7 @@ public class Select extends Query {
             comparisonType = Comparison.SMALLER_EQUAL;
             break;
         default:
-            throw DbException.throwInternalError("indexConditionType: " + indexConditionType);
+            throw DbException.getInternalError("indexConditionType: " + indexConditionType);
         }
         this.addGlobalCondition((Parameter) param, columnId, comparisonType);
     }

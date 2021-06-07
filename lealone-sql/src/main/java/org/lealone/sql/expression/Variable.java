@@ -78,7 +78,7 @@ public class Variable extends Expression {
         case ExpressionVisitor.DETERMINISTIC:
             return false;
         default:
-            throw DbException.throwInternalError("type=" + visitor.getType());
+            throw DbException.getInternalError("type=" + visitor.getType());
         }
     }
 

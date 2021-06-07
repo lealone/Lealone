@@ -100,7 +100,7 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
         String[] hostIds = db.getHostIds();
         if (hostIds.length == 0) {
             String msg = "DB: " + db.getShortName() + ", Run Mode: " + db.getRunMode() + ", no hostIds";
-            throw DbException.throwInternalError(msg);
+            throw DbException.getInternalError(msg);
         }
         NetNodeManager m = NetNodeManagerHolder.get();
         Set<NetNode> candidateNodes = new HashSet<>(hostIds.length);

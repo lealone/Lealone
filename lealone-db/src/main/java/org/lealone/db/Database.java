@@ -1087,7 +1087,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
         // DbException.throwInternalError("no admin");
         // }
         if (lastConnectionInfo == null)
-            throw DbException.throwInternalError("lastConnectionInfo is null");
+            throw DbException.getInternalError("lastConnectionInfo is null");
         User user = getUser(null, lastConnectionInfo.getUserName());
         ServerSession session = createSession(user);
         session.setConnectionInfo(lastConnectionInfo);
@@ -1948,7 +1948,7 @@ public class Database implements DataHandler, DbObject, IDatabase {
 
     @Override
     public int readLob(long lobId, byte[] hmac, long offset, byte[] buff, int off, int length) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     public void backupTo(String fileName) {

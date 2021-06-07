@@ -21,7 +21,7 @@ class AggregateDataCountAll extends AggregateData {
     void add(Database database, int dataType, boolean distinct, Value v) {
         // 在Parser.readAggregate那里确保使用COUNT_ALL时distinct是false
         if (distinct) {
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
         count++;
     }
@@ -29,7 +29,7 @@ class AggregateDataCountAll extends AggregateData {
     @Override
     Value getValue(Database database, int dataType, boolean distinct) {
         if (distinct) {
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
         Value v = ValueLong.get(count);
         return v == null ? ValueNull.INSTANCE : v.convertTo(dataType);

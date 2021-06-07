@@ -235,7 +235,7 @@ public class LobStreamStorage implements LobStorage {
         long oldLobId = old.getLobId();
         long oldLength = old.getPrecision();
         if (oldLength != length) {
-            throw DbException.throwInternalError("Length is different");
+            throw DbException.getInternalError("Length is different");
         }
         Object[] value = lobMap.get(oldLobId);
         value = Arrays.copyOf(value, value.length);
@@ -257,7 +257,7 @@ public class LobStreamStorage implements LobStorage {
         init();
         Object[] value = lobMap.get(lob.getLobId());
         if (value == null) {
-            throw DbException.throwInternalError("Lob not found: " + lob.getLobId());
+            throw DbException.getInternalError("Lob not found: " + lob.getLobId());
         }
         byte[] streamStoreId = (byte[]) value[0];
         return lobStreamMap.get(streamStoreId);

@@ -100,7 +100,7 @@ public class ConnectionInfo implements Cloneable {
         url = url.substring(Constants.URL_PREFIX.length());
         // server端接收到的URL不可能是嵌入式的
         if (url.startsWith(Constants.URL_EMBED)) {
-            throw DbException.throwInternalError("Server backend URL: " + this.url);
+            throw DbException.getInternalError("Server backend URL: " + this.url);
         }
 
         // server端这两参数总是false

@@ -61,7 +61,7 @@ public abstract class RedoLogRecord {
         } else if (type == TYPE_REPLICA_COMMIT_REDO_LOG_RECORD) {
             return ReplicaCommitRedoLogRecord.read(buff);
         } else {
-            throw DbException.throwInternalError("unknow type: " + type);
+            throw DbException.getInternalError("unknow type: " + type);
         }
     }
 
@@ -118,7 +118,7 @@ public abstract class RedoLogRecord {
         public long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
             pendingRedoLog.clear();
             if (checkpointId < lastTransactionId) {
-                throw DbException.throwInternalError(
+                throw DbException.getInternalError(
                         "checkpointId=" + checkpointId + ", lastTransactionId=" + lastTransactionId);
             }
             return checkpointId;
@@ -304,7 +304,7 @@ public abstract class RedoLogRecord {
 
         @Override
         long initPendingRedoLog(Map<String, List<ByteBuffer>> pendingRedoLog, long lastTransactionId) {
-            throw DbException.throwInternalError();
+            throw DbException.getInternalError();
         }
     }
 

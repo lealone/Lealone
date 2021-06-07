@@ -158,7 +158,7 @@ public class ValueExpression extends Expression {
         case ExpressionVisitor.GET_COLUMNS:
             return true;
         default:
-            throw DbException.throwInternalError("type=" + visitor.getType());
+            throw DbException.getInternalError("type=" + visitor.getType());
         }
     }
 

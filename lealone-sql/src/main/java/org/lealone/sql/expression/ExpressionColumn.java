@@ -327,7 +327,7 @@ public class ExpressionColumn extends Expression {
             visitor.addColumn(column);
             return true;
         default:
-            throw DbException.throwInternalError("type=" + visitor.getType());
+            throw DbException.getInternalError("type=" + visitor.getType());
         }
     }
 

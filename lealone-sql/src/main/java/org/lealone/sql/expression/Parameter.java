@@ -171,7 +171,7 @@ public class Parameter extends Expression implements CommandParameter {
         case ExpressionVisitor.INDEPENDENT:
             return value != null;
         default:
-            throw DbException.throwInternalError("type=" + visitor.getType());
+            throw DbException.getInternalError("type=" + visitor.getType());
         }
     }
 

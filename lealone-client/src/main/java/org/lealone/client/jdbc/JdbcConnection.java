@@ -1099,7 +1099,7 @@ public class JdbcConnection extends JdbcWrapper implements Connection {
             return i;
         }
         default:
-            throw DbException.throwInternalError("c=" + c);
+            throw DbException.getInternalError("c=" + c);
         }
     }
 

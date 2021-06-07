@@ -399,7 +399,7 @@ public class StandardPrimaryIndex extends StandardIndex {
         }
         Value v = row.getValue(mainIndexColumn);
         if (v == null) {
-            throw DbException.throwInternalError(row.toString());
+            throw DbException.getInternalError(row.toString());
         } else if (v == ValueNull.INSTANCE) {
             return ifNull;
         }

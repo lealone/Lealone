@@ -90,7 +90,7 @@ public class Rownum extends Expression {
             // if everything else is the same, the rownum is the same
             return true;
         default:
-            throw DbException.throwInternalError("type=" + visitor.getType());
+            throw DbException.getInternalError("type=" + visitor.getType());
         }
     }
 

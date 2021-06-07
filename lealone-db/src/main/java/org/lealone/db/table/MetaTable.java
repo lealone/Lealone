@@ -291,7 +291,7 @@ public class MetaTable extends Table {
             cols = createColumns("ID", "DATABASE_NAME", "RUN_MODE", "NODES");
             break;
         default:
-            throw DbException.throwInternalError("type=" + type);
+            throw DbException.getInternalError("type=" + type);
         }
         setColumns(cols);
 
@@ -1410,7 +1410,7 @@ public class MetaTable extends Table {
         case ConstraintReferential.SET_NULL:
             return DatabaseMetaData.importedKeySetNull;
         default:
-            throw DbException.throwInternalError("action=" + action);
+            throw DbException.getInternalError("action=" + action);
         }
     }
 
@@ -1558,7 +1558,7 @@ public class MetaTable extends Table {
 
     @Override
     public long getRowCount(ServerSession session) {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override

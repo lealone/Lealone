@@ -757,7 +757,7 @@ public class AMTransactionMap<K, V> implements TransactionMap<K, V> {
                     map.getValueType(), columnIndexes, oldTransactionalValue);
             transaction.undoLog.add(mapName, key, refValue, newValue);
             if (!oldTransactionalValue.compareAndSet(refValue, newValue))
-                throw DbException.throwInternalError();
+                throw DbException.getInternalError();
             return Transaction.OPERATION_COMPLETE;
         }
         // 不同事务更新不同字段时，在循环里重试是可以的

@@ -432,7 +432,7 @@ public class BTreePage {
         else if (type == PageUtils.PAGE_TYPE_REMOTE)
             return BTreeRemotePage.readLeafPage(map, page);
         else
-            throw DbException.throwInternalError("type: " + type);
+            throw DbException.getInternalError("type: " + type);
     }
 
     /**
@@ -536,7 +536,7 @@ public class BTreePage {
         else if (type == PageUtils.PAGE_TYPE_REMOTE)
             p = new BTreeRemotePage(map);
         else
-            throw DbException.throwInternalError("type: " + type);
+            throw DbException.getInternalError("type: " + type);
         return p;
     }
 

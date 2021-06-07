@@ -112,7 +112,7 @@ public class FunctionTable extends Table {
 
     @Override
     public boolean canDrop() {
-        throw DbException.throwInternalError();
+        throw DbException.getInternalError();
     }
 
     @Override
