@@ -82,7 +82,8 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
         if (isCompleted()) {
             setResult(updateCount.get());
         }
-        // 唤醒调度器
-        session.getTransactionListener().wakeUp();
+        // 唤醒调度器，有可能为null，比如启动阶段执行SQL
+        if (session.getTransactionListener() != null)
+            session.getTransactionListener().wakeUp();
     }
 }
