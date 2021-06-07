@@ -108,7 +108,7 @@ public class ClientSessionFactory implements SessionFactory {
                 AsyncConnection conn = ar.getResult();
                 if (!(conn instanceof TcpClientConnection)) {
                     RuntimeException e = DbException
-                            .throwInternalError("not tcp client connection: " + conn.getClass().getName());
+                            .getInternalError("not tcp client connection: " + conn.getClass().getName());
                     ac.setAsyncResult(e);
                     return;
                 }

@@ -228,9 +228,7 @@ public class DbException extends RuntimeException {
      * @throws RuntimeException the exception
      */
     public static RuntimeException throwInternalError(String s) {
-        RuntimeException e = new RuntimeException(s);
-        DbException.traceThrowable(e);
-        throw e;
+        throw getInternalError(s);
     }
 
     /**
@@ -241,7 +239,13 @@ public class DbException extends RuntimeException {
      * @return the RuntimeException object
      */
     public static RuntimeException throwInternalError() {
-        return throwInternalError("Unexpected code path");
+        throw getInternalError("Unexpected code path");
+    }
+
+    public static RuntimeException getInternalError(String s) {
+        RuntimeException e = new RuntimeException(s);
+        DbException.traceThrowable(e);
+        return e;
     }
 
     /**
