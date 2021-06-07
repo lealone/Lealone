@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
 import org.lealone.db.session.SessionStatus;
-import org.lealone.sql.SQLStatementExecutor;
 import org.lealone.sql.StatementBase;
 
 public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
@@ -31,17 +30,9 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
     protected int loopCount;
     protected final AtomicInteger updateCount = new AtomicInteger();
     protected final AtomicInteger pendingOperationCount = new AtomicInteger();
-    protected final SQLStatementExecutor statementExecutor;
 
     public YieldableLoopUpdateBase(StatementBase statement, AsyncHandler<AsyncResult<Integer>> asyncHandler) {
         super(statement, asyncHandler);
-
-        Thread t = Thread.currentThread();
-        if (t instanceof SQLStatementExecutor) {
-            statementExecutor = (SQLStatementExecutor) t;
-        } else {
-            statementExecutor = null;
-        }
     }
 
     @Override
@@ -104,8 +95,6 @@ public abstract class YieldableLoopUpdateBase extends YieldableUpdateBase {
             setResult(updateCount.get());
         }
         // 唤醒调度器
-        if (statementExecutor != null) {
-            statementExecutor.wakeUp();
-        }
+        session.getTransactionListener().wakeUp();
     }
 }
