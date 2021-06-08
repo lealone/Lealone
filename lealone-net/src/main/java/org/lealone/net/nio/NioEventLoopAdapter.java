@@ -128,40 +128,70 @@ public class NioEventLoopAdapter implements NioEventLoop {
         Attachment attachment = (Attachment) key.attachment();
         AsyncConnection conn = attachment.conn;
         SocketChannel channel = (SocketChannel) key.channel();
+        DataBuffer dataBuffer = attachment.dataBuffer;
+        ByteBuffer packetLengthByteBuffer = conn.getPacketLengthByteBuffer();
+        int packetLengthByteBufferCapacity = packetLengthByteBuffer.capacity();
         try {
             while (true) {
-                DataBuffer dataBuffer = DataBuffer.create();
-                ByteBuffer buffer = dataBuffer.getBuffer();
-                int capacity = dataBuffer.capacity();
-                int readBytes = channel.read(buffer);
-                if (readBytes > 0) {
-                    attachment.endOfStreamCount = 0;
-                } else {
-                    // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
-                    // netty框架在下面这个方法的代码中有自己的不同解决方案
-                    // io.netty.channel.nio.NioEventLoop.processSelectedKey
-                    if (readBytes < 0) {
-                        attachment.endOfStreamCount++;
-                        if (attachment.endOfStreamCount > 3) {
-                            closeChannel(channel);
-                        }
+                if (attachment.state == 0) {
+                    boolean ok = read(attachment, channel, packetLengthByteBuffer, packetLengthByteBufferCapacity);
+                    if (ok) {
+                        attachment.state = 1;
+                    } else {
+                        break;
                     }
-                    break;
                 }
-                buffer.flip();
-                if (isDebugEnabled) {
-                    totalReadBytes += readBytes;
-                    logger.debug(("total read bytes: " + totalReadBytes));
+                if (attachment.state == 1) {
+                    int packetLength = conn.getPacketLength();
+                    if (dataBuffer == null) {
+                        dataBuffer = DataBuffer.getOrCreate(packetLength);
+                        dataBuffer.limit(packetLength); // 返回的DatBuffer的Capacity可能大于packetLength，所以设置一下limit，不会多读
+                    }
+                    ByteBuffer buffer = dataBuffer.getBuffer();
+                    boolean ok = read(attachment, channel, buffer, packetLength);
+                    if (ok) {
+                        attachment.state = 0;
+                        packetLengthByteBuffer.clear();
+                        attachment.dataBuffer = null;
+                        NioBuffer nioBuffer = new NioBuffer(dataBuffer);
+                        dataBuffer = null;
+                        conn.handle(nioBuffer);
+                    } else {
+                        packetLengthByteBuffer.flip(); // 下次可以重新计算packetLength
+                        attachment.dataBuffer = dataBuffer;
+                        break;
+                    }
                 }
-                NioBuffer nioBuffer = new NioBuffer(dataBuffer);
-                conn.handle(nioBuffer);
-                // 说明没读满，可以直接退出循环了
-                if (readBytes < capacity)
-                    break;
             }
         } catch (Exception e) {
             nioEventLoop.handleException(conn, channel, e);
         }
+    }
+
+    private boolean read(Attachment attachment, SocketChannel channel, ByteBuffer buffer, int length) throws Exception {
+        int readBytes = channel.read(buffer);
+        if (readBytes > 0) {
+            if (isDebugEnabled) {
+                totalReadBytes += readBytes;
+                logger.debug(("total read bytes: " + totalReadBytes));
+            }
+            attachment.endOfStreamCount = 0;
+        } else {
+            // 客户端非正常关闭时，可能会触发JDK的bug，导致run方法死循环，selector.select不会阻塞
+            // netty框架在下面这个方法的代码中有自己的不同解决方案
+            // io.netty.channel.nio.NioEventLoop.processSelectedKey
+            if (readBytes < 0) {
+                attachment.endOfStreamCount++;
+                if (attachment.endOfStreamCount > 3) {
+                    closeChannel(channel);
+                }
+            }
+        }
+        if (length == buffer.position()) {
+            buffer.flip();
+            return true;
+        }
+        return false;
     }
 
     @Override

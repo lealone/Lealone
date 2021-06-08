@@ -8,6 +8,7 @@ package org.lealone.net;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
 import java.sql.SQLException;
 
 import org.lealone.common.exceptions.DbException;
@@ -22,10 +23,20 @@ public abstract class TransferConnection extends AsyncConnection {
 
     private static final Logger logger = LoggerFactory.getLogger(TransferConnection.class);
 
-    private NetBuffer lastBuffer;
+    private final ByteBuffer packetLengthByteBuffer = ByteBuffer.allocateDirect(4);
 
     public TransferConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
+    }
+
+    @Override
+    public ByteBuffer getPacketLengthByteBuffer() {
+        return packetLengthByteBuffer;
+    }
+
+    @Override
+    public int getPacketLength() {
+        return packetLengthByteBuffer.getInt();
     }
 
     public TransferOutputStream createTransferOutputStream(Session session) {
@@ -97,64 +108,22 @@ public abstract class TransferConnection extends AsyncConnection {
 
     @Override
     public void handle(NetBuffer buffer) {
-        if (lastBuffer != null) {
-            buffer = lastBuffer.appendBuffer(buffer);
-            lastBuffer = null;
-        }
-
-        int length = buffer.length();
-        if (length < 4) {
-            lastBuffer = buffer;
-            return;
-        }
-
-        int pos = 0;
         try {
-            while (true) {
-                // 必须生成新的Transfer实例，不同协议包对应不同Transfer实例，
-                // 否则如果有多个CommandHandler线程时会用同一个Transfer实例写数据，这会产生并发问题。
-                TransferInputStream in;
-                if (pos == 0)
-                    in = new TransferInputStream(buffer);
-                else
-                    in = new TransferInputStream(buffer.slice(pos, pos + length));
-                int packetLength = in.readInt();
-                if (length - 4 == packetLength) {
-                    handlePacket(in);
-                    break;
-                } else if (length - 4 > packetLength) {
-                    handlePacket(in);
-                    pos = pos + packetLength + 4;
-                    length = length - (packetLength + 4);
-                    // 有可能剩下的不够4个字节了
-                    if (length < 4) {
-                        lastBuffer = buffer.getBuffer(pos, pos + length);
-                        break;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    lastBuffer = buffer.getBuffer(pos, pos + length);
-                    break;
-                }
+            TransferInputStream in = new TransferInputStream(buffer);
+            boolean isRequest = in.readByte() == TransferOutputStream.REQUEST;
+            int packetId = in.readInt();
+            if (isRequest) {
+                int packetType = in.readInt();
+                handleRequest(in, packetId, packetType);
+            } else {
+                int status = in.readInt();
+                handleResponse(in, packetId, status);
             }
         } catch (Throwable e) {
             if (isServer)
                 logger.error("Failed to handle packet", e);
             else
                 throw DbException.convert(e);
-        }
-    }
-
-    private void handlePacket(TransferInputStream in) throws IOException {
-        boolean isRequest = in.readByte() == TransferOutputStream.REQUEST;
-        int packetId = in.readInt();
-        if (isRequest) {
-            int packetType = in.readInt();
-            handleRequest(in, packetId, packetType);
-        } else {
-            int status = in.readInt();
-            handleResponse(in, packetId, status);
         }
     }
 }

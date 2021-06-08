@@ -14,6 +14,7 @@ import java.util.Set;
 import org.lealone.common.concurrent.ConcurrentUtils;
 import org.lealone.common.logging.Logger;
 import org.lealone.common.logging.LoggerFactory;
+import org.lealone.db.DataBuffer;
 import org.lealone.net.AsyncConnection;
 import org.lealone.net.NetServerBase;
 
@@ -95,7 +96,9 @@ public class NioNetServer extends NetServerBase implements NioEventLoop {
 
     static class Attachment {
         AsyncConnection conn;
+        DataBuffer dataBuffer;
         int endOfStreamCount;
+        int state = 0;
     }
 
     private void accept() {

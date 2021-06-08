@@ -6,6 +6,7 @@
 package org.lealone.net;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.db.api.ErrorCode;
@@ -26,6 +27,14 @@ public abstract class AsyncConnection {
     }
 
     public abstract void handle(NetBuffer buffer);
+
+    public ByteBuffer getPacketLengthByteBuffer() {
+        return null;
+    }
+
+    public int getPacketLength() {
+        return -1;
+    }
 
     public WritableChannel getWritableChannel() {
         return writableChannel;

@@ -49,16 +49,15 @@ public class PacketDeliveryTask implements AsyncTask {
             conn.sendError(session, packetId, e);
         } finally {
             // 确保无论出现什么情况都能关闭，调用closeInputStream两次也是无害的
-            // in.closeInputStream();
+            in.closeInputStream();
         }
     }
 
-    // TODO 调用in.closeInputStream()还有bug，会导致奇怪的问题，运行TableLockTest那个例子偶尔能重现问题
     private void handlePacket() throws Exception {
         int version = session.getProtocolVersion();
         PacketDecoder<? extends Packet> decoder = PacketDecoders.getDecoder(packetType);
         Packet packet = decoder.decode(in, version);
-        // in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
+        in.closeInputStream(); // 到这里输入流已经读完，及时释放NetBuffer
         @SuppressWarnings("unchecked")
         PacketHandler<Packet> handler = PacketHandlers.getHandler(packetType);
         if (handler != null) {

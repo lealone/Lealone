@@ -598,6 +598,10 @@ public class DataBuffer implements AutoCloseable {
         return DataBufferPool.poll();
     }
 
+    public static DataBuffer getOrCreate(int capacity) {
+        return DataBufferPool.poll(capacity);
+    }
+
     public void writeValue(Value v) {
         writeValue(this, v);
     }
@@ -850,6 +854,29 @@ public class DataBuffer implements AutoCloseable {
                 poolSize--;
             }
             return writeBuffer;
+        }
+
+        public static DataBuffer poll(int capacity) {
+            DataBuffer writeBuffer = null;
+            DataBuffer last = null;
+            for (int i = 0; i < maxPoolSize; i++) {
+                writeBuffer = dataBufferPool.poll();
+                if (writeBuffer == null || last == writeBuffer) {
+                    break;
+                }
+                if (writeBuffer.capacity() < capacity) {
+                    last = writeBuffer;
+                    dataBufferPool.offer(writeBuffer); // 放到队列末尾
+                } else {
+                    writeBuffer.clear();
+                    if (writeBuffer.capacity() > capacity) {
+                        writeBuffer.clear();
+                    }
+                    poolSize--;
+                    return writeBuffer;
+                }
+            }
+            return DataBuffer.create(capacity);
         }
 
         public static void offer(DataBuffer writeBuffer) {
