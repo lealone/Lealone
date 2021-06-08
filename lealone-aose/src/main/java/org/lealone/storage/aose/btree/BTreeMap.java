@@ -1049,9 +1049,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     public Future<Object> get(Session session, Object key) {
         List<NetNode> replicationNodes = getReplicationNodes(key);
         Session s = db.createSession(session, replicationNodes);
-        try (DataBuffer k = DataBuffer.create(); StorageCommand c = s.createStorageCommand()) {
-            ByteBuffer keyBuffer = k.write(keyType, key);
-            return c.get(getName(), keyBuffer);
+        try (StorageCommand c = s.createStorageCommand()) {
+            return c.get(getName(), key, keyType);
         }
     }
 
@@ -1080,14 +1079,9 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private Future<Object> putRemote(Session session, List<NetNode> replicationNodes, Object key, Object value,
             StorageDataType valueType, boolean raw, boolean addIfAbsent) {
-        // TODO 如果当前节点也是复制节点之一，可以优化一下，减少key和value的编解码操作
         Session s = db.createSession(session, replicationNodes);
-        try (DataBuffer k = DataBuffer.create();
-                DataBuffer v = DataBuffer.create();
-                StorageCommand c = s.createStorageCommand()) {
-            ByteBuffer keyBuffer = k.write(keyType, key);
-            ByteBuffer valueBuffer = v.write(valueType, value);
-            return c.put(getName(), keyBuffer, valueBuffer, raw, addIfAbsent);
+        try (StorageCommand c = s.createStorageCommand()) {
+            return c.put(getName(), key, keyType, value, valueType, raw, addIfAbsent);
         }
     }
 
@@ -1115,9 +1109,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private Future<Object> appendRemote(Session session, List<NetNode> replicationNodes, Object value,
             StorageDataType valueType) {
         Session s = db.createSession(session, replicationNodes);
-        try (DataBuffer v = DataBuffer.create(); StorageCommand c = s.createStorageCommand()) {
-            ByteBuffer valueBuffer = v.write(valueType, value);
-            return c.append(getName(), valueBuffer);
+        try (StorageCommand c = s.createStorageCommand()) {
+            return c.append(getName(), value, valueType);
         }
     }
 
@@ -1145,14 +1138,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
     private Future<Boolean> replaceRemote(Session session, List<NetNode> replicationNodes, Object key, Object oldValue,
             Object newValue, StorageDataType valueType) {
         Session s = db.createSession(session, replicationNodes);
-        try (DataBuffer k = DataBuffer.create();
-                DataBuffer v1 = DataBuffer.create();
-                DataBuffer v2 = DataBuffer.create();
-                StorageCommand c = s.createStorageCommand()) {
-            ByteBuffer keyBuffer = k.write(keyType, key);
-            ByteBuffer oldValueBuffer = v1.write(valueType, oldValue);
-            ByteBuffer newValueBuffer = v2.write(valueType, newValue);
-            return c.replace(getName(), keyBuffer, oldValueBuffer, newValueBuffer);
+        try (StorageCommand c = s.createStorageCommand()) {
+            return c.replace(getName(), key, keyType, oldValue, newValue, valueType);
         }
     }
 
@@ -1179,9 +1166,8 @@ public class BTreeMap<K, V> extends StorageMapBase<K, V> {
 
     private Future<Object> removeRemote(Session session, List<NetNode> replicationNodes, Object key) {
         Session s = db.createSession(session, replicationNodes);
-        try (DataBuffer k = DataBuffer.create(); StorageCommand c = s.createStorageCommand()) {
-            ByteBuffer keyBuffer = k.write(keyType, key);
-            return c.remove(getName(), keyBuffer);
+        try (StorageCommand c = s.createStorageCommand()) {
+            return c.remove(getName(), key, keyType);
         }
     }
 

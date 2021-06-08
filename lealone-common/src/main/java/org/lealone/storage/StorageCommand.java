@@ -9,18 +9,21 @@ import java.nio.ByteBuffer;
 
 import org.lealone.db.Command;
 import org.lealone.db.async.Future;
+import org.lealone.storage.type.StorageDataType;
 
 public interface StorageCommand extends Command {
 
-    Future<Object> get(String mapName, ByteBuffer key);
+    Future<Object> get(String mapName, Object key, StorageDataType keyType);
 
-    Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent);
+    Future<Object> put(String mapName, Object key, StorageDataType keyType, Object value, StorageDataType valueType,
+            boolean raw, boolean addIfAbsent);
 
-    Future<Object> append(String mapName, ByteBuffer value);
+    Future<Object> append(String mapName, Object value, StorageDataType valueType);
 
-    Future<Boolean> replace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue);
+    Future<Boolean> replace(String mapName, Object key, StorageDataType keyType, Object oldValue, Object newValue,
+            StorageDataType valueType);
 
-    Future<Object> remove(String mapName, ByteBuffer key);
+    Future<Object> remove(String mapName, Object key, StorageDataType keyType);
 
     Future<LeafPageMovePlan> prepareMoveLeafPage(String mapName, LeafPageMovePlan leafPageMovePlan);
 

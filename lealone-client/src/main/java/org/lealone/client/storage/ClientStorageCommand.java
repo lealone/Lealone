@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.lealone.client.session.ClientSession;
+import org.lealone.db.DataBuffer;
 import org.lealone.db.async.Future;
 import org.lealone.db.value.ValueLong;
 import org.lealone.server.protocol.replication.ReplicationHandleReplicaConflict;
@@ -32,6 +33,7 @@ import org.lealone.server.protocol.storage.StorageReplicatePages;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.replication.ReplicaStorageCommand;
+import org.lealone.storage.type.StorageDataType;
 
 public class ClientStorageCommand implements ReplicaStorageCommand {
 
@@ -47,11 +49,13 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Object> get(String mapName, ByteBuffer key) {
+    public Future<Object> get(String mapName, Object key, StorageDataType keyType) {
         try {
+            DataBuffer k = DataBuffer.create();
+            ByteBuffer keyBuffer = k.write(keyType, key);
             boolean isDistributed = session.getParentTransaction() != null
                     && !session.getParentTransaction().isAutoCommit();
-            StorageGet packet = new StorageGet(mapName, key, isDistributed);
+            StorageGet packet = new StorageGet(mapName, keyBuffer, isDistributed);
             return session.<Object, StorageGetAck> send(packet, ack -> {
                 if (isDistributed)
                     session.getParentTransaction().addLocalTransactionNames(ack.localTransactionNames);
@@ -64,8 +68,13 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent) {
-        return executeReplicaPut(null, mapName, key, value, raw, addIfAbsent);
+    public Future<Object> put(String mapName, Object key, StorageDataType keyType, Object value,
+            StorageDataType valueType, boolean raw, boolean addIfAbsent) {
+        DataBuffer k = DataBuffer.create();
+        DataBuffer v = DataBuffer.create();
+        ByteBuffer keyBuffer = k.write(keyType, key);
+        ByteBuffer valueBuffer = v.write(valueType, value);
+        return executeReplicaPut(null, mapName, keyBuffer, valueBuffer, raw, addIfAbsent);
     }
 
     @Override
@@ -87,8 +96,10 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Object> append(String mapName, ByteBuffer value) {
-        return executeReplicaAppend(null, mapName, value);
+    public Future<Object> append(String mapName, Object value, StorageDataType valueType) {
+        DataBuffer v = DataBuffer.create();
+        ByteBuffer valueBuffer = v.write(valueType, value);
+        return executeReplicaAppend(null, mapName, valueBuffer);
     }
 
     @Override
@@ -109,8 +120,15 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Boolean> replace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue) {
-        return executeReplicaReplace(null, mapName, key, oldValue, newValue);
+    public Future<Boolean> replace(String mapName, Object key, StorageDataType keyType, Object oldValue,
+            Object newValue, StorageDataType valueType) {
+        DataBuffer k = DataBuffer.create();
+        DataBuffer v1 = DataBuffer.create();
+        DataBuffer v2 = DataBuffer.create();
+        ByteBuffer keyBuffer = k.write(keyType, key);
+        ByteBuffer valueBuffer1 = v1.write(valueType, oldValue);
+        ByteBuffer valueBuffer2 = v2.write(valueType, newValue);
+        return executeReplicaReplace(null, mapName, keyBuffer, valueBuffer1, valueBuffer2);
     }
 
     @Override
@@ -133,8 +151,10 @@ public class ClientStorageCommand implements ReplicaStorageCommand {
     }
 
     @Override
-    public Future<Object> remove(String mapName, ByteBuffer key) {
-        return executeReplicaRemove(null, mapName, key);
+    public Future<Object> remove(String mapName, Object key, StorageDataType keyType) {
+        DataBuffer k = DataBuffer.create();
+        ByteBuffer keyBuffer = k.write(keyType, key);
+        return executeReplicaRemove(null, mapName, keyBuffer);
     }
 
     @Override

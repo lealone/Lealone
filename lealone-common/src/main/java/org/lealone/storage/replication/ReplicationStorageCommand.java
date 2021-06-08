@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 
+import org.lealone.db.DataBuffer;
 import org.lealone.db.async.AsyncCallback;
 import org.lealone.db.async.AsyncHandler;
 import org.lealone.db.async.AsyncResult;
@@ -20,6 +21,7 @@ import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
 import org.lealone.storage.replication.WriteResponseHandler.ReplicationResultHandler;
+import org.lealone.storage.type.StorageDataType;
 
 class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand> implements StorageCommand {
 
@@ -33,36 +35,38 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public Future<Object> get(String mapName, ByteBuffer key) {
+    public Future<Object> get(String mapName, Object key, StorageDataType keyType) {
         HashSet<ReplicaStorageCommand> seen = new HashSet<>();
         AsyncCallback<Object> ac = new AsyncCallback<>();
-        executeGet(mapName, key, 1, seen, ac);
+        executeGet(mapName, key, keyType, 1, seen, ac);
         return ac;
     }
 
-    private void executeGet(String mapName, ByteBuffer key, int tries, HashSet<ReplicaStorageCommand> seen,
-            AsyncCallback<Object> ac) {
+    private void executeGet(String mapName, Object key, StorageDataType keyType, int tries,
+            HashSet<ReplicaStorageCommand> seen, AsyncCallback<Object> ac) {
         AsyncHandler<AsyncResult<Object>> handler = ar -> {
             if (ar.isFailed() && tries < session.maxTries) {
-                key.rewind();
-                executeGet(mapName, key, tries + 1, seen, ac);
+                executeGet(mapName, key, keyType, tries + 1, seen, ac);
             } else {
                 ac.setAsyncResult(ar);
             }
         };
         ReadResponseHandler<Object> readResponseHandler = new ReadResponseHandler<>(session, handler);
 
-        // 随机选择R个节点并行读，如果读不到再试其他节点
-        for (int i = 0; i < session.r; i++) {
-            ReplicaStorageCommand c = getRandomNode(seen);
-            c.get(mapName, key.slice()).onComplete(readResponseHandler);
-        }
+        // 随机选择1个节点处理读请求，如果读不到再试其他节点
+        ReplicaStorageCommand c = getRandomNode(seen);
+        c.get(mapName, key, keyType).onComplete(readResponseHandler);
     }
 
     @Override
-    public Future<Object> put(String mapName, ByteBuffer key, ByteBuffer value, boolean raw, boolean addIfAbsent) {
+    public Future<Object> put(String mapName, Object key, StorageDataType keyType, Object value,
+            StorageDataType valueType, boolean raw, boolean addIfAbsent) {
         AsyncCallback<Object> ac = new AsyncCallback<>();
-        executePut(mapName, key, value, raw, addIfAbsent, 1, ac);
+        DataBuffer k = DataBuffer.create();
+        DataBuffer v = DataBuffer.create();
+        ByteBuffer keyBuffer = k.write(keyType, key);
+        ByteBuffer valueBuffer = v.write(valueType, value);
+        executePut(mapName, keyBuffer, valueBuffer, raw, addIfAbsent, 1, ac);
         return ac;
     }
 
@@ -88,9 +92,11 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public Future<Object> append(String mapName, ByteBuffer value) {
+    public Future<Object> append(String mapName, Object value, StorageDataType valueType) {
         AsyncCallback<Object> ac = new AsyncCallback<>();
-        executeAppend(mapName, value, 1, ac);
+        DataBuffer v = DataBuffer.create();
+        ByteBuffer valueBuffer = v.write(valueType, value);
+        executeAppend(mapName, valueBuffer, 1, ac);
         return ac;
     }
 
@@ -112,9 +118,16 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public Future<Boolean> replace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue) {
+    public Future<Boolean> replace(String mapName, Object key, StorageDataType keyType, Object oldValue,
+            Object newValue, StorageDataType valueType) {
         AsyncCallback<Boolean> ac = new AsyncCallback<>();
-        executeReplace(mapName, key, oldValue, newValue, 1, ac);
+        DataBuffer k = DataBuffer.create();
+        DataBuffer v1 = DataBuffer.create();
+        DataBuffer v2 = DataBuffer.create();
+        ByteBuffer keyBuffer = k.write(keyType, key);
+        ByteBuffer valueBuffer1 = v1.write(valueType, oldValue);
+        ByteBuffer valueBuffer2 = v2.write(valueType, newValue);
+        executeReplace(mapName, keyBuffer, valueBuffer1, valueBuffer2, 1, ac);
         return ac;
     }
 
@@ -141,9 +154,11 @@ class ReplicationStorageCommand extends ReplicationCommand<ReplicaStorageCommand
     }
 
     @Override
-    public Future<Object> remove(String mapName, ByteBuffer key) {
+    public Future<Object> remove(String mapName, Object key, StorageDataType keyType) {
         AsyncCallback<Object> ac = new AsyncCallback<>();
-        executeRemove(mapName, key, 1, ac);
+        DataBuffer k = DataBuffer.create();
+        ByteBuffer keyBuffer = k.write(keyType, key);
+        executeRemove(mapName, keyBuffer, 1, ac);
         return ac;
     }
 
