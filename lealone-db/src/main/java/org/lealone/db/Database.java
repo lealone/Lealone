@@ -1074,26 +1074,6 @@ public class Database implements DataHandler, DbObject, IDatabase {
         return session;
     }
 
-    @Override
-    public ServerSession createInternalSession() {
-        // User admin = null;
-        // for (User user : getAllUsers()) {
-        // if (user.isAdmin()) {
-        // admin = user;
-        // break;
-        // }
-        // }
-        // if (admin == null) {
-        // DbException.throwInternalError("no admin");
-        // }
-        if (lastConnectionInfo == null)
-            throw DbException.getInternalError("lastConnectionInfo is null");
-        User user = getUser(null, lastConnectionInfo.getUserName());
-        ServerSession session = createSession(user);
-        session.setConnectionInfo(lastConnectionInfo);
-        return session;
-    }
-
     /**
      * Remove a session. This method is called after the user has disconnected.
      *
@@ -2232,25 +2212,50 @@ public class Database implements DataHandler, DbObject, IDatabase {
         }
     }
 
-    @Override
-    public Session createInternalSession(boolean useSystemDatabase) {
-        return LealoneDatabase.getInstance().createInternalSession();
+    private ServerSession createInternalSession() {
+        // User admin = null;
+        // for (User user : getAllUsers()) {
+        // if (user.isAdmin()) {
+        // admin = user;
+        // break;
+        // }
+        // }
+        // if (admin == null) {
+        // DbException.throwInternalError("no admin");
+        // }
+        if (lastConnectionInfo == null)
+            throw DbException.getInternalError("lastConnectionInfo is null");
+        User user = getUser(null, lastConnectionInfo.getUserName());
+        ServerSession session = createSession(user);
+        session.setConnectionInfo(lastConnectionInfo);
+        return session;
     }
 
     @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes) {
-        return createReplicationSession(session, replicationNodes, null, null);
+    public Session createSession(Collection<NetNode> replicationNodes) {
+        return createSession(null, replicationNodes, null, null);
     }
 
     @Override
-    public ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
-            Boolean remote) {
-        return createReplicationSession(session, replicationNodes, remote, null);
+    public Session createSession(Collection<NetNode> replicationNodes, Boolean remote) {
+        return createSession(null, replicationNodes, remote, null);
     }
 
-    public static ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes,
-            Boolean remote, List<String> initReplicationNodes) {
-        ServerSession serverSession = (ServerSession) session;
+    @Override
+    public Session createSession(Session currentSession, Collection<NetNode> replicationNodes) {
+        return createSession(currentSession, replicationNodes, null, null);
+    }
+
+    @Override
+    public Session createSession(Session currentSession, Collection<NetNode> replicationNodes, Boolean remote) {
+        return createSession(currentSession, replicationNodes, remote, null);
+    }
+
+    public Session createSession(Session currentSession, Collection<NetNode> replicationNodes, Boolean remote,
+            List<String> initReplicationNodes) {
+        if (currentSession == null)
+            currentSession = createInternalSession();
+        ServerSession serverSession = (ServerSession) currentSession;
         int size = replicationNodes.size();
         Session[] sessions = new Session[size];
         int i = 0;
@@ -2259,11 +2264,16 @@ public class Database implements DataHandler, DbObject, IDatabase {
             boolean isRemote = remote != null ? remote.booleanValue() : !NetNode.isLocalP2pNode(n);
             sessions[i++] = serverSession.getNestedSession(id, isRemote);
         }
-        ReplicationSession rs = new ReplicationSession(sessions, initReplicationNodes);
-        rs.setRpcTimeout(getNetNodeManager().getRpcTimeout());
-        rs.setAutoCommit(serverSession.isAutoCommit());
-        rs.setParentTransaction(serverSession.getTransaction());
-        return rs;
+        Session newSession;
+        if (size == 1) {
+            newSession = sessions[0]; // 如果复制节点只有一个，可以不用ReplicationSession
+        } else {
+            newSession = new ReplicationSession(sessions, initReplicationNodes);
+        }
+        newSession.setNetworkTimeout(getNetNodeManager().getRpcTimeout());
+        newSession.setAutoCommit(serverSession.isAutoCommit());
+        newSession.setParentTransaction(serverSession.getTransaction());
+        return newSession;
     }
 
     @Override

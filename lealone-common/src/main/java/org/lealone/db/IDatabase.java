@@ -13,7 +13,6 @@ import java.util.Set;
 import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.storage.Storage;
-import org.lealone.storage.replication.ReplicationSession;
 
 public interface IDatabase {
 
@@ -25,17 +24,17 @@ public interface IDatabase {
 
     void notifyRunModeChanged();
 
-    Session createInternalSession();
+    Session createSession(Collection<NetNode> replicationNodes);
 
-    Session createInternalSession(boolean useSystemDatabase);
+    Session createSession(Collection<NetNode> replicationNodes, Boolean remote);
+
+    Session createSession(Session currentSession, Collection<NetNode> replicationNodes);
+
+    Session createSession(Session currentSession, Collection<NetNode> replicationNodes, Boolean remote);
 
     String[] getHostIds();
 
     void setHostIds(String[] hostIds);
-
-    ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes);
-
-    ReplicationSession createReplicationSession(Session session, Collection<NetNode> replicationNodes, Boolean remote);
 
     NetNode getNode(String hostId);
 

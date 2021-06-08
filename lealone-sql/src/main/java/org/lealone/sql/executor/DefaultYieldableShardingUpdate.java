@@ -29,7 +29,6 @@ import org.lealone.sql.SQLCommand;
 import org.lealone.sql.SQLStatement;
 import org.lealone.sql.StatementBase;
 import org.lealone.storage.PageKey;
-import org.lealone.storage.replication.ReplicationSession;
 
 //CREATE/ALTER/DROP DATABASE语句需要在所有节点上执行
 //其他与具体数据库相关的DDL语句会在数据库的目标节点上执行
@@ -119,9 +118,8 @@ public class DefaultYieldableShardingUpdate extends YieldableUpdateBase {
                 }
             }
         }
-        ReplicationSession rs = Database.createReplicationSession(currentSession, candidateNodes, null,
-                initReplicationNodes);
-        SQLCommand c = rs.createSQLCommand(definitionStatement.getSQL(), -1);
+        Session s = db.createSession(currentSession, candidateNodes, null, initReplicationNodes);
+        SQLCommand c = s.createSQLCommand(definitionStatement.getSQL(), -1);
         c.executeUpdate().onComplete(ar -> {
             if (ar.isSucceeded()) {
                 updateCount.set(ar.getResult());

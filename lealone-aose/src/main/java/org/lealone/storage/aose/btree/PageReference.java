@@ -14,7 +14,6 @@ import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.storage.PageKey;
 import org.lealone.storage.StorageCommand;
-import org.lealone.storage.replication.ReplicationSession;
 
 public class PageReference {
 
@@ -109,9 +108,8 @@ public class PageReference {
         // TODO 支持多节点容错
         String remoteHostId = replicationHostIds.get(0);
         List<NetNode> replicationNodes = BTreeMap.getReplicationNodes(db, new String[] { remoteHostId });
-        Session session = db.createInternalSession(true);
-        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
-        try (StorageCommand c = rs.createStorageCommand()) {
+        Session s = db.createSession(replicationNodes);
+        try (StorageCommand c = s.createStorageCommand()) {
             Future<ByteBuffer> f = c.readRemotePage(map.getName(), pageKey);
             ByteBuffer pageBuffer = f.get();
             page = BTreePage.readReplicatedPage(map, pageBuffer);

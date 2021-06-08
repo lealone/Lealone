@@ -18,11 +18,11 @@ import org.lealone.db.LealoneDatabase;
 import org.lealone.db.RunMode;
 import org.lealone.db.api.ErrorCode;
 import org.lealone.db.session.ServerSession;
+import org.lealone.db.session.Session;
 import org.lealone.net.NetNode;
 import org.lealone.net.NetNodeManager;
 import org.lealone.net.NetNodeManagerHolder;
 import org.lealone.sql.SQLCommand;
-import org.lealone.storage.replication.ReplicationSession;
 
 //CREATE/ALTER/DROP DATABASE语句在所有节点上都会执行一次，
 //差别是数据库所在节点会执行更多操作，其他节点只在LealoneDatabase中有一条相应记录，
@@ -75,8 +75,8 @@ public abstract class DatabaseStatement extends DefinitionStatement {
         liveMembers.remove(localNode);
         if (liveMembers.isEmpty())
             return;
-        ReplicationSession rs = Database.createReplicationSession(session, liveMembers, true, null);
-        try (SQLCommand c = rs.createSQLCommand(sql, -1)) {
+        Session s = session.getDatabase().createSession(session, liveMembers, true, null);
+        try (SQLCommand c = s.createSQLCommand(sql, -1)) {
             c.executeUpdate().get();
         } catch (Exception e) {
             throw DbException.convert(e);

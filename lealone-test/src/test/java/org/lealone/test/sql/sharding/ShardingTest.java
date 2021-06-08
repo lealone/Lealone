@@ -22,7 +22,7 @@ public class ShardingTest extends DSqlTestBase {
         sql = "CREATE DATABASE IF NOT EXISTS " + dbName + " RUN MODE sharding";
         sql += " PARAMETERS (replication_strategy: 'SimpleStrategy', replication_factor: 1,";
         sql += " node_assignment_strategy: 'RandomNodeAssignmentStrategy', assignment_factor: 2)";
-        // stmt.executeUpdate(sql);
+        stmt.executeUpdate(sql);
 
         // new DeleteTest(dbName).runTest();
         // new UpdateTest(dbName).runTest();

@@ -77,7 +77,8 @@ public class ReplicationSession extends DelegatedSession {
         this.maxTries = maxTries;
     }
 
-    public void setRpcTimeout(int rpcTimeoutMillis) {
+    @Override
+    public void setNetworkTimeout(int rpcTimeoutMillis) {
         for (Session s : sessions) {
             s.setNetworkTimeout(rpcTimeoutMillis);
         }

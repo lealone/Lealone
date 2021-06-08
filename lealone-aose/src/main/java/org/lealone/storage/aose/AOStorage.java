@@ -29,7 +29,6 @@ import org.lealone.storage.aose.btree.BTreeMap;
 import org.lealone.storage.aose.btree.BTreeMapBuilder;
 import org.lealone.storage.fs.FilePath;
 import org.lealone.storage.fs.FileUtils;
-import org.lealone.storage.replication.ReplicationSession;
 import org.lealone.storage.type.StorageDataType;
 
 /**
@@ -139,10 +138,10 @@ public class AOStorage extends StorageBase {
     public void scaleOut(IDatabase db, RunMode oldRunMode, RunMode newRunMode, String[] oldNodes, String[] newNodes) {
         List<NetNode> replicationNodes = BTreeMap.getReplicationNodes(db, newNodes);
         // 用最高权限的用户移动页面，因为目标节点上可能还没有对应的数据库
-        Session session = db.createInternalSession(true);
-        ReplicationSession rs = db.createReplicationSession(session, replicationNodes);
+        // Session session = db.createInternalSession();
+        Session s = db.createSession(null, replicationNodes);
         String sysMapName = db.getSysMapName();
-        try (DataBuffer buff = DataBuffer.create(); StorageCommand c = rs.createStorageCommand()) {
+        try (DataBuffer buff = DataBuffer.create(); StorageCommand c = s.createStorageCommand()) {
             HashMap<String, StorageMap<?, ?>> maps = new HashMap<>(this.maps);
             boolean containsSysMap = maps.containsKey(sysMapName);
             buff.put(containsSysMap ? (byte) 1 : (byte) 0);
