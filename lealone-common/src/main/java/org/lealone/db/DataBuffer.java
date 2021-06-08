@@ -13,6 +13,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.lealone.common.exceptions.DbException;
 import org.lealone.common.util.DataUtils;
@@ -839,10 +840,10 @@ public class DataBuffer implements AutoCloseable {
     }
 
     private static class DataBufferPool {
-        // 不要求精确
-        private static int poolSize;
-        private static final int maxPoolSize = 20;
+
         private static final int capacity = 4 * 1024 * 1024;
+        private static final int maxPoolSize = 20;
+        private static final AtomicInteger poolSize = new AtomicInteger();
         private static final ConcurrentLinkedQueue<DataBuffer> dataBufferPool = new ConcurrentLinkedQueue<>();
 
         public static DataBuffer poll() {
@@ -851,7 +852,7 @@ public class DataBuffer implements AutoCloseable {
                 writeBuffer = new DataBuffer();
             else {
                 writeBuffer.clear();
-                poolSize--;
+                poolSize.decrementAndGet();
             }
             return writeBuffer;
         }
@@ -859,7 +860,7 @@ public class DataBuffer implements AutoCloseable {
         public static DataBuffer poll(int capacity) {
             DataBuffer writeBuffer = null;
             DataBuffer last = null;
-            for (int i = 0; i < maxPoolSize; i++) {
+            for (int i = 0, size = poolSize.get(); i < size; i++) {
                 writeBuffer = dataBufferPool.poll();
                 if (writeBuffer == null || last == writeBuffer) {
                     break;
@@ -869,10 +870,7 @@ public class DataBuffer implements AutoCloseable {
                     dataBufferPool.offer(writeBuffer); // 放到队列末尾
                 } else {
                     writeBuffer.clear();
-                    if (writeBuffer.capacity() > capacity) {
-                        writeBuffer.clear();
-                    }
-                    poolSize--;
+                    poolSize.decrementAndGet();
                     return writeBuffer;
                 }
             }
@@ -880,9 +878,12 @@ public class DataBuffer implements AutoCloseable {
         }
 
         public static void offer(DataBuffer writeBuffer) {
-            if (poolSize < maxPoolSize && writeBuffer.capacity() <= capacity) {
-                poolSize++;
-                dataBufferPool.offer(writeBuffer);
+            if (writeBuffer.capacity() <= capacity) {
+                if (poolSize.incrementAndGet() <= maxPoolSize) {
+                    dataBufferPool.offer(writeBuffer);
+                } else {
+                    poolSize.decrementAndGet();
+                }
             }
         }
     }
