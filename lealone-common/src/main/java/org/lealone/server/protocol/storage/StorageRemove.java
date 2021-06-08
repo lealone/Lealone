@@ -10,22 +10,21 @@ import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class StorageRemove implements Packet {
+public class StorageRemove extends StorageWrite {
 
-    public final String mapName;
     public final ByteBuffer key;
-    public final boolean isDistributedTransaction;
-    public final String replicationName;
 
     public StorageRemove(String mapName, ByteBuffer key, boolean isDistributedTransaction, String replicationName) {
-        this.mapName = mapName;
+        super(mapName, isDistributedTransaction, replicationName);
         this.key = key;
-        this.isDistributedTransaction = isDistributedTransaction;
-        this.replicationName = replicationName;
+    }
+
+    public StorageRemove(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        key = in.readByteBuffer();
     }
 
     @Override
@@ -40,8 +39,8 @@ public class StorageRemove implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName).writeByteBuffer(key).writeBoolean(isDistributedTransaction)
-                .writeString(replicationName);
+        super.encode(out, version);
+        out.writeByteBuffer(key);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -49,7 +48,7 @@ public class StorageRemove implements Packet {
     private static class Decoder implements PacketDecoder<StorageRemove> {
         @Override
         public StorageRemove decode(NetInputStream in, int version) throws IOException {
-            return new StorageRemove(in.readString(), in.readByteBuffer(), in.readBoolean(), in.readString());
+            return new StorageRemove(in, version);
         }
     }
 }

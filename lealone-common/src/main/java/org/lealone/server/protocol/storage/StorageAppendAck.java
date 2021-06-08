@@ -9,18 +9,21 @@ import java.io.IOException;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class StorageAppendAck implements AckPacket {
+public class StorageAppendAck extends StorageOperationAck {
 
     public final long result;
-    public final String localTransactionNames;
 
     public StorageAppendAck(long result, String localTransactionNames) {
+        super(localTransactionNames);
         this.result = result;
-        this.localTransactionNames = localTransactionNames;
+    }
+
+    public StorageAppendAck(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        result = in.readLong();
     }
 
     @Override
@@ -30,7 +33,8 @@ public class StorageAppendAck implements AckPacket {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeLong(result).writeString(localTransactionNames);
+        super.encode(out, version);
+        out.writeLong(result);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -38,7 +42,7 @@ public class StorageAppendAck implements AckPacket {
     private static class Decoder implements PacketDecoder<StorageAppendAck> {
         @Override
         public StorageAppendAck decode(NetInputStream in, int version) throws IOException {
-            return new StorageAppendAck(in.readLong(), in.readString());
+            return new StorageAppendAck(in, version);
         }
     }
 }

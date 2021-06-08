@@ -19,6 +19,7 @@ import org.lealone.server.protocol.storage.StorageAppendAck;
 import org.lealone.server.protocol.storage.StorageGet;
 import org.lealone.server.protocol.storage.StorageGetAck;
 import org.lealone.server.protocol.storage.StorageMoveLeafPage;
+import org.lealone.server.protocol.storage.StorageOperation;
 import org.lealone.server.protocol.storage.StoragePrepareMoveLeafPage;
 import org.lealone.server.protocol.storage.StoragePrepareMoveLeafPageAck;
 import org.lealone.server.protocol.storage.StoragePut;
@@ -31,6 +32,7 @@ import org.lealone.server.protocol.storage.StorageRemoveLeafPage;
 import org.lealone.server.protocol.storage.StorageReplace;
 import org.lealone.server.protocol.storage.StorageReplaceAck;
 import org.lealone.server.protocol.storage.StorageReplicatePages;
+import org.lealone.server.protocol.storage.StorageWrite;
 import org.lealone.storage.LeafPageMovePlan;
 import org.lealone.storage.StorageMap;
 
@@ -53,7 +55,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class Get implements PacketHandler<StorageGet> {
         @Override
         public Packet handle(ServerSession session, StorageGet packet) {
-            String localTransactionNames = getLocalTransactionNames(session, packet.isDistributedTransaction);
+            String localTransactionNames = getLocalTransactionNames(session, packet);
             StorageMap<Object, Object> map = session.getStorageMap(packet.mapName);
             Object result = map.get(map.getKeyType().read(packet.key));
             ByteBuffer resultByteBuffer;
@@ -72,7 +74,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class Put implements PacketHandler<StoragePut> {
         @Override
         public Packet handle(PacketDeliveryTask task, StoragePut packet) {
-            String localTransactionNames = getLocalTransactionNames(task.session, packet.isDistributedTransaction);
+            String localTransactionNames = getLocalTransactionNames(task.session, packet);
             task.session.createReplicaStorageCommand().executeReplicaPut(packet.replicationName, packet.mapName,
                     packet.key, packet.value, packet.raw, packet.addIfAbsent).onComplete(ar -> {
                         if (ar.isSucceeded()) {
@@ -89,7 +91,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class Append implements PacketHandler<StorageAppend> {
         @Override
         public Packet handle(ServerSession session, StorageAppend packet) {
-            String localTransactionNames = getLocalTransactionNames(session, packet.isDistributedTransaction);
+            String localTransactionNames = getLocalTransactionNames(session, packet);
             Object result = session.createReplicaStorageCommand()
                     .executeReplicaAppend(packet.replicationName, packet.mapName, packet.value).get();
             return new StorageAppendAck(((ValueLong) result).getLong(), localTransactionNames);
@@ -99,7 +101,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class Replace implements PacketHandler<StorageReplace> {
         @Override
         public Packet handle(ServerSession session, StorageReplace packet) {
-            String localTransactionNames = getLocalTransactionNames(session, packet.isDistributedTransaction);
+            String localTransactionNames = getLocalTransactionNames(session, packet);
             boolean result = session.createReplicaStorageCommand().executeReplicaReplace(packet.replicationName,
                     packet.mapName, packet.key, packet.oldValue, packet.newValue).get();
             return new StorageReplaceAck(result, localTransactionNames);
@@ -109,7 +111,7 @@ class StoragePacketHandlers extends PacketHandlers {
     private static class Remove implements PacketHandler<StorageRemove> {
         @Override
         public Packet handle(ServerSession session, StorageRemove packet) {
-            String localTransactionNames = getLocalTransactionNames(session, packet.isDistributedTransaction);
+            String localTransactionNames = getLocalTransactionNames(session, packet);
             Object result = session.createReplicaStorageCommand()
                     .executeReplicaRemove(packet.replicationName, packet.mapName, packet.key).get();
             ByteBuffer resultByteBuffer;
@@ -173,14 +175,17 @@ class StoragePacketHandlers extends PacketHandlers {
         }
     }
 
-    private static String getLocalTransactionNames(ServerSession session, boolean isDistributedTransaction) {
-        if (isDistributedTransaction) {
+    private static String getLocalTransactionNames(ServerSession session, StorageOperation storageOperation) {
+        if (storageOperation instanceof StorageWrite) {
+            StorageWrite storageWrite = (StorageWrite) storageOperation;
+            if (storageWrite.replicationName != null) {
+                session.setStorageReplicationMode(true);
+                session.setReplicationName(storageWrite.replicationName);
+            }
+        }
+        if (storageOperation.isDistributedTransaction) {
             session.setAutoCommit(false);
             session.setRoot(false);
-        }
-        session.setStorageReplicationMode(true);
-
-        if (isDistributedTransaction) {
             return session.getTransaction().getLocalTransactionNames();
         } else {
             return null;

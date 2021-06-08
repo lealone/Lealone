@@ -10,20 +10,21 @@ import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class StorageGet implements Packet {
+public class StorageGet extends StorageOperation {
 
-    public final String mapName;
     public final ByteBuffer key;
-    public final boolean isDistributedTransaction;
 
     public StorageGet(String mapName, ByteBuffer key, boolean isDistributedTransaction) {
-        this.mapName = mapName;
+        super(mapName, isDistributedTransaction);
         this.key = key;
-        this.isDistributedTransaction = isDistributedTransaction;
+    }
+
+    public StorageGet(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        key = in.readByteBuffer();
     }
 
     @Override
@@ -38,9 +39,8 @@ public class StorageGet implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName);
+        super.encode(out, version);
         out.writeByteBuffer(key);
-        out.writeBoolean(isDistributedTransaction);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -48,7 +48,7 @@ public class StorageGet implements Packet {
     private static class Decoder implements PacketDecoder<StorageGet> {
         @Override
         public StorageGet decode(NetInputStream in, int version) throws IOException {
-            return new StorageGet(in.readString(), in.readByteBuffer(), in.readBoolean());
+            return new StorageGet(in, version);
         }
     }
 }

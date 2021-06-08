@@ -10,27 +10,28 @@ import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class StorageReplace implements Packet {
+public class StorageReplace extends StorageWrite {
 
-    public final String mapName;
     public final ByteBuffer key;
     public final ByteBuffer oldValue;
     public final ByteBuffer newValue;
-    public final boolean isDistributedTransaction;
-    public final String replicationName;
 
     public StorageReplace(String mapName, ByteBuffer key, ByteBuffer oldValue, ByteBuffer newValue,
             boolean isDistributedTransaction, String replicationName) {
-        this.mapName = mapName;
+        super(mapName, isDistributedTransaction, replicationName);
         this.key = key;
         this.oldValue = oldValue;
         this.newValue = newValue;
-        this.isDistributedTransaction = isDistributedTransaction;
-        this.replicationName = replicationName;
+    }
+
+    public StorageReplace(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        key = in.readByteBuffer();
+        oldValue = in.readByteBuffer();
+        newValue = in.readByteBuffer();
     }
 
     @Override
@@ -45,8 +46,8 @@ public class StorageReplace implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(oldValue).writeByteBuffer(newValue)
-                .writeBoolean(isDistributedTransaction).writeString(replicationName);
+        super.encode(out, version);
+        out.writeByteBuffer(key).writeByteBuffer(oldValue).writeByteBuffer(newValue);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -54,8 +55,7 @@ public class StorageReplace implements Packet {
     private static class Decoder implements PacketDecoder<StorageReplace> {
         @Override
         public StorageReplace decode(NetInputStream in, int version) throws IOException {
-            return new StorageReplace(in.readString(), in.readByteBuffer(), in.readByteBuffer(), in.readByteBuffer(),
-                    in.readBoolean(), in.readString());
+            return new StorageReplace(in, version);
         }
     }
 }

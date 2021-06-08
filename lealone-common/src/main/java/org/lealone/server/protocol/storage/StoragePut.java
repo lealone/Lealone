@@ -10,29 +10,31 @@ import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.Packet;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class StoragePut implements Packet {
+public class StoragePut extends StorageWrite {
 
-    public final String mapName;
     public final ByteBuffer key;
     public final ByteBuffer value;
-    public final boolean isDistributedTransaction;
-    public final String replicationName;
     public final boolean raw;
     public final boolean addIfAbsent;
 
     public StoragePut(String mapName, ByteBuffer key, ByteBuffer value, boolean isDistributedTransaction,
             String replicationName, boolean raw, boolean addIfAbsent) {
-        this.mapName = mapName;
+        super(mapName, isDistributedTransaction, replicationName);
         this.key = key;
         this.value = value;
-        this.isDistributedTransaction = isDistributedTransaction;
-        this.replicationName = replicationName;
         this.raw = raw;
         this.addIfAbsent = addIfAbsent;
+    }
+
+    public StoragePut(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        key = in.readByteBuffer();
+        value = in.readByteBuffer();
+        raw = in.readBoolean();
+        addIfAbsent = in.readBoolean();
     }
 
     @Override
@@ -47,8 +49,8 @@ public class StoragePut implements Packet {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeString(mapName).writeByteBuffer(key).writeByteBuffer(value).writeBoolean(isDistributedTransaction)
-                .writeString(replicationName).writeBoolean(raw).writeBoolean(addIfAbsent);
+        super.encode(out, version);
+        out.writeByteBuffer(key).writeByteBuffer(value).writeBoolean(raw).writeBoolean(addIfAbsent);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -56,8 +58,7 @@ public class StoragePut implements Packet {
     private static class Decoder implements PacketDecoder<StoragePut> {
         @Override
         public StoragePut decode(NetInputStream in, int version) throws IOException {
-            return new StoragePut(in.readString(), in.readByteBuffer(), in.readByteBuffer(), in.readBoolean(),
-                    in.readString(), in.readBoolean(), in.readBoolean());
+            return new StoragePut(in, version);
         }
     }
 }

@@ -10,18 +10,21 @@ import java.nio.ByteBuffer;
 
 import org.lealone.net.NetInputStream;
 import org.lealone.net.NetOutputStream;
-import org.lealone.server.protocol.AckPacket;
 import org.lealone.server.protocol.PacketDecoder;
 import org.lealone.server.protocol.PacketType;
 
-public class StoragePutAck implements AckPacket {
+public class StoragePutAck extends StorageOperationAck {
 
     public final ByteBuffer result;
-    public final String localTransactionNames;
 
     public StoragePutAck(ByteBuffer result, String localTransactionNames) {
+        super(localTransactionNames);
         this.result = result;
-        this.localTransactionNames = localTransactionNames;
+    }
+
+    public StoragePutAck(NetInputStream in, int version) throws IOException {
+        super(in, version);
+        result = in.readByteBuffer();
     }
 
     @Override
@@ -31,7 +34,8 @@ public class StoragePutAck implements AckPacket {
 
     @Override
     public void encode(NetOutputStream out, int version) throws IOException {
-        out.writeByteBuffer(result).writeString(localTransactionNames);
+        super.encode(out, version);
+        out.writeByteBuffer(result);
     }
 
     public static final Decoder decoder = new Decoder();
@@ -39,7 +43,7 @@ public class StoragePutAck implements AckPacket {
     private static class Decoder implements PacketDecoder<StoragePutAck> {
         @Override
         public StoragePutAck decode(NetInputStream in, int version) throws IOException {
-            return new StoragePutAck(in.readByteBuffer(), in.readString());
+            return new StoragePutAck(in, version);
         }
     }
 }
