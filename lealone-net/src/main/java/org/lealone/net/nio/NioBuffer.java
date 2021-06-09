@@ -13,9 +13,15 @@ import org.lealone.net.NetBuffer;
 public class NioBuffer implements NetBuffer {
 
     private DataBuffer dataBuffer;
+    private boolean onlyOnePacket;
 
     public NioBuffer(DataBuffer dataBuffer) {
         this.dataBuffer = dataBuffer;
+    }
+
+    public NioBuffer(DataBuffer dataBuffer, boolean onlyOnePacket) {
+        this.dataBuffer = dataBuffer;
+        this.onlyOnePacket = onlyOnePacket;
     }
 
     public ByteBuffer getAndFlipBuffer() {
@@ -97,8 +103,14 @@ public class NioBuffer implements NetBuffer {
     }
 
     @Override
+    public boolean isOnlyOnePacket() {
+        return onlyOnePacket;
+    }
+
+    @Override
     public void recycle() {
-        dataBuffer.close();
+        if (onlyOnePacket)
+            dataBuffer.close();
     }
 
     @Override

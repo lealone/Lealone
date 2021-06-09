@@ -31,6 +31,8 @@ public class NetBufferInputStream extends InputStream {
 
     @Override
     public void close() throws IOException {
-        buffer.recycle();
+        // buffer中只有一个包时回收才安全
+        if (buffer.isOnlyOnePacket())
+            buffer.recycle();
     }
 }

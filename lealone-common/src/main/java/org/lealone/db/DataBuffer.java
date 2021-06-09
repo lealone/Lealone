@@ -95,8 +95,8 @@ public class DataBuffer implements AutoCloseable {
     private boolean direct;
 
     /**
-     * Create a new buffer for the given handler. The
-     * handler will decide what type of buffer is created.
+     * Create a new buffer for the given handler.
+     * The handler will decide what type of buffer is created.
      *
      * @param handler the data handler
      * @param capacity the initial capacity of the buffer
@@ -110,16 +110,8 @@ public class DataBuffer implements AutoCloseable {
         return new DataBuffer(handler, capacity, direct);
     }
 
-    public static DataBuffer create(DataHandler handler) {
-        return new DataBuffer(handler, MIN_GROW);
-    }
-
     public static DataBuffer create(int capacity) {
         return new DataBuffer(null, capacity);
-    }
-
-    public static DataBuffer create(ByteBuffer buff) {
-        return new DataBuffer(buff);
     }
 
     protected DataBuffer() {
@@ -590,19 +582,6 @@ public class DataBuffer implements AutoCloseable {
         return buff.position();
     }
 
-    @Override
-    public void close() {
-        DataBufferPool.offer(this);
-    }
-
-    public static DataBuffer create() {
-        return DataBufferPool.poll();
-    }
-
-    public static DataBuffer getOrCreate(int capacity) {
-        return DataBufferPool.poll(capacity);
-    }
-
     public void writeValue(Value v) {
         writeValue(this, v);
     }
@@ -839,48 +818,58 @@ public class DataBuffer implements AutoCloseable {
         return direct ? ByteBuffer.allocateDirect(capacity) : ByteBuffer.allocate(capacity);
     }
 
+    @Override
+    public void close() {
+        DataBufferPool.offer(this);
+    }
+
+    public static DataBuffer create() {
+        return DataBufferPool.poll();
+    }
+
+    public static DataBuffer getOrCreate(int capacity) {
+        return DataBufferPool.poll(capacity);
+    }
+
     private static class DataBufferPool {
 
-        private static final int capacity = 4 * 1024 * 1024;
         private static final int maxPoolSize = 20;
         private static final AtomicInteger poolSize = new AtomicInteger();
         private static final ConcurrentLinkedQueue<DataBuffer> dataBufferPool = new ConcurrentLinkedQueue<>();
 
-        public static DataBuffer poll() {
-            DataBuffer writeBuffer = dataBufferPool.poll();
-            if (writeBuffer == null)
-                writeBuffer = new DataBuffer();
+        private static DataBuffer poll() {
+            DataBuffer buffer = dataBufferPool.poll();
+            if (buffer == null)
+                buffer = new DataBuffer();
             else {
-                writeBuffer.clear();
+                buffer.clear();
                 poolSize.decrementAndGet();
             }
-            return writeBuffer;
+            return buffer;
         }
 
-        public static DataBuffer poll(int capacity) {
-            DataBuffer writeBuffer = null;
-            DataBuffer last = null;
+        private static DataBuffer poll(int capacity) {
+            DataBuffer buffer = null;
             for (int i = 0, size = poolSize.get(); i < size; i++) {
-                writeBuffer = dataBufferPool.poll();
-                if (writeBuffer == null || last == writeBuffer) {
+                buffer = dataBufferPool.poll();
+                if (buffer == null) {
                     break;
                 }
-                if (writeBuffer.capacity() < capacity) {
-                    last = writeBuffer;
-                    dataBufferPool.offer(writeBuffer); // 放到队列末尾
+                if (buffer.capacity() < capacity) {
+                    dataBufferPool.offer(buffer); // 放到队列末尾
                 } else {
-                    writeBuffer.clear();
+                    buffer.clear();
                     poolSize.decrementAndGet();
-                    return writeBuffer;
+                    return buffer;
                 }
             }
             return DataBuffer.create(capacity);
         }
 
-        public static void offer(DataBuffer writeBuffer) {
-            if (writeBuffer.capacity() <= capacity) {
+        private static void offer(DataBuffer buffer) {
+            if (buffer.capacity() <= MAX_REUSE_CAPACITY) {
                 if (poolSize.incrementAndGet() <= maxPoolSize) {
-                    dataBufferPool.offer(writeBuffer);
+                    dataBufferPool.offer(buffer);
                 } else {
                     poolSize.decrementAndGet();
                 }

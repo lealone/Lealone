@@ -44,6 +44,7 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
     protected int fetchSize = SysProperties.SERVER_RESULT_SET_FETCH_SIZE;
     protected int updateCount;
     private Command executingCommand;
+    private int lastExecutedCommandType; // 支持PostgreSQL协议时需要用到
     private ArrayList<String> batchCommands;
     private boolean escapeProcessing = true;
 
@@ -1005,6 +1006,13 @@ public class JdbcStatement extends JdbcWrapper implements Statement {
      */
     protected void setExecutingStatement(Command c) {
         executingCommand = c;
+        if (c != null) {
+            lastExecutedCommandType = c.getType();
+        }
+    }
+
+    public int getLastExecutedCommandType() {
+        return lastExecutedCommandType;
     }
 
     /**

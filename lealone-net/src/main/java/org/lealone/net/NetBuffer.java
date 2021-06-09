@@ -27,6 +27,10 @@ public interface NetBuffer {
 
     NetBuffer flip();
 
+    default boolean isOnlyOnePacket() {
+        return false;
+    }
+
     default void recycle() {
     }
 }

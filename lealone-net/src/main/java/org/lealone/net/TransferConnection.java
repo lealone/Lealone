@@ -24,6 +24,7 @@ public abstract class TransferConnection extends AsyncConnection {
     private static final Logger logger = LoggerFactory.getLogger(TransferConnection.class);
 
     private final ByteBuffer packetLengthByteBuffer = ByteBuffer.allocateDirect(4);
+    private NetBuffer lastBuffer;
 
     public TransferConnection(WritableChannel writableChannel, boolean isServer) {
         super(writableChannel, isServer);
@@ -108,22 +109,78 @@ public abstract class TransferConnection extends AsyncConnection {
 
     @Override
     public void handle(NetBuffer buffer) {
+        if (buffer.isOnlyOnePacket()) {
+            try {
+                TransferInputStream in = new TransferInputStream(buffer);
+                handlePacket(in);
+            } catch (Throwable e) {
+                if (isServer)
+                    logger.error("Failed to handle packet", e);
+                else
+                    throw DbException.convert(e);
+            }
+        } else {
+            handle0(buffer);
+        }
+    }
+
+    private void handle0(NetBuffer buffer) {
+        if (lastBuffer != null) {
+            buffer = lastBuffer.appendBuffer(buffer);
+            lastBuffer = null;
+        }
+
+        int length = buffer.length();
+        if (length < 4) {
+            lastBuffer = buffer;
+            return;
+        }
+
+        int pos = 0;
         try {
-            TransferInputStream in = new TransferInputStream(buffer);
-            boolean isRequest = in.readByte() == TransferOutputStream.REQUEST;
-            int packetId = in.readInt();
-            if (isRequest) {
-                int packetType = in.readInt();
-                handleRequest(in, packetId, packetType);
-            } else {
-                int status = in.readInt();
-                handleResponse(in, packetId, status);
+            while (true) {
+                TransferInputStream in;
+                if (pos == 0)
+                    in = new TransferInputStream(buffer);
+                else
+                    in = new TransferInputStream(buffer.slice(pos, pos + length));
+                int packetLength = in.readInt();
+                if (length - 4 == packetLength) {
+                    handlePacket(in);
+                    break;
+                } else if (length - 4 > packetLength) {
+                    handlePacket(in);
+                    pos = pos + packetLength + 4;
+                    length = length - (packetLength + 4);
+                    // 有可能剩下的不够4个字节了
+                    if (length < 4) {
+                        lastBuffer = buffer.getBuffer(pos, pos + length);
+                        break;
+                    } else {
+                        continue;
+                    }
+                } else {
+                    lastBuffer = buffer.getBuffer(pos, pos + length);
+                    break;
+                }
             }
         } catch (Throwable e) {
             if (isServer)
                 logger.error("Failed to handle packet", e);
             else
                 throw DbException.convert(e);
+        }
+    }
+
+    private void handlePacket(TransferInputStream in) throws IOException {
+        boolean isRequest = in.readByte() == TransferOutputStream.REQUEST;
+        int packetId = in.readInt();
+        if (isRequest) {
+            int packetType = in.readInt();
+            handleRequest(in, packetId, packetType);
+        } else {
+            int status = in.readInt();
+            handleResponse(in, packetId, status);
         }
     }
 }
