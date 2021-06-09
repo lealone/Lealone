@@ -4958,7 +4958,11 @@ public class Parser implements SQLParser {
         } else if (readIf(DbSetting.MODE.getName())) {
             readIfEqualOrTo();
             SetDatabase command = new SetDatabase(session, DbSetting.MODE);
-            command.setString(readAliasIdentifier());
+            if (currentTokenType == VALUE) {
+                command.setString(readString()); // 加单引号
+            } else {
+                command.setString(readUniqueIdentifier()); // 不加单引号
+            }
             return command;
         } else {
             // 先看看是否是session级的参数，然后再看是否是database级的

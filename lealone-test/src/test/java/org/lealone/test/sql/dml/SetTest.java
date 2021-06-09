@@ -121,7 +121,9 @@ public class SetTest extends SqlTestBase {
         executeUpdate("SET MAX_MEMORY_UNDO 100");
         executeUpdate("SET MAX_OPERATION_MEMORY 100");
 
+        // 两种方式都可以
         executeUpdate("SET MODE MySQL");
+        executeUpdate("SET MODE 'MySQL'"); //
         try {
             executeUpdate("SET MODE UNKNOWN_MODE");
             fail(sql);
