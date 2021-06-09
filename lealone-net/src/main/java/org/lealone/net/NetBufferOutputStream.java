@@ -32,6 +32,7 @@ public class NetBufferOutputStream extends OutputStream {
 
     @Override
     public void flush() throws IOException {
+        buffer.flip();
         NetBuffer old = buffer;
         reset();
         writableChannel.write(old);
