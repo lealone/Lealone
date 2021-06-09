@@ -25,6 +25,7 @@ public class IntIntHashMap extends HashBase {
     private int[] values;
     private int zeroValue;
 
+    @Override
     protected void reset(int newLevel) {
         super.reset(newLevel);
         keys = new int[len];
@@ -107,6 +108,7 @@ public class IntIntHashMap extends HashBase {
         // not found
     }
 
+    @Override
     protected void rehash(int newLevel) {
         int[] oldKeys = keys;
         int[] oldValues = values;

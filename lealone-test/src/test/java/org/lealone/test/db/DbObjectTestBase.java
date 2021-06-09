@@ -47,6 +47,7 @@ public class DbObjectTestBase extends UnitTestBase {
         schema = db.findSchema(session, Constants.SCHEMA_MAIN);
     }
 
+    @Override
     @Before
     public void setUpBefore() {
         session.setAutoCommit(true);
