@@ -111,6 +111,19 @@ public class AOTransaction extends AMTransaction {
     }
 
     @Override
+    public void asyncCommit(Runnable asyncTask) {
+        super.asyncCommit(asyncTask);
+        // commit();
+        // if (asyncTask != null) {
+        // try {
+        // asyncTask.run();
+        // } catch (Exception e) {
+        // throw DbException.convert(e);
+        // }
+        // }
+    }
+
+    @Override
     public void commit() {
         if (local) {
             commitLocal();

@@ -45,6 +45,8 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
     public Future<Object> put(String mapName, Object key, StorageDataType keyType, Object value,
             StorageDataType valueType, boolean raw, boolean addIfAbsent) {
         TransactionMap<Object, Object> tmap = session.getTransactionMap(mapName);
+        Transaction transaction = session.getTransaction();
+        int savepointId = transaction.getSavepointId();
         AsyncCallback<Object> ac = new AsyncCallback<>();
         if (addIfAbsent) {
             tmap.addIfAbsent(key, value).onSuccess(r -> {
@@ -52,7 +54,9 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
                 resultByteBuffer.put((byte) 1);
                 resultByteBuffer.flip();
                 ac.setAsyncResult(resultByteBuffer);
+                commitIfNeeded();
             }).onFailure(t -> {
+                transaction.rollbackToSavepoint(savepointId);
                 ByteBuffer resultByteBuffer = ByteBuffer.allocate(1);
                 resultByteBuffer.put((byte) 0);
                 resultByteBuffer.flip();
@@ -82,6 +86,12 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
         return ac;
     }
 
+    private void commitIfNeeded() {
+        if (session.isAutoCommit() && session.getReplicationName() == null) {
+            session.commit();
+        }
+    }
+
     @Override
     public Future<Object> executeReplicaPut(String replicationName, String mapName, ByteBuffer key, ByteBuffer value,
             boolean raw, boolean addIfAbsent) {
@@ -100,6 +110,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
         if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
             parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
         }
+        commitIfNeeded();
         return Future.succeededFuture(result);
     }
 
@@ -119,6 +130,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
         if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
             parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
         }
+        commitIfNeeded();
         return Future.succeededFuture(result);
     }
 
@@ -139,6 +151,7 @@ public class ServerStorageCommand implements ReplicaStorageCommand {
         if (parentTransaction != null && !parentTransaction.isAutoCommit()) {
             parentTransaction.addLocalTransactionNames(session.getTransaction().getLocalTransactionNames());
         }
+        commitIfNeeded();
         return Future.succeededFuture(result);
     }
 
