@@ -73,6 +73,13 @@
 * [更多细节...](https://github.com/lealone/Bats)
 
 
+### Lealone MySQL 查询引擎
+
+* 基于 MySQL 协议，使用 MySQL 的 SQL 语法访问 Lealone 数据库
+
+* [更多细节...](https://github.com/lealone/Lealone-MySQL)
+
+
 ### Lealone Plugins
 
 * 支持可插拨的网络应用框架(Apache MINA、Netty、Vert.x)
@@ -80,8 +87,6 @@
 * 支持可插拨的存储引擎(WiredTiger、MVStore、RocksDB)
 
 * 初步支持PostgreSQL协议
-
-* 初步支持MySQL协议和语法
 
 * [更多细节...](https://github.com/lealone/Lealone-Plugins)
 
